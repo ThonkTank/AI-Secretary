@@ -20,7 +20,7 @@ import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.calendar.CalendarResult;
-import de.thonktank.autosecretary.update.UpdateUiState;
+import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

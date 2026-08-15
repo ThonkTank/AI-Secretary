@@ -1,4 +1,4 @@
-package de.thonktank.autosecretary.update;
+package de.thonktank.autosecretary.update.infrastructure;
 
 import android.content.Context;
 import android.content.Intent;
@@ -6,6 +6,8 @@ import android.net.Uri;
 import android.provider.Settings;
 
 import androidx.core.content.FileProvider;
+
+import de.thonktank.autosecretary.update.application.VerifiedUpdate;
 
 public final class UpdateInstaller {
     public boolean canInstallPackages(Context context) {

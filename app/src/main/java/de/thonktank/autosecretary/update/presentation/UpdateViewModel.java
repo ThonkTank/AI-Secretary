@@ -1,4 +1,4 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.update.presentation;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -6,13 +6,15 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
-import de.thonktank.autosecretary.data.preferences.UiPreferences;
-import de.thonktank.autosecretary.infrastructure.AppLogger;
+import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
-import de.thonktank.autosecretary.update.UpdateInfo;
-import de.thonktank.autosecretary.update.UpdateRepository;
-import de.thonktank.autosecretary.update.UpdateUiState;
-import de.thonktank.autosecretary.update.VerifiedUpdate;
+import de.thonktank.autosecretary.update.application.UpdateErrorReporter;
+import de.thonktank.autosecretary.update.application.UpdatePreferences;
+import de.thonktank.autosecretary.update.application.UpdateRepository;
+import de.thonktank.autosecretary.update.application.VerifiedUpdate;
+import de.thonktank.autosecretary.update.domain.UpdateCheckResult;
+import de.thonktank.autosecretary.update.domain.UpdateFailure;
+import de.thonktank.autosecretary.update.domain.UpdateInfo;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -20,8 +22,8 @@ import java.util.function.LongSupplier;
 
 public final class UpdateViewModel extends ViewModel {
     private final UpdateRepository repository;
-    private final UiPreferences preferences;
-    private final AppLogger logger;
+    private final UpdatePreferences preferences;
+    private final UpdateErrorReporter errors;
     private final UiTextProvider texts;
     private final LongSupplier now;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
@@ -30,26 +32,26 @@ public final class UpdateViewModel extends ViewModel {
     private final MutableLiveData<UpdateEvent> events = new MutableLiveData<>();
     private VerifiedUpdate verified;
 
-    UpdateViewModel(UpdateRepository repository, UiPreferences preferences, AppLogger logger,
-                    UiTextProvider texts, LongSupplier now) {
+    UpdateViewModel(UpdateRepository repository, UpdatePreferences preferences,
+                    UpdateErrorReporter errors, UiTextProvider texts, LongSupplier now) {
         this.repository = repository;
         this.preferences = preferences;
-        this.logger = logger;
+        this.errors = errors;
         this.texts = texts;
         this.now = now;
     }
 
-    LiveData<UpdateUiState> state() { return state; }
-    LiveData<UpdateEvent> events() { return events; }
+    public LiveData<UpdateUiState> state() { return state; }
+    public LiveData<UpdateEvent> events() { return events; }
 
-    void automaticCheck() {
+    public void automaticCheck() {
         long currentTime = now.getAsLong();
         if (!preferences.shouldCheckUpdates(currentTime)) return;
         preferences.markUpdateCheck(currentTime);
         check(true);
     }
 
-    void manualAction() {
+    public void manualAction() {
         UpdateUiState current = state.getValue();
         if (current == null) return;
         if (current.status == UpdateUiState.Status.AVAILABLE) download(current.update);
@@ -58,15 +60,15 @@ public final class UpdateViewModel extends ViewModel {
                 && current.status != UpdateUiState.Status.DOWNLOADING) check(false);
     }
 
-    void accept(UpdateInfo update) {
+    public void accept(UpdateInfo update) {
         if (update != null) download(update);
     }
 
-    void postpone(UpdateInfo update) {
+    public void postpone(UpdateInfo update) {
         if (update != null) preferences.postponeUpdate(update.versionCode, now.getAsLong());
     }
 
-    void requestInstall() {
+    public void requestInstall() {
         if (verified != null) events.setValue(UpdateEvent.install(verified));
     }
 
@@ -77,20 +79,18 @@ public final class UpdateViewModel extends ViewModel {
         state.setValue(UpdateUiState.checking());
         worker.execute(() -> {
             try {
-                UpdateInfo update = repository.check();
-                if (update == null) {
+                UpdateCheckResult result = repository.check();
+                if (!result.isAvailable()) {
                     state.postValue(UpdateUiState.current());
                     return;
                 }
+                UpdateInfo update = result.availableUpdate();
                 state.postValue(UpdateUiState.available(update));
                 if (!automatic || preferences.shouldPromptForUpdate(
                         update.versionCode, now.getAsLong()))
                     events.postValue(UpdateEvent.available(update));
-            } catch (Exception error) {
-                String message = texts.text(R.string.error_update_check);
-                logger.error("Updater", "Update check failed", error);
-                state.postValue(UpdateUiState.error(message));
-                if (!automatic) events.postValue(UpdateEvent.error(message));
+            } catch (UpdateFailure error) {
+                handleFailure(error, R.string.error_update_check, automatic);
             }
         });
     }
@@ -104,13 +104,17 @@ public final class UpdateViewModel extends ViewModel {
                         progress -> state.postValue(UpdateUiState.downloading(update, progress)));
                 state.postValue(UpdateUiState.ready(update));
                 events.postValue(UpdateEvent.install(verified));
-            } catch (Exception error) {
-                String message = texts.text(R.string.error_update_download);
-                logger.error("Updater", "Update download or verification failed", error);
-                state.postValue(UpdateUiState.error(message));
-                events.postValue(UpdateEvent.error(message));
+            } catch (UpdateFailure error) {
+                handleFailure(error, R.string.error_update_download, false);
             }
         });
+    }
+
+    private void handleFailure(UpdateFailure error, int messageResource, boolean silent) {
+        String message = texts.text(messageResource);
+        errors.report(error);
+        state.postValue(UpdateUiState.error(error.kind(), message));
+        if (!silent) events.postValue(UpdateEvent.error(error.kind(), message));
     }
 
     @Override protected void onCleared() {
@@ -118,18 +122,26 @@ public final class UpdateViewModel extends ViewModel {
     }
 
     public static final class Factory implements ViewModelProvider.Factory {
-        private final AppContainer container;
+        private final UpdateRepository repository;
+        private final UpdatePreferences preferences;
+        private final UpdateErrorReporter errors;
+        private final UiTextProvider texts;
+        private final LongSupplier now;
 
-        public Factory(AppContainer container) {
-            this.container = container;
+        public Factory(UpdateRepository repository, UpdatePreferences preferences,
+                       UpdateErrorReporter errors, UiTextProvider texts, LongSupplier now) {
+            this.repository = repository;
+            this.preferences = preferences;
+            this.errors = errors;
+            this.texts = texts;
+            this.now = now;
         }
 
         @NonNull @Override @SuppressWarnings("unchecked")
         public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
             if (!modelClass.isAssignableFrom(UpdateViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
-            return (T) new UpdateViewModel(container.updates, container.uiPreferences,
-                    container.logger, container.texts, System::currentTimeMillis);
+            return (T) new UpdateViewModel(repository, preferences, errors, texts, now);
         }
     }
 }

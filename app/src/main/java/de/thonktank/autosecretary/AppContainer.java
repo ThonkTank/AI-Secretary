@@ -15,9 +15,9 @@ import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
-import de.thonktank.autosecretary.update.GitHubUpdateRepository;
-import de.thonktank.autosecretary.update.UpdateInstaller;
-import de.thonktank.autosecretary.update.UpdateRepository;
+import de.thonktank.autosecretary.update.application.UpdateRepository;
+import de.thonktank.autosecretary.update.infrastructure.GitHubUpdateRepository;
+import de.thonktank.autosecretary.update.infrastructure.UpdateInstaller;
 
 public final class AppContainer {
     public final AppDatabase database;

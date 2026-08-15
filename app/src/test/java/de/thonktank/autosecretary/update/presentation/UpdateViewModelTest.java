@@ -1,4 +1,4 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.update.presentation;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -13,10 +13,12 @@ import androidx.test.core.app.ApplicationProvider;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
-import de.thonktank.autosecretary.update.UpdateInfo;
-import de.thonktank.autosecretary.update.UpdateRepository;
-import de.thonktank.autosecretary.update.UpdateUiState;
-import de.thonktank.autosecretary.update.VerifiedUpdate;
+import de.thonktank.autosecretary.update.application.UpdateRepository;
+import de.thonktank.autosecretary.update.application.VerifiedUpdate;
+import de.thonktank.autosecretary.update.domain.ReleaseMetadata;
+import de.thonktank.autosecretary.update.domain.UpdateCheckResult;
+import de.thonktank.autosecretary.update.domain.UpdateFailure;
+import de.thonktank.autosecretary.update.domain.UpdateInfo;
 
 import org.junit.After;
 import org.junit.Before;
@@ -28,13 +30,15 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 35)
+@Config(sdk = {26, 35})
 public final class UpdateViewModelTest {
     @Rule public final TestRule instantExecutors = new InstantTaskExecutorRule();
 
@@ -42,6 +46,7 @@ public final class UpdateViewModelTest {
     private UiPreferences preferences;
     private FakeRepository repository;
     private AtomicLong now;
+    private AtomicInteger reportedErrors;
     private UpdateViewModel viewModel;
 
     @Before public void setUp() {
@@ -50,7 +55,9 @@ public final class UpdateViewModelTest {
         preferences = new UiPreferences(context, new NoOpLogger());
         repository = new FakeRepository(context);
         now = new AtomicLong(1_000_000L);
-        viewModel = new UpdateViewModel(repository, preferences, new NoOpLogger(),
+        reportedErrors = new AtomicInteger();
+        viewModel = new UpdateViewModel(repository, preferences,
+                error -> reportedErrors.incrementAndGet(),
                 new AndroidUiTextProvider(context), now::get);
     }
 
@@ -73,7 +80,7 @@ public final class UpdateViewModelTest {
     }
 
     @Test public void availableUpdateDownloadsThenEmitsInstallerEvent() throws Exception {
-        UpdateInfo info = new UpdateInfo(1_000_201L, "0.2.2", 1024L);
+        UpdateInfo info = updateInfo(1_000_201L, "0.2.2", 1024L);
         repository.available = info;
 
         viewModel.manualAction();
@@ -90,8 +97,8 @@ public final class UpdateViewModelTest {
         assertTrue(repository.downloaded);
     }
 
-    @Test public void postponingSuppressesTheSameVersionForTwentyFourHours() {
-        UpdateInfo info = new UpdateInfo(44L, "0.2.44", 1L);
+    @Test public void postponingSuppressesTheSameVersionForTwentyFourHours() throws Exception {
+        UpdateInfo info = updateInfo(44L, "0.2.44", 1L);
         viewModel.postpone(info);
 
         assertFalse(preferences.shouldPromptForUpdate(44L,
@@ -101,8 +108,31 @@ public final class UpdateViewModelTest {
         assertTrue(preferences.shouldPromptForUpdate(45L, now.get()));
     }
 
+    @Test public void typedRepositoryFailureReachesStateEventAndReporter() throws Exception {
+        repository.failure = new UpdateFailure(UpdateFailure.Kind.NETWORK, "offline");
+
+        viewModel.manualAction();
+
+        await(() -> state().status == UpdateUiState.Status.ERROR);
+        assertEquals(UpdateFailure.Kind.NETWORK, state().errorKind);
+        assertEquals(UpdateFailure.Kind.NETWORK, viewModel.events().getValue().errorKind);
+        assertEquals(1, reportedErrors.get());
+    }
+
     private UpdateUiState state() {
         return viewModel.state().getValue();
+    }
+
+    private static UpdateInfo updateInfo(long version, String name, long size)
+            throws UpdateFailure {
+        ReleaseMetadata metadata = ReleaseMetadata.create(version, name,
+                "de.thonktank.autosecretary", "AutoSecretary.apk", size,
+                repeat('a', 64), repeat('b', 64), repeat('c', 40));
+        return UpdateInfo.from(metadata, "https://github.com/AutoSecretary.apk");
+    }
+
+    private static String repeat(char value, int count) {
+        return String.join("", Collections.nCopies(count, String.valueOf(value)));
     }
 
     private static void await(BooleanSupplier condition) throws Exception {
@@ -116,19 +146,30 @@ public final class UpdateViewModelTest {
         final AtomicInteger checks = new AtomicInteger();
         final Context context;
         UpdateInfo available;
+        UpdateFailure failure;
         boolean downloaded;
 
         FakeRepository(Context context) { this.context = context; }
 
-        @Override public UpdateInfo check() {
+        @Override public UpdateCheckResult check() throws UpdateFailure {
             checks.incrementAndGet();
-            return available;
+            if (failure != null) throw failure;
+            return available == null ? UpdateCheckResult.current()
+                    : UpdateCheckResult.available(available);
         }
 
-        @Override public VerifiedUpdate download(UpdateInfo update, IntConsumer progress) {
+        @Override public VerifiedUpdate download(UpdateInfo update, IntConsumer progress)
+                throws UpdateFailure {
             downloaded = true;
             progress.accept(50);
-            return new VerifiedUpdate(update, new File(context.getCacheDir(), "test-update.apk"));
+            File apk = new File(context.getCacheDir(), "test-update.apk");
+            try {
+                if (!apk.exists() && !apk.createNewFile()) throw new IOException("create failed");
+            } catch (IOException error) {
+                throw new UpdateFailure(UpdateFailure.Kind.STORAGE,
+                        "Could not create test APK", error);
+            }
+            return VerifiedUpdate.fromVerifiedFile(update, apk);
         }
     }
 

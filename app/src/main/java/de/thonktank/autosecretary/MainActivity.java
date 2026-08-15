@@ -26,9 +26,11 @@ import androidx.lifecycle.ViewModelProvider;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.update.UpdateInfo;
-import de.thonktank.autosecretary.update.UpdateUiState;
-import de.thonktank.autosecretary.update.VerifiedUpdate;
+import de.thonktank.autosecretary.update.application.VerifiedUpdate;
+import de.thonktank.autosecretary.update.domain.UpdateInfo;
+import de.thonktank.autosecretary.update.presentation.UpdateEvent;
+import de.thonktank.autosecretary.update.presentation.UpdateUiState;
+import de.thonktank.autosecretary.update.presentation.UpdateViewModel;
 
 import java.util.Locale;
 
@@ -70,8 +72,10 @@ public class MainActivity extends ComponentActivity {
         buildShell();
         viewModel = new ViewModelProvider(this,
                 new TaskViewModel.Factory(container)).get(TaskViewModel.class);
-        updateViewModel = new ViewModelProvider(this,
-                new UpdateViewModel.Factory(container)).get(UpdateViewModel.class);
+        updateViewModel = new ViewModelProvider(this, new UpdateViewModel.Factory(
+                container.updates, container.uiPreferences,
+                failure -> container.logger.error("Updater", failure.getMessage(), failure),
+                container.texts, System::currentTimeMillis)).get(UpdateViewModel.class);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
         updateViewModel.state().observe(this, this::renderUpdate);

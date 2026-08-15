@@ -9,7 +9,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
-import de.thonktank.autosecretary.update.UpdateUiState;
+import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import java.util.function.Consumer;
 

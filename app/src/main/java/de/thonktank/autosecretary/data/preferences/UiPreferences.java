@@ -5,8 +5,9 @@ import android.content.SharedPreferences;
 
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.calendar.CalendarPolicy;
+import de.thonktank.autosecretary.update.application.UpdatePreferences;
 
-public final class UiPreferences {
+public final class UiPreferences implements UpdatePreferences {
     private static final String TAG = "UiPreferences";
     private static final String FILE = "forest_ui";
     private static final String THEME_MODE = "theme_mode";
@@ -62,23 +63,23 @@ public final class UiPreferences {
         preferences.edit().putString(CALENDAR_POLICY, policy.name()).apply();
     }
 
-    public boolean shouldCheckUpdates(long nowMillis) {
+    @Override public boolean shouldCheckUpdates(long nowMillis) {
         long previous = preferences.getLong(LAST_UPDATE_CHECK, 0L);
         return previous <= 0L || nowMillis < previous || nowMillis - previous >= UPDATE_INTERVAL_MS;
     }
 
-    public void markUpdateCheck(long nowMillis) {
+    @Override public void markUpdateCheck(long nowMillis) {
         preferences.edit().putLong(LAST_UPDATE_CHECK, nowMillis).apply();
     }
 
-    public boolean shouldPromptForUpdate(long versionCode, long nowMillis) {
+    @Override public boolean shouldPromptForUpdate(long versionCode, long nowMillis) {
         long postponedCode = preferences.getLong(POSTPONED_UPDATE_CODE, -1L);
         long postponedAt = preferences.getLong(POSTPONED_UPDATE_AT, 0L);
         return postponedCode != versionCode || nowMillis < postponedAt
                 || nowMillis - postponedAt >= UPDATE_INTERVAL_MS;
     }
 
-    public void postponeUpdate(long versionCode, long nowMillis) {
+    @Override public void postponeUpdate(long versionCode, long nowMillis) {
         preferences.edit().putLong(POSTPONED_UPDATE_CODE, versionCode)
                 .putLong(POSTPONED_UPDATE_AT, nowMillis).apply();
     }

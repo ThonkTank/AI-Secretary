@@ -1,10 +1,16 @@
-package de.thonktank.autosecretary.update;
+package de.thonktank.autosecretary.update.infrastructure;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import de.thonktank.autosecretary.update.application.VerifiedUpdate;
+import de.thonktank.autosecretary.update.domain.PackageEvidence;
+import de.thonktank.autosecretary.update.domain.ReleaseMetadata;
+import de.thonktank.autosecretary.update.domain.UpdateCheckResult;
+import de.thonktank.autosecretary.update.domain.UpdateFailure;
+import de.thonktank.autosecretary.update.domain.UpdateInfo;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -14,6 +20,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.MessageDigest;
@@ -25,7 +32,7 @@ import java.util.Set;
 import java.util.function.IntConsumer;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 35)
+@Config(sdk = {26, 35})
 public final class GitHubUpdateRepositoryTest {
     private static final String PACKAGE = "de.thonktank.autosecretary";
     private static final String SIGNER = repeat('a', 64);
@@ -42,37 +49,46 @@ public final class GitHubUpdateRepositoryTest {
         GitHubUpdateRepository repository = repository(http,
                 new FakePackages(2, 1_000_101L, PACKAGE, SIGNER));
 
-        UpdateInfo update = repository.check();
+        UpdateCheckResult result = repository.check();
+        UpdateInfo update = result.availableUpdate();
 
+        assertTrue(result.isAvailable());
         assertEquals(1_000_101L, update.versionCode);
         assertEquals("0.2.1", update.versionName);
         assertEquals(apk.length, update.sizeBytes);
     }
 
-    @Test public void checkReturnsNullWithoutACompatibilityReleaseOrNewerVersion() throws Exception {
+    @Test public void checkReturnsCurrentWithoutACompatibilityReleaseOrNewerVersion()
+            throws Exception {
         FakeHttp empty = new FakeHttp();
         empty.responses.put(FEED, "[]".getBytes(StandardCharsets.UTF_8));
-        assertNull(repository(empty, new FakePackages(2, 2, PACKAGE, SIGNER)).check());
+        assertFalse(repository(empty, new FakePackages(2, 2, PACKAGE, SIGNER))
+                .check().isAvailable());
 
         byte[] apk = "apk".getBytes(StandardCharsets.UTF_8);
         FakeHttp current = feed(2, apk, PACKAGE, SIGNER, COMMIT);
-        assertNull(repository(current, new FakePackages(2, 2, PACKAGE, SIGNER)).check());
+        assertFalse(repository(current, new FakePackages(2, 2, PACKAGE, SIGNER))
+                .check().isAvailable());
         assertFalse(current.requestedMetadata);
     }
 
-    @Test public void checkRejectsPackageSignerAndCommitMismatches() throws Exception {
+    @Test public void checkReturnsTypedPackageSignerAndCommitFailures() throws Exception {
         byte[] apk = "apk".getBytes(StandardCharsets.UTF_8);
-        assertRejected(feed(5, apk, "wrong.package", SIGNER, COMMIT));
-        assertRejected(feed(5, apk, PACKAGE, repeat('c', 64), COMMIT));
-        assertRejected(feed(5, apk, PACKAGE, SIGNER, repeat('d', 40)));
+        assertRejected(feed(5, apk, "wrong.package", SIGNER, COMMIT),
+                UpdateFailure.Kind.INCOMPATIBLE_RELEASE);
+        assertRejected(feed(5, apk, PACKAGE, repeat('c', 64), COMMIT),
+                UpdateFailure.Kind.SIGNATURE_MISMATCH);
+        assertRejected(feed(5, apk, PACKAGE, SIGNER, repeat('d', 40)),
+                UpdateFailure.Kind.INVALID_RELEASE);
     }
 
-    @Test public void downloadVerifiesHashPackageVersionAndSignerBeforeFinalizing() throws Exception {
+    @Test public void downloadVerifiesHashPackageVersionAndSignerBeforeFinalizing()
+            throws Exception {
         byte[] apk = "verified-signed-apk".getBytes(StandardCharsets.UTF_8);
         FakeHttp http = feed(1_000_201L, apk, PACKAGE, SIGNER, COMMIT);
         GitHubUpdateRepository repository = repository(http,
                 new FakePackages(2, 1_000_201L, PACKAGE, SIGNER));
-        UpdateInfo info = repository.check();
+        UpdateInfo info = repository.check().availableUpdate();
 
         VerifiedUpdate verified = repository.download(info, progress -> { });
 
@@ -82,41 +98,49 @@ public final class GitHubUpdateRepositoryTest {
         assertFalse(new File(temporary.getRoot(), "update-1000201.partial").exists());
     }
 
-    @Test public void failedDownloadIsRemoved() throws Exception {
+    @Test public void failedDownloadIsRemovedAndTyped() throws Exception {
         byte[] expected = "expected".getBytes(StandardCharsets.UTF_8);
         FakeHttp http = feed(9, expected, PACKAGE, SIGNER, COMMIT);
         GitHubUpdateRepository repository = repository(http,
                 new FakePackages(2, 9, PACKAGE, SIGNER));
-        UpdateInfo info = repository.check();
+        UpdateInfo info = repository.check().availableUpdate();
         http.download = "tampered".getBytes(StandardCharsets.UTF_8);
 
         try {
             repository.download(info, progress -> { });
             fail("tampered APK must be rejected");
-        } catch (SecurityException expectedError) {
+        } catch (UpdateFailure error) {
+            assertEquals(UpdateFailure.Kind.CHECKSUM_MISMATCH, error.kind());
             assertEquals(0, temporary.getRoot().listFiles().length);
         }
     }
 
-    @Test public void metadataParserRejectsOversizedOrMalformedContracts() throws Exception {
+    @Test public void metadataParserRejectsUnknownSchemaAndOversizedContracts()
+            throws Exception {
         String valid = metadata(3, new byte[]{1}, PACKAGE, SIGNER, COMMIT);
-        assertEquals(3, ReleaseMetadata.parse(valid).versionCode);
-        try {
-            ReleaseMetadata.parse(valid.replace("\"schemaVersion\":1", "\"schemaVersion\":2"));
-            fail("schema must be pinned");
-        } catch (SecurityException expected) { }
-        try {
-            ReleaseMetadata.parse(valid.replace("\"apkSizeBytes\":1",
-                    "\"apkSizeBytes\":10485761"));
-            fail("size must be capped");
-        } catch (SecurityException expected) { }
+        assertEquals(3, new ReleaseMetadataJsonParser().parse(valid).versionCode);
+        assertMetadataRejected(valid.replace("\"schemaVersion\":1", "\"schemaVersion\":2"));
+        assertMetadataRejected(valid.replace("\"apkSizeBytes\":1",
+                "\"apkSizeBytes\":10485761"));
+        assertMetadataRejected(valid.substring(0, valid.length() - 1) + ",\"extra\":true}");
     }
 
-    private void assertRejected(FakeHttp http) throws Exception {
+    private void assertRejected(FakeHttp http, UpdateFailure.Kind expected) throws Exception {
         try {
             repository(http, new FakePackages(2, 5, PACKAGE, SIGNER)).check();
             fail("incompatible release must be rejected");
-        } catch (SecurityException expected) { }
+        } catch (UpdateFailure error) {
+            assertEquals(expected, error.kind());
+        }
+    }
+
+    private static void assertMetadataRejected(String value) throws Exception {
+        try {
+            new ReleaseMetadataJsonParser().parse(value);
+            fail("invalid metadata must be rejected");
+        } catch (UpdateFailure error) {
+            assertEquals(UpdateFailure.Kind.INVALID_RELEASE, error.kind());
+        }
     }
 
     private GitHubUpdateRepository repository(FakeHttp http, PackageEvidenceReader packages) {
@@ -173,9 +197,14 @@ public final class GitHubUpdateRepositoryTest {
         }
 
         @Override public void download(String url, File destination, long expectedBytes,
-                                       long maxBytes, IntConsumer progress) throws Exception {
+                                       long maxBytes, IntConsumer progress) throws UpdateFailure {
             assertEquals(APK_URL, url);
-            Files.write(destination.toPath(), download);
+            try {
+                Files.write(destination.toPath(), download);
+            } catch (IOException error) {
+                throw new UpdateFailure(UpdateFailure.Kind.STORAGE,
+                        "Could not write fake download", error);
+            }
             progress.accept(99);
         }
     }
@@ -185,11 +214,11 @@ public final class GitHubUpdateRepositoryTest {
         private final PackageEvidence archive;
 
         FakePackages(long installedVersion, long archiveVersion, String archivePackage,
-                     String signer) {
+                     String signer) throws UpdateFailure {
             Set<String> signers = Collections.singleton(signer);
-            installed = new PackageEvidence(PACKAGE, installedVersion,
+            installed = PackageEvidence.of(PACKAGE, installedVersion,
                     Collections.singleton(SIGNER));
-            archive = new PackageEvidence(archivePackage, archiveVersion, signers);
+            archive = PackageEvidence.of(archivePackage, archiveVersion, signers);
         }
 
         @Override public PackageEvidence installed() { return installed; }

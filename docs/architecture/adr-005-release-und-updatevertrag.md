@@ -135,5 +135,6 @@ Paketname, Produktionsschlüssel, Versionscode und Metadatenschema sind öffentl
 Kompatibilitätsgrenzen. Änderungen sind keine gewöhnlichen Refactorings. Der Releaseworkflow und
 der In-App-Updater müssen denselben Vertrag implementieren, und ein erfolgreicher Clean Install
 allein genügt nicht als Nachweis für Updatekompatibilität. Ein reproduzierbarer Test von einer
-vorherigen signierten Version auf das aktuelle Release ist daher der nächste notwendige
-Sicherheitsbaustein.
+vorherigen signierten Version auf das aktuelle Release ist deshalb Bestandteil jedes
+Produktionslaufs. Die interne Schichtung des In-App-Updaters ist in
+[ADR-006](adr-006-update-schichten-und-fehler.md) festgelegt.
