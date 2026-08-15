@@ -69,6 +69,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.11.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.11.0")
     implementation("androidx.lifecycle:lifecycle-livedata:2.11.0")
+    // Room migration tests require JSON 1.8.1; align SavedState's serialization core with it.
+    implementation(platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:1.8.1"))
     //noinspection GradleDependency -- 1.11+ requires compileSdk 36 and AGP 8.9.1.
     implementation("androidx.activity:activity:1.10.1")
     testImplementation("junit:junit:4.13.2")
