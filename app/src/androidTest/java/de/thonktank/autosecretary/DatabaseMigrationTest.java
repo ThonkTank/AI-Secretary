@@ -11,6 +11,8 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import de.thonktank.autosecretary.data.local.DatabaseMigrations;
+
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
@@ -42,7 +44,7 @@ public final class DatabaseMigrationTest {
         database.close();
 
         database = helper.runMigrationsAndValidate(
-                DATABASE, 2, true, DatabaseProvider.MIGRATION_1_2);
+                DATABASE, 2, true, DatabaseMigrations.MIGRATION_1_2);
 
         try (Cursor cursor = database.query("SELECT id,slot,routineStreakWeeks,lastStreakWeek,displayOrder "
                 + "FROM tasks ORDER BY id")) {
@@ -73,7 +75,7 @@ public final class DatabaseMigrationTest {
         database.close();
 
         database = helper.runMigrationsAndValidate(
-                DATABASE, 3, true, DatabaseProvider.MIGRATION_2_3);
+                DATABASE, 3, true, DatabaseMigrations.MIGRATION_2_3);
 
         try (Cursor cursor = database.query("SELECT id,slot FROM tasks ORDER BY id")) {
             assertTrue(cursor.moveToFirst());
@@ -92,7 +94,7 @@ public final class DatabaseMigrationTest {
         database.close();
 
         helper.runMigrationsAndValidate(DATABASE, 3, true,
-                DatabaseProvider.MIGRATION_1_2, DatabaseProvider.MIGRATION_2_3).close();
+                DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3).close();
     }
 
     private static void assertIndexExists(SupportSQLiteDatabase database, String index) {

@@ -8,6 +8,8 @@ import android.database.Cursor;
 
 import androidx.room.Room;
 import androidx.sqlite.db.SupportSQLiteDatabase;
+
+import de.thonktank.autosecretary.data.local.DatabaseMigrations;
 import androidx.sqlite.db.SupportSQLiteOpenHelper;
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory;
 import androidx.test.core.app.ApplicationProvider;
@@ -39,7 +41,7 @@ public final class DatabaseMigrationRobolectricTest {
         createVersionOneDatabase();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseProvider.MIGRATION_1_2, DatabaseProvider.MIGRATION_2_3)
+                .addMigrations(DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -69,7 +71,7 @@ public final class DatabaseMigrationRobolectricTest {
         upgradeFixtureToVersionTwo();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseProvider.MIGRATION_2_3)
+                .addMigrations(DatabaseMigrations.MIGRATION_2_3)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -121,7 +123,7 @@ public final class DatabaseMigrationRobolectricTest {
                     @Override public void onUpgrade(SupportSQLiteDatabase database, int oldVersion, int newVersion) {
                         assertEquals(1, oldVersion);
                         assertEquals(2, newVersion);
-                        DatabaseProvider.MIGRATION_1_2.migrate(database);
+                        DatabaseMigrations.MIGRATION_1_2.migrate(database);
                     }
                 })
                 .build();

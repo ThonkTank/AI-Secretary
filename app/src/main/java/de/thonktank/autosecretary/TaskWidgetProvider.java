@@ -15,7 +15,6 @@ import android.text.style.StrikethroughSpan;
 import android.view.View;
 import android.widget.RemoteViews;
 
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -42,16 +41,17 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     }
 
     private static RemoteViews build(Context context,int id,Bundle options) {
+        AppContainer container=AutoSecretaryApplication.from(context).container();
         Size size=size(options);int layout=size==Size.SMALL?R.layout.task_widget:size==Size.WIDE?R.layout.task_widget_wide:size==Size.TALL?R.layout.task_widget_tall:R.layout.task_widget_large;
-        RemoteViews view=new RemoteViews(context.getPackageName(),layout);DashboardState state=new TaskService(DatabaseProvider.get(context)).dashboard();
-        DayPalette.Mode mode;try{mode=DayPalette.Mode.valueOf(context.getSharedPreferences("forest_ui",Context.MODE_PRIVATE).getString("theme_mode",DayPalette.Mode.AUTO.name()));}catch(Exception ignored){mode=DayPalette.Mode.AUTO;}
-        DayPalette palette=DayPalette.at(LocalTime.now(),mode);styleBase(view,palette);view.setOnClickPendingIntent(R.id.widget_root,openApp(context));view.setOnClickPendingIntent(R.id.widget_title,openApp(context));
+        RemoteViews view=new RemoteViews(context.getPackageName(),layout);DashboardState state=container.dashboardPresenter.load();
+        DayPalette.Mode mode=DayPalette.Mode.valueOf(container.uiPreferences.themeMode().name());
+        DayPalette palette=DayPalette.at(container.clock.time(),mode);styleBase(view,palette);view.setOnClickPendingIntent(R.id.widget_root,openApp(context));view.setOnClickPendingIntent(R.id.widget_title,openApp(context));
         TaskSnapshot focus=state.firstOpen();if(focus==null){view.setTextViewText(R.id.widget_marker,"heute");view.setTextViewText(R.id.widget_title,"Gerade ist nichts offen.");if(size!=Size.LARGE){view.setTextViewText(R.id.widget_action,"Aufgabe anlegen");view.setTextColor(R.id.widget_action,palette.accentText);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_action,"setBackgroundTintList",ColorStateList.valueOf(palette.accent));view.setOnClickPendingIntent(R.id.widget_action,openEditor(context));}if(size==Size.LARGE){view.setTextColor(R.id.widget_add,palette.lightText);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_add,"setBackgroundTintList",ColorStateList.valueOf(palette.light));view.setOnClickPendingIntent(R.id.widget_add,openEditor(context));}hideOptional(view,size);return view;}
         view.setTextViewText(R.id.widget_marker,focus.overdue?"überfällig":"jetzt");view.setTextColor(R.id.widget_marker,focus.overdue?palette.bad:palette.accent);view.setTextViewText(R.id.widget_title,focus.title);
         if(size==Size.SMALL){bindProgress(view,focus,palette);bindAction(view,focus,context,palette);}
         if(size==Size.WIDE){bindSteps(view,focus,context,palette,3);bindAction(view,focus,context,palette);int extra=Math.max(0,focus.steps.size()-3);view.setTextViewText(R.id.widget_more,extra>0?"und "+extra+" weitere":"");}
-        if(size==Size.TALL){bindSteps(view,focus,context,palette,3);bindAction(view,focus,context,palette);bindCalendar(view,context,palette);}
-        if(size==Size.LARGE){bindSteps(view,focus,context,palette,3);view.setOnClickPendingIntent(R.id.widget_add,openEditor(context));view.setTextColor(R.id.widget_add,palette.lightText);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_add,"setBackgroundTintList",ColorStateList.valueOf(palette.light));bindAfter(view,state,focus,palette);bindCalendar(view,context,palette);}
+        if(size==Size.TALL){bindSteps(view,focus,context,palette,3);bindAction(view,focus,context,palette);bindCalendar(view,container,palette);}
+        if(size==Size.LARGE){bindSteps(view,focus,context,palette,3);view.setOnClickPendingIntent(R.id.widget_add,openEditor(context));view.setTextColor(R.id.widget_add,palette.lightText);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_add,"setBackgroundTintList",ColorStateList.valueOf(palette.light));bindAfter(view,state,focus,palette);bindCalendar(view,container,palette);}
         return view;
     }
 
@@ -66,7 +66,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
     private static void bindAfter(RemoteViews view,DashboardState state,TaskSnapshot focus,DayPalette p){TaskSnapshot after=null;for(TaskSnapshot task:state.tasks)if(!task.done&&task!=focus){after=task;break;}view.setViewVisibility(R.id.widget_after_leaf,after==null?View.GONE:View.VISIBLE);if(after!=null){view.setTextViewText(R.id.widget_after_title,after.title);view.setTextColor(R.id.widget_after_title,p.ink);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_after_leaf,"setBackgroundTintList",ColorStateList.valueOf(p.leaf2));}}
 
-    private static void bindCalendar(RemoteViews view,Context context,DayPalette p){List<CalendarEventSnapshot> events=new CalendarRepository(context).today();boolean show=!events.isEmpty();view.setViewVisibility(R.id.widget_calendar_leaf,show?View.VISIBLE:View.GONE);if(!show)return;CalendarEventSnapshot event=events.get(0);view.setTextViewText(R.id.widget_calendar_time,event.time);view.setTextViewText(R.id.widget_calendar_title,event.title);view.setTextColor(R.id.widget_calendar_time,p.calendarInk);view.setTextColor(R.id.widget_calendar_title,p.calendarInk);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_calendar_leaf,"setBackgroundTintList",ColorStateList.valueOf(p.calendar));}
+    private static void bindCalendar(RemoteViews view,AppContainer container,DayPalette p){List<CalendarEventSnapshot> events=container.calendar.today();boolean show=!events.isEmpty();view.setViewVisibility(R.id.widget_calendar_leaf,show?View.VISIBLE:View.GONE);if(!show)return;CalendarEventSnapshot event=events.get(0);view.setTextViewText(R.id.widget_calendar_time,event.time);view.setTextViewText(R.id.widget_calendar_title,event.title);view.setTextColor(R.id.widget_calendar_time,p.calendarInk);view.setTextColor(R.id.widget_calendar_title,p.calendarInk);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_calendar_leaf,"setBackgroundTintList",ColorStateList.valueOf(p.calendar));}
 
     private static void hideOptional(RemoteViews view,Size size){if(size==Size.SMALL)view.setViewVisibility(R.id.widget_progress,View.GONE);if(size==Size.WIDE)view.setViewVisibility(R.id.widget_steps,View.GONE);if(size==Size.TALL){view.setViewVisibility(R.id.widget_steps,View.GONE);view.setViewVisibility(R.id.widget_calendar_leaf,View.GONE);}if(size==Size.LARGE){view.setViewVisibility(R.id.widget_steps,View.GONE);view.setViewVisibility(R.id.widget_after_leaf,View.GONE);view.setViewVisibility(R.id.widget_calendar_leaf,View.GONE);}}
 

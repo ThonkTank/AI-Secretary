@@ -34,5 +34,19 @@ die Anzahl der Leseabfragen wächst daher nicht mit der Zahl der Aufgaben.
 
 Erstellen, Bearbeiten, Verschieben, Zurückstellen, Abschließen und Löschen sind getrennte
 Use Cases. Die bisherige Klasse `TaskService` bleibt vorübergehend als delegierende Fassade
-für Activity und Widget bestehen, enthält aber keine Transaktions- oder Schedulinglogik
-mehr.
+für ältere Characterization-Tests bestehen, enthält aber keine Transaktions- oder
+Schedulinglogik mehr. Produktionscode verwendet sie nicht mehr.
+
+## Abhängigkeiten und Systemgrenzen
+
+`AutoSecretaryApplication` besitzt genau einen manuellen `AppContainer`. Er verdrahtet
+Datenbank, Repository, Use Cases, Uhr, Zeitzone, ID-Erzeugung, Kalenderzugriff,
+UI-Präferenzen und Presenter. Activity, Widget und Broadcast-Aktionen verwenden dieselben
+Instanzen; Tests können die fachlichen Bausteine weiterhin direkt mit Fakes und einer
+In-Memory-Datenbank erstellen und müssen keinen globalen Datenbank-Singleton zurücksetzen.
+
+Datum, Uhrzeit und Zeitzone werden über `Clock` und `ZoneIdProvider` injiziert. Direkte
+SharedPreferences-Zugriffe sind auf `UiPreferences` und `LegacyStateCleaner` begrenzt.
+Die einmalige Bereinigung des alten Prototyp-Speichers läuft vor der normalen
+Datenbankerzeugung und ist von `DatabaseFactory` getrennt. Fehler an Android-Systemgrenzen
+werden über `AppLogger` strukturiert protokolliert.

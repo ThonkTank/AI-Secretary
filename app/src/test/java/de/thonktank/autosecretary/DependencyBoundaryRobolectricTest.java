@@ -1,0 +1,105 @@
+package de.thonktank.autosecretary;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import android.content.Context;
+
+import androidx.test.core.app.ApplicationProvider;
+
+import de.thonktank.autosecretary.data.legacy.LegacyStateCleaner;
+import de.thonktank.autosecretary.data.preferences.UiPreferences;
+import de.thonktank.autosecretary.data.preferences.UiThemeMode;
+import de.thonktank.autosecretary.infrastructure.AppLogger;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 35)
+public final class DependencyBoundaryRobolectricTest {
+    private Context context;
+    private RecordingLogger logger;
+
+    @Before public void setUp() {
+        context = ApplicationProvider.getApplicationContext();
+        context.deleteSharedPreferences("forest_ui");
+        context.deleteSharedPreferences("stability_refactor");
+        context.deleteSharedPreferences("jetzt_state");
+        logger = new RecordingLogger();
+    }
+
+    @After public void tearDown() {
+        context.deleteSharedPreferences("forest_ui");
+        context.deleteSharedPreferences("stability_refactor");
+        context.deleteSharedPreferences("jetzt_state");
+    }
+
+    @Test public void uiPreferencesExposeTypedThemeAndPermissionState() {
+        UiPreferences preferences = new UiPreferences(context, logger);
+
+        assertEquals(UiThemeMode.AUTO, preferences.themeMode());
+        assertFalse(preferences.calendarPermissionAsked());
+
+        preferences.setThemeMode(UiThemeMode.DARK);
+        preferences.markCalendarPermissionAsked();
+
+        assertEquals(UiThemeMode.DARK, preferences.themeMode());
+        assertTrue(preferences.calendarPermissionAsked());
+    }
+
+    @Test public void invalidStoredThemeFallsBackAndIsLogged() {
+        context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE).edit()
+                .putString("theme_mode", "NIGHTISH").commit();
+
+        assertEquals(UiThemeMode.AUTO, new UiPreferences(context, logger).themeMode());
+        assertEquals(1, logger.errors);
+    }
+
+    @Test public void legacyCleanupRunsOnceAndKeepsNoticeIndependentFromDatabaseCreation() {
+        context.getSharedPreferences("jetzt_state", Context.MODE_PRIVATE).edit()
+                .putString("tasks", "[]").putString("unrelated", "prototype").commit();
+        LegacyStateCleaner cleaner = new LegacyStateCleaner(context, logger);
+
+        cleaner.cleanOnce();
+
+        assertTrue(context.getSharedPreferences("jetzt_state", Context.MODE_PRIVATE).getAll().isEmpty());
+        assertTrue(cleaner.shouldShowResetNotice());
+        assertEquals(1, logger.infos);
+
+        cleaner.cleanOnce();
+        assertEquals(1, logger.infos);
+
+        cleaner.acknowledgeResetNotice();
+        assertFalse(cleaner.shouldShowResetNotice());
+    }
+
+    @Test public void malformedLegacyStateIsLoggedAndDoesNotBlockCleanup() {
+        context.getSharedPreferences("jetzt_state", Context.MODE_PRIVATE).edit()
+                .putString("tasks", "not-json").commit();
+        LegacyStateCleaner cleaner = new LegacyStateCleaner(context, logger);
+
+        cleaner.cleanOnce();
+
+        assertEquals(1, logger.errors);
+        assertTrue(cleaner.shouldShowResetNotice());
+    }
+
+    private static final class RecordingLogger implements AppLogger {
+        int infos;
+        int errors;
+
+        @Override public void info(String tag, String message) {
+            infos++;
+        }
+
+        @Override public void error(String tag, String message, Throwable error) {
+            errors++;
+        }
+    }
+}

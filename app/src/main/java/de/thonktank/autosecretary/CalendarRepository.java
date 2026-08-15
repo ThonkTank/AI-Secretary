@@ -17,15 +17,28 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-/** Read-only projection of today's visible Google Calendar instances. */
-final class CalendarRepository {
-    private final Context context;
-    CalendarRepository(Context context) { this.context = context.getApplicationContext(); }
+import de.thonktank.autosecretary.calendar.CalendarDataSource;
+import de.thonktank.autosecretary.infrastructure.AppLogger;
 
-    List<CalendarEventSnapshot> today() {
+/** Read-only projection of today's visible Google Calendar instances. */
+public final class CalendarRepository implements CalendarDataSource {
+    private static final String TAG = "CalendarRepository";
+    private final Context context;
+    private final Clock clock;
+    private final ZoneIdProvider zones;
+    private final AppLogger logger;
+
+    public CalendarRepository(Context context, Clock clock, ZoneIdProvider zones, AppLogger logger) {
+        this.context = context.getApplicationContext();
+        this.clock = clock;
+        this.zones = zones;
+        this.logger = logger;
+    }
+
+    @Override public List<CalendarEventSnapshot> today() {
         if (context.checkSelfPermission(Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED)
             return Collections.emptyList();
-        ZoneId zone = ZoneId.systemDefault(); LocalDate day = LocalDate.now();
+        ZoneId zone = zones.zoneId(); LocalDate day = clock.today();
         long begin = day.atStartOfDay(zone).toInstant().toEpochMilli();
         long end = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli();
         Uri.Builder builder = CalendarContract.Instances.CONTENT_URI.buildUpon();
@@ -48,7 +61,10 @@ final class CalendarRepository {
                 result.add(new CalendarEventSnapshot(allDay ? "ganztägig" : local.format(formatter),
                         title == null || title.trim().isEmpty() ? "Termin" : title, allDay ? 0 : local.getHour()*60+local.getMinute()));
             }
-        } catch (RuntimeException ignored) { return Collections.emptyList(); }
+        } catch (RuntimeException error) {
+            logger.error(TAG, "Calendar provider query failed", error);
+            return Collections.emptyList();
+        }
         result.sort(Comparator.comparingInt(event -> event.minuteOfDay)); return result;
     }
 }

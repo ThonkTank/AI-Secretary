@@ -4,7 +4,6 @@ import android.Manifest;
 import android.animation.LayoutTransition;
 import android.app.AlertDialog;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -39,7 +38,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.lifecycle.ViewModelProvider;
 
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,20 +48,18 @@ import java.util.concurrent.Executors;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 
 /** The clock-colored daily workspace. All UI is native Android Views. */
 public class MainActivity extends ComponentActivity {
     public static final String CONFIRM_TASK = "confirm_task";
     public static final String OPEN_EDITOR = "open_editor";
     private static final String RELEASES_URL = "https://github.com/ThonkTank/AI-Secretary/releases/latest";
-    private static final String UI_PREFS = "forest_ui";
-    private static final String THEME_MODE = "theme_mode";
-    private static final String CALENDAR_ASKED = "calendar_asked";
-
     private final Handler minuteHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService calendarWorker = Executors.newSingleThreadExecutor();
     private final List<CalendarEventSnapshot> calendarEvents = new ArrayList<>();
     private TaskViewModel viewModel;
+    private AppContainer container;
     private DashboardState dashboard = new DashboardState(0, Collections.emptyList());
     private ForestBackdropView forest;
     private LinearLayout screen, header, content, footer;
@@ -76,13 +72,13 @@ public class MainActivity extends ComponentActivity {
             new ActivityResultContracts.RequestPermission(), granted -> { loadCalendar(); render(); });
 
     @Override public void onCreate(Bundle state) {
-        super.onCreate(state); loadFonts(); configureWindow(); buildShell();
-        viewModel = new ViewModelProvider(this, new TaskViewModel.Factory(this)).get(TaskViewModel.class);
+        super.onCreate(state); container=AutoSecretaryApplication.from(this).container(); loadFonts(); configureWindow(); buildShell();
+        viewModel = new ViewModelProvider(this, new TaskViewModel.Factory(container)).get(TaskViewModel.class);
         viewModel.state().observe(this, value -> { dashboard = value; render(); TaskWidgetProvider.updateAll(this); });
         viewModel.errors().observe(this, message -> { if (message != null) leafDialog("geht so nicht", message, null); });
-        if (DatabaseProvider.wasReset(this)) new AlertDialog.Builder(this).setTitle("Neuer, stabiler Start")
+        if (AutoSecretaryApplication.from(this).legacyStateCleaner().shouldShowResetNotice()) new AlertDialog.Builder(this).setTitle("Neuer, stabiler Start")
                 .setMessage("Die Testdaten der ersten Version wurden bewusst zurückgesetzt. Neue Aufgaben werden jetzt zuverlässig lokal gespeichert.")
-                .setPositiveButton("Verstanden", (d, w) -> DatabaseProvider.acknowledgeReset(this)).show();
+                .setPositiveButton("Verstanden", (d, w) -> AutoSecretaryApplication.from(this).legacyStateCleaner().acknowledgeResetNotice()).show();
         String confirmTask = getIntent().getStringExtra(CONFIRM_TASK); if (confirmTask != null) confirmClose(confirmTask, "dieses Vorhaben", 0);
         if (getIntent().getBooleanExtra(OPEN_EDITOR, false)) showCreateDialog(null);
         loadCalendar(); minuteHandler.post(minuteTick);
@@ -124,10 +120,8 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void applyPalette() {
-        SharedPreferences prefs = getSharedPreferences(UI_PREFS, MODE_PRIVATE); DayPalette.Mode mode;
-        try { mode = DayPalette.Mode.valueOf(prefs.getString(THEME_MODE, DayPalette.Mode.AUTO.name())); }
-        catch (Exception ignored) { mode = DayPalette.Mode.AUTO; }
-        palette = DayPalette.at(LocalTime.now(), mode); if (forest != null) forest.setPalette(palette);
+        DayPalette.Mode mode = DayPalette.Mode.valueOf(container.uiPreferences.themeMode().name());
+        palette = DayPalette.at(container.clock.time(), mode); if (forest != null) forest.setPalette(palette);
         int flags = getWindow().getDecorView().getSystemUiVisibility();
         if (luminance(palette.background) > .55) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         else flags &= ~(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
@@ -141,7 +135,7 @@ public class MainActivity extends ComponentActivity {
 
     private void renderHeader() {
         header.removeAllViews(); header.setPadding(dp(76), 0, dp(22), 0);
-        TextView greeting = serif(DayPalette.greeting(LocalTime.now()), 19, palette.status, true, 300);
+        TextView greeting = serif(DayPalette.greeting(container.clock.time()), 19, palette.status, true, 300);
         header.addView(greeting, new LinearLayout.LayoutParams(0, -2, 1));
         TextView add = actionText("＋", 23, palette.lightText, palette.light, 40); add.setContentDescription("Aufgabe anlegen");
         add.setOnClickListener(v -> leafFlight(() -> showCreateDialog(null))); header.addView(add, new LinearLayout.LayoutParams(dp(40), dp(40)));
@@ -253,18 +247,23 @@ public class MainActivity extends ComponentActivity {
     private void renderOptions(){ content.setPadding(dp(60),dp(18),dp(22),dp(26)); content.addView(serif("optionen",20,palette.accent,true,300));
         content.addView(optionLeaf("Darstellung", "Farben folgen der Uhr. Der Sonnenstand bleibt immer in Bewegung.", themeChoices()), marginTop(14));
         boolean granted=checkSelfPermission(Manifest.permission.READ_CALENDAR)==PackageManager.PERMISSION_GRANTED;
-        boolean asked=getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(CALENDAR_ASKED,false);
+        boolean asked=container.uiPreferences.calendarPermissionAsked();
         boolean settings=!granted&&asked&&!shouldShowRequestPermissionRationale(Manifest.permission.READ_CALENDAR);
         LinearLayout calendarActions=new LinearLayout(this); calendarActions.setOrientation(LinearLayout.VERTICAL); TextView calendarAction=outlineButton(granted||settings?"App-Einstellungen öffnen":"Kalender freigeben");
-        calendarAction.setOnClickListener(v->{if(granted||settings)openAppSettings();else{getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putBoolean(CALENDAR_ASKED,true).apply();calendarPermission.launch(Manifest.permission.READ_CALENDAR);}}); calendarActions.addView(calendarAction,new LinearLayout.LayoutParams(-2,dp(46)));
+        calendarAction.setOnClickListener(v->{if(granted||settings)openAppSettings();else{container.uiPreferences.markCalendarPermissionAsked();calendarPermission.launch(Manifest.permission.READ_CALENDAR);}}); calendarActions.addView(calendarAction,new LinearLayout.LayoutParams(-2,dp(46)));
         content.addView(optionLeaf("Google Kalender",granted?"Alle sichtbaren Kalender · nur lesen":"Noch nicht freigegeben · nur lesen",calendarActions),marginTop(14));
-        String version="0.1.0"; try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}
+        String version="0.1.0";
+        try {
+            version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;
+        } catch (PackageManager.NameNotFoundException error) {
+            container.logger.error("MainActivity", "Could not read installed version", error);
+        }
         LinearLayout updateActions=new LinearLayout(this); TextView update=primaryButton("Nach Updates sehen"); update.setOnClickListener(v->startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES_URL)))); updateActions.addView(update,new LinearLayout.LayoutParams(-2,dp(52)));
         content.addView(optionLeaf("Updates","Installierte Version "+version,updateActions),marginTop(14)); }
 
-    private View themeChoices(){ LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); String stored=getSharedPreferences(UI_PREFS,MODE_PRIVATE).getString(THEME_MODE,DayPalette.Mode.AUTO.name());
-        String[] labels={"automatisch","hell","dunkel"}; DayPalette.Mode[] modes={DayPalette.Mode.AUTO,DayPalette.Mode.LIGHT,DayPalette.Mode.DARK};
-        for(int i=0;i<labels.length;i++){boolean selected=stored.equals(modes[i].name()); TextView chip=sans(labels[i],15,selected?palette.accentText:palette.ink2,true); chip.setGravity(Gravity.CENTER); chip.setBackground(pill(selected?palette.accent:Color.TRANSPARENT,20)); if(!selected)((GradientDrawable)chip.getBackground()).setStroke(dp(1),palette.dot); final DayPalette.Mode mode=modes[i]; chip.setOnClickListener(v->{getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putString(THEME_MODE,mode.name()).apply();render();TaskWidgetProvider.updateAll(this);}); LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-2,dp(40)); cp.setMargins(0,0,dp(8),0); chip.setPadding(dp(14),0,dp(14),0); row.addView(chip,cp);} return row; }
+    private View themeChoices(){ LinearLayout row=new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); UiThemeMode stored=container.uiPreferences.themeMode();
+        String[] labels={"automatisch","hell","dunkel"}; UiThemeMode[] modes=UiThemeMode.values();
+        for(int i=0;i<labels.length;i++){boolean selected=stored==modes[i]; TextView chip=sans(labels[i],15,selected?palette.accentText:palette.ink2,true); chip.setGravity(Gravity.CENTER); chip.setBackground(pill(selected?palette.accent:Color.TRANSPARENT,20)); if(!selected)((GradientDrawable)chip.getBackground()).setStroke(dp(1),palette.dot); final UiThemeMode mode=modes[i]; chip.setOnClickListener(v->{container.uiPreferences.setThemeMode(mode);render();TaskWidgetProvider.updateAll(this);}); LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-2,dp(40)); cp.setMargins(0,0,dp(8),0); chip.setPadding(dp(14),0,dp(14),0); row.addView(chip,cp);} return row; }
 
     private View optionLeaf(String title,String subtitle,View actions){ LinearLayout leaf=new LinearLayout(this); leaf.setOrientation(LinearLayout.VERTICAL); leaf.setPadding(dp(24),dp(18),dp(24),dp(18)); leaf.setBackground(leaf(palette.leaf2,edgeColor(.24f),56,8,56,8)); leaf.setElevation(dp(6)); leaf.addView(serif(title,23,palette.ink,false,400)); TextView sub=sans(subtitle,15,palette.hint,false); LinearLayout.LayoutParams sp=match(); sp.setMargins(0,dp(5),0,0); leaf.addView(sub,sp); LinearLayout.LayoutParams ap=match(); ap.setMargins(0,dp(14),0,0); leaf.addView(actions,ap); return leaf; }
 
@@ -278,9 +277,9 @@ public class MainActivity extends ComponentActivity {
         Spinner repeat=null; EditText interval=null; CheckBox[] boxes=null; EditText steps=null; CheckBox ongoing=null; EditText condition=null;
         if(editing==null){ form.addView(formLabel("Wiederholung")); repeat=spinner(new String[]{"Einmalig","Täglich","Alle N Tage","Wochentage"});form.addView(repeat);interval=input("Bei „Alle N Tage“: Abstand, z. B. 2");interval.setInputType(InputType.TYPE_CLASS_NUMBER);form.addView(interval);form.addView(formLabel("Wochentage"));LinearLayout days=new LinearLayout(this);boxes=new CheckBox[7];String[] labels={"Mo","Di","Mi","Do","Fr","Sa","So"};for(int i=0;i<7;i++){boxes[i]=new CheckBox(this);boxes[i].setText(labels[i]);days.addView(boxes[i]);}form.addView(days);steps=input("Schritte – einer pro Zeile");steps.setMinLines(3);steps.setGravity(Gravity.TOP);form.addView(steps);ongoing=new CheckBox(this);ongoing.setText("Fortlaufendes Vorhaben");form.addView(ongoing);condition=input("Erledigungskondition, z. B. „Praktikum angenommen“");form.addView(condition);}
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle(editing==null?"Neue Aufgabe":"Aufgabe bearbeiten").setView(sc).setNegativeButton("abbrechen",null).setPositiveButton("speichern",null).create(); final Spinner repeatF=repeat;final EditText intervalF=interval,stepsF=steps,conditionF=condition;final CheckBox[] boxesF=boxes;final CheckBox ongoingF=ongoing;
-        dialog.setOnShowListener(x->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{if(name.getText().toString().trim().isEmpty()){name.setError("geht so nicht: Ein kurzer Name reicht.");return;}TaskSlot selectedSlot=TaskSlot.values()[slot.getSelectedItemPosition()];if(editing!=null)viewModel.update(editing.taskId,name.getText().toString(),selectedSlot);else{int every=2;try{every=Integer.parseInt(intervalF.getText().toString());}catch(NumberFormatException ignored){}boolean[] selected=new boolean[7];for(int i=0;i<7;i++)selected[i]=boxesF[i].isChecked();Recurrence recurrence=Recurrence.values()[repeatF.getSelectedItemPosition()];viewModel.create(name.getText().toString(),selectedSlot,recurrence,every,ScheduleCalculator.weekdayMask(selected),new ArrayList<>(Arrays.asList(stepsF.getText().toString().split("\\n"))),ongoingF.isChecked(),conditionF.getText().toString());}dialog.dismiss();}));dialog.show(); }
+        dialog.setOnShowListener(x->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{if(name.getText().toString().trim().isEmpty()){name.setError("geht so nicht: Ein kurzer Name reicht.");return;}TaskSlot selectedSlot=TaskSlot.values()[slot.getSelectedItemPosition()];if(editing!=null)viewModel.update(editing.taskId,name.getText().toString(),selectedSlot);else{int every=parsePositiveIntOrDefault(intervalF.getText().toString(),2);boolean[] selected=new boolean[7];for(int i=0;i<7;i++)selected[i]=boxesF[i].isChecked();Recurrence recurrence=Recurrence.values()[repeatF.getSelectedItemPosition()];viewModel.create(name.getText().toString(),selectedSlot,recurrence,every,ScheduleCalculator.weekdayMask(selected),new ArrayList<>(Arrays.asList(stepsF.getText().toString().split("\\n"))),ongoingF.isChecked(),conditionF.getText().toString());}dialog.dismiss();}));dialog.show(); }
 
-    private void loadCalendar(){ if(isFinishing())return; calendarWorker.execute(()->{List<CalendarEventSnapshot> loaded=new CalendarRepository(this).today();runOnUiThread(()->{calendarEvents.clear();calendarEvents.addAll(loaded);if("today".equals(surface))render();TaskWidgetProvider.updateAll(this);});}); }
+    private void loadCalendar(){ if(isFinishing())return; calendarWorker.execute(()->{List<CalendarEventSnapshot> loaded=container.calendar.today();runOnUiThread(()->{calendarEvents.clear();calendarEvents.addAll(loaded);if("today".equals(surface))render();TaskWidgetProvider.updateAll(this);});}); }
     private void openAppSettings(){startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName())));}
     private void leafFlight(Runnable end){ if(!android.animation.ValueAnimator.areAnimatorsEnabled()){end.run();return;} TextView leaf=serif("◜",32,palette.light,true,300);FrameLayout root=(FrameLayout)forest.getParent();FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(dp(44),dp(44),Gravity.TOP|Gravity.END);p.setMargins(0,dp(70),dp(28),0);root.addView(leaf,p);leaf.animate().translationX(-dp(180)).translationY(dp(120)).rotation(180).alpha(0).setDuration(420).withEndAction(()->{root.removeView(leaf);end.run();});}
 
@@ -304,6 +303,7 @@ public class MainActivity extends ComponentActivity {
     private SpannableString strike(String value){SpannableString s=new SpannableString(value);s.setSpan(new StrikethroughSpan(),0,value.length(),Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);return s;}
     private int openCount(){int n=0;for(TaskSnapshot t:dashboard.tasks)if(!t.done)n++;return n;}
     private static String[] slotLabels(){return new String[]{"Morgen","Mittag","Abend","Später"};}
+    private static int parsePositiveIntOrDefault(String value,int fallback){try{int parsed=Integer.parseInt(value);return parsed>0?parsed:fallback;}catch(NumberFormatException error){return fallback;}}
     private int slotMinute(TaskSlot slot){return slot.anchorMinute;}
     private LinearLayout.LayoutParams match(){return new LinearLayout.LayoutParams(-1,-2);}
     private FrameLayout.LayoutParams matchFrame(){return new FrameLayout.LayoutParams(-1,-1);}
