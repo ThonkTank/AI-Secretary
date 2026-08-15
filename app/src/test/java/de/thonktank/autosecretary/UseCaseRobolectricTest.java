@@ -41,6 +41,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -70,7 +71,10 @@ public final class UseCaseRobolectricTest {
                 .build();
         repository = new RoomTaskRepository(database);
         ids = new SequenceIds();
-        clock = () -> TODAY;
+        clock = new Clock() {
+            @Override public LocalDate today() { return TODAY; }
+            @Override public LocalTime time() { return LocalTime.NOON; }
+        };
         ordering = new TaskOrdering();
     }
 

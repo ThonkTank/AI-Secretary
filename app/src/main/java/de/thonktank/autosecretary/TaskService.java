@@ -37,17 +37,14 @@ public final class TaskService {
     private final MoveTask moveTask;
     private final DeleteTask deleteTask;
 
-    public TaskService(AppDatabase database) {
-        this(new RoomTaskRepository(database), new SystemClock(), new UuidGenerator());
+    TaskService(AppDatabase database, Clock clock, DashboardUiMapper uiMapper) {
+        this(new RoomTaskRepository(database), clock, new UuidGenerator(), uiMapper);
     }
 
-    TaskService(AppDatabase database, Clock clock) {
-        this(new RoomTaskRepository(database), clock, new UuidGenerator());
-    }
-
-    TaskService(TaskRepository repository, Clock clock, IdGenerator ids) {
+    TaskService(TaskRepository repository, Clock clock, IdGenerator ids,
+                DashboardUiMapper uiMapper) {
         this.clock = clock;
-        this.uiMapper = new DashboardUiMapper();
+        this.uiMapper = uiMapper;
         TaskOrdering ordering = new TaskOrdering();
         this.loadDashboard = new LoadDashboard(repository);
         this.materialize = new MaterializeDueOccurrences(repository, clock, ids);
@@ -79,13 +76,10 @@ public final class TaskService {
 
     public void create(String title, TaskSlot slot, Recurrence recurrence, int intervalDays,
                        int weekdayMask, List<String> steps, boolean ongoing, String condition) {
-        validate(title, recurrence, weekdayMask, ongoing, condition);
         createTask.execute(title, slot, recurrence, intervalDays, weekdayMask, steps, ongoing, condition);
     }
 
     public void update(String taskId, String title, TaskSlot slot) {
-        if (title == null || title.trim().isEmpty())
-            throw new IllegalArgumentException("geht so nicht: Ein kurzer Name reicht.");
         updateTask.execute(TaskId.of(taskId), title, slot);
     }
 
@@ -111,15 +105,5 @@ public final class TaskService {
 
     public void closeOngoingTask(String taskId) {
         closeOngoingTask.execute(TaskId.of(taskId));
-    }
-
-    private static void validate(String title, Recurrence recurrence, int weekdayMask,
-                                 boolean ongoing, String condition) {
-        if (title == null || title.trim().isEmpty())
-            throw new IllegalArgumentException("geht so nicht: Ein kurzer Name reicht.");
-        if (recurrence == Recurrence.WEEKDAYS && !ScheduleCalculator.hasWeekday(weekdayMask))
-            throw new IllegalArgumentException("geht so nicht: Wähle mindestens einen Wochentag.");
-        if (ongoing && (condition == null || condition.trim().isEmpty()))
-            throw new IllegalArgumentException("geht so nicht: Ein fortlaufendes Vorhaben braucht eine Bedingung.");
     }
 }

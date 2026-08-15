@@ -1,10 +1,15 @@
 package de.thonktank.autosecretary;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -20,8 +25,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.Robolectric;
+import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowAlertDialog;
 
 import java.time.LocalTime;
 import java.util.Collections;
@@ -33,6 +40,33 @@ public final class UiComponentRobolectricTest {
         try (ActivityController<MainActivity> controller = Robolectric.buildActivity(MainActivity.class)) {
             MainActivity activity = controller.setup().get();
             assertEquals(false, activity.isFinishing());
+        }
+    }
+
+    @Test public void recreationDoesNotRepeatAConsumedConfirmationIntent() {
+        Context context = ApplicationProvider.getApplicationContext();
+        AutoSecretaryApplication.from(context).legacyStateCleaner().acknowledgeResetNotice();
+        Intent launch = new Intent(context, MainActivity.class)
+                .putExtra(MainActivity.CONFIRM_TASK, "ongoing")
+                .putExtra(MainActivity.CONFIRM_TASK_TITLE, "Praktikum")
+                .putExtra(MainActivity.CONFIRM_TASK_RING_WEEKS, 3);
+
+        try (ActivityController<MainActivity> controller =
+                     Robolectric.buildActivity(MainActivity.class, launch)) {
+            MainActivity activity = controller.setup().get();
+            AlertDialog confirmation = ShadowAlertDialog.getLatestAlertDialog();
+
+            assertNotNull(confirmation);
+            assertEquals(activity.getString(R.string.close_task_title),
+                    Shadows.shadowOf(confirmation).getTitle());
+            assertFalse(activity.getIntent().hasExtra(MainActivity.CONFIRM_TASK));
+            assertFalse(activity.getIntent().hasExtra(MainActivity.CONFIRM_TASK_TITLE));
+            assertFalse(activity.getIntent().hasExtra(MainActivity.CONFIRM_TASK_RING_WEEKS));
+
+            ShadowAlertDialog.reset();
+            controller.recreate();
+
+            assertNull(ShadowAlertDialog.getLatestAlertDialog());
         }
     }
 

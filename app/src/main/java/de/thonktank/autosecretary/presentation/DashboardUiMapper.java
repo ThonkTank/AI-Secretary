@@ -22,18 +22,6 @@ public final class DashboardUiMapper {
         this.texts = texts;
     }
 
-    /** Compatibility for characterization tests; production injects Android resources. */
-    public DashboardUiMapper() {
-        this(resourceId -> {
-            if (resourceId == R.string.soft_time_ongoing) return "fortlaufend, bis die Bedingung erfüllt ist";
-            if (resourceId == R.string.soft_time_morning) return "heute am Morgen";
-            if (resourceId == R.string.soft_time_midday) return "um die Mittagszeit";
-            if (resourceId == R.string.soft_time_evening) return "heute am Abend";
-            if (resourceId == R.string.soft_time_later) return "später, sobald Platz ist";
-            if (resourceId == R.string.next_mark_done) return "Als erledigt markieren";
-            return "Alles erledigt";
-        });
-    }
     public DashboardState map(Dashboard dashboard, LocalDate today) {
         List<TaskSnapshot> snapshots = new ArrayList<>();
         for (DashboardTask item : dashboard.tasks) snapshots.add(snapshot(item, today));

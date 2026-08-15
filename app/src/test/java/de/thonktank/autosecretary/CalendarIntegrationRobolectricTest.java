@@ -34,6 +34,7 @@ import org.robolectric.shadows.ShadowContentResolver;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -160,7 +161,10 @@ public final class CalendarIntegrationRobolectricTest {
     }
 
     private CalendarRepository repository(ZoneId zone) {
-        Clock clock = () -> DAY;
+        Clock clock = new Clock() {
+            @Override public LocalDate today() { return DAY; }
+            @Override public LocalTime time() { return LocalTime.NOON; }
+        };
         return new CalendarRepository(context, clock, () -> zone, () -> policy,
                 new NoOpLogger(), new AndroidUiTextProvider(context));
     }

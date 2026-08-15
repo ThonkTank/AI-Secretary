@@ -63,5 +63,6 @@ public final class DomainModelTest {
         assertEquals("MORNING", roundTrip.slot);
         assertEquals("DAILY", roundTrip.recurrence);
         assertEquals(4, roundTrip.routineStreakWeeks);
+        assertEquals("2026-08-10", roundTrip.lastStreakWeek);
     }
 }

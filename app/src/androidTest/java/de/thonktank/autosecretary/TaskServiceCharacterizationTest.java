@@ -18,10 +18,13 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Arrays;
 
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
+import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 
 @RunWith(AndroidJUnit4.class)
 public final class TaskServiceCharacterizationTest {
@@ -37,7 +40,7 @@ public final class TaskServiceCharacterizationTest {
                 .allowMainThreadQueries()
                 .build();
         dao = database.tasks();
-        service = new TaskService(database, () -> TODAY);
+        service = service(TODAY);
     }
 
     @After public void tearDown() {
@@ -127,12 +130,12 @@ public final class TaskServiceCharacterizationTest {
 
         TaskEntity afterFirst = dao.task(task.id);
         dao.insertOccurrence(new OccurrenceEntity("day-two", task.id, TODAY.plusDays(1).toString(), "OPEN", 1000, ""));
-        TaskService sundayService = new TaskService(database, () -> TODAY.plusDays(1));
+        TaskService sundayService = service(TODAY.plusDays(1));
         sundayService.complete("day-two");
         assertEquals(1, dao.task(task.id).routineStreakWeeks);
 
         dao.insertOccurrence(new OccurrenceEntity("late", task.id, TODAY.plusDays(2).toString(), "OPEN", 1000, ""));
-        TaskService lateService = new TaskService(database, () -> TODAY.plusDays(3));
+        TaskService lateService = service(TODAY.plusDays(3));
         lateService.complete("late");
         assertEquals(0, dao.task(task.id).routineStreakWeeks);
         assertTrue(dao.task(task.id).routineLevel >= afterFirst.routineLevel);
@@ -143,5 +146,18 @@ public final class TaskServiceCharacterizationTest {
     private static TaskEntity task(String id, String title, String slot, String recurrence, long order) {
         return new TaskEntity(id, title, slot, recurrence, 1, 0, false, "", false, false,
                 TODAY.toString(), "", "", 1, 0, 0, "", order, false);
+    }
+
+    private static Clock clock(LocalDate day) {
+        return new Clock() {
+            @Override public LocalDate today() { return day; }
+            @Override public LocalTime time() { return LocalTime.NOON; }
+        };
+    }
+
+    private TaskService service(LocalDate day) {
+        Context context = ApplicationProvider.getApplicationContext();
+        return new TaskService(database, clock(day),
+                new DashboardUiMapper(new AndroidUiTextProvider(context)));
     }
 }

@@ -51,6 +51,11 @@ Die einmalige Bereinigung des alten Prototyp-Speichers läuft vor der normalen
 Datenbankerzeugung und ist von `DatabaseFactory` getrennt. Fehler an Android-Systemgrenzen
 werden über `AppLogger` strukturiert protokolliert.
 
+Die Migration 1→2 konnte mangels historischer Wocheninformation lediglich den letzten
+Abschlusstag übernehmen. Der Entity-Mapper normalisiert diesen defensiv auf den Montag der
+betroffenen Kalenderwoche. Damit werden keine fehlenden Ringwochen erfunden, die bekannte
+Woche wird aber unter Schema 3 korrekt fortgeführt.
+
 ## Einheitlicher Präsentationszustand
 
 `TaskViewModel` veröffentlicht einen unveränderlichen `DashboardUiState`. Darin liegen das

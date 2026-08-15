@@ -5,8 +5,5 @@ import java.time.LocalTime;
 
 public interface Clock {
     LocalDate today();
-
-    default LocalTime time() {
-        return LocalTime.now();
-    }
+    LocalTime time();
 }

@@ -18,10 +18,13 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Arrays;
 
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
+import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
@@ -38,7 +41,7 @@ public final class TaskServiceRobolectricCharacterizationTest {
                 .allowMainThreadQueries()
                 .build();
         dao = database.tasks();
-        service = new TaskService(database, () -> TODAY);
+        service = service(TODAY);
     }
 
     @After public void tearDown() {
@@ -115,5 +118,18 @@ public final class TaskServiceRobolectricCharacterizationTest {
     private static TaskEntity task(String id, String title, String slot, String recurrence, long order) {
         return new TaskEntity(id, title, slot, recurrence, 1, 0, false, "", false, false,
                 TODAY.toString(), "", "", 1, 0, 0, "", order, false);
+    }
+
+    private static Clock clock(LocalDate day) {
+        return new Clock() {
+            @Override public LocalDate today() { return day; }
+            @Override public LocalTime time() { return LocalTime.NOON; }
+        };
+    }
+
+    private TaskService service(LocalDate day) {
+        Context context = ApplicationProvider.getApplicationContext();
+        return new TaskService(database, clock(day),
+                new DashboardUiMapper(new AndroidUiTextProvider(context)));
     }
 }

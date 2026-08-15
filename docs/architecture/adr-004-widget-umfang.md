@@ -14,7 +14,8 @@ Gemeinsam für alle Größen:
 
 - Tippen auf Fläche oder Titel öffnet das Dashboard.
 - Tau-Aktionen ändern einen Schritt unmittelbar.
-- Die Primäraktion schließt den aktuellen Block unmittelbar ab.
+- Wo der Größenausschnitt eine Primäraktion zeigt, schließt sie den aktuellen Block
+  unmittelbar ab.
 - Das Plus öffnet den Editor in der App.
 - Eine endgültige Bedingungs- oder Verlustaktion wird in der App bestätigt.
 - Ein Widget-Refresh ist lesend; fachliche Materialisierung wird getrennt ausgelöst.

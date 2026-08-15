@@ -89,10 +89,24 @@ public final class DatabaseMigrationTest {
 
     @Test public void migration1To3HasACompletePath() throws IOException {
         SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 1);
+        database.execSQL("INSERT INTO tasks (id,title,slot,recurrence,intervalDays,weekdayMask,ongoing,"
+                + "conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,lastCompletedOn,"
+                + "routineLevel,routineStreak,hasCompletedOccurrence) VALUES "
+                + "('chain','Kette','Mittag','DAILY',1,0,0,'',0,0,'2026-08-16',"
+                + "'2026-08-15','2026-08-12',2,3,1)");
         database.close();
 
-        helper.runMigrationsAndValidate(DATABASE, 3, true,
-                DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3).close();
+        database = helper.runMigrationsAndValidate(DATABASE, 3, true,
+                DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3);
+        try (Cursor cursor = database.query("SELECT title,slot,routineStreakWeeks,lastStreakWeek "
+                + "FROM tasks WHERE id='chain'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("Kette", cursor.getString(0));
+            assertEquals("MIDDAY", cursor.getString(1));
+            assertEquals(1, cursor.getInt(2));
+            assertEquals("2026-08-12", cursor.getString(3));
+        }
+        database.close();
     }
 
     private static void assertIndexExists(SupportSQLiteDatabase database, String index) {

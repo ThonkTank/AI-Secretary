@@ -18,12 +18,14 @@ import java.time.LocalDate;
 
 public final class TaskEntityMapper {
     public Task toDomain(TaskEntity entity) {
+        LocalDate lastCountedWeek = date(entity.lastStreakWeek);
+        if (lastCountedWeek != null) lastCountedWeek = RoutineProgress.weekStart(lastCountedWeek);
         return Task.restore(TaskId.of(entity.id), entity.title, TaskSlot.fromStorage(entity.slot),
                 Recurrence.fromStorage(entity.recurrence), entity.intervalDays, entity.weekdayMask,
                 entity.ongoing, entity.conditionText, entity.conditionDone, entity.archived,
                 date(entity.nextDueOn), date(entity.lastScheduledOn), date(entity.lastCompletedOn),
                 new RoutineProgress(entity.routineLevel, entity.routineStreak,
-                        entity.routineStreakWeeks, date(entity.lastStreakWeek)),
+                        entity.routineStreakWeeks, lastCountedWeek),
                 entity.displayOrder, entity.hasCompletedOccurrence);
     }
 
