@@ -123,3 +123,28 @@ neu aufgebaut; `onDraw` allokiert keine dieser Objekte. Die sehr zurückhaltende
 Breathing-Animation läuft ausschließlich bei angehängter, sichtbarer View und beachtet
 die systemweite Einstellung für reduzierte beziehungsweise deaktivierte Animationen.
 App und Widget beziehen ihre Farben über dieselbe `DayPalette`-Definition.
+
+## Widget-Pipeline
+
+`TaskWidgetProvider` ist nur noch der Android-Lifecycle-Adapter. Ein
+`WidgetUpdateCoordinator` lädt pro Updatezyklus genau einmal Dashboard, Kalender und
+Palette und projiziert diesen Snapshot anschließend über `WidgetPresenter` und
+`WidgetSizeClassifier` in unveränderliche `WidgetUiModel`s. Erst
+`WidgetRemoteViewsFactory` bindet diese Modelle an Small, Wide, Tall und Large. Ein
+fehlerhaftes einzelnes Widget blockiert die übrigen IDs nicht; der asynchrone
+`PendingResult` wird auch bei Lade-, Render- und Schedulingfehlern abgeschlossen.
+
+App und Widget verwenden mit `ForestArtworkRenderer` dieselbe Waldgeometrie. Für
+RemoteViews werden größen- und palettenabhängige Bitmaps gecacht. Jede Bitmap ist auf
+höchstens 256 × 256 Pixel beziehungsweise 256 KiB begrenzt; ein Parcel-Test hält den
+gesamten Renderpfad unter dem Binder-Budget. Unter API 31 bleiben die XML-Hintergründe von
+Blättern und Buttons als dokumentierter heller Fallback bestehen, während Wald,
+Hintergrund, Sonne, Typografie und Inhaltsfarben dynamisch bleiben. Ab API 31 werden auch
+die abgerundeten Chrome-Flächen dynamisch getintet.
+
+Widget-Refreshes verwenden ausschließlich den lesenden Presenter. Schreibaktionen laufen
+validiert und geordnet über `TaskActionHandler`; unbekannte oder unvollständige Broadcasts
+werden geloggt und ändern keine Daten. Eine endgültige ongoing-Bedingung wird nicht mehr
+im Receiver ausgeführt, sondern öffnet den bestehenden Bestätigungsdialog in der App.
+Bedienbare Widget-Flächen sind, soweit das RemoteViews-Layout sie kontrollieren kann,
+mindestens 48 dp groß.

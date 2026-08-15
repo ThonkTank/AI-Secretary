@@ -4,39 +4,48 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import de.thonktank.autosecretary.domain.model.TaskId;
-
-public class TaskActionReceiver extends BroadcastReceiver {
+/** Async lifecycle adapter for validated, non-destructive widget actions. */
+public final class TaskActionReceiver extends BroadcastReceiver {
     public static final String COMPLETE = "de.thonktank.autosecretary.COMPLETE";
     public static final String LATER = "de.thonktank.autosecretary.LATER";
     public static final String TOGGLE_STEP = "de.thonktank.autosecretary.TOGGLE_STEP";
-    public static final String CLOSE = "de.thonktank.autosecretary.CLOSE";
-    private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
+    public static final String EXTRA_OCCURRENCE_ID = "occurrence_id";
+    public static final String EXTRA_STEP_ID = "step_id";
+
     @Override public void onReceive(Context context, Intent intent) {
         PendingResult pending = goAsync();
         Context app = context.getApplicationContext();
-        String action = intent.getAction();
-        WORKER.execute(() -> {
+        Intent stableIntent = intent == null ? null : new Intent(intent);
+        try {
             AppContainer container = AutoSecretaryApplication.from(app).container();
+            container.executors.widgetSerial.execute(() -> {
+                try {
+                    new TaskActionHandler(container).handle(stableIntent);
+                } catch (RuntimeException error) {
+                    container.logger.error("TaskActionReceiver",
+                            "Widget action failed: " + (stableIntent == null
+                                    ? null : stableIntent.getAction()),
+                            error);
+                } finally {
+                    try {
+                        container.widgetUpdates.updateAll();
+                    } catch (RuntimeException refreshError) {
+                        container.logger.error("TaskActionReceiver",
+                                "Could not refresh widgets after action", refreshError);
+                    } finally {
+                        pending.finish();
+                    }
+                }
+            });
+        } catch (RuntimeException error) {
             try {
-                if (COMPLETE.equals(action))
-                    container.tasks.complete.execute(intent.getStringExtra("occurrence_id"));
-                else if (LATER.equals(action))
-                    container.tasks.defer.execute(intent.getStringExtra("occurrence_id"));
-                else if (TOGGLE_STEP.equals(action))
-                    container.tasks.toggleStep.execute(intent.getStringExtra("step_id"));
-                else if (CLOSE.equals(action))
-                    container.tasks.closeOngoing.execute(TaskId.of(intent.getStringExtra("task_id")));
-                container.tasks.materializeDue.execute();
-                TaskWidgetProvider.updateAll(app);
-            } catch (RuntimeException error) {
-                container.logger.error("TaskActionReceiver", "Widget action failed: " + action, error);
+                AutoSecretaryApplication.from(app).container().logger.error("TaskActionReceiver",
+                        "Could not schedule widget action", error);
+            } catch (RuntimeException loggingError) {
+                android.util.Log.e("TaskActionReceiver", "Could not schedule widget action", error);
             } finally {
                 pending.finish();
             }
-        });
+        }
     }
 }

@@ -30,6 +30,8 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 /** Lifecycle host for the state-driven dashboard view hierarchy. */
 public class MainActivity extends ComponentActivity {
     public static final String CONFIRM_TASK = "confirm_task";
+    public static final String CONFIRM_TASK_TITLE = "confirm_task_title";
+    public static final String CONFIRM_TASK_RING_WEEKS = "confirm_task_ring_weeks";
     public static final String OPEN_EDITOR = "open_editor";
     private static final String RELEASES_URL = "https://github.com/ThonkTank/AI-Secretary/releases/latest";
 
@@ -256,9 +258,15 @@ public class MainActivity extends ComponentActivity {
 
     private void handleLaunchIntent() {
         String confirmTask = getIntent().getStringExtra(CONFIRM_TASK);
+        String confirmTitle = getIntent().getStringExtra(CONFIRM_TASK_TITLE);
+        int confirmRingWeeks = getIntent().getIntExtra(CONFIRM_TASK_RING_WEEKS, 0);
         getIntent().removeExtra(CONFIRM_TASK);
+        getIntent().removeExtra(CONFIRM_TASK_TITLE);
+        getIntent().removeExtra(CONFIRM_TASK_RING_WEEKS);
         if (confirmTask != null)
-            viewModel.requestClose(confirmTask, getString(R.string.this_project), 0);
+            viewModel.requestClose(confirmTask,
+                    confirmTitle == null ? getString(R.string.this_project) : confirmTitle,
+                    confirmRingWeeks);
         boolean openEditor = getIntent().getBooleanExtra(OPEN_EDITOR, false);
         getIntent().removeExtra(OPEN_EDITOR);
         if (openEditor) viewModel.openEditor(null);

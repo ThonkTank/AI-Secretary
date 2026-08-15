@@ -4,6 +4,14 @@
     <string name="nav_all">alles ansehen</string>
     <string name="nav_options">optionen</string>
     <string name="action_add_task">Aufgabe anlegen</string>
+    <string name="widget_empty_title">Gerade ist nichts offen.</string>
+    <string name="widget_more_steps">und %1$d weitere</string>
+    <string name="widget_open_dashboard">Dashboard öffnen</string>
+    <string name="widget_toggle_step">Schritt „%1$s“ umschalten</string>
+    <string name="widget_confirm_close">„%1$s“ in der App abschließen</string>
+    <string name="widget_add_symbol">＋</string>
+    <string name="widget_step_open_symbol">○</string>
+    <string name="widget_step_done_symbol">●</string>
     <string name="content_add_task">Aufgabe anlegen</string>
     <string name="content_task_menu">Aufgabenmenü</string>
     <string name="marker_now">jetzt</string>

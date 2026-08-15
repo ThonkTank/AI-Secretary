@@ -28,6 +28,8 @@ public final class AppContainer {
     public final UiPreferences uiPreferences;
     public final DashboardPresenter dashboardPresenter;
     public final UiTextProvider texts;
+    public final AppExecutors executors;
+    public final WidgetUpdateCoordinator widgetUpdates;
 
     public AppContainer(Context context, Clock clock, ZoneIdProvider zones,
                         IdGenerator ids, AppLogger logger, DatabaseFactory databases) {
@@ -45,6 +47,8 @@ public final class AppContainer {
                 uiPreferences::calendarPolicy, logger, texts);
         this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
                 tasks.materializeDue, new DashboardUiMapper(texts));
+        this.executors = new AppExecutors();
+        this.widgetUpdates = WidgetUpdateCoordinator.create(app, this, executors.widgetSerial);
     }
 
     public static AppContainer create(Context context, AppLogger logger) {
