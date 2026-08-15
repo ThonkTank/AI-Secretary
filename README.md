@@ -22,4 +22,7 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Die Release-Einrichtung ist in [docs/releasing.md](docs/releasing.md) beschrieben. Die Produktentscheidung ist in [docs/produktziele.md](docs/produktziele.md) festgehalten.
+Die Release-Einrichtung ist in [docs/releasing.md](docs/releasing.md) beschrieben. Die
+Produktentscheidung ist in [docs/produktziele.md](docs/produktziele.md) festgehalten. Die
+verbindlichen Architekturentscheidungen und visuellen Referenzen beginnen unter
+[docs/architecture](docs/architecture/README.md).

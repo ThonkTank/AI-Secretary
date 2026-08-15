@@ -18,7 +18,7 @@ final class DatabaseProvider {
     private static final String MARKER_PREFS = "stability_refactor";
     private static final String DONE = "legacy_reset_done";
     private static volatile AppDatabase instance;
-    private static final Migration MIGRATION_1_2 = new Migration(1, 2) {
+    static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override public void migrate(SupportSQLiteDatabase database) {
             database.execSQL("ALTER TABLE tasks ADD COLUMN routineStreakWeeks INTEGER NOT NULL DEFAULT 0");
             database.execSQL("ALTER TABLE tasks ADD COLUMN lastStreakWeek TEXT NOT NULL DEFAULT ''");
