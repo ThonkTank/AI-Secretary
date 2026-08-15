@@ -44,19 +44,22 @@ public final class TaskServiceCharacterizationTest {
         database.close();
     }
 
-    @Test public void dashboardCurrentlyMaterializesOneDueOccurrenceAndCopiesSteps() {
+    @Test public void dashboardIsPureAndExplicitMaterializationCreatesOneOccurrence() {
         TaskEntity task = task("task", "Morgenroutine", TaskSlot.MORNING.storageCode, "DAILY", 1_001_000L);
         dao.insertTask(task);
         dao.insertTemplates(Arrays.asList(
                 new TaskStepEntity("template-1", task.id, 0, "Duschen"),
                 new TaskStepEntity("template-2", task.id, 1, "Anziehen")));
 
+        DashboardState before = service.dashboard();
+        service.materializeDueTasks();
         DashboardState state = service.dashboard();
 
+        assertNull(before.firstOpen());
         assertEquals(1, dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).size());
         assertEquals(1, state.tasks.size());
         assertEquals(2, state.tasks.get(0).steps.size());
-        service.dashboard();
+        service.materializeDueTasks();
         assertEquals("Repeated reads must not stack occurrences", 1,
                 dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).size());
     }
@@ -90,8 +93,8 @@ public final class TaskServiceCharacterizationTest {
 
         DashboardState state = service.dashboard();
         assertEquals("second", state.firstOpen().taskId);
-        assertEquals(1_002_000L, dao.task("first").displayOrder);
-        assertEquals(1_001_000L, dao.task("second").displayOrder);
+        assertEquals(2_048L, dao.task("first").displayOrder);
+        assertEquals(1_024L, dao.task("second").displayOrder);
     }
 
     @Test public void ongoingTaskWithoutOccurrenceStillAppearsUntilItsConditionIsClosed() {

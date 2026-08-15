@@ -24,3 +24,15 @@ Heute-Abfragen.
 Room-Entities werden am Rand des Data-Layers in immutable Domain-Modelle übersetzt. Die
 Fachlogik arbeitet mit `TaskSlot`, `Recurrence`, `OccurrenceState`, `TaskId` und
 `RoutineProgress`, nicht mit frei vergleichbaren Strings.
+
+## Explizite Schreib- und Lesevorgänge
+
+Das Laden des Dashboards ist rein lesend. Fällige Occurrences entstehen ausschließlich über
+den expliziten Use Case `MaterializeDueOccurrences`, den die App vor einem fachlichen
+Refresh ausführt. Dashboard-Schritte und fällige Schrittvorlagen werden gebündelt geladen;
+die Anzahl der Leseabfragen wächst daher nicht mit der Zahl der Aufgaben.
+
+Erstellen, Bearbeiten, Verschieben, Zurückstellen, Abschließen und Löschen sind getrennte
+Use Cases. Die bisherige Klasse `TaskService` bleibt vorübergehend als delegierende Fassade
+für Activity und Widget bestehen, enthält aber keine Transaktions- oder Schedulinglogik
+mehr.

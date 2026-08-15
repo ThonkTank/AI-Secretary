@@ -45,16 +45,20 @@ public final class TaskServiceRobolectricCharacterizationTest {
         database.close();
     }
 
-    @Test public void dashboardMaterializesAtMostOneOccurrenceAndCopiesTemplates() {
+    @Test public void dashboardIsPureAndExplicitMaterializationCreatesAtMostOneOccurrence() {
         TaskEntity task = task("routine", "Morgenroutine", TaskSlot.MORNING.storageCode, "DAILY", 1_001_000L);
         dao.insertTask(task);
         dao.insertTemplates(Arrays.asList(
                 new TaskStepEntity("one", task.id, 0, "Duschen"),
                 new TaskStepEntity("two", task.id, 1, "Anziehen")));
 
+        DashboardState before = service.dashboard();
+        service.materializeDueTasks();
         DashboardState first = service.dashboard();
+        service.materializeDueTasks();
         DashboardState second = service.dashboard();
 
+        assertNull(before.firstOpen());
         assertEquals(1, dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).size());
         assertEquals(2, first.firstOpen().steps.size());
         assertEquals(first.firstOpen().taskId, second.firstOpen().taskId);
@@ -87,8 +91,8 @@ public final class TaskServiceRobolectricCharacterizationTest {
         service.defer("first-occurrence");
 
         assertEquals("second", service.dashboard().firstOpen().taskId);
-        assertEquals(1_002_000L, dao.task("first").displayOrder);
-        assertEquals(1_001_000L, dao.task("second").displayOrder);
+        assertEquals(2_048L, dao.task("first").displayOrder);
+        assertEquals(1_024L, dao.task("second").displayOrder);
     }
 
     @Test public void ongoingTaskNeedsNoOccurrenceAndClosesOnlyThroughItsCondition() {

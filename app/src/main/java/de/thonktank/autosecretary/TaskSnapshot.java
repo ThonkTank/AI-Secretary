@@ -25,7 +25,7 @@ public final class TaskSnapshot {
     public final int ringWeeks;
     public final long displayOrder;
 
-    TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId, @NonNull String title,
+    public TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId, @NonNull String title,
                  @NonNull TaskSlot slot, @NonNull String softTime, @NonNull String nextAction,
                  @NonNull Recurrence recurrence, @NonNull List<TaskStepSnapshot> steps,
                  int remainingSteps, boolean terminalCondition, boolean ongoing, boolean done,

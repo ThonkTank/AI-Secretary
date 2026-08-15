@@ -10,13 +10,16 @@ besitzen derzeit grobe Tageszeit-Slots, Kalendertermine dagegen konkrete Uhrzeit
 
 ## Entscheidung
 
-- Die persistierte Aufgabenreihenfolge ist stabil und wird nie aus Nutzungsverhalten
-  automatisch überschrieben.
-- Slots bilden geordnete Tagesbereiche: Morgen, Mittag, Abend, Später.
-- Innerhalb eines Slots entscheidet die explizite Aufgabenreihenfolge.
+- Die persistierte globale Aufgabenreihenfolge ist stabil und wird nie aus
+  Nutzungsverhalten automatisch überschrieben.
+- Slots bilden die Einfügeposition für neue oder ausdrücklich verschobene Aufgaben:
+  Morgen, Mittag, Abend, Später. Danach entscheidet ausschließlich die globale Reihenfolge.
+- Positionen werden als fortlaufende Werte mit einem Abstand von 1024 normalisiert. Der
+  Abstand ist eine dokumentierte Persistenzstrategie und trägt keine Slot-Semantik.
 - Der erste offene Eintrag ist das Fokusblatt.
-- „später“ tauscht das Fokusblatt mit der unmittelbar folgenden offenen Aufgabe. Erledigte
-  Blätter und Kalendertermine sind keine Tauschpartner.
+- „später“ tauscht das Fokusblatt in dieser globalen Reihenfolge mit der unmittelbar
+  folgenden offenen Aufgabe – auch über Slotgrenzen hinweg. Erledigte Blätter und
+  Kalendertermine sind keine Tauschpartner.
 - Kalendertermine werden in der Präsentationsschicht anhand ihrer Startzeit zwischen die
   Aufgabenblöcke einsortiert. Sie ändern niemals die persistierte Aufgabenreihenfolge.
 - Heute abgeschlossene Aufgaben bleiben an ihrer persistierten Position sichtbar und

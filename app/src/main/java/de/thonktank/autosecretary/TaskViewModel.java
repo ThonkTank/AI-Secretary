@@ -23,7 +23,7 @@ public final class TaskViewModel extends ViewModel {
     TaskViewModel(Context context) { service = new TaskService(DatabaseProvider.get(context)); load(); }
     LiveData<DashboardState> state() { return state; }
     LiveData<String> errors() { return errors; }
-    void load() { worker.execute(() -> state.postValue(service.dashboard())); }
+    void load() { worker.execute(() -> state.postValue(service.refreshDashboard())); }
     void create(String title, TaskSlot slot, Recurrence recurrence, int interval, int weekdays, List<String> steps, boolean ongoing, String condition) { run(() -> service.create(title, slot, recurrence, interval, weekdays, steps, ongoing, condition)); }
     void complete(String occurrenceId) { run(() -> service.complete(occurrenceId)); }
     void toggleStep(String stepId) { run(() -> service.toggleStep(stepId)); }
@@ -32,7 +32,7 @@ public final class TaskViewModel extends ViewModel {
     void update(String taskId, String title, TaskSlot slot) { run(() -> service.update(taskId, title, slot)); }
     void move(String taskId, TaskSlot slot) { run(() -> service.move(taskId, slot)); }
     void delete(String taskId) { run(() -> service.delete(taskId)); }
-    private void run(Action action) { worker.execute(() -> { try { action.run(); state.postValue(service.dashboard()); } catch (IllegalArgumentException e) { errors.postValue(e.getMessage()); } }); }
+    private void run(Action action) { worker.execute(() -> { try { action.run(); state.postValue(service.refreshDashboard()); } catch (IllegalArgumentException e) { errors.postValue(e.getMessage()); } }); }
     @Override protected void onCleared() { worker.shutdownNow(); }
     interface Action { void run(); }
     public static final class Factory implements ViewModelProvider.Factory {

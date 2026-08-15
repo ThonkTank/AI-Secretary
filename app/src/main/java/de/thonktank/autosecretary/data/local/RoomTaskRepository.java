@@ -21,9 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class RoomTaskRepository implements TaskRepository {
-    private static final long SLOT_RANGE = 1_000_000L;
-    private static final long ORDER_STEP = 1_000L;
-
     private final AppDatabase database;
     private final TaskDao dao;
     private final TaskEntityMapper mapper;
@@ -67,12 +64,6 @@ public final class RoomTaskRepository implements TaskRepository {
         dao.deleteTask(id.value);
     }
 
-    @Override public long nextTaskOrder(TaskSlot slot) {
-        long floor = (slot.rank + 1L) * SLOT_RANGE;
-        Long max = dao.maxTaskOrder(floor, floor + SLOT_RANGE);
-        return max == null || max < floor || max >= floor + SLOT_RANGE ? floor + ORDER_STEP : max + ORDER_STEP;
-    }
-
     @Override public void insertTemplates(List<TaskStepTemplate> steps) {
         List<TaskStepEntity> entities = new ArrayList<>();
         for (TaskStepTemplate step : steps) entities.add(mapper.toEntity(step));
@@ -82,6 +73,15 @@ public final class RoomTaskRepository implements TaskRepository {
     @Override public List<TaskStepTemplate> templates(TaskId taskId) {
         List<TaskStepTemplate> result = new ArrayList<>();
         for (TaskStepEntity entity : dao.templates(taskId.value)) result.add(mapper.toDomain(entity));
+        return result;
+    }
+
+    @Override public List<TaskStepTemplate> templatesFor(List<TaskId> taskIds) {
+        if (taskIds.isEmpty()) return new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        for (TaskId id : taskIds) values.add(id.value);
+        List<TaskStepTemplate> result = new ArrayList<>();
+        for (TaskStepEntity entity : dao.templatesFor(values)) result.add(mapper.toDomain(entity));
         return result;
     }
 
@@ -111,11 +111,6 @@ public final class RoomTaskRepository implements TaskRepository {
         return mapOccurrences(dao.completedOccurrences(OccurrenceState.COMPLETED.storageCode(), date.toString()));
     }
 
-    @Override public int nextOpenOccurrenceOrder(TaskSlot slot) {
-        Integer max = dao.maxOpenOrder(OccurrenceState.OPEN.storageCode(), slot.storageCode);
-        return max == null ? 1000 : max + 1000;
-    }
-
     @Override public void insertOccurrenceSteps(List<OccurrenceStep> steps) {
         List<OccurrenceStepEntity> entities = new ArrayList<>();
         for (OccurrenceStep step : steps) entities.add(mapper.toEntity(step));
@@ -125,6 +120,14 @@ public final class RoomTaskRepository implements TaskRepository {
     @Override public List<OccurrenceStep> occurrenceSteps(String occurrenceId) {
         List<OccurrenceStep> result = new ArrayList<>();
         for (OccurrenceStepEntity entity : dao.occurrenceSteps(occurrenceId)) result.add(mapper.toDomain(entity));
+        return result;
+    }
+
+    @Override public List<OccurrenceStep> occurrenceStepsFor(List<String> occurrenceIds) {
+        if (occurrenceIds.isEmpty()) return new ArrayList<>();
+        List<OccurrenceStep> result = new ArrayList<>();
+        for (OccurrenceStepEntity entity : dao.occurrenceStepsFor(occurrenceIds))
+            result.add(mapper.toDomain(entity));
         return result;
     }
 

@@ -20,6 +20,7 @@ public class TaskActionReceiver extends BroadcastReceiver {
             else if (LATER.equals(action)) tasks.defer(intent.getStringExtra("occurrence_id"));
             else if (TOGGLE_STEP.equals(action)) tasks.toggleStep(intent.getStringExtra("step_id"));
             else if (CLOSE.equals(action)) tasks.closeOngoingTask(intent.getStringExtra("task_id"));
+            tasks.materializeDueTasks();
             TaskWidgetProvider.updateAll(app); } finally { pending.finish(); } });
     }
 }
