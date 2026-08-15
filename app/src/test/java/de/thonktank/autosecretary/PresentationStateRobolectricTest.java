@@ -24,6 +24,7 @@ import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
+import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 
 import org.junit.After;
 import org.junit.Before;
@@ -67,7 +68,7 @@ public final class PresentationStateRobolectricTest {
         IdGenerator idGenerator = () -> "presentation-" + ids.incrementAndGet();
         tasks = new TaskUseCases(repository, clock, idGenerator);
         presenter = new DashboardPresenter(clock, tasks.loadDashboard, tasks.materializeDue,
-                new DashboardUiMapper());
+                new DashboardUiMapper(new AndroidUiTextProvider(context)));
         preferences = new UiPreferences(context, logger);
     }
 
@@ -109,14 +110,23 @@ public final class PresentationStateRobolectricTest {
         viewModel = newViewModel(handle);
         await(() -> !value().loading);
 
+        tasks.create.execute("Bearbeitbar", TaskSlot.EVENING, Recurrence.INTERVAL, 4, 0,
+                java.util.Arrays.asList("A", "B"), true, "Fertig");
+        String taskId = repository.allTasks().get(0).id.value;
+
         viewModel.navigate(NavigationDestination.OPTIONS);
-        viewModel.openEditor("task-42");
+        viewModel.openEditor(taskId);
+        await(() -> value().editor.open && !value().editor.loading);
+        assertEquals("Bearbeitbar", value().editor.title);
+        assertEquals(4, value().editor.intervalDays);
+        assertEquals(2, value().editor.steps.size());
         viewModel.onCleared();
 
         viewModel = newViewModel(handle);
         assertEquals(NavigationDestination.OPTIONS, value().navigation);
         assertTrue(value().editor.open);
-        assertEquals("task-42", value().editor.taskId);
+        assertEquals(taskId, value().editor.taskId);
+        assertEquals("Fertig", value().editor.condition);
     }
 
     @Test public void duplicateCommandsAreIgnoredWhileTheFirstIsRunning() throws Exception {
@@ -149,7 +159,8 @@ public final class PresentationStateRobolectricTest {
 
     private TaskViewModel newViewModel(SavedStateHandle handle) {
         CalendarDataSource calendar = DashboardFixtures::calendarEvents;
-        return new TaskViewModel(tasks, presenter, calendar, preferences, clock, logger, handle);
+        return new TaskViewModel(tasks, presenter, calendar, preferences, clock, logger,
+                new AndroidUiTextProvider(context), handle);
     }
 
     private DashboardUiState value() {

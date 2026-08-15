@@ -152,6 +152,28 @@ public final class UseCaseRobolectricTest {
         assertNull(repository.findTask(second));
     }
 
+    @Test public void updateCanReplaceTheCompleteEditableDefinition() {
+        CreateTask create = new CreateTask(repository, clock, ids, ordering);
+        create.execute("Alt", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
+                Collections.singletonList("Alter Schritt"), false, "");
+        Task task = repository.allTasks().get(0);
+
+        new UpdateTask(repository, ordering, ids).execute(task.id, "Neu", TaskSlot.EVENING,
+                Recurrence.WEEKDAYS, 3, 1 << 0 | 1 << 4,
+                Arrays.asList("Erster Schritt", "Zweiter Schritt"), true, "Ziel erreicht");
+
+        Task updated = repository.findTask(task.id);
+        assertEquals("Neu", updated.title);
+        assertEquals(TaskSlot.EVENING, updated.slot);
+        assertEquals(Recurrence.WEEKDAYS, updated.recurrence);
+        assertEquals(3, updated.intervalDays);
+        assertEquals(17, updated.weekdayMask);
+        assertTrue(updated.ongoing);
+        assertEquals("Ziel erreicht", updated.conditionText);
+        assertEquals(2, repository.templates(task.id).size());
+        assertEquals("Erster Schritt", repository.templates(task.id).get(0).text);
+    }
+
     @Test public void toggleAndCompleteAreIdempotentCommandsWithIsolatedXpPolicy() {
         new CreateTask(repository, clock, ids, ordering).execute(
                 "Routine", TaskSlot.MORNING, Recurrence.DAILY, 1, 0,

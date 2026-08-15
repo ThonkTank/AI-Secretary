@@ -70,6 +70,10 @@ public final class RoomTaskRepository implements TaskRepository {
         if (!entities.isEmpty()) dao.insertTemplates(entities);
     }
 
+    @Override public void deleteTemplates(TaskId taskId) {
+        dao.deleteTemplates(taskId.value);
+    }
+
     @Override public List<TaskStepTemplate> templates(TaskId taskId) {
         List<TaskStepTemplate> result = new ArrayList<>();
         for (TaskStepEntity entity : dao.templates(taskId.value)) result.add(mapper.toDomain(entity));

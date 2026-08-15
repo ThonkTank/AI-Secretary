@@ -3,13 +3,13 @@ package de.thonktank.autosecretary;
 import java.time.LocalTime;
 
 /** Clock-driven design tokens. Color channels are interpolated once per minute. */
-final class DayPalette {
-    enum Mode { AUTO, LIGHT, DARK }
+public final class DayPalette {
+    public enum Mode { AUTO, LIGHT, DARK }
 
-    final int background, leaf1, leaf2, leaf3, ink, ink2, hint, muted, done, dot, status;
-    final int accent, accentText, light, lightText, tree, calendar, calendarInk, calendarLabel, bad;
-    final float farAlpha, middleAlpha, frontAlpha, shadowAlpha, sunX, sunWidth;
-    final int sunColor;
+    public final int background, leaf1, leaf2, leaf3, ink, ink2, hint, muted, done, dot, status;
+    public final int accent, accentText, light, lightText, tree, calendar, calendarInk, calendarLabel, bad;
+    public final float farAlpha, middleAlpha, frontAlpha, shadowAlpha, sunX, sunWidth;
+    public final int sunColor;
 
     private DayPalette(int background, int leaf1, int leaf2, int leaf3, int ink, int ink2, int hint,
                        int muted, int done, int dot, int status, int accent, int accentText, int light,
@@ -25,7 +25,7 @@ final class DayPalette {
         this.shadowAlpha = shadowAlpha; this.sunX = sunX; this.sunWidth = sunWidth; this.sunColor = sunColor;
     }
 
-    static DayPalette at(LocalTime time, Mode mode) {
+    public static DayPalette at(LocalTime time, Mode mode) {
         int minute = time.getHour() * 60 + time.getMinute(); if (minute < 260) minute += 1440;
         int[] marks = {260, 390, 580, 785, 1030, 1175, 1300, 1430, 1700};
         DayPalette[] values = {night(96), mix(night(96), day(82), .55f), day(66), day(50),
@@ -37,17 +37,17 @@ final class DayPalette {
         return fixed.withSun(automatic.sunX, automatic.sunWidth, automatic.sunColor);
     }
 
-    static String greeting(LocalTime time) {
+    public static int greetingRes(LocalTime time) {
         int minute = time.getHour() * 60 + time.getMinute();
-        if (minute < 260) return "Gute Nacht";
-        if (minute < 390) return "Noch früh";
-        if (minute < 580) return "Guten Morgen";
-        if (minute < 785) return "Vormittag";
-        if (minute < 1030) return "Mittag";
-        if (minute < 1175) return "Nachmittag";
-        if (minute < 1300) return "Guten Abend";
-        if (minute < 1430) return "Es wird spät";
-        return "Gute Nacht";
+        if (minute < 260) return R.string.greeting_night;
+        if (minute < 390) return R.string.greeting_early;
+        if (minute < 580) return R.string.greeting_morning;
+        if (minute < 785) return R.string.greeting_forenoon;
+        if (minute < 1030) return R.string.greeting_noon;
+        if (minute < 1175) return R.string.greeting_afternoon;
+        if (minute < 1300) return R.string.greeting_evening;
+        if (minute < 1430) return R.string.greeting_late;
+        return R.string.greeting_night;
     }
 
     private DayPalette withSun(float x, float width, int color) {

@@ -7,9 +7,15 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
+import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 35)
 public final class DashboardCharacterizationTest {
     @Test public void emptyDashboardHasNoFocus() {
         assertNull(DashboardFixtures.emptyDashboard().firstOpen());
@@ -36,9 +42,10 @@ public final class DashboardCharacterizationTest {
     }
 
     @Test public void taskActionsAreDerivedFromTheCurrentReadModel() {
-        assertEquals("erledigen", DashboardFixtures.simpleTask().actionLabel());
-        assertEquals("Rest erledigen", DashboardFixtures.taskWithSteps().actionLabel());
-        assertEquals("Bedingung erfüllt", DashboardFixtures.ongoingTask().actionLabel());
+        android.content.Context context = ApplicationProvider.getApplicationContext();
+        assertEquals("erledigen", DashboardFixtures.simpleTask().actionLabel(context));
+        assertEquals("Rest erledigen", DashboardFixtures.taskWithSteps().actionLabel(context));
+        assertEquals("Bedingung erfüllt", DashboardFixtures.ongoingTask().actionLabel(context));
     }
 
     @Test public void slotsHaveTheEstablishedDayOrder() {

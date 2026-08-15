@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary.presentation;
 
 import de.thonktank.autosecretary.DashboardState;
+import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.TaskSnapshot;
 import de.thonktank.autosecretary.TaskStepSnapshot;
 import de.thonktank.autosecretary.domain.model.Dashboard;
@@ -15,6 +16,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class DashboardUiMapper {
+    private final UiTextProvider texts;
+
+    public DashboardUiMapper(UiTextProvider texts) {
+        this.texts = texts;
+    }
+
+    /** Compatibility for characterization tests; production injects Android resources. */
+    public DashboardUiMapper() {
+        this(resourceId -> {
+            if (resourceId == R.string.soft_time_ongoing) return "fortlaufend, bis die Bedingung erfüllt ist";
+            if (resourceId == R.string.soft_time_morning) return "heute am Morgen";
+            if (resourceId == R.string.soft_time_midday) return "um die Mittagszeit";
+            if (resourceId == R.string.soft_time_evening) return "heute am Abend";
+            if (resourceId == R.string.soft_time_later) return "später, sobald Platz ist";
+            if (resourceId == R.string.next_mark_done) return "Als erledigt markieren";
+            return "Alles erledigt";
+        });
+    }
     public DashboardState map(Dashboard dashboard, LocalDate today) {
         List<TaskSnapshot> snapshots = new ArrayList<>();
         for (DashboardTask item : dashboard.tasks) snapshots.add(snapshot(item, today));
@@ -35,7 +54,7 @@ public final class DashboardUiMapper {
             }
         }
         if (next == null || next.isEmpty())
-            next = steps.isEmpty() ? "Als erledigt markieren" : "Alles erledigt";
+            next = texts.text(steps.isEmpty() ? R.string.next_mark_done : R.string.next_all_done);
         boolean overdue = item.occurrence != null && !item.done
                 && item.occurrence.scheduledOn.isBefore(today);
         return new TaskSnapshot(task.id.value, item.occurrence == null ? "" : item.occurrence.id,
@@ -45,11 +64,11 @@ public final class DashboardUiMapper {
                 task.displayOrder);
     }
 
-    public static String softTime(TaskSlot slot, boolean ongoing) {
-        if (ongoing) return "fortlaufend, bis die Bedingung erfüllt ist";
-        if (slot == TaskSlot.MORNING) return "heute am Morgen";
-        if (slot == TaskSlot.MIDDAY) return "um die Mittagszeit";
-        if (slot == TaskSlot.EVENING) return "heute am Abend";
-        return "später, sobald Platz ist";
+    public String softTime(TaskSlot slot, boolean ongoing) {
+        if (ongoing) return texts.text(R.string.soft_time_ongoing);
+        if (slot == TaskSlot.MORNING) return texts.text(R.string.soft_time_morning);
+        if (slot == TaskSlot.MIDDAY) return texts.text(R.string.soft_time_midday);
+        if (slot == TaskSlot.EVENING) return texts.text(R.string.soft_time_evening);
+        return texts.text(R.string.soft_time_later);
     }
 }

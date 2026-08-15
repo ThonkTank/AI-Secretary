@@ -13,6 +13,8 @@ import de.thonktank.autosecretary.domain.usecase.UuidGenerator;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
+import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
+import de.thonktank.autosecretary.presentation.UiTextProvider;
 
 public final class AppContainer {
     public final AppDatabase database;
@@ -25,6 +27,7 @@ public final class AppContainer {
     public final CalendarDataSource calendar;
     public final UiPreferences uiPreferences;
     public final DashboardPresenter dashboardPresenter;
+    public final UiTextProvider texts;
 
     public AppContainer(Context context, Clock clock, ZoneIdProvider zones,
                         IdGenerator ids, AppLogger logger, DatabaseFactory databases) {
@@ -38,8 +41,9 @@ public final class AppContainer {
         this.tasks = new TaskUseCases(taskRepository, clock, ids);
         this.calendar = new CalendarRepository(app, clock, zones, logger);
         this.uiPreferences = new UiPreferences(app, logger);
+        this.texts = new AndroidUiTextProvider(app);
         this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
-                tasks.materializeDue, new DashboardUiMapper());
+                tasks.materializeDue, new DashboardUiMapper(texts));
     }
 
     public static AppContainer create(Context context, AppLogger logger) {

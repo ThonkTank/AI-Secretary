@@ -17,6 +17,7 @@ public interface TaskDao {
     @Query("SELECT * FROM tasks WHERE id = :id LIMIT 1") TaskEntity task(String id);
     @Query("DELETE FROM tasks WHERE id = :id") void deleteTask(String id);
     @Insert(onConflict = OnConflictStrategy.REPLACE) void insertTemplates(List<TaskStepEntity> steps);
+    @Query("DELETE FROM task_steps WHERE taskId = :taskId") void deleteTemplates(String taskId);
     @Query("SELECT * FROM task_steps WHERE taskId = :taskId ORDER BY position") List<TaskStepEntity> templates(String taskId);
     @Query("SELECT * FROM task_steps WHERE taskId IN (:taskIds) ORDER BY taskId, position") List<TaskStepEntity> templatesFor(List<String> taskIds);
     @Insert(onConflict = OnConflictStrategy.REPLACE) void insertOccurrence(OccurrenceEntity occurrence);

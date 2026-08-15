@@ -1,0 +1,85 @@
+package de.thonktank.autosecretary;
+
+import android.content.Context;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
+import android.widget.TextView;
+
+final class UiStyle {
+    final Context context;
+    final Typeface serif;
+    final Typeface serifItalic;
+    final Typeface sans;
+    final Typeface sansBold;
+
+    UiStyle(Context context) {
+        this.context = context;
+        serif = context.getResources().getFont(R.font.newsreader);
+        serifItalic = context.getResources().getFont(R.font.newsreader_italic);
+        sans = context.getResources().getFont(R.font.alegreya_sans);
+        sansBold = context.getResources().getFont(R.font.alegreya_sans_bold);
+    }
+
+    TextView serif(String value, float size, int color, boolean italic, int weight) {
+        TextView view = new TextView(context);
+        view.setText(value);
+        view.setTextSize(size);
+        view.setTextColor(color);
+        view.setTypeface(italic ? serifItalic : serif);
+        view.setFontVariationSettings("'wght' " + weight);
+        view.setIncludeFontPadding(false);
+        return view;
+    }
+
+    TextView sans(String value, float size, int color, boolean bold) {
+        TextView view = new TextView(context);
+        view.setText(value);
+        view.setTextSize(size);
+        view.setTextColor(color);
+        view.setTypeface(bold ? sansBold : sans);
+        view.setIncludeFontPadding(false);
+        return view;
+    }
+
+    TextView primaryButton(String value, DayPalette palette) {
+        TextView view = sans(value, 17, palette.accentText, true);
+        view.setGravity(Gravity.CENTER);
+        view.setPadding(dp(28), 0, dp(28), 0);
+        view.setMinHeight(dp(52));
+        view.setBackground(pill(palette.accent, 26));
+        view.setElevation(dp(5));
+        return view;
+    }
+
+    GradientDrawable leaf(int color, int edge, float tl, float tr, float br, float bl) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadii(new float[]{dp(tl), dp(tl), dp(tr), dp(tr),
+                dp(br), dp(br), dp(bl), dp(bl)});
+        drawable.setStroke(Math.max(1, dp(1)), edge);
+        return drawable;
+    }
+
+    GradientDrawable pill(int color, float radius) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radius));
+        return drawable;
+    }
+
+    GradientDrawable dashed(DayPalette palette) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(Color.TRANSPARENT);
+        drawable.setCornerRadii(new float[]{dp(10), dp(10), dp(64), dp(64),
+                dp(10), dp(10), dp(64), dp(64)});
+        drawable.setStroke(dp(1), palette.dot, dp(6), dp(5));
+        return drawable;
+    }
+
+    int edge(DayPalette palette, float alpha) { return alpha(palette.light, alpha); }
+    int dimen(int resourceId) { return context.getResources().getDimensionPixelSize(resourceId); }
+    int dp(float value) { return Math.round(value * context.getResources().getDisplayMetrics().density); }
+    static int alpha(int color, float alpha) { return (Math.round(alpha * 255) << 24) | (color & 0x00ffffff); }
+}

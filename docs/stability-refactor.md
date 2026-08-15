@@ -64,3 +64,24 @@ Kommandos werden synchron über stabile Aktionsschlüssel gesperrt, sodass Doppe
 mehrere identische Schreibvorgänge anstellen. Fehler, Bestätigungsdialoge,
 Berechtigungsanfragen und externe Navigation sind konsumierbare `UiEvent`s statt
 wiederholender `LiveData<String>`-Werte.
+
+## Komponentenbasierte Views
+
+`MainActivity` ist nur noch Lifecycle-Host, verdrahtet System-Events und leitet
+Benutzeraktionen an das ViewModel weiter. `DashboardRenderer` hält einen langlebigen
+View-Baum und aktualisiert ihn differenziell; ein Minutenwechsel ersetzt weder Karten noch
+den gesamten Inhalt. Nur ein tatsächlicher Navigationswechsel montiert eine andere
+Oberfläche. Scroll-, Fokus- und Accessibility-Zustände der Dashboard-Komponenten bleiben
+bei normalen Updates erhalten.
+
+Header, Fokusaufgabe, Aufgabenblatt, Kalenderblatt, Leerzustand, Footer-Navigation,
+Jahresring und Optionen sind eigenständige Views. Wiederverwendbare Typografie-, Maß- und
+Form-Helfer liegen in `UiStyle`, Produkttexte und zentrale Maße in Android-Ressourcen. Die
+Activity nutzt die AndroidX-Edge-to-edge- und WindowInsets-APIs.
+
+Der `TaskEditorDialog` besitzt einen vollständigen, über `SavedStateHandle` gesicherten
+Entwurf und einen separaten `TaskEditorValidator`. Beim Bearbeiten können Titel,
+Tageszeit, Wiederholung, Intervall, Wochentage, Schritte, ongoing-Status und
+Erledigungsbedingung geändert werden. `LoadTaskDetails` lädt dafür Task und
+Schrittvorlagen, `UpdateTask` ersetzt die Definition atomar; eine bereits offene
+Occurrence bleibt als historisch fällige Ausführung unverändert.

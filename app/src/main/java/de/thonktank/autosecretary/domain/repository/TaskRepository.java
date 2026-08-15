@@ -20,6 +20,7 @@ public interface TaskRepository {
     List<Task> allTasks();
     void deleteTask(TaskId id);
     void insertTemplates(List<TaskStepTemplate> steps);
+    void deleteTemplates(TaskId taskId);
     List<TaskStepTemplate> templates(TaskId taskId);
     List<TaskStepTemplate> templatesFor(List<TaskId> taskIds);
 

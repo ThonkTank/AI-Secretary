@@ -15,18 +15,20 @@ public final class TaskUseCases {
     public final CloseOngoingTask closeOngoing;
     public final MaterializeDueOccurrences materializeDue;
     public final LoadDashboard loadDashboard;
+    public final LoadTaskDetails loadTaskDetails;
 
     public TaskUseCases(TaskRepository repository, Clock clock, IdGenerator ids) {
         TaskOrdering ordering = new TaskOrdering();
         loadDashboard = new LoadDashboard(repository);
         materializeDue = new MaterializeDueOccurrences(repository, clock, ids);
         create = new CreateTask(repository, clock, ids, ordering);
-        update = new UpdateTask(repository, ordering);
+        update = new UpdateTask(repository, ordering, ids);
         move = new MoveTask(repository, ordering);
         delete = new DeleteTask(repository);
         defer = new DeferTask(repository, loadDashboard, ordering, clock);
         toggleStep = new ToggleStep(repository);
         complete = new CompleteOccurrence(repository, clock);
         closeOngoing = new CloseOngoingTask(repository, clock);
+        loadTaskDetails = new LoadTaskDetails(repository);
     }
 }

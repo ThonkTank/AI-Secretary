@@ -40,9 +40,10 @@ public final class TaskSnapshot {
     }
 
     public boolean routine() { return recurrence != Recurrence.ONCE; }
-    public String actionLabel() {
-        if (terminalCondition) return "Bedingung erfüllt";
-        if (steps.isEmpty()) return "erledigen";
-        return remainingSteps == 0 ? "Alle erledigen" : "Rest erledigen";
+    public String actionLabel(android.content.Context context) {
+        if (terminalCondition) return context.getString(R.string.condition_met);
+        if (steps.isEmpty()) return context.getString(R.string.action_complete);
+        return context.getString(remainingSteps == 0
+                ? R.string.action_complete_all : R.string.action_complete_rest);
     }
 }

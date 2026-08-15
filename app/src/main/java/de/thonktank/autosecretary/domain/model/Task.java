@@ -74,6 +74,17 @@ public final class Task {
                 lastCompletedOn, routineProgress, newDisplayOrder, hasCompletedOccurrence);
     }
 
+    public Task editDefinition(String newTitle, TaskSlot newSlot, Recurrence newRecurrence,
+                               int newIntervalDays, int newWeekdayMask, boolean newOngoing,
+                               String newConditionText, long newDisplayOrder) {
+        if (newOngoing && (newConditionText == null || newConditionText.trim().isEmpty()))
+            throw new IllegalArgumentException("Ongoing task needs a completion condition");
+        return restore(id, newTitle, newSlot, newRecurrence, newIntervalDays, newWeekdayMask,
+                newOngoing, newConditionText, conditionDone, archived, nextDueOn,
+                lastScheduledOn, lastCompletedOn, routineProgress, newDisplayOrder,
+                hasCompletedOccurrence);
+    }
+
     public Task move(TaskSlot newSlot, long newDisplayOrder) {
         return copy(title, newSlot, conditionDone, archived, nextDueOn, lastScheduledOn,
                 lastCompletedOn, routineProgress, newDisplayOrder, hasCompletedOccurrence);

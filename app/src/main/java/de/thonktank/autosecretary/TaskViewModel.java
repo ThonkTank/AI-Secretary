@@ -19,6 +19,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
+import de.thonktank.autosecretary.presentation.UiTextProvider;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,7 +32,6 @@ import java.util.concurrent.Executors;
 public final class TaskViewModel extends ViewModel {
     private static final String NAVIGATION = "navigation";
     private static final String EDITOR = "editor";
-    private static final String CREATE_EDITOR = "__create__";
     private static final String REFRESH = "refresh";
 
     private final TaskUseCases tasks;
@@ -40,6 +40,7 @@ public final class TaskViewModel extends ViewModel {
     private final UiPreferences preferences;
     private final Clock clock;
     private final AppLogger logger;
+    private final UiTextProvider texts;
     private final SavedStateHandle savedState;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final MutableLiveData<DashboardUiState> state = new MutableLiveData<>();
@@ -49,26 +50,29 @@ public final class TaskViewModel extends ViewModel {
 
     TaskViewModel(AppContainer container, SavedStateHandle savedState) {
         this(container.tasks, container.dashboardPresenter, container.calendar,
-                container.uiPreferences, container.clock, container.logger, savedState);
+                container.uiPreferences, container.clock, container.logger, container.texts,
+                savedState);
     }
 
     TaskViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
                   UiPreferences preferences, Clock clock, AppLogger logger,
-                  SavedStateHandle savedState) {
+                  UiTextProvider texts, SavedStateHandle savedState) {
         this.tasks = tasks;
         this.dashboard = dashboard;
         this.calendar = calendar;
         this.preferences = preferences;
         this.clock = clock;
         this.logger = logger;
+        this.texts = texts;
         this.savedState = savedState;
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
-        EditorUiState editor = restoredEditor(savedState.get(EDITOR));
+        EditorUiState editor = EditorUiState.fromBundle(savedState.get(EDITOR));
         current = new DashboardUiState(navigation, DashboardUiModel.empty(),
                 CalendarUiState.empty(), palette(), CalendarPermissionStatus.UNKNOWN,
                 false, Collections.emptySet(), editor);
         state.setValue(current);
         load();
+        if (editor.open && editor.loading && editor.taskId != null) openEditor(editor.taskId);
     }
 
     LiveData<DashboardUiState> state() { return state; }
@@ -80,7 +84,7 @@ public final class TaskViewModel extends ViewModel {
             try {
                 publishContent(REFRESH, loadContent());
             } catch (RuntimeException error) {
-                fail(REFRESH, "Das Dashboard konnte nicht geladen werden.", error);
+                fail(REFRESH, texts.text(R.string.error_dashboard_load), error);
             }
         });
     }
@@ -95,14 +99,65 @@ public final class TaskViewModel extends ViewModel {
     }
 
     void openEditor(@Nullable String taskId) {
-        savedState.set(EDITOR, taskId == null ? CREATE_EDITOR : taskId);
-        update(value -> value.withEditor(taskId == null
-                ? EditorUiState.create() : EditorUiState.edit(taskId)));
+        if (taskId == null) {
+            setEditor(EditorUiState.create());
+            return;
+        }
+        String key = actionKey("load-editor", taskId);
+        setEditor(EditorUiState.loading(taskId));
+        if (!begin(key, false)) return;
+        worker.execute(() -> {
+            try {
+                de.thonktank.autosecretary.domain.model.TaskDetails details =
+                        tasks.loadTaskDetails.execute(TaskId.of(taskId));
+                if (details == null) {
+                    setEditor(EditorUiState.closed());
+                    fail(key, texts.text(R.string.error_task_missing),
+                            new IllegalArgumentException("Missing task " + taskId));
+                    return;
+                }
+                EditorUiState loaded = EditorUiState.edit(details);
+                savedState.set(EDITOR, loaded.toBundle());
+                synchronized (stateLock) {
+                    Set<String> actions = new LinkedHashSet<>(current.runningActions);
+                    actions.remove(key);
+                    current = current.withEditor(loaded).withRunningActions(actions);
+                    state.postValue(current);
+                }
+            } catch (RuntimeException error) {
+                setEditor(EditorUiState.closed());
+                fail(key, texts.text(R.string.error_editor_load), error);
+            }
+        });
     }
 
     void dismissEditor() {
         savedState.set(EDITOR, null);
         update(value -> value.withEditor(EditorUiState.closed()));
+    }
+
+    void updateEditorDraft(EditorUiState draft) {
+        if (!draft.open || draft.loading) return;
+        setEditor(draft);
+    }
+
+    void saveEditor(EditorUiState draft) {
+        try {
+            validate(draft.title, draft.recurrence, draft.weekdayMask,
+                    draft.ongoing, draft.condition);
+        } catch (IllegalArgumentException error) {
+            events.setValue(UiEvent.error(error.getMessage()));
+            return;
+        }
+        if (draft.taskId == null) {
+            create(draft.title, draft.slot, draft.recurrence, draft.intervalDays,
+                    draft.weekdayMask, draft.steps, draft.ongoing, draft.condition);
+        } else {
+            run(actionKey("update", draft.taskId), () -> tasks.update.execute(
+                    TaskId.of(draft.taskId), draft.title, draft.slot, draft.recurrence,
+                    draft.intervalDays, draft.weekdayMask, draft.steps, draft.ongoing,
+                    draft.condition));
+        }
     }
 
     void updateCalendarPermission(boolean granted, boolean showRationale) {
@@ -158,7 +213,7 @@ public final class TaskViewModel extends ViewModel {
     void update(String taskId, String title, TaskSlot slot) {
         run(actionKey("update", taskId), () -> {
             if (title == null || title.trim().isEmpty())
-                throw new IllegalArgumentException("geht so nicht: Ein kurzer Name reicht.");
+                throw new IllegalArgumentException(texts.text(R.string.error_name));
             tasks.update.execute(TaskId.of(taskId), title, slot);
         });
     }
@@ -178,7 +233,7 @@ public final class TaskViewModel extends ViewModel {
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
             } catch (RuntimeException error) {
-                fail(key, "Die Änderung konnte nicht gespeichert werden. Bitte versuche es erneut.", error);
+                fail(key, texts.text(R.string.error_change_save), error);
             }
         });
     }
@@ -246,19 +301,19 @@ public final class TaskViewModel extends ViewModel {
         }
     }
 
-    private static EditorUiState restoredEditor(String stored) {
-        if (stored == null) return EditorUiState.closed();
-        return CREATE_EDITOR.equals(stored) ? EditorUiState.create() : EditorUiState.edit(stored);
+    private void setEditor(EditorUiState editor) {
+        savedState.set(EDITOR, editor.open ? editor.toBundle() : null);
+        update(value -> value.withEditor(editor));
     }
 
-    private static void validate(String title, Recurrence recurrence, int weekdayMask,
-                                 boolean ongoing, String condition) {
+    private void validate(String title, Recurrence recurrence, int weekdayMask,
+                          boolean ongoing, String condition) {
         if (title == null || title.trim().isEmpty())
-            throw new IllegalArgumentException("geht so nicht: Ein kurzer Name reicht.");
+            throw new IllegalArgumentException(texts.text(R.string.error_name));
         if (recurrence == Recurrence.WEEKDAYS && !ScheduleCalculator.hasWeekday(weekdayMask))
-            throw new IllegalArgumentException("geht so nicht: Wähle mindestens einen Wochentag.");
+            throw new IllegalArgumentException(texts.text(R.string.error_weekdays));
         if (ongoing && (condition == null || condition.trim().isEmpty()))
-            throw new IllegalArgumentException("geht so nicht: Ein fortlaufendes Vorhaben braucht eine Bedingung.");
+            throw new IllegalArgumentException(texts.text(R.string.error_condition));
     }
 
     @Override protected void onCleared() {
