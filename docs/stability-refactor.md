@@ -50,3 +50,17 @@ SharedPreferences-Zugriffe sind auf `UiPreferences` und `LegacyStateCleaner` beg
 Die einmalige Bereinigung des alten Prototyp-Speichers läuft vor der normalen
 Datenbankerzeugung und ist von `DatabaseFactory` getrennt. Fehler an Android-Systemgrenzen
 werden über `AppLogger` strukturiert protokolliert.
+
+## Einheitlicher Präsentationszustand
+
+`TaskViewModel` veröffentlicht einen unveränderlichen `DashboardUiState`. Darin liegen das
+typisierte Navigationsziel, das bereits mit Kalenderterminen sortierte `DashboardUiModel`,
+der Kalender- und Berechtigungszustand, die aktuelle Palette, Ladeinformationen, laufende
+Aktionsschlüssel und der offene Editor. Die Activity führt Aufgaben und Termine daher nicht
+mehr selbst zusammen und sortiert keine fachlichen Einträge.
+
+Navigation und Editorziel werden mit `SavedStateHandle` wiederhergestellt. Laufende
+Kommandos werden synchron über stabile Aktionsschlüssel gesperrt, sodass Doppelklicks nicht
+mehrere identische Schreibvorgänge anstellen. Fehler, Bestätigungsdialoge,
+Berechtigungsanfragen und externe Navigation sind konsumierbare `UiEvent`s statt
+wiederholender `LiveData<String>`-Werte.

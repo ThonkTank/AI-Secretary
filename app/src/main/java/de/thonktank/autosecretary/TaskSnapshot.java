@@ -2,6 +2,8 @@ package de.thonktank.autosecretary;
 
 import androidx.annotation.NonNull;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -32,7 +34,7 @@ public final class TaskSnapshot {
                  boolean overdue, int ringWeeks, long displayOrder) {
         this.taskId = taskId; this.occurrenceId = occurrenceId; this.title = title; this.slot = slot;
         this.softTime = softTime; this.nextAction = nextAction; this.recurrence = recurrence;
-        this.steps = steps; this.remainingSteps = remainingSteps; this.terminalCondition = terminalCondition;
+        this.steps = Collections.unmodifiableList(new ArrayList<>(steps)); this.remainingSteps = remainingSteps; this.terminalCondition = terminalCondition;
         this.ongoing = ongoing; this.done = done; this.overdue = overdue; this.ringWeeks = ringWeeks;
         this.displayOrder = displayOrder;
     }
