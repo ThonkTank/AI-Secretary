@@ -10,9 +10,9 @@ import android.content.Context;
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.data.preferences.UiPreferences;
-import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
+import de.thonktank.autosecretary.update.application.UpdateExecutor;
+import de.thonktank.autosecretary.update.application.UpdatePreferences;
 import de.thonktank.autosecretary.update.application.UpdateRepository;
 import de.thonktank.autosecretary.update.application.VerifiedUpdate;
 import de.thonktank.autosecretary.update.domain.ReleaseMetadata;
@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
 
 @RunWith(RobolectricTestRunner.class)
@@ -43,7 +42,7 @@ public final class UpdateViewModelTest {
     @Rule public final TestRule instantExecutors = new InstantTaskExecutorRule();
 
     private Context context;
-    private UiPreferences preferences;
+    private FakePreferences preferences;
     private FakeRepository repository;
     private AtomicLong now;
     private AtomicInteger reportedErrors;
@@ -51,32 +50,29 @@ public final class UpdateViewModelTest {
 
     @Before public void setUp() {
         context = ApplicationProvider.getApplicationContext();
-        context.deleteSharedPreferences("forest_ui");
-        preferences = new UiPreferences(context, new NoOpLogger());
+        preferences = new FakePreferences();
         repository = new FakeRepository(context);
         now = new AtomicLong(1_000_000L);
         reportedErrors = new AtomicInteger();
         viewModel = new UpdateViewModel(repository, preferences,
                 error -> reportedErrors.incrementAndGet(),
-                new AndroidUiTextProvider(context), now::get);
+                new AndroidUiTextProvider(context), now::get, new DirectExecutor());
     }
 
     @After public void tearDown() {
         viewModel.onCleared();
-        context.deleteSharedPreferences("forest_ui");
     }
 
-    @Test public void automaticCheckIsDailyAndManualCheckBypassesThrottle() throws Exception {
+    @Test public void automaticCheckIsDailyAndManualCheckBypassesThrottle() {
         viewModel.automaticCheck();
-        await(() -> repository.checks.get() == 1
-                && state().status == UpdateUiState.Status.CURRENT);
+        assertEquals(1, repository.checks.get());
+        assertEquals(UpdateUiState.Status.CURRENT, state().status);
 
         viewModel.automaticCheck();
-        Thread.sleep(30L);
         assertEquals(1, repository.checks.get());
 
         viewModel.manualAction();
-        await(() -> repository.checks.get() == 2);
+        assertEquals(2, repository.checks.get());
     }
 
     @Test public void availableUpdateDownloadsThenEmitsInstallerEvent() throws Exception {
@@ -84,15 +80,14 @@ public final class UpdateViewModelTest {
         repository.available = info;
 
         viewModel.manualAction();
-        await(() -> state().status == UpdateUiState.Status.AVAILABLE
-                && viewModel.events().getValue() != null);
+        assertEquals(UpdateUiState.Status.AVAILABLE, state().status);
         UpdateEvent available = viewModel.events().getValue();
         assertNotNull(available);
         assertEquals(UpdateEvent.Type.AVAILABLE, available.type);
 
         viewModel.accept(info);
-        await(() -> state().status == UpdateUiState.Status.READY
-                && viewModel.events().getValue().type == UpdateEvent.Type.INSTALL);
+        assertEquals(UpdateUiState.Status.READY, state().status);
+        assertEquals(UpdateEvent.Type.INSTALL, viewModel.events().getValue().type);
         assertEquals(100, state().progress);
         assertTrue(repository.downloaded);
     }
@@ -113,7 +108,7 @@ public final class UpdateViewModelTest {
 
         viewModel.manualAction();
 
-        await(() -> state().status == UpdateUiState.Status.ERROR);
+        assertEquals(UpdateUiState.Status.ERROR, state().status);
         assertEquals(UpdateFailure.Kind.NETWORK, state().errorKind);
         assertEquals(UpdateFailure.Kind.NETWORK, viewModel.events().getValue().errorKind);
         assertEquals(1, reportedErrors.get());
@@ -133,13 +128,6 @@ public final class UpdateViewModelTest {
 
     private static String repeat(char value, int count) {
         return String.join("", Collections.nCopies(count, String.valueOf(value)));
-    }
-
-    private static void await(BooleanSupplier condition) throws Exception {
-        long deadline = System.currentTimeMillis() + 3_000L;
-        while (!condition.getAsBoolean() && System.currentTimeMillis() < deadline)
-            Thread.sleep(10L);
-        assertTrue("Timed out waiting for updater", condition.getAsBoolean());
     }
 
     private static final class FakeRepository implements UpdateRepository {
@@ -173,8 +161,31 @@ public final class UpdateViewModelTest {
         }
     }
 
-    private static final class NoOpLogger implements AppLogger {
-        @Override public void info(String tag, String message) { }
-        @Override public void error(String tag, String message, Throwable error) { }
+    private static final class DirectExecutor implements UpdateExecutor {
+        @Override public void execute(Runnable task) { task.run(); }
+        @Override public void close() { }
+    }
+
+    private static final class FakePreferences implements UpdatePreferences {
+        long lastCheck;
+        long postponedCode = -1L;
+        long postponedAt;
+
+        @Override public boolean shouldCheckUpdates(long nowMillis) {
+            return lastCheck <= 0L || nowMillis < lastCheck
+                    || nowMillis - lastCheck >= 24L * 60L * 60L * 1000L;
+        }
+
+        @Override public void markUpdateCheck(long nowMillis) { lastCheck = nowMillis; }
+
+        @Override public boolean shouldPromptForUpdate(long versionCode, long nowMillis) {
+            return postponedCode != versionCode || nowMillis < postponedAt
+                    || nowMillis - postponedAt >= 24L * 60L * 60L * 1000L;
+        }
+
+        @Override public void postponeUpdate(long versionCode, long nowMillis) {
+            postponedCode = versionCode;
+            postponedAt = nowMillis;
+        }
     }
 }

@@ -11,9 +11,11 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.util.function.IntConsumer;
 
-final class UrlConnectionHttpTransport implements HttpTransport {
+public final class UrlConnectionHttpTransport implements HttpTransport {
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int READ_TIMEOUT_MS = 30_000;
+
+    public UrlConnectionHttpTransport() { }
 
     @Override public byte[] get(String url, int maxBytes) throws UpdateFailure {
         HttpURLConnection connection = null;

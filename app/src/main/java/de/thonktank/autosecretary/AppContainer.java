@@ -16,8 +16,16 @@ import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
 import de.thonktank.autosecretary.update.application.UpdateRepository;
+import de.thonktank.autosecretary.update.application.UpdateClock;
+import de.thonktank.autosecretary.update.application.UpdateConfiguration;
+import de.thonktank.autosecretary.update.application.UpdateExecutorFactory;
+import de.thonktank.autosecretary.update.application.UpdatePreferences;
+import de.thonktank.autosecretary.update.infrastructure.DisabledUpdateRepository;
 import de.thonktank.autosecretary.update.infrastructure.GitHubUpdateRepository;
+import de.thonktank.autosecretary.update.infrastructure.SerialUpdateExecutor;
+import de.thonktank.autosecretary.update.infrastructure.SharedUpdatePreferences;
 import de.thonktank.autosecretary.update.infrastructure.UpdateInstaller;
+import de.thonktank.autosecretary.update.infrastructure.UrlConnectionHttpTransport;
 
 public final class AppContainer {
     public final AppDatabase database;
@@ -33,7 +41,11 @@ public final class AppContainer {
     public final UiTextProvider texts;
     public final AppExecutors executors;
     public final WidgetUpdateCoordinator widgetUpdates;
+    public final UpdateConfiguration updateConfiguration;
     public final UpdateRepository updates;
+    public final UpdatePreferences updatePreferences;
+    public final UpdateClock updateClock;
+    public final UpdateExecutorFactory updateExecutors;
     public final UpdateInstaller updateInstaller;
 
     public AppContainer(Context context, Clock clock, ZoneIdProvider zones,
@@ -54,9 +66,22 @@ public final class AppContainer {
                 tasks.materializeDue, new DashboardUiMapper(texts));
         this.executors = new AppExecutors();
         this.widgetUpdates = WidgetUpdateCoordinator.create(app, this, executors.widgetSerial);
-        this.updates = new GitHubUpdateRepository(app, BuildConfig.UPDATE_REPOSITORY_OWNER,
-                BuildConfig.UPDATE_REPOSITORY_NAME, BuildConfig.UPDATE_METADATA_ASSET,
-                BuildConfig.UPDATE_APK_ASSET, BuildConfig.UPDATE_TAG_PREFIX);
+        this.updateConfiguration = BuildConfig.DEBUG
+                ? UpdateConfiguration.development(BuildConfig.UPDATE_REPOSITORY_OWNER,
+                        BuildConfig.UPDATE_REPOSITORY_NAME, BuildConfig.UPDATE_METADATA_ASSET,
+                        BuildConfig.UPDATE_APK_ASSET, BuildConfig.UPDATE_TAG_PREFIX)
+                : UpdateConfiguration.production(BuildConfig.UPDATE_REPOSITORY_OWNER,
+                        BuildConfig.UPDATE_REPOSITORY_NAME, BuildConfig.UPDATE_METADATA_ASSET,
+                        BuildConfig.UPDATE_APK_ASSET, BuildConfig.UPDATE_TAG_PREFIX);
+        this.updatePreferences = new SharedUpdatePreferences(app, logger);
+        this.updateClock = System::currentTimeMillis;
+        this.updateExecutors = SerialUpdateExecutor::new;
+        this.updates = updateConfiguration.remoteChecksEnabled
+                ? new GitHubUpdateRepository(app, updateConfiguration.repositoryOwner,
+                        updateConfiguration.repositoryName, updateConfiguration.metadataAsset,
+                        updateConfiguration.apkAsset, updateConfiguration.tagPrefix,
+                        new UrlConnectionHttpTransport())
+                : new DisabledUpdateRepository();
         this.updateInstaller = new UpdateInstaller();
     }
 

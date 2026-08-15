@@ -118,10 +118,15 @@ public final class UpgradePersistenceTest {
         assertEquals(UiThemeMode.DARK, application.container().uiPreferences.themeMode());
         assertEquals(CalendarPolicy.GOOGLE_ONLY,
                 application.container().uiPreferences.calendarPolicy());
+        SharedPreferences updates = context.getSharedPreferences(
+                "forest_updates", Context.MODE_PRIVATE);
+        assertEquals(123_456_789L, updates.getLong("last_update_check", -1L));
+        assertEquals(987_654L, updates.getLong("postponed_update_code", -1L));
+        assertEquals(123_450_000L, updates.getLong("postponed_update_at", -1L));
         SharedPreferences ui = context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE);
-        assertEquals(123_456_789L, ui.getLong("last_update_check", -1L));
-        assertEquals(987_654L, ui.getLong("postponed_update_code", -1L));
-        assertEquals(123_450_000L, ui.getLong("postponed_update_at", -1L));
+        assertTrue(!ui.contains("last_update_check"));
+        assertTrue(!ui.contains("postponed_update_code"));
+        assertTrue(!ui.contains("postponed_update_at"));
 
         Intent launch = new Intent(context, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

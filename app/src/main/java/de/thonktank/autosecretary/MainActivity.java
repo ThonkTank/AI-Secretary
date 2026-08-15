@@ -68,14 +68,15 @@ public class MainActivity extends ComponentActivity {
         viewModel = new ViewModelProvider(this,
                 new TaskViewModel.Factory(container)).get(TaskViewModel.class);
         UpdateViewModel updateViewModel = new ViewModelProvider(this, new UpdateViewModel.Factory(
-                container.updates, container.uiPreferences,
+                container.updates, container.updatePreferences,
                 failure -> container.logger.error("Updater", failure.getMessage(), failure),
-                container.texts, System::currentTimeMillis)).get(UpdateViewModel.class);
+                container.texts, container.updateClock,
+                container.updateExecutors)).get(UpdateViewModel.class);
         updates = new UpdateUiController(updateViewModel, new AndroidUpdateDialogs(this),
                 new AndroidUpdatePlatform(this, installPermission, container.updateInstaller,
-                        container.logger, BuildConfig.UPDATE_REPOSITORY_OWNER,
-                        BuildConfig.UPDATE_REPOSITORY_NAME),
-                container.texts, !BuildConfig.DEBUG);
+                        container.logger, container.updateConfiguration.repositoryOwner,
+                        container.updateConfiguration.repositoryName),
+                container.texts, container.updateConfiguration.automaticChecksEnabled);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
         updates.state().observe(this, this::renderUpdate);

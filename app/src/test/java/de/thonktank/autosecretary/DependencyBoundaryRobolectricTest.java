@@ -13,6 +13,8 @@ import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.calendar.CalendarPolicy;
+import de.thonktank.autosecretary.update.application.UpdateConfiguration;
+import de.thonktank.autosecretary.update.infrastructure.DisabledUpdateRepository;
 
 import org.junit.After;
 import org.junit.Before;
@@ -63,6 +65,16 @@ public final class DependencyBoundaryRobolectricTest {
 
         assertEquals(UiThemeMode.AUTO, new UiPreferences(context, logger).themeMode());
         assertEquals(1, logger.errors);
+    }
+
+    @Test public void debugApplicationUsesAnExplicitNetworkFreeUpdateEnvironment() {
+        AppContainer container = AutoSecretaryApplication.from(context).container();
+
+        assertEquals(UpdateConfiguration.Environment.DEVELOPMENT,
+                container.updateConfiguration.environment);
+        assertFalse(container.updateConfiguration.remoteChecksEnabled);
+        assertFalse(container.updateConfiguration.automaticChecksEnabled);
+        assertTrue(container.updates instanceof DisabledUpdateRepository);
     }
 
     @Test public void legacyCleanupRunsOnceAndKeepsNoticeIndependentFromDatabaseCreation() {

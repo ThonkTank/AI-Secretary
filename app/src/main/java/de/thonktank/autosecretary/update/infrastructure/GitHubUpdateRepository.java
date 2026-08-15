@@ -39,9 +39,10 @@ public final class GitHubUpdateRepository implements UpdateRepository {
     private final ReleaseMetadataJsonParser metadataParser = new ReleaseMetadataJsonParser();
 
     public GitHubUpdateRepository(Context context, String owner, String repository,
-                                  String metadataAsset, String apkAsset, String tagPrefix) {
+                                  String metadataAsset, String apkAsset, String tagPrefix,
+                                  HttpTransport http) {
         this(context.getPackageName(), owner, repository, metadataAsset, apkAsset, tagPrefix,
-                new File(context.getCacheDir(), "updates"), new UrlConnectionHttpTransport(),
+                new File(context.getCacheDir(), "updates"), http,
                 new AndroidPackageEvidenceReader(context));
     }
 

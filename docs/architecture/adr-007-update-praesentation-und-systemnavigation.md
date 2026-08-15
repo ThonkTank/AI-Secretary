@@ -45,8 +45,8 @@ passende Systemeinstellung; Fehler bieten weiterhin den GitHub-Releasekanal an. 
 Plattformentscheidungen sind unabhängig von einer Activity testbar, während die vorhandenen
 Robolectric-Tests weiterhin die konkreten Installer-Intents prüfen.
 
-Der Controller übernimmt vorerst die Debug-/Produktionsentscheidung als injizierten booleschen
-Wert. Executor, Uhr und eine explizite mehrstufige Updatekonfiguration werden erst in der
-Determinismus-Phase injiziert. `UpdateEvent` verwendet weiterhin ein Consume-Flag; ein späterer
+Die zunächst nur boolesch injizierte Debug-/Produktionsentscheidung sowie Executor und Uhr wurden
+mit [ADR-008](adr-008-deterministische-update-abhaengigkeiten.md) durch benannte Konfigurations-
+und Laufzeitports ersetzt. `UpdateEvent` verwendet weiterhin ein Consume-Flag; ein späterer
 Wechsel auf einen dedizierten Effect-Stream ist nicht erforderlich, solange Recreates und
 Mehrfachbeobachtung durch Tests abgesichert bleiben.

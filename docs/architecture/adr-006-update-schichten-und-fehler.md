@@ -56,6 +56,6 @@ Plattform- und Effektschnittstelle ist Gegenstand der folgenden Activity-Phase.
 
 Die in dieser Entscheidung noch offene Kapselung des Systeminstallers und der UI-Effekte wurde
 mit [ADR-007](adr-007-update-praesentation-und-systemnavigation.md) umgesetzt. Die
-Updatepräferenzen besitzen bereits einen Application-Port, teilen sich jedoch weiterhin die
-Datei mit Theme- und Kalenderwerten. Die physische Trennung sowie kontrollierte Executor- und
-Zeitabhängigkeiten folgen in der Determinismus-Phase.
+Die physische Trennung der Updatepräferenzen sowie kontrollierte Executor-, HTTP- und
+Zeitabhängigkeiten wurden mit
+[ADR-008](adr-008-deterministische-update-abhaengigkeiten.md) umgesetzt.

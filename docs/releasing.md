@@ -71,6 +71,10 @@ Die App prüft höchstens einmal täglich nach dem Start und jederzeit manuell u
 Versionscode und dieselbe Android-Signatur wie die installierte App geprüft. Anschließend öffnet
 die App den Android-Systeminstaller; dessen Bestätigung kann und soll nicht umgangen werden.
 
+Diese Remote-Prüfungen sind ausschließlich in Produktions-/Release-Builds aktiv. Debug-Builds
+verwenden eine explizite netzwerkfreie Development-Konfiguration; die manuelle Schaltfläche kann
+dort deshalb weder GitHub noch einen anderen echten Updateendpunkt kontaktieren.
+
 Beim ersten Wechsel von einem lokal oder durch CI debug-signierten Build muss dieser Build
 einmalig deinstalliert werden. Ab der Installation des ersten Produktions-Releases bleiben lokale
 Aufgaben bei allen folgenden Updates erhalten.

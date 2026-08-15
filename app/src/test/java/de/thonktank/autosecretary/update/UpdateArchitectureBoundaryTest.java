@@ -50,7 +50,20 @@ public final class UpdateArchitectureBoundaryTest {
                     text.contains(forbidden));
     }
 
+    @Test public void updateUnitTestsDoNotPollOrSleep() throws Exception {
+        Path tests = updateSources().getParent().getParent().getParent().getParent().getParent()
+                .getParent()
+                .resolve("test/java/de/thonktank/autosecretary/update");
+        assertTrue("Update test root not found", Files.isDirectory(tests));
+        assertNoSourceText(tests, List.of("Thread." + "sleep", "void " + "await("));
+    }
+
     private static void assertNoImports(Path directory, List<String> forbidden)
+            throws IOException {
+        assertNoSourceText(directory, forbidden);
+    }
+
+    private static void assertNoSourceText(Path directory, List<String> forbidden)
             throws IOException {
         try (Stream<Path> sources = Files.walk(directory)) {
             for (Path source : sources.filter(path -> path.toString().endsWith(".java"))
