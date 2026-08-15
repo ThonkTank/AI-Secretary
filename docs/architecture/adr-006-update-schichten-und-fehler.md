@@ -54,6 +54,8 @@ reine Domainregeln und typisierte Ergebnisse. Der Android-Systeminstaller bleibt
 Infrastruktur, die `MainActivity` noch direkt aufruft. Seine Kapselung hinter einer kleinen
 Plattform- und Effektschnittstelle ist Gegenstand der folgenden Activity-Phase.
 
-Die Updatepräferenzen besitzen bereits einen Application-Port, teilen sich jedoch weiterhin die
+Die in dieser Entscheidung noch offene Kapselung des Systeminstallers und der UI-Effekte wurde
+mit [ADR-007](adr-007-update-praesentation-und-systemnavigation.md) umgesetzt. Die
+Updatepräferenzen besitzen bereits einen Application-Port, teilen sich jedoch weiterhin die
 Datei mit Theme- und Kalenderwerten. Die physische Trennung sowie kontrollierte Executor- und
 Zeitabhängigkeiten folgen in der Determinismus-Phase.

@@ -39,6 +39,17 @@ public final class UpdateArchitectureBoundaryTest {
         assertTrue(Files.isDirectory(root.resolve("presentation")));
     }
 
+    @Test public void mainActivityOnlyObservesAndDelegatesUpdatePresentation() throws Exception {
+        Path source = updateSources().getParent().resolve("MainActivity.java");
+        String text = new String(Files.readAllBytes(source), StandardCharsets.UTF_8);
+        assertTrue(text.contains("UpdateUiController"));
+        for (String forbidden : List.of("UpdateEvent", "UpdateInfo", "VerifiedUpdate",
+                "canInstallPackages", "installerIntent", "settingsIntent", "releasesIntent",
+                "showUpdateAvailable", "showUpdateError", "readableSize"))
+            assertFalse("MainActivity must delegate update concern " + forbidden,
+                    text.contains(forbidden));
+    }
+
     private static void assertNoImports(Path directory, List<String> forbidden)
             throws IOException {
         try (Stream<Path> sources = Files.walk(directory)) {

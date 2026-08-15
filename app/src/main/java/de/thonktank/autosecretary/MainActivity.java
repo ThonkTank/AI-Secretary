@@ -26,13 +26,9 @@ import androidx.lifecycle.ViewModelProvider;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.update.application.VerifiedUpdate;
-import de.thonktank.autosecretary.update.domain.UpdateInfo;
-import de.thonktank.autosecretary.update.presentation.UpdateEvent;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
+import de.thonktank.autosecretary.update.presentation.UpdateUiController;
 import de.thonktank.autosecretary.update.presentation.UpdateViewModel;
-
-import java.util.Locale;
 
 /** Lifecycle host for the state-driven dashboard view hierarchy. */
 public class MainActivity extends ComponentActivity {
@@ -43,7 +39,7 @@ public class MainActivity extends ComponentActivity {
     private final Handler minuteHandler = new Handler(Looper.getMainLooper());
     private AppContainer container;
     private TaskViewModel viewModel;
-    private UpdateViewModel updateViewModel;
+    private UpdateUiController updates;
     private DashboardUiState uiState;
     private UpdateUiState updateState = UpdateUiState.idle();
     private ForestBackdropView forest;
@@ -61,8 +57,7 @@ public class MainActivity extends ComponentActivity {
 
     private final ActivityResultLauncher<Intent> installPermission = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (container != null && container.updateInstaller.canInstallPackages(this)
-                        && updateViewModel != null) updateViewModel.requestInstall();
+                if (updates != null) updates.onInstallPermissionResult();
             });
 
     @Override public void onCreate(Bundle savedInstanceState) {
@@ -72,14 +67,19 @@ public class MainActivity extends ComponentActivity {
         buildShell();
         viewModel = new ViewModelProvider(this,
                 new TaskViewModel.Factory(container)).get(TaskViewModel.class);
-        updateViewModel = new ViewModelProvider(this, new UpdateViewModel.Factory(
+        UpdateViewModel updateViewModel = new ViewModelProvider(this, new UpdateViewModel.Factory(
                 container.updates, container.uiPreferences,
                 failure -> container.logger.error("Updater", failure.getMessage(), failure),
                 container.texts, System::currentTimeMillis)).get(UpdateViewModel.class);
+        updates = new UpdateUiController(updateViewModel, new AndroidUpdateDialogs(this),
+                new AndroidUpdatePlatform(this, installPermission, container.updateInstaller,
+                        container.logger, BuildConfig.UPDATE_REPOSITORY_OWNER,
+                        BuildConfig.UPDATE_REPOSITORY_NAME),
+                container.texts, !BuildConfig.DEBUG);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
-        updateViewModel.state().observe(this, this::renderUpdate);
-        updateViewModel.events().observe(this, this::handleUpdateEvent);
+        updates.state().observe(this, this::renderUpdate);
+        updates.effects().observe(this, updates::handleEffect);
         showLegacyResetNotice();
         handleLaunchIntent();
         syncCalendarPermission();
@@ -92,7 +92,7 @@ public class MainActivity extends ComponentActivity {
             syncCalendarPermission();
             viewModel.load();
         }
-        if (!BuildConfig.DEBUG && updateViewModel != null) updateViewModel.automaticCheck();
+        if (updates != null) updates.onResume();
     }
 
     @Override protected void onDestroy() {
@@ -160,7 +160,7 @@ public class MainActivity extends ComponentActivity {
                 TaskWidgetProvider.updateAll(MainActivity.this);
             }
             @Override public void onCalendarPermission() { viewModel.onCalendarPermissionAction(); }
-            @Override public void onUpdates() { updateViewModel.manualAction(); }
+            @Override public void onUpdates() { updates.onManualAction(); }
         };
     }
 
@@ -263,58 +263,6 @@ public class MainActivity extends ComponentActivity {
         else if (event.type == UiEvent.Type.OPEN_APP_SETTINGS)
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName())));
-    }
-
-    private void handleUpdateEvent(UpdateEvent event) {
-        if (event == null || !event.consume()) return;
-        if (event.type == UpdateEvent.Type.AVAILABLE) showUpdateAvailable(event.update);
-        else if (event.type == UpdateEvent.Type.INSTALL) installUpdate(event.verified);
-        else showUpdateError(event.message);
-    }
-
-    private void showUpdateAvailable(UpdateInfo update) {
-        if (update == null || isFinishing()) return;
-        new AlertDialog.Builder(this)
-                .setTitle(getString(R.string.update_available_title, update.versionName))
-                .setMessage(getString(R.string.update_available_message,
-                        readableSize(update.sizeBytes)))
-                .setNegativeButton(R.string.update_later,
-                        (dialog, which) -> updateViewModel.postpone(update))
-                .setPositiveButton(R.string.update_now,
-                        (dialog, which) -> updateViewModel.accept(update)).show();
-    }
-
-    private void installUpdate(VerifiedUpdate update) {
-        if (update == null || isFinishing()) return;
-        if (container.updateInstaller.canInstallPackages(this)) {
-            try {
-                startActivity(container.updateInstaller.installerIntent(this, update));
-            } catch (RuntimeException error) {
-                container.logger.error("Updater", "Could not open Android installer", error);
-                showUpdateError(getString(R.string.error_update_download));
-            }
-            return;
-        }
-        new AlertDialog.Builder(this).setTitle(R.string.unknown_sources_title)
-                .setMessage(R.string.unknown_sources_message)
-                .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(R.string.open_install_settings, (dialog, which) ->
-                        installPermission.launch(container.updateInstaller.settingsIntent(this)))
-                .show();
-    }
-
-    private void showUpdateError(String message) {
-        new AlertDialog.Builder(this).setTitle(R.string.error_title)
-                .setMessage(message == null ? getString(R.string.error_update_check) : message)
-                .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(R.string.open_github, (dialog, which) -> startActivity(
-                        container.updateInstaller.releasesIntent(BuildConfig.UPDATE_REPOSITORY_OWNER,
-                                BuildConfig.UPDATE_REPOSITORY_NAME)))
-                .show();
-    }
-
-    private static String readableSize(long bytes) {
-        return String.format(Locale.GERMANY, "%.1f MB", bytes / 1024d / 1024d);
     }
 
     private void syncCalendarPermission() {

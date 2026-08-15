@@ -20,7 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.LongSupplier;
 
-public final class UpdateViewModel extends ViewModel {
+public final class UpdateViewModel extends ViewModel implements UpdateFlow {
     private final UpdateRepository repository;
     private final UpdatePreferences preferences;
     private final UpdateErrorReporter errors;
