@@ -35,8 +35,18 @@ class ReleaseConventionPlugin : Plugin<Project> {
         }
         project.tasks.register("modelCompatibilityTest") {
             group = "verification"
-            description = "Runs the separately filtered real-model Android device tests."
+            description = "Runs the real-model tests on one connected physical Android device."
             dependsOn(":app:connectedDebugAndroidTest")
+        }
+        project.tasks.register(
+            "verifyModelArtifact",
+            ModelArtifactVerificationTask::class.java,
+        ) {
+            group = "verification"
+            description = "Downloads and verifies the model manifest's pinned remote artifact."
+            manifestFile.set(
+                project.layout.projectDirectory.file("app/src/main/assets/model-manifest.json"),
+            )
         }
 
         val app = project.project(":app")

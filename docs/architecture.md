@@ -62,3 +62,16 @@ The app update port is separated into release-feed, HTTP trust, resumable system
 package evidence and pure verification adapters. Verified future APKs survive process recreation;
 installed and stale packages are cleaned up. The optional AI model is a separate pinned artifact
 described by an app asset manifest and validated before atomic installation into private storage.
+
+## Model compatibility
+
+Model compatibility has two deliberately distinct verification levels. The path-filtered GitHub
+workflow always downloads the exact revision from `model-manifest.json`, enforces HTTPS across at
+most five redirects, verifies its byte count and SHA-256, and compiles the Android device suite.
+Real MediaPipe initialization and the German evaluation suite require a physical Android device:
+run `./gradlew modelCompatibilityTest` with exactly one authorized device attached.
+
+A self-hosted Actions runner labeled `autosecretary-android-device` runs the same task automatically
+when the repository variable `AUTOSECRETARY_MODEL_DEVICE_RUNNER` is set to `enabled`. The physical
+job is visibly skipped when that hardware contract is not configured; a hosted emulator result is
+never presented as proof of model compatibility.
