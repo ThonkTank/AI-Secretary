@@ -1,0 +1,19 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="vertical">
+
+    <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="@color/ink" android:textSize="16sp" android:textStyle="bold" />
+    <TextView android:id="@+id/widget_subtitle" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="3dp" android:textColor="@color/muted" android:textSize="12sp" />
+    <TextView android:id="@+id/widget_step" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" android:textColor="@color/ink" android:textSize="17sp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="horizontal">
+        <Button android:id="@+id/widget_done" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Erledigt" />
+        <Button android:id="@+id/widget_later" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:text="Später" />
+    </LinearLayout>
+    <Button android:id="@+id/widget_condition" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" android:text="Bedingung erfüllt" android:visibility="gone" />
+</LinearLayout>
