@@ -8,8 +8,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.autosecretary.application.GetTodayTimeline;
@@ -51,6 +49,9 @@ public final class WorkItemsFragment extends Fragment {
                     }
                     @Override public void omitToday(String id) { viewModel.omitToday(id); }
                     @Override public void confirmDelete(WorkItemRow item) { confirmDelete(item); }
+                    @Override public void confirmCleanup(List<String> ids, String message) {
+                        showDeleteConfirmation("Erledigtes aufräumen", message, ids);
+                    }
                     @Override public void undo() { viewModel.undo(); }
                     @Override public void deleteAll(List<String> ids) { viewModel.deleteAll(ids); }
                 });
@@ -59,6 +60,16 @@ public final class WorkItemsFragment extends Fragment {
     }
 
     @Override public void onViewCreated(@NonNull View view, @Nullable Bundle state) {
+        getParentFragmentManager().setFragmentResultListener(
+                DeleteConfirmationDialogFragment.RESULT,
+                getViewLifecycleOwner(),
+                (key, result) -> {
+                    List<String> ids = result.getStringArrayList(
+                            DeleteConfirmationDialogFragment.IDS);
+                    if (ids == null || ids.isEmpty()) return;
+                    if (ids.size() == 1) viewModel.delete(ids.get(0));
+                    else viewModel.deleteAll(ids);
+                });
         viewModel.state().observe(getViewLifecycleOwner(), this::render);
         viewModel.effects().observe(getViewLifecycleOwner(), this::handleEffect);
     }
@@ -96,13 +107,15 @@ public final class WorkItemsFragment extends Fragment {
         String detail = item.routine()
                 ? "„" + item.title() + "“ mit Schritten und Jahresring löschen?"
                 : "„" + item.title() + "“ wirklich löschen?";
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
-                .setTitle("Eintrag löschen").setMessage(detail)
-                .setPositiveButton("Löschen", (ignored, which) -> viewModel.delete(item.id()))
-                .setNegativeButton("behalten", null).create();
-        dialog.show();
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setTextColor(ContextCompat.getColor(requireContext(), R.color.danger));
+        showDeleteConfirmation("Eintrag löschen", detail, List.of(item.id()));
+    }
+
+    private void showDeleteConfirmation(String title, String message, List<String> ids) {
+        if (getParentFragmentManager().findFragmentByTag(
+                DeleteConfirmationDialogFragment.TAG) == null) {
+            DeleteConfirmationDialogFragment.create(title, message, ids).show(
+                    getParentFragmentManager(), DeleteConfirmationDialogFragment.TAG);
+        }
     }
 
     private void showAdd() {

@@ -73,6 +73,12 @@ public final class UpdatePackageVerifierTest {
                 evidence("com.autosecretary", 7, SIGNER)));
     }
 
+    @Test public void updateMetadataRequiresAnApkStrictlyBelowEightyMebibytes() {
+        assertThrows(IllegalArgumentException.class, () -> new UpdateInfo(
+                6, "2.0.1", "com.autosecretary", url(), 80L * 1024L * 1024L,
+                "a".repeat(64), SIGNER));
+    }
+
     private void verify(File apk, UpdateInfo update,
                         UpdateArtifactVerifier.PackageEvidence archive) throws Exception {
         UpdateArtifactVerifier.verify(apk, update, 5, "com.autosecretary",

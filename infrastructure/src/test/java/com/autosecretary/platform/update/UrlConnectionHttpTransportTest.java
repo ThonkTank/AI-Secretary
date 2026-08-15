@@ -12,9 +12,14 @@ import org.junit.Test;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.ServerSocket;
 import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class UrlConnectionHttpTransportTest {
     private static final String FEED =
@@ -61,6 +66,74 @@ public final class UrlConnectionHttpTransportTest {
         UpdateFailure failure = AndroidUpdateRepository.failure("check", timeout).failure();
         assertEquals(UpdateFailure.Kind.NETWORK, failure.kind());
         assertTrue(failure.retryable());
+    }
+
+    @Test public void permitsFiveRedirectsButRejectsAnInsecureHop() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        String result = transport(url -> calls.incrementAndGet() <= 5
+                ? new FakeConnection(302, "https://github.com/redirect", new byte[0], false)
+                : new FakeConnection(200, null, "ok".getBytes(StandardCharsets.UTF_8), false))
+                .get(FEED, 16);
+        assertEquals("ok", result);
+        assertEquals(6, calls.get());
+
+        assertThrows(SecurityException.class, () -> transport(url -> new FakeConnection(
+                302, "http://github.com/insecure", new byte[0], false)).get(FEED, 16));
+    }
+
+    @Test public void classifiesMalformedReleaseJsonAsInvalidRelease() {
+        UpdateFailure failure = AndroidUpdateRepository.failure("check",
+                new org.json.JSONException("invalid json")).failure();
+
+        assertEquals(UpdateFailure.Kind.INVALID_RELEASE, failure.kind());
+        assertFalse(failure.retryable());
+    }
+
+    @Test public void separatesStoragePermissionAndArtifactSecurityFailures() {
+        assertEquals(UpdateFailure.Kind.STORAGE, AndroidUpdateRepository.failure(
+                "download", new IllegalStateException("Update-Verzeichnis fehlt"))
+                .failure().kind());
+        assertEquals(UpdateFailure.Kind.PERMISSION, AndroidUpdateRepository.failure(
+                "Update-Download konnte nicht gestartet werden",
+                new SecurityException("permission denied")).failure().kind());
+        assertEquals(UpdateFailure.Kind.SECURITY_REJECTED, AndroidUpdateRepository.failure(
+                "Update-Paket wurde verworfen", new SecurityException("wrong signer"))
+                .failure().kind());
+    }
+
+    @Test public void readsBoundedContentFromALocalFakeServer() throws Exception {
+        AtomicReference<Throwable> serverFailure = new AtomicReference<>();
+        InetAddress loopback = InetAddress.getByName("127.0.0.1");
+        try (ServerSocket server = new ServerSocket(0, 1, loopback)) {
+            Thread responder = new Thread(() -> {
+                try (var socket = server.accept();
+                     var reader = new java.io.BufferedReader(new java.io.InputStreamReader(
+                             socket.getInputStream(), StandardCharsets.US_ASCII));
+                     var output = socket.getOutputStream()) {
+                    while (true) {
+                        String line = reader.readLine();
+                        if (line == null || line.isEmpty()) break;
+                    }
+                    byte[] body = "{\"ok\":true}".getBytes(StandardCharsets.UTF_8);
+                    output.write(("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+                            + "Content-Length: " + body.length + "\r\nConnection: close\r\n\r\n")
+                            .getBytes(StandardCharsets.US_ASCII));
+                    output.write(body);
+                    output.flush();
+                } catch (Throwable error) {
+                    serverFailure.set(error);
+                }
+            }, "update-fake-server");
+            responder.start();
+            String local = "http://127.0.0.1:" + server.getLocalPort() + "/release";
+            UrlConnectionHttpTransport transport = transport(url ->
+                    (HttpURLConnection) URI.create(url).toURL().openConnection());
+
+            assertEquals("{\"ok\":true}", transport.get(local, 64));
+            responder.join(2_000);
+            assertFalse(responder.isAlive());
+            if (serverFailure.get() != null) throw new AssertionError(serverFailure.get());
+        }
     }
 
     private static UrlConnectionHttpTransport transport(

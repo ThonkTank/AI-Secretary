@@ -11,9 +11,6 @@ import android.widget.RemoteViewsService;
 
 import com.autosecretary.presentation.R;
 import com.autosecretary.application.DashboardData;
-import com.autosecretary.application.TodayEntry;
-import com.autosecretary.application.GetTodayTimeline;
-import com.autosecretary.application.TimeProvider;
 import com.autosecretary.ui.CalendarRow;
 import com.autosecretary.ui.FocusRow;
 import com.autosecretary.ui.StepRow;
@@ -22,8 +19,6 @@ import com.autosecretary.ui.TodayRow;
 import com.autosecretary.ui.TodayViewData;
 
 import java.time.LocalDateTime;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -171,16 +166,6 @@ final class FocusWidgetFactory implements RemoteViewsService.RemoteViewsFactory 
                 .putExtra(FocusWidgetProvider.EXTRA_ID, focus.id());
         row.setOnClickFillInIntent(R.id.WidgetLater, later);
         return row;
-    }
-
-    static List<TodayEntry> orderedEntries(
-            DashboardData dashboard, LocalDateTime now, int maximum) {
-        TimeProvider fixed = new TimeProvider() {
-            @Override public Instant now() { return now.toInstant(java.time.ZoneOffset.UTC); }
-            @Override public ZoneId zone() { return java.time.ZoneOffset.UTC; }
-        };
-        return new GetTodayTimeline(fixed).execute(dashboard).entries().stream()
-                .limit(Math.max(0, maximum)).collect(java.util.stream.Collectors.toList());
     }
 
     private RemoteViews calendarView(CalendarRow calendar, int position) {

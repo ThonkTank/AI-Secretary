@@ -34,7 +34,7 @@ public final class DeviceCalendarGatewayTest {
     };
 
     @Test
-    public void excludesNonBlockingInstancesAndDeduplicatesExactMatches() {
+    public void losslesslyMapsProviderRowsBeforeCorePolicyFiltersAndDeduplicates() {
         MatrixCursor cursor = new MatrixCursor(PROJECTION);
         add(cursor, 10, 11, 0, "Beschäftigt", CalendarContract.Events.AVAILABILITY_BUSY,
                 CalendarContract.Events.STATUS_CONFIRMED,
@@ -60,7 +60,7 @@ public final class DeviceCalendarGatewayTest {
         List<CalendarOccurrence> occurrences = DeviceCalendarGateway.occurrences(cursor);
         var intervals = new CalendarPolicy().busyIntervals(occurrences, ZoneOffset.UTC);
 
-        assertEquals(8, occurrences.size());
+        assertEquals(9, occurrences.size());
         assertEquals(java.util.Arrays.asList("Beschäftigt", "Vorläufig", null),
                 intervals.stream().map(BusyInterval::title).toList());
         assertEquals(CalendarVisibility.TITLE_HIDDEN,

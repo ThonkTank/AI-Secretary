@@ -4,7 +4,6 @@ import android.graphics.Paint;
 import android.view.View;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -26,6 +25,7 @@ public final class WorkItemsPanelController {
         void edit(String id, boolean routine);
         void omitToday(String id);
         void confirmDelete(WorkItemRow item);
+        void confirmCleanup(List<String> ids, String message);
         void undo();
         void deleteAll(List<String> ids);
     }
@@ -115,15 +115,8 @@ public final class WorkItemsPanelController {
         if (ids.isEmpty()) return;
         String count = ids.size() == 1 ? "ein erledigtes Blatt"
                 : ids.size() + " erledigte Blätter";
-        AlertDialog dialog = new AlertDialog.Builder(binding.Root.getContext())
-                .setTitle("Erledigtes aufräumen")
-                .setMessage(count + " ist älter als 30 Tage. Wirklich löschen?")
-                .setPositiveButton("Löschen", (ignored, which) -> actions.deleteAll(ids))
-                .setNegativeButton("behalten", null)
-                .create();
-        dialog.show();
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setTextColor(ContextCompat.getColor(binding.Root.getContext(), R.color.danger));
+        actions.confirmCleanup(ids,
+                count + " ist älter als 30 Tage. Wirklich löschen?");
     }
 
     private static int groupPriority(String group) {

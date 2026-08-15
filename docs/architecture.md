@@ -66,8 +66,10 @@ described by an app asset manifest and validated before atomic installation into
 ## Model compatibility
 
 Model compatibility has two deliberately distinct verification levels. The path-filtered GitHub
-workflow always downloads the exact revision from `model-manifest.json`, enforces HTTPS across at
-most five redirects, verifies its byte count and SHA-256, and compiles the Android device suite.
+workflow always downloads the exact artifact revision from `model-manifest.json`, enforces HTTPS
+across at most five redirects, verifies its byte count and SHA-256, and compiles the Android device
+suite. The manifest retains the original LiteRT source revision and names the public,
+byte-identical mirror revision separately; the pinned size and digest are the trust anchor.
 Real MediaPipe initialization and the German evaluation suite require a physical Android device:
 run `./gradlew modelCompatibilityTest` with exactly one authorized device attached.
 

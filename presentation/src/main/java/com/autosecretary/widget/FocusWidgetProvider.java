@@ -45,6 +45,12 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
     @Override
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
+        if (Intent.ACTION_DATE_CHANGED.equals(intent.getAction())
+                || Intent.ACTION_TIME_CHANGED.equals(intent.getAction())
+                || Intent.ACTION_TIMEZONE_CHANGED.equals(intent.getAction())) {
+            refreshAll(context);
+            return;
+        }
         String id = intent.getStringExtra(EXTRA_ID);
         boolean undo = ACTION_UNDO.equals(intent.getAction());
         if (id == null && !undo) return;
@@ -114,7 +120,8 @@ public final class FocusWidgetProvider extends AppWidgetProvider {
         service.putExtra(FocusWidgetService.EXTRA_SHOW_STEPS, showSteps);
         service.putExtra(FocusWidgetService.EXTRA_WIDE, wideWidget);
         service.putExtra(FocusWidgetService.EXTRA_PALETTE, scene.palette());
-        service.setData(Uri.parse("widget://focus/" + widgetId + "/" + System.currentTimeMillis()));
+        service.setData(Uri.parse("widget://focus/" + widgetId + "/"
+                + clock.now().toEpochMilli()));
         views.setRemoteAdapter(R.id.WidgetList, service);
         views.setEmptyView(R.id.WidgetList, R.id.WidgetEmpty);
 

@@ -84,9 +84,8 @@ final class DownloadManagerUpdateDownloader {
                 case DownloadManager.STATUS_RUNNING ->
                         new DownloadProgress.Running(downloaded, total);
                 case DownloadManager.STATUS_SUCCESSFUL -> new DownloadProgress.Complete();
-                case DownloadManager.STATUS_FAILED -> failed("Systemdownload fehlgeschlagen: "
-                        + cursor.getInt(cursor.getColumnIndexOrThrow(
-                        DownloadManager.COLUMN_REASON)), true);
+                case DownloadManager.STATUS_FAILED -> failureForReason(cursor.getInt(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)));
                 default -> failed("Unbekannter Systemdownload-Zustand: " + status, true);
             };
         }
@@ -119,5 +118,12 @@ final class DownloadManagerUpdateDownloader {
     private static DownloadProgress.Failed failed(String detail, boolean retryable) {
         return new DownloadProgress.Failed(new UpdateFailure(
                 UpdateFailure.Kind.DOWNLOAD_FAILED, detail, retryable));
+    }
+
+    private static DownloadProgress.Failed failureForReason(int reason) {
+        UpdateFailure.Kind kind = reason == DownloadManager.ERROR_INSUFFICIENT_SPACE
+                ? UpdateFailure.Kind.STORAGE : UpdateFailure.Kind.DOWNLOAD_FAILED;
+        return new DownloadProgress.Failed(new UpdateFailure(
+                kind, "Systemdownload fehlgeschlagen: " + reason, true));
     }
 }

@@ -1,7 +1,8 @@
 {
   "schemaVersion": 1,
   "modelId": "autosecretary-gemma3-270m-it-q8",
-  "revision": "daa9f3663f4752fd1c5239f4defdaf748c1351ba",
+  "revision": "8018587998a60359c204699be38bc8940f5379a4",
+  "artifactRevision": "daa9f3663f4752fd1c5239f4defdaf748c1351ba",
   "url": "https://huggingface.co/72fstudio/gemma-3-270m-it/resolve/daa9f3663f4752fd1c5239f4defdaf748c1351ba/gemma3-270m-it-q8.task?download=true",
   "fileName": "autosecretary-model.task",
   "sizeBytes": 303950933,

@@ -34,10 +34,12 @@ abstract class ModelArtifactVerificationTask : DefaultTask() {
             throw GradleException("Unsupported model manifest schemaVersion: $schemaVersion")
         }
         val revision = requiredString(source, "revision")
+        val artifactRevision = (source["artifactRevision"] as? String)
+            ?.takeIf(String::isNotBlank) ?: revision
         val url = URI(requiredString(source, "url"))
         requireHttps(url)
-        if (!url.path.contains("/resolve/$revision/")) {
-            throw GradleException("Model URL does not contain the pinned revision")
+        if (!url.path.contains("/resolve/$artifactRevision/")) {
+            throw GradleException("Model URL does not contain the pinned artifact revision")
         }
         val expectedSize = (source["sizeBytes"] as? Number)?.toLong()
             ?: throw GradleException("Model manifest sizeBytes is missing")
@@ -113,8 +115,9 @@ abstract class ModelArtifactVerificationTask : DefaultTask() {
                 )
             }
             logger.lifecycle(
-                "Verified pinned model revision {} ({} bytes, sha256 {}).",
+                "Verified source revision {} via artifact revision {} ({} bytes, sha256 {}).",
                 revision,
+                artifactRevision,
                 actualSize,
                 actualSha256,
             )

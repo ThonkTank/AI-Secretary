@@ -21,6 +21,7 @@ import org.junit.Test;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class UpdateViewModelTest {
     @Rule public final InstantTaskExecutorRule liveData = new InstantTaskExecutorRule();
@@ -94,11 +95,107 @@ public final class UpdateViewModelTest {
                 restored.effects().getValue()).update().info().versionCode());
     }
 
+    @Test public void availableUpdateSurvivesProcessRecreationBeforeDownload() throws Exception {
+        File apk = File.createTempFile("verified-update", ".apk");
+        UpdateInfo info = update();
+        SavedStateHandle state = new SavedStateHandle();
+        UpdateViewModel first = new UpdateViewModel(
+                state, new FakeRepository(info, apk), io, Runnable::run);
+        first.check();
+        await(() -> first.state().getValue() instanceof UpdateUiState.Available);
+
+        UpdateViewModel restored = new UpdateViewModel(
+                state, new FakeRepository(info, apk), io, Runnable::run);
+
+        assertTrue(restored.state().getValue() instanceof UpdateUiState.Available);
+        assertEquals(info, restored.state().getValue().available());
+    }
+
+    @Test public void completedPersistedDownloadIsReverifiedAfterProcessRestart()
+            throws Exception {
+        File apk = File.createTempFile("verified-update", ".apk");
+        UpdateInfo info = update();
+        SavedStateHandle state = copyUpdateState(info);
+        state.set("update.downloadId", 7L);
+        AtomicInteger verifications = new AtomicInteger();
+        TrackingRepository repository = new TrackingRepository(info, apk,
+                new DownloadProgress.Complete(), verifications);
+
+        UpdateViewModel restored = new UpdateViewModel(state, repository, io, Runnable::run);
+        await(() -> restored.state().getValue() instanceof UpdateUiState.Ready);
+
+        assertEquals(1, verifications.get());
+    }
+
+    @Test public void disappearedPersistedDownloadBecomesRecoverableError() {
+        File apk;
+        try { apk = File.createTempFile("verified-update", ".apk"); }
+        catch (Exception error) { throw new AssertionError(error); }
+        UpdateInfo info = update();
+        SavedStateHandle state = copyUpdateState(info);
+        state.set("update.downloadId", 7L);
+        var failure = new com.autosecretary.application.update.UpdateFailure(
+                com.autosecretary.application.update.UpdateFailure.Kind.DOWNLOAD_FAILED,
+                "verschwunden", true);
+
+        UpdateViewModel restored = new UpdateViewModel(state,
+                new TrackingRepository(info, apk, new DownloadProgress.Failed(failure),
+                        new AtomicInteger()), io, Runnable::run);
+
+        assertTrue(restored.state().getValue() instanceof UpdateUiState.Error);
+        UpdateUiState.Error error = (UpdateUiState.Error) restored.state().getValue();
+        assertEquals(com.autosecretary.application.update.UpdateFailure.Kind.DOWNLOAD_FAILED,
+                error.failure().kind());
+        assertTrue(error.failure().retryable());
+    }
+
+    @Test public void missingVerifiedFileFallsBackToAvailableInsteadOfTrustingSavedUi() {
+        UpdateInfo info = update();
+        SavedStateHandle state = copyUpdateState(info);
+        state.set("update.verifiedPath", new File("does-not-exist.apk").getAbsolutePath());
+
+        UpdateViewModel restored = new UpdateViewModel(state,
+                new FakeRepository(info, new File("does-not-exist.apk")), io, Runnable::run);
+
+        assertTrue(restored.state().getValue() instanceof UpdateUiState.Available);
+    }
+
+    @Test public void userCanRetryInstallerAfterAndroidInstallerWasCancelled() throws Exception {
+        File apk = File.createTempFile("verified-update", ".apk");
+        Files.write(apk.toPath(), new byte[] {1});
+        UpdateInfo info = update();
+        SavedStateHandle state = copyUpdateState(info);
+        state.set("update.verifiedPath", apk.getAbsolutePath());
+        UpdateViewModel model = new UpdateViewModel(
+                state, new FakeRepository(info, apk), io, Runnable::run);
+
+        model.requestInstall(true);
+        assertTrue(model.effects().getValue() instanceof UpdateUiEffect.OpenInstaller);
+        long first = model.effects().getValue().id();
+        model.consumeEffect(first);
+        model.requestInstall(true);
+
+        assertTrue(model.effects().getValue() instanceof UpdateUiEffect.OpenInstaller);
+        assertTrue(model.effects().getValue().id() > first);
+    }
+
     private static UpdateInfo update() {
         return new UpdateInfo(2001202, "2.1.1", "com.autosecretary",
                 "https://github.com/ThonkTank/AI-Secretary/releases/download/"
                         + "android-2001202/AutoSecretary.apk",
                 1, "a".repeat(64), "b".repeat(64));
+    }
+
+    private static SavedStateHandle copyUpdateState(UpdateInfo info) {
+        SavedStateHandle state = new SavedStateHandle();
+        state.set("update.versionCode", info.versionCode());
+        state.set("update.versionName", info.versionName());
+        state.set("update.packageName", info.packageName());
+        state.set("update.apkUrl", info.apkUrl());
+        state.set("update.apkSize", info.apkSizeBytes());
+        state.set("update.sha256", info.sha256());
+        state.set("update.signer", info.signerSha256());
+        return state;
     }
 
     private static void await(java.util.function.BooleanSupplier condition) throws Exception {
@@ -118,6 +215,26 @@ public final class UpdateViewModelTest {
             return new DownloadProgress.Complete();
         }
         @Override public VerifiedUpdate verify(DownloadTicket ticket) {
+            return new VerifiedUpdate(update, apk);
+        }
+        @Override public void cancel(DownloadTicket ticket) { }
+        @Override public void cleanup(long installedVersionCode) { }
+    }
+
+    private record TrackingRepository(
+            UpdateInfo update,
+            File apk,
+            DownloadProgress progress,
+            AtomicInteger verifications) implements UpdateRepository {
+        @Override public UpdateCheckResult check() {
+            return new UpdateCheckResult.Available(update);
+        }
+        @Override public DownloadTicket enqueue(UpdateInfo ignored) {
+            return new DownloadTicket(7, update.versionCode());
+        }
+        @Override public DownloadProgress query(DownloadTicket ticket) { return progress; }
+        @Override public VerifiedUpdate verify(DownloadTicket ticket) {
+            verifications.incrementAndGet();
             return new VerifiedUpdate(update, apk);
         }
         @Override public void cancel(DownloadTicket ticket) { }

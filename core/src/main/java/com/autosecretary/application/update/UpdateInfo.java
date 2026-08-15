@@ -30,7 +30,7 @@ public record UpdateInfo(
         if (!"https".equalsIgnoreCase(source.getScheme()) || source.getHost() == null) {
             throw new IllegalArgumentException("APK-URL muss HTTPS verwenden");
         }
-        if (apkSizeBytes < 0 || apkSizeBytes > 80L * 1024L * 1024L) {
+        if (apkSizeBytes < 0 || apkSizeBytes >= 80L * 1024L * 1024L) {
             throw new IllegalArgumentException("Ungültige APK-Größe");
         }
         if (sha256 == null || !sha256.matches("[0-9a-fA-F]{64}")) {

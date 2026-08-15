@@ -219,3 +219,12 @@ jobs:
           test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" = "$TAG"
           test "$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" \
             --jq .target_commitish)" = "$GITHUB_SHA"
+          mkdir -p "$RUNNER_TEMP/published-release-proof"
+          gh release download "$TAG" --dir "$RUNNER_TEMP/published-release-proof" \
+            --pattern "$apkAsset" --pattern "$metadataAsset" --clobber
+          test "$(sha256sum "$RUNNER_TEMP/published-release-proof/$metadataAsset" \
+            | awk '{print $1}')" = "$LOCAL_METADATA_SHA"
+          test "$(sha256sum "$RUNNER_TEMP/published-release-proof/$apkAsset" \
+            | awk '{print $1}')" = "$EXPECTED"
+          test "$(jq -r .commitSha \
+            "$RUNNER_TEMP/published-release-proof/$metadataAsset")" = "$GITHUB_SHA"

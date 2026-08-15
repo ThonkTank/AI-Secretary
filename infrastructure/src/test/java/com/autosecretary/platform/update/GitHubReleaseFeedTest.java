@@ -43,6 +43,8 @@ public final class GitHubReleaseFeedTest {
     public void equalLatestReleaseMeansCurrent() throws Exception {
         assertNull(feed(feedResponses(metadata(1)))
                 .latest(2001202, PACKAGE, Set.of(SIGNER)));
+        assertNull(feed(feedResponses(metadata(1)))
+                .latest(2001203, PACKAGE, Set.of(SIGNER)));
     }
 
     @Test
@@ -79,6 +81,39 @@ public final class GitHubReleaseFeedTest {
                         + "android-2001202/AutoSecretary.apk", "AutoSecretary.apk"));
         assertThrows(SecurityException.class, () -> trust.requireRedirect(
                 "https://githubusercontent.com.evil.example/object"));
+    }
+
+    @Test public void rejectsInvalidJsonMissingAssetsAndNonRegularReleases() throws Exception {
+        FakeHttp invalidJson = new FakeHttp(Map.of(latestUrl(), "not-json"));
+        assertThrows(org.json.JSONException.class,
+                () -> feed(invalidJson).latest(2001201, PACKAGE, Set.of(SIGNER)));
+
+        JSONObject missingMetadata = release();
+        missingMetadata.put("assets", new JSONArray().put(asset("AutoSecretary.apk", APK_URL)));
+        assertThrows(SecurityException.class, () -> feed(new FakeHttp(Map.of(
+                latestUrl(), missingMetadata.toString()))).latest(
+                2001201, PACKAGE, Set.of(SIGNER)));
+
+        JSONObject draft = release().put("draft", true);
+        assertThrows(SecurityException.class, () -> feed(new FakeHttp(Map.of(
+                latestUrl(), draft.toString()))).latest(2001201, PACKAGE, Set.of(SIGNER)));
+        JSONObject prerelease = release().put("prerelease", true);
+        assertThrows(SecurityException.class, () -> feed(new FakeHttp(Map.of(
+                latestUrl(), prerelease.toString()))).latest(
+                2001201, PACKAGE, Set.of(SIGNER)));
+    }
+
+    @Test public void rejectsTagMetadataPackageAndSignerContradictions() throws Exception {
+        JSONObject wrongTag = release().put("tag_name", "android-2001203");
+        assertThrows(SecurityException.class, () -> feed(new FakeHttp(Map.of(
+                latestUrl(), wrongTag.toString(), METADATA_URL, metadata(1).toString())))
+                .latest(2001201, PACKAGE, Set.of(SIGNER)));
+
+        JSONObject foreignPackage = metadata(1).put("packageName", "example.foreign");
+        assertThrows(SecurityException.class, () -> feed(feedResponses(foreignPackage))
+                .latest(2001201, PACKAGE, Set.of(SIGNER)));
+        assertThrows(SecurityException.class, () -> feed(feedResponses(metadata(1)))
+                .latest(2001201, PACKAGE, Set.of("c".repeat(64))));
     }
 
     private static GitHubReleaseFeed feed(FakeHttp http) {

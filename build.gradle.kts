@@ -29,6 +29,7 @@ val checkClockBoundary = tasks.register("checkClockBoundary") {
         val forbidden = listOf(
             "LocalDate.now(", "LocalDateTime.now(", "Instant.now(",
             "ZonedDateTime.now(", "OffsetDateTime.now(", "ZoneId.systemDefault("
+            , "System.currentTimeMillis("
         )
         val offenders = fileTree(rootDir) {
             include("core/src/main/java/**/*.java", "infrastructure/src/main/java/**/*.java",
@@ -47,10 +48,57 @@ val checkClockBoundary = tasks.register("checkClockBoundary") {
     }
 }
 
+val checkReleaseWorkflowContract = tasks.register("checkReleaseWorkflowContract") {
+    group = "verification"
+    description = "Guards the single, idempotent main-to-Latest release path."
+    doLast {
+        val workflows = fileTree(".github/workflows") { include("*.yml", "*.yaml") }.files
+        val publishers = workflows.filter { it.readText().contains("gh release create") }
+        check(publishers.map { it.name } == listOf("android-release.yml")) {
+            "Exactly android-release.yml must be able to create GitHub releases: $publishers"
+        }
+        val workflow = publishers.single().readText()
+        fun requireText(value: String, detail: String) = check(workflow.contains(value)) { detail }
+        requireText("branches: [main]", "Phone releases must be triggered only from main")
+        check(!workflow.contains("workflow_dispatch:")) {
+            "The publishing workflow must not expose a manual release path"
+        }
+        listOf("README", "docs/**", "AGENTS.md").forEach { documentationPath ->
+            check(!workflow.contains("- \"$documentationPath\"")) {
+                "Documentation-only path $documentationPath must not publish an app release"
+            }
+        }
+        requireText("group: android-phone-update", "Release version reservation must be serialized")
+        requireText("cancel-in-progress: false", "A newer main push must not cancel a release")
+        requireText("gh api --paginate --slurp", "Version selection must read every release page")
+        requireText("DRAFT_TAG", "Retries must discover the draft for the same commit")
+        requireText("PUBLISHED_TAG", "A published commit must be an idempotent no-op")
+        requireText("--clobber", "A retry must safely replace incomplete draft assets")
+        requireText("--draft=false --latest", "Only the verified draft may become Latest")
+        requireText("published-release-proof", "Published assets must be downloaded and reverified")
+        val stage = workflow.indexOf("Stage or resume the draft release")
+        val stagedProof = workflow.indexOf("Verify the staged assets")
+        val publish = workflow.indexOf("--draft=false --latest")
+        val liveProof = workflow.indexOf("published-release-proof")
+        check(stage >= 0 && stage < stagedProof && stagedProof < publish && publish < liveProof) {
+            "Release transaction must stage, verify, publish and verify the live assets in order"
+        }
+        val uses = workflow.lineSequence().map(String::trim)
+            .filter { it.startsWith("- uses:") || it.startsWith("uses:") }.toList()
+        check(uses.isNotEmpty() && uses.all { it.matches(
+            Regex("(?:- )?uses: [^@\\s]+@[0-9a-f]{40}(?:\\s+#.*)?")
+        ) }) { "Every publishing action must be pinned to a full commit SHA: $uses" }
+        val dependabot = file(".github/dependabot.yml").readText()
+        check(dependabot.contains("package-ecosystem: github-actions")) {
+            "Dependabot must maintain the pinned GitHub Action revisions"
+        }
+    }
+}
+
 tasks.register("checkArchitecture") {
     group = "verification"
     description = "Runs behavior tests and enforced architecture-boundary rules."
-    dependsOn(checkClockBoundary, checkRoomSchemaBaseline,
+    dependsOn(checkClockBoundary, checkRoomSchemaBaseline, checkReleaseWorkflowContract,
         ":core:test", ":infrastructure:testDebugUnitTest",
         ":presentation:testDebugUnitTest", ":app:testDebugUnitTest")
 }

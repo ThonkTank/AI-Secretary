@@ -23,9 +23,7 @@ import com.autosecretary.application.TimeRange;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /** Read-only calendar adapter for the complete planner horizon. */
@@ -62,7 +60,7 @@ public final class DeviceCalendarGateway implements CalendarPort {
     }
 
     static List<CalendarOccurrence> occurrences(Cursor cursor) {
-        Map<CalendarOccurrenceId, CalendarOccurrence> unique = new LinkedHashMap<>();
+        ArrayList<CalendarOccurrence> result = new ArrayList<>();
         while (cursor.moveToNext()) {
             Instant startInstant = Instant.ofEpochMilli(cursor.getLong(
                     cursor.getColumnIndexOrThrow(CalendarContract.Instances.BEGIN)));
@@ -93,13 +91,12 @@ public final class DeviceCalendarGateway implements CalendarPort {
                     participation(intValue(cursor,
                             CalendarContract.Instances.SELF_ATTENDEE_STATUS)),
                     visibility, title);
-            unique.putIfAbsent(id, occurrence);
+            result.add(occurrence);
         }
-        ArrayList<CalendarOccurrence> result = new ArrayList<>(unique.values());
         result.sort(Comparator.comparing(CalendarOccurrence::start)
                 .thenComparing(CalendarOccurrence::end)
                 .thenComparing(value -> value.id().stableValue()));
-        return result;
+        return List.copyOf(result);
     }
 
     private static Optional<Integer> intValue(Cursor cursor, String column) {

@@ -78,12 +78,40 @@ public final class LocalModelManager implements ModelRepository {
         }
     }
 
+    @FunctionalInterface
+    interface ModelValidator {
+        void validate(File candidate) throws Exception;
+    }
+
+    interface DownloadAccess {
+        long enqueue(String url, File destination);
+        ModelDownloadProgress query(long id);
+        void remove(long id);
+    }
+
     private final Context context;
     private final Manifest manifest;
+    private final ModelValidator validator;
+    private final DownloadAccess downloads;
 
     public LocalModelManager(Context context) {
         this.context = context.getApplicationContext();
         this.manifest = readManifest(this.context);
+        this.validator = candidate -> validateWithMediaPipe(this.context, candidate);
+        this.downloads = new AndroidDownloadAccess(this.context);
+        reconcileStorage();
+    }
+
+    LocalModelManager(
+            Context context,
+            Manifest manifest,
+            ModelValidator validator,
+            DownloadAccess downloads) {
+        this.context = context.getApplicationContext();
+        this.manifest = manifest;
+        this.validator = validator;
+        this.downloads = downloads;
+        reconcileStorage();
     }
 
     public boolean hasModel() {
@@ -147,30 +175,7 @@ public final class LocalModelManager implements ModelRepository {
                     "Modelldownload ist verschwunden oder gehört zu einer anderen Revision", true);
         }
         if (ticket.id() == 0) return new ModelDownloadProgress.Complete();
-        try (Cursor cursor = manager().query(
-                new DownloadManager.Query().setFilterById(ticket.id()))) {
-            if (cursor == null || !cursor.moveToFirst()) {
-                return new ModelDownloadProgress.Failed("Modelldownload ist verschwunden", true);
-            }
-            int status = cursor.getInt(cursor.getColumnIndexOrThrow(
-                    DownloadManager.COLUMN_STATUS));
-            long downloaded = Math.max(0, cursor.getLong(cursor.getColumnIndexOrThrow(
-                    DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)));
-            long total = cursor.getLong(cursor.getColumnIndexOrThrow(
-                    DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
-            return switch (status) {
-                case DownloadManager.STATUS_PENDING, DownloadManager.STATUS_PAUSED ->
-                        new ModelDownloadProgress.Pending();
-                case DownloadManager.STATUS_RUNNING ->
-                        new ModelDownloadProgress.Running(downloaded, total);
-                case DownloadManager.STATUS_SUCCESSFUL -> new ModelDownloadProgress.Complete();
-                case DownloadManager.STATUS_FAILED -> new ModelDownloadProgress.Failed(
-                        "Modelldownload ist fehlgeschlagen: " + cursor.getInt(
-                                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)), true);
-                default -> new ModelDownloadProgress.Failed(
-                        "Unbekannter Modelldownload-Zustand: " + status, true);
-            };
-        }
+        return downloads.query(ticket.id());
     }
 
     @Override public java.nio.file.Path verifyAndActivate(ModelDownloadTicket ticket) {
@@ -232,23 +237,7 @@ public final class LocalModelManager implements ModelRepository {
     }
 
     private long enqueueDownload(File destination) {
-        DownloadManager manager = manager();
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(manifest.url()))
-                .setTitle("Auto Secretary · Lokale KI")
-                .setDescription("Gemma 3 270M wird einmalig heruntergeladen")
-                .setAllowedOverMetered(true)
-                .setAllowedOverRoaming(false)
-                .setNotificationVisibility(
-                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setDestinationUri(Uri.fromFile(destination));
-        request.addRequestHeader("User-Agent", "AutoSecretary model downloader");
-        return manager.enqueue(request);
-    }
-
-    private DownloadManager manager() {
-        DownloadManager manager = context.getSystemService(DownloadManager.class);
-        if (manager == null) throw new IllegalStateException("DownloadManager ist nicht verfügbar");
-        return manager;
+        return downloads.enqueue(manifest.url(), destination);
     }
 
     private File downloadTarget() {
@@ -281,14 +270,14 @@ public final class LocalModelManager implements ModelRepository {
                 .putLong(PENDING_DOWNLOAD_ID, id)
                 .putString(PENDING_MODEL_ID, manifest.modelId())
                 .putString(PENDING_REVISION, manifest.revision()).commit()) {
-            manager().remove(id);
+            downloads.remove(id);
             throw new IllegalStateException("Modelldownload konnte nicht gespeichert werden");
         }
     }
 
     private void clearPendingDownload(boolean removeFile) {
         long id = pendingDownloadId();
-        if (id > 0) manager().remove(id);
+        if (id > 0) downloads.remove(id);
         context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
                 .remove(PENDING_DOWNLOAD_ID).remove(PENDING_MODEL_ID)
                 .remove(PENDING_REVISION).commit();
@@ -296,6 +285,10 @@ public final class LocalModelManager implements ModelRepository {
     }
 
     private void validate(File candidate) throws Exception {
+        validator.validate(candidate);
+    }
+
+    private static void validateWithMediaPipe(Context context, File candidate) throws Exception {
         LlmInference.LlmInferenceOptions options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(candidate.getAbsolutePath())
                 .setPreferredBackend(LlmInference.Backend.CPU)
@@ -411,10 +404,91 @@ public final class LocalModelManager implements ModelRepository {
         for (File candidate : files) if (!candidate.equals(active)) candidate.delete();
     }
 
+    private void reconcileStorage() {
+        new File(context.getFilesDir(), manifest.fileName() + ".partial").delete();
+        cleanupObsolete(file());
+        long pending = pendingDownloadId();
+        boolean current = pending > 0 && manifest.modelId().equals(pendingModelId())
+                && manifest.revision().equals(pendingRevision());
+        if (!current) {
+            if (pending > 0) {
+                try { downloads.remove(pending); }
+                catch (RuntimeException ignored) { }
+            }
+            context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
+                    .remove(PENDING_DOWNLOAD_ID).remove(PENDING_MODEL_ID)
+                    .remove(PENDING_REVISION).commit();
+            File external = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            File directory = external == null ? null : new File(external, "models");
+            File stale = directory == null ? null
+                    : new File(directory, manifest.modelId() + ".download");
+            if (stale != null) stale.delete();
+        }
+    }
+
     private static String hex(byte[] bytes) {
         StringBuilder result = new StringBuilder(bytes.length * 2);
         for (byte value : bytes) result.append(String.format(Locale.ROOT, "%02x", value));
         return result.toString();
+    }
+
+    private static final class AndroidDownloadAccess implements DownloadAccess {
+        private final Context context;
+
+        AndroidDownloadAccess(Context context) { this.context = context; }
+
+        @Override public long enqueue(String url, File destination) {
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url))
+                    .setTitle("Auto Secretary · Lokale KI")
+                    .setDescription("Gemma 3 270M wird einmalig heruntergeladen")
+                    .setAllowedOverMetered(true)
+                    .setAllowedOverRoaming(false)
+                    .setNotificationVisibility(
+                            DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    .setDestinationUri(Uri.fromFile(destination));
+            request.addRequestHeader("User-Agent", "AutoSecretary model downloader");
+            return manager().enqueue(request);
+        }
+
+        @Override public ModelDownloadProgress query(long id) {
+            try (Cursor cursor = manager().query(
+                    new DownloadManager.Query().setFilterById(id))) {
+                if (cursor == null || !cursor.moveToFirst()) {
+                    return new ModelDownloadProgress.Failed(
+                            "Modelldownload ist verschwunden", true);
+                }
+                int status = cursor.getInt(cursor.getColumnIndexOrThrow(
+                        DownloadManager.COLUMN_STATUS));
+                long downloaded = Math.max(0, cursor.getLong(cursor.getColumnIndexOrThrow(
+                        DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)));
+                long total = cursor.getLong(cursor.getColumnIndexOrThrow(
+                        DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+                return switch (status) {
+                    case DownloadManager.STATUS_PENDING, DownloadManager.STATUS_PAUSED ->
+                            new ModelDownloadProgress.Pending();
+                    case DownloadManager.STATUS_RUNNING ->
+                            new ModelDownloadProgress.Running(downloaded, total);
+                    case DownloadManager.STATUS_SUCCESSFUL ->
+                            new ModelDownloadProgress.Complete();
+                    case DownloadManager.STATUS_FAILED -> new ModelDownloadProgress.Failed(
+                            "Modelldownload ist fehlgeschlagen: " + cursor.getInt(
+                                    cursor.getColumnIndexOrThrow(
+                                            DownloadManager.COLUMN_REASON)), true);
+                    default -> new ModelDownloadProgress.Failed(
+                            "Unbekannter Modelldownload-Zustand: " + status, true);
+                };
+            }
+        }
+
+        @Override public void remove(long id) { manager().remove(id); }
+
+        private DownloadManager manager() {
+            DownloadManager manager = context.getSystemService(DownloadManager.class);
+            if (manager == null) {
+                throw new IllegalStateException("DownloadManager ist nicht verfügbar");
+            }
+            return manager;
+        }
     }
 
 }

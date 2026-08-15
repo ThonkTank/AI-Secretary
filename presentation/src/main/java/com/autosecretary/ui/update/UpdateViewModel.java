@@ -81,9 +81,13 @@ public final class UpdateViewModel extends ViewModel {
         state.setValue(new UpdateUiState.Checking());
         submit(() -> {
             UpdateCheckResult result = updater.check();
-            dispatch(() -> state.setValue(result instanceof UpdateCheckResult.Available available
-                    ? new UpdateUiState.Available(available.update())
-                    : new UpdateUiState.Current()));
+            if (result instanceof UpdateCheckResult.Available available) {
+                remember(available.update());
+                dispatch(() -> state.setValue(new UpdateUiState.Available(available.update())));
+            } else {
+                clearPending();
+                dispatch(() -> state.setValue(new UpdateUiState.Current()));
+            }
         }, null);
     }
 

@@ -34,6 +34,7 @@ public final class TodayFragment extends Fragment {
     private MainViewModel viewModel;
     private TodayPanelController panel;
     private DaylightController daylight;
+    private TimelineRefreshScheduler timelineRefresh;
     private boolean dismissed;
 
     private final androidx.activity.result.ActivityResultLauncher<String> calendarPermission =
@@ -67,6 +68,10 @@ public final class TodayFragment extends Fragment {
                     @Override public void omitToday(String id) { viewModel.omitToday(id); }
                     @Override public void undo() { viewModel.undo(); }
                 });
+        timelineRefresh = new TimelineRefreshScheduler(host().timeProvider(), () -> {
+            if (viewModel != null) viewModel.reload();
+            host().refreshWidgets();
+        });
         daylight = new DaylightController((androidx.appcompat.app.AppCompatActivity) requireActivity(),
                 binding.Root, binding.DaylightBackdrop, binding.ThemeMode, binding.Greeting,
                 host().locationPort(), host().timeProvider(),
@@ -92,6 +97,7 @@ public final class TodayFragment extends Fragment {
 
     @Override public void onStart() {
         super.onStart();
+        if (timelineRefresh != null) timelineRefresh.start();
         if (daylight != null) daylight.onStart();
     }
 
@@ -102,6 +108,7 @@ public final class TodayFragment extends Fragment {
     }
 
     @Override public void onStop() {
+        if (timelineRefresh != null) timelineRefresh.stop();
         if (daylight != null) daylight.onStop();
         super.onStop();
     }
@@ -112,6 +119,8 @@ public final class TodayFragment extends Fragment {
     }
 
     @Override public void onDestroyView() {
+        if (timelineRefresh != null) timelineRefresh.close();
+        timelineRefresh = null;
         daylight = null;
         panel = null;
         binding = null;
@@ -121,6 +130,7 @@ public final class TodayFragment extends Fragment {
     private void render(MainUiState state) {
         if (binding == null || !(state instanceof MainUiState.Ready ready)) return;
         var timeline = new GetTodayTimeline(host().timeProvider()).execute(ready.dashboard());
+        timelineRefresh.update(timeline.nextRefreshAt());
         Dashboard dashboard = UiModelMapper.dashboard(ready.dashboard(), timeline,
                 host().timeProvider().zone(), getString(R.string.calendar_private));
         String undo = ready.dashboard().undoLabel();

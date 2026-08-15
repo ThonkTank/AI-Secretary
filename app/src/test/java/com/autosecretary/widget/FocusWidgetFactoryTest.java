@@ -1,11 +1,18 @@
 package com.autosecretary.widget;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
+
+import android.app.Application;
+
+import androidx.test.core.app.ApplicationProvider;
 
 import com.autosecretary.application.DashboardData;
-import com.autosecretary.application.TodayTimeline;
-import com.autosecretary.application.TodayEntry;
+import com.autosecretary.application.GetTodayTimeline;
+import com.autosecretary.application.LocationPort;
+import com.autosecretary.application.MoveWorkItemUseCase;
+import com.autosecretary.application.TimeProvider;
+import com.autosecretary.application.WorkItemRepository;
 import com.autosecretary.application.CalendarOccurrence;
 import com.autosecretary.application.CalendarOccurrenceId;
 import com.autosecretary.application.CalendarAvailability;
@@ -17,6 +24,9 @@ import com.autosecretary.domain.PlanAssignment;
 import com.autosecretary.domain.Task;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -24,6 +34,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 35, application = Application.class)
 public final class FocusWidgetFactoryTest {
     @Test
     public void widgetUsesSharedChronologicalTopThreeAcrossTasksAndCalendar() {
@@ -39,13 +51,23 @@ public final class FocusWidgetFactoryTest {
                 occurrence(3, now.plusHours(3), now.plusHours(4), "Termin C")),
                 List.of(), false, List.of(), List.of(), List.of(), null);
 
-        List<TodayEntry> entries =
-                FocusWidgetFactory.orderedEntries(dashboard, now, 3);
+        TimeProvider time = new TimeProvider() {
+            @Override public Instant now() { return now.toInstant(ZoneOffset.UTC); }
+            @Override public java.time.ZoneId zone() { return ZoneOffset.UTC; }
+        };
+        WidgetDependencies dependencies = new TestDependencies(dashboard, time);
+        FocusWidgetFactory factory = new FocusWidgetFactory(
+                ApplicationProvider.getApplicationContext(), dependencies);
+        factory.onDataSetChanged();
 
-        assertEquals(List.of("Termin A", "Termin B", "Aufgabe"),
-                entries.stream().map(value -> value.title().orElse("privat")).toList());
-        assertTrue(entries.get(0) instanceof TodayEntry.Calendar);
-        assertTrue(entries.get(2) instanceof TodayEntry.Focus);
+        assertEquals(3, factory.getCount());
+        assertEquals(("1:1:" + now.plusMinutes(30).toInstant(ZoneOffset.UTC)).hashCode(),
+                factory.getItemId(0));
+        assertEquals(("1:2:" + now.plusHours(1).toInstant(ZoneOffset.UTC)).hashCode(),
+                factory.getItemId(1));
+        assertEquals(task.id().hashCode(), factory.getItemId(2));
+        assertNotNull(factory.getViewAt(0));
+        assertNotNull(factory.getViewAt(2));
     }
 
     private static CalendarOccurrence occurrence(
@@ -55,5 +77,27 @@ public final class FocusWidgetFactoryTest {
                 end.toInstant(ZoneOffset.UTC), false, CalendarAvailability.BUSY,
                 CalendarStatus.CONFIRMED, CalendarParticipation.ACCEPTED,
                 CalendarVisibility.VISIBLE, Optional.of(title));
+    }
+
+    private record TestDependencies(
+            DashboardData dashboard, TimeProvider time) implements WidgetDependencies {
+        @Override public DashboardData loadDashboard() { return dashboard; }
+        @Override public com.autosecretary.application.TodayTimeline today(
+                DashboardData value) {
+            return new GetTodayTimeline(time).execute(value);
+        }
+        @Override public WorkItemRepository workItems() { throw new UnsupportedOperationException(); }
+        @Override public MoveWorkItemUseCase moveWorkItem() {
+            throw new UnsupportedOperationException();
+        }
+        @Override public LocationPort location() {
+            return new LocationPort() {
+                @Override public Position lastKnown() { return null; }
+                @Override public void start(java.util.function.Consumer<Position> listener) { }
+                @Override public void stop() { }
+            };
+        }
+        @Override public void executeDatabase(Runnable action) { action.run(); }
+        @Override public void refreshWidgets() { }
     }
 }

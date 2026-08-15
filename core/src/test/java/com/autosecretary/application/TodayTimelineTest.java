@@ -134,6 +134,15 @@ public final class TodayTimelineTest {
         assertEquals(Instant.parse("2026-03-29T22:00:00Z"), timeline.nextRefreshAt());
     }
 
+    @Test
+    public void nextDayBoundaryUsesInjectedZoneAcrossDstEnd() {
+        Instant beforeOverlap = Instant.parse("2026-10-24T22:30:00Z");
+        TodayTimeline timeline = new GetTodayTimeline(fixed(beforeOverlap, ZONE))
+                .execute(dashboard(List.of(), List.of()));
+
+        assertEquals(Instant.parse("2026-10-25T23:00:00Z"), timeline.nextRefreshAt());
+    }
+
     private static TodayTimeline query(DashboardData dashboard) {
         return new GetTodayTimeline(fixed(NOW, ZONE)).execute(dashboard);
     }

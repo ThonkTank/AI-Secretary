@@ -15,8 +15,6 @@ import com.autosecretary.application.update.VerifiedUpdate;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Locale;
 
 /** Composes feed, transfer, package evidence and verification behind the core port. */
@@ -95,7 +93,7 @@ public final class AndroidUpdateRepository implements UpdateRepository {
                 throw new IllegalStateException("Systemdownload ist noch nicht vollständig");
             }
             UpdateInfo update = restore(ticket.versionCode());
-            if (candidate.length() <= 0 || candidate.length() > APK_LIMIT
+            if (candidate.length() <= 0 || candidate.length() >= APK_LIMIT
                     || update.apkSizeBytes() > 0
                     && candidate.length() != update.apkSizeBytes()) {
                 throw new SecurityException("Update-Paket ist unerwartet groß");
@@ -121,20 +119,9 @@ public final class AndroidUpdateRepository implements UpdateRepository {
     }
 
     @Override public void cleanup(long installedVersionCode) {
-        File[] files = directory().listFiles((ignored, name) ->
-                name.startsWith("AutoSecretary-") && name.endsWith(".apk"));
-        if (files == null) return;
-        Arrays.sort(files, Comparator.comparingLong(AndroidUpdateRepository::fileVersion)
-                .reversed());
-        boolean keptFutureUpdate = false;
-        for (File file : files) {
-            long version = fileVersion(file);
-            if (!keptFutureUpdate && version > installedVersionCode) {
-                keptFutureUpdate = true;
-            } else {
-                file.delete();
-            }
-        }
+        long pendingVersion = pendingVersion();
+        boolean keptFutureUpdate = cleanupFiles(
+                directory(), installedVersionCode, pendingVersion);
         if (!keptFutureUpdate) clearPending();
     }
 
@@ -173,6 +160,32 @@ public final class AndroidUpdateRepository implements UpdateRepository {
                 .edit().remove(PENDING).commit();
     }
 
+    private long pendingVersion() {
+        String encoded = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+                .getString(PENDING, null);
+        if (encoded == null) return -1;
+        try { return new JSONObject(encoded).getLong("versionCode"); }
+        catch (Exception invalid) { return -1; }
+    }
+
+    static boolean cleanupFiles(File directory, long installedVersionCode, long pendingVersion) {
+        File[] files = directory.listFiles((ignored, name) ->
+                name.startsWith("AutoSecretary-")
+                        && (name.endsWith(".apk") || name.endsWith(".partial")));
+        if (files == null) return false;
+        boolean keptPending = false;
+        for (File file : files) {
+            long version = fileVersion(file);
+            if (!keptPending && version == pendingVersion && version > installedVersionCode
+                    && file.getName().endsWith(".apk")) {
+                keptPending = true;
+            } else {
+                file.delete();
+            }
+        }
+        return keptPending;
+    }
+
     static UpdateException failure(String context, Throwable error) {
         if (error instanceof UpdateException typed) return typed;
         Throwable source = error;
@@ -189,11 +202,17 @@ public final class AndroidUpdateRepository implements UpdateRepository {
         } else if (normalized.contains("timeout") || normalized.contains("unknownhost")
                 || normalized.contains("network") || normalized.contains("offline")) {
             kind = UpdateFailure.Kind.NETWORK; retryable = true;
+        } else if (source instanceof org.json.JSONException) {
+            kind = UpdateFailure.Kind.INVALID_RELEASE; retryable = false;
+        } else if (source instanceof SecurityException
+                && context.toLowerCase(Locale.ROOT).contains("download")) {
+            kind = UpdateFailure.Kind.PERMISSION; retryable = true;
         } else if (source instanceof SecurityException) {
             kind = UpdateFailure.Kind.SECURITY_REJECTED; retryable = false;
         } else if (source instanceof HttpTransportException) {
             kind = UpdateFailure.Kind.INVALID_RELEASE; retryable = false;
-        } else if (normalized.contains("speicher") || normalized.contains("space")) {
+        } else if (normalized.contains("speicher") || normalized.contains("space")
+                || normalized.contains("storage") || normalized.contains("verzeichnis")) {
             kind = UpdateFailure.Kind.STORAGE; retryable = true;
         } else if (normalized.contains("download")) {
             kind = UpdateFailure.Kind.DOWNLOAD_FAILED; retryable = true;
@@ -213,7 +232,7 @@ public final class AndroidUpdateRepository implements UpdateRepository {
         String name = file.getName();
         try {
             return Long.parseLong(name.substring("AutoSecretary-".length(),
-                    name.length() - ".apk".length()));
+                    name.lastIndexOf('.')));
         } catch (RuntimeException invalid) {
             return -1;
         }

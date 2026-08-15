@@ -31,7 +31,7 @@ record ReleaseMetadata(
             throw new IllegalArgumentException("Signaturfingerabdruck ist ungültig");
         }
         if (schemaVersion == 1 && (apkSizeBytes < 1
-                || apkSizeBytes > 80L * 1024L * 1024L)) {
+                || apkSizeBytes >= 80L * 1024L * 1024L)) {
             throw new IllegalArgumentException("APK-Größe fehlt");
         }
         if (schemaVersion == 1
