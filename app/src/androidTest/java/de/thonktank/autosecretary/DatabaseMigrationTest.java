@@ -62,4 +62,44 @@ public final class DatabaseMigrationTest {
             assertTrue(cursor.getLong(4) >= 1_000_000L && cursor.getLong(4) < 2_000_000L);
         }
     }
+
+    @Test public void migration2To3NormalizesSlotsAndCreatesQueryIndices() throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 2);
+        database.execSQL("INSERT INTO tasks (id,title,slot,recurrence,intervalDays,weekdayMask,ongoing,"
+                + "conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,lastCompletedOn,"
+                + "routineLevel,routineStreak,routineStreakWeeks,lastStreakWeek,displayOrder,hasCompletedOccurrence) VALUES "
+                + "('legacy','Aufgabe','Morgen','ONCE',1,0,0,'',0,0,'2026-08-16','','',1,0,0,'',1000001,0),"
+                + "('unknown','Unbekannt','Etwas','ONCE',1,0,0,'',0,0,'2026-08-16','','',1,0,0,'',4000001,0)");
+        database.close();
+
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 3, true, DatabaseProvider.MIGRATION_2_3);
+
+        try (Cursor cursor = database.query("SELECT id,slot FROM tasks ORDER BY id")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("legacy", cursor.getString(0));
+            assertEquals("MORNING", cursor.getString(1));
+            assertTrue(cursor.moveToNext());
+            assertEquals("unknown", cursor.getString(0));
+            assertEquals("LATER", cursor.getString(1));
+        }
+        assertIndexExists(database, "index_tasks_archived_conditionDone_displayOrder");
+        assertIndexExists(database, "index_occurrences_state_completedOn");
+    }
+
+    @Test public void migration1To3HasACompletePath() throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 1);
+        database.close();
+
+        helper.runMigrationsAndValidate(DATABASE, 3, true,
+                DatabaseProvider.MIGRATION_1_2, DatabaseProvider.MIGRATION_2_3).close();
+    }
+
+    private static void assertIndexExists(SupportSQLiteDatabase database, String index) {
+        try (Cursor cursor = database.query(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='" + index + "'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(1, cursor.getInt(0));
+        }
+    }
 }

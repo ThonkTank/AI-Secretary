@@ -7,6 +7,8 @@ import org.junit.Test;
 
 import java.time.LocalTime;
 
+import de.thonktank.autosecretary.domain.model.TaskSlot;
+
 public final class DayPaletteTest {
     @Test public void greetingsSwitchAtTheEightDesignMarks() {
         assertEquals("Gute Nacht", DayPalette.greeting(LocalTime.of(3, 59)));
@@ -30,7 +32,7 @@ public final class DayPaletteTest {
     }
 
     @Test public void softTimesRemainProse() {
-        assertEquals("um die Mittagszeit", TaskService.softTime(TaskSlots.MIDDAY, false));
-        assertEquals("fortlaufend, bis die Bedingung erfüllt ist", TaskService.softTime(TaskSlots.LATER, true));
+        assertEquals("um die Mittagszeit", TaskService.softTime(TaskSlot.MIDDAY, false));
+        assertEquals("fortlaufend, bis die Bedingung erfüllt ist", TaskService.softTime(TaskSlot.LATER, true));
     }
 }

@@ -6,7 +6,7 @@ import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
-@Entity(tableName = "occurrences", foreignKeys = @ForeignKey(entity = TaskEntity.class, parentColumns = "id", childColumns = "taskId", onDelete = ForeignKey.CASCADE), indices = @Index("taskId"))
+@Entity(tableName = "occurrences", foreignKeys = @ForeignKey(entity = TaskEntity.class, parentColumns = "id", childColumns = "taskId", onDelete = ForeignKey.CASCADE), indices = {@Index("taskId"), @Index(value = {"state", "completedOn"})})
 public class OccurrenceEntity {
     @PrimaryKey @NonNull public String id;
     @NonNull public String taskId;

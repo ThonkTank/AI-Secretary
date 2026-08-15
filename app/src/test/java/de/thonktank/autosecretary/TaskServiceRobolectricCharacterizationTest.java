@@ -20,6 +20,9 @@ import org.robolectric.annotation.Config;
 import java.time.LocalDate;
 import java.util.Arrays;
 
+import de.thonktank.autosecretary.domain.model.OccurrenceState;
+import de.thonktank.autosecretary.domain.model.TaskSlot;
+
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class TaskServiceRobolectricCharacterizationTest {
@@ -43,7 +46,7 @@ public final class TaskServiceRobolectricCharacterizationTest {
     }
 
     @Test public void dashboardMaterializesAtMostOneOccurrenceAndCopiesTemplates() {
-        TaskEntity task = task("routine", "Morgenroutine", TaskSlots.MORNING, "DAILY", 1_001_000L);
+        TaskEntity task = task("routine", "Morgenroutine", TaskSlot.MORNING.storageCode, "DAILY", 1_001_000L);
         dao.insertTask(task);
         dao.insertTemplates(Arrays.asList(
                 new TaskStepEntity("one", task.id, 0, "Duschen"),
@@ -52,13 +55,13 @@ public final class TaskServiceRobolectricCharacterizationTest {
         DashboardState first = service.dashboard();
         DashboardState second = service.dashboard();
 
-        assertEquals(1, dao.openOccurrences().size());
+        assertEquals(1, dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).size());
         assertEquals(2, first.firstOpen().steps.size());
         assertEquals(first.firstOpen().taskId, second.firstOpen().taskId);
     }
 
     @Test public void completionKeepsTheTaskVisibleTodayAndAwardsXpOnce() {
-        TaskEntity task = task("once", "Brief beantworten", TaskSlots.MORNING, "ONCE", 1_001_000L);
+        TaskEntity task = task("once", "Brief beantworten", TaskSlot.MORNING.storageCode, "ONCE", 1_001_000L);
         dao.insertTask(task);
         dao.insertOccurrence(new OccurrenceEntity("occurrence", task.id, TODAY.toString(), "OPEN", 1000, ""));
 
@@ -70,12 +73,12 @@ public final class TaskServiceRobolectricCharacterizationTest {
         assertEquals(1, state.tasks.size());
         assertTrue(state.tasks.get(0).done);
         assertTrue(dao.task(task.id).archived);
-        assertNull(dao.openForTask(task.id));
+        assertNull(dao.openForTask(task.id, OccurrenceState.OPEN.storageCode()));
     }
 
     @Test public void deferSwapsWithTheNextOpenTask() {
-        TaskEntity first = task("first", "Erste Aufgabe", TaskSlots.MORNING, "ONCE", 1_001_000L);
-        TaskEntity second = task("second", "Zweite Aufgabe", TaskSlots.MORNING, "ONCE", 1_002_000L);
+        TaskEntity first = task("first", "Erste Aufgabe", TaskSlot.MORNING.storageCode, "ONCE", 1_001_000L);
+        TaskEntity second = task("second", "Zweite Aufgabe", TaskSlot.MORNING.storageCode, "ONCE", 1_002_000L);
         dao.insertTask(first);
         dao.insertTask(second);
         dao.insertOccurrence(new OccurrenceEntity("first-occurrence", first.id, TODAY.toString(), "OPEN", 1000, ""));
@@ -89,7 +92,7 @@ public final class TaskServiceRobolectricCharacterizationTest {
     }
 
     @Test public void ongoingTaskNeedsNoOccurrenceAndClosesOnlyThroughItsCondition() {
-        TaskEntity task = task("ongoing", "Praktikum", TaskSlots.LATER, "ONCE", 4_001_000L);
+        TaskEntity task = task("ongoing", "Praktikum", TaskSlot.LATER.storageCode, "ONCE", 4_001_000L);
         task.ongoing = true;
         task.conditionText = "Vertrag unterschrieben";
         task.nextDueOn = "";

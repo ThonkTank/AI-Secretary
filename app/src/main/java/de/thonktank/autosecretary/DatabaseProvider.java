@@ -28,13 +28,26 @@ final class DatabaseProvider {
                     + "(CASE slot WHEN 'Morgen' THEN 1000000 WHEN 'Mittag' THEN 2000000 WHEN 'Abend' THEN 3000000 ELSE 4000000 END) + rowid");
         }
     };
+    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("UPDATE tasks SET slot = CASE slot "
+                    + "WHEN 'Morgen' THEN 'MORNING' WHEN 'Mittag' THEN 'MIDDAY' "
+                    + "WHEN 'Abend' THEN 'EVENING' WHEN 'Später' THEN 'LATER' "
+                    + "WHEN 'MORNING' THEN 'MORNING' WHEN 'MIDDAY' THEN 'MIDDAY' "
+                    + "WHEN 'EVENING' THEN 'EVENING' WHEN 'LATER' THEN 'LATER' ELSE 'LATER' END");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_tasks_archived_conditionDone_displayOrder "
+                    + "ON tasks (archived, conditionDone, displayOrder)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_occurrences_state_completedOn "
+                    + "ON occurrences (state, completedOn)");
+        }
+    };
     static AppDatabase get(Context context) {
         if (instance == null) synchronized (DatabaseProvider.class) {
             if (instance == null) {
                 Context app = context.getApplicationContext();
                 clearPrototypeStateOnce(app);
                 instance = Room.databaseBuilder(app, AppDatabase.class, "auto_secretary.db")
-                        .addMigrations(MIGRATION_1_2).build();
+                        .addMigrations(MIGRATION_1_2, MIGRATION_2_3).build();
             }
         }
         return instance;

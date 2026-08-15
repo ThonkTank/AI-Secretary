@@ -4,15 +4,18 @@ import androidx.annotation.NonNull;
 
 import java.util.List;
 
+import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.TaskSlot;
+
 /** Rich read model shared by the activity and the home-screen widget. */
 public final class TaskSnapshot {
     @NonNull public final String taskId;
     @NonNull public final String occurrenceId;
     @NonNull public final String title;
-    @NonNull public final String slot;
+    @NonNull public final TaskSlot slot;
     @NonNull public final String softTime;
     @NonNull public final String nextAction;
-    @NonNull public final String recurrence;
+    @NonNull public final Recurrence recurrence;
     @NonNull public final List<TaskStepSnapshot> steps;
     public final int remainingSteps;
     public final boolean terminalCondition;
@@ -23,8 +26,8 @@ public final class TaskSnapshot {
     public final long displayOrder;
 
     TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId, @NonNull String title,
-                 @NonNull String slot, @NonNull String softTime, @NonNull String nextAction,
-                 @NonNull String recurrence, @NonNull List<TaskStepSnapshot> steps,
+                 @NonNull TaskSlot slot, @NonNull String softTime, @NonNull String nextAction,
+                 @NonNull Recurrence recurrence, @NonNull List<TaskStepSnapshot> steps,
                  int remainingSteps, boolean terminalCondition, boolean ongoing, boolean done,
                  boolean overdue, int ringWeeks, long displayOrder) {
         this.taskId = taskId; this.occurrenceId = occurrenceId; this.title = title; this.slot = slot;
@@ -34,7 +37,7 @@ public final class TaskSnapshot {
         this.displayOrder = displayOrder;
     }
 
-    public boolean routine() { return !"ONCE".equals(recurrence); }
+    public boolean routine() { return recurrence != Recurrence.ONCE; }
     public String actionLabel() {
         if (terminalCondition) return "Bedingung erfüllt";
         if (steps.isEmpty()) return "erledigen";

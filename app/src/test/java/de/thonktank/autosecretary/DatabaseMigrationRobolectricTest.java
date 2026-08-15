@@ -35,11 +35,11 @@ public final class DatabaseMigrationRobolectricTest {
         context.deleteDatabase(DATABASE);
     }
 
-    @Test public void roomOpensVersionOneDataAfterMigrationToVersionTwo() {
+    @Test public void roomOpensVersionOneDataThroughTheFullMigrationChain() {
         createVersionOneDatabase();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseProvider.MIGRATION_1_2)
+                .addMigrations(DatabaseProvider.MIGRATION_1_2, DatabaseProvider.MIGRATION_2_3)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -49,15 +49,36 @@ public final class DatabaseMigrationRobolectricTest {
             assertEquals(2, cursor.getCount());
             assertTrue(cursor.moveToFirst());
             assertEquals("later", cursor.getString(0));
+            assertEquals("LATER", cursor.getString(1));
             assertEquals(0, cursor.getInt(2));
             assertTrue(cursor.getLong(4) >= 4_000_000L);
 
             assertTrue(cursor.moveToNext());
             assertEquals("morning", cursor.getString(0));
-            assertEquals("Morgen", cursor.getString(1));
+            assertEquals("MORNING", cursor.getString(1));
             assertEquals(1, cursor.getInt(2));
             assertEquals("2026-08-15", cursor.getString(3));
             assertTrue(cursor.getLong(4) >= 1_000_000L && cursor.getLong(4) < 2_000_000L);
+        } finally {
+            migrated.close();
+        }
+    }
+
+    @Test public void roomValidatesTheDirectVersionTwoToThreeMigration() {
+        createVersionOneDatabase();
+        upgradeFixtureToVersionTwo();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseProvider.MIGRATION_2_3)
+                .allowMainThreadQueries()
+                .build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+
+        try (Cursor cursor = database.query("SELECT id,slot FROM tasks ORDER BY id")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("LATER", cursor.getString(1));
+            assertTrue(cursor.moveToNext());
+            assertEquals("MORNING", cursor.getString(1));
         } finally {
             migrated.close();
         }
@@ -84,7 +105,28 @@ public final class DatabaseMigrationRobolectricTest {
                 + "routineLevel,routineStreak,hasCompletedOccurrence) VALUES "
                 + "('morning','Morgenroutine','Morgen','DAILY',1,0,0,'',0,0,'2026-08-16',"
                 + "'2026-08-15','2026-08-15',3,4,1),"
-                + "('later','Ablage','Später','ONCE',1,0,0,'',0,0,'2026-08-16','','',1,0,0)");
+                + "('later','Ablage','Unbekannt','ONCE',1,0,0,'',0,0,'2026-08-16','','',1,0,0)");
+        helper.close();
+    }
+
+    private void upgradeFixtureToVersionTwo() {
+        SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
+                .builder(context)
+                .name(DATABASE)
+                .callback(new SupportSQLiteOpenHelper.Callback(2) {
+                    @Override public void onCreate(SupportSQLiteDatabase database) {
+                        throw new AssertionError("Version 1 fixture must already exist");
+                    }
+
+                    @Override public void onUpgrade(SupportSQLiteDatabase database, int oldVersion, int newVersion) {
+                        assertEquals(1, oldVersion);
+                        assertEquals(2, newVersion);
+                        DatabaseProvider.MIGRATION_1_2.migrate(database);
+                    }
+                })
+                .build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory().create(configuration);
+        helper.getWritableDatabase();
         helper.close();
     }
 

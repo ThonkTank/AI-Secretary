@@ -21,11 +21,11 @@ public interface TaskDao {
     @Query("SELECT * FROM task_steps WHERE taskId = :taskId ORDER BY position") List<TaskStepEntity> templates(String taskId);
     @Insert(onConflict = OnConflictStrategy.REPLACE) void insertOccurrence(OccurrenceEntity occurrence);
     @Update void updateOccurrence(OccurrenceEntity occurrence);
-    @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = 'OPEN' LIMIT 1") OccurrenceEntity openForTask(String taskId);
+    @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state LIMIT 1") OccurrenceEntity openForTask(String taskId, String state);
     @Query("SELECT * FROM occurrences WHERE id = :id LIMIT 1") OccurrenceEntity occurrence(String id);
-    @Query("SELECT * FROM occurrences WHERE state = 'OPEN'") List<OccurrenceEntity> openOccurrences();
-    @Query("SELECT * FROM occurrences WHERE state = 'COMPLETED' AND completedOn = :date") List<OccurrenceEntity> completedOccurrences(String date);
-    @Query("SELECT MAX(sortOrder) FROM occurrences WHERE state = 'OPEN' AND taskId IN (SELECT id FROM tasks WHERE slot = :slot)") Integer maxOpenOrder(String slot);
+    @Query("SELECT * FROM occurrences WHERE state = :state") List<OccurrenceEntity> occurrencesByState(String state);
+    @Query("SELECT * FROM occurrences WHERE state = :state AND completedOn = :date") List<OccurrenceEntity> completedOccurrences(String state, String date);
+    @Query("SELECT MAX(sortOrder) FROM occurrences WHERE state = :state AND taskId IN (SELECT id FROM tasks WHERE slot = :slot)") Integer maxOpenOrder(String state, String slot);
     @Insert(onConflict = OnConflictStrategy.REPLACE) void insertOccurrenceSteps(List<OccurrenceStepEntity> steps);
     @Query("SELECT * FROM occurrence_steps WHERE occurrenceId = :occurrenceId ORDER BY position") List<OccurrenceStepEntity> occurrenceSteps(String occurrenceId);
     @Query("SELECT * FROM occurrence_steps WHERE id = :id LIMIT 1") OccurrenceStepEntity occurrenceStep(String id);

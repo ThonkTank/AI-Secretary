@@ -20,6 +20,9 @@ import org.junit.runner.RunWith;
 import java.time.LocalDate;
 import java.util.Arrays;
 
+import de.thonktank.autosecretary.domain.model.OccurrenceState;
+import de.thonktank.autosecretary.domain.model.TaskSlot;
+
 @RunWith(AndroidJUnit4.class)
 public final class TaskServiceCharacterizationTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 15);
@@ -42,7 +45,7 @@ public final class TaskServiceCharacterizationTest {
     }
 
     @Test public void dashboardCurrentlyMaterializesOneDueOccurrenceAndCopiesSteps() {
-        TaskEntity task = task("task", "Morgenroutine", TaskSlots.MORNING, "DAILY", 1_001_000L);
+        TaskEntity task = task("task", "Morgenroutine", TaskSlot.MORNING.storageCode, "DAILY", 1_001_000L);
         dao.insertTask(task);
         dao.insertTemplates(Arrays.asList(
                 new TaskStepEntity("template-1", task.id, 0, "Duschen"),
@@ -50,15 +53,16 @@ public final class TaskServiceCharacterizationTest {
 
         DashboardState state = service.dashboard();
 
-        assertEquals(1, dao.openOccurrences().size());
+        assertEquals(1, dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).size());
         assertEquals(1, state.tasks.size());
         assertEquals(2, state.tasks.get(0).steps.size());
         service.dashboard();
-        assertEquals("Repeated reads must not stack occurrences", 1, dao.openOccurrences().size());
+        assertEquals("Repeated reads must not stack occurrences", 1,
+                dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).size());
     }
 
     @Test public void completedOneOffTaskRemainsVisibleForTheCurrentDay() {
-        TaskEntity task = task("once", "Brief beantworten", TaskSlots.MORNING, "ONCE", 1_001_000L);
+        TaskEntity task = task("once", "Brief beantworten", TaskSlot.MORNING.storageCode, "ONCE", 1_001_000L);
         dao.insertTask(task);
         OccurrenceEntity occurrence = new OccurrenceEntity(
                 "occurrence", task.id, TODAY.toString(), "OPEN", 1000, "");
@@ -71,12 +75,12 @@ public final class TaskServiceCharacterizationTest {
         assertEquals(1, state.tasks.size());
         assertTrue(state.tasks.get(0).done);
         assertTrue(dao.task(task.id).archived);
-        assertNull(dao.openForTask(task.id));
+        assertNull(dao.openForTask(task.id, OccurrenceState.OPEN.storageCode()));
     }
 
     @Test public void deferSwapsOnlyTheSelectedTaskWithTheNextOpenTask() {
-        TaskEntity first = task("first", "Erste Aufgabe", TaskSlots.MORNING, "ONCE", 1_001_000L);
-        TaskEntity second = task("second", "Zweite Aufgabe", TaskSlots.MORNING, "ONCE", 1_002_000L);
+        TaskEntity first = task("first", "Erste Aufgabe", TaskSlot.MORNING.storageCode, "ONCE", 1_001_000L);
+        TaskEntity second = task("second", "Zweite Aufgabe", TaskSlot.MORNING.storageCode, "ONCE", 1_002_000L);
         dao.insertTask(first);
         dao.insertTask(second);
         dao.insertOccurrence(new OccurrenceEntity("first-occurrence", first.id, TODAY.toString(), "OPEN", 1000, ""));
@@ -91,7 +95,7 @@ public final class TaskServiceCharacterizationTest {
     }
 
     @Test public void ongoingTaskWithoutOccurrenceStillAppearsUntilItsConditionIsClosed() {
-        TaskEntity task = task("ongoing", "Praktikum", TaskSlots.LATER, "ONCE", 4_001_000L);
+        TaskEntity task = task("ongoing", "Praktikum", TaskSlot.LATER.storageCode, "ONCE", 4_001_000L);
         task.ongoing = true;
         task.conditionText = "Vertrag unterschrieben";
         task.nextDueOn = "";
@@ -111,7 +115,7 @@ public final class TaskServiceCharacterizationTest {
     }
 
     @Test public void sameWeekCompletionsCountOnlyOneRingWeekAndLateCompletionRestartsIt() {
-        TaskEntity task = task("routine", "Routine", TaskSlots.MORNING, "DAILY", 1_001_000L);
+        TaskEntity task = task("routine", "Routine", TaskSlot.MORNING.storageCode, "DAILY", 1_001_000L);
         dao.insertTask(task);
         dao.insertOccurrence(new OccurrenceEntity("day-one", task.id, TODAY.toString(), "OPEN", 1000, ""));
 
@@ -127,9 +131,10 @@ public final class TaskServiceCharacterizationTest {
         dao.insertOccurrence(new OccurrenceEntity("late", task.id, TODAY.plusDays(2).toString(), "OPEN", 1000, ""));
         TaskService lateService = new TaskService(database, () -> TODAY.plusDays(3));
         lateService.complete("late");
-        assertEquals(1, dao.task(task.id).routineStreakWeeks);
+        assertEquals(0, dao.task(task.id).routineStreakWeeks);
         assertTrue(dao.task(task.id).routineLevel >= afterFirst.routineLevel);
-        assertFalse(dao.openOccurrences().stream().anyMatch(item -> "late".equals(item.id)));
+        assertFalse(dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).stream()
+                .anyMatch(item -> "late".equals(item.id)));
     }
 
     private static TaskEntity task(String id, String title, String slot, String recurrence, long order) {

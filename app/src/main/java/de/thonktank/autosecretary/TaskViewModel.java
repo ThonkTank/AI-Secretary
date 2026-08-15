@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.TaskSlot;
+
 public final class TaskViewModel extends ViewModel {
     private final TaskService service;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
@@ -21,13 +24,13 @@ public final class TaskViewModel extends ViewModel {
     LiveData<DashboardState> state() { return state; }
     LiveData<String> errors() { return errors; }
     void load() { worker.execute(() -> state.postValue(service.dashboard())); }
-    void create(String title, String slot, String recurrence, int interval, int weekdays, List<String> steps, boolean ongoing, String condition) { run(() -> service.create(title, slot, recurrence, interval, weekdays, steps, ongoing, condition)); }
+    void create(String title, TaskSlot slot, Recurrence recurrence, int interval, int weekdays, List<String> steps, boolean ongoing, String condition) { run(() -> service.create(title, slot, recurrence, interval, weekdays, steps, ongoing, condition)); }
     void complete(String occurrenceId) { run(() -> service.complete(occurrenceId)); }
     void toggleStep(String stepId) { run(() -> service.toggleStep(stepId)); }
     void defer(String occurrenceId) { run(() -> service.defer(occurrenceId)); }
     void close(String taskId) { run(() -> service.closeOngoingTask(taskId)); }
-    void update(String taskId, String title, String slot) { run(() -> service.update(taskId, title, slot)); }
-    void move(String taskId, String slot) { run(() -> service.move(taskId, slot)); }
+    void update(String taskId, String title, TaskSlot slot) { run(() -> service.update(taskId, title, slot)); }
+    void move(String taskId, TaskSlot slot) { run(() -> service.move(taskId, slot)); }
     void delete(String taskId) { run(() -> service.delete(taskId)); }
     private void run(Action action) { worker.execute(() -> { try { action.run(); state.postValue(service.dashboard()); } catch (IllegalArgumentException e) { errors.postValue(e.getMessage()); } }); }
     @Override protected void onCleared() { worker.shutdownNow(); }

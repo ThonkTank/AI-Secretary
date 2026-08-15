@@ -2,13 +2,14 @@ package de.thonktank.autosecretary;
 
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
-@Entity(tableName = "tasks")
+@Entity(tableName = "tasks", indices = @Index(value = {"archived", "conditionDone", "displayOrder"}))
 public class TaskEntity {
     @PrimaryKey @NonNull public String id;
     @NonNull public String title;
-    @NonNull public String slot;
+    @NonNull public String slot; // MORNING, MIDDAY, EVENING, LATER
     @NonNull public String recurrence; // ONCE, DAILY, INTERVAL, WEEKDAYS
     public int intervalDays;
     public int weekdayMask; // ISO weekday bit: Monday = 1 << 0

@@ -8,6 +8,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import de.thonktank.autosecretary.domain.model.TaskSlot;
+
 public final class DashboardCharacterizationTest {
     @Test public void emptyDashboardHasNoFocus() {
         assertNull(DashboardFixtures.emptyDashboard().firstOpen());
@@ -40,10 +42,10 @@ public final class DashboardCharacterizationTest {
     }
 
     @Test public void slotsHaveTheEstablishedDayOrder() {
-        assertEquals(0, TaskSlots.rank(TaskSlots.MORNING));
-        assertEquals(1, TaskSlots.rank(TaskSlots.MIDDAY));
-        assertEquals(2, TaskSlots.rank(TaskSlots.EVENING));
-        assertEquals(3, TaskSlots.rank(TaskSlots.LATER));
+        assertEquals(0, TaskSlot.MORNING.rank);
+        assertEquals(1, TaskSlot.MIDDAY.rank);
+        assertEquals(2, TaskSlot.EVENING.rank);
+        assertEquals(3, TaskSlot.LATER.rank);
     }
 
     @Test public void calendarFixtureKeepsAllDayBeforeTimedEvents() {

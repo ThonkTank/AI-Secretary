@@ -4,30 +4,43 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.RoutineProgress;
+import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TaskSlot;
+
 import org.junit.Test;
 
 import java.time.LocalDate;
 
 public class ScheduleCalculatorTest {
-    private TaskEntity task(String recurrence, int interval, int mask) {
-        return new TaskEntity("id", "Test", TaskSlots.MORNING, recurrence, interval, mask, false, "", false, false,
-                "2026-08-15", "", "", 1, 0, 0, "", 1_001_000L, false);
+    private Task task(Recurrence recurrence, int interval, int mask, LocalDate due) {
+        return Task.restore(TaskId.of("id"), "Test", TaskSlot.MORNING, recurrence,
+                interval, mask, false, "", false, false, due, null, null,
+                new RoutineProgress(1, 0, 0, null), 1_001_000L, false);
     }
 
     @Test public void intervalIsAnchoredToActualCompletion() {
-        assertEquals(LocalDate.of(2026, 8, 18), ScheduleCalculator.nextDue(task("INTERVAL", 3, 0), LocalDate.of(2026, 8, 15)));
+        assertEquals(LocalDate.of(2026, 8, 18), ScheduleCalculator.nextDue(
+                task(Recurrence.INTERVAL, 3, 0, LocalDate.of(2026, 8, 15)),
+                LocalDate.of(2026, 8, 15)));
     }
 
     @Test public void weekdayScheduleFindsNextSelectedDay() {
-        boolean[] selected = {false, false, true, false, false, false, true}; // Wednesday and Sunday
-        assertEquals(LocalDate.of(2026, 8, 19), ScheduleCalculator.nextDue(task("WEEKDAYS", 1, ScheduleCalculator.weekdayMask(selected)), LocalDate.of(2026, 8, 16)));
+        boolean[] selected = {false, false, true, false, false, false, true};
+        assertEquals(LocalDate.of(2026, 8, 19), ScheduleCalculator.nextDue(
+                task(Recurrence.WEEKDAYS, 1, ScheduleCalculator.weekdayMask(selected),
+                        LocalDate.of(2026, 8, 15)), LocalDate.of(2026, 8, 16)));
     }
 
     @Test public void dateDueRuleCarriesOnlyOneOpenOccurrenceForward() {
-        TaskEntity daily = task("DAILY", 1, 0); daily.nextDueOn = "2026-08-14";
-        assertTrue(ScheduleCalculator.isDue(daily, LocalDate.of(2026, 8, 15)));
-        daily.nextDueOn = "2026-08-16";
-        assertFalse(ScheduleCalculator.isDue(daily, LocalDate.of(2026, 8, 15)));
+        assertTrue(ScheduleCalculator.isDue(
+                task(Recurrence.DAILY, 1, 0, LocalDate.of(2026, 8, 14)),
+                LocalDate.of(2026, 8, 15)));
+        assertFalse(ScheduleCalculator.isDue(
+                task(Recurrence.DAILY, 1, 0, LocalDate.of(2026, 8, 16)),
+                LocalDate.of(2026, 8, 15)));
     }
 
     @Test public void completingLateBreaksOnlyCurrentStreak() {
