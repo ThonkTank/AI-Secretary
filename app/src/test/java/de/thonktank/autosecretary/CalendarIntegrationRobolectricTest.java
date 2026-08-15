@@ -75,16 +75,24 @@ public final class CalendarIntegrationRobolectricTest {
     }
 
     @Test public void permissionChangeInvalidatesAPreviouslyCachedMissingResult() {
-        CalendarRepository repository = repository(ZoneId.of("Europe/Berlin"));
         Shadows.shadowOf((android.app.Application) context)
                 .denyPermissions(Manifest.permission.READ_CALENDAR);
+        CalendarRepository repository = repository(ZoneId.of("Europe/Berlin"));
+        final int[] notifications = {0};
+        repository.observeChanges(() -> notifications[0]++);
         assertTrue(repository.loadToday() instanceof CalendarResult.PermissionMissing);
+        context.getContentResolver().notifyChange(CalendarContract.Events.CONTENT_URI, null);
+        assertEquals(0, notifications[0]);
 
         Shadows.shadowOf((android.app.Application) context)
                 .grantPermissions(Manifest.permission.READ_CALENDAR);
 
         assertTrue(repository.loadToday() instanceof CalendarResult.Success);
         assertEquals(1, provider.queries);
+        context.getContentResolver().notifyChange(CalendarContract.Events.CONTENT_URI, null);
+        assertEquals(1, notifications[0]);
+        repository.loadToday();
+        assertEquals(2, provider.queries);
     }
 
     @Test public void defaultPolicyReadsAllVisibleCalendarsAndMapsAllDayAndZone() {

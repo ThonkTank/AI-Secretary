@@ -39,8 +39,10 @@ public final class CalendarRepository implements CalendarDataSource {
     private final CalendarPolicyProvider policies;
     private final AppLogger logger;
     private final UiTextProvider texts;
+    private final ContentObserver contentObserver;
     private final List<Runnable> observers = new CopyOnWriteArrayList<>();
     private final Object cacheLock = new Object();
+    private boolean contentObserverRegistered;
     private LocalDate cachedDate;
     private ZoneId cachedZone;
     private CalendarPolicy cachedPolicy;
@@ -58,12 +60,11 @@ public final class CalendarRepository implements CalendarDataSource {
         this.policies = policies;
         this.logger = logger;
         this.texts = texts;
-        resolver.registerContentObserver(CalendarContract.Events.CONTENT_URI, true,
-                new ContentObserver(null) {
-                    @Override public void onChange(boolean selfChange, Uri uri) {
-                        invalidate();
-                    }
-                });
+        this.contentObserver = new ContentObserver(null) {
+            @Override public void onChange(boolean selfChange, Uri uri) {
+                invalidate();
+            }
+        };
     }
 
     @Override public CalendarResult loadToday() {
@@ -72,6 +73,7 @@ public final class CalendarRepository implements CalendarDataSource {
         CalendarPolicy policy = policies.policy();
         boolean permissionGranted = context.checkSelfPermission(Manifest.permission.READ_CALENDAR)
                 == PackageManager.PERMISSION_GRANTED;
+        if (permissionGranted) ensureContentObserverRegistered();
         synchronized (cacheLock) {
             if (!dirty && day.equals(cachedDate) && zone.equals(cachedZone)
                     && policy == cachedPolicy && permissionGranted == cachedPermissionGranted
@@ -92,6 +94,22 @@ public final class CalendarRepository implements CalendarDataSource {
     @Override public Subscription observeChanges(Runnable observer) {
         observers.add(observer);
         return () -> observers.remove(observer);
+    }
+
+    private void ensureContentObserverRegistered() {
+        synchronized (cacheLock) {
+            if (contentObserverRegistered) return;
+            try {
+                resolver.registerContentObserver(CalendarContract.Events.CONTENT_URI, true,
+                        contentObserver);
+                contentObserverRegistered = true;
+            } catch (SecurityException error) {
+                logger.error(TAG, "Calendar permission disappeared during observer registration",
+                        error);
+            } catch (RuntimeException error) {
+                logger.error(TAG, "Calendar observer is unavailable", error);
+            }
+        }
     }
 
     private CalendarResult query(LocalDate day, ZoneId zone, CalendarPolicy policy) {

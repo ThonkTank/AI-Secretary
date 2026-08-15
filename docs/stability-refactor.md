@@ -101,8 +101,10 @@ berücksichtigt damit 23- und 25-stündige DST-Tage.
 
 Das Repository cached ein Ergebnis anhand von Datum, Zone, Policy und
 Berechtigungszustand. Activity und alle Widgets verwenden die gleiche Instanz aus dem
-`AppContainer`. Ein `ContentObserver` auf Kalenderereignisse invalidiert den Cache und
-stößt über die DataSource-Subscription einen Presentation-Refresh an.
+`AppContainer`. Der `ContentObserver` wird erst nach erteilter Runtime-Berechtigung lazy
+registriert, invalidiert den Cache bei Kalenderänderungen und stößt über die
+DataSource-Subscription einen Presentation-Refresh an. Der erste App-Start bleibt dadurch
+auch ohne Kalenderfreigabe sicher.
 
 ## Strukturiertes Designsystem und Wald-Rendering
 

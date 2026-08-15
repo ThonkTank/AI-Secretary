@@ -7,7 +7,7 @@
 - Manueller Application-Container, injizierbare Zeit/Zeitzone und strukturierte Fehlergrenzen.
 - Unveränderlicher Dashboard-State und komponentenbasierte, differenziell aktualisierte Views.
 - Vollständiger Aufgaben-Editor für Wiederholung, Schritte und ongoing-Bedingungen.
-- Strukturierte, gecachte Kalenderintegration für alle sichtbaren Kalender.
+- Strukturierte, gecachte und permission-sichere Kalenderintegration für alle sichtbaren Kalender.
 - Benanntes Designsystem mit acht getesteten Tagesankern und gemeinsamem Wald-Renderer.
 - Responsive Widget-Pipeline für vier Größen mit API-26-Fallback und sicheren Aktionen.
 - Erweiterte Unit-, Migration-, Golden-, Accessibility- und Widgettests sowie API-Matrix-CI.
