@@ -82,6 +82,25 @@ public final class GitHubUpdateRepositoryTest {
                 UpdateFailure.Kind.INVALID_RELEASE);
     }
 
+    @Test public void checkRejectsUntrustedAssetBeforeAnyAssetRequest() throws Exception {
+        FakeHttp http = new FakeHttp();
+        String feed = "[{\"tag_name\":\"forest-android-5\",\"draft\":false,"
+                + "\"prerelease\":false,\"target_commitish\":\"" + COMMIT
+                + "\",\"assets\":[{\"name\":\"release-metadata.json\","
+                + "\"browser_download_url\":\"https://attacker.example/metadata\"},"
+                + "{\"name\":\"AutoSecretary.apk\",\"browser_download_url\":\""
+                + APK_URL + "\"}]}]";
+        http.responses.put(FEED, feed.getBytes(StandardCharsets.UTF_8));
+
+        try {
+            repository(http, new FakePackages(2, 5, PACKAGE, SIGNER)).check();
+            fail("untrusted metadata host must be rejected");
+        } catch (UpdateFailure error) {
+            assertEquals(UpdateFailure.Kind.UNTRUSTED_HOST, error.kind());
+        }
+        assertFalse(http.requestedMetadata);
+    }
+
     @Test public void downloadVerifiesHashPackageVersionAndSignerBeforeFinalizing()
             throws Exception {
         byte[] apk = "verified-signed-apk".getBytes(StandardCharsets.UTF_8);

@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.update.domain.UpdateCheckResult;
 import de.thonktank.autosecretary.update.domain.UpdateFailure;
 import de.thonktank.autosecretary.update.domain.UpdateInfo;
 import de.thonktank.autosecretary.update.domain.UpdateRules;
+import de.thonktank.autosecretary.update.domain.UpdateTrustPolicy;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -19,6 +20,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
@@ -35,21 +38,30 @@ public final class GitHubUpdateRepository implements UpdateRepository {
     private final String tagPrefix;
     private final File updateDirectory;
     private final HttpTransport http;
+    private final UpdateTrustPolicy trust;
     private final PackageEvidenceReader packages;
     private final ReleaseMetadataJsonParser metadataParser = new ReleaseMetadataJsonParser();
 
     public GitHubUpdateRepository(Context context, String owner, String repository,
                                   String metadataAsset, String apkAsset, String tagPrefix,
-                                  HttpTransport http) {
+                                  HttpTransport http, UpdateTrustPolicy trust) {
         this(context.getPackageName(), owner, repository, metadataAsset, apkAsset, tagPrefix,
                 new File(context.getCacheDir(), "updates"), http,
-                new AndroidPackageEvidenceReader(context));
+                new AndroidPackageEvidenceReader(context), trust);
     }
 
     GitHubUpdateRepository(String packageName, String owner, String repository,
                            String metadataAsset, String apkAsset, String tagPrefix,
                            File updateDirectory, HttpTransport http,
                            PackageEvidenceReader packages) {
+        this(packageName, owner, repository, metadataAsset, apkAsset, tagPrefix,
+                updateDirectory, http, packages, UpdateTrustPolicy.github());
+    }
+
+    GitHubUpdateRepository(String packageName, String owner, String repository,
+                           String metadataAsset, String apkAsset, String tagPrefix,
+                           File updateDirectory, HttpTransport http,
+                           PackageEvidenceReader packages, UpdateTrustPolicy trust) {
         this.packageName = packageName;
         this.releasesUrl = "https://api.github.com/repos/" + owner + "/" + repository
                 + "/releases?per_page=30";
@@ -59,11 +71,13 @@ public final class GitHubUpdateRepository implements UpdateRepository {
         this.updateDirectory = updateDirectory;
         this.http = http;
         this.packages = packages;
+        this.trust = trust;
     }
 
     @Override public UpdateCheckResult check() throws UpdateFailure {
         try {
             PackageEvidence installed = packages.installed();
+            trust.requireTrusted(releasesUrl);
             JSONArray releases = new JSONArray(new String(http.get(releasesUrl,
                     MAX_RELEASE_FEED_BYTES), StandardCharsets.UTF_8));
             JSONObject candidate = newestCompatibleRelease(releases);
@@ -73,6 +87,8 @@ public final class GitHubUpdateRepository implements UpdateRepository {
             JSONObject assets = assetsByName(candidate.getJSONArray("assets"));
             String metadataUrl = assetUrl(assets, metadataAsset);
             String apkUrl = assetUrl(assets, apkAsset);
+            trust.requireTrusted(metadataUrl);
+            trust.requireTrusted(apkUrl);
             ReleaseMetadata metadata = metadataParser.parse(new String(
                     http.get(metadataUrl, MAX_METADATA_BYTES), StandardCharsets.UTF_8));
             UpdateRules.requireAvailable(packageName, apkAsset, taggedVersion,
@@ -91,13 +107,12 @@ public final class GitHubUpdateRepository implements UpdateRepository {
         if (update == null)
             throw new UpdateFailure(UpdateFailure.Kind.INVALID_RELEASE,
                     "Update release contract is missing");
+        trust.requireTrusted(update.apkUri().toString());
         if (!updateDirectory.exists() && !updateDirectory.mkdirs())
             throw storage("Could not create update directory", null);
         clearUpdateDirectory();
         File partial = new File(updateDirectory, "update-" + update.versionCode + ".partial");
         File complete = new File(updateDirectory, "update-" + update.versionCode + ".apk");
-        delete(partial);
-        delete(complete);
         try {
             http.download(update.apkUri().toString(), partial, update.sizeBytes,
                     ReleaseMetadata.MAX_APK_BYTES, progress);
@@ -107,13 +122,16 @@ public final class GitHubUpdateRepository implements UpdateRepository {
             PackageEvidence installed = packages.installed();
             PackageEvidence archive = packages.archive(partial);
             UpdateRules.requireDownloaded(packageName, update, installed, archive);
-            if (!partial.renameTo(complete))
-                throw storage("Could not finalize update download", null);
+            try {
+                Files.move(partial.toPath(), complete.toPath(), StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException error) {
+                throw storage("Could not atomically finalize update download", error);
+            }
             progress.accept(100);
             return VerifiedUpdate.fromVerifiedFile(update, complete);
         } catch (UpdateFailure error) {
-            delete(partial);
-            delete(complete);
+            deleteBestEffort(partial);
+            deleteBestEffort(complete);
             throw error;
         }
     }
@@ -187,14 +205,17 @@ public final class GitHubUpdateRepository implements UpdateRepository {
         }
     }
 
-    private static void delete(File file) {
+    private static void deleteBestEffort(File file) {
         if (file.exists()) file.delete();
     }
 
-    private void clearUpdateDirectory() {
+    private void clearUpdateDirectory() throws UpdateFailure {
         File[] files = updateDirectory.listFiles();
-        if (files == null) return;
-        for (File file : files) if (file.isFile()) delete(file);
+        if (files == null)
+            throw storage("Could not inspect update directory", null);
+        for (File file : files)
+            if (file.isFile() && !file.delete())
+                throw storage("Could not clear stale update file", null);
     }
 
     private static UpdateFailure storage(String message, Throwable cause) {

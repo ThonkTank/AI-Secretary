@@ -15,6 +15,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-006: Update-Schichten und typisierte Fehler](adr-006-update-schichten-und-fehler.md)
 - [ADR-007: Update-Präsentation und Android-Systemnavigation](adr-007-update-praesentation-und-systemnavigation.md)
 - [ADR-008: Deterministische Update-Abhängigkeiten und Konfiguration](adr-008-deterministische-update-abhaengigkeiten.md)
+- [ADR-009: Vertrauensgrenze für Update-Transport und Download](adr-009-update-transport-und-download-vertrauen.md)
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.

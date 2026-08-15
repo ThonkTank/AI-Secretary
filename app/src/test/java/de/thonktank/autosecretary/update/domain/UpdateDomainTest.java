@@ -59,6 +59,23 @@ public final class UpdateDomainTest {
                 UpdateRules.requireDownloaded(PACKAGE, update, installed, wrongArchive));
     }
 
+    @Test public void githubTrustPolicyRejectsLookalikesCredentialsAndNonTls() throws Exception {
+        UpdateTrustPolicy trust = UpdateTrustPolicy.github();
+
+        assertEquals("api.github.com",
+                trust.requireTrusted("https://api.github.com/releases").getHost());
+        assertEquals("release-assets.githubusercontent.com", trust.requireTrusted(
+                "https://release-assets.githubusercontent.com/file.apk").getHost());
+        assertFailure(UpdateFailure.Kind.UNTRUSTED_HOST,
+                () -> trust.requireTrusted("https://api.github.com.attacker.example/releases"));
+        assertFailure(UpdateFailure.Kind.UNTRUSTED_HOST,
+                () -> trust.requireTrusted("https://github.com@attacker.example/file.apk"));
+        assertFailure(UpdateFailure.Kind.UNTRUSTED_HOST,
+                () -> trust.requireTrusted("http://github.com/file.apk"));
+        assertFailure(UpdateFailure.Kind.UNTRUSTED_HOST,
+                () -> trust.requireTrusted("https://github.com:444/file.apk"));
+    }
+
     private static ReleaseMetadata metadata(long version, String signer) throws UpdateFailure {
         return ReleaseMetadata.create(version, "0.2.7", PACKAGE,
                 "AutoSecretary.apk", 1, SHA, signer, COMMIT);

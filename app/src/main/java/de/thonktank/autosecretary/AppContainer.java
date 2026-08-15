@@ -26,6 +26,7 @@ import de.thonktank.autosecretary.update.infrastructure.SerialUpdateExecutor;
 import de.thonktank.autosecretary.update.infrastructure.SharedUpdatePreferences;
 import de.thonktank.autosecretary.update.infrastructure.UpdateInstaller;
 import de.thonktank.autosecretary.update.infrastructure.UrlConnectionHttpTransport;
+import de.thonktank.autosecretary.update.domain.UpdateTrustPolicy;
 
 public final class AppContainer {
     public final AppDatabase database;
@@ -76,11 +77,12 @@ public final class AppContainer {
         this.updatePreferences = new SharedUpdatePreferences(app, logger);
         this.updateClock = System::currentTimeMillis;
         this.updateExecutors = SerialUpdateExecutor::new;
+        UpdateTrustPolicy updateTrust = UpdateTrustPolicy.github();
         this.updates = updateConfiguration.remoteChecksEnabled
                 ? new GitHubUpdateRepository(app, updateConfiguration.repositoryOwner,
                         updateConfiguration.repositoryName, updateConfiguration.metadataAsset,
                         updateConfiguration.apkAsset, updateConfiguration.tagPrefix,
-                        new UrlConnectionHttpTransport())
+                        new UrlConnectionHttpTransport(updateTrust), updateTrust)
                 : new DisabledUpdateRepository();
         this.updateInstaller = new UpdateInstaller();
     }

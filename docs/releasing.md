@@ -71,6 +71,14 @@ Die App prüft höchstens einmal täglich nach dem Start und jederzeit manuell u
 Versionscode und dieselbe Android-Signatur wie die installierte App geprüft. Anschließend öffnet
 die App den Android-Systeminstaller; dessen Bestätigung kann und soll nicht umgangen werden.
 
+Releasefeed, Metadaten, APK und jeder Redirect-Hop müssen HTTPS und einer exakten GitHub-
+Host-Allowlist entsprechen. Antworten sind größenbegrenzt; Timeouts, Rate-Limits und temporäre
+Serverfehler werden höchstens dreimal mit kurzem exponentiellem Backoff versucht. Ein Abbruch
+beendet den Transfer typisiert. Die APK bleibt bis zum erfolgreichen Hash-, Paket-, Versions-,
+Commit- und Signaturnachweis eine temporäre Datei und wird erst dann atomisch als installierbar
+finalisiert. Eine unbekannte Quelle oder eine nicht vollständig verifizierte APK erreicht den
+Android-Systeminstaller nicht.
+
 Diese Remote-Prüfungen sind ausschließlich in Produktions-/Release-Builds aktiv. Debug-Builds
 verwenden eine explizite netzwerkfreie Development-Konfiguration; die manuelle Schaltfläche kann
 dort deshalb weder GitHub noch einen anderen echten Updateendpunkt kontaktieren.

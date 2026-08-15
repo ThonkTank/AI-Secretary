@@ -45,6 +45,5 @@ den Executor erst in `ViewModelProvider.Factory.create` anlegt; `onCleared` been
 Instanz. Debug- und Robolectric-Anwendungsstarts bleiben garantiert offline, während der
 Release-Build unverändert den produktiven GitHub-Kanal verwendet.
 
-Die Netzwerkimplementierung besitzt weiterhin feste Timeout- und Redirectregeln. Eine explizite
-Host-Trust-Policy, Retry/Backoff und Abbruchsemantik werden in der anschließenden
-Sicherheitshärtung ergänzt.
+Die Sicherheitsgrenze des injizierten Netzwerkadapters, einschließlich Host-Trust-Policy,
+Redirects, Retry/Backoff, Abbruch und atomischer Download-Finalisierung, legt ADR-009 fest.

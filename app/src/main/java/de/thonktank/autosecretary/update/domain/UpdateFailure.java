@@ -4,7 +4,10 @@ package de.thonktank.autosecretary.update.domain;
 public final class UpdateFailure extends Exception {
     public enum Kind {
         NETWORK,
+        TIMEOUT,
         HTTP,
+        RATE_LIMITED,
+        UNTRUSTED_HOST,
         INVALID_RELEASE,
         INCOMPATIBLE_RELEASE,
         CHECKSUM_MISMATCH,
