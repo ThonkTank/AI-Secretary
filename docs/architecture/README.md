@@ -11,6 +11,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-002: Dashboard-Reihenfolge und „später“](adr-002-dashboard-reihenfolge.md)
 - [ADR-003: Occurrences und fortlaufende Vorhaben](adr-003-occurrences.md)
 - [ADR-004: Widget-Funktionsumfang](adr-004-widget-umfang.md)
+- [ADR-005: Release- und Updatevertrag](adr-005-release-und-updatevertrag.md)
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
