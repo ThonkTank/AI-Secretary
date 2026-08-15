@@ -77,6 +77,22 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: ./gradlew connectedDebugAndroidTest
 
+  pr-gate:
+    name: pull-request-gate
+    if: always() && github.event_name == 'pull_request'
+    needs: [quality, instrumentation]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require every pull-request quality job
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          INSTRUMENTATION_RESULT: ${{ needs.instrumentation.result }}
+        run: |
+          test "$QUALITY_RESULT" = success
+          test "$INSTRUMENTATION_RESULT" = success
+
   package:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: [quality, instrumentation]
@@ -122,23 +138,24 @@ jobs:
         if: steps.plan.outputs.already_published != 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.KEYSTORE_ALIAS || 'release' }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KEYSTORE_PASSWORD }}
         run: |
           set -euo pipefail
           test -n "$KEYSTORE_BASE64"
-          test -n "$KEYSTORE_PASSWORD"
+          test -n "$SIGNING_STORE_PASSWORD"
+          test -n "$SIGNING_KEY_ALIAS"
+          test -n "$SIGNING_KEY_PASSWORD"
           KEYSTORE="$RUNNER_TEMP/autosecretary.jks"
           trap 'rm -f "$KEYSTORE"' EXIT
           printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE"
           chmod 600 "$KEYSTORE"
           ACTUAL_CERT=$(keytool -list -v -keystore "$KEYSTORE" \
-            -storepass "$KEYSTORE_PASSWORD" -alias release \
+            -storepass "$SIGNING_STORE_PASSWORD" -alias "$SIGNING_KEY_ALIAS" \
             | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')
           test "$ACTUAL_CERT" = "$EXPECTED_SIGNER"
           export SIGNING_STORE_FILE="$KEYSTORE"
-          export SIGNING_STORE_PASSWORD="$KEYSTORE_PASSWORD"
-          export SIGNING_KEY_ALIAS=release
-          export SIGNING_KEY_PASSWORD="$KEYSTORE_PASSWORD"
           ./gradlew assembleRelease assembleDebugAndroidTest \
             -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" \
             -PrequireReleaseSigning=true
@@ -147,8 +164,8 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "$CANDIDATE/$APK_ASSET"
           APKSIGNER="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/apksigner"
           AAPT="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/aapt"
-          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-key-alias release \
-            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD \
+          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-key-alias "$SIGNING_KEY_ALIAS" \
+            --ks-pass env:SIGNING_STORE_PASSWORD --key-pass env:SIGNING_KEY_PASSWORD \
             --out "$CANDIDATE/upgrade-test.apk" \
             app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           for SIGNED_APK in "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk"; do

@@ -8,17 +8,22 @@ Release veröffentlicht.
 
 ## Dauerhafter Signaturschlüssel
 
-Das Repository verwendet die bestehenden Actions-Secrets:
+Das Repository verwendet diese Actions-Secrets:
 
 | Secret | Inhalt |
 | --- | --- |
 | `KEYSTORE_BASE64` | Base64-kodierter Produktions-Keystore |
-| `KEYSTORE_PASSWORD` | Store- und Schlüsselpasswort |
+| `KEYSTORE_PASSWORD` | Keystore-Passwort |
+| `KEYSTORE_ALIAS` | Schlüsselalias; Übergangsfallback `release` |
+| `KEY_PASSWORD` | separates Schlüsselpasswort; Übergangsfallback `KEYSTORE_PASSWORD` |
 
-Der Schlüsselalias ist `release`. Die Pipeline akzeptiert nur den in
-`release/release.properties` festgehaltenen Zertifikat-Fingerprint. App-ID, Keystore und Alias
-dürfen nach der ersten Installation nicht mehr geändert werden, sonst kann Android spätere APKs
-nicht als Update installieren.
+Alias und Passwörter sind unabhängig; die Fallbacks erhalten lediglich die bestehende
+Secretkonfiguration. Die Pipeline akzeptiert nur den in `release/release.properties`
+festgehaltenen Zertifikat-Fingerprint. App-ID und Signaturkontinuität dürfen nach der ersten
+Installation nicht unkontrolliert geändert werden, sonst kann Android spätere APKs nicht als
+Update installieren. Backup, Restore, Kompromittierung und die noch nicht aktivierte
+Signing-Lineage-Strategie beschreibt das
+[Signing- und Recovery-Runbook](signing-and-recovery.md).
 
 ## Automatischer Ablauf
 

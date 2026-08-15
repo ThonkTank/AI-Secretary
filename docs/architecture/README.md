@@ -17,5 +17,9 @@ Migrationen und aktualisierte Tests.
 - [ADR-008: Deterministische Update-Abhängigkeiten und Konfiguration](adr-008-deterministische-update-abhaengigkeiten.md)
 - [ADR-009: Vertrauensgrenze für Update-Transport und Download](adr-009-update-transport-und-download-vertrauen.md)
 
+Eine rückblickende Bewertung der bearbeiteten Bereiche steht in der
+[Architekturkritik der Release- und Updatebereiche](architecture-critique.md). Sie ist keine ADR,
+sondern dokumentiert Reibung, technische Schuld und priorisierte Folgeschritte.
+
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.

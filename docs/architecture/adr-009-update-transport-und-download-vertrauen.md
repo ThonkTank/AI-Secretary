@@ -29,8 +29,8 @@ jedem Request und während des Kopierens als `CANCELLED` behandelt; ein unterbro
 stellt das Flag wieder her.
 
 Releasefeed, Metadaten und APK haben getrennte Obergrenzen. Deklarierte und tatsächlich
-gelesene Größen werden geprüft; die APK muss zusätzlich exakt der in den signierten
-Release-Metadaten angegebenen Größe entsprechen. Der Download entsteht als `.partial` im
+gelesene Größen werden geprüft; die APK muss zusätzlich exakt der in den Release-Metadaten
+angegebenen Größe entsprechen. Der Download entsteht als `.partial` im
 privaten Cache. Erst nach SHA-256-, Paket-ID-, Versions-, Commit- und APK-Signaturprüfung wird er
 im selben Verzeichnis mit `ATOMIC_MOVE` in eine installierbare `.apk` umbenannt. Vorherige
 temporäre Dateien werden kontrolliert entfernt; fehlschlagende Bereinigung oder atomische

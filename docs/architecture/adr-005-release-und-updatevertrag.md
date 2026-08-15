@@ -38,12 +38,13 @@ Versionscodes für alle bereits veröffentlichten Builds garantieren.
 
 ### Signatur und Vertrauensmodell
 
-- Produktions-Releases werden mit dem permanenten Android-Schlüssel mit Alias `release`
-  signiert.
+- Produktions-Releases werden mit dem permanenten Android-Schlüssel signiert. Der Alias ist eine
+  austauschbare Keystore-Eigenschaft und keine Android-Paketidentität.
 - Der erwartete SHA-256-Zertifikat-Fingerprint ist in `release/release.properties` hinterlegt.
-- Der Keystore wird GitHub Actions ausschließlich über `KEYSTORE_BASE64` und
-  `KEYSTORE_PASSWORD` bereitgestellt. Im aktuellen Betrieb wird dasselbe Passwort für Store und
-  Schlüssel verwendet.
+- Der Keystore wird GitHub Actions über `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
+  `KEYSTORE_ALIAS` und `KEY_PASSWORD` bereitgestellt. Zur Abwärtskompatibilität fällt ein nicht
+  gesetzter Alias auf `release` und ein nicht gesetztes Key-Passwort auf das Store-Passwort
+  zurück; Workflow, Gradle und `apksigner` behandeln die Werte unabhängig.
 - Die Pipeline bricht ab, wenn Keystore oder fertige APK nicht den festgelegten Fingerprint
   besitzen.
 - Die App vertraut nicht allein auf GitHub-Metadaten. Vor einer Installation müssen Paketname,
@@ -52,8 +53,10 @@ Versionscodes für alle bereits veröffentlichten Builds garantieren.
 - Der Android-Systeminstaller bleibt die einzige Installationsinstanz. Die App umgeht dessen
   Bestätigung und Berechtigungsprüfung nicht.
 
-Schlüsselrotation, Signing Lineage und Wiederherstellung sind in diesem Vertrag noch nicht
-abschließend geregelt und müssen vor einer Änderung des Produktionsschlüssels ergänzt werden.
+Backup, Wiederherstellung, Incident Response und die Voraussetzungen einer späteren Rotation
+sind in [Produktionssignatur, Recovery und Repositorybetrieb](../signing-and-recovery.md)
+dokumentiert. Der aktuelle Kanal besitzt noch keine Signing Lineage; eine Rotation erfordert
+deshalb vor jeder Schlüsseländerung eine eigene getestete Migrationsphase.
 
 ### Release-Artefakte und Metadaten
 
