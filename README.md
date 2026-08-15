@@ -9,7 +9,7 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 - Wiederholungen: täglich, alle N Tage und ausgewählte Wochentage
 - Sanftes Verschieben mit „Später“, XP und Routine-Level ohne Levelverlust
 - Homescreen-Widget zum Abhaken, Verschieben und Schließen fortlaufender Vorhaben
-- Optionale, einmal täglich sanfte Erinnerungen
+- Keine Benachrichtigungen im Stabilitäts-Release: Das Widget bleibt die einzige proaktive Erinnerung
 - Button zu den GitHub Releases für Updates
 
 ## Lokal testen

@@ -9,60 +9,33 @@ import android.content.Intent;
 import android.view.View;
 import android.widget.RemoteViews;
 
-import org.json.JSONObject;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import java.util.List;
-
-/** The widget intentionally offers action, not editing. */
+/** A widget is a second view of the same task service, never a separate data path. */
 public class TaskWidgetProvider extends AppWidgetProvider {
+    private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
     @Override public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
-        for (int id : ids) manager.updateAppWidget(id, build(context));
+        PendingResult pending = goAsync(); Context app = context.getApplicationContext();
+        WORKER.execute(() -> { try { for (int id : ids) manager.updateAppWidget(id, build(app)); } finally { pending.finish(); } });
     }
-
     static void updateAll(Context context) {
-        AppWidgetManager manager = AppWidgetManager.getInstance(context);
-        int[] ids = manager.getAppWidgetIds(new ComponentName(context, TaskWidgetProvider.class));
-        for (int id : ids) manager.updateAppWidget(id, build(context));
+        Context app = context.getApplicationContext(); WORKER.execute(() -> {
+            AppWidgetManager manager = AppWidgetManager.getInstance(app); int[] ids = manager.getAppWidgetIds(new ComponentName(app, TaskWidgetProvider.class));
+            for (int id : ids) manager.updateAppWidget(id, build(app));
+        });
     }
-
     private static RemoteViews build(Context context) {
-        RemoteViews view = new RemoteViews(context.getPackageName(), R.layout.task_widget);
-        TaskRepository store = new TaskRepository(context);
-        List<JSONObject> tasks = store.activeTasks();
+        RemoteViews view = new RemoteViews(context.getPackageName(), R.layout.task_widget); DashboardState state = new TaskService(DatabaseProvider.get(context)).dashboard();
         view.setOnClickPendingIntent(R.id.widget_title, openApp(context));
-        if (tasks.isEmpty()) {
-            view.setTextViewText(R.id.widget_title, "Auto Secretary");
-            view.setTextViewText(R.id.widget_subtitle, "Heute ist nichts offen.");
-            view.setTextViewText(R.id.widget_step, "Eine neue Aufgabe anlegen");
-            view.setViewVisibility(R.id.widget_later, View.GONE);
-            view.setViewVisibility(R.id.widget_done, View.GONE);
-            view.setViewVisibility(R.id.widget_condition, View.GONE);
-            return view;
-        }
-        JSONObject task = tasks.get(0);
-        String id = task.optString("id");
-        view.setTextViewText(R.id.widget_title, task.optString("title"));
-        view.setTextViewText(R.id.widget_subtitle, task.optString("slot") + " · " + store.remainingSteps(task) + " Schritte offen");
-        view.setTextViewText(R.id.widget_step, store.nextAction(task));
-        view.setViewVisibility(R.id.widget_done, View.VISIBLE);
-        view.setViewVisibility(R.id.widget_later, View.VISIBLE);
-        boolean condition = task.optBoolean("ongoing") && !task.optString("condition").isEmpty();
-        boolean conditionReady = condition && store.remainingSteps(task) == 0;
-        view.setTextViewText(R.id.widget_done, conditionReady ? "Bedingung erfüllt" : "Erledigt");
-        view.setOnClickPendingIntent(R.id.widget_done, action(context, conditionReady ? TaskActionReceiver.CONDITION : TaskActionReceiver.COMPLETE, id));
-        view.setOnClickPendingIntent(R.id.widget_later, action(context, TaskActionReceiver.LATER, id));
-        view.setViewVisibility(R.id.widget_condition, condition && !conditionReady ? View.VISIBLE : View.GONE);
-        if (condition && !conditionReady) view.setOnClickPendingIntent(R.id.widget_condition, action(context, TaskActionReceiver.CONDITION, id));
+        if (state.tasks.isEmpty()) { view.setTextViewText(R.id.widget_title, "Auto Secretary"); view.setTextViewText(R.id.widget_subtitle, "Heute ist nichts offen."); view.setTextViewText(R.id.widget_step, "Eine neue Aufgabe anlegen"); view.setViewVisibility(R.id.widget_later, View.GONE); view.setViewVisibility(R.id.widget_done, View.GONE); view.setViewVisibility(R.id.widget_condition, View.GONE); return view; }
+        TaskSnapshot task = state.tasks.get(0); view.setTextViewText(R.id.widget_title, task.title); view.setTextViewText(R.id.widget_subtitle, task.slot + " · " + task.remainingSteps + " Schritte offen"); view.setTextViewText(R.id.widget_step, task.nextAction);
+        boolean virtualCondition = task.occurrenceId.isEmpty(); view.setViewVisibility(R.id.widget_done, virtualCondition ? View.GONE : View.VISIBLE); view.setViewVisibility(R.id.widget_later, virtualCondition ? View.GONE : View.VISIBLE);
+        if (!virtualCondition) { view.setOnClickPendingIntent(R.id.widget_done, action(context, TaskActionReceiver.COMPLETE, task.occurrenceId)); view.setOnClickPendingIntent(R.id.widget_later, action(context, TaskActionReceiver.LATER, task.occurrenceId)); }
+        view.setViewVisibility(R.id.widget_condition, task.terminalCondition ? View.VISIBLE : View.GONE); if (task.terminalCondition) view.setOnClickPendingIntent(R.id.widget_condition, confirm(context, task.taskId));
         return view;
     }
-
-    private static PendingIntent action(Context context, String action, String id) {
-        Intent intent = new Intent(context, TaskActionReceiver.class).setAction(action).putExtra("task_id", id);
-        return PendingIntent.getBroadcast(context, (action + id).hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    }
-
-    private static PendingIntent openApp(Context context) {
-        Intent intent = new Intent(context, MainActivity.class);
-        return PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    }
+    private static PendingIntent action(Context context, String action, String occurrenceId) { Intent intent = new Intent(context, TaskActionReceiver.class).setAction(action).putExtra("occurrence_id", occurrenceId); return PendingIntent.getBroadcast(context, (action + occurrenceId).hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE); }
+    private static PendingIntent confirm(Context context, String taskId) { Intent intent = new Intent(context, MainActivity.class).putExtra(MainActivity.CONFIRM_TASK, taskId).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); return PendingIntent.getActivity(context, ("confirm" + taskId).hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE); }
+    private static PendingIntent openApp(Context context) { return PendingIntent.getActivity(context, 1, new Intent(context, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE); }
 }

@@ -12,11 +12,16 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += mapOf("room.schemaLocation" to "$projectDir/schemas")
+            }
+        }
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     signingConfigs {
@@ -37,4 +42,13 @@ android {
             if (!System.getenv("SIGNING_STORE_FILE").isNullOrBlank()) signingConfig = signingConfigs.getByName("release")
         }
     }
+}
+
+dependencies {
+    implementation("androidx.room:room-runtime:2.6.1")
+    annotationProcessor("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-livedata:2.6.2")
+    implementation("androidx.activity:activity:1.8.0")
+    testImplementation("junit:junit:4.13.2")
 }

@@ -4,19 +4,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class TaskActionReceiver extends BroadcastReceiver {
     public static final String COMPLETE = "de.thonktank.autosecretary.COMPLETE";
     public static final String LATER = "de.thonktank.autosecretary.LATER";
-    public static final String CONDITION = "de.thonktank.autosecretary.CONDITION";
-
+    private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
     @Override public void onReceive(Context context, Intent intent) {
-        String id = intent.getStringExtra("task_id");
-        if (id == null) return;
-        TaskRepository store = new TaskRepository(context);
-        String action = intent.getAction();
-        if (COMPLETE.equals(action)) store.completeNextStep(id);
-        else if (LATER.equals(action)) store.later(id);
-        else if (CONDITION.equals(action)) store.fulfilCondition(id);
-        TaskWidgetProvider.updateAll(context);
+        PendingResult pending = goAsync(); Context app = context.getApplicationContext(); String id = intent.getStringExtra("occurrence_id"); String action = intent.getAction();
+        WORKER.execute(() -> { try { TaskService tasks = new TaskService(DatabaseProvider.get(app)); if (COMPLETE.equals(action)) tasks.completeNextStep(id); else if (LATER.equals(action)) tasks.defer(id); TaskWidgetProvider.updateAll(app); } finally { pending.finish(); } });
     }
 }

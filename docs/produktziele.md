@@ -10,6 +10,7 @@ Eine persönliche, deutschsprachige ADHS-Task-App. Sie zeigt nur **jetzt**, **da
 - Nicht erledigte Aufgaben werden sanft weitergetragen; es gibt keine roten Überfälligkeiten und keine Strafen.
 - XP belohnt erledigte Aufgaben. Routinen haben Level; ein ausgelassener Termin setzt nur ihre aktuelle Serie zurück, nie ihr Level.
 - Das Widget ist der Arbeitsbereich: abhaken, später setzen und Bedingungen erfüllen. Erstellen und Bearbeiten öffnen die App.
+- Benachrichtigungen sind im Stabilitäts-Release bewusst deaktiviert. Sie kommen erst mit einer fälligkeitsbasierten, getesteten Umsetzung zurück.
 
 ## Bewusste Grenzen
 
