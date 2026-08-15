@@ -82,7 +82,8 @@ public final class OptionsView extends LinearLayout {
     }
 
     public void bind(DayPalette palette, UiThemeMode mode,
-                     CalendarPermissionStatus permission, String version) {
+                     CalendarPermissionStatus permission, CalendarUiState calendarState,
+                     String version) {
         heading.setTextColor(palette.accent);
         appearance.bind(palette, getContext().getString(R.string.options_appearance_description));
         UiThemeMode[] modes = UiThemeMode.values();
@@ -96,8 +97,12 @@ public final class OptionsView extends LinearLayout {
         }
         boolean granted = permission == CalendarPermissionStatus.GRANTED;
         boolean settings = permission == CalendarPermissionStatus.DENIED_TO_SETTINGS;
-        calendar.bind(palette, getContext().getString(granted
-                ? R.string.calendar_granted : R.string.calendar_missing));
+        int calendarDescription = granted ? R.string.calendar_granted : R.string.calendar_missing;
+        if (calendarState.status == CalendarUiState.Status.PROVIDER_UNAVAILABLE)
+            calendarDescription = R.string.calendar_provider_unavailable;
+        else if (calendarState.status == CalendarUiState.Status.ERROR)
+            calendarDescription = R.string.calendar_error;
+        calendar.bind(palette, getContext().getString(calendarDescription));
         calendarButton.setText(granted || settings
                 ? R.string.open_app_settings : R.string.calendar_grant);
         bindOutline(calendarButton, palette);

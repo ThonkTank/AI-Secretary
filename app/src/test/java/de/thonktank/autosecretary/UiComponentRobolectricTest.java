@@ -13,6 +13,7 @@ import androidx.test.core.app.ApplicationProvider;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.calendar.CalendarResult;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -76,7 +77,7 @@ public final class UiComponentRobolectricTest {
         DashboardUiModel dashboard = DashboardUiModel.compose(
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
         return new DashboardUiState(NavigationDestination.TODAY, dashboard,
-                new CalendarUiState(false, DashboardFixtures.calendarEvents()), palette,
+                CalendarUiState.from(new CalendarResult.Success(DashboardFixtures.calendarEvents())), palette,
                 CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
                 EditorUiState.closed());
     }

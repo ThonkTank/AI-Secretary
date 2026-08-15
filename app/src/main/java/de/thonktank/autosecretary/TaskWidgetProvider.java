@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import de.thonktank.autosecretary.calendar.CalendarResult;
+
 /** Responsive second view of the same task service, never a separate data path. */
 public class TaskWidgetProvider extends AppWidgetProvider {
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
@@ -66,7 +68,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
 
     private static void bindAfter(RemoteViews view,DashboardState state,TaskSnapshot focus,DayPalette p){TaskSnapshot after=null;for(TaskSnapshot task:state.tasks)if(!task.done&&task!=focus){after=task;break;}view.setViewVisibility(R.id.widget_after_leaf,after==null?View.GONE:View.VISIBLE);if(after!=null){view.setTextViewText(R.id.widget_after_title,after.title);view.setTextColor(R.id.widget_after_title,p.ink);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_after_leaf,"setBackgroundTintList",ColorStateList.valueOf(p.leaf2));}}
 
-    private static void bindCalendar(RemoteViews view,AppContainer container,DayPalette p){List<CalendarEventSnapshot> events=container.calendar.today();boolean show=!events.isEmpty();view.setViewVisibility(R.id.widget_calendar_leaf,show?View.VISIBLE:View.GONE);if(!show)return;CalendarEventSnapshot event=events.get(0);view.setTextViewText(R.id.widget_calendar_time,event.time);view.setTextViewText(R.id.widget_calendar_title,event.title);view.setTextColor(R.id.widget_calendar_time,p.calendarInk);view.setTextColor(R.id.widget_calendar_title,p.calendarInk);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_calendar_leaf,"setBackgroundTintList",ColorStateList.valueOf(p.calendar));}
+    private static void bindCalendar(RemoteViews view,AppContainer container,DayPalette p){CalendarResult result=container.calendar.loadToday();List<CalendarEventSnapshot> events=result.events();boolean show=result instanceof CalendarResult.Success&&!events.isEmpty();view.setViewVisibility(R.id.widget_calendar_leaf,show?View.VISIBLE:View.GONE);if(!show)return;CalendarEventSnapshot event=events.get(0);view.setTextViewText(R.id.widget_calendar_time,event.time);view.setTextViewText(R.id.widget_calendar_title,event.title);view.setTextColor(R.id.widget_calendar_time,p.calendarInk);view.setTextColor(R.id.widget_calendar_title,p.calendarInk);if(Build.VERSION.SDK_INT>=31)view.setColorStateList(R.id.widget_calendar_leaf,"setBackgroundTintList",ColorStateList.valueOf(p.calendar));}
 
     private static void hideOptional(RemoteViews view,Size size){if(size==Size.SMALL)view.setViewVisibility(R.id.widget_progress,View.GONE);if(size==Size.WIDE)view.setViewVisibility(R.id.widget_steps,View.GONE);if(size==Size.TALL){view.setViewVisibility(R.id.widget_steps,View.GONE);view.setViewVisibility(R.id.widget_calendar_leaf,View.GONE);}if(size==Size.LARGE){view.setViewVisibility(R.id.widget_steps,View.GONE);view.setViewVisibility(R.id.widget_after_leaf,View.GONE);view.setViewVisibility(R.id.widget_calendar_leaf,View.GONE);}}
 

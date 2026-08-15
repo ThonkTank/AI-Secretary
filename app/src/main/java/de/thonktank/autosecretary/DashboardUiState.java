@@ -49,7 +49,7 @@ public final class DashboardUiState {
     }
 
     public DashboardUiState withLoading(boolean value) {
-        return copy(navigation, dashboard, new CalendarUiState(value, calendar.events), palette,
+        return copy(navigation, dashboard, value ? CalendarUiState.loading(calendar) : calendar, palette,
                 calendarPermission, value, runningActions, editor);
     }
 

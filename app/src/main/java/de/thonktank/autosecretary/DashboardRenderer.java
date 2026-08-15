@@ -51,7 +51,7 @@ public final class DashboardRenderer {
         if (state.navigation == NavigationDestination.TODAY) bindToday(state.dashboard, state.palette);
         else if (state.navigation == NavigationDestination.ALL_TASKS)
             allPlaceholder.bind(state.palette, true);
-        else options.bind(state.palette, themeMode, state.calendarPermission, version);
+        else options.bind(state.palette, themeMode, state.calendarPermission, state.calendar, version);
     }
 
     private void mount(NavigationDestination destination) {

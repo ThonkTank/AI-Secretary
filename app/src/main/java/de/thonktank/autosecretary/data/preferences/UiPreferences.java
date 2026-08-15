@@ -4,12 +4,14 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import de.thonktank.autosecretary.infrastructure.AppLogger;
+import de.thonktank.autosecretary.calendar.CalendarPolicy;
 
 public final class UiPreferences {
     private static final String TAG = "UiPreferences";
     private static final String FILE = "forest_ui";
     private static final String THEME_MODE = "theme_mode";
     private static final String CALENDAR_ASKED = "calendar_asked";
+    private static final String CALENDAR_POLICY = "calendar_policy";
 
     private final SharedPreferences preferences;
     private final AppLogger logger;
@@ -40,5 +42,19 @@ public final class UiPreferences {
 
     public void markCalendarPermissionAsked() {
         preferences.edit().putBoolean(CALENDAR_ASKED, true).apply();
+    }
+
+    public CalendarPolicy calendarPolicy() {
+        String stored = preferences.getString(CALENDAR_POLICY, CalendarPolicy.ALL_VISIBLE.name());
+        try {
+            return CalendarPolicy.valueOf(stored);
+        } catch (IllegalArgumentException error) {
+            logger.error(TAG, "Ignoring unsupported calendar policy: " + stored, error);
+            return CalendarPolicy.ALL_VISIBLE;
+        }
+    }
+
+    public void setCalendarPolicy(CalendarPolicy policy) {
+        preferences.edit().putString(CALENDAR_POLICY, policy.name()).apply();
     }
 }

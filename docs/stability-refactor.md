@@ -85,3 +85,21 @@ Tageszeit, Wiederholung, Intervall, Wochentage, Schritte, ongoing-Status und
 Erledigungsbedingung geändert werden. `LoadTaskDetails` lädt dafür Task und
 Schrittvorlagen, `UpdateTask` ersetzt die Definition atomar; eine bereits offene
 Occurrence bleibt als historisch fällige Ausführung unverändert.
+
+## Kalender als strukturierte Systemgrenze
+
+`CalendarDataSource` liefert `Success`, `PermissionMissing`, `ProviderUnavailable` oder
+`Error`; eine leere erfolgreiche Terminliste ist damit nicht mehr von einem technischen
+Fehler abhängig. `CalendarUiState` übernimmt diesen Status und die Optionen zeigen
+Provider- und Ladefehler getrennt vom Berechtigungszustand an.
+
+Standardmäßig werden alle sichtbaren, nicht abgesagten und nicht abgelehnten Kalender
+gelesen. Der frühere Google-only-Filter ist die explizite `CalendarPolicy.GOOGLE_ONLY` und
+wird typisiert in `UiPreferences` gespeichert. Datum und Zone kommen weiterhin aus den
+injizierten Providern. `CalendarDayWindow` berechnet lokale Tagesgrenzen als Instants und
+berücksichtigt damit 23- und 25-stündige DST-Tage.
+
+Das Repository cached ein Ergebnis anhand von Datum, Zone, Policy und
+Berechtigungszustand. Activity und alle Widgets verwenden die gleiche Instanz aus dem
+`AppContainer`. Ein `ContentObserver` auf Kalenderereignisse invalidiert den Cache und
+stößt über die DataSource-Subscription einen Presentation-Refresh an.

@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel;
 import androidx.savedstate.SavedStateRegistryOwner;
 
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
+import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskId;
@@ -42,6 +43,7 @@ public final class TaskViewModel extends ViewModel {
     private final AppLogger logger;
     private final UiTextProvider texts;
     private final SavedStateHandle savedState;
+    private final CalendarDataSource.Subscription calendarSubscription;
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final MutableLiveData<DashboardUiState> state = new MutableLiveData<>();
     private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
@@ -71,6 +73,7 @@ public final class TaskViewModel extends ViewModel {
                 CalendarUiState.empty(), palette(), CalendarPermissionStatus.UNKNOWN,
                 false, Collections.emptySet(), editor);
         state.setValue(current);
+        calendarSubscription = calendar.observeChanges(this::load);
         load();
         if (editor.open && editor.loading && editor.taskId != null) openEditor(editor.taskId);
     }
@@ -240,11 +243,7 @@ public final class TaskViewModel extends ViewModel {
 
     private Content loadContent() {
         DashboardState loadedDashboard = dashboard.refresh();
-        CalendarPermissionStatus permission;
-        synchronized (stateLock) { permission = current.calendarPermission; }
-        List<CalendarEventSnapshot> events = permission == CalendarPermissionStatus.GRANTED
-                ? calendar.today() : Collections.emptyList();
-        return new Content(loadedDashboard, events);
+        return new Content(loadedDashboard, calendar.loadToday());
     }
 
     private boolean begin(String key, boolean loading) {
@@ -263,8 +262,9 @@ public final class TaskViewModel extends ViewModel {
         synchronized (stateLock) {
             Set<String> actions = new LinkedHashSet<>(current.runningActions);
             actions.remove(key);
-            CalendarUiState calendarState = new CalendarUiState(false, content.events);
-            current = current.withContent(DashboardUiModel.compose(content.dashboard, content.events),
+            CalendarUiState calendarState = CalendarUiState.from(content.calendar);
+            current = current.withContent(DashboardUiModel.compose(content.dashboard,
+                            content.calendar.events()),
                     calendarState).withRunningActions(actions);
             state.postValue(current);
         }
@@ -317,6 +317,7 @@ public final class TaskViewModel extends ViewModel {
     }
 
     @Override protected void onCleared() {
+        calendarSubscription.close();
         worker.shutdownNow();
     }
 
@@ -325,10 +326,10 @@ public final class TaskViewModel extends ViewModel {
 
     private static final class Content {
         final DashboardState dashboard;
-        final List<CalendarEventSnapshot> events;
-        Content(DashboardState dashboard, List<CalendarEventSnapshot> events) {
+        final CalendarResult calendar;
+        Content(DashboardState dashboard, CalendarResult calendar) {
             this.dashboard = dashboard;
-            this.events = new ArrayList<>(events);
+            this.calendar = calendar;
         }
     }
 

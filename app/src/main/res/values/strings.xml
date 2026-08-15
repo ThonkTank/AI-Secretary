@@ -34,6 +34,8 @@
     <string name="next_mark_done">Als erledigt markieren</string>
     <string name="next_all_done">Alles erledigt</string>
     <string name="calendar_fixed">im Kalender, fest</string>
+    <string name="calendar_all_day">ganztägig</string>
+    <string name="calendar_untitled">Termin</string>
     <string name="empty_title">Gerade ist nichts offen. Das ist auch gut.</string>
     <string name="empty_subtitle">Lege nur die eine Sache an, die dir gerade helfen würde.</string>
     <string name="all_placeholder_title">Alles ansehen kommt später.</string>
@@ -47,6 +49,8 @@
     <string name="options_calendar">Kalender</string>
     <string name="calendar_granted">Alle sichtbaren Kalender · nur lesen</string>
     <string name="calendar_missing">Noch nicht freigegeben · nur lesen</string>
+    <string name="calendar_provider_unavailable">Kalenderanbieter nicht verfügbar</string>
+    <string name="calendar_error">Kalender konnte nicht geladen werden</string>
     <string name="calendar_grant">Kalender freigeben</string>
     <string name="open_app_settings">App-Einstellungen öffnen</string>
     <string name="options_updates">Updates</string>

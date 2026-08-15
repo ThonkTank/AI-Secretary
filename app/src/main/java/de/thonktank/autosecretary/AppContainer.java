@@ -39,9 +39,10 @@ public final class AppContainer {
         this.database = databases.create(app);
         this.taskRepository = new RoomTaskRepository(database);
         this.tasks = new TaskUseCases(taskRepository, clock, ids);
-        this.calendar = new CalendarRepository(app, clock, zones, logger);
         this.uiPreferences = new UiPreferences(app, logger);
         this.texts = new AndroidUiTextProvider(app);
+        this.calendar = new CalendarRepository(app, clock, zones,
+                uiPreferences::calendarPolicy, logger, texts);
         this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
                 tasks.materializeDue, new DashboardUiMapper(texts));
     }

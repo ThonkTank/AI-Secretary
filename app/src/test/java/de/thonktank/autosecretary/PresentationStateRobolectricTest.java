@@ -14,6 +14,7 @@ import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
+import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -158,7 +159,15 @@ public final class PresentationStateRobolectricTest {
     }
 
     private TaskViewModel newViewModel(SavedStateHandle handle) {
-        CalendarDataSource calendar = DashboardFixtures::calendarEvents;
+        CalendarDataSource calendar = new CalendarDataSource() {
+            @Override public CalendarResult loadToday() {
+                return new CalendarResult.Success(DashboardFixtures.calendarEvents());
+            }
+
+            @Override public Subscription observeChanges(Runnable observer) {
+                return () -> { };
+            }
+        };
         return new TaskViewModel(tasks, presenter, calendar, preferences, clock, logger,
                 new AndroidUiTextProvider(context), handle);
     }

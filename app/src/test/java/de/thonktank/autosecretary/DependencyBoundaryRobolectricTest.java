@@ -12,6 +12,7 @@ import de.thonktank.autosecretary.data.legacy.LegacyStateCleaner;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
+import de.thonktank.autosecretary.calendar.CalendarPolicy;
 
 import org.junit.After;
 import org.junit.Before;
@@ -44,12 +45,15 @@ public final class DependencyBoundaryRobolectricTest {
         UiPreferences preferences = new UiPreferences(context, logger);
 
         assertEquals(UiThemeMode.AUTO, preferences.themeMode());
+        assertEquals(CalendarPolicy.ALL_VISIBLE, preferences.calendarPolicy());
         assertFalse(preferences.calendarPermissionAsked());
 
         preferences.setThemeMode(UiThemeMode.DARK);
+        preferences.setCalendarPolicy(CalendarPolicy.GOOGLE_ONLY);
         preferences.markCalendarPermissionAsked();
 
         assertEquals(UiThemeMode.DARK, preferences.themeMode());
+        assertEquals(CalendarPolicy.GOOGLE_ONLY, preferences.calendarPolicy());
         assertTrue(preferences.calendarPermissionAsked());
     }
 
