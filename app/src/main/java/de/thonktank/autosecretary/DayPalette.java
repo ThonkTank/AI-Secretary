@@ -16,7 +16,8 @@ public final class DayPalette {
     // Compatibility aliases keep binders compact while token groups define ownership.
     public final int background, leaf1, leaf2, leaf3, ink, ink2, hint, muted, done, dot, status;
     public final int accent, accentText, light, lightText, tree, calendar, calendarInk, calendarLabel, bad;
-    public final float farAlpha, middleAlpha, frontAlpha, sunX, sunWidth;
+    public final int leaf1Edge, leaf2Edge, leaf3Edge, calendarEdge;
+    public final float shadowAlpha, farAlpha, middleAlpha, frontAlpha, sunX, sunWidth, sunHeight;
     public final int sunColor;
 
     DayPalette(SurfaceTokens surfaces, TypographyTokens typography,
@@ -36,6 +37,11 @@ public final class DayPalette {
         calendar = surfaces.calendar;
         calendarInk = surfaces.calendarContent;
         calendarLabel = surfaces.calendarLabel;
+        leaf1Edge = surfaces.leafPrimaryEdge;
+        leaf2Edge = surfaces.leafSecondaryEdge;
+        leaf3Edge = surfaces.leafTertiaryEdge;
+        calendarEdge = surfaces.calendarEdge;
+        shadowAlpha = surfaces.shadowAlpha;
         ink = typography.primary;
         ink2 = typography.secondary;
         hint = typography.hint;
@@ -50,6 +56,7 @@ public final class DayPalette {
         frontAlpha = forest.frontAlpha;
         sunX = forest.sunX;
         sunWidth = forest.sunWidth;
+        sunHeight = forest.sunHeight;
         sunColor = forest.sunColor;
     }
 
@@ -74,37 +81,40 @@ public final class DayPalette {
         return new DayPalette(surfaces, typography,
                 new ForestTokens(forest.tree, forest.farAlpha, forest.middleAlpha,
                         forest.frontAlpha, automaticForest.sunX, automaticForest.sunWidth,
-                        automaticForest.sunColor), motion);
+                        automaticForest.sunHeight, automaticForest.sunColor), motion);
     }
 
     static DayPalette day(float sunX) {
         return palette(new SurfaceTokens(0xffeef0e6, 0xfffcf6e8, 0xfff1e8d2, 0xffe2d7bc,
                         0xff2e6b44, 0xfffcfaf2, 0xffe3a542, 0xff182018,
-                        0xffdfe9ec, 0xff2b5666, 0xff4f7482),
+                        0xffdfe9ec, 0xff2b5666, 0xff4f7482,
+                        0x38785a1e, 0x2b785a1e, 0x21785a1e, 0x472b5666, .16f),
                 new TypographyTokens(0xff1a2618, 0xff4e5a48, 0xff586250, 0xff6d7860,
                         0xffa79a7c, 0xffb0a385, 0xff5e6a58, 0xff9e4f3a),
                 new ForestTokens(0xff2a3628, .075f, .14f, .5f,
-                        sunX, 1.30f, 0xb8fff0ce));
+                        sunX, 1.30f, .52f, 0xb8fff0ce));
     }
 
     static DayPalette evening(float sunX) {
         return palette(new SurfaceTokens(0xff12100a, 0xff2c2214, 0xff231a0f, 0xff1c150a,
                         0xfff0a03c, 0xff231a0e, 0xfff0a03c, 0xff231a0e,
-                        0xff101c20, 0xff93c3d2, 0xff7099a8),
+                        0xff101c20, 0xff93c3d2, 0xff7099a8,
+                        0x70f8b45a, 0x38f8b45a, 0x26f8b45a, 0x4793c3d2, .44f),
                 new TypographyTokens(0xfff8ecd2, 0xffc9b694, 0xffc3ae86, 0xffa08b62,
                         0xff7a6742, 0xff7e6c48, 0xffbcab8c, 0xffc96a4e),
                 new ForestTokens(0xff020201, .34f, .6f, .96f,
-                        sunX, 1.04f, 0x8ff8a84a));
+                        sunX, 1.04f, .50f, 0x8ff8a84a));
     }
 
     static DayPalette night(float sunX) {
         return palette(new SurfaceTokens(0xff080f0b, 0xff243322, 0xff1c2a1a, 0xff162113,
                         0xffe8a83e, 0xff14201a, 0xffe8a83e, 0xff14201a,
-                        0xff0b171c, 0xff8fbacb, 0xff7096a6),
+                        0xff0b171c, 0xff8fbacb, 0xff7096a6,
+                        0x6bf0b258, 0x33f0b258, 0x24f0b258, 0x478fbacb, .44f),
                 new TypographyTokens(0xfff4eeda, 0xffc0c9b2, 0xffb2bca4, 0xff8e9a84,
                         0xff6b7458, 0xff68715a, 0xffa9b9ac, 0xffc96a4e),
                 new ForestTokens(0xff010302, .34f, .6f, .96f,
-                        sunX, .88f, 0x80f4b258));
+                        sunX, .88f, .42f, 0x80f4b258));
     }
 
     private static DayPalette palette(SurfaceTokens surfaces, TypographyTokens typography,

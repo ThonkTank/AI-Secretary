@@ -29,6 +29,7 @@ final class UiStyle {
         view.setTextColor(color);
         view.setTypeface(italic ? serifItalic : serif);
         view.setFontVariationSettings("'wght' " + weight);
+        if (size >= 30) view.setLetterSpacing(-.02f);
         view.setIncludeFontPadding(false);
         return view;
     }
@@ -78,7 +79,11 @@ final class UiStyle {
         return drawable;
     }
 
-    int edge(DayPalette palette, float alpha) { return alpha(palette.light, alpha); }
+    int edge(DayPalette palette, int level) {
+        if (level == 1) return palette.leaf1Edge;
+        if (level == 2) return palette.leaf2Edge;
+        return palette.leaf3Edge;
+    }
     int dimen(int resourceId) { return context.getResources().getDimensionPixelSize(resourceId); }
     int dp(float value) { return Math.round(value * context.getResources().getDisplayMetrics().density); }
     static int alpha(int color, float alpha) { return (Math.round(alpha * 255) << 24) | (color & 0x00ffffff); }

@@ -114,9 +114,12 @@ public final class UiComponentRobolectricTest {
         int target = context.getResources().getDimensionPixelSize(R.dimen.touch_target);
         HeaderView header = new HeaderView(context, () -> { });
         View add = header.getChildAt(1);
-        assertTrue(((android.widget.TextView) add).getMinWidth() >= target);
-        assertTrue(((android.widget.TextView) add).getMinHeight() >= target);
+        assertTrue(add.getLayoutParams().width >= target);
+        assertTrue(add.getLayoutParams().height >= target);
         assertEquals(context.getString(R.string.content_add_task), add.getContentDescription());
+        View addVisual = ((android.widget.FrameLayout) add).getChildAt(0);
+        assertEquals(new UiStyle(context).dp(40), addVisual.getLayoutParams().width);
+        assertEquals(new UiStyle(context).dp(40), addVisual.getLayoutParams().height);
 
         FooterNavigationView footer = new FooterNavigationView(context, destination -> { });
         for (int index = 0; index < footer.getChildCount(); index++) {

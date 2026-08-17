@@ -56,6 +56,41 @@ public final class DashboardRenderer {
                     version, updateState);
     }
 
+    public void animateEditorTransition(Runnable finished) {
+        if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            finished.run();
+            return;
+        }
+        List<View> leaves = new ArrayList<>();
+        if (focus != null && focus.getVisibility() == View.VISIBLE) leaves.add(focus);
+        if (timeline != null) {
+            for (int i = 0; i < timeline.getChildCount() && leaves.size() < 5; i++)
+                leaves.add(timeline.getChildAt(i));
+        }
+        if (leaves.isEmpty() && empty != null && empty.getVisibility() == View.VISIBLE)
+            leaves.add(empty);
+        if (leaves.isEmpty()) {
+            finished.run();
+            return;
+        }
+        final int[] remaining = {leaves.size()};
+        for (int i = 0; i < leaves.size(); i++) {
+            View leaf = leaves.get(i);
+            float originalRotation = leaf.getRotation();
+            leaf.animate().translationX(style.dp(46 + i * 10)).translationY(-style.dp(34 + i * 6))
+                    .rotation(originalRotation + 3f).alpha(0f)
+                    .setDuration(MotionTokens.standard().leafFlightDurationMs)
+                    .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
+                    .withEndAction(() -> {
+                        leaf.setTranslationX(0f);
+                        leaf.setTranslationY(0f);
+                        leaf.setRotation(originalRotation);
+                        leaf.setAlpha(1f);
+                        if (--remaining[0] == 0) finished.run();
+                    });
+        }
+    }
+
     private void mount(NavigationDestination destination) {
         int scrollY = scroll.getScrollY();
         content.removeAllViews();
@@ -75,7 +110,7 @@ public final class DashboardRenderer {
     }
 
     private void mountToday() {
-        content.setPadding(style.dimen(R.dimen.page_start), style.dp(8),
+        content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
         xp = style.serif("", 14, 0, true, 300);
         LinearLayout.LayoutParams xpParams = new LinearLayout.LayoutParams(-1, -2);
@@ -108,7 +143,7 @@ public final class DashboardRenderer {
             empty.bind(palette, false);
             return;
         }
-        content.setPadding(style.dimen(R.dimen.page_start), style.dp(8),
+        content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
         xp.setText(context.getString(R.string.xp_summary, dashboard.xp));
         xp.setTextColor(palette.muted);
@@ -126,6 +161,7 @@ public final class DashboardRenderer {
                               DayPalette palette) {
         int shown = Math.min(3, items.size());
         List<String> desired = new ArrayList<>();
+        boolean afterAssigned = false;
         for (int i = 0; i < shown; i++) {
             TimelineItemUiModel item = items.get(i);
             String key = item.event != null
@@ -144,12 +180,15 @@ public final class DashboardRenderer {
                     view = new TaskLeafView(context);
                     timelineViews.put(key, view);
                 }
+                boolean firstOpenAfterFocus = !item.task.done && !afterAssigned;
+                if (!item.task.done) afterAssigned = true;
                 boolean bad = item.task.overdue && !overdueShown;
                 overdueShown |= bad;
                 String marker = context.getString(item.task.done ? R.string.marker_done
                         : bad ? R.string.marker_overdue
-                        : i == 0 ? R.string.marker_after : R.string.marker_later);
-                ((TaskLeafView) view).bind(item.task, marker, i > 0, palette,
+                        : firstOpenAfterFocus ? R.string.marker_after : R.string.marker_later);
+                ((TaskLeafView) view).bind(item.task, marker,
+                        !item.task.done && !firstOpenAfterFocus, palette,
                         actions::onTaskAction, actions::onTaskMenu);
             }
             if (view.getParent() != timeline) {

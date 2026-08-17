@@ -32,7 +32,7 @@ public final class CalendarLeafView extends LinearLayout {
     }
 
     public void bind(CalendarEventSnapshot event, DayPalette palette) {
-        setBackground(style.leaf(palette.calendar, UiStyle.alpha(palette.calendarInk, .28f),
+        setBackground(style.leaf(palette.calendar, palette.calendarEdge,
                 8, 56, 8, 56));
         time.setText(event.time);
         title.setText(event.title);

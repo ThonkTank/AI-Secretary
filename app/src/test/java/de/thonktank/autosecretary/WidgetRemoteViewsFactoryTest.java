@@ -33,7 +33,7 @@ public final class WidgetRemoteViewsFactoryTest {
     private final Context context = ApplicationProvider.getApplicationContext();
 
     @Test @Config(sdk = 26)
-    public void api26UsesDynamicSharedForestAndDocumentedStaticChromeFallback() {
+    public void api26UsesDynamicSharedForestAndRenderedChrome() {
         WidgetForestCache cache = new WidgetForestCache();
         WidgetUiModel model = model(WidgetSizeClassifier.Size.SMALL, DayPalette.Mode.DARK);
         View applied = new WidgetRemoteViewsFactory(context, cache).create(model)
@@ -42,7 +42,12 @@ public final class WidgetRemoteViewsFactoryTest {
         ImageView forest = applied.findViewById(R.id.widget_forest);
         Bitmap bitmap = ((BitmapDrawable) forest.getDrawable()).getBitmap();
         TextView action = applied.findViewById(R.id.widget_action);
+        ImageView actionBackground = applied.findViewById(R.id.widget_action_background);
         assertNotNull(bitmap);
+        assertNotNull(((BitmapDrawable) actionBackground.getDrawable()).getBitmap());
+        Bitmap actionBitmap = cache.button(model.size, model.palette);
+        assertNotSame(actionBitmap, cache.button(model.size,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT)));
         assertTrue(bitmap.getAllocationByteCount() <= WidgetForestCache.MAX_BITMAP_BYTES);
         assertNull(action.getBackgroundTintList());
         assertEquals(model.palette.accentText, action.getCurrentTextColor());
@@ -54,9 +59,8 @@ public final class WidgetRemoteViewsFactoryTest {
         android.widget.RemoteViews remoteViews = new WidgetRemoteViewsFactory(context,
                 new WidgetForestCache()).create(model);
         View applied = remoteViews.apply(context, new FrameLayout(context));
-        TextView action = applied.findViewById(R.id.widget_action);
-        assertEquals(model.palette.accent,
-                action.getBackgroundTintList().getDefaultColor());
+        ImageView actionBackground = applied.findViewById(R.id.widget_action_background);
+        assertNotNull(((BitmapDrawable) actionBackground.getDrawable()).getBitmap());
         Parcel parcel = Parcel.obtain();
         try {
             remoteViews.writeToParcel(parcel, 0);
@@ -80,14 +84,54 @@ public final class WidgetRemoteViewsFactoryTest {
         }
     }
 
-    @Test @Config(sdk = 26)
-    public void allFourLayoutsAlsoBindOnMinimumApi() {
+    @Test @Config(sdk = 35)
+    public void canonicalLayoutsKeepVisualControlsInsideFortyEightDpTargets() {
         WidgetRemoteViewsFactory factory = new WidgetRemoteViewsFactory(context,
                 new WidgetForestCache());
+        for (WidgetSizeClassifier.Size size : new WidgetSizeClassifier.Size[]{
+                WidgetSizeClassifier.Size.SMALL, WidgetSizeClassifier.Size.WIDE,
+                WidgetSizeClassifier.Size.TALL}) {
+            View applied = factory.create(model(size, DayPalette.Mode.AUTO))
+                    .apply(context, new FrameLayout(context));
+            View target = applied.findViewById(R.id.widget_action_target);
+            View visual = applied.findViewById(R.id.widget_action_background);
+            assertEquals(dp(48), target.getLayoutParams().height);
+            assertEquals(dp(size == WidgetSizeClassifier.Size.TALL ? 40 : 38),
+                    visual.getLayoutParams().height);
+        }
+    }
+
+    @Test @Config(sdk = 35)
+    public void widgetDewUsesRenderedDesignArtworkInsteadOfUnicodeGlyphs() {
+        View applied = new WidgetRemoteViewsFactory(context, new WidgetForestCache())
+                .create(model(WidgetSizeClassifier.Size.WIDE, DayPalette.Mode.AUTO))
+                .apply(context, new FrameLayout(context));
+        ImageView dew = applied.findViewById(R.id.widget_step_dot_1);
+        assertNotNull(((BitmapDrawable) dew.getDrawable()).getBitmap());
+        assertEquals(dp(48), dew.getLayoutParams().width);
+        assertEquals(dp(48), dew.getLayoutParams().height);
+    }
+
+    @Test @Config(sdk = 26)
+    public void allFourLayoutsAlsoBindOnMinimumApi() {
+        WidgetForestCache cache = new WidgetForestCache();
+        WidgetRemoteViewsFactory factory = new WidgetRemoteViewsFactory(context, cache);
         for (WidgetSizeClassifier.Size size : WidgetSizeClassifier.Size.values()) {
             View applied = factory.create(model(size, DayPalette.Mode.AUTO))
                     .apply(context, new FrameLayout(context));
             assertNotNull(applied.findViewById(R.id.widget_forest));
+            if (size == WidgetSizeClassifier.Size.TALL
+                    || size == WidgetSizeClassifier.Size.LARGE) {
+                WidgetUiModel current = model(size, DayPalette.Mode.AUTO);
+                ImageView calendar = applied.findViewById(R.id.widget_calendar_background);
+                assertNotNull(((BitmapDrawable) calendar.getDrawable()).getBitmap());
+                Bitmap leaf = cache.leaf(
+                        size == WidgetSizeClassifier.Size.TALL ? 230 : 286,
+                        84, true, current.palette);
+                assertNotSame(leaf, cache.leaf(
+                        size == WidgetSizeClassifier.Size.TALL ? 230 : 286,
+                        84, true, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT)));
+            }
         }
     }
 
@@ -133,5 +177,9 @@ public final class WidgetRemoteViewsFactoryTest {
         return presenter.present(new WidgetPresenter.CycleData(DashboardFixtures.fullDashboard(),
                         new CalendarResult.Success(DashboardFixtures.calendarEvents()),
                         DayPalette.at(LocalTime.of(22, 0), mode)), size);
+    }
+
+    private int dp(int value) {
+        return Math.round(value * context.getResources().getDisplayMetrics().density);
     }
 }

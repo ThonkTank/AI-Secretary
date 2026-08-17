@@ -7,16 +7,18 @@ public final class ForestTokens {
     public final float frontAlpha;
     public final float sunX;
     public final float sunWidth;
+    public final float sunHeight;
     public final int sunColor;
 
     public ForestTokens(int tree, float farAlpha, float middleAlpha, float frontAlpha,
-                        float sunX, float sunWidth, int sunColor) {
+                        float sunX, float sunWidth, float sunHeight, int sunColor) {
         this.tree = tree;
         this.farAlpha = farAlpha;
         this.middleAlpha = middleAlpha;
         this.frontAlpha = frontAlpha;
         this.sunX = sunX;
         this.sunWidth = sunWidth;
+        this.sunHeight = sunHeight;
         this.sunColor = sunColor;
     }
 }

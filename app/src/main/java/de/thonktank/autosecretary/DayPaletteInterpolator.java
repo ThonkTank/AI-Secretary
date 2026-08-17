@@ -60,7 +60,12 @@ public final class DayPaletteInterpolator {
                 color(a.light, b.light, amount), color(a.lightText, b.lightText, amount),
                 calendar, accessible(color(a.calendarInk, b.calendarInk, amount), calendar,
                         a.calendarInk, b.calendarInk),
-                color(a.calendarLabel, b.calendarLabel, amount));
+                color(a.calendarLabel, b.calendarLabel, amount),
+                color(a.leaf1Edge, b.leaf1Edge, amount),
+                color(a.leaf2Edge, b.leaf2Edge, amount),
+                color(a.leaf3Edge, b.leaf3Edge, amount),
+                color(a.calendarEdge, b.calendarEdge, amount),
+                value(a.shadowAlpha, b.shadowAlpha, amount));
         TypographyTokens typography = new TypographyTokens(
                 accessible(color(a.ink, b.ink, amount), leafPrimary, a.ink, b.ink),
                 color(a.ink2, b.ink2, amount),
@@ -72,7 +77,8 @@ public final class DayPaletteInterpolator {
                 value(a.farAlpha, b.farAlpha, amount),
                 value(a.middleAlpha, b.middleAlpha, amount),
                 value(a.frontAlpha, b.frontAlpha, amount), value(a.sunX, b.sunX, amount),
-                value(a.sunWidth, b.sunWidth, amount), color(a.sunColor, b.sunColor, amount));
+                value(a.sunWidth, b.sunWidth, amount),
+                value(a.sunHeight, b.sunHeight, amount), color(a.sunColor, b.sunColor, amount));
         return new DayPalette(surfaces, typography, forest, MotionTokens.standard());
     }
 

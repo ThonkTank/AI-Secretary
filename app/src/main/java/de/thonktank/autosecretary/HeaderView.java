@@ -5,6 +5,7 @@ import android.content.Context;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.FrameLayout;
 
 import java.time.LocalTime;
 
@@ -22,13 +23,14 @@ public final class HeaderView extends LinearLayout {
         setPadding(style.dp(76), 0, style.dp(22), 0);
         greeting = style.serif("", 19, 0, true, 300);
         addView(greeting, new LayoutParams(0, -2, 1));
+        FrameLayout addTarget = new FrameLayout(context);
+        addTarget.setContentDescription(context.getString(R.string.content_add_task));
+        addTarget.setOnClickListener(view -> onAdd.run());
         add = style.sans("＋", 23, 0, false);
         add.setGravity(Gravity.CENTER);
-        add.setContentDescription(context.getString(R.string.content_add_task));
-        add.setMinWidth(style.dimen(R.dimen.touch_target));
-        add.setMinHeight(style.dimen(R.dimen.touch_target));
-        add.setOnClickListener(view -> onAdd.run());
-        addView(add, new LayoutParams(style.dimen(R.dimen.touch_target), style.dimen(R.dimen.touch_target)));
+        FrameLayout.LayoutParams visual = new FrameLayout.LayoutParams(style.dp(40), style.dp(40), Gravity.CENTER);
+        addTarget.addView(add, visual);
+        addView(addTarget, new LayoutParams(style.dimen(R.dimen.touch_target), style.dimen(R.dimen.touch_target)));
     }
 
     public void bind(LocalTime time, DayPalette palette) {

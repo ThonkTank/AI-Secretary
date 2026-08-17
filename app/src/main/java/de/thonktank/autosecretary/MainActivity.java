@@ -116,7 +116,7 @@ public class MainActivity extends ComponentActivity {
         LinearLayout screen = new LinearLayout(this);
         screen.setOrientation(LinearLayout.VERTICAL);
         root.addView(screen, new FrameLayout.LayoutParams(-1, -1));
-        header = new HeaderView(this, () -> viewModel.openEditor(null));
+        header = new HeaderView(this, this::openEditorWithFlight);
         screen.addView(header, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.header_height)));
         scroll = new ScrollView(this);
@@ -147,7 +147,7 @@ public class MainActivity extends ComponentActivity {
 
     private DashboardRenderer.Actions dashboardActions() {
         return new DashboardRenderer.Actions() {
-            @Override public void onAddTask() { viewModel.openEditor(null); }
+            @Override public void onAddTask() { openEditorWithFlight(); }
             @Override public void onTaskAction(TaskSnapshot task) { completeOrConfirm(task); }
             @Override public void onTaskMenu(TaskSnapshot task) { showTaskMenu(task); }
             @Override public void onComplete(TaskSnapshot task) { completeOrConfirm(task); }
@@ -178,6 +178,16 @@ public class MainActivity extends ComponentActivity {
         controller.setAppearanceLightNavigationBars(light);
         syncEditor(state.editor);
         TaskWidgetProvider.updateAll(this);
+    }
+
+    private void openEditorWithFlight() {
+        if (viewModel == null) return;
+        if (renderer == null || uiState == null
+                || uiState.navigation != NavigationDestination.TODAY) {
+            viewModel.openEditor(null);
+            return;
+        }
+        renderer.animateEditorTransition(() -> viewModel.openEditor(null));
     }
 
     private void renderUpdate(UpdateUiState state) {

@@ -67,6 +67,28 @@ public final class DesignSystemTest {
         assertEquals(MotionTokens.standard().deferDurationMs, palette.motion.deferDurationMs);
     }
 
+    @Test public void approvedEdgesSolarGeometryAndMotionAreExplicitTokens() {
+        DayPalette day = new DayPaletteInterpolator().atAnchor(DayPaletteAnchor.MORNING);
+        DayPalette evening = new DayPaletteInterpolator().atAnchor(DayPaletteAnchor.AFTERNOON);
+        DayPalette night = new DayPaletteInterpolator().atAnchor(DayPaletteAnchor.NIGHT);
+
+        assertEquals(0x38785a1e, day.leaf1Edge);
+        assertEquals(0x2b785a1e, day.leaf2Edge);
+        assertEquals(0x21785a1e, day.leaf3Edge);
+        assertEquals(.52f, day.sunHeight, .0001f);
+        assertEquals(.50f, evening.sunHeight, .0001f);
+        assertEquals(.42f, night.sunHeight, .0001f);
+        assertEquals(.16f, day.shadowAlpha, .0001f);
+        assertEquals(.44f, night.shadowAlpha, .0001f);
+        assertEquals(180L, day.motion.dewDurationMs);
+        assertEquals(240L, day.motion.stateChangeDurationMs);
+        assertEquals(420L, day.motion.leafFlightDurationMs);
+        assertEquals(520L, day.motion.glintDurationMs);
+        assertEquals(1_000L, day.motion.afterglowDurationMs);
+        assertEquals(11_000L, day.motion.forestBreathDurationMs);
+        assertEquals(18f, day.motion.forestBreathDistanceDp, .0001f);
+    }
+
     private static String snapshot(DayPaletteAnchor anchor, DayPalette p) {
         return String.format(Locale.ROOT,
                 "%s|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%08x|%.4f|%.4f|%.4f|%.4f|%.4f",

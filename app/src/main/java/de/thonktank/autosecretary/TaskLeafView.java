@@ -28,7 +28,7 @@ public final class TaskLeafView extends LinearLayout {
         super(context);
         style = new UiStyle(context);
         setOrientation(VERTICAL);
-        setPadding(style.dp(24), style.dp(18), style.dp(18), style.dp(18));
+        setPadding(style.dp(24), style.dp(18), style.dp(24), style.dp(18));
         marker = style.serif("", 16, 0, true, 300);
         addView(marker);
         LinearLayout row = new LinearLayout(context);
@@ -55,7 +55,7 @@ public final class TaskLeafView extends LinearLayout {
     public void bind(TaskSnapshot task, String markerText, boolean deep, DayPalette palette,
                      Consumer<TaskSnapshot> complete, Consumer<TaskSnapshot> showMenu) {
         setBackground(style.leaf(deep ? palette.leaf3 : palette.leaf2,
-                style.edge(palette, deep ? .18f : .24f), 56, 8, 56, 8));
+                style.edge(palette, deep ? 3 : 2), 56, 8, 56, 8));
         setRotation(deep ? 1.5f : 1.1f);
         setElevation(style.dp(deep ? 5 : 7));
         marker.setText(markerText);
@@ -83,7 +83,7 @@ public final class TaskLeafView extends LinearLayout {
         while (bars.size() < task.steps.size()) {
             View bar = new View(getContext());
             LayoutParams params = new LayoutParams(style.dp(22), style.dp(5));
-            params.setMargins(0, 0, style.dp(6), 0);
+            params.setMargins(0, 0, style.dp(8), 0);
             progress.addView(bar, Math.max(0, progress.getChildCount() - 1), params);
             bars.add(bar);
         }
@@ -91,7 +91,11 @@ public final class TaskLeafView extends LinearLayout {
             View removed = bars.remove(bars.size() - 1);
             progress.removeView(removed);
         }
-        if (progressLabel.getParent() == null) progress.addView(progressLabel);
+        if (progressLabel.getParent() == null) {
+            LayoutParams labelParams = new LayoutParams(-2, -2);
+            labelParams.setMargins(style.dp(4), 0, 0, 0);
+            progress.addView(progressLabel, labelParams);
+        }
         int complete = 0;
         for (int i = 0; i < task.steps.size(); i++) {
             boolean done = task.steps.get(i).done;

@@ -50,7 +50,8 @@ final class ForestBackdropView extends View {
     private void updateBreathing() {
         stopBreathing();
         if (!isShown() || !ValueAnimator.areAnimatorsEnabled()) {
-            setAlpha(1f);
+            artwork.setSunBreathOffset(0f);
+            invalidate();
             return;
         }
         MotionTokens motion = palette == null ? MotionTokens.standard() : palette.motion;
@@ -60,7 +61,8 @@ final class ForestBackdropView extends View {
         breathing.setRepeatMode(ValueAnimator.REVERSE);
         breathing.addUpdateListener(animation -> {
             float progress = (float) animation.getAnimatedValue();
-            setAlpha(1f - motion.forestBreathAlpha + progress * motion.forestBreathAlpha);
+            artwork.setSunBreathOffset(styleDp(motion.forestBreathDistanceDp) * progress);
+            invalidate();
         });
         breathing.start();
     }
@@ -70,10 +72,15 @@ final class ForestBackdropView extends View {
             breathing.cancel();
             breathing = null;
         }
-        setAlpha(1f);
+        artwork.setSunBreathOffset(0f);
+        invalidate();
     }
 
     boolean isBreathing() {
         return breathing != null && breathing.isStarted();
+    }
+
+    private float styleDp(float value) {
+        return value * getResources().getDisplayMetrics().density;
     }
 }

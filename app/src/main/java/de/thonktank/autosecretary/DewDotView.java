@@ -5,6 +5,9 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.view.View;
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.view.animation.PathInterpolator;
 
 final class DewDotView extends View {
     private final UiStyle style;
@@ -23,10 +26,21 @@ final class DewDotView extends View {
     }
 
     void bind(boolean on, boolean dim, DayPalette palette) {
+        boolean animateOn = !this.on && on && isAttachedToWindow()
+                && android.animation.ValueAnimator.areAnimatorsEnabled();
         this.on = on;
         this.dim = dim;
         this.palette = palette;
         invalidate();
+        if (animateOn) {
+            AnimatorSet set = new AnimatorSet();
+            ObjectAnimator x = ObjectAnimator.ofFloat(this, SCALE_X, 1f, 1.14f, 1f);
+            ObjectAnimator y = ObjectAnimator.ofFloat(this, SCALE_Y, 1f, 1.14f, 1f);
+            set.playTogether(x, y);
+            set.setDuration(palette.motion.dewDurationMs);
+            set.setInterpolator(new PathInterpolator(.34f, 1f, .64f, 1f));
+            set.start();
+        }
     }
 
     @Override protected void onDraw(Canvas canvas) {

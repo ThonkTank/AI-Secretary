@@ -3,6 +3,8 @@ package de.thonktank.autosecretary;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.widget.LinearLayout;
@@ -13,18 +15,19 @@ import java.util.function.Consumer;
 @SuppressLint("ViewConstructor")
 public final class FooterNavigationView extends LinearLayout {
     private final UiStyle style;
-    private final TextView[] labels = new TextView[3];
+    private final NavLabel[] labels = new NavLabel[3];
     private final NavigationDestination[] destinations = NavigationDestination.values();
 
     public FooterNavigationView(Context context, Consumer<NavigationDestination> navigate) {
         super(context);
         style = new UiStyle(context);
         setOrientation(HORIZONTAL);
-        setGravity(Gravity.CENTER_VERTICAL);
-        setPadding(style.dp(60), 0, style.dp(22), 0);
+        setGravity(Gravity.TOP);
+        setPadding(style.dp(60), style.dp(16), style.dp(26), style.dp(6));
         int[] names = {R.string.nav_today, R.string.nav_all, R.string.nav_options};
         for (int i = 0; i < labels.length; i++) {
-            TextView label = style.sans(context.getString(names[i]), 17, 0, false);
+            NavLabel label = new NavLabel(context);
+            label.setText(names[i]);
             label.setGravity(Gravity.CENTER);
             label.setMinWidth(style.dp(48));
             label.setMinHeight(style.dp(48));
@@ -40,18 +43,41 @@ public final class FooterNavigationView extends LinearLayout {
     public void bind(NavigationDestination selected, DayPalette palette) {
         for (int i = 0; i < labels.length; i++) {
             boolean active = destinations[i] == selected;
-            TextView label = labels[i];
+            NavLabel label = labels[i];
             label.setTextColor(active ? palette.ink2 : palette.status);
-            label.setPadding(0, 0, 0, active ? style.dp(3) : 0);
-            label.setBackground(active ? underline(palette.light) : null);
+            label.setActive(active, palette.light);
             label.setSelected(active);
         }
     }
 
-    private GradientDrawable underline(int color) {
-        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{Color.TRANSPARENT, Color.TRANSPARENT, color});
-        drawable.setGradientCenter(.5f, .94f);
-        return drawable;
+    private final class NavLabel extends TextView {
+        private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private boolean active;
+
+        NavLabel(Context context) {
+            super(context);
+            setTypeface(style.sans);
+            setTextSize(17);
+            setIncludeFontPadding(false);
+            setMinWidth(style.dp(48));
+            setMinHeight(style.dp(48));
+            line.setStrokeWidth(style.dp(1.5f));
+        }
+
+        void setActive(boolean active, int color) {
+            this.active = active;
+            line.setColor(color);
+            invalidate();
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            if (!active) return;
+            float textWidth = getPaint().measureText(getText().toString());
+            float left = (getWidth() - textWidth) * .5f;
+            float y = getHeight() * .5f - (getPaint().ascent() + getPaint().descent()) * .5f
+                    + style.dp(5);
+            canvas.drawLine(left, y, left + textWidth, y, line);
+        }
     }
 }

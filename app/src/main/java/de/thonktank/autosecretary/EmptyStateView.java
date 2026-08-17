@@ -22,7 +22,7 @@ public final class EmptyStateView extends LinearLayout {
         title = style.serif("", 30, 0, false, 200);
         addView(title);
         subtitle = style.sans("", 16, 0, false);
-        subtitle.setLineSpacing(0, 1.25f);
+        subtitle.setLineSpacing(0, 1.55f);
         LayoutParams subtitleParams = new LayoutParams(-1, -2);
         subtitleParams.setMargins(0, style.dp(10), 0, 0);
         addView(subtitle, subtitleParams);

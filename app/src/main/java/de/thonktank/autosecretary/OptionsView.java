@@ -189,7 +189,7 @@ public final class OptionsView extends LinearLayout {
         }
 
         void bind(DayPalette palette, String subtitleText) {
-            setBackground(style.leaf(palette.leaf2, style.edge(palette, .24f), 56, 8, 56, 8));
+            setBackground(style.leaf(palette.leaf2, style.edge(palette, 2), 56, 8, 56, 8));
             title.setTextColor(palette.ink);
             subtitle.setText(subtitleText);
             subtitle.setTextColor(palette.hint);
