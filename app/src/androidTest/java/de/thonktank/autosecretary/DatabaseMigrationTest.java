@@ -109,6 +109,47 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test public void migration3To4PreservesSnapshotsAndConvertsOngoingTasks() throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 3);
+        database.execSQL("INSERT INTO tasks (id,title,slot,recurrence,intervalDays,weekdayMask,ongoing,"
+                + "conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,lastCompletedOn,"
+                + "routineLevel,routineStreak,routineStreakWeeks,lastStreakWeek,displayOrder,"
+                + "hasCompletedOccurrence) VALUES ('legacy','Praktikum','LATER','DAILY',1,0,1,"
+                + "'Vertrag unterschrieben',0,0,'2026-08-17','','',2,3,4,'2026-08-10',4000001,1)");
+        database.execSQL("INSERT INTO task_steps (id,taskId,position,text) VALUES "
+                + "('template','legacy',0,'Unterlagen prüfen')");
+        database.execSQL("INSERT INTO occurrences (id,taskId,scheduledOn,state,sortOrder,completedOn) "
+                + "VALUES ('occurrence','legacy','2026-08-17','OPEN',1,'')");
+        database.execSQL("INSERT INTO occurrence_steps (id,occurrenceId,position,text,done) VALUES "
+                + "('snapshot','occurrence',0,'Unterlagen prüfen',1)");
+        database.execSQL("INSERT OR REPLACE INTO stats (id,xp) VALUES (1,70)");
+        database.close();
+
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 4, true, DatabaseMigrations.MIGRATION_3_4);
+        try (Cursor cursor = database.query("SELECT recurrence,ongoing,note,timeOfDayMask "
+                + "FROM tasks WHERE id='legacy'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("ONCE", cursor.getString(0));
+            assertEquals(0, cursor.getInt(1));
+            assertEquals("Erledigt, wenn: Vertrag unterschrieben", cursor.getString(2));
+            assertEquals(0, cursor.getInt(3));
+        }
+        try (Cursor cursor = database.query("SELECT slot FROM occurrences WHERE id='occurrence'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("LATER", cursor.getString(0));
+        }
+        try (Cursor cursor = database.query("SELECT amountKind,actualRepetitions,done "
+                + "FROM occurrence_steps WHERE id='snapshot'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("NONE", cursor.getString(0));
+            assertEquals("", cursor.getString(1));
+            assertEquals(1, cursor.getInt(2));
+        }
+        assertIndexExists(database, "index_occurrences_taskId_scheduledOn_slot");
+        database.close();
+    }
+
     private static void assertIndexExists(SupportSQLiteDatabase database, String index) {
         try (Cursor cursor = database.query(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='" + index + "'")) {

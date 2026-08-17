@@ -33,7 +33,10 @@ final class OccurrenceCompletion {
                     && task.lastScheduledOn.equals(task.lastCompletedOn);
             progress = progress.recordCompletion(onTime, previousOnTime, completedOn);
         }
-        LocalDate next = ScheduleCalculator.nextDue(task, completedOn);
+        boolean siblingsRemain = !repository.openOccurrences(task.id,
+                occurrence.scheduledOn).isEmpty();
+        LocalDate next = siblingsRemain ? task.nextDueOn
+                : ScheduleCalculator.nextDue(task, completedOn);
         boolean archive = !task.ongoing && task.recurrence == Recurrence.ONCE;
         repository.updateTask(task.afterOccurrence(
                 occurrence.scheduledOn, completedOn, next, progress, archive));

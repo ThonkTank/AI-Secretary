@@ -21,6 +21,7 @@ import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -102,7 +103,7 @@ public final class TaskViewModel extends ViewModel {
 
     void openEditor(@Nullable String taskId) {
         if (taskId == null) {
-            setEditor(EditorUiState.create());
+            setEditor(EditorUiState.create(defaultEditorSlot(clock.time())));
             return;
         }
         String key = actionKey("load-editor", taskId);
@@ -133,6 +134,13 @@ public final class TaskViewModel extends ViewModel {
         });
     }
 
+    static TaskSlot defaultEditorSlot(LocalTime time) {
+        if (time.isBefore(LocalTime.of(11, 0))) return TaskSlot.MORNING;
+        if (time.isBefore(LocalTime.of(17, 0))) return TaskSlot.MIDDAY;
+        if (time.isBefore(LocalTime.of(21, 0))) return TaskSlot.EVENING;
+        return TaskSlot.LATER;
+    }
+
     void dismissEditor() {
         savedState.set(EDITOR, null);
         update(value -> value.withEditor(EditorUiState.closed()));
@@ -144,22 +152,71 @@ public final class TaskViewModel extends ViewModel {
     }
 
     void saveEditor(EditorUiState draft) {
-        try {
-            validate(draft.title, draft.recurrence, draft.weekdayMask,
-                    draft.ongoing, draft.condition);
-        } catch (IllegalArgumentException error) {
-            events.setValue(UiEvent.error(error.getMessage()));
+        Set<String> errors = new TaskEditorValidator().errors(draft, clock.today());
+        if (!errors.isEmpty()) {
+            setEditor(draft.withFeedback(errors, EditorUiState.Prompt.NONE, ""));
             return;
         }
-        if (draft.taskId == null) {
-            create(draft.title, draft.slot, draft.recurrence, draft.intervalDays,
-                    draft.weekdayMask, draft.steps, draft.ongoing, draft.condition);
-        } else {
-            run(actionKey("update", draft.taskId), () -> tasks.update.execute(
-                    TaskId.of(draft.taskId), draft.title, draft.slot, draft.recurrence,
-                    draft.intervalDays, draft.weekdayMask, draft.steps, draft.ongoing,
-                    draft.condition));
-        }
+        String key = actionKey(draft.taskId == null ? "create" : "update",
+                draft.taskId == null ? "new" : draft.taskId);
+        if (!begin(key, false)) return;
+        setEditor(draft.withSaving(true));
+        worker.execute(() -> {
+            try {
+                if (draft.taskId == null) tasks.create.execute(draft.definition());
+                else tasks.update.execute(TaskId.of(draft.taskId), draft.definition());
+                Content content = loadContent();
+                savedState.set(EDITOR, null);
+                synchronized (stateLock) {
+                    Set<String> actions = new LinkedHashSet<>(current.runningActions);
+                    actions.remove(key);
+                    current = current.withContent(DashboardUiModel.compose(content.dashboard,
+                                    content.calendar.events()), CalendarUiState.from(content.calendar))
+                            .withRunningActions(actions).withEditor(EditorUiState.closed());
+                    state.postValue(current);
+                }
+            } catch (RuntimeException error) {
+                logger.error("TaskViewModel", "Editor save failed", error);
+                synchronized (stateLock) {
+                    Set<String> actions = new LinkedHashSet<>(current.runningActions);
+                    actions.remove(key);
+                    EditorUiState failed = draft.withSaving(false).withFeedback(
+                            Collections.emptySet(), EditorUiState.Prompt.NONE,
+                            texts.text(R.string.error_change_save));
+                    current = current.withRunningActions(actions).withEditor(failed);
+                    savedState.set(EDITOR, failed.toBundle());
+                    state.postValue(current);
+                }
+            }
+        });
+    }
+
+    void deleteFromEditor(String taskId) {
+        if (taskId == null) return;
+        String key = actionKey("delete", taskId);
+        if (!begin(key, false)) return;
+        EditorUiState draft;
+        synchronized (stateLock) { draft = current.editor; }
+        setEditor(draft.withSaving(true));
+        worker.execute(() -> {
+            try {
+                tasks.delete.execute(TaskId.of(taskId));
+                Content content = loadContent();
+                savedState.set(EDITOR, null);
+                synchronized (stateLock) {
+                    Set<String> actions = new LinkedHashSet<>(current.runningActions);
+                    actions.remove(key);
+                    current = current.withContent(DashboardUiModel.compose(content.dashboard,
+                                    content.calendar.events()), CalendarUiState.from(content.calendar))
+                            .withRunningActions(actions).withEditor(EditorUiState.closed());
+                    state.postValue(current);
+                }
+            } catch (RuntimeException error) {
+                logger.error("TaskViewModel", "Editor delete failed", error);
+                setEditor(draft.withSaving(false).withFeedback(Collections.emptySet(),
+                        EditorUiState.Prompt.NONE, texts.text(R.string.error_change_save)));
+            }
+        });
     }
 
     void updateCalendarPermission(boolean granted, boolean showRationale) {
@@ -206,6 +263,12 @@ public final class TaskViewModel extends ViewModel {
 
     void complete(String occurrenceId) { run(actionKey("complete", occurrenceId), () -> tasks.complete.execute(occurrenceId)); }
     void toggleStep(String stepId) { run(actionKey("step", stepId), () -> tasks.toggleStep.execute(stepId)); }
+    void confirmSet(String stepId, int repetitions) {
+        run(actionKey("set", stepId), () -> tasks.confirmSet.execute(stepId, repetitions));
+    }
+    void finishExercise(String stepId) {
+        run(actionKey("finish-step", stepId), () -> tasks.finishExercise.execute(stepId));
+    }
     void defer(String occurrenceId) { run(actionKey("defer", occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
     void close(String taskId) { run(actionKey("close", taskId), () -> tasks.closeOngoing.execute(TaskId.of(taskId))); }
     void update(String taskId, String title, TaskSlot slot) {

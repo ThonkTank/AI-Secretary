@@ -13,6 +13,9 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
+import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.RepetitionProgressCodec;
 
 import java.time.LocalDate;
 
@@ -20,13 +23,20 @@ public final class TaskEntityMapper {
     public Task toDomain(TaskEntity entity) {
         LocalDate lastCountedWeek = date(entity.lastStreakWeek);
         if (lastCountedWeek != null) lastCountedWeek = RoutineProgress.weekStart(lastCountedWeek);
-        return Task.restore(TaskId.of(entity.id), entity.title, TaskSlot.fromStorage(entity.slot),
+        TaskSlot slot = TaskSlot.fromStorage(entity.slot);
+        int times = entity.timeOfDayMask;
+        if (times == 0 && !"ONCE".equalsIgnoreCase(entity.recurrence))
+            times = de.thonktank.autosecretary.domain.model.TimeOfDay.fromSlot(slot).bit;
+        return Task.restore(TaskId.of(entity.id), entity.title, slot,
                 Recurrence.fromStorage(entity.recurrence), entity.intervalDays, entity.weekdayMask,
                 entity.ongoing, entity.conditionText, entity.conditionDone, entity.archived,
                 date(entity.nextDueOn), date(entity.lastScheduledOn), date(entity.lastCompletedOn),
                 new RoutineProgress(entity.routineLevel, entity.routineStreak,
                         entity.routineStreakWeeks, lastCountedWeek),
-                entity.displayOrder, entity.hasCompletedOccurrence);
+                entity.displayOrder, entity.hasCompletedOccurrence, entity.estimatedMinutes,
+                times, TaskBoundKind.fromStorage(entity.boundKind),
+                date(entity.boundUntilOn), entity.boundWeeks, entity.remainingCount,
+                date(entity.deadlineOn), entity.note);
     }
 
     public TaskEntity toEntity(Task task) {
@@ -36,34 +46,47 @@ public final class TaskEntityMapper {
                 text(task.lastScheduledOn), text(task.lastCompletedOn), task.routineProgress.level,
                 task.routineProgress.occurrenceStreak, task.routineProgress.weekStreak,
                 text(task.routineProgress.lastCountedWeek), task.displayOrder,
-                task.hasCompletedOccurrence);
+                task.hasCompletedOccurrence, task.estimatedMinutes, task.timeOfDayMask,
+                task.boundKind.storageCode(), text(task.boundUntilOn), task.boundWeeks,
+                task.remainingCount, text(task.deadlineOn), task.note);
     }
 
     public Occurrence toDomain(OccurrenceEntity entity) {
         return new Occurrence(entity.id, TaskId.of(entity.taskId), LocalDate.parse(entity.scheduledOn),
-                OccurrenceState.fromStorage(entity.state), entity.sortOrder, date(entity.completedOn));
+                TaskSlot.fromStorage(entity.slot), OccurrenceState.fromStorage(entity.state),
+                entity.sortOrder, date(entity.completedOn));
     }
 
     public OccurrenceEntity toEntity(Occurrence occurrence) {
         return new OccurrenceEntity(occurrence.id, occurrence.taskId.value,
                 occurrence.scheduledOn.toString(), occurrence.state.storageCode(),
-                occurrence.sortOrder, text(occurrence.completedOn));
+                occurrence.sortOrder, text(occurrence.completedOn), occurrence.slot.storageCode);
     }
 
     public TaskStepTemplate toDomain(TaskStepEntity entity) {
-        return new TaskStepTemplate(entity.id, TaskId.of(entity.taskId), entity.position, entity.text);
+        return new TaskStepTemplate(entity.id, TaskId.of(entity.taskId), entity.position, entity.text,
+                entity.weekdayMask, StepAmountKind.fromStorage(entity.amountKind),
+                entity.plannedSets, entity.plannedReps, entity.plannedDurationSeconds, entity.note);
     }
 
     public TaskStepEntity toEntity(TaskStepTemplate step) {
-        return new TaskStepEntity(step.id, step.taskId.value, step.position, step.text);
+        return new TaskStepEntity(step.id, step.taskId.value, step.position, step.text,
+                step.weekdayMask, step.amountKind.storageCode(), step.plannedSets,
+                step.plannedReps, step.plannedDurationSeconds, step.note);
     }
 
     public OccurrenceStep toDomain(OccurrenceStepEntity entity) {
-        return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text, entity.done);
+        return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text,
+                entity.done, StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
+                entity.plannedReps, entity.plannedDurationSeconds, entity.note,
+                RepetitionProgressCodec.decode(entity.actualRepetitions));
     }
 
     public OccurrenceStepEntity toEntity(OccurrenceStep step) {
-        return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text, step.done);
+        return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
+                step.done, step.amountKind.storageCode(), step.plannedSets, step.plannedReps,
+                step.plannedDurationSeconds, step.note,
+                RepetitionProgressCodec.encode(step.actualRepetitions));
     }
 
     private static LocalDate date(String value) {

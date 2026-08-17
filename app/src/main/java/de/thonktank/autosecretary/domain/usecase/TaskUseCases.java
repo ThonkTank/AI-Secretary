@@ -11,6 +11,8 @@ public final class TaskUseCases {
     public final DeleteTask delete;
     public final DeferTask defer;
     public final ToggleStep toggleStep;
+    public final ConfirmSet confirmSet;
+    public final FinishExercise finishExercise;
     public final CompleteOccurrence complete;
     public final CloseOngoingTask closeOngoing;
     public final MaterializeDueOccurrences materializeDue;
@@ -22,11 +24,13 @@ public final class TaskUseCases {
         loadDashboard = new LoadDashboard(repository);
         materializeDue = new MaterializeDueOccurrences(repository, clock, ids);
         create = new CreateTask(repository, clock, ids, ordering);
-        update = new UpdateTask(repository, ordering, ids);
+        update = new UpdateTask(repository, ordering, ids, clock);
         move = new MoveTask(repository, ordering);
         delete = new DeleteTask(repository);
         defer = new DeferTask(repository, loadDashboard, ordering, clock);
         toggleStep = new ToggleStep(repository);
+        confirmSet = new ConfirmSet(repository);
+        finishExercise = new FinishExercise(repository);
         complete = new CompleteOccurrence(repository, clock);
         closeOngoing = new CloseOngoingTask(repository, clock);
         loadTaskDetails = new LoadTaskDetails(repository);

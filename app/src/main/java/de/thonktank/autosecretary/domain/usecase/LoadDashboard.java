@@ -51,14 +51,21 @@ public final class LoadDashboard {
             }
         for (Occurrence occurrence : completed) {
             Task task = tasks.get(occurrence.taskId);
-            if (task == null || included.contains(task.id)) continue;
+            if (task == null) continue;
             result.add(item(task, occurrence, steps, true));
             included.add(task.id);
         }
         for (Task task : tasks.values())
             if (task.archived && today.equals(task.lastCompletedOn) && !included.contains(task.id))
                 result.add(new DashboardTask(task, null, new ArrayList<>(), true));
-        result.sort(Comparator.comparingLong(item -> item.task.displayOrder));
+        result.sort(Comparator.comparingInt((DashboardTask item) -> item.done ? 1 : 0)
+                .thenComparing(item -> item.occurrence == null
+                        ? LocalDate.MAX : item.occurrence.scheduledOn)
+                .thenComparingInt(item -> item.occurrence == null
+                        ? item.task.slot.rank : item.occurrence.slot.rank)
+                .thenComparingInt(item -> item.occurrence == null
+                        ? Integer.MAX_VALUE : item.occurrence.sortOrder)
+                .thenComparingLong(item -> item.task.displayOrder));
         return new Dashboard(repository.xp(), result);
     }
 

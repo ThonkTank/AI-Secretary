@@ -35,7 +35,9 @@ public final class DashboardUiMapper {
         String next = task.conditionText;
         for (OccurrenceStep step : item.steps) {
             boolean done = item.done || step.done;
-            steps.add(new TaskStepSnapshot(step.id, step.text, done));
+            steps.add(new TaskStepSnapshot(step.id, step.text, done, step.amountKind,
+                    step.plannedSets, step.plannedReps, step.plannedDurationSeconds,
+                    step.note, step.actualRepetitions));
             if (!done) {
                 remaining++;
                 if (remaining == 1) next = step.text;
@@ -44,9 +46,11 @@ public final class DashboardUiMapper {
         if (next == null || next.isEmpty())
             next = texts.text(steps.isEmpty() ? R.string.next_mark_done : R.string.next_all_done);
         boolean overdue = item.occurrence != null && !item.done
-                && item.occurrence.scheduledOn.isBefore(today);
+                && (item.occurrence.scheduledOn.isBefore(today)
+                || task.deadlineOn != null && task.deadlineOn.isBefore(today));
+        TaskSlot displaySlot = item.occurrence == null ? task.slot : item.occurrence.slot;
         return new TaskSnapshot(task.id.value, item.occurrence == null ? "" : item.occurrence.id,
-                task.title, task.slot, softTime(task.slot, task.ongoing), next, task.recurrence,
+                task.title, displaySlot, softTime(displaySlot, task.ongoing), next, task.recurrence,
                 steps, remaining, !task.conditionText.isEmpty(), task.ongoing, item.done, overdue,
                 task.recurrence == Recurrence.ONCE ? 0 : task.routineProgress.weekStreak,
                 task.displayOrder);

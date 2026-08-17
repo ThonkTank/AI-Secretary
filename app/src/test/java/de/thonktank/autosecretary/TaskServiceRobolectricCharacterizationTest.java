@@ -94,8 +94,10 @@ public final class TaskServiceRobolectricCharacterizationTest {
         service.defer("first-occurrence");
 
         assertEquals("second", service.dashboard().firstOpen().taskId);
-        assertEquals(2_048L, dao.task("first").displayOrder);
-        assertEquals(1_024L, dao.task("second").displayOrder);
+        assertEquals(1_001_000L, dao.task("first").displayOrder);
+        assertEquals(1_002_000L, dao.task("second").displayOrder);
+        assertTrue(dao.occurrence("first-occurrence").sortOrder
+                > dao.occurrence("second-occurrence").sortOrder);
     }
 
     @Test public void ongoingTaskNeedsNoOccurrenceAndClosesOnlyThroughItsCondition() {

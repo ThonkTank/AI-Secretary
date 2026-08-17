@@ -5,16 +5,22 @@ import java.time.LocalDate;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 
 /** Pure schedule rules; all dates are passed in so recurrence behaviour is deterministic in tests. */
 public final class ScheduleCalculator {
     private ScheduleCalculator() { }
     public static LocalDate nextDue(Task task, LocalDate completedOn) {
         if (task.recurrence == Recurrence.ONCE) return null;
-        if (task.recurrence == Recurrence.DAILY) return completedOn.plusDays(1);
-        if (task.recurrence == Recurrence.INTERVAL) return completedOn.plusDays(Math.max(1, task.intervalDays));
-        if (task.recurrence == Recurrence.WEEKDAYS) return nextSelectedWeekday(task.weekdayMask, completedOn.plusDays(1));
-        return null;
+        if (task.boundKind == TaskBoundKind.N_TIMES
+                && (task.remainingCount == null || task.remainingCount <= 0)) return null;
+        LocalDate candidate = null;
+        if (task.recurrence == Recurrence.DAILY) candidate = completedOn.plusDays(1);
+        if (task.recurrence == Recurrence.INTERVAL)
+            candidate = completedOn.plusDays(Math.max(1, task.intervalDays));
+        if (task.recurrence == Recurrence.WEEKDAYS)
+            candidate = nextSelectedWeekday(task.weekdayMask, completedOn.plusDays(1));
+        return withinBound(task, candidate) ? candidate : null;
     }
     public static boolean isDue(Task task, LocalDate today) {
         return task.nextDueOn != null && !task.nextDueOn.isAfter(today);
@@ -26,7 +32,25 @@ public final class ScheduleCalculator {
         int mask = 0; for (int i = 0; i < selected.length && i < 7; i++) if (selected[i]) mask |= 1 << i; return mask;
     }
     public static boolean hasWeekday(int mask) { return mask != 0; }
-    private static LocalDate nextSelectedWeekday(int mask, LocalDate start) {
+    public static LocalDate firstDue(Recurrence recurrence, int weekdayMask, LocalDate today) {
+        if (recurrence == Recurrence.WEEKDAYS) return nextSelectedWeekday(weekdayMask, today);
+        return today;
+    }
+    public static boolean appliesOn(int weekdayMask, LocalDate date) {
+        if (weekdayMask == 0) return true;
+        int bit = 1 << (date.getDayOfWeek().getValue() - DayOfWeek.MONDAY.getValue());
+        return (weekdayMask & bit) != 0;
+    }
+    public static boolean withinBound(Task task, LocalDate date) {
+        if (date == null) return false;
+        if (task.boundKind == TaskBoundKind.UNTIL_DATE
+                || task.boundKind == TaskBoundKind.FOR_WEEKS)
+            return task.boundUntilOn != null && !date.isAfter(task.boundUntilOn);
+        if (task.boundKind == TaskBoundKind.N_TIMES)
+            return task.remainingCount != null && task.remainingCount > 0;
+        return true;
+    }
+    public static LocalDate nextSelectedWeekday(int mask, LocalDate start) {
         if (mask == 0) throw new IllegalArgumentException("Wochentags-Aufgaben benötigen mindestens einen Tag.");
         for (int i = 0; i < 7; i++) {
             LocalDate candidate = start.plusDays(i);

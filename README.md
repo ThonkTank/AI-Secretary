@@ -4,9 +4,11 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 
 ## Was bereits funktioniert
 
-- Einmalige, wiederkehrende und fortlaufende Aufgaben mit Schritten
+- Einmalige und wiederkehrende Aufgaben in einem ruhigen Vollbild-Editor
 - Tageszeiten Morgen, Mittag, Abend und Später
-- Wiederholungen: täglich, alle N Tage und ausgewählte Wochentage
+- Wiederholungen: täglich, alle N Tage und ausgewählte Wochentage, auch mehrmals täglich
+- Fristen und Laufzeitgrenzen sowie Schritte mit Wochentagen, Mengen und Notizen
+- Satzweise Ist-Wiederholungen für Übungen; bestehende Tagesvorkommen bleiben unverändert
 - Sanftes Verschieben mit „Später“, XP und Routine-Level ohne Levelverlust
 - Uhrzeitabhängiger Heute-Screen im Design „Tiefer Wald, goldener Sonnenaufgang“
 - Vier responsive Homescreen-Widgetgrößen mit direkten Schritt- und Abschlussaktionen
@@ -29,8 +31,8 @@ Der vollständige lokale Quality-Gate ist:
 ```
 
 Deterministische Zustände für Layout Inspector und Preview-Werkzeuge liegen im Debug-Build
-unter `DebugPreviewFixtures`. Die CI führt die Room-Migrationstests zusätzlich auf API 26
-und API 35 aus.
+unter `DebugPreviewFixtures`. Die 17 Editor-Referenzzustände werden zusätzlich als
+Robolectric-Goldens geprüft. Die CI führt die Room-Migrationstests auf API 26 und API 35 aus.
 
 Die Release-Einrichtung ist in [docs/releasing.md](docs/releasing.md) beschrieben. Die
 Produktentscheidung ist in [docs/produktziele.md](docs/produktziele.md) festgehalten. Die

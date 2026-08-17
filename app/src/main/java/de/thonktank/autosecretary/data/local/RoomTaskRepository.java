@@ -74,6 +74,8 @@ public final class RoomTaskRepository implements TaskRepository {
         dao.deleteTemplates(taskId.value);
     }
 
+    @Override public void deleteTemplate(String id) { dao.deleteTemplate(id); }
+
     @Override public List<TaskStepTemplate> templates(TaskId taskId) {
         List<TaskStepTemplate> result = new ArrayList<>();
         for (TaskStepEntity entity : dao.templates(taskId.value)) result.add(mapper.toDomain(entity));
@@ -102,6 +104,18 @@ public final class RoomTaskRepository implements TaskRepository {
         return entity == null ? null : mapper.toDomain(entity);
     }
 
+    @Override public Occurrence findOccurrence(TaskId taskId, LocalDate scheduledOn,
+                                               TaskSlot slot) {
+        OccurrenceEntity entity = dao.occurrence(taskId.value, scheduledOn.toString(),
+                slot.storageCode);
+        return entity == null ? null : mapper.toDomain(entity);
+    }
+
+    @Override public List<Occurrence> openOccurrences(TaskId taskId, LocalDate scheduledOn) {
+        return mapOccurrences(dao.occurrences(taskId.value, scheduledOn.toString(),
+                OccurrenceState.OPEN.storageCode()));
+    }
+
     @Override public Occurrence openOccurrence(TaskId taskId) {
         OccurrenceEntity entity = dao.openForTask(taskId.value, OccurrenceState.OPEN.storageCode());
         return entity == null ? null : mapper.toDomain(entity);
@@ -109,6 +123,10 @@ public final class RoomTaskRepository implements TaskRepository {
 
     @Override public List<Occurrence> openOccurrences() {
         return mapOccurrences(dao.occurrencesByState(OccurrenceState.OPEN.storageCode()));
+    }
+
+    @Override public List<Occurrence> allOccurrences() {
+        return mapOccurrences(dao.allOccurrences());
     }
 
     @Override public List<Occurrence> completedOccurrences(LocalDate date) {

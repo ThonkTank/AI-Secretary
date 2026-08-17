@@ -2,6 +2,11 @@
 
 ## Nächster automatischer 0.2-Build
 
+- Neuer Vollbild-Aufgabeneditor für Dauer, Rhythmus, mehrere Tageszeiten, Fristen und Grenzen.
+- Stabile Schrittdefinitionen mit Wochentagen, Mengen, Notizen und unveränderlichen Vorkommens-Snapshots.
+- Satzweise Erfassung tatsächlicher Wiederholungen direkt aus der Tagesansicht.
+- Mehrere idempotente Vorkommen pro Aufgabe und Tag sowie verlustfreie Room-Migration auf Schema v4.
+- 17 automatisierte Editor-Golden-Zustände einschließlich Inline-Fehlern und eigenen Rückfragen.
 - Jeder grüne `main`-Push veröffentlicht eine dauerhaft signierte APK mit monotoner Version.
 - Automatische tägliche und manuelle Updateprüfung direkt in den Optionen.
 - Größen-, Hash-, Paket-, Versions- und Signaturprüfung vor Übergabe an den Android-Installer.

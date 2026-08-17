@@ -21,14 +21,18 @@ public interface TaskRepository {
     void deleteTask(TaskId id);
     void insertTemplates(List<TaskStepTemplate> steps);
     void deleteTemplates(TaskId taskId);
+    void deleteTemplate(String id);
     List<TaskStepTemplate> templates(TaskId taskId);
     List<TaskStepTemplate> templatesFor(List<TaskId> taskIds);
 
     void insertOccurrence(Occurrence occurrence);
     void updateOccurrence(Occurrence occurrence);
     Occurrence findOccurrence(String id);
+    Occurrence findOccurrence(TaskId taskId, LocalDate scheduledOn, TaskSlot slot);
+    List<Occurrence> openOccurrences(TaskId taskId, LocalDate scheduledOn);
     Occurrence openOccurrence(TaskId taskId);
     List<Occurrence> openOccurrences();
+    List<Occurrence> allOccurrences();
     List<Occurrence> completedOccurrences(LocalDate date);
     void insertOccurrenceSteps(List<OccurrenceStep> steps);
     List<OccurrenceStep> occurrenceSteps(String occurrenceId);

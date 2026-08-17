@@ -29,5 +29,46 @@ public final class DatabaseMigrations {
         }
     };
 
+    public static final Migration MIGRATION_3_4 = new Migration(3, 4) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE tasks ADD COLUMN estimatedMinutes INTEGER");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN timeOfDayMask INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN boundKind TEXT NOT NULL DEFAULT 'FOREVER'");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN boundUntilOn TEXT NOT NULL DEFAULT ''");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN boundWeeks INTEGER");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN remainingCount INTEGER");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN deadlineOn TEXT NOT NULL DEFAULT ''");
+            database.execSQL("ALTER TABLE tasks ADD COLUMN note TEXT NOT NULL DEFAULT ''");
+            database.execSQL("UPDATE tasks SET timeOfDayMask = CASE WHEN recurrence = 'ONCE' THEN 0 "
+                    + "WHEN slot = 'MORNING' THEN 1 WHEN slot = 'MIDDAY' THEN 2 "
+                    + "WHEN slot = 'EVENING' THEN 4 ELSE 8 END");
+            database.execSQL("UPDATE tasks SET note = CASE WHEN ongoing = 1 AND conditionText <> '' "
+                    + "THEN 'Erledigt, wenn: ' || conditionText ELSE note END");
+            database.execSQL("UPDATE tasks SET recurrence = 'ONCE', intervalDays = 1, "
+                    + "weekdayMask = 0, timeOfDayMask = 0, ongoing = 0, conditionText = '' "
+                    + "WHERE ongoing = 1");
+
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN weekdayMask INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN amountKind TEXT NOT NULL DEFAULT 'NONE'");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN plannedSets INTEGER");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN plannedReps INTEGER");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN plannedDurationSeconds INTEGER");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN note TEXT NOT NULL DEFAULT ''");
+
+            database.execSQL("ALTER TABLE occurrences ADD COLUMN slot TEXT NOT NULL DEFAULT 'MORNING'");
+            database.execSQL("UPDATE occurrences SET slot = COALESCE((SELECT tasks.slot FROM tasks "
+                    + "WHERE tasks.id = occurrences.taskId), 'MORNING')");
+            database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_occurrences_taskId_scheduledOn_slot "
+                    + "ON occurrences (taskId, scheduledOn, slot)");
+
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN amountKind TEXT NOT NULL DEFAULT 'NONE'");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN plannedSets INTEGER");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN plannedReps INTEGER");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN plannedDurationSeconds INTEGER");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN note TEXT NOT NULL DEFAULT ''");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN actualRepetitions TEXT NOT NULL DEFAULT ''");
+        }
+    };
+
     private DatabaseMigrations() { }
 }

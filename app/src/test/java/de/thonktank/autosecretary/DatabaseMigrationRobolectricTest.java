@@ -41,7 +41,8 @@ public final class DatabaseMigrationRobolectricTest {
         createVersionOneDatabase();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.MIGRATION_1_2, DatabaseMigrations.MIGRATION_2_3)
+                .addMigrations(DatabaseMigrations.MIGRATION_1_2,
+                        DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -71,7 +72,8 @@ public final class DatabaseMigrationRobolectricTest {
         upgradeFixtureToVersionTwo();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.MIGRATION_2_3)
+                .addMigrations(DatabaseMigrations.MIGRATION_2_3,
+                        DatabaseMigrations.MIGRATION_3_4)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -84,6 +86,58 @@ public final class DatabaseMigrationRobolectricTest {
         } finally {
             migrated.close();
         }
+    }
+
+    @Test public void migrationThreeToFourPreservesHistoryAndConvertsOngoingDefinitions() {
+        createVersionOneDatabase();
+        upgradeFixtureToVersionThree();
+        SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
+                .builder(context).name(DATABASE)
+                .callback(new SupportSQLiteOpenHelper.Callback(3) {
+                    @Override public void onCreate(SupportSQLiteDatabase database) { }
+                    @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                    int oldVersion, int newVersion) { }
+                }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory().create(configuration);
+        SupportSQLiteDatabase old = helper.getWritableDatabase();
+        old.execSQL("INSERT INTO tasks (id,title,slot,recurrence,intervalDays,weekdayMask,ongoing,"
+                + "conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,lastCompletedOn,"
+                + "routineLevel,routineStreak,routineStreakWeeks,lastStreakWeek,displayOrder,"
+                + "hasCompletedOccurrence) VALUES ('project','Praktikum','LATER','ONCE',1,0,1,"
+                + "'Vertrag unterschrieben',0,0,'2026-08-17','','',2,3,4,'2026-08-10',4096,1)");
+        old.execSQL("INSERT INTO task_steps (id,taskId,position,text) VALUES "
+                + "('template','morning',0,'Duschen')");
+        old.execSQL("INSERT INTO occurrences (id,taskId,scheduledOn,state,sortOrder,completedOn) "
+                + "VALUES ('open','morning','2026-08-17','OPEN',1,'')");
+        old.execSQL("INSERT INTO occurrence_steps (id,occurrenceId,position,text,done) VALUES "
+                + "('snapshot','open',0,'Duschen',1)");
+        old.execSQL("INSERT OR REPLACE INTO stats (id,xp) VALUES (1,70)");
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.MIGRATION_3_4)
+                .allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        try (Cursor cursor = database.query("SELECT recurrence,ongoing,note,archived FROM tasks "
+                + "WHERE id='project'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("ONCE", cursor.getString(0));
+            assertEquals(0, cursor.getInt(1));
+            assertEquals("Erledigt, wenn: Vertrag unterschrieben", cursor.getString(2));
+            assertEquals(0, cursor.getInt(3));
+        }
+        try (Cursor cursor = database.query("SELECT slot FROM occurrences WHERE id='open'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals("MORNING", cursor.getString(0));
+        }
+        try (Cursor cursor = database.query("SELECT amountKind,actualRepetitions,done "
+                + "FROM occurrence_steps WHERE id='snapshot'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals("NONE", cursor.getString(0));
+            assertEquals("", cursor.getString(1)); assertEquals(1, cursor.getInt(2));
+        }
+        try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(70, cursor.getInt(0));
+        }
+        migrated.close();
     }
 
     private void createVersionOneDatabase() {
@@ -130,6 +184,22 @@ public final class DatabaseMigrationRobolectricTest {
         SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory().create(configuration);
         helper.getWritableDatabase();
         helper.close();
+    }
+
+    private void upgradeFixtureToVersionThree() {
+        upgradeFixtureToVersionTwo();
+        SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
+                .builder(context).name(DATABASE)
+                .callback(new SupportSQLiteOpenHelper.Callback(3) {
+                    @Override public void onCreate(SupportSQLiteDatabase database) { }
+                    @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                    int oldVersion, int newVersion) {
+                        assertEquals(2, oldVersion); assertEquals(3, newVersion);
+                        DatabaseMigrations.MIGRATION_2_3.migrate(database);
+                    }
+                }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory().create(configuration);
+        helper.getWritableDatabase(); helper.close();
     }
 
     private static void createVersionOneSchema(SupportSQLiteDatabase database) {

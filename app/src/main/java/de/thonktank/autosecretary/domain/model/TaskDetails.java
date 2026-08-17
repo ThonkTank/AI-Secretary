@@ -12,8 +12,17 @@ public final class TaskDetails {
     public final int intervalDays;
     public final int weekdayMask;
     public final List<String> steps;
+    public final List<TaskStepTemplate> stepTemplates;
     public final boolean ongoing;
     public final String condition;
+    public final Integer estimatedMinutes;
+    public final int timeOfDayMask;
+    public final TaskBoundKind boundKind;
+    public final java.time.LocalDate boundUntilOn;
+    public final Integer boundWeeks;
+    public final Integer remainingCount;
+    public final java.time.LocalDate deadlineOn;
+    public final String note;
 
     public TaskDetails(Task task, List<TaskStepTemplate> templates) {
         id = task.id;
@@ -24,6 +33,15 @@ public final class TaskDetails {
         weekdayMask = task.weekdayMask;
         ongoing = task.ongoing;
         condition = task.conditionText;
+        estimatedMinutes = task.estimatedMinutes;
+        timeOfDayMask = task.timeOfDayMask;
+        boundKind = task.boundKind;
+        boundUntilOn = task.boundUntilOn;
+        boundWeeks = task.boundWeeks;
+        remainingCount = task.remainingCount;
+        deadlineOn = task.deadlineOn;
+        note = task.note;
+        stepTemplates = Collections.unmodifiableList(new ArrayList<>(templates));
         List<String> values = new ArrayList<>();
         for (TaskStepTemplate template : templates) values.add(template.text);
         steps = Collections.unmodifiableList(values);

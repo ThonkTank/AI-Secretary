@@ -107,27 +107,33 @@ public final class UpgradePersistenceTest {
 
         AutoSecretaryApplication application = AutoSecretaryApplication.from(context);
         AppDatabase database = application.container().database;
-        assertEquals(3, database.getOpenHelper().getReadableDatabase().getVersion());
+        assertEquals(4, database.getOpenHelper().getReadableDatabase().getVersion());
 
         TaskEntity task = database.tasks().task(TASK_ID);
         assertNotNull(task);
         assertEquals(TITLE, task.title);
         assertEquals("LATER", task.slot);
         assertEquals(4_001_024L, task.displayOrder);
+        assertEquals(0, task.timeOfDayMask);
+        assertEquals("FOREVER", task.boundKind);
 
         List<TaskStepEntity> templates = database.tasks().templates(TASK_ID);
         assertEquals(1, templates.size());
         assertEquals(STEP_TEXT, templates.get(0).text);
+        assertEquals("NONE", templates.get(0).amountKind);
 
         OccurrenceEntity occurrence = database.tasks().occurrence(OCCURRENCE_ID);
         assertNotNull(occurrence);
         assertEquals(TASK_ID, occurrence.taskId);
         assertEquals("OPEN", occurrence.state);
+        assertEquals("LATER", occurrence.slot);
 
         OccurrenceStepEntity occurrenceStep = database.tasks().occurrenceStep(STEP_ID);
         assertNotNull(occurrenceStep);
         assertEquals(STEP_TEXT, occurrenceStep.text);
         assertTrue(occurrenceStep.done);
+        assertEquals("NONE", occurrenceStep.amountKind);
+        assertEquals("", occurrenceStep.actualRepetitions);
         assertEquals(73, database.tasks().stats().xp);
 
         assertEquals(UiThemeMode.DARK, application.container().uiPreferences.themeMode());

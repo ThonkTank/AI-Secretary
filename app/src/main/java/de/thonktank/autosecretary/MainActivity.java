@@ -17,6 +17,7 @@ import android.widget.ScrollView;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.view.ViewCompat;
@@ -26,6 +27,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.update.presentation.UpdateUiController;
 import de.thonktank.autosecretary.update.presentation.UpdateViewModel;
@@ -47,7 +49,11 @@ public class MainActivity extends ComponentActivity {
     private FooterNavigationView footer;
     private ScrollView scroll;
     private DashboardRenderer renderer;
-    private AlertDialog taskEditorDialog;
+    private FrameLayout root;
+    private LinearLayout dashboardScreen;
+    private TaskEditorView taskEditor;
+    private SetConfirmationView setConfirmation;
+    private int systemTopInset;
 
     private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
@@ -81,6 +87,15 @@ public class MainActivity extends ComponentActivity {
         viewModel.events().observe(this, this::handleEvent);
         updates.state().observe(this, this::renderUpdate);
         updates.effects().observe(this, updates::handleEffect);
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() {
+                if (setConfirmation != null && setConfirmation.handleBack()) return;
+                if (taskEditor != null && taskEditor.handleBack()) return;
+                setEnabled(false);
+                getOnBackPressedDispatcher().onBackPressed();
+                setEnabled(true);
+            }
+        });
         showLegacyResetNotice();
         handleLaunchIntent();
         syncCalendarPermission();
@@ -110,10 +125,11 @@ public class MainActivity extends ComponentActivity {
 
     private void buildShell() {
         UiStyle style = new UiStyle(this);
-        FrameLayout root = new FrameLayout(this);
+        root = new FrameLayout(this);
         forest = new ForestBackdropView(this);
         root.addView(forest, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout screen = new LinearLayout(this);
+        dashboardScreen = screen;
         screen.setOrientation(LinearLayout.VERTICAL);
         root.addView(screen, new FrameLayout.LayoutParams(-1, -1));
         header = new HeaderView(this, this::openEditorWithFlight);
@@ -134,7 +150,9 @@ public class MainActivity extends ComponentActivity {
         renderer = new DashboardRenderer(this, scroll, content, dashboardActions(), versionName());
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            systemTopInset = bars.top;
             screen.setPadding(0, bars.top, 0, 0);
+            if (taskEditor != null) taskEditor.setPadding(0, bars.top, 0, bars.bottom);
             return insets;
         });
         setContentView(root);
@@ -154,7 +172,11 @@ public class MainActivity extends ComponentActivity {
             @Override public void onDefer(TaskSnapshot task) {
                 viewModel.defer(task.occurrenceId.isEmpty() ? task.taskId : task.occurrenceId);
             }
-            @Override public void onToggleStep(TaskStepSnapshot step) { viewModel.toggleStep(step.id); }
+            @Override public void onToggleStep(TaskStepSnapshot step) {
+                if (step.amountKind == StepAmountKind.SETS_REPS && !step.done)
+                    showSetConfirmation(step);
+                else viewModel.toggleStep(step.id);
+            }
             @Override public void onTheme(UiThemeMode mode) {
                 container.uiPreferences.setThemeMode(mode);
                 viewModel.minuteChanged();
@@ -212,6 +234,27 @@ public class MainActivity extends ComponentActivity {
                 }).show();
     }
 
+    private void showSetConfirmation(TaskStepSnapshot step) {
+        if (setConfirmation != null || taskEditor != null || uiState == null) return;
+        setConfirmation = new SetConfirmationView(this, step, uiState.palette,
+                new SetConfirmationView.Listener() {
+                    @Override public void onConfirm(String stepId, int repetitions) {
+                        viewModel.confirmSet(stepId, repetitions); closeSetConfirmation();
+                    }
+                    @Override public void onFinish(String stepId) {
+                        viewModel.finishExercise(stepId); closeSetConfirmation();
+                    }
+                    @Override public void onDismiss() { closeSetConfirmation(); }
+                });
+        setConfirmation.setPadding(0, systemTopInset, 0, 0);
+        root.addView(setConfirmation, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    private void closeSetConfirmation() {
+        if (setConfirmation != null) root.removeView(setConfirmation);
+        setConfirmation = null;
+    }
+
     private void showMoveDialog(TaskSnapshot task) {
         TaskSlot[] slots = TaskSlot.values();
         new AlertDialog.Builder(this).setTitle(R.string.task_move)
@@ -244,19 +287,26 @@ public class MainActivity extends ComponentActivity {
 
     private void syncEditor(EditorUiState editor) {
         if (!editor.open) {
-            if (taskEditorDialog != null && taskEditorDialog.isShowing()) taskEditorDialog.dismiss();
+            if (taskEditor != null) {
+                root.removeView(taskEditor);
+                taskEditor = null;
+            }
+            dashboardScreen.setVisibility(android.view.View.VISIBLE);
             return;
         }
-        if (editor.loading || taskEditorDialog != null && taskEditorDialog.isShowing()) return;
-        taskEditorDialog = TaskEditorDialog.show(this, editor, new TaskEditorDialog.Listener() {
+        dashboardScreen.setVisibility(android.view.View.INVISIBLE);
+        if (editor.loading) return;
+        if (taskEditor == null) {
+            taskEditor = new TaskEditorView(this, new TaskEditorView.Listener() {
             @Override public void onDraftChanged(EditorUiState draft) { viewModel.updateEditorDraft(draft); }
             @Override public void onSave(EditorUiState draft) { viewModel.saveEditor(draft); }
-            @Override public void onDismiss() {
-                taskEditorDialog = null;
-                if (!isChangingConfigurations() && !isFinishing()
-                        && uiState != null && uiState.editor.open) viewModel.dismissEditor();
-            }
-        });
+            @Override public void onDelete(String taskId) { viewModel.deleteFromEditor(taskId); }
+            @Override public void onDismiss() { viewModel.dismissEditor(); }
+            });
+            taskEditor.setPadding(0, systemTopInset, 0, 0);
+            root.addView(taskEditor, new FrameLayout.LayoutParams(-1, -1));
+        }
+        taskEditor.bind(editor, uiState.palette, container.clock.today());
     }
 
     private void handleEvent(UiEvent event) {

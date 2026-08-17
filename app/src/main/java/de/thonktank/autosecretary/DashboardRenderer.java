@@ -168,7 +168,8 @@ public final class DashboardRenderer {
             TimelineItemUiModel item = items.get(i);
             String key = item.event != null
                     ? "event:" + item.event.minuteOfDay + ":" + item.event.title
-                    : "task:" + item.task.taskId;
+                    : "task:" + (item.task.occurrenceId.isEmpty()
+                    ? item.task.taskId : item.task.occurrenceId);
             desired.add(key);
             View view = timelineViews.get(key);
             if (item.event != null) {
