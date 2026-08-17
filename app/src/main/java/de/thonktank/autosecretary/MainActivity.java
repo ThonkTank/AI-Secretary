@@ -134,7 +134,7 @@ public class MainActivity extends ComponentActivity {
         renderer = new DashboardRenderer(this, scroll, content, dashboardActions(), versionName());
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            screen.setPadding(0, bars.top, 0, bars.bottom);
+            screen.setPadding(0, bars.top, 0, 0);
             return insets;
         });
         setContentView(root);

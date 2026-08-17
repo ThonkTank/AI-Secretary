@@ -25,7 +25,8 @@ final class ForestArtworkRenderer {
     private DayPalette palette;
     private int width;
     private int height;
-    private float sunBreathOffset;
+    private float sunBreathOffsetX;
+    private float sunBreathOffsetY;
 
     ForestArtworkRenderer(float ignoredDensity) {
         treePaint.setStyle(Paint.Style.FILL);
@@ -49,8 +50,9 @@ final class ForestArtworkRenderer {
         }
     }
 
-    void setSunBreathOffset(float offsetPixels) {
-        sunBreathOffset = offsetPixels;
+    void setSunBreathOffset(float offsetXPixels, float offsetYPixels) {
+        sunBreathOffsetX = offsetXPixels;
+        sunBreathOffsetY = offsetYPixels;
     }
 
     void draw(Canvas canvas) {
@@ -78,7 +80,8 @@ final class ForestArtworkRenderer {
         float radiusY = height * palette.sunHeight;
         if (radiusX <= 0 || radiusY <= 0) return;
         int save = canvas.save();
-        canvas.translate(width * palette.sunX / 100f, -height * .1f + sunBreathOffset);
+        canvas.translate(width * palette.sunX / 100f + sunBreathOffsetX,
+                -height * .1f + sunBreathOffsetY);
         canvas.scale(1f, radiusY / radiusX);
         canvas.drawCircle(0, 0, radiusX, sunPaint);
         canvas.restoreToCount(save);

@@ -50,7 +50,7 @@ final class ForestBackdropView extends View {
     private void updateBreathing() {
         stopBreathing();
         if (!isShown() || !ValueAnimator.areAnimatorsEnabled()) {
-            artwork.setSunBreathOffset(0f);
+            artwork.setSunBreathOffset(0f, 0f);
             invalidate();
             return;
         }
@@ -59,9 +59,11 @@ final class ForestBackdropView extends View {
         breathing.setDuration(motion.forestBreathDurationMs);
         breathing.setRepeatCount(ValueAnimator.INFINITE);
         breathing.setRepeatMode(ValueAnimator.REVERSE);
+        breathing.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
         breathing.addUpdateListener(animation -> {
             float progress = (float) animation.getAnimatedValue();
-            artwork.setSunBreathOffset(styleDp(motion.forestBreathDistanceDp) * progress);
+            artwork.setSunBreathOffset(-styleDp(motion.forestBreathDistanceDp) * progress,
+                    styleDp(motion.forestBreathVerticalDp) * progress);
             invalidate();
         });
         breathing.start();
@@ -72,7 +74,7 @@ final class ForestBackdropView extends View {
             breathing.cancel();
             breathing = null;
         }
-        artwork.setSunBreathOffset(0f);
+        artwork.setSunBreathOffset(0f, 0f);
         invalidate();
     }
 

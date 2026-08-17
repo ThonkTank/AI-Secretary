@@ -11,6 +11,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.view.View;
+import android.view.MotionEvent;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 
@@ -33,6 +34,7 @@ import org.robolectric.shadows.ShadowAlertDialog;
 
 import java.time.LocalTime;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
@@ -112,23 +114,53 @@ public final class UiComponentRobolectricTest {
     @Test public void primaryNavigationControlsMeetAccessibilityContracts() {
         Context context = ApplicationProvider.getApplicationContext();
         int target = context.getResources().getDimensionPixelSize(R.dimen.touch_target);
+        UiStyle style = new UiStyle(context);
+        assertEquals(style.dp(54), context.getResources().getDimensionPixelSize(R.dimen.header_height));
+        assertEquals(style.dp(80), context.getResources().getDimensionPixelSize(R.dimen.footer_height));
         HeaderView header = new HeaderView(context, () -> { });
         View add = header.getChildAt(1);
         assertTrue(add.getLayoutParams().width >= target);
         assertTrue(add.getLayoutParams().height >= target);
         assertEquals(context.getString(R.string.content_add_task), add.getContentDescription());
         View addVisual = ((android.widget.FrameLayout) add).getChildAt(0);
-        assertEquals(new UiStyle(context).dp(40), addVisual.getLayoutParams().width);
-        assertEquals(new UiStyle(context).dp(40), addVisual.getLayoutParams().height);
+        assertEquals(style.dp(40), addVisual.getLayoutParams().width);
+        assertEquals(style.dp(40), addVisual.getLayoutParams().height);
 
         FooterNavigationView footer = new FooterNavigationView(context, destination -> { });
+        footer.measure(View.MeasureSpec.makeMeasureSpec(style.dp(412), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(style.dp(80), View.MeasureSpec.EXACTLY));
+        footer.layout(0, 0, footer.getMeasuredWidth(), footer.getMeasuredHeight());
         for (int index = 0; index < footer.getChildCount(); index++) {
             View item = footer.getChildAt(index);
             android.widget.TextView text = (android.widget.TextView) item;
-            assertTrue(text.getMinWidth() >= target);
             assertTrue(text.getMinHeight() >= target);
+            android.graphics.Rect touchBounds = footer.effectiveTouchBounds(item);
+            assertTrue(touchBounds.width() >= target);
+            assertTrue(touchBounds.height() >= target);
             assertTrue(text.getText().length() > 0);
         }
+    }
+
+    @Test public void narrowFooterLabelReceivesClicksAcrossItsExpandedTouchTarget() {
+        Context context = ApplicationProvider.getApplicationContext();
+        UiStyle style = new UiStyle(context);
+        AtomicReference<NavigationDestination> clicked = new AtomicReference<>();
+        FooterNavigationView footer = new FooterNavigationView(context, clicked::set);
+        footer.measure(View.MeasureSpec.makeMeasureSpec(style.dp(412), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(style.dp(80), View.MeasureSpec.EXACTLY));
+        footer.layout(0, 0, footer.getMeasuredWidth(), footer.getMeasuredHeight());
+        View today = footer.getChildAt(0);
+        android.graphics.Rect target = footer.effectiveTouchBounds(today);
+        float x = target.left + 1;
+        float y = target.centerY();
+        long now = android.os.SystemClock.uptimeMillis();
+        MotionEvent down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0);
+        MotionEvent up = MotionEvent.obtain(now, now + 10, MotionEvent.ACTION_UP, x, y, 0);
+        footer.dispatchTouchEvent(down);
+        footer.dispatchTouchEvent(up);
+        down.recycle();
+        up.recycle();
+        assertEquals(NavigationDestination.TODAY, clicked.get());
     }
 
     private static DashboardUiState state(DayPalette palette) {

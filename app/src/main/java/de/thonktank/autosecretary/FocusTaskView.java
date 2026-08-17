@@ -27,6 +27,7 @@ public final class FocusTaskView extends FrameLayout {
     private final View back;
     private final View middle;
     private final LinearLayout card;
+    private final LayoutParams cardParams;
     private final LinearLayout titleBlock;
     private final TextView marker;
     private final TextView title;
@@ -35,9 +36,11 @@ public final class FocusTaskView extends FrameLayout {
     private final LinearLayout steps;
     private final List<StepRow> stepRows = new ArrayList<>();
     private final LinearLayout actions;
+    private final LinearLayout.LayoutParams actionParams;
     private final TextView primary;
     private final TextLinkView later;
     private final View glint;
+    private final View afterglow;
     private String boundTaskId;
     private boolean deferPending;
 
@@ -58,8 +61,7 @@ public final class FocusTaskView extends FrameLayout {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(style.dp(24), style.dp(24), style.dp(28), style.dp(24));
         card.setRotation(-.7f);
-        card.setElevation(style.dp(12));
-        LayoutParams cardParams = new LayoutParams(-1, -2);
+        cardParams = new LayoutParams(-1, -2);
         cardParams.topMargin = style.dp(22);
         addView(card, cardParams);
 
@@ -71,10 +73,12 @@ public final class FocusTaskView extends FrameLayout {
         title = style.serif("", 37, 0, false, 200);
         title.setLineSpacing(0, 1.04f);
         title.setLetterSpacing(-.02f);
-        titleBlock.addView(title, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
+        titleParams.topMargin = style.dp(4);
+        titleBlock.addView(title, titleParams);
         softTime = style.sans("", 17, 0, false);
         LinearLayout.LayoutParams softParams = new LinearLayout.LayoutParams(-1, -2);
-        softParams.setMargins(0, style.dp(8), 0, 0);
+        softParams.setMargins(0, style.dp(7), 0, 0);
         titleBlock.addView(softTime, softParams);
         titleRow.addView(titleBlock, new LayoutParams(-1, -2));
         ring = new YearRingView(context);
@@ -89,7 +93,7 @@ public final class FocusTaskView extends FrameLayout {
         card.addView(steps, stepsParams);
         actions = new LinearLayout(context);
         actions.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(-1, -2);
+        actionParams = new LinearLayout.LayoutParams(-1, -2);
         actionParams.setMargins(0, style.dp(22), 0, 0);
         card.addView(actions, actionParams);
         primary = new TextView(context);
@@ -107,58 +111,65 @@ public final class FocusTaskView extends FrameLayout {
 
         glint = new View(context);
         glint.setVisibility(INVISIBLE);
-        LayoutParams glintParams = new LayoutParams(style.dp(64), -1);
+        glint.setRotation(-14f);
+        LayoutParams glintParams = new LayoutParams(style.dp(64), 0);
         glintParams.topMargin = style.dp(22);
         addView(glint, glintParams);
+        afterglow = new View(context);
+        afterglow.setVisibility(INVISIBLE);
+        LayoutParams afterglowParams = new LayoutParams(-1, 0);
+        afterglowParams.topMargin = style.dp(22);
+        addView(afterglow, afterglowParams);
     }
 
     public void bind(TaskSnapshot task, boolean stacked, boolean allowDefer,
                      DayPalette palette, Actions callbacks) {
         boolean focusChanged = boundTaskId != null && !boundTaskId.equals(task.taskId);
         boundTaskId = task.taskId;
-        setMinimumHeight(style.dp(task.steps.isEmpty() ? 275 : 387));
-        back.setVisibility(stacked ? VISIBLE : GONE);
-        middle.setVisibility(stacked ? VISIBLE : GONE);
+        boolean compactOngoing = task.ongoing && task.steps.isEmpty();
+        setMinimumHeight(style.dp(compactOngoing ? 205 : task.steps.isEmpty() ? 275 : 387));
+        cardParams.topMargin = style.dp(compactOngoing ? 0 : 22);
+        card.setLayoutParams(cardParams);
+        card.setPadding(style.dp(24), style.dp(24), style.dp(28),
+                style.dp(compactOngoing ? 30 : 24));
+        actionParams.topMargin = style.dp(compactOngoing ? 30 : 22);
+        actions.setLayoutParams(actionParams);
+        back.setVisibility(stacked && !compactOngoing ? VISIBLE : GONE);
+        middle.setVisibility(stacked && !compactOngoing ? VISIBLE : GONE);
         back.setBackground(style.leaf(palette.leaf3, style.edge(palette, 3), 8, 56, 8, 56));
         back.setRotation(2.2f);
-        back.setElevation(style.dp(5));
+        style.shadow(back, palette, 5, .75f);
         middle.setBackground(style.leaf(palette.leaf2, style.edge(palette, 2), 56, 8, 56, 8));
         middle.setRotation(-1.5f);
-        middle.setElevation(style.dp(5));
+        style.shadow(middle, palette, 5, .75f);
         card.setBackground(style.leaf(palette.leaf1, style.edge(palette, 1), 10, 64, 10, 64));
+        style.shadow(card, palette, 12, 1f);
         card.setTranslationY(0f);
         card.setAlpha(1f);
         marker.setText(task.overdue ? R.string.marker_overdue : R.string.marker_now);
         marker.setTextColor(task.overdue ? palette.bad : palette.accent);
         title.setText(task.title);
-        title.setTextSize(task.title.length() > 26 ? 30 : 37);
+        title.setTextSize(task.title.length() > 42 ? 30 : 37);
         title.setTextColor(palette.ink);
         softTime.setText(task.softTime);
         softTime.setTextColor(palette.hint);
         ring.setVisibility(task.ringWeeks > 0 ? VISIBLE : GONE);
         ring.bind(task.ringWeeks, palette);
-        titleBlock.setPadding(0, 0, task.ringWeeks > 0 ? style.dp(66) : 0, 0);
+        titleBlock.setPadding(0, 0, 0, 0);
+        title.setPadding(0, 0, task.ringWeeks > 0 ? style.dp(66) : 0, 0);
         bindSteps(task, palette, callbacks);
         primary.setText(task.actionLabel(getContext()));
         primary.setTextColor(palette.accentText);
         primary.setBackground(style.pill(palette.accent, 26));
-        primary.setElevation(style.dp(5));
+        style.shadow(primary, palette, 5, .7f);
         primary.setOnClickListener(view -> callbacks.onComplete(task));
         later.setVisibility(allowDefer ? VISIBLE : GONE);
         later.bind(palette.hint, palette.dot);
         later.setOnClickListener(view -> {
             deferPending = true;
-            card.animate().rotation(1.5f).translationY(style.dp(8)).alpha(.82f)
-                    .setDuration(palette.motion.deferDurationMs)
-                    .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
-                    .withEndAction(() -> callbacks.onDefer(task));
+            callbacks.onDefer(task);
         });
-        if (focusChanged) post(() -> {
-            if (deferPending) {
-                deferPending = false;
-                playGlint(palette.light, palette.motion.afterglowDurationMs, .24f);
-            } else playGlint(Color.WHITE, palette.motion.glintDurationMs, .16f);
-        });
+        if (focusChanged) animateFocusChange(palette);
     }
 
     private void bindSteps(TaskSnapshot task, DayPalette palette, Actions callbacks) {
@@ -202,6 +213,9 @@ public final class FocusTaskView extends FrameLayout {
 
     private void playGlint(int color, long duration, float alpha) {
         glint.animate().cancel();
+        LayoutParams params = (LayoutParams) glint.getLayoutParams();
+        params.height = card.getHeight();
+        glint.setLayoutParams(params);
         GradientDrawable sheen = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{Color.TRANSPARENT, UiStyle.alpha(color, alpha), Color.TRANSPARENT});
         glint.setBackground(sheen);
@@ -210,6 +224,39 @@ public final class FocusTaskView extends FrameLayout {
         glint.animate().translationX(Math.max(getWidth(), style.dp(320))).setDuration(duration)
                 .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
                 .withEndAction(() -> glint.setVisibility(INVISIBLE));
+    }
+
+    private void animateFocusChange(DayPalette palette) {
+        boolean deferred = deferPending;
+        deferPending = false;
+        card.animate().cancel();
+        card.setTranslationY(style.dp(palette.motion.focusEnterDistanceDp));
+        card.setAlpha(.86f);
+        card.animate().translationY(0f).alpha(1f)
+                .setDuration(palette.motion.stateChangeDurationMs)
+                .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
+                .withEndAction(() -> {
+                    if (!android.animation.ValueAnimator.areAnimatorsEnabled()) return;
+                    if (deferred) playAfterglow(palette);
+                    else playGlint(Color.WHITE, palette.motion.glintDurationMs, .16f);
+                });
+    }
+
+    private void playAfterglow(DayPalette palette) {
+        afterglow.animate().cancel();
+        LayoutParams params = (LayoutParams) afterglow.getLayoutParams();
+        params.height = card.getHeight();
+        afterglow.setLayoutParams(params);
+        afterglow.setRotation(card.getRotation());
+        GradientDrawable outline = style.leaf(Color.TRANSPARENT, palette.light,
+                10, 64, 10, 64);
+        outline.setStroke(style.dp(2), palette.light);
+        afterglow.setBackground(outline);
+        afterglow.setAlpha(1f);
+        afterglow.setVisibility(VISIBLE);
+        afterglow.animate().alpha(0f).setDuration(palette.motion.afterglowDurationMs)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> afterglow.setVisibility(INVISIBLE));
     }
 
     private static CharSequence strike(String text) {

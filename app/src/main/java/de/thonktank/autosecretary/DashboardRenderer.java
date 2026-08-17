@@ -74,12 +74,14 @@ public final class DashboardRenderer {
             return;
         }
         final int[] remaining = {leaves.size()};
+        MotionTokens motion = MotionTokens.standard();
         for (int i = 0; i < leaves.size(); i++) {
             View leaf = leaves.get(i);
             float originalRotation = leaf.getRotation();
-            leaf.animate().translationX(style.dp(46 + i * 10)).translationY(-style.dp(34 + i * 6))
-                    .rotation(originalRotation + 3f).alpha(0f)
-                    .setDuration(MotionTokens.standard().leafFlightDurationMs)
+            leaf.animate().translationX(style.dp(motion.leafFlightXDp + i * 10))
+                    .translationY(style.dp(motion.leafFlightYDp + i * 6))
+                    .rotation(originalRotation + motion.leafFlightRotationDegrees).alpha(0f)
+                    .setDuration(motion.leafFlightDurationMs)
                     .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
                     .withEndAction(() -> {
                         leaf.setTranslationX(0f);
@@ -150,7 +152,7 @@ public final class DashboardRenderer {
         int open = 0;
         for (TaskSnapshot task : dashboard.tasks) if (!task.done) open++;
         focus.bind(focusTask, dashboard.timeline.size() > 0, open > 1, palette, actions);
-        bindTimeline(dashboard.timeline, focusTask.overdue, palette);
+        bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
         more.setText(context.getResources().getQuantityString(
                 R.plurals.more_items, remaining, remaining));
@@ -158,10 +160,10 @@ public final class DashboardRenderer {
     }
 
     private void bindTimeline(List<TimelineItemUiModel> items, boolean overdueShown,
+                              boolean afterAssigned,
                               DayPalette palette) {
         int shown = Math.min(3, items.size());
         List<String> desired = new ArrayList<>();
-        boolean afterAssigned = false;
         for (int i = 0; i < shown; i++) {
             TimelineItemUiModel item = items.get(i);
             String key = item.event != null
@@ -195,7 +197,7 @@ public final class DashboardRenderer {
                 if (view.getParent() instanceof android.view.ViewGroup)
                     ((android.view.ViewGroup) view.getParent()).removeView(view);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-                params.setMargins(0, i == 0 ? style.dp(22) : style.dimen(R.dimen.content_gap), 0, 0);
+                params.setMargins(0, i == 0 ? style.dp(12) : style.dimen(R.dimen.content_gap), 0, 0);
                 timeline.addView(view, Math.min(i, timeline.getChildCount()), params);
             } else if (timeline.indexOfChild(view) != i) {
                 timeline.removeView(view);
@@ -204,7 +206,7 @@ public final class DashboardRenderer {
             LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) view.getLayoutParams();
             params.width = -1;
             params.height = -2;
-            params.setMargins(0, i == 0 ? style.dp(22) : style.dimen(R.dimen.content_gap), 0, 0);
+            params.setMargins(0, i == 0 ? style.dp(12) : style.dimen(R.dimen.content_gap), 0, 0);
             view.setLayoutParams(params);
         }
         for (int i = timeline.getChildCount() - 1; i >= 0; i--) {

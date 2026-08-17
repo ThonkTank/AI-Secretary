@@ -4,7 +4,9 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.TextView;
 
 final class UiStyle {
@@ -28,7 +30,9 @@ final class UiStyle {
         view.setTextSize(size);
         view.setTextColor(color);
         view.setTypeface(italic ? serifItalic : serif);
-        view.setFontVariationSettings("'wght' " + weight);
+        if (Build.VERSION.SDK_INT >= 26) {
+            view.setFontVariationSettings("'wght' " + weight);
+        }
         if (size >= 30) view.setLetterSpacing(-.02f);
         view.setIncludeFontPadding(false);
         return view;
@@ -50,7 +54,7 @@ final class UiStyle {
         view.setPadding(dp(28), 0, dp(28), 0);
         view.setMinHeight(dp(52));
         view.setBackground(pill(palette.accent, 26));
-        view.setElevation(dp(5));
+        shadow(view, palette, 5, .7f);
         return view;
     }
 
@@ -83,6 +87,15 @@ final class UiStyle {
         if (level == 1) return palette.leaf1Edge;
         if (level == 2) return palette.leaf2Edge;
         return palette.leaf3Edge;
+    }
+
+    void shadow(View view, DayPalette palette, float elevationDp, float strength) {
+        view.setElevation(dp(elevationDp));
+        if (Build.VERSION.SDK_INT >= 28) {
+            int color = alpha(0xff000000, Math.min(1f, palette.shadowAlpha * strength));
+            view.setOutlineSpotShadowColor(color);
+            view.setOutlineAmbientShadowColor(color);
+        }
     }
     int dimen(int resourceId) { return context.getResources().getDimensionPixelSize(resourceId); }
     int dp(float value) { return Math.round(value * context.getResources().getDisplayMetrics().density); }

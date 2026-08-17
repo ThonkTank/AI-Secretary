@@ -11,6 +11,21 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 import androidx.test.core.app.ApplicationProvider;
+import android.content.Context;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+
+import de.thonktank.autosecretary.calendar.CalendarResult;
+import de.thonktank.autosecretary.data.preferences.UiThemeMode;
+import de.thonktank.autosecretary.update.presentation.UpdateUiState;
+
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 
@@ -62,5 +77,53 @@ public final class DashboardCharacterizationTest {
         assertEquals(0, events.get(0).minuteOfDay);
         assertEquals(10 * 60 + 15, events.get(1).minuteOfDay);
         assertFalse(events.get(1).title.isEmpty());
+    }
+
+    @Test public void timelineKeepsDoneItemsAssignsAfterAcrossCalendarAndCapsAtThree() {
+        Context context = ApplicationProvider.getApplicationContext();
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(content);
+        DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
+                new NoOpActions(), "test");
+        List<CalendarEventSnapshot> events = Collections.singletonList(
+                new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
+        DashboardState dashboardState = new DashboardState(10, java.util.Arrays.asList(
+                DashboardFixtures.simpleTask(), DashboardFixtures.completedTodayTask(),
+                DashboardFixtures.recurringTask(), DashboardFixtures.ongoingTask()));
+        DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.AUTO);
+        renderer.render(new DashboardUiState(NavigationDestination.TODAY,
+                        DashboardUiModel.compose(dashboardState, events),
+                        CalendarUiState.from(new CalendarResult.Success(events)), palette,
+                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
+                        EditorUiState.closed()), UiThemeMode.AUTO, UpdateUiState.idle());
+
+        LinearLayout timeline = (LinearLayout) content.getChildAt(2);
+        List<String> text = new ArrayList<>();
+        collectText(timeline, text);
+        assertEquals(3, timeline.getChildCount());
+        assertTrue(text.contains(context.getString(R.string.marker_done)));
+        assertTrue(text.contains(context.getString(R.string.marker_after)));
+    }
+
+    private static void collectText(View view, List<String> result) {
+        if (view instanceof TextView) result.add(((TextView) view).getText().toString());
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) collectText(group.getChildAt(i), result);
+        }
+    }
+
+    private static final class NoOpActions implements DashboardRenderer.Actions {
+        @Override public void onAddTask() { }
+        @Override public void onTaskAction(TaskSnapshot task) { }
+        @Override public void onTaskMenu(TaskSnapshot task) { }
+        @Override public void onComplete(TaskSnapshot task) { }
+        @Override public void onDefer(TaskSnapshot task) { }
+        @Override public void onToggleStep(TaskStepSnapshot step) { }
+        @Override public void onTheme(UiThemeMode mode) { }
+        @Override public void onCalendarPermission() { }
+        @Override public void onUpdates() { }
     }
 }

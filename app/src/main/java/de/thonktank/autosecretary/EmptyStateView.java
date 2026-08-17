@@ -17,14 +17,15 @@ public final class EmptyStateView extends LinearLayout {
         super(context);
         style = new UiStyle(context);
         setOrientation(VERTICAL);
-        setPadding(style.dp(28), style.dp(26), style.dp(28), style.dp(26));
+        setPadding(style.dp(28), style.dp(29), style.dp(28), style.dp(26));
         setRotation(-.5f);
         title = style.serif("", 30, 0, false, 200);
+        title.setLineSpacing(0, 1.1f);
         addView(title);
         subtitle = style.sans("", 16, 0, false);
         subtitle.setLineSpacing(0, 1.55f);
         LayoutParams subtitleParams = new LayoutParams(-1, -2);
-        subtitleParams.setMargins(0, style.dp(10), 0, 0);
+        subtitleParams.setMargins(0, style.dp(18), 0, 0);
         addView(subtitle, subtitleParams);
         action = new TextView(context);
         action.setText(R.string.action_add_task);
@@ -49,7 +50,7 @@ public final class EmptyStateView extends LinearLayout {
             action.setBackground(style.pill(palette.accent, 26));
             action.setTypeface(style.sansBold);
             action.setTextSize(17);
-            action.setElevation(style.dp(5));
+            style.shadow(action, palette, 5, .7f);
         }
     }
 }

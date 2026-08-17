@@ -87,6 +87,18 @@ public final class DesignSystemTest {
         assertEquals(1_000L, day.motion.afterglowDurationMs);
         assertEquals(11_000L, day.motion.forestBreathDurationMs);
         assertEquals(18f, day.motion.forestBreathDistanceDp, .0001f);
+        assertEquals(7f, day.motion.forestBreathVerticalDp, .0001f);
+        assertEquals(210f, day.motion.leafFlightXDp, .0001f);
+        assertEquals(120f, day.motion.leafFlightYDp, .0001f);
+        assertEquals(200f, day.motion.leafFlightRotationDegrees, .0001f);
+        assertEquals(18f, day.motion.focusEnterDistanceDp, .0001f);
+        assertEquals(.2f, DewDotView.START_SCALE, .0001f);
+        assertEquals(1.14f, DewDotView.OVERSHOOT_SCALE, .0001f);
+        assertEquals(.58f, DewDotView.OVERSHOOT_FRACTION, .0001f);
+        assertEquals(.34f, DewDotView.CURVE_X1, .0001f);
+        assertEquals(1.56f, DewDotView.CURVE_Y1, .0001f);
+        assertEquals(.64f, DewDotView.CURVE_X2, .0001f);
+        assertEquals(1f, DewDotView.CURVE_Y2, .0001f);
     }
 
     private static String snapshot(DayPaletteAnchor anchor, DayPalette p) {

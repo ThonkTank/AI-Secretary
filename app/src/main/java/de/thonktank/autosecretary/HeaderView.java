@@ -22,10 +22,12 @@ public final class HeaderView extends LinearLayout {
         setGravity(Gravity.CENTER_VERTICAL);
         setPadding(style.dp(76), 0, style.dp(22), 0);
         greeting = style.serif("", 19, 0, true, 300);
+        greeting.setTranslationY(style.dp(7));
         addView(greeting, new LayoutParams(0, -2, 1));
         FrameLayout addTarget = new FrameLayout(context);
         addTarget.setContentDescription(context.getString(R.string.content_add_task));
         addTarget.setOnClickListener(view -> onAdd.run());
+        addTarget.setTranslationY(style.dp(7));
         add = style.sans("＋", 23, 0, false);
         add.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams visual = new FrameLayout.LayoutParams(style.dp(40), style.dp(40), Gravity.CENTER);

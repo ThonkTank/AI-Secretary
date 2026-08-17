@@ -15,9 +15,8 @@ public final class CalendarLeafView extends LinearLayout {
         style = new UiStyle(context);
         setOrientation(VERTICAL);
         int horizontal = style.dimen(R.dimen.leaf_padding);
-        setPadding(horizontal, style.dp(16), horizontal, style.dp(16));
+        setPadding(horizontal, style.dp(20), horizontal, style.dp(20));
         setRotation(-1f);
-        setElevation(style.dp(7));
         LinearLayout row = new LinearLayout(context);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
         time = style.sans("", 19, 0, true);
@@ -34,6 +33,7 @@ public final class CalendarLeafView extends LinearLayout {
     public void bind(CalendarEventSnapshot event, DayPalette palette) {
         setBackground(style.leaf(palette.calendar, palette.calendarEdge,
                 8, 56, 8, 56));
+        style.shadow(this, palette, 7, .7f);
         time.setText(event.time);
         title.setText(event.title);
         time.setTextColor(palette.calendarInk);

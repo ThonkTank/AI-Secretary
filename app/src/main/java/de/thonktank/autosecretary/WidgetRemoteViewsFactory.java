@@ -25,6 +25,7 @@ public final class WidgetRemoteViewsFactory {
     WidgetRemoteViewsFactory(Context context, WidgetForestCache forests) {
         this.context = context.getApplicationContext();
         this.forests = forests;
+        forests.setDensity(context.getResources().getDisplayMetrics().density);
     }
 
     public RemoteViews create(WidgetUiModel model) {
@@ -122,6 +123,8 @@ public final class WidgetRemoteViewsFactory {
             views.setViewVisibility(STEP_ROWS[i], visible ? View.VISIBLE : View.GONE);
             if (!visible) continue;
             WidgetUiModel.Step step = model.steps.get(i);
+            views.setInt(STEP_TEXTS[i], "setMaxLines",
+                    model.size == WidgetSizeClassifier.Size.WIDE ? 2 : 1);
             views.setImageViewBitmap(STEP_DOTS[i], forests.dew(step.done, model.palette));
             views.setTextViewText(STEP_TEXTS[i], step.done ? strike(step.label) : step.label);
             views.setTextColor(STEP_TEXTS[i], step.done ? model.palette.done : model.palette.ink);

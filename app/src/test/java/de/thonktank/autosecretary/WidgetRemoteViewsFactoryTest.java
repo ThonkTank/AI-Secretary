@@ -172,6 +172,19 @@ public final class WidgetRemoteViewsFactoryTest {
         assertTrue(first.getAllocationByteCount() <= WidgetForestCache.MAX_BITMAP_BYTES);
     }
 
+    @Test @Config(sdk = 35, qualifiers = "xxhdpi")
+    public void artworkUsesHostDensityWithoutExceedingTheExplicitBitmapBudget() {
+        WidgetUiModel model = model(WidgetSizeClassifier.Size.LARGE, DayPalette.Mode.DARK);
+        View applied = new WidgetRemoteViewsFactory(context, new WidgetForestCache())
+                .create(model).apply(context, new FrameLayout(context));
+        Bitmap forest = ((BitmapDrawable) ((ImageView) applied.findViewById(
+                R.id.widget_forest)).getDrawable()).getBitmap();
+
+        assertEquals(1032, forest.getWidth());
+        assertEquals(1032, forest.getHeight());
+        assertTrue(forest.getAllocationByteCount() <= WidgetForestCache.MAX_DENSITY_BITMAP_BYTES);
+    }
+
     private WidgetUiModel model(WidgetSizeClassifier.Size size, DayPalette.Mode mode) {
         WidgetPresenter presenter = new WidgetPresenter(context);
         return presenter.present(new WidgetPresenter.CycleData(DashboardFixtures.fullDashboard(),

@@ -5,13 +5,15 @@
         android:layout_height="match_parent" android:importantForAccessibility="no" android:scaleType="fitXY" />
     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
         android:baselineAligned="false" android:orientation="horizontal" android:paddingStart="30dp"
-        android:paddingTop="14dp" android:paddingEnd="14dp" android:paddingBottom="14dp">
+        android:paddingTop="14dp" android:paddingEnd="14dp" android:paddingBottom="9dp">
         <LinearLayout android:layout_width="150dp" android:layout_height="match_parent" android:orientation="vertical">
             <TextView android:id="@+id/widget_marker" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:fontFamily="@font/newsreader_italic" android:includeFontPadding="false"
+                android:fontFamily="@font/newsreader_italic" android:fontVariationSettings="'wght' 300"
+                android:includeFontPadding="false"
                 android:text="@string/marker_now" android:textColor="#2E6B44" android:textSize="15sp" />
             <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="0dp"
                 android:layout_weight="1" android:ellipsize="end" android:fontFamily="@font/newsreader"
+                android:fontVariationSettings="'wght' 200"
                 android:includeFontPadding="false" android:maxLines="2" android:textColor="#1A2618" android:textSize="23sp" />
             <FrameLayout android:id="@+id/widget_action_target" android:layout_width="match_parent" android:layout_height="48dp">
                 <ImageView android:id="@+id/widget_action_background" android:layout_width="match_parent"
@@ -27,7 +29,9 @@
             <include layout="@layout/widget_step_row_2" />
             <include layout="@layout/widget_step_row_3" />
             <TextView android:id="@+id/widget_more" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:fontFamily="@font/newsreader_italic" android:includeFontPadding="false"
+                android:layout_marginTop="20dp"
+                android:fontFamily="@font/newsreader_italic" android:fontVariationSettings="'wght' 300"
+                android:includeFontPadding="false"
                 android:textColor="#6D7860" android:textSize="13sp" />
         </LinearLayout>
     </LinearLayout>

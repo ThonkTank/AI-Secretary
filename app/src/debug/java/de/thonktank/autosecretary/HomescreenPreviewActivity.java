@@ -21,6 +21,7 @@ import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 /** Debug-only deterministic gallery for the ten supplied visual reference states. */
 public final class HomescreenPreviewActivity extends ComponentActivity {
+    private WidgetForestCache widgetCache;
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         String preview = getIntent().getStringExtra("preview");
@@ -66,7 +67,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
                         EditorUiState.closed()), UiThemeMode.AUTO, UpdateUiState.idle());
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            screen.setPadding(0, bars.top, 0, bars.bottom);
+            screen.setPadding(0, bars.top, 0, 0);
             return insets;
         });
         setContentView(root);
@@ -82,7 +83,8 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         WidgetPresenter presenter = new WidgetPresenter(this);
         WidgetUiModel model = presenter.present(new WidgetPresenter.CycleData(dashboard, calendar,
                 DayPalette.at(time, DayPalette.Mode.AUTO)), size);
-        View widget = new WidgetRemoteViewsFactory(this, new WidgetForestCache()).create(model)
+        widgetCache = new WidgetForestCache();
+        View widget = new WidgetRemoteViewsFactory(this, widgetCache).create(model)
                 .apply(this, new FrameLayout(this));
         int width = dp(size == WidgetSizeClassifier.Size.SMALL ? 160
                 : size == WidgetSizeClassifier.Size.TALL ? 280 : 344);
@@ -97,6 +99,12 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    @Override protected void onDestroy() {
+        super.onDestroy();
+        if (widgetCache != null) widgetCache.clear();
+        widgetCache = null;
     }
 
     private static final class PreviewActions implements DashboardRenderer.Actions {
