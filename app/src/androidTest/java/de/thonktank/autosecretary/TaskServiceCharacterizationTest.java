@@ -84,7 +84,7 @@ public final class TaskServiceCharacterizationTest {
         assertNull(dao.openForTask(task.id, OccurrenceState.OPEN.storageCode()));
     }
 
-    @Test public void deferSwapsOnlyTheSelectedTaskWithTheNextOpenTask() {
+    @Test public void deferMovesOnlyTheSelectedOccurrenceBehindItsOpenSibling() {
         TaskEntity first = task("first", "Erste Aufgabe", TaskSlot.MORNING.storageCode, "ONCE", 1_001_000L);
         TaskEntity second = task("second", "Zweite Aufgabe", TaskSlot.MORNING.storageCode, "ONCE", 1_002_000L);
         dao.insertTask(first);
@@ -96,8 +96,10 @@ public final class TaskServiceCharacterizationTest {
 
         DashboardState state = service.dashboard();
         assertEquals("second", state.firstOpen().taskId);
-        assertEquals(2_048L, dao.task("first").displayOrder);
-        assertEquals(1_024L, dao.task("second").displayOrder);
+        assertEquals(1_001_000L, dao.task("first").displayOrder);
+        assertEquals(1_002_000L, dao.task("second").displayOrder);
+        assertTrue(dao.occurrence("first-occurrence").sortOrder
+                > dao.occurrence("second-occurrence").sortOrder);
     }
 
     @Test public void ongoingTaskWithoutOccurrenceStillAppearsUntilItsConditionIsClosed() {
