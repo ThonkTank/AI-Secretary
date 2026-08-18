@@ -84,8 +84,10 @@ public final class TaskLeafView extends FrameLayout {
             List<View> faded = new ArrayList<>();
             faded.add(title); faded.add(marker); faded.add(softTime);
             if (progress.getVisibility() == VISIBLE) faded.add(progressLabel);
-            grain.bind(palette, Collections.singletonList(
-                    new WoodGrainView.Anchor(dot, task.comboStage)), faded);
+            grain.bind(palette, Collections.singletonList(new WoodGrainView.Anchor(
+                            WoodGrainCoordinates.centeredBounds(grain, dot,
+                                    dot.grainWidth(), dot.grainHeight()), task.comboStage)),
+                    WoodGrainCoordinates.visibleBounds(grain, faded));
         });
     }
 

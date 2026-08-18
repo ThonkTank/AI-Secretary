@@ -90,6 +90,9 @@ val robolectricTempDir = layout.buildDirectory.dir("tmp/robolectric")
 tasks.withType<Test>().configureEach {
     doFirst { robolectricTempDir.get().asFile.mkdirs() }
     systemProperty("java.io.tmpdir", robolectricTempDir.get().asFile.absolutePath)
+    System.getProperty("woodgrain.benchmark")?.let {
+        systemProperty("woodgrain.benchmark", it)
+    }
 }
 
 tasks.withType<JavaCompile>().configureEach {

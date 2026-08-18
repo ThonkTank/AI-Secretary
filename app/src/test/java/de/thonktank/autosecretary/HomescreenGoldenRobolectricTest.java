@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.os.Looper;
 import android.view.View;
 import android.widget.LinearLayout;
 
@@ -16,6 +17,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
@@ -63,6 +65,9 @@ public final class HomescreenGoldenRobolectricTest {
             content.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
             content.layout(0, 0, width, height);
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            WoodGrainView.awaitGeometryForTest();
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
             Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             content.draw(new Canvas(bitmap));
             assertGolden(preview, bitmap);

@@ -106,6 +106,18 @@ Activity nutzt die AndroidX-Edge-to-edge- und WindowInsets-APIs.
 liegen immutable im Presentation-State und überleben normale Dashboard-Re-Renders. Stabile
 Ressourcen-IDs bilden Testseams für die zentralen programmgesteuerten Komponenten.
 
+## Lifecycle-sicherer Maserungsrenderer
+
+`WoodGrainView.onDraw` berechnet keine Geometrie. Größen- und Anchoränderungen erzeugen immutable
+Requests mit bereits lokalen `RectF`-Werten; `WoodGrainRenderPipeline` dedupliziert gleiche
+Schlüssel und baut SDF-/Marching-Squares-Pfade auf Worker-Threads. Generationstokens verhindern,
+dass ein nach Detach oder neuer Bindung veraltetes Ergebnis publiziert wird.
+
+Der gemeinsame LRU-Cache ist auf geschätzte 4 MiB Pfaddaten begrenzt. Segmentgewicht,
+Buildanzahl, Miss-/Hit-Latenz, Draw-Median, p95 und Heapwachstum sind über den optionalen
+`WoodGrainBenchmarkTest` reproduzierbar. Software-Halo und Blur bleiben bewusst erhalten, weil
+die geprüfte hardwarefreundliche Variante die unveränderten Null-Pixel-Goldens verletzte.
+
 Der `TaskEditorDialog` besitzt einen vollständigen, über `SavedStateHandle` gesicherten
 Entwurf und einen separaten `TaskEditorValidator`. Beim Bearbeiten können Titel,
 Tageszeit, Wiederholung, Intervall, Wochentage, Schritte, ongoing-Status und

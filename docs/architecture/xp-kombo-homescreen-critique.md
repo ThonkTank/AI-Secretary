@@ -22,7 +22,12 @@ Stand: 2026-08-19
   Anchors sind typisiert, Rewardeffekte werden per ID bestätigt, und View-Tags beziehungsweise
   Action-Strings wurden entfernt. Rewardanimation, Satzeditor und Editor-Mounting besitzen eigene
   Komponenten; Inline-Entwurf, Expansion und Fehler überleben Re-Rendering im Presentation-State.
-- Phasen 6–7 bleiben offen.
+- Phase 6 behoben: SDF und Marching Squares laufen in einer deduplizierten Worker-Pipeline;
+  `onDraw` zeichnet nur immutable Renderdaten. Der View erhält lokale Rechtecke, der Cache ist
+  auf geschätzte 4 MiB begrenzt, und Lifecycle-/Cache-/Build-Invarianten sind getestet. Median
+  und p95 wurden gegenüber der reproduzierbaren Baseline schneller; Software-Halo und Blur
+  bleiben wegen der Null-Pixel-Golden-Toleranz bewusst bestehen.
+- Phase 7 bleibt offen.
 
 ## Umfang und Gesamturteil
 
@@ -331,53 +336,58 @@ zweiphasiger Presentation-Übergang. Dafür bleiben robuste Fallbackanchors nöt
 
 ## Canvas-Renderer: gute Trennung, aber hoher technischer Preis
 
-### Geometrie wird synchron auf dem UI-Thread erzeugt
+### Phase 6 behoben: Geometrie im UI-Thread
 
-`WoodGrainGeometry` ist erfreulich rein und separat testbar. `WoodGrainView` erzeugt beim ersten
-Cache-Miss jedoch SDF-Raster und Marching-Squares-Pfade innerhalb von `onDraw`. Das geschieht auf
-dem UI-Thread. Die Rasterweite von drei beziehungsweise vier dp begrenzt die Kosten, garantiert
-aber kein Framebudget auf langsamen API-26-Geräten oder bei vielen verschiedenen Layoutgrößen.
+`WoodGrainGeometry` war bereits rein und separat testbar. In der Ausgangslage erzeugte
+`WoodGrainView` beim ersten Cache-Miss jedoch SDF-Raster und Marching-Squares-Pfade innerhalb von
+`onDraw` auf dem UI-Thread.
 
-Es fehlen Mikrobenchmark, Macrobenchmark und Frame-Metriken. Die Goldens beweisen Aussehen, nicht
-Latenz. Geometrie sollte nach `onSizeChanged` beziehungsweise Anchor-Änderung vorab berechnet
-werden, bei Bedarf auf einem Worker, und anschließend nur noch als unveränderlicher Pfad im Draw-
-Schritt vorliegen.
+`WoodGrainRenderPipeline` baut nach Größen- oder Anchor-Änderungen auf zwei benannten
+Worker-Threads. Gleiche Schlüssel teilen einen Build; publiziert werden immutable Pfade und ein
+Generationstoken verhindert veraltete Lifecycle-Rückgaben. Ein Architekturtest hält SDF,
+Marching Squares und Hierarchierekonstruktion aus `WoodGrainView`; wiederholtes `draw()` verändert
+den Build-Zähler nicht. Der reproduzierbare Benchmark ist in
+`docs/architecture/wood-grain-benchmark.md` dokumentiert.
 
-### Der globale Cache zählt Einträge statt Speicher
+### Phase 6 behoben: eintragsbasierter globaler Cache
 
-Der statische `LruCache` hält 16 `RenderData`-Objekte. Ein Eintrag kann je nach Blattgröße und
+Der alte statische `LruCache` hielt 16 `RenderData`-Objekte. Ein Eintrag konnte je nach Blattgröße und
 Ringzahl sehr unterschiedlich viele Path-Segmente enthalten; 16 Einträge sind daher keine
 brauchbare Speicherobergrenze. Der Cache ist außerdem pro Prozess global und kennt weder Theme-
 noch Lifecycle-Grenzen. Die Geometrie ist zwar farbunabhängig, aber ein Größen-/Dichtewechsel kann
 viele teure Einträge zurücklassen.
 
-Gewünscht wäre ein bytegewichteter Cache mit messbarer Obergrenze und Kennzahlen für Hit-Rate,
-Buildzeit und Speicher. Alternativ könnte jede Karte nur ihren letzten Pfad halten, wenn reale
-Messungen zeigen, dass globale Wiederverwendung gering ist.
+`WoodGrainRenderCache` gewichtet Pfade anhand ihrer Segmentzahl und verwirft im LRU-Verfahren,
+bis die feste 4-MiB-Grenze eingehalten ist. Übergewichtige Einzelobjekte werden nicht gecacht.
+Tests beweisen die Grenze; Benchmarkausgaben enthalten Cacheeinträge, geschätzte Bytes,
+Buildzahl und beobachtetes Heapwachstum.
 
-### Textmasken und Halos erzwingen Software-Rendering
+### Bewusst verbleibend: Textmasken und Halos erzwingen Software-Rendering
 
 Für Fade-Masken und `BlurMaskFilter` setzt der Renderer einen Software-Layer; Text-Halos setzen
 auch einzelne TextViews auf Software. Das löst die visuelle Anforderung verlässlich, kann aber
-Speicher, Rasterkosten und Animationen verschlechtern. Ohne Profiling ist unklar, ob der Effekt
-auf Zielgeräten günstig genug ist.
+Speicher, Rasterkosten und Animationen verschlechtern.
 
-Ein besseres Handoff hätte erlaubt, Halo und Fade als toleranzbehaftete Effekte zu behandeln.
-Dann könnten vorberechnete Masken, Clipping ohne Blur oder hardwarefreundliche Overlays geprüft
-werden. Mindestens sollte ein Performance-Gate auf API 26 und einem schwachen Referenzgerät
-existieren.
+Phase 6 hat eine hardwarefreundliche Variante ohne Software-Halo und Blur geprüft; sie veränderte
+101.821 Pixel und verletzte damit die bestehende Null-Pixel-Toleranz. Deshalb bleiben diese
+Effekte bewusst erhalten. Trotz dieser Restschuld wurden Draw-Median und p95 schneller. Ein
+späterer Austausch erfordert einen explizit freigegebenen visuellen Vertrag und zusätzlich ein
+Performance-Gate auf einem schwachen physischen Referenzgerät.
 
-### Layoutkoordinaten werden manuell rekonstruiert
+### Phase 6 verbessert: Layoutkoordinaten am Renderer-Rand
 
-Der Renderer summiert `left`/`top` entlang der Parent-Kette und korrigiert Scrollpositionen. Das
+Der Renderer summierte `left`/`top` entlang der Parent-Kette und korrigierte Scrollpositionen. Das
 war nötig, weil Tau, Gefäß und Text in anderen Teilbäumen liegen als die Canvas-Ebene. Die Methode
 ignoriert bewusst Rotations- und Skalierungsmatrizen, obwohl Karten und Effekte Rotation nutzen.
 Für das aktuelle Zielbild ist die Näherung ausreichend; weitere Transformationen können Ringe
 und Masken aber verschieben.
 
-Besser wäre ein gemeinsamer lokaler Koordinatenraum oder `ViewGroup`-Layout, das dem Renderer
-fertige Anchor-Rechtecke übergibt. Dann wäre Geometrie unabhängig vom allgemeinen Android-
-View-Baum und dessen Transformationsdetails.
+`WoodGrainView` und die Worker-Pipeline erhalten jetzt ausschließlich lokale `RectF`-Werte für
+Anchors und Textmasken. Die View kennt keine Parent-Kette und keine fremden Views mehr. Bewusst
+verbleibt `WoodGrainCoordinates` als Adapter, der die bisherige Layoutsemantik vor dem
+Renderer-Rand einfriert; Rotations- und Skalierungsmatrizen werden weiter nicht neu
+interpretiert, weil eine matrixbasierte Variante die Null-Pixel-Goldens änderte. Ein gemeinsamer
+lokaler Layoutcontainer wäre langfristig sauberer.
 
 ## Testarchitektur: breit, aber teilweise langsam und fragil
 
@@ -466,7 +476,7 @@ Loads, globale Comboscans und Canvas-Cache sollten mit realistischen Mengen geme
    Commands, Effects und ein Anchor-Registry ersetzen; doppelten Dashboardzustand reduzieren.
 6. **Teilweise erledigt in Phase 5 – große UI-Klassen zerlegen.** Rewardanimation, Satzeditor und Editor-Koordination aus
    `MainActivity`, `TaskViewModel` und `FocusTaskView` extrahieren; stabile IDs ergänzen.
-7. **Offen für Phase 6 – Renderer messen, bevor er erweitert wird.** API-26-Framezeit, Speicher und Cache-Hit-Rate
+7. **Erledigt in Phase 6 – Renderer messen, bevor er erweitert wird.** Framezeit, Speicher und Cache-Hit-Rate
    erfassen; Geometrie vorab berechnen und den Cache anhand realer Messwerte begrenzen.
 8. **Offen für Phase 7 – Testpyramide beschleunigen.** In-Memory-Repository für Fachabläufe, gemeinsame
    Room-Migrationsfixtures und visuelle Diff-Artefakte einführen.
@@ -478,11 +488,11 @@ Loads, globale Comboscans und Canvas-Cache sollten mit realistischen Mengen geme
 Die Implementierung ist für den aktuellen Produktumfang tragfähig und durch breite Tests
 abgesichert. Phasen 1 bis 5 haben die zuvor fehlende Eindeutigkeit bei Satzabschluss,
 Legacyfortschritt, Buchungen, Completion-Orchestrierung und Presentation-Verträgen beseitigt.
-Die verbleibende Hauptschuld liegt jetzt klarer abgegrenzt im Maserungsrenderer, in der langsamen
-Room-lastigen Testpyramide, in duplizierten Migrationsfixtures und in noch unvollständigen
-Skalierungs-, Accessibility- und Dauerlast-Gates.
+Die verbleibende Hauptschuld liegt jetzt klarer abgegrenzt im Software-Halo/Blur des
+Maserungsrenderers, in der langsamen Room-lastigen Testpyramide, in duplizierten
+Migrationsfixtures und in noch unvollständigen Skalierungs-, Accessibility- und Dauerlast-Gates.
 
-Weitere Reward- oder Today-Features können auf den typisierten Verträgen aufbauen. Größere
-visuelle Erweiterungen sollten dagegen Phase 6 abwarten, damit keine weitere Geometriearbeit auf
-dem UI-Thread entsteht. Prozesspersistente Presentation-Effects, kleinere Stores und Builder für
-die langen Snapshot-Konstruktoren bleiben sinnvolle, aber bewusst nachrangige Verbesserungen.
+Weitere Reward-, Today- und Maserungsfeatures können auf den typisierten Verträgen und der
+asynchronen Renderpipeline aufbauen. Prozesspersistente Presentation-Effects, kleinere Stores,
+Builder für die langen Snapshot-Konstruktoren sowie ein explizit freigegebener Ersatz für die
+Softwaremasken bleiben sinnvolle, aber bewusst nachrangige Verbesserungen.

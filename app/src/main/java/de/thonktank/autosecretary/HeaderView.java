@@ -73,7 +73,9 @@ public final class HeaderView extends FrameLayout {
         leaf.setBackground(style.leaf(palette.leaf2, palette.leaf2Edge, 8, 56, 8, 56));
         style.shadow(leaf, palette, 7, .7f);
         add.setTextColor(palette.lightText); add.setBackground(style.pill(palette.light, 24));
-        grain.bindCorner(palette, value.ratio, Arrays.asList(greeting, level, progress));
+        grain.post(() -> grain.bindCorner(palette, value.ratio,
+                WoodGrainCoordinates.visibleBounds(grain,
+                        Arrays.asList(greeting, level, progress))));
     }
 
     public void playRewardGlint(DayPalette palette) {

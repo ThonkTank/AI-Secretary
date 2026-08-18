@@ -322,11 +322,16 @@ public final class FocusTaskView extends FrameLayout {
         gp.topMargin = cardParams.topMargin;
         gp.height = card.getHeight();
         grain.setLayoutParams(gp);
+        grain.post(() -> bindGrainRects(task, palette));
+    }
+
+    private void bindGrainRects(TaskSnapshot task, DayPalette palette) {
         boolean vessel = !task.steps.isEmpty();
         List<WoodGrainView.Anchor> anchors = new ArrayList<>();
-        anchors.add(new WoodGrainView.Anchor(vessel ? ring : taskDew, task.comboStage));
+        View taskAnchor = vessel ? ring : taskDew;
+        anchors.add(new WoodGrainView.Anchor(grainBounds(taskAnchor), task.comboStage));
         for (int i = 0; i < task.steps.size() && i < stepRows.size(); i++)
-            anchors.add(new WoodGrainView.Anchor(stepRows.get(i).dot,
+            anchors.add(new WoodGrainView.Anchor(grainBounds(stepRows.get(i).dot),
                     task.steps.get(i).comboStage));
         List<View> faded = new ArrayList<>();
         faded.add(title);
@@ -338,7 +343,14 @@ public final class FocusTaskView extends FrameLayout {
         }
         if (primary.getVisibility() == VISIBLE) faded.add(primary);
         if (later.getVisibility() == VISIBLE) faded.add(later);
-        grain.bind(palette, anchors, faded);
+        grain.bind(palette, anchors, WoodGrainCoordinates.visibleBounds(grain, faded));
+    }
+
+    private android.graphics.RectF grainBounds(View view) {
+        if (view instanceof DewDotView)
+            return WoodGrainCoordinates.centeredBounds(grain, view,
+                    ((DewDotView) view).grainWidth(), ((DewDotView) view).grainHeight());
+        return WoodGrainCoordinates.bounds(grain, view);
     }
 
     private void playGlint(int color, long duration, float alpha) {
