@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import de.thonktank.autosecretary.domain.model.ComboProgress;
 
 public final class LoadDashboard {
     private final TaskRepository repository;
@@ -66,7 +67,9 @@ public final class LoadDashboard {
                 .thenComparingInt(item -> item.occurrence == null
                         ? Integer.MAX_VALUE : item.occurrence.sortOrder)
                 .thenComparingLong(item -> item.task.displayOrder));
-        return new Dashboard(repository.xp(), result);
+        Map<String, ComboProgress> combos = new HashMap<>();
+        for (ComboProgress combo : repository.combos()) combos.put(combo.ownerId, combo);
+        return new Dashboard(repository.xp(), result, combos);
     }
 
     private static DashboardTask item(Task task, Occurrence occurrence,

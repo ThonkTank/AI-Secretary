@@ -196,6 +196,17 @@ public final class Task {
                 deadlineOn, note);
     }
 
+    public Task withOccurrenceState(boolean newArchived, LocalDate newNextDueOn,
+                                    LocalDate newLastScheduledOn,
+                                    LocalDate newLastCompletedOn,
+                                    boolean newHasCompletedOccurrence) {
+        return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing,
+                conditionText, conditionDone, newArchived, newNextDueOn,
+                newLastScheduledOn, newLastCompletedOn, routineProgress, displayOrder,
+                newHasCompletedOccurrence, estimatedMinutes, timeOfDayMask, boundKind,
+                boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
+    }
+
     public Task closeCondition(LocalDate completedOn) {
         return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
                 true, true, nextDueOn, lastScheduledOn, completedOn, routineProgress,

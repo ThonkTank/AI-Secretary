@@ -4,6 +4,7 @@ import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.DashboardState;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
+import de.thonktank.autosecretary.domain.usecase.ApplyComboDecay;
 
 import java.time.LocalDate;
 
@@ -12,14 +13,22 @@ public final class DashboardPresenter {
     private final LoadDashboard loadDashboard;
     private final MaterializeDueOccurrences materializeDue;
     private final DashboardUiMapper mapper;
+    private final ApplyComboDecay decay;
 
     public DashboardPresenter(Clock clock, LoadDashboard loadDashboard,
                               MaterializeDueOccurrences materializeDue,
                               DashboardUiMapper mapper) {
+        this(clock, loadDashboard, materializeDue, mapper, null);
+    }
+
+    public DashboardPresenter(Clock clock, LoadDashboard loadDashboard,
+                              MaterializeDueOccurrences materializeDue,
+                              DashboardUiMapper mapper, ApplyComboDecay decay) {
         this.clock = clock;
         this.loadDashboard = loadDashboard;
         this.materializeDue = materializeDue;
         this.mapper = mapper;
+        this.decay = decay;
     }
 
     public DashboardState load() {
@@ -28,6 +37,7 @@ public final class DashboardPresenter {
     }
 
     public DashboardState refresh() {
+        if (decay != null) decay.execute();
         materializeDue.execute();
         return load();
     }

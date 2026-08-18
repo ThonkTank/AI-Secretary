@@ -19,6 +19,8 @@ import java.util.function.Consumer;
 public final class FocusTaskView extends FrameLayout {
     public interface Actions {
         void onComplete(TaskSnapshot task);
+        default void onCompleteRemaining(TaskSnapshot task) { onComplete(task); }
+        default void onHarvest(TaskSnapshot task) { onComplete(task); }
         void onDefer(TaskSnapshot task);
         void onToggleStep(TaskStepSnapshot step);
     }
@@ -27,12 +29,15 @@ public final class FocusTaskView extends FrameLayout {
     private final View back;
     private final View middle;
     private final LinearLayout card;
+    private final View cardSurface;
+    private final WoodGrainView grain;
     private final LayoutParams cardParams;
     private final LinearLayout titleBlock;
     private final TextView marker;
     private final TextView title;
     private final TextView softTime;
-    private final YearRingView ring;
+    private final XpVesselView ring;
+    private final DewDotView taskDew;
     private final LinearLayout steps;
     private final List<StepRow> stepRows = new ArrayList<>();
     private final LinearLayout actions;
@@ -56,6 +61,15 @@ public final class FocusTaskView extends FrameLayout {
         LayoutParams middleParams = new LayoutParams(-1, style.dp(88));
         middleParams.setMargins(style.dp(8), style.dp(18), style.dp(12), 0);
         addView(middle, middleParams);
+
+        cardSurface = new View(context);
+        LayoutParams surfaceParams = new LayoutParams(-1, style.dp(320));
+        surfaceParams.topMargin = style.dp(22);
+        addView(cardSurface, surfaceParams);
+        grain = new WoodGrainView(context);
+        LayoutParams grainParams = new LayoutParams(-1, style.dp(320));
+        grainParams.topMargin = style.dp(22);
+        addView(grain, grainParams);
 
         card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -81,9 +95,12 @@ public final class FocusTaskView extends FrameLayout {
         softParams.setMargins(0, style.dp(7), 0, 0);
         titleBlock.addView(softTime, softParams);
         titleRow.addView(titleBlock, new LayoutParams(-1, -2));
-        ring = new YearRingView(context);
+        ring = new XpVesselView(context);
         LayoutParams ringParams = new LayoutParams(style.dp(52), style.dp(52), Gravity.TOP | Gravity.END);
         titleRow.addView(ring, ringParams);
+        taskDew = new DewDotView(context);
+        taskDew.setVisibility(GONE);
+        titleRow.addView(taskDew, new LayoutParams(style.dp(48), style.dp(48), Gravity.TOP | Gravity.END));
         card.addView(titleRow, new LinearLayout.LayoutParams(-1, -2));
 
         steps = new LinearLayout(context);
@@ -142,27 +159,42 @@ public final class FocusTaskView extends FrameLayout {
         middle.setBackground(style.leaf(palette.leaf2, style.edge(palette, 2), 56, 8, 56, 8));
         middle.setRotation(-1.5f);
         style.shadow(middle, palette, 5, .75f);
-        card.setBackground(style.leaf(palette.leaf1, style.edge(palette, 1), 10, 64, 10, 64));
-        style.shadow(card, palette, 12, 1f);
+        card.setBackgroundColor(Color.TRANSPARENT);
+        cardSurface.setBackground(style.leaf(palette.leaf1, style.edge(palette, 1), 10, 64, 10, 64));
+        cardSurface.setRotation(card.getRotation());
+        style.shadow(cardSurface, palette, 12, 1f);
+        // Elevated siblings ignore insertion order. Keep the paper surface behind
+        // the grain and the transparent content layer.
+        grain.setTranslationZ(style.dp(13));
+        card.setTranslationZ(style.dp(14));
         card.setTranslationY(0f);
         card.setAlpha(1f);
-        marker.setText(task.overdue ? R.string.marker_overdue : R.string.marker_now);
-        marker.setTextColor(task.overdue ? palette.bad : palette.accent);
+        marker.setVisibility(GONE);
         title.setText(task.title);
-        title.setTextSize(task.title.length() > 42 ? 30 : 37);
+        title.setTextSize(30);
         title.setTextColor(palette.ink);
-        softTime.setText(task.softTime);
-        softTime.setTextColor(palette.hint);
-        ring.setVisibility(task.ringWeeks > 0 ? VISIBLE : GONE);
-        ring.bind(task.ringWeeks, palette);
+        softTime.setVisibility(GONE);
+        boolean vessel = !task.steps.isEmpty();
+        ring.setVisibility(vessel ? VISIBLE : GONE);
+        taskDew.setVisibility(vessel ? GONE : VISIBLE);
+        int doneCount = task.steps.size() - task.remainingSteps;
+        if (vessel) {
+            ring.bind(task.collectedXp, doneCount, task.steps.size(), task.harvestReady,
+                    task.comboStage, palette);
+            ring.setOnClickListener(task.harvestReady ? view -> callbacks.onHarvest(task) : null);
+        } else {
+            taskDew.bind(false, false, palette, task.claimableXp);
+            taskDew.setOnClickListener(view -> callbacks.onComplete(task));
+        }
         titleBlock.setPadding(0, 0, 0, 0);
-        title.setPadding(0, 0, task.ringWeeks > 0 ? style.dp(66) : 0, 0);
+        title.setPadding(0, 0, style.dp(66), 0);
         bindSteps(task, palette, callbacks);
-        primary.setText(task.actionLabel(getContext()));
+        primary.setText(R.string.action_complete_rest);
         primary.setTextColor(palette.accentText);
         primary.setBackground(style.pill(palette.accent, 26));
         style.shadow(primary, palette, 5, .7f);
-        primary.setOnClickListener(view -> callbacks.onComplete(task));
+        primary.setOnClickListener(view -> callbacks.onCompleteRemaining(task));
+        primary.setVisibility(vessel && task.remainingSteps > 0 ? VISIBLE : GONE);
         later.setVisibility(allowDefer ? VISIBLE : GONE);
         later.bind(palette.hint, palette.dot);
         later.setOnClickListener(view -> {
@@ -170,6 +202,17 @@ public final class FocusTaskView extends FrameLayout {
             callbacks.onDefer(task);
         });
         if (focusChanged) animateFocusChange(palette);
+        post(() -> {
+            LayoutParams surface = (LayoutParams) cardSurface.getLayoutParams();
+            surface.topMargin = cardParams.topMargin; surface.height = card.getHeight(); cardSurface.setLayoutParams(surface);
+            LayoutParams gp = (LayoutParams) grain.getLayoutParams();
+            gp.topMargin = cardParams.topMargin; gp.height = card.getHeight(); grain.setLayoutParams(gp);
+            List<WoodGrainView.Anchor> anchors = new ArrayList<>();
+            anchors.add(new WoodGrainView.Anchor(vessel ? ring : taskDew, task.comboStage));
+            for (int i = 0; i < task.steps.size() && i < stepRows.size(); i++)
+                anchors.add(new WoodGrainView.Anchor(stepRows.get(i).dot, task.steps.get(i).comboStage));
+            grain.bind(palette, anchors);
+        });
     }
 
     private void bindSteps(TaskSnapshot task, DayPalette palette, Actions callbacks) {
@@ -187,7 +230,7 @@ public final class FocusTaskView extends FrameLayout {
             }
             row.root.setVisibility(VISIBLE);
             TaskStepSnapshot step = task.steps.get(i);
-            row.dot.bind(step.done, false, palette);
+            row.dot.bind(step.done, false, palette, step.done ? step.earnedXp : step.claimableXp);
             row.dot.setContentDescription((step.done ? getContext().getString(R.string.marker_done) + ": " : "") + step.label);
             row.dot.setOnClickListener(view -> callbacks.onToggleStep(step));
             row.label.setText(step.done ? strike(step.label) : step.label);

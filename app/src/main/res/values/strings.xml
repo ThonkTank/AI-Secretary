@@ -32,6 +32,10 @@
     <string name="action_complete_all">Alle erledigen</string>
     <string name="action_complete_rest">Rest erledigen</string>
     <string name="xp_summary">%1$d XP · jeder Schritt zählt</string>
+    <string name="xp_level">Stufe %1$d</string>
+    <string name="xp_progress">%1$d/%2$d</string>
+    <string name="vessel_ready">%1$d XP gesammelt, erntereif</string>
+    <string name="vessel_progress">%1$d von %2$d Schritten, %3$d XP gesammelt</string>
     <string name="soft_time_ongoing">fortlaufend, bis die Bedingung erfüllt ist</string>
     <string name="soft_time_morning">heute am Morgen</string>
     <string name="soft_time_midday">um die Mittagszeit</string>
@@ -196,6 +200,9 @@
     <string name="set_progress">%1$d von %2$d</string>
     <string name="set_confirm">Satz bestätigen</string>
     <string name="set_finish">Übung beenden</string>
+    <string name="set_progress_edit_title">heutigen Fortschritt bearbeiten</string>
+    <string name="set_edit_hint">Ist-Wiederholungen, durch Komma getrennt</string>
+    <string name="set_progress_save">Fortschritt speichern</string>
     <string name="action_save">Speichern</string>
     <string name="action_discard">verwerfen</string>
     <string name="action_delete">Löschen</string>
@@ -239,11 +246,11 @@
         <item quantity="other">%1$d von %2$d</item>
     </plurals>
     <plurals name="delete_routine_loss">
-        <item quantity="one">Die Routine und ihr Jahresring von %1$d Woche gehen verloren.</item>
-        <item quantity="other">Die Routine und ihr Jahresring von %1$d Wochen gehen verloren.</item>
+        <item quantity="one">Die Routine und ihre Kombo gehen verloren.</item>
+        <item quantity="other">Die Routine und ihre Kombo gehen verloren.</item>
     </plurals>
     <plurals name="close_ring_suffix">
-        <item quantity="one"> Der Jahresring von %1$d Woche bleibt als Fortschritt gespeichert.</item>
-        <item quantity="other"> Der Jahresring von %1$d Wochen bleibt als Fortschritt gespeichert.</item>
+        <item quantity="one"> Ihre Kombo bleibt als Fortschritt gespeichert.</item>
+        <item quantity="other"> Ihre Kombo bleibt als Fortschritt gespeichert.</item>
     </plurals>
 </resources>

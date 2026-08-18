@@ -10,10 +10,12 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.ComboProgress;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.temporal.ChronoUnit;
 
 public final class DashboardUiMapper {
     private final UiTextProvider texts;
@@ -24,20 +26,23 @@ public final class DashboardUiMapper {
 
     public DashboardState map(Dashboard dashboard, LocalDate today) {
         List<TaskSnapshot> snapshots = new ArrayList<>();
-        for (DashboardTask item : dashboard.tasks) snapshots.add(snapshot(item, today));
+        for (DashboardTask item : dashboard.tasks) snapshots.add(snapshot(item, today, dashboard));
         return new DashboardState(dashboard.xp, snapshots);
     }
 
-    private TaskSnapshot snapshot(DashboardTask item, LocalDate today) {
+    private TaskSnapshot snapshot(DashboardTask item, LocalDate today, Dashboard dashboard) {
         Task task = item.task;
         List<TaskStepSnapshot> steps = new ArrayList<>();
         int remaining = 0;
         String next = task.conditionText;
         for (OccurrenceStep step : item.steps) {
             boolean done = item.done || step.done;
+            ComboProgress stepCombo = dashboard.combos.get(step.comboOwnerId);
+            int stepStage = stepCombo == null ? 0 : stepCombo.level();
+            int claimable = (int) Math.round(10d * (1d + stepStage * .5d));
             steps.add(new TaskStepSnapshot(step.id, step.text, done, step.amountKind,
                     step.plannedSets, step.plannedReps, step.plannedDurationSeconds,
-                    step.note, step.actualRepetitions));
+                    step.note, step.actualRepetitions, stepStage, claimable, step.earnedXp));
             if (!done) {
                 remaining++;
                 if (remaining == 1) next = step.text;
@@ -45,15 +50,31 @@ public final class DashboardUiMapper {
         }
         if (next == null || next.isEmpty())
             next = texts.text(steps.isEmpty() ? R.string.next_mark_done : R.string.next_all_done);
-        boolean overdue = item.occurrence != null && !item.done
-                && (item.occurrence.scheduledOn.isBefore(today)
-                || task.deadlineOn != null && task.deadlineOn.isBefore(today));
+        LocalDate due = task.deadlineOn == null || item.occurrence == null
+                ? item.occurrence == null ? null : item.occurrence.scheduledOn : task.deadlineOn;
+        boolean overdue = !item.done && due != null && due.isBefore(today);
+        ComboProgress taskCombo = dashboard.combos.get(ComboProgress.taskOwner(task.id));
+        int taskStage = taskCombo == null ? 0 : taskCombo.level();
+        double taskFactor = 1d + taskStage * .5d;
+        int collected = 0, projected = 0;
+        for (TaskStepSnapshot step : steps) {
+            collected += step.earnedXp;
+            projected += step.done ? step.earnedXp : step.claimableXp;
+        }
+        int claimable;
+        if (steps.isEmpty()) {
+            long late = due == null ? 0 : Math.max(0, ChronoUnit.DAYS.between(due, today));
+            int base = Math.min(30, 10 + Math.toIntExact(Math.min(4, late)) * 5);
+            claimable = (int) Math.round(base * taskFactor);
+        } else claimable = (int) Math.round(projected * taskFactor);
         TaskSlot displaySlot = item.occurrence == null ? task.slot : item.occurrence.slot;
         return new TaskSnapshot(task.id.value, item.occurrence == null ? "" : item.occurrence.id,
                 task.title, displaySlot, softTime(displaySlot, task.ongoing), next, task.recurrence,
                 steps, remaining, !task.conditionText.isEmpty(), task.ongoing, item.done, overdue,
                 task.recurrence == Recurrence.ONCE ? 0 : task.routineProgress.weekStreak,
-                task.displayOrder);
+                task.displayOrder, taskStage, claimable, item.done ? 0 : collected,
+                item.occurrence == null ? 0 : item.occurrence.awardedXp,
+                !item.done && !steps.isEmpty() && remaining == 0 && collected > 0);
     }
 
     public String softTime(TaskSlot slot, boolean ongoing) {

@@ -14,6 +14,7 @@ import android.view.Gravity;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.TextView;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
@@ -54,6 +55,8 @@ public class MainActivity extends ComponentActivity {
     private TaskEditorView taskEditor;
     private SetConfirmationView setConfirmation;
     private int systemTopInset;
+    private final java.util.ArrayDeque<UiEvent> rewardQueue = new java.util.ArrayDeque<>();
+    private boolean rewardAnimating;
 
     private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
@@ -166,14 +169,23 @@ public class MainActivity extends ComponentActivity {
     private DashboardRenderer.Actions dashboardActions() {
         return new DashboardRenderer.Actions() {
             @Override public void onAddTask() { openEditorWithFlight(); }
-            @Override public void onTaskAction(TaskSnapshot task) { completeOrConfirm(task); }
+            @Override public void onTaskAction(TaskSnapshot task) {
+                if (task.done) viewModel.undoOccurrence(task.occurrenceId);
+                else completeOrConfirm(task);
+            }
             @Override public void onTaskMenu(TaskSnapshot task) { showTaskMenu(task); }
             @Override public void onComplete(TaskSnapshot task) { completeOrConfirm(task); }
+            @Override public void onCompleteRemaining(TaskSnapshot task) {
+                viewModel.completeRemaining(task.occurrenceId);
+            }
+            @Override public void onHarvest(TaskSnapshot task) {
+                viewModel.harvest(task.occurrenceId);
+            }
             @Override public void onDefer(TaskSnapshot task) {
                 viewModel.defer(task.occurrenceId.isEmpty() ? task.taskId : task.occurrenceId);
             }
             @Override public void onToggleStep(TaskStepSnapshot step) {
-                if (step.amountKind == StepAmountKind.SETS_REPS && !step.done)
+                if (step.amountKind == StepAmountKind.SETS_REPS)
                     showSetConfirmation(step);
                 else viewModel.toggleStep(step.id);
             }
@@ -190,7 +202,7 @@ public class MainActivity extends ComponentActivity {
     private void render(DashboardUiState state) {
         uiState = state;
         forest.setPalette(state.palette);
-        header.bind(container.clock.time(), state.palette);
+        header.bind(container.clock.time(), state.palette, state.dashboard.xp);
         footer.bind(state.navigation, state.palette);
         renderer.render(state, container.uiPreferences.themeMode(), updateState);
         boolean light = luminance(state.palette.background) > .55;
@@ -243,6 +255,10 @@ public class MainActivity extends ComponentActivity {
                     }
                     @Override public void onFinish(String stepId) {
                         viewModel.finishExercise(stepId); closeSetConfirmation();
+                    }
+                    @Override public void onEditProgress(String stepId,
+                                                         java.util.List<Integer> repetitions) {
+                        viewModel.editStepProgress(stepId, repetitions); closeSetConfirmation();
                     }
                     @Override public void onDismiss() { closeSetConfirmation(); }
                 });
@@ -324,6 +340,48 @@ public class MainActivity extends ComponentActivity {
         else if (event.type == UiEvent.Type.OPEN_APP_SETTINGS)
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName())));
+        else if (event.type == UiEvent.Type.REWARD) {
+            rewardQueue.add(event);
+            playNextReward();
+        }
+    }
+
+    private void playNextReward() {
+        if (rewardAnimating || rewardQueue.isEmpty() || uiState == null) return;
+        UiEvent event = rewardQueue.removeFirst();
+        if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            if (!event.rewardReversed
+                    && event.rewardTarget == de.thonktank.autosecretary.domain.usecase.RewardResult.Target.HEAD)
+                header.playRewardGlint(uiState.palette);
+            playNextReward();
+            return;
+        }
+        rewardAnimating = true;
+        UiStyle style = new UiStyle(this);
+        TextView value = style.serif(event.rewardXp + " XP", 17, uiState.palette.light, true, 300);
+        value.setSingleLine(true);
+        root.addView(value, new FrameLayout.LayoutParams(-2, -2));
+        float headX = root.getWidth() * .67f, headY = systemTopInset + style.dp(46);
+        float vesselX = root.getWidth() * .77f, vesselY = systemTopInset + style.dp(180);
+        boolean head = event.rewardTarget
+                == de.thonktank.autosecretary.domain.usecase.RewardResult.Target.HEAD;
+        float fromX = head ? vesselX : root.getWidth() * .30f;
+        float fromY = head ? vesselY : systemTopInset + style.dp(245);
+        float toX = head ? headX : vesselX;
+        float toY = head ? headY : vesselY;
+        if (event.rewardReversed) {
+            float swapX = fromX; fromX = toX; toX = swapX;
+            float swapY = fromY; fromY = toY; toY = swapY;
+        }
+        value.setX(fromX); value.setY(fromY); value.setScaleX(.92f); value.setScaleY(.92f);
+        value.animate().x(toX).y(toY).alpha(0f).scaleX(.7f).scaleY(.7f).setDuration(470)
+                .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
+                .withEndAction(() -> {
+                    root.removeView(value);
+                    if (!event.rewardReversed && head) header.playRewardGlint(uiState.palette);
+                    rewardAnimating = false;
+                    playNextReward();
+                });
     }
 
     private void syncCalendarPermission() {

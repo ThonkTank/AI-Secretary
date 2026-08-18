@@ -3,7 +3,9 @@ package de.thonktank.autosecretary;
 import androidx.room.Database;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {TaskEntity.class, TaskStepEntity.class, OccurrenceEntity.class, OccurrenceStepEntity.class, StatsEntity.class}, version = 4, exportSchema = true)
+@Database(entities = {TaskEntity.class, TaskStepEntity.class, OccurrenceEntity.class,
+        OccurrenceStepEntity.class, StatsEntity.class, ComboEntity.class}, version = 5,
+        exportSchema = true)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract TaskDao tasks();
 }

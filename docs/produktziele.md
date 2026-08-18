@@ -7,8 +7,9 @@ Eine persönliche, deutschsprachige ADHS-Task-App. Sie zeigt nur **jetzt**, **da
 - Aufgaben sind einmalig, wiederkehrend oder fortlaufende Vorhaben und dürfen Schritte enthalten.
 - Wiederholungen: täglich, alle N Tage oder bestimmte Wochentage.
 - Fortlaufende Vorhaben bleiben offen, bis eine Erledigungskondition erfüllt ist. Wiederkehrende Schritte tauchen zum nächsten passenden Termin wieder auf.
-- Nicht erledigte Aufgaben werden sanft weitergetragen; es gibt keine roten Überfälligkeiten und keine Strafen.
-- XP belohnt erledigte Aufgaben. Routinen haben Level; ein ausgelassener Termin setzt nur ihre aktuelle Serie zurück, nie ihr Level.
+- Nicht erledigte Aufgaben werden sanft weitergetragen. Überfälligkeit bleibt eine ruhige Information statt eines Alarms.
+- Jede Aufgabe und jeder Schritt hat eine eigene Kombo. Rechtzeitige Aktivität stärkt ihre Maserung, Inaktivität und verspätete Einzelaufgaben lassen sie langsam abklingen.
+- Schritte sammeln ihre kombomultiplizierten XP in einem Gefäß; eine Routine-Ernte multipliziert die Summe erneut. Gesamt-XP treiben die Stufe im Kopfblatt.
 - Das Widget ist der Arbeitsbereich: abhaken, später setzen und Bedingungen erfüllen. Erstellen und Bearbeiten öffnen die App.
 - Benachrichtigungen sind im Stabilitäts-Release bewusst deaktiviert. Sie kommen erst mit einer fälligkeitsbasierten, getesteten Umsetzung zurück.
 

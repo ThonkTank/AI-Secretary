@@ -29,6 +29,7 @@ public interface TaskDao {
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND scheduledOn = :scheduledOn AND state = :state") List<OccurrenceEntity> occurrences(String taskId, String scheduledOn, String state);
     @Query("SELECT * FROM occurrences WHERE state = :state") List<OccurrenceEntity> occurrencesByState(String state);
     @Query("SELECT * FROM occurrences") List<OccurrenceEntity> allOccurrences();
+    @Query("SELECT * FROM occurrences WHERE taskId = :taskId") List<OccurrenceEntity> occurrencesForTask(String taskId);
     @Query("SELECT * FROM occurrences WHERE state = :state AND completedOn = :date") List<OccurrenceEntity> completedOccurrences(String state, String date);
     @Insert(onConflict = OnConflictStrategy.REPLACE) void insertOccurrenceSteps(List<OccurrenceStepEntity> steps);
     @Query("SELECT * FROM occurrence_steps WHERE occurrenceId = :occurrenceId ORDER BY position") List<OccurrenceStepEntity> occurrenceSteps(String occurrenceId);
@@ -37,4 +38,7 @@ public interface TaskDao {
     @Update void updateOccurrenceStep(OccurrenceStepEntity step);
     @Insert(onConflict = OnConflictStrategy.REPLACE) void putStats(StatsEntity stats);
     @Query("SELECT * FROM stats WHERE id = 1") StatsEntity stats();
+    @Insert(onConflict = OnConflictStrategy.REPLACE) void putCombo(ComboEntity combo);
+    @Query("SELECT * FROM combo_progress WHERE ownerId = :ownerId LIMIT 1") ComboEntity combo(String ownerId);
+    @Query("SELECT * FROM combo_progress") List<ComboEntity> allCombos();
 }

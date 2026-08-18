@@ -114,7 +114,7 @@ public final class UseCaseRobolectricTest {
         Dashboard dashboard = load.execute(TODAY);
 
         assertEquals(6, dashboard.tasks.size());
-        assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 5);
+        assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 6);
         assertEquals(1, queries.stream().filter(sql -> sql.contains("occurrence_steps")).count());
     }
 
@@ -186,7 +186,7 @@ public final class UseCaseRobolectricTest {
         Occurrence occurrence = repository.openOccurrences().get(0);
         String stepId = repository.occurrenceSteps(occurrence.id).get(0).id;
 
-        new ToggleStep(repository).execute(stepId);
+        new ToggleStep(repository, clock).execute(stepId);
         assertTrue(repository.findOccurrenceStep(stepId).done);
 
         CompleteOccurrence complete = new CompleteOccurrence(repository, clock);
@@ -195,7 +195,8 @@ public final class UseCaseRobolectricTest {
 
         assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(occurrence.id).state);
         assertEquals(10, repository.xp());
-        assertEquals(1, repository.findTask(occurrence.taskId).routineProgress.weekStreak);
+        assertEquals(3, repository.combo("task:" + occurrence.taskId.value).points);
+        assertEquals(1, repository.combo(repository.findOccurrenceStep(stepId).comboOwnerId).points);
     }
 
     @Test public void deferSwapsOnlyTheSelectedAndNextOpenTask() {

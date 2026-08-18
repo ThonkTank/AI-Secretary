@@ -261,13 +261,29 @@ public final class TaskViewModel extends ViewModel {
         });
     }
 
-    void complete(String occurrenceId) { run(actionKey("complete", occurrenceId), () -> tasks.complete.execute(occurrenceId)); }
-    void toggleStep(String stepId) { run(actionKey("step", stepId), () -> tasks.toggleStep.execute(stepId)); }
+    void complete(String occurrenceId) { runReward(actionKey("complete", occurrenceId), () -> tasks.complete.execute(occurrenceId)); }
+    void completeRemaining(String occurrenceId) {
+        runReward(actionKey("complete-rest", occurrenceId),
+                () -> tasks.completeRemainingSteps.execute(occurrenceId));
+    }
+    void harvest(String occurrenceId) {
+        runReward(actionKey("harvest", occurrenceId), () -> tasks.harvest.execute(occurrenceId));
+    }
+    void undoOccurrence(String occurrenceId) {
+        runReward(actionKey("undo", occurrenceId), () -> tasks.undoOccurrence.execute(occurrenceId));
+    }
+    void toggleStep(String stepId) { runReward(actionKey("step", stepId), () -> tasks.toggleStep.execute(stepId)); }
     void confirmSet(String stepId, int repetitions) {
-        run(actionKey("set", stepId), () -> tasks.confirmSet.execute(stepId, repetitions));
+        runReward(actionKey("set", stepId),
+                () -> tasks.confirmSet.execute(stepId, repetitions));
     }
     void finishExercise(String stepId) {
-        run(actionKey("finish-step", stepId), () -> tasks.finishExercise.execute(stepId));
+        runReward(actionKey("finish-step", stepId),
+                () -> tasks.finishExercise.execute(stepId));
+    }
+    void editStepProgress(String stepId, List<Integer> repetitions) {
+        runReward(actionKey("edit-step-progress", stepId),
+                () -> tasks.editStepProgress.execute(stepId, repetitions));
     }
     void defer(String occurrenceId) { run(actionKey("defer", occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
     void close(String taskId) { run(actionKey("close", taskId), () -> tasks.closeOngoing.execute(TaskId.of(taskId))); }
@@ -291,6 +307,22 @@ public final class TaskViewModel extends ViewModel {
             try {
                 action.run();
                 publishContent(key, loadContent());
+            } catch (IllegalArgumentException error) {
+                fail(key, error.getMessage(), error);
+            } catch (RuntimeException error) {
+                fail(key, texts.text(R.string.error_change_save), error);
+            }
+        });
+    }
+
+    private void runReward(String key, RewardAction action) {
+        if (!begin(key, false)) return;
+        worker.execute(() -> {
+            try {
+                de.thonktank.autosecretary.domain.usecase.RewardResult result = action.run();
+                publishContent(key, loadContent());
+                if (result.target != de.thonktank.autosecretary.domain.usecase.RewardResult.Target.NONE)
+                    events.postValue(UiEvent.reward(result));
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
             } catch (RuntimeException error) {
@@ -380,6 +412,7 @@ public final class TaskViewModel extends ViewModel {
     }
 
     interface Action { void run(); }
+    interface RewardAction { de.thonktank.autosecretary.domain.usecase.RewardResult run(); }
     interface StateChange { DashboardUiState apply(DashboardUiState state); }
 
     private static final class Content {

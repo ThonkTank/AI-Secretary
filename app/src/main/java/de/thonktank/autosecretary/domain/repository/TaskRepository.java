@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.ComboProgress;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -33,6 +34,7 @@ public interface TaskRepository {
     Occurrence openOccurrence(TaskId taskId);
     List<Occurrence> openOccurrences();
     List<Occurrence> allOccurrences();
+    List<Occurrence> occurrences(TaskId taskId);
     List<Occurrence> completedOccurrences(LocalDate date);
     void insertOccurrenceSteps(List<OccurrenceStep> steps);
     List<OccurrenceStep> occurrenceSteps(String occurrenceId);
@@ -42,4 +44,8 @@ public interface TaskRepository {
 
     int xp();
     void setXp(int xp);
+
+    ComboProgress combo(String ownerId);
+    void putCombo(ComboProgress combo);
+    List<ComboProgress> combos();
 }

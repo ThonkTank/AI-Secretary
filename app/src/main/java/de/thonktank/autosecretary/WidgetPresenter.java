@@ -35,7 +35,7 @@ public final class WidgetPresenter {
 
     CycleData load() {
         DayPalette.Mode mode = DayPalette.Mode.valueOf(container.uiPreferences.themeMode().name());
-        return new CycleData(container.dashboardPresenter.load(), container.calendar.loadToday(),
+        return new CycleData(container.dashboardPresenter.refresh(), container.calendar.loadToday(),
                 DayPalette.at(container.clock.time(), mode));
     }
 

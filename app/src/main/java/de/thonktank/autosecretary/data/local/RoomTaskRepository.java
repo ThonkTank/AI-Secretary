@@ -4,6 +4,7 @@ import de.thonktank.autosecretary.AppDatabase;
 import de.thonktank.autosecretary.OccurrenceEntity;
 import de.thonktank.autosecretary.OccurrenceStepEntity;
 import de.thonktank.autosecretary.StatsEntity;
+import de.thonktank.autosecretary.ComboEntity;
 import de.thonktank.autosecretary.TaskDao;
 import de.thonktank.autosecretary.TaskEntity;
 import de.thonktank.autosecretary.TaskStepEntity;
@@ -15,6 +16,7 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.model.ComboProgress;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -41,6 +43,9 @@ public final class RoomTaskRepository implements TaskRepository {
 
     @Override public void insertTask(Task task) {
         dao.insertTask(mapper.toEntity(task));
+        String owner = ComboProgress.taskOwner(task.id);
+        if (dao.combo(owner) == null)
+            putCombo(ComboProgress.fresh(owner, task.id, ComboProgress.Kind.TASK));
     }
 
     @Override public void updateTask(Task task) {
@@ -68,6 +73,11 @@ public final class RoomTaskRepository implements TaskRepository {
         List<TaskStepEntity> entities = new ArrayList<>();
         for (TaskStepTemplate step : steps) entities.add(mapper.toEntity(step));
         if (!entities.isEmpty()) dao.insertTemplates(entities);
+        for (TaskStepTemplate step : steps) {
+            String owner = ComboProgress.stepOwner(step.id);
+            if (dao.combo(owner) == null)
+                putCombo(ComboProgress.fresh(owner, step.taskId, ComboProgress.Kind.STEP));
+        }
     }
 
     @Override public void deleteTemplates(TaskId taskId) {
@@ -129,6 +139,10 @@ public final class RoomTaskRepository implements TaskRepository {
         return mapOccurrences(dao.allOccurrences());
     }
 
+    @Override public List<Occurrence> occurrences(TaskId taskId) {
+        return mapOccurrences(dao.occurrencesForTask(taskId.value));
+    }
+
     @Override public List<Occurrence> completedOccurrences(LocalDate date) {
         return mapOccurrences(dao.completedOccurrences(OccurrenceState.COMPLETED.storageCode(), date.toString()));
     }
@@ -169,6 +183,28 @@ public final class RoomTaskRepository implements TaskRepository {
 
     @Override public void setXp(int xp) {
         dao.putStats(new StatsEntity(Math.max(0, xp)));
+    }
+
+    @Override public ComboProgress combo(String ownerId) {
+        ComboEntity value = dao.combo(ownerId);
+        return value == null ? null : combo(value);
+    }
+
+    @Override public void putCombo(ComboProgress combo) {
+        dao.putCombo(new ComboEntity(combo.ownerId, combo.taskId.value, combo.kind.name(),
+                combo.points, combo.settledThroughOn == null ? "" : combo.settledThroughOn.toString()));
+    }
+
+    @Override public List<ComboProgress> combos() {
+        List<ComboProgress> result = new ArrayList<>();
+        for (ComboEntity value : dao.allCombos()) result.add(combo(value));
+        return result;
+    }
+
+    private static ComboProgress combo(ComboEntity value) {
+        return new ComboProgress(value.ownerId, TaskId.of(value.taskId),
+                ComboProgress.Kind.valueOf(value.kind), Math.max(0, value.points),
+                value.settledThroughOn.isEmpty() ? null : LocalDate.parse(value.settledThroughOn));
     }
 
     private List<Task> mapTasks(List<TaskEntity> entities) {

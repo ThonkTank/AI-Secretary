@@ -41,6 +41,7 @@ import de.thonktank.autosecretary.domain.repository.TaskRepository;
 import de.thonktank.autosecretary.domain.usecase.ConfirmSet;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
+import de.thonktank.autosecretary.domain.usecase.EditStepProgress;
 import de.thonktank.autosecretary.domain.usecase.FinishExercise;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
@@ -105,7 +106,7 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(1, database.tasks().completedOccurrences("COMPLETED", TODAY.toString()).size());
         complete.execute(firstRound.get(1).id);
         assertEquals(2, new LoadDashboard(repository).execute(TODAY).tasks.size());
-        assertEquals(20, repository.xp());
+        assertEquals(30, repository.xp());
         assertEquals(TODAY.plusDays(1), repository.allTasks().get(0).nextDueOn);
     }
 
@@ -154,13 +155,19 @@ public final class TaskEditorFeatureRobolectricTest {
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
         OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
-        ConfirmSet confirm = new ConfirmSet(repository);
+        ConfirmSet confirm = new ConfirmSet(repository, clock);
         confirm.execute(step.id, 10); confirm.execute(step.id, 11);
 
         OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
         assertEquals(Arrays.asList(10, 11), restored.actualRepetitions);
         assertFalse(restored.done);
-        confirm.execute(step.id, 12);
+        assertEquals(10, confirm.execute(step.id, 12).xp);
+        assertTrue(repository.findOccurrenceStep(step.id).done);
+
+        EditStepProgress edit = new EditStepProgress(repository, clock);
+        assertEquals(10, edit.execute(step.id, Arrays.asList(10, 11)).xp);
+        assertFalse(repository.findOccurrenceStep(step.id).done);
+        assertEquals(10, edit.execute(step.id, Arrays.asList(10, 11, 12)).xp);
         assertTrue(repository.findOccurrenceStep(step.id).done);
     }
 

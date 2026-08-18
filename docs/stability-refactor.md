@@ -80,7 +80,7 @@ Oberfläche. Scroll-, Fokus- und Accessibility-Zustände der Dashboard-Komponent
 bei normalen Updates erhalten.
 
 Header, Fokusaufgabe, Aufgabenblatt, Kalenderblatt, Leerzustand, Footer-Navigation,
-Jahresring und Optionen sind eigenständige Views. Wiederverwendbare Typografie-, Maß- und
+Kombo-Maserung und Optionen sind eigenständige Views. Wiederverwendbare Typografie-, Maß- und
 Form-Helfer liegen in `UiStyle`, Produkttexte und zentrale Maße in Android-Ressourcen. Die
 Activity nutzt die AndroidX-Edge-to-edge- und WindowInsets-APIs.
 

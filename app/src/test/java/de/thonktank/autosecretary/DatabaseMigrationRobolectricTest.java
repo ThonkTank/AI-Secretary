@@ -42,7 +42,8 @@ public final class DatabaseMigrationRobolectricTest {
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_1_2,
-                        DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4)
+                        DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4,
+                        DatabaseMigrations.MIGRATION_4_5)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -73,7 +74,7 @@ public final class DatabaseMigrationRobolectricTest {
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_2_3,
-                        DatabaseMigrations.MIGRATION_3_4)
+                        DatabaseMigrations.MIGRATION_3_4, DatabaseMigrations.MIGRATION_4_5)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -115,7 +116,8 @@ public final class DatabaseMigrationRobolectricTest {
         helper.close();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.MIGRATION_3_4)
+                .addMigrations(DatabaseMigrations.MIGRATION_3_4,
+                        DatabaseMigrations.MIGRATION_4_5)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT recurrence,ongoing,note,archived FROM tasks "

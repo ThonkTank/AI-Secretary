@@ -8,22 +8,26 @@ import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 public final class CompleteOccurrence {
     private final TaskRepository repository;
-    private final Clock clock;
-    private final OccurrenceCompletion completion;
+    private final RewardEngine rewards;
 
     public CompleteOccurrence(TaskRepository repository, Clock clock) {
         this.repository = repository;
-        this.clock = clock;
-        this.completion = new OccurrenceCompletion(repository);
+        this.rewards = new RewardEngine(repository, clock);
     }
 
-    public void execute(String occurrenceId) {
-        if (occurrenceId == null || occurrenceId.isEmpty()) return;
+    public RewardResult execute(String occurrenceId) {
+        if (occurrenceId == null || occurrenceId.isEmpty()) return RewardResult.none();
+        final RewardResult[] result = {RewardResult.none()};
         repository.inTransaction(() -> {
             Occurrence occurrence = repository.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN) return;
             Task task = repository.findTask(occurrence.taskId);
-            if (task != null) completion.execute(occurrence, task, clock.today());
+            if (task == null) return;
+            for (de.thonktank.autosecretary.domain.model.OccurrenceStep step
+                    : repository.occurrenceSteps(occurrenceId))
+                if (!step.done) rewards.completeStep(occurrence, step);
+            result[0] = rewards.harvest(repository.findOccurrence(occurrenceId), task);
         });
+        return result[0];
     }
 }

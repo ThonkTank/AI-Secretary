@@ -12,6 +12,7 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 import java.util.ArrayList;
@@ -84,7 +85,8 @@ public final class MaterializeDueOccurrences {
             if (!ScheduleCalculator.appliesOn(step.weekdayMask, occurrence.scheduledOn)) continue;
             result.add(new OccurrenceStep(ids.nextId(), occurrence.id, result.size(), step.text,
                     false, step.amountKind, step.plannedSets, step.plannedReps,
-                    step.plannedDurationSeconds, step.note, Collections.emptyList()));
+                    step.plannedDurationSeconds, step.note, Collections.emptyList(),
+                    ComboProgress.stepOwner(step.id), 0, 0));
         }
         return result;
     }

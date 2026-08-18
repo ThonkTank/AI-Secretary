@@ -115,6 +115,7 @@ public final class DashboardRenderer {
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
         xp = style.serif("", 14, 0, true, 300);
+        xp.setVisibility(View.GONE);
         LinearLayout.LayoutParams xpParams = new LinearLayout.LayoutParams(-1, -2);
         xpParams.setMargins(0, 0, 0, style.dp(12));
         content.addView(xp, xpParams);
@@ -134,7 +135,7 @@ public final class DashboardRenderer {
     private void bindToday(DashboardUiModel dashboard, DayPalette palette) {
         TaskSnapshot focusTask = dashboard.firstOpen();
         boolean hasFocus = focusTask != null;
-        xp.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
+        xp.setVisibility(View.GONE);
         focus.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
         timeline.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
         more.setVisibility(hasFocus && dashboard.timeline.size() > 3 ? View.VISIBLE : View.GONE);
@@ -147,8 +148,6 @@ public final class DashboardRenderer {
         }
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
-        xp.setText(context.getString(R.string.xp_summary, dashboard.xp));
-        xp.setTextColor(palette.muted);
         int open = 0;
         for (TaskSnapshot task : dashboard.tasks) if (!task.done) open++;
         focus.bind(focusTask, dashboard.timeline.size() > 0, open > 1, palette, actions);

@@ -50,7 +50,7 @@ public final class TaskService {
         this.materialize = new MaterializeDueOccurrences(repository, clock, ids);
         this.createTask = new CreateTask(repository, clock, ids, ordering);
         this.completeOccurrence = new CompleteOccurrence(repository, clock);
-        this.toggleStep = new ToggleStep(repository);
+        this.toggleStep = new ToggleStep(repository, clock);
         this.deferTask = new DeferTask(repository, loadDashboard, ordering, clock);
         this.closeOngoingTask = new CloseOngoingTask(repository, clock);
         this.updateTask = new UpdateTask(repository, ordering);

@@ -70,5 +70,36 @@ public final class DatabaseMigrations {
         }
     };
 
+    public static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE occurrences ADD COLUMN awardedXp INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE occurrences ADD COLUMN comboPointDelta INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("UPDATE occurrences SET awardedXp = 10 WHERE state = 'COMPLETED'");
+
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN comboOwnerId TEXT NOT NULL DEFAULT ''");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN earnedXp INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN comboPointDelta INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("UPDATE occurrence_steps SET comboOwnerId = 'step:' || COALESCE(("
+                    + "SELECT task_steps.id FROM task_steps JOIN occurrences ON occurrences.taskId = task_steps.taskId "
+                    + "WHERE occurrences.id = occurrence_steps.occurrenceId AND task_steps.position = occurrence_steps.position LIMIT 1"
+                    + "), occurrence_steps.id)");
+            database.execSQL("UPDATE occurrence_steps SET earnedXp = 10 WHERE done = 1 AND occurrenceId IN "
+                    + "(SELECT id FROM occurrences WHERE state = 'OPEN')");
+
+            database.execSQL("CREATE TABLE IF NOT EXISTS combo_progress (ownerId TEXT NOT NULL, "
+                    + "taskId TEXT NOT NULL, kind TEXT NOT NULL, points INTEGER NOT NULL, "
+                    + "settledThroughOn TEXT NOT NULL, PRIMARY KEY(ownerId), FOREIGN KEY(taskId) "
+                    + "REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_combo_progress_taskId ON combo_progress(taskId)");
+            database.execSQL("INSERT OR IGNORE INTO combo_progress(ownerId,taskId,kind,points,settledThroughOn) "
+                    + "SELECT 'task:' || id,id,'TASK',0,'' FROM tasks");
+            database.execSQL("INSERT OR IGNORE INTO combo_progress(ownerId,taskId,kind,points,settledThroughOn) "
+                    + "SELECT 'step:' || id,taskId,'STEP',0,'' FROM task_steps");
+            database.execSQL("INSERT OR IGNORE INTO combo_progress(ownerId,taskId,kind,points,settledThroughOn) "
+                    + "SELECT occurrence_steps.comboOwnerId,occurrences.taskId,'STEP',0,'' FROM occurrence_steps "
+                    + "JOIN occurrences ON occurrences.id = occurrence_steps.occurrenceId");
+        }
+    };
+
     private DatabaseMigrations() { }
 }

@@ -1,29 +1,30 @@
-# ADR-001: Jahresring und Routinefortschritt
+# ADR-001: XP, Gefäß und Kombo-Maserung
 
-- Status: angenommen
-- Datum: 2026-08-15
+- Status: angenommen, ersetzt die Wochenring-Entscheidung vom 2026-08-15
+- Datum: 2026-08-18
 
 ## Kontext
 
-Das Design ersetzt einen occurrence-basierten Streak durch einen Jahresring, dessen Zahl
-Wochen ausdrückt. Das alte Schema enthält keine vollständige Wochenhistorie. Historische
-Werte können deshalb nicht zuverlässig nachträglich rekonstruiert werden.
+Der numerische Wochenring wird durch eine Fortschrittsmechanik aus Wert-Tau, Routinegefäß,
+Kopfblatt und rein visueller Kombo-Maserung ersetzt. Aufgabe, Routine und stabiler Schritt
+haben jeweils ein eigenes Punktekonto; eine Kombostufe wird nie als Zahl ausgegeben.
 
 ## Entscheidung
 
-- Eine Routine erhält pro Kalenderwoche höchstens einen Ringabschnitt.
-- Eine Woche zählt, sobald mindestens eine in dieser Woche fällige Ausführung am geplanten
-  Tag abgeschlossen wurde.
-- Weitere pünktliche Abschlüsse derselben Woche erhöhen den Ring nicht erneut.
-- Eine verspätet abgeschlossene fällige Ausführung beendet die aktuelle Wochenserie.
-- XP und das dauerhaft erreichte Routine-Level werden durch einen Serienabbruch nicht
-  reduziert.
-- Kalenderwochen beginnen montags in der lokalen Zeitzone der Anwendung.
-- Unbekannte historische Wochen werden nicht erfunden. Ein vorhandener positiver alter
-  Streak darf bei einer Migration höchstens als bereits begonnene Woche übernommen werden.
+- Ein Schritt ist beim Abschluss `round(10 × (1 + 0,5 × Schrittkombo))` XP wert.
+- Eine Routine erntet `round(Summe der Schritt-XP × (1 + 0,5 × Routinekombo))`.
+- Einzelaufgaben erhalten bis zu 30 Grund-XP aus ihrer Verspätung und genau einen
+  Aufgaben-Kombofaktor.
+- Kombostufe `n` beginnt bei `n(n+1)/2` Punkten. Rechtzeitige Schritte geben einen Punkt,
+  Routine-Ernten und rechtzeitige Einzelaufgaben drei; verspätete Einzelaufgaben verlieren
+  zwei. Jeder vollständig inaktive Kalendertag kostet zwei Punkte.
+- XP, angewandte Punktedeltas und stabile Schritt-Owner werden am Vorkommen gespeichert,
+  damit ein heutiger Abschluss vollständig und idempotent rückgängig gemacht werden kann.
+- Die Migration erhält Gesamt-XP, startet alle Kombos bewusst bei null und übernimmt keine
+  nicht belegbare Wochenhistorie.
 
 ## Konsequenzen
 
-Die Fortschrittsberechnung benötigt den geplanten und den tatsächlichen Abschlusstag sowie
-die zuletzt gezählte Kalenderwoche. Mehrere Abschlüsse innerhalb einer Woche müssen
-idempotent sein. Datums- und Zeitzonengrenzen werden explizit getestet.
+Der Dashboard-Refresh rechnet fälligen Komboverfall explizit ab. Das Kopfblatt leitet seine
+Stufe ausschließlich aus Gesamt-XP ab. Alte Routine-Level- und Wochenringfelder bleiben in
+Schema 5 nur als kompatible Altdaten erhalten und steuern kein Verhalten oder sichtbare Kopie.

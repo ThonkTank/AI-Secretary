@@ -26,6 +26,7 @@ final class DewDotView extends View {
     private ValueAnimator dropAnimator;
     private float dropScale = 1f;
     private float dropAlpha = 1f;
+    private int value = 10;
 
     DewDotView(Context context) {
         super(context);
@@ -36,10 +37,15 @@ final class DewDotView extends View {
     }
 
     void bind(boolean on, boolean dim, DayPalette palette) {
+        bind(on, dim, palette, 10);
+    }
+
+    void bind(boolean on, boolean dim, DayPalette palette, int value) {
         boolean animateOn = !this.on && on && isAttachedToWindow();
         this.on = on;
         this.dim = dim;
         this.palette = palette;
+        this.value = Math.max(0, value);
         invalidate();
         if (animateOn) {
             if (dropAnimator != null) dropAnimator.cancel();
@@ -72,11 +78,19 @@ final class DewDotView extends View {
     @Override protected void onDraw(Canvas canvas) {
         if (palette == null) return;
         float cx = getWidth() / 2f, cy = getHeight() / 2f, radius = style.dp(13);
+        float halfWidth = value >= 100 ? style.dp(21) : radius;
         paint.setStyle(on ? Paint.Style.FILL : Paint.Style.STROKE);
         paint.setStrokeWidth(style.dp(1.5f));
         paint.setColor(on ? (dim ? UiStyle.alpha(palette.dot, .2f) : palette.accent) : palette.dot);
-        canvas.drawCircle(cx, cy, radius, paint);
-        if (!on) return;
+        RectF capsule = new RectF(cx - halfWidth, cy - radius, cx + halfWidth, cy + radius);
+        canvas.drawRoundRect(capsule, radius, radius, paint);
+        if (!on) {
+            paint.setStyle(Paint.Style.FILL); paint.setColor(palette.accent);
+            paint.setTypeface(style.sans); paint.setTextSize(style.dp(14)); paint.setTextAlign(Paint.Align.CENTER);
+            Paint.FontMetrics fm = paint.getFontMetrics();
+            canvas.drawText(String.valueOf(value), cx, cy - (fm.ascent + fm.descent) / 2f, paint);
+            return;
+        }
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(dim ? palette.done : palette.accentText);
         paint.setAlpha(Math.round(255 * dropAlpha));

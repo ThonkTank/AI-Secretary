@@ -64,7 +64,7 @@ public final class AppContainer {
         this.calendar = new CalendarRepository(app, clock, zones,
                 uiPreferences::calendarPolicy, logger, texts);
         this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
-                tasks.materializeDue, new DashboardUiMapper(texts));
+                tasks.materializeDue, new DashboardUiMapper(texts), tasks.applyComboDecay);
         this.executors = new AppExecutors();
         this.widgetUpdates = WidgetUpdateCoordinator.create(app, this, executors.widgetSerial);
         this.updateConfiguration = BuildConfig.DEBUG

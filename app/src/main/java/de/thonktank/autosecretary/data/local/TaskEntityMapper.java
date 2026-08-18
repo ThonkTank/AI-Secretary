@@ -54,13 +54,15 @@ public final class TaskEntityMapper {
     public Occurrence toDomain(OccurrenceEntity entity) {
         return new Occurrence(entity.id, TaskId.of(entity.taskId), LocalDate.parse(entity.scheduledOn),
                 TaskSlot.fromStorage(entity.slot), OccurrenceState.fromStorage(entity.state),
-                entity.sortOrder, date(entity.completedOn));
+                entity.sortOrder, date(entity.completedOn), entity.awardedXp,
+                entity.comboPointDelta);
     }
 
     public OccurrenceEntity toEntity(Occurrence occurrence) {
         return new OccurrenceEntity(occurrence.id, occurrence.taskId.value,
                 occurrence.scheduledOn.toString(), occurrence.state.storageCode(),
-                occurrence.sortOrder, text(occurrence.completedOn), occurrence.slot.storageCode);
+                occurrence.sortOrder, text(occurrence.completedOn), occurrence.slot.storageCode,
+                occurrence.awardedXp, occurrence.comboPointDelta);
     }
 
     public TaskStepTemplate toDomain(TaskStepEntity entity) {
@@ -79,14 +81,16 @@ public final class TaskEntityMapper {
         return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text,
                 entity.done, StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
                 entity.plannedReps, entity.plannedDurationSeconds, entity.note,
-                RepetitionProgressCodec.decode(entity.actualRepetitions));
+                RepetitionProgressCodec.decode(entity.actualRepetitions), entity.comboOwnerId,
+                entity.earnedXp, entity.comboPointDelta);
     }
 
     public OccurrenceStepEntity toEntity(OccurrenceStep step) {
         return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
                 step.done, step.amountKind.storageCode(), step.plannedSets, step.plannedReps,
                 step.plannedDurationSeconds, step.note,
-                RepetitionProgressCodec.encode(step.actualRepetitions));
+                RepetitionProgressCodec.encode(step.actualRepetitions), step.comboOwnerId,
+                step.earnedXp, step.comboPointDelta);
     }
 
     private static LocalDate date(String value) {

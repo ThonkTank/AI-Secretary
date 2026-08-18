@@ -20,19 +20,35 @@ public class OccurrenceStepEntity {
     public Integer plannedDurationSeconds;
     @NonNull public String note;
     @NonNull public String actualRepetitions;
+    @NonNull public String comboOwnerId;
+    public int earnedXp;
+    public int comboPointDelta;
     @Ignore public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
                                 int position, @NonNull String text, boolean done) {
-        this(id, occurrenceId, position, text, done, "NONE", null, null, null, "", "");
+        this(id, occurrenceId, position, text, done, "NONE", null, null, null, "", "", "", 0, 0);
+    }
+    @Ignore public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
+                                int position, @NonNull String text, boolean done,
+                                @NonNull String amountKind, Integer plannedSets,
+                                Integer plannedReps, Integer plannedDurationSeconds,
+                                @NonNull String note, @NonNull String actualRepetitions) {
+        this(id, occurrenceId, position, text, done, amountKind, plannedSets, plannedReps,
+                plannedDurationSeconds, note, actualRepetitions, "", 0, 0);
     }
     public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
                                 int position, @NonNull String text, boolean done,
                                 @NonNull String amountKind, Integer plannedSets,
                                 Integer plannedReps, Integer plannedDurationSeconds,
-                                @NonNull String note, @NonNull String actualRepetitions) {
+                                @NonNull String note, @NonNull String actualRepetitions,
+                                @NonNull String comboOwnerId, int earnedXp,
+                                int comboPointDelta) {
         this.id = id; this.occurrenceId = occurrenceId; this.position = position;
         this.text = text; this.done = done; this.amountKind = amountKind;
         this.plannedSets = plannedSets; this.plannedReps = plannedReps;
         this.plannedDurationSeconds = plannedDurationSeconds; this.note = note;
         this.actualRepetitions = actualRepetitions;
+        this.comboOwnerId = comboOwnerId;
+        this.earnedXp = earnedXp;
+        this.comboPointDelta = comboPointDelta;
     }
 }

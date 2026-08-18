@@ -43,7 +43,8 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         screen.setOrientation(LinearLayout.VERTICAL);
         root.addView(screen, new FrameLayout.LayoutParams(-1, -1));
         HeaderView header = new HeaderView(this, () -> { });
-        header.bind(time, palette);
+        DashboardState dashboard = DebugPreviewFixtures.reference(preview);
+        header.bind(time, palette, dashboard.xp);
         screen.addView(header, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.header_height)));
         ScrollView scroll = new ScrollView(this);
@@ -58,7 +59,6 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
         DashboardRenderer renderer = new DashboardRenderer(this, scroll, content,
                 new PreviewActions(), "preview");
-        DashboardState dashboard = DebugPreviewFixtures.reference(preview);
         java.util.List<CalendarEventSnapshot> events = DebugPreviewFixtures.referenceCalendar(preview);
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         DashboardUiModel.compose(dashboard, events),
@@ -112,6 +112,8 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         @Override public void onTaskAction(TaskSnapshot task) { }
         @Override public void onTaskMenu(TaskSnapshot task) { }
         @Override public void onComplete(TaskSnapshot task) { }
+        @Override public void onCompleteRemaining(TaskSnapshot task) { }
+        @Override public void onHarvest(TaskSnapshot task) { }
         @Override public void onDefer(TaskSnapshot task) { }
         @Override public void onToggleStep(TaskStepSnapshot step) { }
         @Override public void onTheme(UiThemeMode mode) { }

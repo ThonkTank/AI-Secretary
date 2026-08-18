@@ -115,10 +115,11 @@ public final class UiComponentRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         int target = context.getResources().getDimensionPixelSize(R.dimen.touch_target);
         UiStyle style = new UiStyle(context);
-        assertEquals(style.dp(54), context.getResources().getDimensionPixelSize(R.dimen.header_height));
+        assertEquals(style.dp(82), context.getResources().getDimensionPixelSize(R.dimen.header_height));
         assertEquals(style.dp(80), context.getResources().getDimensionPixelSize(R.dimen.footer_height));
         HeaderView header = new HeaderView(context, () -> { });
-        View add = header.getChildAt(1);
+        android.widget.LinearLayout headerRow = (android.widget.LinearLayout) header.getChildAt(0);
+        View add = headerRow.getChildAt(1);
         assertTrue(add.getLayoutParams().width >= target);
         assertTrue(add.getLayoutParams().height >= target);
         assertEquals(context.getString(R.string.content_add_task), add.getContentDescription());
