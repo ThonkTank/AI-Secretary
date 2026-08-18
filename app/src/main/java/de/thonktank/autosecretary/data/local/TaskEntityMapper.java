@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.TaskEntity;
 import de.thonktank.autosecretary.TaskStepEntity;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
@@ -47,7 +48,8 @@ public final class TaskEntityMapper {
     public Occurrence toDomain(OccurrenceEntity entity) {
         return new Occurrence(entity.id, TaskId.of(entity.taskId), LocalDate.parse(entity.scheduledOn),
                 TaskSlot.fromStorage(entity.slot), OccurrenceState.fromStorage(entity.state),
-                entity.sortOrder, date(entity.completedOn));
+                entity.sortOrder, date(entity.completedOn), entity.id.startsWith("condition:")
+                ? OccurrenceKind.CONDITION : OccurrenceKind.SCHEDULED);
     }
 
     public OccurrenceEntity toEntity(Occurrence occurrence) {

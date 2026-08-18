@@ -48,20 +48,21 @@ public final class UpdateTask {
     public void execute(TaskId id, String title, TaskSlot slot) {
         repository.inTransaction(() -> {
             Task current = repository.findTask(id);
-            if (current == null) return;
+            if (current == null) return null;
             if (current.slot == slot) {
                 repository.updateTask(current.edit(title, slot, current.displayOrder));
-                return;
+                return null;
             }
             List<Task> reordered = ordering.moveToEndOfSlot(repository.allTasks(), id, slot, title);
             for (Task task : reordered) repository.updateTask(task);
+            return null;
         });
     }
 
     public void execute(TaskId id, TaskDefinition definition) {
         repository.inTransaction(() -> {
             Task current = repository.findTask(id);
-            if (current == null) return;
+            if (current == null) return null;
             long displayOrder = current.displayOrder;
             TaskSlot slot = definition.primarySlot();
             if (current.slot != slot) {
@@ -82,6 +83,7 @@ public final class UpdateTask {
             }
             repository.updateTask(current.editDefinition(definition, displayOrder, nextDue));
             syncTemplates(id, definition.steps);
+            return null;
         });
     }
 
@@ -89,8 +91,11 @@ public final class UpdateTask {
                         int intervalDays, int weekdayMask, List<String> stepTexts,
                         boolean ongoing, String condition) {
         if (ongoing) {
-            repository.inTransaction(() -> legacyUpdate(id, title, slot, recurrence,
-                    intervalDays, weekdayMask, stepTexts, condition));
+            repository.inTransaction(() -> {
+                legacyUpdate(id, title, slot, recurrence, intervalDays, weekdayMask,
+                        stepTexts, condition);
+                return null;
+            });
             return;
         }
         Map<Integer, TaskStepTemplate> current = new HashMap<>();

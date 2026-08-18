@@ -1,6 +1,6 @@
 # Architekturkritik von XP, Gefäß, Kombo und Today-Screen
 
-Stand: 2026-08-18
+Stand: 2026-08-19
 
 ## Umsetzungsstand
 
@@ -13,7 +13,11 @@ Stand: 2026-08-18
 - Phase 3 behoben: Schema 7 ersetzt verteilte Rewardfelder durch ein unveränderliches Ledger,
   exakte Gegenbuchungen und vorzeichenbehaftete Receipts; Anzeigeprojektionen stammen aus dem
   Ledger.
-- Phasen 4–7 bleiben offen.
+- Phase 4 behoben: Ein generischer Transaktionsport liefert typisierte Ergebnisse;
+  `RewardCalculator`, `CompletionStateMachine` und `ScheduleProjector` sind reine Komponenten,
+  der `CompletionService` orchestriert sie. Schedule-Reconciliation nutzt zwei gezielte Queries,
+  und `OccurrenceKind` ersetzt Stringpräfixe in der Fachlogik.
+- Phasen 5–7 bleiben offen.
 
 ## Umfang und Gesamturteil
 

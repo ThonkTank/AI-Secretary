@@ -1,37 +1,20 @@
 package de.thonktank.autosecretary.domain.usecase;
 
-import de.thonktank.autosecretary.domain.model.Occurrence;
-import de.thonktank.autosecretary.domain.model.OccurrenceState;
-import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.Clock;
+import de.thonktank.autosecretary.SystemClock;
+import de.thonktank.autosecretary.SystemZoneIdProvider;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
-import de.thonktank.autosecretary.Clock;
 
 public final class ConfirmSet {
-    private final TaskRepository repository;
-    private final RewardEngine rewards;
-
+    private final CompletionService completion;
     public ConfirmSet(TaskRepository repository) {
-        this(repository, new de.thonktank.autosecretary.SystemClock(
-                new de.thonktank.autosecretary.SystemZoneIdProvider()));
+        this(repository, new SystemClock(new SystemZoneIdProvider()));
     }
     public ConfirmSet(TaskRepository repository, Clock clock) {
-        this.repository = repository; rewards = new RewardEngine(repository, clock);
+        completion = new CompletionService(repository, clock);
     }
-
     public RewardReceipt execute(String stepId, int repetitions) {
-        final RewardReceipt[] result = {RewardReceipt.none()};
-        repository.inTransaction(() -> {
-            OccurrenceStep step = repository.findOccurrenceStep(stepId);
-            if (step == null) return;
-            Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
-            if (occurrence == null || occurrence.state != OccurrenceState.OPEN) return;
-            OccurrenceStep changed = step.confirmSet(repetitions);
-            repository.updateOccurrenceStep(changed);
-            if (!step.done && changed.done)
-                result[0] = rewards.completeStep(occurrence,
-                        repository.findOccurrenceStep(step.id));
-        });
-        return result[0];
+        return completion.confirmSet(stepId, repetitions);
     }
 }

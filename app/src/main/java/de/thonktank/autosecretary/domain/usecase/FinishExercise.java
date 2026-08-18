@@ -1,33 +1,18 @@
 package de.thonktank.autosecretary.domain.usecase;
 
-import de.thonktank.autosecretary.domain.model.Occurrence;
-import de.thonktank.autosecretary.domain.model.OccurrenceState;
-import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.Clock;
+import de.thonktank.autosecretary.SystemClock;
+import de.thonktank.autosecretary.SystemZoneIdProvider;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
-import de.thonktank.autosecretary.Clock;
 
 public final class FinishExercise {
-    private final TaskRepository repository;
-    private final RewardEngine rewards;
-
+    private final CompletionService completion;
     public FinishExercise(TaskRepository repository) {
-        this(repository, new de.thonktank.autosecretary.SystemClock(
-                new de.thonktank.autosecretary.SystemZoneIdProvider()));
+        this(repository, new SystemClock(new SystemZoneIdProvider()));
     }
     public FinishExercise(TaskRepository repository, Clock clock) {
-        this.repository = repository; rewards = new RewardEngine(repository, clock);
+        completion = new CompletionService(repository, clock);
     }
-
-    public RewardReceipt execute(String stepId) {
-        final RewardReceipt[] result = {RewardReceipt.none()};
-        repository.inTransaction(() -> {
-            OccurrenceStep step = repository.findOccurrenceStep(stepId);
-            if (step == null) return;
-            Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
-            if (occurrence != null && occurrence.state == OccurrenceState.OPEN)
-                result[0] = rewards.completeStep(occurrence, step);
-        });
-        return result[0];
-    }
+    public RewardReceipt execute(String stepId) { return completion.finishExercise(stepId); }
 }

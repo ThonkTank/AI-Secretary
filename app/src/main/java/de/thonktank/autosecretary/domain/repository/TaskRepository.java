@@ -13,7 +13,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface TaskRepository {
-    void inTransaction(Runnable operation);
+    @FunctionalInterface interface Transaction<T> { T execute(); }
+
+    <T> T inTransaction(Transaction<T> operation);
 
     void insertTask(Task task);
     void updateTask(Task task);
@@ -36,6 +38,8 @@ public interface TaskRepository {
     List<Occurrence> openOccurrences();
     List<Occurrence> allOccurrences();
     List<Occurrence> occurrences(TaskId taskId);
+    Occurrence earliestOpenOccurrence(TaskId taskId);
+    Occurrence latestCompletedOccurrence(TaskId taskId);
     List<Occurrence> completedOccurrences(LocalDate date);
     void insertOccurrenceSteps(List<OccurrenceStep> steps);
     List<OccurrenceStep> occurrenceSteps(String occurrenceId);

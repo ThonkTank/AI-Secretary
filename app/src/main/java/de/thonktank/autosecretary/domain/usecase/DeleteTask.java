@@ -11,6 +11,6 @@ public final class DeleteTask {
     }
 
     public void execute(TaskId id) {
-        repository.inTransaction(() -> repository.deleteTask(id));
+        repository.inTransaction(() -> { repository.deleteTask(id); return null; });
     }
 }

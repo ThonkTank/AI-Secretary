@@ -74,6 +74,7 @@ public final class MaterializeDueOccurrences {
                 if (created > 0 && task.boundKind == TaskBoundKind.N_TIMES)
                     repository.updateTask(task.afterMaterializing(created));
             }
+            return null;
         });
     }
 

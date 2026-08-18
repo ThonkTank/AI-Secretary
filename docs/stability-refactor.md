@@ -43,6 +43,12 @@ Use Cases. Die bisherige Klasse `TaskService` bleibt vorübergehend als delegier
 für ältere Characterization-Tests bestehen, enthält aber keine Transaktions- oder
 Schedulinglogik mehr. Produktionscode verwendet sie nicht mehr.
 
+Der Transaktionsport liefert generische Rückgabewerte; Completion-Use-Cases benötigen deshalb
+keine veränderlichen Holder mehr. Abschluss, Ernte, Undo und Condition-Close delegieren an den
+transaktionalen `CompletionService`. Rewardberechnung, Zustandsübergänge und Terminprojektion
+sind getrennte reine Komponenten. Für Folgetermine werden nur das früheste offene und das letzte
+abgeschlossene Vorkommen gezielt abgefragt, nicht die vollständige Task-Historie.
+
 ## Abhängigkeiten und Systemgrenzen
 
 `AutoSecretaryApplication` besitzt genau einen manuellen `AppContainer`. Er verdrahtet

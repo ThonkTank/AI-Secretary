@@ -24,11 +24,12 @@ public final class DeferTask {
         if (selected != null) {
             repository.inTransaction(() -> {
                 Occurrence current = repository.findOccurrence(occurrenceOrTaskId);
-                if (current == null) return;
+                if (current == null) return null;
                 int last = current.sortOrder;
                 for (Occurrence occurrence : repository.openOccurrences())
                     if (occurrence.slot == current.slot) last = Math.max(last, occurrence.sortOrder);
                 if (last > current.sortOrder) repository.updateOccurrence(current.moveTo(last + 1));
+                return null;
             });
             return;
         }
@@ -39,9 +40,10 @@ public final class DeferTask {
             List<Task> tasks = ordering.sorted(repository.allTasks());
             int index = -1;
             for (int i = 0; i < tasks.size(); i++) if (tasks.get(i).id.equals(id)) index = i;
-            if (index < 0 || index >= tasks.size() - 1) return;
+            if (index < 0 || index >= tasks.size() - 1) return null;
             for (Task task : ordering.swap(tasks, id, tasks.get(index + 1).id))
                 repository.updateTask(task);
+            return null;
         });
     }
 }

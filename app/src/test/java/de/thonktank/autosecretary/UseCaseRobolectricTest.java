@@ -15,6 +15,9 @@ import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.Dashboard;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
+import de.thonktank.autosecretary.domain.model.RewardBooking;
+import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
@@ -101,6 +104,10 @@ public final class UseCaseRobolectricTest {
         assertEquals(1, dashboard.tasks.size());
         assertEquals(2, dashboard.tasks.get(0).steps.size());
         assertEquals(1_024L, dashboard.tasks.get(0).task.displayOrder);
+    }
+
+    @Test public void transactionPortReturnsItsResult() {
+        assertEquals("committed", repository.inTransaction(() -> "committed"));
     }
 
     @Test public void dashboardUsesAConstantNumberOfBulkSelects() {
@@ -233,6 +240,9 @@ public final class UseCaseRobolectricTest {
         assertEquals(10, repository.xp());
 
         Occurrence completion = repository.occurrences(ongoing.id).get(0);
+        assertEquals(OccurrenceKind.CONDITION, completion.kind);
+        assertEquals(RewardBooking.Kind.CONDITION_COMPLETION,
+                repository.rewardBookings(completion.id).get(0).kind);
         assertEquals(10, repository.rewardBookings(completion.id).stream()
                 .filter(value -> value.target
                         == de.thonktank.autosecretary.domain.model.RewardBooking.Target.HEAD)
@@ -243,6 +253,34 @@ public final class UseCaseRobolectricTest {
         assertFalse(repository.findTask(ongoing.id).conditionDone);
         assertEquals(OccurrenceState.OPEN, repository.findOccurrence(completion.id).state);
         assertEquals(0, repository.xp());
+    }
+
+    @Test public void arbitraryTodayUndoUsesTargetedScheduleProjectionAndExactBooking() {
+        Task task = Task.create(TaskId.of("multi"), "Mehrfach", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, false, "", TODAY.minusDays(1), 1_024L);
+        repository.insertTask(task);
+        Occurrence older = new Occurrence("older", task.id, TODAY.minusDays(1),
+                TaskSlot.MORNING, OccurrenceState.OPEN, 1, null);
+        Occurrence newer = new Occurrence("newer", task.id, TODAY,
+                TaskSlot.MORNING, OccurrenceState.OPEN, 2, null);
+        repository.insertOccurrence(older); repository.insertOccurrence(newer);
+        CompleteOccurrence complete = new CompleteOccurrence(repository, clock);
+        complete.execute(older.id); complete.execute(newer.id);
+        assertEquals(25, repository.xp());
+        assertEquals(TODAY.plusDays(1), repository.findTask(task.id).nextDueOn);
+
+        queries.clear();
+        RewardReceipt undo = new UndoOccurrence(repository, clock).execute(older.id);
+
+        assertEquals(-15, undo.xp);
+        assertEquals(10, repository.xp());
+        assertEquals(OccurrenceState.OPEN, repository.findOccurrence(older.id).state);
+        assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(newer.id).state);
+        assertEquals(TODAY.minusDays(1), repository.findTask(task.id).nextDueOn);
+        assertEquals(0, queries.stream().filter(sql -> sql.matches(
+                "(?s).*FROM occurrences WHERE taskId = \\?.*") && !sql.contains("LIMIT 1")).count());
+        assertTrue(queries.stream().filter(sql -> sql.contains("FROM occurrences")
+                && sql.contains("LIMIT 1")).count() >= 2);
     }
 
     private static final class SequenceIds implements IdGenerator {

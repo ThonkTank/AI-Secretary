@@ -20,10 +20,11 @@ public final class MoveTask {
     public void execute(TaskId id, TaskSlot slot) {
         repository.inTransaction(() -> {
             Task task = repository.findTask(id);
-            if (task == null) return;
+            if (task == null) return null;
             List<Task> reordered = ordering.moveToEndOfSlot(
                     repository.allTasks(), id, slot, task.title);
             for (Task item : reordered) repository.updateTask(item);
+            return null;
         });
     }
 }

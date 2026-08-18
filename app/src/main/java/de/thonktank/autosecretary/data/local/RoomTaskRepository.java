@@ -23,6 +23,7 @@ import de.thonktank.autosecretary.domain.model.RewardBooking;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 public final class RoomTaskRepository implements TaskRepository {
     private final AppDatabase database;
@@ -39,8 +40,8 @@ public final class RoomTaskRepository implements TaskRepository {
         this.mapper = mapper;
     }
 
-    @Override public void inTransaction(Runnable operation) {
-        database.runInTransaction(operation);
+    @Override public <T> T inTransaction(TaskRepository.Transaction<T> operation) {
+        return database.runInTransaction((Callable<T>) operation::execute);
     }
 
     @Override public void insertTask(Task task) {
@@ -143,6 +144,18 @@ public final class RoomTaskRepository implements TaskRepository {
 
     @Override public List<Occurrence> occurrences(TaskId taskId) {
         return mapOccurrences(dao.occurrencesForTask(taskId.value));
+    }
+
+    @Override public Occurrence earliestOpenOccurrence(TaskId taskId) {
+        OccurrenceEntity entity = dao.earliestOccurrence(taskId.value,
+                OccurrenceState.OPEN.storageCode());
+        return entity == null ? null : mapper.toDomain(entity);
+    }
+
+    @Override public Occurrence latestCompletedOccurrence(TaskId taskId) {
+        OccurrenceEntity entity = dao.latestCompletedOccurrence(taskId.value,
+                OccurrenceState.COMPLETED.storageCode());
+        return entity == null ? null : mapper.toDomain(entity);
     }
 
     @Override public List<Occurrence> completedOccurrences(LocalDate date) {

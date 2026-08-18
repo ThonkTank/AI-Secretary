@@ -44,6 +44,7 @@ public final class CreateTask {
                 else repository.updateTask(item);
             }
             repository.insertTemplates(templates(task.id, definition.steps));
+            return null;
         });
     }
 
@@ -64,6 +65,7 @@ public final class CreateTask {
                     if (stepTexts.get(i) != null && !stepTexts.get(i).trim().isEmpty())
                         values.add(new TaskStepTemplate(ids.nextId(), task.id, i, stepTexts.get(i)));
                 repository.insertTemplates(values);
+                return null;
             });
             return;
         }

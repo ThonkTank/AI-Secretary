@@ -20,6 +20,7 @@ public final class ApplyComboDecay {
                         || !Objects.equals(settled.settledThroughOn, current.settledThroughOn))
                     repository.putCombo(settled);
             }
+            return null;
         });
     }
 }
