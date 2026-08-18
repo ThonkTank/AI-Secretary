@@ -26,6 +26,9 @@ haben jeweils ein eigenes Punktekonto; eine Kombostufe wird nie als Zahl ausgege
   erzeugt. Er begrenzt nur die sichtbare Ringzahl; der fachliche Kombofaktor bleibt offen.
 - Satzfortschritt ist ein editierbarer Zustand. Erst ein Wechsel zwischen offen und erledigt
   erzeugt beziehungsweise reversiert eine persistierte XP-/Kombo-Buchung.
+- Der Erledigtzustand eines Satzschritts ist explizit und wird nicht aus der Zahl erfasster
+  Sätze abgeleitet. Das Bestätigen des letzten geplanten Satzes ist ein eigener Abschlussbefehl;
+  reines Bearbeiten bewahrt den Zustand, und Wiederöffnen bewahrt den erfassten Fortschritt.
 - Die Migration erhält Gesamt-XP, startet alle Kombos bewusst bei null und übernimmt keine
   nicht belegbare Wochenhistorie.
 

@@ -31,6 +31,7 @@ public final class FocusTaskView extends FrameLayout {
         default void onEditStepProgress(TaskStepSnapshot step, List<Integer> repetitions,
                                         boolean done) { }
         default void onFinishExercise(TaskStepSnapshot step) { }
+        default void onReopenExercise(TaskStepSnapshot step, List<Integer> repetitions) { }
     }
 
     private final UiStyle style;
@@ -338,7 +339,7 @@ public final class FocusTaskView extends FrameLayout {
             toggleDone.setOnClickListener(view -> {
                 if (step.done) {
                     List<Integer> values = parsedRepetitions(step);
-                    if (values != null) callbacks.onEditStepProgress(step, values, false);
+                    if (values != null) callbacks.onReopenExercise(step, values);
                 } else callbacks.onFinishExercise(step);
             });
             WoodGrainView.applyTextHalo(progress, palette.leaf1);

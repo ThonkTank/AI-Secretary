@@ -46,6 +46,7 @@ import de.thonktank.autosecretary.domain.usecase.FinishExercise;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
+import de.thonktank.autosecretary.domain.usecase.ReopenExercise;
 import de.thonktank.autosecretary.domain.usecase.UpdateTask;
 
 @RunWith(RobolectricTestRunner.class)
@@ -144,7 +145,7 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals("23 kg", snapshot.note);
     }
 
-    @Test public void weekdayStepsOnlyRestrictAndSetProgressSurvivesRepositoryReload() {
+    @Test public void setProgressAndExplicitCompletionSurviveReloadAndReverseExactly() {
         int monday = 1;
         TaskStepDefinition mondayStep = new TaskStepDefinition(null, 0, "Beinpresse", monday,
                 StepAmountKind.SETS_REPS, 3, 12, null, "23 kg, Sitz 5");
@@ -163,12 +164,30 @@ public final class TaskEditorFeatureRobolectricTest {
         assertFalse(restored.done);
         assertEquals(10, confirm.execute(step.id, 12).xp);
         assertTrue(repository.findOccurrenceStep(step.id).done);
+        assertEquals(1, repository.combo(step.comboOwnerId).points);
 
-        EditStepProgress edit = new EditStepProgress(repository, clock);
-        assertEquals(10, edit.execute(step.id, Arrays.asList(10, 11)).xp);
+        EditStepProgress edit = new EditStepProgress(repository);
+        assertEquals(0, edit.execute(step.id, Arrays.asList(9, 11, 12)).xp);
+        OccurrenceStep editedDone = repository.findOccurrenceStep(step.id);
+        assertTrue(editedDone.done);
+        assertEquals(10, editedDone.earnedXp);
+
+        ReopenExercise reopen = new ReopenExercise(repository, clock);
+        assertEquals(10, reopen.execute(step.id, Arrays.asList(9, 11, 12)).xp);
+        OccurrenceStep reopened = repository.findOccurrenceStep(step.id);
+        assertFalse(reopened.done);
+        assertEquals(Arrays.asList(9, 11, 12), reopened.actualRepetitions);
+        assertEquals(0, reopened.earnedXp);
+        assertEquals(0, repository.combo(step.comboOwnerId).points);
+        assertEquals(0, reopen.execute(step.id, reopened.actualRepetitions).xp);
+
+        assertEquals(0, edit.execute(step.id, Arrays.asList(10, 11, 12)).xp);
         assertFalse(repository.findOccurrenceStep(step.id).done);
-        assertEquals(10, edit.execute(step.id, Arrays.asList(10, 11, 12)).xp);
+        FinishExercise finish = new FinishExercise(repository, clock);
+        assertEquals(10, finish.execute(step.id).xp);
+        assertEquals(0, finish.execute(step.id).xp);
         assertTrue(repository.findOccurrenceStep(step.id).done);
+        assertEquals(1, repository.combo(step.comboOwnerId).points);
     }
 
     @Test public void finishExerciseClosesEarlyAndNewOccurrenceStartsEmpty() {

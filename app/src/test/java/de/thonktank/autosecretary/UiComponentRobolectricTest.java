@@ -265,6 +265,45 @@ public final class UiComponentRobolectricTest {
         assertEquals(Arrays.asList(10, 11), saved.get());
     }
 
+    @Test public void completedSetStepCanReopenWithoutDiscardingFullProgress() {
+        Context context = ApplicationProvider.getApplicationContext();
+        UiStyle style = new UiStyle(context);
+        java.util.List<Integer> full = Arrays.asList(10, 11, 12);
+        TaskStepSnapshot set = new TaskStepSnapshot("set-step", "Beinpresse", true,
+                de.thonktank.autosecretary.domain.model.StepAmountKind.SETS_REPS,
+                3, 12, null, "23 kg", full, 2, 15, 15);
+        TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
+                TaskSlot.MORNING, "", "", Recurrence.DAILY,
+                Collections.singletonList(set), 0, false, false, false, false,
+                2, 1_000L, 15, 15, 0, true);
+        AtomicReference<java.util.List<Integer>> reopened = new AtomicReference<>();
+        FocusTaskView focus = new FocusTaskView(context);
+        focus.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+                new NoOpActions() {
+                    @Override public void onReopenExercise(TaskStepSnapshot step,
+                                                           java.util.List<Integer> repetitions) {
+                        reopened.set(repetitions);
+                    }
+                });
+        focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
+        focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
+        DewDotView dew = null;
+        for (View view : descendants(focus))
+            if (view instanceof DewDotView && view.getVisibility() == View.VISIBLE) {
+                dew = (DewDotView) view; break;
+            }
+        assertNotNull(dew);
+        dew.performClick();
+        TextView reopen = null;
+        for (View view : descendants(focus))
+            if (view instanceof TextView && context.getString(R.string.set_reopen)
+                    .contentEquals(((TextView) view).getText())) reopen = (TextView) view;
+        assertNotNull(reopen);
+        reopen.performClick();
+        assertEquals(full, reopened.get());
+    }
+
     private static java.util.List<View> descendants(View root) {
         java.util.List<View> result = new java.util.ArrayList<>();
         if (!(root instanceof ViewGroup)) return result;

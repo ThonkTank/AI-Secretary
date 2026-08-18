@@ -13,6 +13,7 @@ public final class TaskUseCases {
     public final ToggleStep toggleStep;
     public final ConfirmSet confirmSet;
     public final FinishExercise finishExercise;
+    public final ReopenExercise reopenExercise;
     public final EditStepProgress editStepProgress;
     public final CompleteOccurrence complete;
     public final CompleteRemainingSteps completeRemainingSteps;
@@ -36,7 +37,8 @@ public final class TaskUseCases {
         toggleStep = new ToggleStep(repository, clock);
         confirmSet = new ConfirmSet(repository, clock);
         finishExercise = new FinishExercise(repository, clock);
-        editStepProgress = new EditStepProgress(repository, clock);
+        reopenExercise = new ReopenExercise(repository, clock);
+        editStepProgress = new EditStepProgress(repository);
         complete = new CompleteOccurrence(repository, clock);
         completeRemainingSteps = new CompleteRemainingSteps(repository, clock);
         harvest = new HarvestOccurrence(repository, clock);

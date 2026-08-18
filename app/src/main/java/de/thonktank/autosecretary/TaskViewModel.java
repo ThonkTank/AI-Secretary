@@ -282,13 +282,13 @@ public final class TaskViewModel extends ViewModel {
         runReward(actionKey("finish-step", stepId),
                 () -> tasks.finishExercise.execute(stepId));
     }
+    void reopenExercise(String stepId, List<Integer> repetitions) {
+        runReward(actionKey("reopen-step", stepId),
+                () -> tasks.reopenExercise.execute(stepId, repetitions));
+    }
     void editStepProgress(String stepId, List<Integer> repetitions) {
         runReward(actionKey("edit-step-progress", stepId),
                 () -> tasks.editStepProgress.execute(stepId, repetitions));
-    }
-    void editStepProgress(String stepId, List<Integer> repetitions, boolean done) {
-        runReward(actionKey("edit-step-progress", stepId),
-                () -> tasks.editStepProgress.execute(stepId, repetitions, done));
     }
     void defer(String occurrenceId) { run(actionKey("defer", occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
     void close(String taskId) {

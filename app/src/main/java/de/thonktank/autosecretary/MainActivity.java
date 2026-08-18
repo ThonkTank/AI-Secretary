@@ -189,10 +189,14 @@ public class MainActivity extends ComponentActivity {
             @Override public void onEditStepProgress(TaskStepSnapshot step,
                                                      java.util.List<Integer> repetitions,
                                                      boolean done) {
-                viewModel.editStepProgress(step.id, repetitions, done);
+                viewModel.editStepProgress(step.id, repetitions);
             }
             @Override public void onFinishExercise(TaskStepSnapshot step) {
                 viewModel.finishExercise(step.id);
+            }
+            @Override public void onReopenExercise(TaskStepSnapshot step,
+                                                    java.util.List<Integer> repetitions) {
+                viewModel.reopenExercise(step.id, repetitions);
             }
             @Override public void onTheme(UiThemeMode mode) {
                 container.uiPreferences.setThemeMode(mode);
@@ -380,7 +384,8 @@ public class MainActivity extends ComponentActivity {
         String id = separator < 0 ? "" : actionKey.substring(separator + 1);
         String tag;
         if (action.equals("step") || action.equals("set")
-                || action.equals("finish-step") || action.equals("edit-step-progress"))
+                || action.equals("finish-step") || action.equals("reopen-step")
+                || action.equals("edit-step-progress"))
             tag = "step:" + id;
         else if (action.equals("harvest")) tag = "vessel:" + id;
         else if (action.equals("complete-rest")) tag = "rest:" + id;

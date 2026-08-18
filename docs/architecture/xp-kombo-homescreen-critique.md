@@ -2,6 +2,13 @@
 
 Stand: 2026-08-18
 
+## Umsetzungsstand
+
+- Phase 1 behoben: `OccurrenceStep.done` ist explizit; Bearbeiten, Fertigstellen und
+  Wiederöffnen sind getrennte Befehle, und vollständiger Satzfortschritt bleibt beim Undo
+  erhalten.
+- Phasen 2–7 bleiben offen.
+
 ## Umfang und Gesamturteil
 
 Diese Kritik bezieht sich auf die mit Commit `1afb7fb0` bearbeiteten Bereiche: XP- und

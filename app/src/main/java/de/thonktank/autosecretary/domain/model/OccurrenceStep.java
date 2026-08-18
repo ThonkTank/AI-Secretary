@@ -64,7 +64,7 @@ public final class OccurrenceStep {
         this.plannedDurationSeconds = checked.plannedDurationSeconds;
         this.note = checked.note;
         this.actualRepetitions = Collections.unmodifiableList(actual);
-        this.done = done || checked.plannedSets != null && actual.size() == checked.plannedSets;
+        this.done = done;
         this.comboOwnerId = comboOwnerId.isEmpty() ? "step:" + id : comboOwnerId;
         this.earnedXp = Math.max(0, earnedXp);
         this.comboPointDelta = comboPointDelta;
@@ -106,10 +106,9 @@ public final class OccurrenceStep {
     }
 
     public OccurrenceStep withActualRepetitions(List<Integer> values) {
-        boolean nextDone = plannedSets != null && values.size() >= plannedSets;
-        return new OccurrenceStep(id, occurrenceId, position, text, nextDone, amountKind,
+        return new OccurrenceStep(id, occurrenceId, position, text, done, amountKind,
                 plannedSets, plannedReps, plannedDurationSeconds, note, values,
-                comboOwnerId, nextDone ? earnedXp : 0, nextDone ? comboPointDelta : 0);
+                comboOwnerId, earnedXp, comboPointDelta);
     }
 
     public int nextSetNumber() { return actualRepetitions.size() + 1; }
