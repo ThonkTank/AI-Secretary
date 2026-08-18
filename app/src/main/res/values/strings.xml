@@ -14,6 +14,7 @@
     <string name="widget_step_done_symbol">●</string>
     <string name="content_add_task">Aufgabe anlegen</string>
     <string name="content_task_menu">Aufgabenmenü</string>
+    <string name="content_complete_task">%1$s erledigen, %2$d XP</string>
     <string name="marker_now">jetzt</string>
     <string name="marker_after">danach</string>
     <string name="marker_later">später, sobald Platz ist</string>

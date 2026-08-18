@@ -46,5 +46,7 @@ derselben Transaktions-ID atomar ausführen. Das Dashboard benötigt dafür eine
 gebündelte Ledger-Abfrage.
 
 Das Ledger ist noch kein vollständiges Event-Sourcing: Occurrence-Zustand, Gesamt-XP und Kombos
-bleiben gespeicherte Projektionen. Ihre atomare Koordination liegt bis zur Trennung der
-Completion-, Reward- und Schedule-Komponenten weiterhin in den Use Cases.
+bleiben gespeicherte Projektionen. `CompletionService` koordiniert sie atomar und verwendet
+dafür den reinen `RewardCalculator`, `CompletionStateMachine` und `ScheduleProjector`. Ein
+späteres Reparaturwerkzeug müsste Projektionen dennoch explizit aus dem Ledger validieren oder
+neu aufbauen; diese Reconciliation ist noch nicht implementiert.

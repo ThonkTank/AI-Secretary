@@ -27,6 +27,7 @@ public final class SetProgressEditorView extends LinearLayout {
     private final UiStyle style;
     private final TextView progress;
     private final EditText repetitions;
+    private final LinearLayout actionRow;
     private final TextView save;
     private final TextView toggleDone;
     private boolean binding;
@@ -52,7 +53,7 @@ public final class SetProgressEditorView extends LinearLayout {
         LayoutParams input = new LayoutParams(-1, style.dp(48));
         input.topMargin = style.dp(4);
         addView(repetitions, input);
-        LinearLayout actionRow = new LinearLayout(context);
+        actionRow = new LinearLayout(context);
         actionRow.setGravity(Gravity.CENTER_VERTICAL);
         save = new TextView(context);
         save.setId(R.id.set_progress_save);
@@ -61,6 +62,8 @@ public final class SetProgressEditorView extends LinearLayout {
         save.setPadding(style.dp(16), 0, style.dp(16), 0);
         save.setTypeface(style.sansBold);
         save.setTextSize(17);
+        save.setMinWidth(style.dp(48));
+        AccessibilityRoles.button(save);
         actionRow.addView(save, new LayoutParams(-2, style.dp(48)));
         toggleDone = new TextView(context);
         toggleDone.setId(R.id.set_progress_toggle_done);
@@ -68,6 +71,8 @@ public final class SetProgressEditorView extends LinearLayout {
         toggleDone.setMinHeight(style.dp(48));
         toggleDone.setTextSize(17);
         toggleDone.setTypeface(style.sans);
+        toggleDone.setMinWidth(style.dp(48));
+        AccessibilityRoles.button(toggleDone);
         LayoutParams toggle = new LayoutParams(-2, style.dp(48));
         toggle.leftMargin = style.dp(12);
         actionRow.addView(toggleDone, toggle);
@@ -91,6 +96,7 @@ public final class SetProgressEditorView extends LinearLayout {
         boundStep = step;
         boundState = state;
         listener = callbacks;
+        adaptActionLayout();
         boolean expanded = state.isExpanded(step.id);
         setVisibility(expanded ? VISIBLE : GONE);
         if (!expanded) return;
@@ -127,6 +133,22 @@ public final class SetProgressEditorView extends LinearLayout {
 
     List<View> grainTextViews() {
         return Arrays.asList(progress, repetitions, save, toggleDone);
+    }
+
+    private void adaptActionLayout() {
+        android.content.res.Configuration configuration = getResources().getConfiguration();
+        boolean stacked = configuration.screenWidthDp <= 360 || configuration.fontScale >= 1.3f;
+        actionRow.setOrientation(stacked ? VERTICAL : HORIZONTAL);
+        LayoutParams saveParams = (LayoutParams) save.getLayoutParams();
+        saveParams.width = stacked ? LayoutParams.MATCH_PARENT : LayoutParams.WRAP_CONTENT;
+        saveParams.height = stacked ? LayoutParams.WRAP_CONTENT : style.dp(48);
+        save.setLayoutParams(saveParams);
+        LayoutParams toggleParams = (LayoutParams) toggleDone.getLayoutParams();
+        toggleParams.width = stacked ? LayoutParams.MATCH_PARENT : LayoutParams.WRAP_CONTENT;
+        toggleParams.height = stacked ? LayoutParams.WRAP_CONTENT : style.dp(48);
+        toggleParams.leftMargin = stacked ? 0 : style.dp(12);
+        toggleParams.topMargin = stacked ? style.dp(4) : 0;
+        toggleDone.setLayoutParams(toggleParams);
     }
 
     private void withParsed(java.util.function.Consumer<List<Integer>> action) {

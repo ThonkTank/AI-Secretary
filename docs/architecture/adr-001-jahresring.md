@@ -18,12 +18,14 @@ haben jeweils ein eigenes Punktekonto; eine Kombostufe wird nie als Zahl ausgege
 - Kombostufe `n` beginnt bei `n(n+1)/2` Punkten. Rechtzeitige Schritte geben einen Punkt,
   Routine-Ernten und rechtzeitige Einzelaufgaben drei; verspätete Einzelaufgaben verlieren
   zwei. Jeder vollständig inaktive Kalendertag kostet zwei Punkte.
-- XP, angewandte Punktedeltas und stabile Schritt-Owner werden am Vorkommen gespeichert,
-  damit ein heutiger Abschluss vollständig und idempotent rückgängig gemacht werden kann.
+- Tatsächlich angewandte XP- und Punktedeltas werden mit stabilem Owner im unveränderlichen
+  Reward-Ledger gespeichert. Vorkommens- und Schrittzustand enthalten keine Rewardfelder mehr;
+  heutiges Undo verwendet ausschließlich die exakte Originalbuchung.
 - „Rest erledigen“ und Ernte sind in der App getrennte Transaktionen. Die unveränderte
   Widget-Oberfläche führt beide Schritte atomar aus.
-- Die Maserringe werden von einem gemeinsamen, gecachten Canvas-Renderer aus SDF-Konturen
-  erzeugt. Er begrenzt nur die sichtbare Ringzahl; der fachliche Kombofaktor bleibt offen.
+- Die Maserringe werden außerhalb des UI-Threads als immutable SDF-Konturen vorgebaut und in
+  einem auf 4 MiB gewichteten Cache gehalten. `onDraw` zeichnet nur fertige Renderdaten. Der
+  Renderer begrenzt nur die sichtbare Ringzahl; der fachliche Kombofaktor bleibt offen.
 - Satzfortschritt ist ein editierbarer Zustand. Erst ein Wechsel zwischen offen und erledigt
   erzeugt beziehungsweise reversiert eine persistierte XP-/Kombo-Buchung.
 - Der Erledigtzustand eines Satzschritts ist explizit und wird nicht aus der Zahl erfasster

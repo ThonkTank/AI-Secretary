@@ -1,12 +1,7 @@
 package de.thonktank.autosecretary;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.os.Bundle;
 import android.view.View;
@@ -21,8 +16,6 @@ import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -158,40 +151,11 @@ public final class TaskEditorGoldenRobolectricTest {
 
     private static void compare(String folder, String name, Bitmap actual) throws Exception {
         String resource = "/golden/task-editor/" + folder + "/" + name + ".png";
-        try (InputStream stream = TaskEditorGoldenRobolectricTest.class.getResourceAsStream(resource)) {
-            assertNotNull("Missing golden " + resource, stream);
-            Bitmap expected = BitmapFactory.decodeStream(stream);
-            assertEquals(expected.getWidth(), actual.getWidth());
-            assertEquals(expected.getHeight(), actual.getHeight());
-            int[] a = new int[actual.getWidth() * actual.getHeight()];
-            int[] e = new int[a.length]; actual.getPixels(a, 0, actual.getWidth(), 0, 0,
-                    actual.getWidth(), actual.getHeight());
-            expected.getPixels(e, 0, expected.getWidth(), 0, 0,
-                    expected.getWidth(), expected.getHeight());
-            Bitmap diff = Bitmap.createBitmap(actual.getWidth(), actual.getHeight(),
-                    Bitmap.Config.ARGB_8888);
-            int[] d = new int[a.length]; int changed = 0;
-            for (int i = 0; i < a.length; i++) {
-                int delta = Math.max(Math.abs(((a[i] >> 16) & 255) - ((e[i] >> 16) & 255)),
-                        Math.max(Math.abs(((a[i] >> 8) & 255) - ((e[i] >> 8) & 255)),
-                                Math.abs((a[i] & 255) - (e[i] & 255))));
-                if (delta > 64) { d[i] = 0xffff00ff; changed++; }
-                else d[i] = a[i];
-            }
-            diff.setPixels(d, 0, actual.getWidth(), 0, 0, actual.getWidth(), actual.getHeight());
-            write(new File("build/reports/task-editor-diff", folder + "-" + name + ".png"), diff);
-            write(new File("build/reports/task-editor-actual", folder + "-" + name + ".png"), actual);
-            double ratio = changed / (double) a.length;
-            expected.recycle(); diff.recycle(); actual.recycle();
-            assertTrue(name + " perceptual difference was " + ratio, ratio < .42d);
-        }
-    }
-
-    private static void write(File output, Bitmap bitmap) throws Exception {
-        assertTrue(output.getParentFile().isDirectory() || output.getParentFile().mkdirs());
-        try (FileOutputStream stream = new FileOutputStream(output)) {
-            assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream));
-        }
+        GoldenAssertions.compare(TaskEditorGoldenRobolectricTest.class, resource,
+                new File("src/test/resources/golden/task-editor/" + folder, name + ".png"),
+                new File("build/reports/goldens/task-editor", folder + "-" + name), actual,
+                64, .42d, "UPDATE_TASK_EDITOR_GOLDENS");
+        actual.recycle();
     }
     private static int dp(Context context, int value) {
         return Math.round(value * context.getResources().getDisplayMetrics().density);

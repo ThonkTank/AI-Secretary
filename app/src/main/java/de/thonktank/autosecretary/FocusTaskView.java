@@ -131,8 +131,10 @@ public final class FocusTaskView extends FrameLayout {
         primary.setPadding(style.dp(28), 0, style.dp(28), 0);
         primary.setTypeface(style.sansBold);
         primary.setTextSize(17);
+        AccessibilityRoles.button(primary);
         actions.addView(primary, new LinearLayout.LayoutParams(-2, style.dp(52)));
         later = new TextLinkView(context);
+        AccessibilityRoles.button(later);
         later.setText(R.string.action_later);
         LinearLayout.LayoutParams laterParams = new LinearLayout.LayoutParams(-2, style.dp(52));
         laterParams.setMargins(style.dp(18), 0, 0, 0);
@@ -208,6 +210,8 @@ public final class FocusTaskView extends FrameLayout {
                     ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE,
                     task.terminalCondition ? task.taskId : task.occurrenceId), taskDew);
             taskDew.bind(false, false, palette, task.claimableXp);
+            taskDew.setContentDescription(getContext().getString(
+                    R.string.content_complete_task, task.title, task.claimableXp));
             taskDew.setOnClickListener(view -> callbacks.onComplete(task));
         }
         titleBlock.setPadding(0, 0, 0, 0);
@@ -252,6 +256,7 @@ public final class FocusTaskView extends FrameLayout {
             row.dot.setContentDescription((step.done ? getContext().getString(R.string.marker_done) + ": " : "") + step.label);
             row.label.setText(step.done ? strike(step.label) : step.label);
             row.label.setTextColor(step.done ? palette.done : palette.ink);
+            row.label.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             WoodGrainView.applyTextHalo(row.label, palette.leaf1);
             if (step.amountKind == StepAmountKind.SETS_REPS) {
                 View.OnClickListener expand = view -> {
@@ -262,10 +267,13 @@ public final class FocusTaskView extends FrameLayout {
                     post(() -> syncLayersAndGrain(task, palette));
                 };
                 row.dot.setOnClickListener(expand);
-                row.label.setOnClickListener(expand);
+                row.header.setOnClickListener(expand);
+                row.header.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+                row.label.setOnClickListener(null);
                 row.bindEditor(step, palette, editorState, callbacks);
             } else {
                 row.dot.setOnClickListener(view -> callbacks.onToggleStep(step));
+                row.header.setOnClickListener(null);
                 row.label.setOnClickListener(null);
                 row.editor.setVisibility(GONE);
             }

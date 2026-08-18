@@ -32,6 +32,7 @@ final class DewDotView extends View {
         super(context);
         style = new UiStyle(context);
         setClickable(true);
+        AccessibilityRoles.toggleButton(this, () -> on);
         setMinimumWidth(style.dp(48));
         setMinimumHeight(style.dp(48));
     }
@@ -43,6 +44,7 @@ final class DewDotView extends View {
     void bind(boolean on, boolean dim, DayPalette palette, int value) {
         boolean animateOn = !this.on && on && isAttachedToWindow();
         this.on = on;
+        setSelected(on);
         this.dim = dim;
         this.palette = palette;
         this.value = Math.max(0, value);

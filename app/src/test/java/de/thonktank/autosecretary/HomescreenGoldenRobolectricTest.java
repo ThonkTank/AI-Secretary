@@ -1,14 +1,8 @@
 package de.thonktank.autosecretary;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.os.Looper;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -23,8 +17,6 @@ import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 
 @RunWith(RobolectricTestRunner.class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -76,48 +68,11 @@ public final class HomescreenGoldenRobolectricTest {
     }
 
     private static void assertGolden(String name, Bitmap actual) throws Exception {
-        writePng(new File("build/reports/homescreen-actual", name + ".png"), actual);
-        if ("1".equals(System.getenv("UPDATE_HOMESCREEN_GOLDENS"))) {
-            writePng(new File("src/test/resources/golden/homescreen", name + ".png"), actual);
-            return;
-        }
-        try (InputStream stream = HomescreenGoldenRobolectricTest.class.getResourceAsStream(
-                "/golden/homescreen/" + name + ".png")) {
-            assertNotNull("Missing golden for " + name, stream);
-            Bitmap expected = BitmapFactory.decodeStream(stream);
-            assertNotNull("Unreadable golden for " + name, expected);
-            assertEquals(name + " width", expected.getWidth(), actual.getWidth());
-            assertEquals(name + " height", expected.getHeight(), actual.getHeight());
-            int width = actual.getWidth();
-            int height = actual.getHeight();
-            int[] expectedPixels = new int[width * height];
-            int[] actualPixels = new int[width * height];
-            expected.getPixels(expectedPixels, 0, width, 0, 0, width, height);
-            actual.getPixels(actualPixels, 0, width, 0, 0, width, height);
-            Bitmap difference = null;
-            int changed = 0;
-            for (int i = 0; i < actualPixels.length; i++) {
-                if (expectedPixels[i] == actualPixels[i]) continue;
-                if (difference == null) difference = Bitmap.createBitmap(
-                        width, height, Bitmap.Config.ARGB_8888);
-                actualPixels[i] = Color.MAGENTA;
-                changed++;
-            }
-            if (difference != null) {
-                difference.setPixels(actualPixels, 0, width, 0, 0, width, height);
-                writePng(new File("build/reports/homescreen-diff", name + ".png"), difference);
-                difference.recycle();
-            }
-            expected.recycle();
-            assertEquals(name + " changed pixels", 0, changed);
-        }
-    }
-
-    private static void writePng(File output, Bitmap bitmap) throws Exception {
-        assertTrue(output.getParentFile().isDirectory() || output.getParentFile().mkdirs());
-        try (FileOutputStream stream = new FileOutputStream(output)) {
-            assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream));
-        }
+        GoldenAssertions.compare(HomescreenGoldenRobolectricTest.class,
+                "/golden/homescreen/" + name + ".png",
+                new File("src/test/resources/golden/homescreen", name + ".png"),
+                new File("build/reports/goldens/homescreen", name), actual, 0, 0d,
+                "UPDATE_HOMESCREEN_GOLDENS");
     }
 
 }

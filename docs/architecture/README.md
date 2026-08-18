@@ -26,3 +26,5 @@ Folgeschritte.
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
+Die aktuelle Testschichtung, Migrationsmatrix und Golden-/Accessibility-Verträge beschreibt
+[Phase 7: Testpyramide, Goldens und Accessibility](phase-7-teststrategie.md).

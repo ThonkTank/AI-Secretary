@@ -27,11 +27,15 @@ Stand: 2026-08-19
   auf geschätzte 4 MiB begrenzt, und Lifecycle-/Cache-/Build-Invarianten sind getestet. Median
   und p95 wurden gegenüber der reproduzierbaren Baseline schneller; Software-Halo und Blur
   bleiben wegen der Null-Pixel-Golden-Toleranz bewusst bestehen.
-- Phase 7 bleibt offen.
+- Phase 7 behoben: Reine Reward-/Completion-/Undo-/Schedule-Fälle verwenden ein schnelles
+  `InMemoryTaskRepository`; historische Robolectric-Schemata stammen aus Room-Exports. Golden-
+  Fehler erzeugen Expected/Actual/Diff und Updates sind in CI gesperrt. Today und Inline-Editor
+  laufen durch die 3×3-Matrix aus 320/412/600 dp und Font Scale 1,0/1,3/2,0; Rollen, Zustände,
+  TalkBack-Reihenfolge, Tastatur, Touchziele, Reduced Motion, Kontrast und Dauerlast sind geprüft.
 
 ## Umfang und Gesamturteil
 
-Diese Kritik bezieht sich auf die mit Commit `1afb7fb0` bearbeiteten Bereiche: XP- und
+Diese Kritik bezieht sich auf die in den sieben Refactoring-Phasen bearbeiteten Bereiche: XP- und
 Komboregeln, Abschluss und Undo, Room-Schema 5, Dashboard-Read-Models, Widget-Verhalten,
 Today-Screen, Gefäß und Wert-Tau, Canvas-Maserung, Animationen, Satzfortschritt sowie die
 zugehörigen Regel-, Use-Case-, Migrations-, UI- und Golden-Tests.
@@ -96,12 +100,11 @@ Konturextraktor ein erheblicher Wartungsblock; ein vorgerenderter Pfad, ein klei
 ein parametrisches VectorDrawable hätte abhängig von den tatsächlich benötigten Zuständen
 einfacher sein können.
 
-### Die alte Wochenring-Architektur war nicht wirklich entfernt
+### Ausgangslage, in Phase 2 behoben: Die alte Wochenring-Architektur war nicht entfernt
 
-Die sichtbaren `ringWeeks`-/Jahresring-Verträge konnten entfernt werden. Im Kernmodell trägt
-`Task` aber weiterhin `RoutineProgress`; `TaskEntity`, `TaskEntityMapper` und alte Domänentests
-kennen `routineLevel`, Vorkommens- und Wochenstreak weiterhin. Damit ist die alte Mechanik nicht
-nur historisches Schema, sondern noch Teil jedes Task-Roundtrips und fast jeder Task-Kopie.
+Nach dem ersten visuellen Umbau waren zwar `ringWeeks` und der Jahresring verschwunden, das
+Kernmodell trug aber weiter `RoutineProgress`; Entity, Mapper und Tests kannten alte Level- und
+Streakfelder. Die Mechanik war damit weiterhin Teil jedes Task-Roundtrips.
 
 Das störte auf zwei Ebenen. Erstens musste bei jeder Konstruktor- oder Copy-Operation entschieden
 werden, wie ein fachlich totes Objekt weitergereicht wird. Zweitens täuscht die Domäne vor, dass
@@ -109,116 +112,87 @@ zwei Belohnungssysteme gültig sind, obwohl nur `ComboProgress` Verhalten und UI
 erlaubt kompatible Altdaten im Schema, aber daraus folgt nicht, dass sie dauerhaft Bestandteil
 des aktiven Domänenmodells bleiben müssen.
 
-Gewünscht wäre eine klare Trennung gewesen: Legacy-Spalten bleiben ausschließlich in einer
-Persistence-Entity oder werden in einer späteren Tabellenneuanlage entfernt; `Task` selbst kennt
-nur noch das aktuelle Modell. Solange das nicht geschieht, besteht das Risiko, dass zukünftiger
-Code versehentlich wieder auf den alten Fortschritt zugreift.
+Phase 2 setzte diese gewünschte Trennung um: Schema 6 baut `tasks` kontrolliert neu auf und
+`RoutineProgress` existiert weder in aktiver Domäne noch Mappern oder aktuellen Tests. Die
+veröffentlichten Schema-1-bis-5-JSONs enthalten die alten Spalten absichtlich weiterhin als
+historischen Migrationsvertrag.
 
-### Es gab keinen Buchungsbegriff, nur verteilte Zustandsfelder
+### Ausgangslage, in Phase 3 behoben: Es gab keinen Buchungsbegriff
 
-Exaktes Undo verlangte einen Beleg darüber, was tatsächlich angewandt wurde. Dafür wurden
-`awardedXp` und `comboPointDelta` auf Vorkommen sowie `earnedXp` und `comboPointDelta` auf
-Vorkommensschritten gespeichert. `RewardReceipt` macht das Ergebnis eines Use Cases sichtbar.
-Das erfüllt den aktuellen Bedarf, ist aber kein eigenständiges Buchungsmodell.
+Die Zwischenarchitektur speicherte `awardedXp`/`comboPointDelta` am Vorkommen und
+`earnedXp`/`comboPointDelta` am Schritt. Das ermöglichte exaktes Undo, war aber kein
+eigenständiges Buchungsmodell.
 
-Die Bedeutung ist verteilt:
+In dieser Zwischenarchitektur war die Bedeutung verteilt:
 
-- Schritt-XP liegen am Schritt und sind zunächst nur Gefäßinhalt;
-- Ernte-XP liegen am Vorkommen und verändern Gesamt-XP;
-- beide heißen in `RewardReceipt` lediglich `xp` und werden über `Target` unterschieden;
-- eine atomare Widget-Aktion führt Schrittbuchungen und Ernte aus, kann aber nur einen
+- Schritt-XP lagen am Schritt und waren zunächst nur Gefäßinhalt;
+- Ernte-XP lagen am Vorkommen und veränderten Gesamt-XP;
+- beide hießen in `RewardReceipt` lediglich `xp` und wurden über `Target` unterschieden;
+- eine atomare Widget-Aktion führte Schrittbuchungen und Ernte aus, konnte aber nur einen
   einzelnen Receipt zurückgeben;
-- Reversal wird durch einen positiven XP-Wert plus `reversed` statt durch eine explizite
+- Reversal wurde durch einen positiven XP-Wert plus `reversed` statt durch eine explizite
   Gegenbuchung beschrieben.
 
-Das ist für UI-Animationen ausreichend, für Audit, spätere Statistiken, Synchronisation oder
-mehrstufiges Undo aber zu implizit. Gewünscht wäre ein unveränderliches Reward-Ledger mit
-Buchungs-ID, Aktion, Owner, Vorkommen, vorzeichenbehaftetem XP-/Punktedelta, Zeitpunkt und
-optionaler Referenz auf die stornierte Buchung. Der aktuelle Vorkommenszustand könnte daraus
-projiziert werden; Undo wäre eine Gegenbuchung statt einer spezialisierten Rückwärtsmutation.
+Phase 3 führte genau das gewünschte Ledger ein. Buchungs-ID, Transaktion, Owner, Ziel,
+vorzeichenbehaftete Deltas und eindeutige Gegenbuchung sind nun explizit; die alten Rewardfelder
+sind aus den aktiven Tabellen entfernt. Bewusst verbleibt, dass `stats.xp`, Kombos und
+Vorkommenszustand materialisierte Projektionen sind, ohne allgemeines Rebuild-/Repair-Werkzeug.
 
-### Der Repository-Vertrag ist breit und transaktionale Rückgaben sind umständlich
+### Phase 4 teilweise behoben: Der Repository-Vertrag bleibt breit
 
-`TaskRepository` vereinigt Task-, Template-, Vorkommens-, Schritt-, Statistik- und Kombozugriffe.
-Use Cases sehen dadurch mehr Persistenzoperationen, als sie jeweils benötigen. Die
-Transaktionsgrenze lautet `void inTransaction(Runnable)`. Weil ein `Runnable` keinen Wert
-zurückgeben kann, verwenden mehrere Use Cases veränderliche Ein-Element-Arrays, um
-`RewardReceipt` aus einer Transaktion herauszutragen.
+`TaskRepository` vereinigt weiterhin Task-, Template-, Vorkommens-, Schritt-, Statistik-, Kombo-
+und Ledgerzugriffe. Use Cases sehen dadurch mehr Operationen, als sie jeweils benötigen; der
+vollständige In-Memory-Fake in Phase 7 machte diese Breite besonders sichtbar.
 
-Das ist ein kleines, aber klares Zeichen, dass der Port nicht mehr zur Anwendungsschicht passt.
-Ein generischer Vertrag wie `<T> T inTransaction(Supplier<T>)` oder dedizierte Aggregate-
-Repositories würde Boilerplate entfernen und Transaktionsresultate typisieren. Noch besser wäre
-ein `CompletionService`, der Vorkommen, Schritte, Kombo und Buchung als eine fachliche Einheit
-lädt und speichert, statt die Orchestrierung über viele einzelne CRUD-Aufrufe zu verteilen.
+Phase 4 ersetzte die umständliche `Runnable`-Grenze durch `<T> T inTransaction(Transaction<T>)`
+und bündelte Completion im `CompletionService`. Mutable Ein-Element-Rückgabecontainer sind
+verschwunden. Kleinere Aggregate-Ports würden Testdoubles und Abhängigkeitsflächen weiter
+reduzieren, wären aber ein weiterer struktureller Schnitt durch Room und alle Use Cases.
 
-### Termin-Neuberechnung und Belohnungsbuchung sind zu eng gekoppelt
+### Ausgangslage, in Phase 4 behoben: Termin und Reward waren zu eng gekoppelt
 
-`RewardEngine` berechnet XP und Kombo, verändert Persistenz, öffnet beziehungsweise schließt
-Vorkommen indirekt und rekonstruiert anschließend durch `reconcile` Archivstatus,
-`nextDueOn`, letzten Termin und letzten Abschluss. Für heutiges Undo ist diese Bündelung
-praktisch, sie macht den Engine-Namen aber irreführend: Er ist zugleich Reward-Service,
-Completion-Service und Schedule-Reconciler.
+Der frühere `RewardEngine` war zugleich Reward-Service, Completion-State-Machine und
+Schedule-Reconciler und lud für `reconcile` die vollständige Historie. Phase 4 ersetzte ihn durch
+reinen `RewardCalculator`, `CompletionStateMachine`, `ScheduleProjector` und den transaktionalen
+`CompletionService`. Die Terminprojektion liest nur frühestes offenes und jüngstes abgeschlossenes
+Vorkommen. Bewusst bleibt die Orchestrierung synchron und repositorygebunden; ein späterer
+Server-Sync bräuchte Konflikt- und Idempotenzregeln über die lokale Transaktion hinaus.
 
-`reconcile` lädt dafür alle Vorkommen einer Aufgabe und leitet den Zustand aus ihnen neu ab. Das
-ist robust für die kleine lokale Datenmenge, skaliert aber linear mit der Historie und erschwert
-gezielte Tests der Terminlogik. Belohnung, Vorkommenszustandsautomat und Terminprojektion sollten
-separate fachliche Komponenten mit einem gemeinsamen transaktionalen Orchestrator sein.
+### Phase 4 verbessert: Fortlaufende Vorhaben verwenden einen expliziten Typ
 
-### Fortlaufende Vorhaben wurden über ein synthetisches Vorkommen angepasst
-
-Das Schließen eines fortlaufenden Vorhabens ohne offenes Vorkommen erzeugt ein Vorkommen mit einer
-stringkodierten ID wie `condition:<task>:<datum>` und maximalem Sortierwert. Damit kann derselbe
-Ernte-/Undo-Pfad wiederverwendet werden, und der Ansatz vermeidet eine zweite Belegform. Er zeigt
-aber, dass das vorhandene Vorkommensmodell die Aktion „Bedingung erfüllt“ nicht natürlich
-ausdrückt.
-
-Stringpräfix und Sonder-Sortierwert sind verborgene Typinformation. Ein expliziter
-`OccurrenceKind` oder ein allgemeiner `CompletionRecord` würde diese Semantik sichtbar machen.
-Ohne ihn müssen zukünftige Exporte, Synchronisation oder Auswertungen die Konvention kennen.
+Das Condition-Vorkommen behält aus Kompatibilitätsgründen eine synthetische ID und einen
+Sondersortierwert, trägt seit Phase 4 aber `OccurrenceKind.CONDITION`. Fachlogik erkennt den Typ
+nicht mehr über Stringpräfixe. ID und Sortierwert bleiben Persistence-Konventionen, die bei Export
+oder Sync sauberer durch einen allgemeinen `CompletionRecord` ersetzt werden könnten.
 
 ## Verbleibende Schwächen in Domäne und Persistenz
 
-### `done` ist beim Satzschritt gleichzeitig Zustand und Ableitung
+### Phase 1 behoben: `done` war gleichzeitig Zustand und Ableitung
 
-`OccurrenceStep` speichert `done`, setzt es im Konstruktor aber automatisch auf wahr, sobald die
-Anzahl tatsächlicher Sätze der Planung entspricht. `EditStepProgress` besitzt gleichzeitig einen
-expliziten gewünschten Erledigtzustand, und die UI bietet „wieder öffnen“ an.
+Die Ausgangslage speicherte `done`, überschieb es aber im Konstruktor, sobald die Zahl erfasster
+Sätze der Planung entsprach. Das kollidierte mit explizitem Wiederöffnen.
 
-Diese beiden Modelle kollidieren. Ein vollständig erfasster Schritt kann nicht unabhängig von
-seiner Satzanzahl offen sein; „wieder öffnen“ funktioniert fachlich nur, wenn zugleich Fortschritt
-entfernt wird. Umgekehrt kann Speichern allein durch die Anzahl eine Buchung auslösen. Die
-Implementierung deckt frühes Fertigstellen und Fortschrittsänderung ab, aber die Invariante ist
-nicht klar genug, um alle Kombinationen intuitiv zu erklären.
+Diese beiden Modelle kollidierten: Ein vollständig erfasster Schritt konnte nicht unabhängig von
+seiner Satzanzahl offen sein; „wieder öffnen“ funktionierte nur, wenn zugleich Fortschritt
+entfernt wurde. Umgekehrt konnte reines Speichern durch die Anzahl eine Buchung auslösen.
 
-Gewünscht wäre eine Entscheidung für genau eines der Modelle:
+Phase 1 entschied sich für das zweite Modell: Bearbeiten bewahrt `done`; Finish und Reopen sind
+explizite Commands, Reopen bewahrt Wiederholungen. Nur `ConfirmSet` darf beim neu hinzugefügten
+letzten Satz einen Abschluss auslösen. Damit ist die Invariante heute eindeutig und idempotent.
 
-1. `done` ist vollständig abgeleitet; dann gibt es kein unabhängiges „wieder öffnen“, sondern nur
-   das Entfernen eines Satzes.
-2. `done` ist ein expliziter Zustandsautomat; dann darf der Konstruktor ihn nicht aus der Anzahl
-   überschreiben, und „Plan erfüllt“ ist nur ein UI-Vorschlag oder ein expliziter Command.
+### Phase 2 verbessert: Historische Schrittidentität bleibt teilweise unwiederbringlich
 
-Das zweite Modell passt besser zu „früher fertig“ und zu exakt reversierbaren Buchungen.
+Neue Vorkommensschritte speichern seit Schema 6 immer `sourceTemplateId`. Für historische Daten
+wird sie nur gesetzt, wenn `comboOwnerId` genau einem vorhandenen Template entspricht; andernfalls
+bleibt sie `null`, während der Owner unverändert bleibt. Das ist ehrlicher als eine positionsbasierte
+Erfindung, kann verlorene Vergangenheit aber naturgemäß nicht rekonstruieren. Tests halten diesen
+Unknown-Owner-Fall fest.
 
-### Stabile Schrittidentität ist in der Migration nur heuristisch rekonstruierbar
+### Phase 2 behoben: Legacy-Spalten vergrößerten jede Migration
 
-Schema 4 kannte am Vorkommensschritt keine Template-ID. Migration 4→5 sucht deshalb über
-Task-ID und Position den damaligen Template-Schritt und fällt sonst auf die konkrete
-Vorkommensschritt-ID zurück. Das ist eine vernünftige Best-Effort-Migration, aber nicht in allen
-historischen Fällen stabil: gelöschte, eingefügte oder umsortierte Templates können Positionen
-mehrdeutig machen.
-
-Ein dauerhaftes `sourceTemplateId` hätte beim Erzeugen des Vorkommens von Anfang an persistiert
-werden müssen. Für vorhandene Daten lässt sich die verlorene Information nicht vollständig
-zurückholen. Die Einschränkung sollte als Migrationsannahme dokumentiert und mit Fixtures für
-gelöschte beziehungsweise verschobene Templates sichtbar gemacht werden.
-
-### Legacy-Spalten vergrößern jede zukünftige Migration
-
-Schema 5 trägt aktuelle Rewarddaten und weiterhin alte Routine-Level-/Streak-Spalten. Room
-vergleicht die gesamte Tabellenform, weshalb jede weitere Migration diese Altlast mitführen oder
-die `tasks`-Tabelle kontrolliert neu aufbauen muss. Ein Schema 6 sollte die Gelegenheit nutzen,
-die Tabelle mit nur aktiven Spalten neu anzulegen und Daten explizit zu kopieren. Vorher ist zu
-prüfen, ob irgendein Release noch einen Downgrade- oder Exportvertrag für die alten Werte besitzt.
+Schema 6 nutzt den kontrollierten Tabellenneuaufbau und kopiert ausschließlich aktive Daten. Es
+gibt keinen destruktiven Fallback. Die Altspalten verbleiben nur in historischen Schemaexports;
+Downgrades werden weiterhin nicht unterstützt.
 
 ### Persistenztypen sind teilweise stringbasiert und verlieren Semantik
 
@@ -389,59 +363,85 @@ Renderer-Rand einfriert; Rotations- und Skalierungsmatrizen werden weiter nicht 
 interpretiert, weil eine matrixbasierte Variante die Null-Pixel-Goldens änderte. Ein gemeinsamer
 lokaler Layoutcontainer wäre langfristig sauberer.
 
-## Testarchitektur: breit, aber teilweise langsam und fragil
+## Testarchitektur nach Phase 7: deutlich schneller, mit bewussten Grenzen
 
-### Zu viele Fachtests benötigen Android beziehungsweise Room
+### Phase 7 behoben: reine Fachabläufe benötigen weder Android noch Room
 
-Die wichtigsten Komboregeln sind rein getestet. Viele End-to-End-Regeln liegen dennoch in
-Robolectric-Tests mit echter Room-Datenbank. Das gibt wertvolle Integrationssicherheit, macht den
-vollständigen Unit-Lauf aber deutlich langsamer und erschwert eine feine Fehlerlokalisierung.
+`InMemoryTaskRepository` führt Reward-, Completion-, Undo- und Schedule-Fälle als normale
+JUnit-Tests aus. Die Kernfälle beweisen atomare Multi-Booking-Abschlüsse, exakte Gegenbuchung,
+Wiederabschluss, Condition-Reopen, Transaktionsrollback und deterministisches Dashboardladen
+unter Dauerlast. Room bleibt für Mapping, SQL-Querybudgets, echte Transaktions-/Constraint-
+Semantik, Prozessneustart und Migrationen im Testbaum.
 
-Ein kleiner In-Memory-`TaskRepository`-Fake würde Reward-, Undo- und Schedule-Szenarien als
-schnelle JVM-Tests erlauben. Room-Tests müssten dann nur Mapping, Queries, Transaktionen und
-Migration beweisen. Diese Trennung hätte die Implementationsschleife erheblich beschleunigt.
+Negativ fiel auf, wie teuer der Fake wegen des sehr breiten `TaskRepository`-Ports wurde: Eine
+einzige Testimplementierung muss Tasks, Templates, Vorkommen, Schritte, XP, Kombos, Ledger,
+Sortierung, Cascades und Transaktionsrollback nachbilden. Das ist selbst neue technische Schuld.
+Sie ist vertretbar, weil der Fake bewusst keine SQL-Eigenschaften vortäuscht und Room-
+Integrationstests erhalten bleiben. Langfristig wären kleinere Ports oder Aggregate besser;
+sonst können Sortier- oder Constraintsemantik zwischen Fake und Room auseinanderlaufen.
 
-### Migrationsfixtures duplizieren historische Schemata als SQL
+Nicht alle älteren Robolectric-Use-Case-Tests wurden mechanisch gelöscht. Einige verbinden
+bewusst Service, Mapper und Repository oder prüfen konstante Queryzahlen. Ihre Existenz ist kein
+Ersatz für die neuen reinen Tests, aber notwendige Integrationsabdeckung. Die Pyramide ist damit
+verbessert, nicht dogmatisch auf nur eine Testart reduziert.
 
-Die Robolectric-Migrationstests bauen alte Tabellen von Hand auf; der Instrumentationstest
-prüft Teile davon nochmals mit exportierten Schemas. Handgeschriebenes historisches SQL ist
-lang, schwer zu vergleichen und kann vom tatsächlich veröffentlichten Schema abweichen.
+### Phase 7 behoben: historische Tabellenformen kommen aus den Room-Exports
 
-Gewünscht wäre ein Fixture-Register auf Basis der exportierten Room-Schemas und
-`MigrationTestHelper`: Ausgangsversion, Seed-Daten, Zielassertionen. Dieselben Fixtures sollten
-für API 26 und 35 wiederverwendet werden. Spezialfälle wie umsortierte oder fehlende
-Schritttemplates sollten eigene Seeds besitzen.
+`ExportedRoomSchemaFixture` liest Tabellen, Indizes, Views und Setup-Queries direkt aus den
+eingecheckten Room-JSONs. Das lange, handgeschriebene Schema-1-SQL wurde entfernt; spezielle
+Seed-Daten bleiben als lesbare Szenarien im Test. Die Kette 1→7 bis 6→7 läuft unter Robolectric
+auf API 26 und 35, während `MigrationTestHelper` dieselben Exporte instrumentiert verwendet.
 
-### Goldens sind wertvoll, aber als große Binärdateien schwer zu reviewen
+Gestört hat, dass Room für lokale JVM- und Instrumentationstests zwei verschiedene Hilfswege
+anbietet. `MigrationTestHelper` steht nur im Android-Test-Setup zur Verfügung; Robolectric
+brauchte daher einen kleinen JSON-Adapter und eine robuste Auflösung des Gradle-Arbeitsordners.
+Ein einziges von Room bereitgestelltes, hostfähiges Fixture-API wäre weniger fehleranfällig.
+Der neue Adapter vertraut außerdem dem Room-JSON-Format; bei einem Formatwechsel muss er bewusst
+angepasst werden.
 
-Die Phone-Goldens decken leer, teilweise gefüllt, erntereif, geerntet, dreistellige Werte sowie
-Tag, Abend und Nacht ab; die unveränderten Widget-Goldens schützen die bewusste visuelle Grenze.
-Das war beim Umbau sehr hilfreich. Gleichzeitig sind die PNG-Diffs groß und in normalem Git-
-Review kaum aussagekräftig. Ein versehentlich breit aktualisierter Baseline-Satz kann echte
-Regressionen verdecken.
+### Phase 7 verbessert: Golden-Fehler sind untersuchbar und CI-sicher
 
-Es fehlen automatisch erzeugte Before/After/Diff-Artefakte, ein Änderungsprotokoll pro Golden
-und Referenzen für Font Scale/kleine Breite. Der Update-Modus sollte Baselines in CI nie
-überschreiben können, und geänderte Goldens sollten als visuelles Review-Artefakt veröffentlicht
-werden.
+`GoldenAssertions` schreibt bei einem Fehler ein Tripel aus Expected, Actual und magentafarbenem
+Diff; Actual wird für jeden Lauf abgelegt. Baseline-Updates erfordern eine explizite lokale
+Umgebungsvariable und brechen in CI ab. Phone- und Widget-Toleranzen bleiben unverändert, und in
+dieser Phase wurde keine Baseline aktualisiert.
 
-### Accessibility wird punktuell, nicht systematisch geprüft
+Die Arbeit zeigte eine weitere Restschuld: Die statische, asynchrone Maserungspipeline und ihr
+prozessweiter Cache können Testreihenfolgen beeinflussen. Ein kombinierter Golden-Lauf zeigte
+einmal einen ausschließlich auf Maserungsringen liegenden Drift, der isoliert und im erneuten
+Gesamtlauf nicht reproduzierbar war. Das Gate blieb anschließend mehrfach grün, trotzdem wäre
+ein injizierbarer Pipeline-/Cache-Scope pro Test stabiler als globale Test-Hooks. Außerdem sind
+große PNGs weiterhin schlecht im Textreview; die Artefakte verbessern Diagnose, ersetzen aber
+kein menschliches visuelles Review.
 
-48-dp-Touchflächen und zentrale Content Descriptions besitzen Tests. Nicht vollständig geprüft
-sind TalkBack-Reihenfolge, Rollen/Zustände, große Schrift, Kontrast aller Tagespaletten und die
-Bedienbarkeit des Inline-Editors mit Tastatur. Besonders ein gezeichnetes Gefäß braucht eine
-semantische Zustandsbeschreibung, die über einen einzelnen String hinaus langfristig konsistent
-bleibt.
+### Phase 7 verbessert: feste Skalierungs- und Accessibility-Matrix
 
-Ein Accessibility-Testkatalog pro interaktivem Zustand und mindestens ein instrumentierter
-Accessibility-Scanner würden die aktuellen punktuellen Assertions ergänzen.
+Today und der expandierte Inline-Editor werden bei 320, 412 und 600 dp jeweils mit Font Scale
+1,0, 1,3 und 2,0 gemessen. Die Matrix prüft horizontale Grenzen, sichtbaren Text, 48-dp-Ziele,
+Standardreihenfolge, Button-/Toggle-Rollen, Checked-State und Enter-Taste. Der Satzeditor stapelt
+seine Aktionen bei schmaler Breite oder großer Schrift. Gezeichnete Tau- und Gefäßcontrols
+besitzen explizite Accessibility-Rollen; doppelte Fokusziele auf Schrittlabel und Tau wurden
+entfernt. Bestehende Tests decken Reduced Motion und die WCAG-Kontraste der Tagespaletten ab.
 
-### Es fehlt ein Performance- und Dauerlast-Gate
+Negativ war, dass die programmgesteuerte View-Hierarchie keine semantische Struktur mitliefert.
+Rollen, Reihenfolge, Fokus und Zustände mussten einzeln nachgerüstet werden; ein visuell
+anklickbares Textlabel war zugleich ein zu kleines und doppeltes TalkBack-Ziel. Robolectric kann
+Node-Metadaten und Tastaturverhalten beweisen, aber weder echte TalkBack-Ansagen noch Switch
+Access, Scannerbefunde, OEM-Schriftmetriken oder Bedienung auf einem physischen Gerät. Ein
+instrumentierter Accessibility-Scanner und manuelle TalkBack-Runden bleiben daher notwendig.
 
-Kein Test misst Renderzeit, Cacheverbrauch, wiederholte Rewardaktionen, sehr lange Historien oder
-viele Tasks/Schritte. Die Funktionstests beweisen korrekte Einzelabläufe, nicht das Verhalten nach
-hunderten Vorkommen oder schnellen Aktionsfolgen. Gerade `reconcile`, vollständige Dashboard-
-Loads, globale Comboscans und Canvas-Cache sollten mit realistischen Mengen gemessen werden.
+### Phase 7 ergänzt Dauerlast, aber kein vollständiges Geräte-Performancegate
+
+Ein deterministischer Dauerlastfall lädt 240 Tasks, 2.880 offene Schritte, 240 Kombos und 4.800
+historische Vorkommen über den In-Memory-Port. Er besitzt ein großzügiges Zehn-Sekunden-Limit,
+damit er algorithmische Ausreißer erkennt, ohne ein CI-Mikrobenchmark zu spielen. Querybudget-
+Tests sichern die gebündelten Room-Abfragen; Phase 6 misst separat Renderer-Median, p95, Cache
+und Heap.
+
+Der Fake-Stresstest misst keine SQLite-I/O, Cursorallokation, Low-End-GPU oder reale
+Frameverteilung. Ein reproduzierbarer Macrobenchmark auf einem fest definierten API-26-Gerät
+wäre aussagekräftiger. Gewünscht wären außerdem Produktions-Telemetrie oder wenigstens ein
+versioniertes, gerätebasiertes Budget statt ausschließlich hostabhängiger Tests.
 
 ## Was ich mir als Ausgangslage gewünscht hätte
 
@@ -478,9 +478,9 @@ Loads, globale Comboscans und Canvas-Cache sollten mit realistischen Mengen geme
    `MainActivity`, `TaskViewModel` und `FocusTaskView` extrahieren; stabile IDs ergänzen.
 7. **Erledigt in Phase 6 – Renderer messen, bevor er erweitert wird.** Framezeit, Speicher und Cache-Hit-Rate
    erfassen; Geometrie vorab berechnen und den Cache anhand realer Messwerte begrenzen.
-8. **Offen für Phase 7 – Testpyramide beschleunigen.** In-Memory-Repository für Fachabläufe, gemeinsame
+8. **Erledigt in Phase 7 – Testpyramide beschleunigen.** In-Memory-Repository für Fachabläufe, gemeinsame
    Room-Migrationsfixtures und visuelle Diff-Artefakte einführen.
-9. **Offen für Phase 7 – Skalierungs- und Accessibility-Matrix ergänzen.** Große Schrift, schmale Breite,
+9. **Erledigt in Phase 7 – Skalierungs- und Accessibility-Matrix ergänzen.** Große Schrift, schmale Breite,
    TalkBack-Reihenfolge, Tastaturbedienung und alle Tagespaletten automatisiert prüfen.
 
 ## Schlussfolgerung
@@ -488,9 +488,11 @@ Loads, globale Comboscans und Canvas-Cache sollten mit realistischen Mengen geme
 Die Implementierung ist für den aktuellen Produktumfang tragfähig und durch breite Tests
 abgesichert. Phasen 1 bis 5 haben die zuvor fehlende Eindeutigkeit bei Satzabschluss,
 Legacyfortschritt, Buchungen, Completion-Orchestrierung und Presentation-Verträgen beseitigt.
-Die verbleibende Hauptschuld liegt jetzt klarer abgegrenzt im Software-Halo/Blur des
-Maserungsrenderers, in der langsamen Room-lastigen Testpyramide, in duplizierten
-Migrationsfixtures und in noch unvollständigen Skalierungs-, Accessibility- und Dauerlast-Gates.
+Die verbleibende Hauptschuld liegt jetzt klarer abgegrenzt im Software-Halo/Blur und globalen
+Lifecycle des Maserungsrenderers, im breiten Repository-/Fake-Vertrag, in programmgesteuerter
+Accessibility, in langen Snapshot-Konstruktoren und in fehlenden Geräte-Macrobenchmarks. Die
+Room-lastige Kernschleife, dupliziertes Schema-SQL und die fehlende Skalierungsmatrix sind
+behoben.
 
 Weitere Reward-, Today- und Maserungsfeatures können auf den typisierten Verträgen und der
 asynchronen Renderpipeline aufbauen. Prozesspersistente Presentation-Effects, kleinere Stores,

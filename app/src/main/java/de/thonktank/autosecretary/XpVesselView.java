@@ -25,6 +25,7 @@ public final class XpVesselView extends View {
     public XpVesselView(Context context) {
         super(context); style = new UiStyle(context);
         setMinimumWidth(style.dp(52)); setMinimumHeight(style.dp(52)); setClickable(true);
+        AccessibilityRoles.button(this);
         setLayerType(LAYER_TYPE_SOFTWARE, null);
     }
 
@@ -34,6 +35,7 @@ public final class XpVesselView extends View {
         float nextFill = total == 0 || collected == 0 ? 0f : done / (float) total;
         this.fill = nextFill;
         this.ready = ready; this.palette = palette; this.comboStage = Math.max(0, comboStage);
+        setActivated(ready);
         animateFill(nextFill);
         setEnabled(ready);
         if (ready && android.animation.ValueAnimator.areAnimatorsEnabled()) startPulse();
