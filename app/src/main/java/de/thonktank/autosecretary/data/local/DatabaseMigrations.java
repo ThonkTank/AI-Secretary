@@ -186,5 +186,73 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Moves mutable reward snapshots into an immutable signed booking ledger. */
+    public static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE _m_occurrences AS SELECT * FROM occurrences");
+            database.execSQL("CREATE TABLE _m_occurrence_steps AS SELECT * FROM occurrence_steps");
+            database.execSQL("DROP TABLE occurrence_steps");
+            database.execSQL("DROP TABLE occurrences");
+
+            database.execSQL("CREATE TABLE occurrences (id TEXT NOT NULL, taskId TEXT NOT NULL, "
+                    + "scheduledOn TEXT NOT NULL, state TEXT NOT NULL, sortOrder INTEGER NOT NULL, "
+                    + "completedOn TEXT NOT NULL, slot TEXT NOT NULL, PRIMARY KEY(id), "
+                    + "FOREIGN KEY(taskId) REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO occurrences SELECT id,taskId,scheduledOn,state,sortOrder,"
+                    + "completedOn,slot FROM _m_occurrences");
+            database.execSQL("CREATE INDEX index_occurrences_taskId ON occurrences(taskId)");
+            database.execSQL("CREATE INDEX index_occurrences_state_completedOn "
+                    + "ON occurrences(state,completedOn)");
+            database.execSQL("CREATE UNIQUE INDEX index_occurrences_taskId_scheduledOn_slot "
+                    + "ON occurrences(taskId,scheduledOn,slot)");
+
+            database.execSQL("CREATE TABLE occurrence_steps (id TEXT NOT NULL, "
+                    + "occurrenceId TEXT NOT NULL, position INTEGER NOT NULL, text TEXT NOT NULL, "
+                    + "done INTEGER NOT NULL, amountKind TEXT NOT NULL, plannedSets INTEGER, "
+                    + "plannedReps INTEGER, plannedDurationSeconds INTEGER, note TEXT NOT NULL, "
+                    + "actualRepetitions TEXT NOT NULL, sourceTemplateId TEXT, "
+                    + "comboOwnerId TEXT NOT NULL, PRIMARY KEY(id), FOREIGN KEY(occurrenceId) "
+                    + "REFERENCES occurrences(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO occurrence_steps SELECT id,occurrenceId,position,text,done,"
+                    + "amountKind,plannedSets,plannedReps,plannedDurationSeconds,note,"
+                    + "actualRepetitions,sourceTemplateId,comboOwnerId FROM _m_occurrence_steps");
+            database.execSQL("CREATE INDEX index_occurrence_steps_occurrenceId "
+                    + "ON occurrence_steps(occurrenceId)");
+
+            database.execSQL("CREATE TABLE reward_bookings (id TEXT NOT NULL, "
+                    + "transactionId TEXT NOT NULL, occurrenceId TEXT NOT NULL, "
+                    + "occurrenceStepId TEXT, ownerId TEXT NOT NULL, kind TEXT NOT NULL, "
+                    + "target TEXT NOT NULL, xpDelta INTEGER NOT NULL, "
+                    + "comboPointDelta INTEGER NOT NULL, bookedOn TEXT NOT NULL, "
+                    + "reversesBookingId TEXT, PRIMARY KEY(id), FOREIGN KEY(occurrenceId) "
+                    + "REFERENCES occurrences(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
+                    + "FOREIGN KEY(occurrenceStepId) REFERENCES occurrence_steps(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO reward_bookings SELECT 'legacy-step-reward:' || os.id,"
+                    + "'legacy-step-reward:' || os.id,os.occurrenceId,os.id,os.comboOwnerId,"
+                    + "'LEGACY_STEP','VESSEL',os.earnedXp,os.comboPointDelta,o.scheduledOn,NULL "
+                    + "FROM _m_occurrence_steps os JOIN _m_occurrences o ON o.id=os.occurrenceId "
+                    + "WHERE os.earnedXp != 0 OR os.comboPointDelta != 0");
+            database.execSQL("INSERT INTO reward_bookings SELECT 'legacy-occurrence-reward:' || o.id,"
+                    + "'legacy-occurrence-reward:' || o.id,o.id,NULL,'task:' || o.taskId,"
+                    + "'LEGACY_COMPLETION','HEAD',o.awardedXp,o.comboPointDelta,"
+                    + "CASE WHEN o.completedOn='' THEN o.scheduledOn ELSE o.completedOn END,NULL "
+                    + "FROM _m_occurrences o WHERE o.awardedXp != 0 OR o.comboPointDelta != 0");
+            database.execSQL("CREATE INDEX index_reward_bookings_transactionId "
+                    + "ON reward_bookings(transactionId)");
+            database.execSQL("CREATE INDEX index_reward_bookings_occurrenceId "
+                    + "ON reward_bookings(occurrenceId)");
+            database.execSQL("CREATE INDEX index_reward_bookings_occurrenceStepId "
+                    + "ON reward_bookings(occurrenceStepId)");
+            database.execSQL("CREATE INDEX index_reward_bookings_ownerId "
+                    + "ON reward_bookings(ownerId)");
+            database.execSQL("CREATE UNIQUE INDEX index_reward_bookings_reversesBookingId "
+                    + "ON reward_bookings(reversesBookingId)");
+
+            database.execSQL("DROP TABLE _m_occurrence_steps");
+            database.execSQL("DROP TABLE _m_occurrences");
+        }
+    };
+
     private DatabaseMigrations() { }
 }

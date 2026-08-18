@@ -51,7 +51,8 @@ public final class DatabaseMigrationRobolectricTest {
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_1_2,
                         DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4,
-                        DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6)
+                        DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6,
+                        DatabaseMigrations.MIGRATION_6_7)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -82,7 +83,7 @@ public final class DatabaseMigrationRobolectricTest {
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_2_3,
                         DatabaseMigrations.MIGRATION_3_4, DatabaseMigrations.MIGRATION_4_5,
-                        DatabaseMigrations.MIGRATION_5_6)
+                        DatabaseMigrations.MIGRATION_5_6, DatabaseMigrations.MIGRATION_6_7)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -127,7 +128,8 @@ public final class DatabaseMigrationRobolectricTest {
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_3_4,
-                        DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6)
+                        DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6,
+                        DatabaseMigrations.MIGRATION_6_7)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT recurrence,ongoing,note,archived FROM tasks "
@@ -154,7 +156,7 @@ public final class DatabaseMigrationRobolectricTest {
         migrated.close();
     }
 
-    @Test public void migrationFiveToSixKeepsUnknownOwnerWithoutInventingTemplateId() {
+    @Test public void migrationFiveToSevenKeepsUnknownOwnerWithoutInventingTemplateId() {
         createVersionOneDatabase();
         upgradeFixtureToVersionFive();
         SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
@@ -177,14 +179,21 @@ public final class DatabaseMigrationRobolectricTest {
         helper.close();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.MIGRATION_5_6)
+                .addMigrations(DatabaseMigrations.MIGRATION_5_6,
+                        DatabaseMigrations.MIGRATION_6_7)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
-        try (Cursor cursor = database.query("SELECT sourceTemplateId,comboOwnerId,earnedXp "
+        try (Cursor cursor = database.query("SELECT sourceTemplateId,comboOwnerId "
                 + "FROM occurrence_steps WHERE id='unknown-step'")) {
             assertTrue(cursor.moveToFirst());
             assertEquals(null, cursor.getString(0));
             assertEquals("step:missing-template", cursor.getString(1));
+        }
+        try (Cursor cursor = database.query("SELECT ownerId,target,xpDelta "
+                + "FROM reward_bookings WHERE occurrenceStepId='unknown-step'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("step:missing-template", cursor.getString(0));
+            assertEquals("VESSEL", cursor.getString(1));
             assertEquals(10, cursor.getInt(2));
         }
         assertXpAndZeroCombos(database, 53);
@@ -192,7 +201,7 @@ public final class DatabaseMigrationRobolectricTest {
         migrated.close();
     }
 
-    @Test public void migrationFourToSixPreservesXpCombosRewardsAndStableSource() {
+    @Test public void migrationFourToSevenPreservesXpCombosRewardsAndStableSource() {
         createVersionOneDatabase();
         upgradeFixtureToVersionFour();
         SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
@@ -218,7 +227,7 @@ public final class DatabaseMigrationRobolectricTest {
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_4_5,
-                        DatabaseMigrations.MIGRATION_5_6)
+                        DatabaseMigrations.MIGRATION_5_6, DatabaseMigrations.MIGRATION_6_7)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
@@ -228,23 +237,27 @@ public final class DatabaseMigrationRobolectricTest {
             assertTrue(cursor.moveToFirst()); assertTrue(cursor.getInt(0) >= 3);
             assertEquals(0, cursor.getInt(1));
         }
-        try (Cursor cursor = database.query("SELECT sourceTemplateId,comboOwnerId,earnedXp,comboPointDelta "
+        try (Cursor cursor = database.query("SELECT sourceTemplateId,comboOwnerId "
                 + "FROM occurrence_steps WHERE id='open-step'")) {
             assertTrue(cursor.moveToFirst()); assertEquals("stable-step", cursor.getString(0));
             assertEquals("step:stable-step", cursor.getString(1));
-            assertEquals(10, cursor.getInt(2)); assertEquals(0, cursor.getInt(3));
         }
-        try (Cursor cursor = database.query("SELECT awardedXp,comboPointDelta FROM occurrences "
-                + "WHERE id='done-v4'")) {
-            assertTrue(cursor.moveToFirst()); assertEquals(10, cursor.getInt(0));
-            assertEquals(0, cursor.getInt(1));
+        try (Cursor cursor = database.query("SELECT target,xpDelta,comboPointDelta "
+                + "FROM reward_bookings WHERE occurrenceStepId='open-step'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals("VESSEL", cursor.getString(0));
+            assertEquals(10, cursor.getInt(1)); assertEquals(0, cursor.getInt(2));
+        }
+        try (Cursor cursor = database.query("SELECT target,xpDelta,comboPointDelta FROM reward_bookings "
+                + "WHERE occurrenceId='done-v4'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals("HEAD", cursor.getString(0));
+            assertEquals(10, cursor.getInt(1)); assertEquals(0, cursor.getInt(2));
         }
         assertLegacyColumnsRemoved(database);
         RewardReceipt undo = new UndoOccurrence(new RoomTaskRepository(migrated), new Clock() {
             @Override public LocalDate today() { return LocalDate.of(2026, 8, 17); }
             @Override public LocalTime time() { return LocalTime.NOON; }
         }).execute("done-v4");
-        assertEquals(10, undo.xp);
+        assertEquals(-10, undo.xp);
         assertEquals(127, new RoomTaskRepository(migrated).xp());
         assertEquals(OccurrenceState.OPEN,
                 new RoomTaskRepository(migrated).findOccurrence("done-v4").state);
@@ -386,6 +399,22 @@ public final class DatabaseMigrationRobolectricTest {
                 assertTrue(!column.equals("routineLevel") && !column.equals("routineStreak")
                         && !column.equals("routineStreakWeeks")
                         && !column.equals("lastStreakWeek"));
+            }
+        }
+        assertColumnsMissing(database, "occurrences", "awardedXp", "comboPointDelta");
+        assertColumnsMissing(database, "occurrence_steps", "earnedXp", "comboPointDelta");
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM sqlite_master WHERE type='index' "
+                + "AND name='index_reward_bookings_reversesBookingId'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(1, cursor.getInt(0));
+        }
+    }
+
+    private static void assertColumnsMissing(SupportSQLiteDatabase database, String table,
+                                             String... forbidden) {
+        try (Cursor cursor = database.query("PRAGMA table_info(" + table + ")")) {
+            while (cursor.moveToNext()) {
+                String column = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+                for (String value : forbidden) assertTrue(!value.equals(column));
             }
         }
     }

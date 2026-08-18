@@ -7,32 +7,31 @@ import androidx.room.Index;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
-@Entity(tableName = "occurrences", foreignKeys = @ForeignKey(entity = TaskEntity.class, parentColumns = "id", childColumns = "taskId", onDelete = ForeignKey.CASCADE), indices = {@Index("taskId"), @Index(value = {"state", "completedOn"}), @Index(value = {"taskId", "scheduledOn", "slot"}, unique = true)})
+@Entity(tableName = "occurrences",
+        foreignKeys = @ForeignKey(entity = TaskEntity.class, parentColumns = "id",
+                childColumns = "taskId", onDelete = ForeignKey.CASCADE),
+        indices = {@Index("taskId"), @Index(value = {"state", "completedOn"}),
+                @Index(value = {"taskId", "scheduledOn", "slot"}, unique = true)})
 public class OccurrenceEntity {
     @PrimaryKey @NonNull public String id;
     @NonNull public String taskId;
     @NonNull public String scheduledOn;
-    @NonNull public String state; // OPEN, COMPLETED
+    @NonNull public String state;
     public int sortOrder;
     @NonNull public String completedOn;
     @NonNull public String slot;
-    public int awardedXp;
-    public int comboPointDelta;
-    @Ignore public OccurrenceEntity(@NonNull String id, @NonNull String taskId, @NonNull String scheduledOn, @NonNull String state, int sortOrder, @NonNull String completedOn) {
-        this(id, taskId, scheduledOn, state, sortOrder, completedOn, "MORNING", 0, 0);
-    }
+
     @Ignore public OccurrenceEntity(@NonNull String id, @NonNull String taskId,
-                            @NonNull String scheduledOn, @NonNull String state,
-                            int sortOrder, @NonNull String completedOn, @NonNull String slot) {
-        this(id, taskId, scheduledOn, state, sortOrder, completedOn, slot, 0, 0);
+                                    @NonNull String scheduledOn, @NonNull String state,
+                                    int sortOrder, @NonNull String completedOn) {
+        this(id, taskId, scheduledOn, state, sortOrder, completedOn, "MORNING");
     }
+
     public OccurrenceEntity(@NonNull String id, @NonNull String taskId,
                             @NonNull String scheduledOn, @NonNull String state,
-                            int sortOrder, @NonNull String completedOn, @NonNull String slot,
-                            int awardedXp, int comboPointDelta) {
-        this.id = id; this.taskId = taskId; this.scheduledOn = scheduledOn; this.state = state; this.sortOrder = sortOrder; this.completedOn = completedOn;
+                            int sortOrder, @NonNull String completedOn, @NonNull String slot) {
+        this.id = id; this.taskId = taskId; this.scheduledOn = scheduledOn;
+        this.state = state; this.sortOrder = sortOrder; this.completedOn = completedOn;
         this.slot = slot;
-        this.awardedXp = awardedXp;
-        this.comboPointDelta = comboPointDelta;
     }
 }

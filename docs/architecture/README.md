@@ -16,6 +16,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-007: Update-Präsentation und Android-Systemnavigation](adr-007-update-praesentation-und-systemnavigation.md)
 - [ADR-008: Deterministische Update-Abhängigkeiten und Konfiguration](adr-008-deterministische-update-abhaengigkeiten.md)
 - [ADR-009: Vertrauensgrenze für Update-Transport und Download](adr-009-update-transport-und-download-vertrauen.md)
+- [ADR-010: Unveränderliches Reward-Ledger und Gegenbuchungen](adr-010-reward-ledger-und-gegenbuchungen.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der

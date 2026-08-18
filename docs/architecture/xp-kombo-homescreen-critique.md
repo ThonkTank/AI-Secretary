@@ -10,7 +10,10 @@ Stand: 2026-08-18
 - Phase 2 behoben: Schema 6 entfernt Legacy-Streakspalten und `RoutineProgress` aus der aktiven
   Domäne; neue Vorkommensschritte speichern ihre Template-Herkunft, historische nur bei einem
   eindeutigen Match.
-- Phasen 3–7 bleiben offen.
+- Phase 3 behoben: Schema 7 ersetzt verteilte Rewardfelder durch ein unveränderliches Ledger,
+  exakte Gegenbuchungen und vorzeichenbehaftete Receipts; Anzeigeprojektionen stammen aus dem
+  Ledger.
+- Phasen 4–7 bleiben offen.
 
 ## Umfang und Gesamturteil
 

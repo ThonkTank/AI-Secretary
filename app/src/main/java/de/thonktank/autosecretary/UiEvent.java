@@ -20,26 +20,24 @@ public final class UiEvent {
     public final String taskTitle;
     public final int rewardXp;
     public final RewardReceipt.Target rewardTarget;
-    public final boolean rewardReversed;
     public final String rewardActionKey;
     private final AtomicBoolean consumed = new AtomicBoolean();
 
     private UiEvent(Type type, String message, String taskId, String taskTitle) {
         this(type, message, taskId, taskTitle, 0,
-                RewardReceipt.Target.NONE, false, null);
+                RewardReceipt.Target.NONE, null);
     }
 
     private UiEvent(Type type, String message, String taskId, String taskTitle,
                     int rewardXp,
                     RewardReceipt.Target rewardTarget,
-                    boolean rewardReversed, String rewardActionKey) {
+                    String rewardActionKey) {
         this.type = type;
         this.message = message;
         this.taskId = taskId;
         this.taskTitle = taskTitle;
         this.rewardXp = rewardXp;
         this.rewardTarget = rewardTarget;
-        this.rewardReversed = rewardReversed;
         this.rewardActionKey = rewardActionKey;
     }
 
@@ -61,7 +59,7 @@ public final class UiEvent {
 
     public static UiEvent reward(RewardReceipt result, String actionKey) {
         return new UiEvent(Type.REWARD, null, null, null, result.xp,
-                result.target, result.reversed, actionKey);
+                result.target, actionKey);
     }
 
     public boolean consume() {

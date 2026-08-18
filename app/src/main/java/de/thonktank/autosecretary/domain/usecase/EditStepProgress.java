@@ -30,17 +30,16 @@ public final class EditStepProgress {
             }
             if (current.plannedSets != null && checked.size() > current.plannedSets)
                 throw new IllegalArgumentException("Confirmed set count exceeds planned sets");
-            repository.updateOccurrenceStep(copy(current, checked, current.done,
-                    current.earnedXp, current.comboPointDelta));
+            repository.updateOccurrenceStep(copy(current, checked, current.done));
         });
         return RewardReceipt.none();
     }
 
     private static OccurrenceStep copy(OccurrenceStep value, List<Integer> repetitions,
-                                       boolean done, int xp, int delta) {
+                                       boolean done) {
         return new OccurrenceStep(value.id, value.occurrenceId, value.position, value.text,
                 done, value.amountKind, value.plannedSets, value.plannedReps,
                 value.plannedDurationSeconds, value.note, repetitions, value.sourceTemplateId,
-                value.comboOwnerId, xp, delta);
+                value.comboOwnerId);
     }
 }

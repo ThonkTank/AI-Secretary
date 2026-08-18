@@ -246,6 +246,61 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test public void migration6To7CreatesLedgerWithoutChangingMaterializedStats() throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 6);
+        database.execSQL("INSERT INTO tasks (id,title,slot,recurrence,intervalDays,weekdayMask,"
+                + "ongoing,conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,"
+                + "lastCompletedOn,displayOrder,hasCompletedOccurrence,estimatedMinutes,"
+                + "timeOfDayMask,boundKind,boundUntilOn,boundWeeks,remainingCount,deadlineOn,note) "
+                + "VALUES ('v6','Routine','MORNING','DAILY',1,0,0,'',0,0,'2026-08-18','','',"
+                + "1001,1,NULL,1,'FOREVER','',NULL,NULL,'','')");
+        database.execSQL("INSERT INTO task_steps (id,taskId,position,text,weekdayMask,amountKind,"
+                + "plannedSets,plannedReps,plannedDurationSeconds,note) VALUES "
+                + "('stable','v6',0,'Schritt',0,'NONE',NULL,NULL,NULL,'')");
+        database.execSQL("INSERT INTO occurrences (id,taskId,scheduledOn,state,sortOrder,"
+                + "completedOn,slot,awardedXp,comboPointDelta) VALUES "
+                + "('done','v6','2026-08-18','COMPLETED',1,'2026-08-18','MORNING',20,3)");
+        database.execSQL("INSERT INTO occurrence_steps (id,occurrenceId,position,text,done,"
+                + "amountKind,plannedSets,plannedReps,plannedDurationSeconds,note,"
+                + "actualRepetitions,sourceTemplateId,comboOwnerId,earnedXp,comboPointDelta) VALUES "
+                + "('snapshot','done',0,'Schritt',1,'NONE',NULL,NULL,NULL,'','','stable',"
+                + "'step:stable',10,1)");
+        database.execSQL("INSERT INTO stats (id,xp) VALUES (1,137)");
+        database.execSQL("INSERT INTO combo_progress (ownerId,taskId,kind,points,settledThroughOn) "
+                + "VALUES ('task:v6','v6','TASK',3,'2026-08-18'),"
+                + "('step:stable','v6','STEP',1,'2026-08-18')");
+        database.close();
+
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 7, true, DatabaseMigrations.MIGRATION_6_7);
+        try (Cursor cursor = database.query("SELECT target,occurrenceStepId,xpDelta,"
+                + "comboPointDelta FROM reward_bookings ORDER BY target")) {
+            assertEquals(2, cursor.getCount());
+            assertTrue(cursor.moveToFirst());
+            assertEquals("HEAD", cursor.getString(0)); assertEquals(null, cursor.getString(1));
+            assertEquals(20, cursor.getInt(2)); assertEquals(3, cursor.getInt(3));
+            assertTrue(cursor.moveToNext());
+            assertEquals("VESSEL", cursor.getString(0)); assertEquals("snapshot", cursor.getString(1));
+            assertEquals(10, cursor.getInt(2)); assertEquals(1, cursor.getInt(3));
+        }
+        try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(137, cursor.getInt(0));
+        }
+        assertColumnsMissing(database, "occurrences", "awardedXp", "comboPointDelta");
+        assertColumnsMissing(database, "occurrence_steps", "earnedXp", "comboPointDelta");
+        database.close();
+    }
+
+    private static void assertColumnsMissing(SupportSQLiteDatabase database, String table,
+                                             String... forbidden) {
+        try (Cursor cursor = database.query("PRAGMA table_info(" + table + ")")) {
+            while (cursor.moveToNext()) {
+                String column = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+                for (String value : forbidden) assertTrue(!value.equals(column));
+            }
+        }
+    }
+
     private static void assertIndexExists(SupportSQLiteDatabase database, String index) {
         try (Cursor cursor = database.query(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='" + index + "'")) {

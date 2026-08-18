@@ -115,7 +115,7 @@ public final class UseCaseRobolectricTest {
         Dashboard dashboard = load.execute(TODAY);
 
         assertEquals(6, dashboard.tasks.size());
-        assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 6);
+        assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 7);
         assertEquals(1, queries.stream().filter(sql -> sql.contains("occurrence_steps")).count());
     }
 
@@ -233,7 +233,10 @@ public final class UseCaseRobolectricTest {
         assertEquals(10, repository.xp());
 
         Occurrence completion = repository.occurrences(ongoing.id).get(0);
-        assertEquals(10, completion.awardedXp);
+        assertEquals(10, repository.rewardBookings(completion.id).stream()
+                .filter(value -> value.target
+                        == de.thonktank.autosecretary.domain.model.RewardBooking.Target.HEAD)
+                .mapToInt(value -> value.xpDelta).sum());
         new UndoOccurrence(repository, clock).execute(completion.id);
 
         assertFalse(repository.findTask(ongoing.id).archived);

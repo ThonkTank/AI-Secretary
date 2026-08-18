@@ -5,6 +5,10 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
+import de.thonktank.autosecretary.domain.model.RewardBooking;
+
+import java.time.LocalDate;
+import java.util.Collections;
 
 import org.junit.Test;
 
@@ -25,7 +29,11 @@ public final class RewardAnimationQueueTest {
     }
 
     private static UiEvent event(int xp) {
-        return UiEvent.reward(new RewardReceipt(xp, RewardReceipt.Target.HEAD, false),
+        RewardBooking booking = new RewardBooking("booking-" + xp, "transaction-" + xp,
+                "occurrence", null, "task:test", RewardBooking.Kind.SINGLE_COMPLETION,
+                RewardBooking.Target.HEAD, xp, 0, LocalDate.of(2026, 8, 18), null);
+        return UiEvent.reward(RewardReceipt.of(booking.transactionId,
+                        Collections.singletonList(booking), RewardReceipt.Target.HEAD),
                 "complete:test");
     }
 }

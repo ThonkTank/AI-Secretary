@@ -41,4 +41,9 @@ public interface TaskDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) void putCombo(ComboEntity combo);
     @Query("SELECT * FROM combo_progress WHERE ownerId = :ownerId LIMIT 1") ComboEntity combo(String ownerId);
     @Query("SELECT * FROM combo_progress") List<ComboEntity> allCombos();
+    @Insert(onConflict = OnConflictStrategy.ABORT) void insertRewardBooking(RewardBookingEntity booking);
+    @Query("SELECT * FROM reward_bookings WHERE occurrenceId = :occurrenceId ORDER BY bookedOn,id")
+    List<RewardBookingEntity> rewardBookings(String occurrenceId);
+    @Query("SELECT * FROM reward_bookings WHERE occurrenceId IN (:occurrenceIds) ORDER BY bookedOn,id")
+    List<RewardBookingEntity> rewardBookings(List<String> occurrenceIds);
 }

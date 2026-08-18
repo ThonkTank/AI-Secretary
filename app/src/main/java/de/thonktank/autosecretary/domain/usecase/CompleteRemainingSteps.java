@@ -6,6 +6,9 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
+import java.util.ArrayList;
+import de.thonktank.autosecretary.domain.model.RewardBooking;
+
 public final class CompleteRemainingSteps {
     private final TaskRepository repository;
     private final RewardEngine rewards;
@@ -13,19 +16,17 @@ public final class CompleteRemainingSteps {
         this.repository = repository; rewards = new RewardEngine(repository, clock);
     }
     public RewardReceipt execute(String occurrenceId) {
-        final int[] total = {0};
-        final int[] comboDelta = {0};
+        final String transactionId = RewardEngine.newTransactionId();
+        final ArrayList<RewardBooking> bookings = new ArrayList<>();
         repository.inTransaction(() -> {
             Occurrence occurrence = repository.findOccurrence(occurrenceId);
             if (occurrence == null) return;
             for (OccurrenceStep step : repository.occurrenceSteps(occurrenceId)) {
                 if (step.done) continue;
-                RewardReceipt receipt = rewards.completeStep(occurrence, step);
-                total[0] += receipt.xp;
-                comboDelta[0] += receipt.comboPointDelta;
+                RewardReceipt receipt = rewards.completeStep(occurrence, step, transactionId);
+                bookings.addAll(receipt.bookings);
             }
         });
-        return new RewardReceipt(total[0], comboDelta[0],
-                RewardReceipt.Target.VESSEL, false);
+        return RewardReceipt.of(transactionId, bookings, RewardReceipt.Target.VESSEL);
     }
 }

@@ -7,6 +7,7 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
+import de.thonktank.autosecretary.domain.model.RewardBooking;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -48,4 +49,8 @@ public interface TaskRepository {
     ComboProgress combo(String ownerId);
     void putCombo(ComboProgress combo);
     List<ComboProgress> combos();
+
+    void insertRewardBooking(RewardBooking booking);
+    List<RewardBooking> rewardBookings(String occurrenceId);
+    List<RewardBooking> rewardBookings(List<String> occurrenceIds);
 }

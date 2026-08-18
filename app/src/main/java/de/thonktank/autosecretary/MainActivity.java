@@ -332,7 +332,7 @@ public class MainActivity extends ComponentActivity {
         UiEvent event = rewardAnimations.startNext();
         if (event == null) return;
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
-            if (!event.rewardReversed
+            if (event.rewardXp > 0
                     && event.rewardTarget == RewardReceipt.Target.HEAD)
                 header.playRewardGlint(uiState.palette);
             rewardAnimations.finish();
@@ -356,7 +356,7 @@ public class MainActivity extends ComponentActivity {
                 : systemTopInset + style.dp(180));
         float fromX = source[0], fromY = source[1];
         float toX = target[0], toY = target[1];
-        if (event.rewardReversed) {
+        if (event.rewardXp < 0) {
             float swapX = fromX; fromX = toX; toX = swapX;
             float swapY = fromY; fromY = toY; toY = swapY;
         }
@@ -371,7 +371,7 @@ public class MainActivity extends ComponentActivity {
                 .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
                 .withEndAction(() -> {
                     root.removeView(value);
-                    if (!event.rewardReversed && head) header.playRewardGlint(uiState.palette);
+                    if (event.rewardXp > 0 && head) header.playRewardGlint(uiState.palette);
                     rewardAnimations.finish();
                     playNextReward();
                 });

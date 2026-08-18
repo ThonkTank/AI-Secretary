@@ -42,7 +42,8 @@ public final class DashboardUiMapper {
             int claimable = RewardPolicy.stepXp(stepCombo);
             steps.add(new TaskStepSnapshot(step.id, step.text, done, step.amountKind,
                     step.plannedSets, step.plannedReps, step.plannedDurationSeconds,
-                    step.note, step.actualRepetitions, stepStage, claimable, step.earnedXp));
+                    step.note, step.actualRepetitions, stepStage, claimable,
+                    item.earnedXp(step.id)));
             if (!done) {
                 remaining++;
                 if (remaining == 1) next = step.text;
@@ -71,7 +72,7 @@ public final class DashboardUiMapper {
                 task.title, displaySlot, softTime(displaySlot, task.ongoing), next, task.recurrence,
                 steps, remaining, !task.conditionText.isEmpty(), task.ongoing, item.done, overdue,
                 taskStage, task.displayOrder, claimable, item.done ? 0 : collected,
-                item.occurrence == null ? 0 : item.occurrence.awardedXp,
+                item.awardedXp,
                 !item.done && !steps.isEmpty() && remaining == 0 && collected > 0);
     }
 

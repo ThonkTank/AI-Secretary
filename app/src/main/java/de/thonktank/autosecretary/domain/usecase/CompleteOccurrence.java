@@ -7,6 +7,9 @@ import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
+import java.util.ArrayList;
+import de.thonktank.autosecretary.domain.model.RewardBooking;
+
 public final class CompleteOccurrence {
     private final TaskRepository repository;
     private final RewardEngine rewards;
@@ -19,15 +22,20 @@ public final class CompleteOccurrence {
     public RewardReceipt execute(String occurrenceId) {
         if (occurrenceId == null || occurrenceId.isEmpty()) return RewardReceipt.none();
         final RewardReceipt[] result = {RewardReceipt.none()};
+        final String transactionId = RewardEngine.newTransactionId();
         repository.inTransaction(() -> {
             Occurrence occurrence = repository.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN) return;
             Task task = repository.findTask(occurrence.taskId);
             if (task == null) return;
+            ArrayList<RewardBooking> bookings = new ArrayList<>();
             for (de.thonktank.autosecretary.domain.model.OccurrenceStep step
                     : repository.occurrenceSteps(occurrenceId))
-                if (!step.done) rewards.completeStep(occurrence, step);
-            result[0] = rewards.harvest(repository.findOccurrence(occurrenceId), task);
+                if (!step.done) bookings.addAll(rewards.completeStep(occurrence, step,
+                        transactionId).bookings);
+            bookings.addAll(rewards.harvest(repository.findOccurrence(occurrenceId), task,
+                    transactionId).bookings);
+            result[0] = RewardReceipt.of(transactionId, bookings, RewardReceipt.Target.HEAD);
         });
         return result[0];
     }

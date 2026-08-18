@@ -1,0 +1,50 @@
+# ADR-010: Unveränderliches Reward-Ledger und Gegenbuchungen
+
+- Status: angenommen
+- Datum: 2026-08-18
+
+## Kontext
+
+Bis Schema 6 lagen die tatsächlich angewandten XP- und Kombodeltas als veränderliche Felder
+direkt auf `Occurrence` und `OccurrenceStep`. Dadurch waren Zustandsautomat, Anzeigeprojektion
+und Abrechnungsbeleg gekoppelt. Ein Undo löschte diese Felder und transportierte seine Richtung
+zusätzlich über ein boolesches `reversed`. Atomare Aktionen mit mehreren Schrittbuchungen und
+einer Ernte ließen sich nicht als eine Transaktion beschreiben.
+
+## Entscheidung
+
+Schema 7 führt `reward_bookings` als append-only Ledger ein. Jede Buchung besitzt eine eindeutige
+Buchungs- und Transaktions-ID, Occurrence, optionalen Schritt, Owner, Art, Ziel (`VESSEL` oder
+`HEAD`), vorzeichenbehaftete XP- und Kombodeltas, Buchungsdatum sowie optional die Referenz auf
+die stornierte Originalbuchung.
+
+Undo verändert oder löscht keine Originalbuchung. Es fügt genau eine `REVERSAL`-Buchung mit den
+exakt negierten Deltas hinzu. Ein eindeutiger Index auf `reversesBookingId` verhindert eine zweite
+Gegenbuchung für dasselbe Original auch bei einem Retry. Ein späterer erneuter Abschluss erzeugt
+eine neue Originalbuchung und eine neue Transaktions-ID.
+
+`stats.xp` und `combo_progress` bleiben materialisierte Projektionen für schnelle Lesezugriffe.
+Sie werden innerhalb derselben Room-Transaktion wie Ledger und Zustandswechsel aktualisiert; das
+Ledger ist die Quelle der exakten Undo-Deltas. Nur `HEAD`-XP verändern `stats.xp`. `VESSEL`-XP
+bilden den eingesammelten Schrittwert und werden beim Ernten durch die Routine-Regel bewertet.
+
+Die Migration 6→7 überführt vorhandene Schritt- und Occurrence-Rewards in `LEGACY_STEP`- und
+`LEGACY_COMPLETION`-Buchungen, ohne Statistiken oder Komboprojektionen erneut zu erhöhen.
+Anschließend entfernt sie die Rewardfelder aus den aktiven Tabellen und Domänenmodellen.
+Dashboard und UI lesen eingesammelte beziehungsweise vergebene XP aus gebündelten
+Ledger-Projektionen.
+
+`RewardReceipt` enthält eine Transaktions-ID und die zugehörigen Buchungen. Seine XP- und
+Kombowerte sind vorzeichenbehaftet; Animation und Darstellung leiten die Richtung aus dem
+Vorzeichen ab. Ein separates Reverse-Flag existiert nicht mehr.
+
+## Konsequenzen
+
+Historie, Undo, Re-Completion und Restart sind nachvollziehbar, ohne fachliche Belege zu
+überschreiben. Eine Widget-Komplettaktion kann mehrere Schrittbuchungen und die Kopf-Buchung mit
+derselben Transaktions-ID atomar ausführen. Das Dashboard benötigt dafür eine zusätzliche, aber
+gebündelte Ledger-Abfrage.
+
+Das Ledger ist noch kein vollständiges Event-Sourcing: Occurrence-Zustand, Gesamt-XP und Kombos
+bleiben gespeicherte Projektionen. Ihre atomare Koordination liegt bis zur Trennung der
+Completion-, Reward- und Schedule-Komponenten weiterhin in den Use Cases.

@@ -171,14 +171,14 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(0, edit.execute(step.id, Arrays.asList(9, 11, 12)).xp);
         OccurrenceStep editedDone = repository.findOccurrenceStep(step.id);
         assertTrue(editedDone.done);
-        assertEquals(10, editedDone.earnedXp);
+        assertEquals(10, vesselXp(occurrence.id));
 
         ReopenExercise reopen = new ReopenExercise(repository, clock);
-        assertEquals(10, reopen.execute(step.id, Arrays.asList(9, 11, 12)).xp);
+        assertEquals(-10, reopen.execute(step.id, Arrays.asList(9, 11, 12)).xp);
         OccurrenceStep reopened = repository.findOccurrenceStep(step.id);
         assertFalse(reopened.done);
         assertEquals(Arrays.asList(9, 11, 12), reopened.actualRepetitions);
-        assertEquals(0, reopened.earnedXp);
+        assertEquals(0, vesselXp(occurrence.id));
         assertEquals(0, repository.combo(step.comboOwnerId).points);
         assertEquals(0, reopen.execute(step.id, reopened.actualRepetitions).xp);
 
@@ -189,6 +189,13 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(0, finish.execute(step.id).xp);
         assertTrue(repository.findOccurrenceStep(step.id).done);
         assertEquals(1, repository.combo(step.comboOwnerId).points);
+    }
+
+    private int vesselXp(String occurrenceId) {
+        return repository.rewardBookings(occurrenceId).stream()
+                .filter(value -> value.target
+                        == de.thonktank.autosecretary.domain.model.RewardBooking.Target.VESSEL)
+                .mapToInt(value -> value.xpDelta).sum();
     }
 
     @Test public void finishExerciseClosesEarlyAndNewOccurrenceStartsEmpty() {

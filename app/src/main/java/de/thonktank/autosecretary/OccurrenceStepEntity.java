@@ -5,10 +5,12 @@ import androidx.annotation.Nullable;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
-import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
-@Entity(tableName = "occurrence_steps", foreignKeys = @ForeignKey(entity = OccurrenceEntity.class, parentColumns = "id", childColumns = "occurrenceId", onDelete = ForeignKey.CASCADE), indices = @Index("occurrenceId"))
+@Entity(tableName = "occurrence_steps",
+        foreignKeys = @ForeignKey(entity = OccurrenceEntity.class, parentColumns = "id",
+                childColumns = "occurrenceId", onDelete = ForeignKey.CASCADE),
+        indices = @Index("occurrenceId"))
 public class OccurrenceStepEntity {
     @PrimaryKey @NonNull public String id;
     @NonNull public String occurrenceId;
@@ -23,37 +25,19 @@ public class OccurrenceStepEntity {
     @NonNull public String actualRepetitions;
     @Nullable public String sourceTemplateId;
     @NonNull public String comboOwnerId;
-    public int earnedXp;
-    public int comboPointDelta;
-    @Ignore public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
-                                int position, @NonNull String text, boolean done) {
-        this(id, occurrenceId, position, text, done, "NONE", null, null, null, "", "",
-                null, "", 0, 0);
-    }
-    @Ignore public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
-                                int position, @NonNull String text, boolean done,
-                                @NonNull String amountKind, Integer plannedSets,
-                                Integer plannedReps, Integer plannedDurationSeconds,
-                                @NonNull String note, @NonNull String actualRepetitions) {
-        this(id, occurrenceId, position, text, done, amountKind, plannedSets, plannedReps,
-                plannedDurationSeconds, note, actualRepetitions, null, "", 0, 0);
-    }
+
     public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
                                 int position, @NonNull String text, boolean done,
                                 @NonNull String amountKind, Integer plannedSets,
                                 Integer plannedReps, Integer plannedDurationSeconds,
                                 @NonNull String note, @NonNull String actualRepetitions,
                                 @Nullable String sourceTemplateId,
-                                @NonNull String comboOwnerId, int earnedXp,
-                                int comboPointDelta) {
+                                @NonNull String comboOwnerId) {
         this.id = id; this.occurrenceId = occurrenceId; this.position = position;
         this.text = text; this.done = done; this.amountKind = amountKind;
         this.plannedSets = plannedSets; this.plannedReps = plannedReps;
         this.plannedDurationSeconds = plannedDurationSeconds; this.note = note;
-        this.actualRepetitions = actualRepetitions;
-        this.sourceTemplateId = sourceTemplateId;
+        this.actualRepetitions = actualRepetitions; this.sourceTemplateId = sourceTemplateId;
         this.comboOwnerId = comboOwnerId;
-        this.earnedXp = earnedXp;
-        this.comboPointDelta = comboPointDelta;
     }
 }

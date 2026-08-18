@@ -23,7 +23,13 @@ Heute-Abfragen.
 
 Room-Entities werden am Rand des Data-Layers in immutable Domain-Modelle übersetzt. Die
 Fachlogik arbeitet mit `TaskSlot`, `Recurrence`, `OccurrenceState`, `TaskId` und
-`RoutineProgress`, nicht mit frei vergleichbaren Strings.
+`ComboProgress`, nicht mit frei vergleichbaren Strings. Schema 6 hat den früheren
+`RoutineProgress` sowie dessen Legacy-Spalten aus der aktiven Domäne entfernt.
+
+Schema 7 speichert Rewardänderungen als unveränderliche, vorzeichenbehaftete Buchungen.
+Bestehende Reward-Snapshots wurden ohne erneute XP- oder Komboerhöhung in Legacy-Buchungen
+überführt; Undo ergänzt eine eindeutig referenzierte Gegenbuchung. Gesamt-XP und Kombos bleiben
+atomar aktualisierte Leseprojektionen.
 
 ## Explizite Schreib- und Lesevorgänge
 

@@ -86,7 +86,7 @@ public final class MaterializeDueOccurrences {
             result.add(new OccurrenceStep(ids.nextId(), occurrence.id, result.size(), step.text,
                     false, step.amountKind, step.plannedSets, step.plannedReps,
                     step.plannedDurationSeconds, step.note, Collections.emptyList(),
-                    step.id, ComboProgress.stepOwner(step.id), 0, 0));
+                    step.id, ComboProgress.stepOwner(step.id)));
         }
         return result;
     }

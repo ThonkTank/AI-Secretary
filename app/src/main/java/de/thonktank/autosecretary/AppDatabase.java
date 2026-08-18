@@ -4,7 +4,8 @@ import androidx.room.Database;
 import androidx.room.RoomDatabase;
 
 @Database(entities = {TaskEntity.class, TaskStepEntity.class, OccurrenceEntity.class,
-        OccurrenceStepEntity.class, StatsEntity.class, ComboEntity.class}, version = 6,
+        OccurrenceStepEntity.class, StatsEntity.class, ComboEntity.class,
+        RewardBookingEntity.class}, version = 7,
         exportSchema = true)
 public abstract class AppDatabase extends RoomDatabase {
     public abstract TaskDao tasks();

@@ -34,6 +34,9 @@ haben jeweils ein eigenes Punktekonto; eine Kombostufe wird nie als Zahl ausgege
 - Seit Schema 6 enthält jeder neue Vorkommensschritt seine `sourceTemplateId`. Historische
   Schritte erhalten sie nur bei einem eindeutigen Owner-/Template-Match; ein unbekannter Owner
   bleibt erhalten, ohne eine Template-Identität zu erfinden.
+- Seit Schema 7 sind tatsächlich angewandte Rewards unveränderliche, vorzeichenbehaftete
+  Buchungen. Undo erzeugt eine eindeutige Gegenbuchung; Details und Migrationsvertrag stehen in
+  [ADR-010](adr-010-reward-ledger-und-gegenbuchungen.md).
 
 ## Konsequenzen
 

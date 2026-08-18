@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
+import de.thonktank.autosecretary.domain.model.RewardBooking;
 
 public final class LoadDashboard {
     private final TaskRepository repository;
@@ -35,13 +36,15 @@ public final class LoadDashboard {
         for (Occurrence occurrence : completed) occurrenceIds.add(occurrence.id);
         Map<String, List<OccurrenceStep>> steps = groupSteps(
                 repository.occurrenceStepsFor(occurrenceIds));
+        Map<String, List<RewardBooking>> rewards = groupRewards(
+                repository.rewardBookings(occurrenceIds));
 
         List<DashboardTask> result = new ArrayList<>();
         Set<TaskId> included = new HashSet<>();
         for (Occurrence occurrence : open) {
             Task task = tasks.get(occurrence.taskId);
             if (task == null || task.archived || task.conditionDone) continue;
-            result.add(item(task, occurrence, steps, false));
+            result.add(item(task, occurrence, steps, rewards, false));
             included.add(task.id);
         }
         for (Task task : tasks.values())
@@ -53,7 +56,7 @@ public final class LoadDashboard {
         for (Occurrence occurrence : completed) {
             Task task = tasks.get(occurrence.taskId);
             if (task == null) continue;
-            result.add(item(task, occurrence, steps, true));
+            result.add(item(task, occurrence, steps, rewards, true));
             included.add(task.id);
         }
         for (Task task : tasks.values())
@@ -73,16 +76,32 @@ public final class LoadDashboard {
     }
 
     private static DashboardTask item(Task task, Occurrence occurrence,
-                                      Map<String, List<OccurrenceStep>> steps, boolean done) {
+                                      Map<String, List<OccurrenceStep>> steps,
+                                      Map<String, List<RewardBooking>> rewards, boolean done) {
         List<OccurrenceStep> values = steps.get(occurrence.id);
-        return new DashboardTask(task, occurrence,
-                values == null ? new ArrayList<>() : values, done);
+        Map<String, Integer> stepXp = new HashMap<>();
+        int awardedXp = 0;
+        List<RewardBooking> bookings = rewards.get(occurrence.id);
+        if (bookings != null) for (RewardBooking booking : bookings) {
+            if (booking.target == RewardBooking.Target.HEAD) awardedXp += booking.xpDelta;
+            else if (booking.occurrenceStepId != null) stepXp.put(booking.occurrenceStepId,
+                    stepXp.getOrDefault(booking.occurrenceStepId, 0) + booking.xpDelta);
+        }
+        return new DashboardTask(task, occurrence, values == null ? new ArrayList<>() : values,
+                done, stepXp, awardedXp);
     }
 
     private static Map<String, List<OccurrenceStep>> groupSteps(List<OccurrenceStep> values) {
         Map<String, List<OccurrenceStep>> result = new HashMap<>();
         for (OccurrenceStep step : values)
             result.computeIfAbsent(step.occurrenceId, ignored -> new ArrayList<>()).add(step);
+        return result;
+    }
+
+    private static Map<String, List<RewardBooking>> groupRewards(List<RewardBooking> values) {
+        Map<String, List<RewardBooking>> result = new HashMap<>();
+        for (RewardBooking booking : values)
+            result.computeIfAbsent(booking.occurrenceId, ignored -> new ArrayList<>()).add(booking);
         return result;
     }
 }

@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.OccurrenceEntity;
 import de.thonktank.autosecretary.OccurrenceStepEntity;
 import de.thonktank.autosecretary.StatsEntity;
 import de.thonktank.autosecretary.ComboEntity;
+import de.thonktank.autosecretary.RewardBookingEntity;
 import de.thonktank.autosecretary.TaskDao;
 import de.thonktank.autosecretary.TaskEntity;
 import de.thonktank.autosecretary.TaskStepEntity;
@@ -17,6 +18,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
+import de.thonktank.autosecretary.domain.model.RewardBooking;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -198,6 +200,33 @@ public final class RoomTaskRepository implements TaskRepository {
     @Override public List<ComboProgress> combos() {
         List<ComboProgress> result = new ArrayList<>();
         for (ComboEntity value : dao.allCombos()) result.add(combo(value));
+        return result;
+    }
+
+    @Override public void insertRewardBooking(RewardBooking booking) {
+        dao.insertRewardBooking(new RewardBookingEntity(booking.id, booking.transactionId,
+                booking.occurrenceId, booking.occurrenceStepId, booking.ownerId,
+                booking.kind.name(), booking.target.name(), booking.xpDelta,
+                booking.comboPointDelta, booking.bookedOn.toString(), booking.reversesBookingId));
+    }
+
+    @Override public List<RewardBooking> rewardBookings(String occurrenceId) {
+        return mapBookings(dao.rewardBookings(occurrenceId));
+    }
+
+    @Override public List<RewardBooking> rewardBookings(List<String> occurrenceIds) {
+        if (occurrenceIds.isEmpty()) return new ArrayList<>();
+        return mapBookings(dao.rewardBookings(occurrenceIds));
+    }
+
+    private static List<RewardBooking> mapBookings(List<RewardBookingEntity> entities) {
+        List<RewardBooking> result = new ArrayList<>();
+        for (RewardBookingEntity value : entities)
+            result.add(new RewardBooking(value.id, value.transactionId, value.occurrenceId,
+                    value.occurrenceStepId, value.ownerId, RewardBooking.Kind.valueOf(value.kind),
+                    RewardBooking.Target.valueOf(value.target), value.xpDelta,
+                    value.comboPointDelta, LocalDate.parse(value.bookedOn),
+                    value.reversesBookingId));
         return result;
     }
 
