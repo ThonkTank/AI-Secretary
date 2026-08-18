@@ -5,7 +5,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.RoutineProgress;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
@@ -18,7 +17,7 @@ public class ScheduleCalculatorTest {
     private Task task(Recurrence recurrence, int interval, int mask, LocalDate due) {
         return Task.restore(TaskId.of("id"), "Test", TaskSlot.MORNING, recurrence,
                 interval, mask, false, "", false, false, due, null, null,
-                new RoutineProgress(1, 0, 0, null), 1_001_000L, false);
+                1_001_000L, false);
     }
 
     @Test public void intervalIsAnchoredToActualCompletion() {

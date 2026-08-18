@@ -7,7 +7,10 @@ Stand: 2026-08-18
 - Phase 1 behoben: `OccurrenceStep.done` ist explizit; Bearbeiten, Fertigstellen und
   Wiederöffnen sind getrennte Befehle, und vollständiger Satzfortschritt bleibt beim Undo
   erhalten.
-- Phasen 2–7 bleiben offen.
+- Phase 2 behoben: Schema 6 entfernt Legacy-Streakspalten und `RoutineProgress` aus der aktiven
+  Domäne; neue Vorkommensschritte speichern ihre Template-Herkunft, historische nur bei einem
+  eindeutigen Match.
+- Phasen 3–7 bleiben offen.
 
 ## Umfang und Gesamturteil
 

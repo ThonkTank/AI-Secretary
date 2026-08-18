@@ -107,7 +107,7 @@ public final class UpgradePersistenceTest {
 
         AutoSecretaryApplication application = AutoSecretaryApplication.from(context);
         AppDatabase database = application.container().database;
-        assertEquals(4, database.getOpenHelper().getReadableDatabase().getVersion());
+        assertEquals(6, database.getOpenHelper().getReadableDatabase().getVersion());
 
         TaskEntity task = database.tasks().task(TASK_ID);
         assertNotNull(task);
@@ -134,6 +134,7 @@ public final class UpgradePersistenceTest {
         assertTrue(occurrenceStep.done);
         assertEquals("NONE", occurrenceStep.amountKind);
         assertEquals("", occurrenceStep.actualRepetitions);
+        assertEquals(TEMPLATE_ID, occurrenceStep.sourceTemplateId);
         assertEquals(73, database.tasks().stats().xp);
 
         assertEquals(UiThemeMode.DARK, application.container().uiPreferences.themeMode());

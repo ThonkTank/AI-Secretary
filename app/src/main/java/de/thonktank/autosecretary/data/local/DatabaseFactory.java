@@ -12,7 +12,7 @@ public final class DatabaseFactory {
                         "auto_secretary.db")
                 .addMigrations(DatabaseMigrations.MIGRATION_1_2,
                         DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4,
-                        DatabaseMigrations.MIGRATION_4_5)
+                        DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6)
                 .build();
     }
 }

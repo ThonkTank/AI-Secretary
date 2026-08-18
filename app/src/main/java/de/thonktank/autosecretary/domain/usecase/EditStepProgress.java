@@ -40,7 +40,7 @@ public final class EditStepProgress {
                                        boolean done, int xp, int delta) {
         return new OccurrenceStep(value.id, value.occurrenceId, value.position, value.text,
                 done, value.amountKind, value.plannedSets, value.plannedReps,
-                value.plannedDurationSeconds, value.note, repetitions, value.comboOwnerId,
-                xp, delta);
+                value.plannedDurationSeconds, value.note, repetitions, value.sourceTemplateId,
+                value.comboOwnerId, xp, delta);
     }
 }

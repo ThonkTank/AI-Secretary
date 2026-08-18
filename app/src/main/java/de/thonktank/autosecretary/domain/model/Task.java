@@ -16,7 +16,6 @@ public final class Task {
     public final LocalDate nextDueOn;
     public final LocalDate lastScheduledOn;
     public final LocalDate lastCompletedOn;
-    public final RoutineProgress routineProgress;
     public final long displayOrder;
     public final boolean hasCompletedOccurrence;
     public final Integer estimatedMinutes;
@@ -31,10 +30,10 @@ public final class Task {
     private Task(TaskId id, String title, TaskSlot slot, Recurrence recurrence, int intervalDays,
                  int weekdayMask, boolean ongoing, String conditionText, boolean conditionDone,
                  boolean archived, LocalDate nextDueOn, LocalDate lastScheduledOn,
-                 LocalDate lastCompletedOn, RoutineProgress routineProgress, long displayOrder,
-                 boolean hasCompletedOccurrence, Integer estimatedMinutes, int timeOfDayMask,
-                 TaskBoundKind boundKind, LocalDate boundUntilOn, Integer boundWeeks,
-                 Integer remainingCount, LocalDate deadlineOn, String note) {
+                 LocalDate lastCompletedOn, long displayOrder, boolean hasCompletedOccurrence,
+                 Integer estimatedMinutes, int timeOfDayMask, TaskBoundKind boundKind,
+                 LocalDate boundUntilOn, Integer boundWeeks, Integer remainingCount,
+                 LocalDate deadlineOn, String note) {
         if (title == null || title.trim().isEmpty() || title.trim().length() > 120)
             throw new IllegalArgumentException("Task title must contain 1 to 120 characters");
         if (recurrence == Recurrence.WEEKDAYS && weekdayMask == 0)
@@ -56,7 +55,6 @@ public final class Task {
         this.nextDueOn = nextDueOn;
         this.lastScheduledOn = lastScheduledOn;
         this.lastCompletedOn = lastCompletedOn;
-        this.routineProgress = routineProgress;
         this.displayOrder = displayOrder;
         this.hasCompletedOccurrence = hasCompletedOccurrence;
         this.estimatedMinutes = estimatedMinutes;
@@ -76,8 +74,7 @@ public final class Task {
             throw new IllegalArgumentException("Ongoing task needs a completion condition");
         int times = recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(slot).bit;
         return restore(id, title, slot, recurrence, intervalDays, weekdayMask, ongoing,
-                conditionText, false, false, firstDueOn, null, null,
-                new RoutineProgress(1, 0, 0, null), displayOrder, false,
+                conditionText, false, false, firstDueOn, null, null, displayOrder, false,
                 null, times, TaskBoundKind.FOREVER, null, null, null, null, "");
     }
 
@@ -85,51 +82,49 @@ public final class Task {
                               long displayOrder) {
         return restore(id, definition.title, definition.primarySlot(), definition.recurrence,
                 definition.intervalDays, definition.weekdayMask, false, "", false, false,
-                firstDueOn, null, null, new RoutineProgress(1, 0, 0, null), displayOrder,
-                false, definition.estimatedMinutes, definition.timeOfDayMask,
-                definition.boundKind, definition.boundUntilOn, definition.boundWeeks,
-                definition.remainingCount, definition.deadlineOn, definition.note);
+                firstDueOn, null, null, displayOrder, false, definition.estimatedMinutes,
+                definition.timeOfDayMask, definition.boundKind, definition.boundUntilOn,
+                definition.boundWeeks, definition.remainingCount, definition.deadlineOn,
+                definition.note);
     }
 
     public static Task restore(TaskId id, String title, TaskSlot slot, Recurrence recurrence,
                                int intervalDays, int weekdayMask, boolean ongoing,
                                String conditionText, boolean conditionDone, boolean archived,
                                LocalDate nextDueOn, LocalDate lastScheduledOn,
-                               LocalDate lastCompletedOn, RoutineProgress routineProgress,
-                               long displayOrder, boolean hasCompletedOccurrence) {
+                               LocalDate lastCompletedOn, long displayOrder,
+                               boolean hasCompletedOccurrence) {
         int times = recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(slot).bit;
         return restore(id, title, slot, recurrence, intervalDays, weekdayMask, ongoing,
                 conditionText, conditionDone, archived, nextDueOn, lastScheduledOn,
-                lastCompletedOn, routineProgress, displayOrder, hasCompletedOccurrence,
-                null, times, TaskBoundKind.FOREVER, null, null, null, null, "");
+                lastCompletedOn, displayOrder, hasCompletedOccurrence, null, times,
+                TaskBoundKind.FOREVER, null, null, null, null, "");
     }
 
     public static Task restore(TaskId id, String title, TaskSlot slot, Recurrence recurrence,
                                int intervalDays, int weekdayMask, boolean ongoing,
                                String conditionText, boolean conditionDone, boolean archived,
                                LocalDate nextDueOn, LocalDate lastScheduledOn,
-                               LocalDate lastCompletedOn, RoutineProgress routineProgress,
-                               long displayOrder, boolean hasCompletedOccurrence,
-                               Integer estimatedMinutes, int timeOfDayMask,
-                               TaskBoundKind boundKind, LocalDate boundUntilOn,
-                               Integer boundWeeks, Integer remainingCount,
-                               LocalDate deadlineOn, String note) {
-        if (id == null || slot == null || recurrence == null || routineProgress == null
-                || boundKind == null)
-            throw new IllegalArgumentException("Task identity, slot, recurrence and progress are required");
+                               LocalDate lastCompletedOn, long displayOrder,
+                               boolean hasCompletedOccurrence, Integer estimatedMinutes,
+                               int timeOfDayMask, TaskBoundKind boundKind,
+                               LocalDate boundUntilOn, Integer boundWeeks,
+                               Integer remainingCount, LocalDate deadlineOn, String note) {
+        if (id == null || slot == null || recurrence == null || boundKind == null)
+            throw new IllegalArgumentException("Task identity, slot and recurrence are required");
         return new Task(id, title, slot, recurrence, intervalDays, weekdayMask, ongoing,
                 conditionText, conditionDone, archived, nextDueOn, lastScheduledOn,
-                lastCompletedOn, routineProgress, displayOrder, hasCompletedOccurrence,
-                estimatedMinutes, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
-                remainingCount, deadlineOn, note);
+                lastCompletedOn, displayOrder, hasCompletedOccurrence, estimatedMinutes,
+                timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remainingCount,
+                deadlineOn, note);
     }
 
     public Task edit(String newTitle, TaskSlot newSlot, long newDisplayOrder) {
         return copy(newTitle, newSlot, recurrence, intervalDays, weekdayMask, ongoing,
                 conditionText, conditionDone, archived, nextDueOn, lastScheduledOn,
-                lastCompletedOn, routineProgress, newDisplayOrder, hasCompletedOccurrence,
-                estimatedMinutes, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
-                remainingCount, deadlineOn, note);
+                lastCompletedOn, newDisplayOrder, hasCompletedOccurrence, estimatedMinutes,
+                timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remainingCount,
+                deadlineOn, note);
     }
 
     public Task editDefinition(String newTitle, TaskSlot newSlot, Recurrence newRecurrence,
@@ -140,9 +135,8 @@ public final class Task {
         int times = newRecurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(newSlot).bit;
         return copy(newTitle, newSlot, newRecurrence, newIntervalDays, newWeekdayMask,
                 newOngoing, newConditionText, conditionDone, archived, nextDueOn,
-                lastScheduledOn, lastCompletedOn, routineProgress, newDisplayOrder,
-                hasCompletedOccurrence, estimatedMinutes, times, TaskBoundKind.FOREVER,
-                null, null, null, null, note);
+                lastScheduledOn, lastCompletedOn, newDisplayOrder, hasCompletedOccurrence,
+                estimatedMinutes, times, TaskBoundKind.FOREVER, null, null, null, null, note);
     }
 
     public Task editDefinition(TaskDefinition definition, long newDisplayOrder) {
@@ -153,36 +147,25 @@ public final class Task {
                                LocalDate newNextDueOn) {
         return copy(definition.title, definition.primarySlot(), definition.recurrence,
                 definition.intervalDays, definition.weekdayMask, false, "", conditionDone,
-                archived, newNextDueOn, lastScheduledOn, lastCompletedOn, routineProgress,
-                newDisplayOrder, hasCompletedOccurrence, definition.estimatedMinutes,
-                definition.timeOfDayMask, definition.boundKind, definition.boundUntilOn,
-                definition.boundWeeks, definition.remainingCount, definition.deadlineOn,
-                definition.note);
+                archived, newNextDueOn, lastScheduledOn, lastCompletedOn, newDisplayOrder,
+                hasCompletedOccurrence, definition.estimatedMinutes, definition.timeOfDayMask,
+                definition.boundKind, definition.boundUntilOn, definition.boundWeeks,
+                definition.remainingCount, definition.deadlineOn, definition.note);
     }
 
     public Task move(TaskSlot newSlot, long newDisplayOrder) {
         int times = recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(newSlot).bit;
         return copy(title, newSlot, recurrence, intervalDays, weekdayMask, ongoing,
                 conditionText, conditionDone, archived, nextDueOn, lastScheduledOn,
-                lastCompletedOn, routineProgress, newDisplayOrder, hasCompletedOccurrence,
-                estimatedMinutes, times, boundKind, boundUntilOn, boundWeeks, remainingCount,
-                deadlineOn, note);
+                lastCompletedOn, newDisplayOrder, hasCompletedOccurrence, estimatedMinutes,
+                times, boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
     }
 
     public Task withDisplayOrder(long newDisplayOrder) {
         return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
                 conditionDone, archived, nextDueOn, lastScheduledOn, lastCompletedOn,
-                routineProgress, newDisplayOrder, hasCompletedOccurrence, estimatedMinutes,
-                timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remainingCount,
-                deadlineOn, note);
-    }
-
-    public Task afterOccurrence(LocalDate scheduledOn, LocalDate completedOn, LocalDate nextDue,
-                                RoutineProgress progress, boolean archive) {
-        return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
-                conditionDone, archive, nextDue, scheduledOn, completedOn, progress,
-                displayOrder, true, estimatedMinutes, timeOfDayMask, boundKind, boundUntilOn,
-                boundWeeks, remainingCount, deadlineOn, note);
+                newDisplayOrder, hasCompletedOccurrence, estimatedMinutes, timeOfDayMask,
+                boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
     }
 
     public Task afterMaterializing(int count) {
@@ -191,9 +174,8 @@ public final class Task {
             remaining = Math.max(0, (remainingCount == null ? 0 : remainingCount) - count);
         return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
                 conditionDone, archived, nextDueOn, lastScheduledOn, lastCompletedOn,
-                routineProgress, displayOrder, hasCompletedOccurrence, estimatedMinutes,
-                timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remaining,
-                deadlineOn, note);
+                displayOrder, hasCompletedOccurrence, estimatedMinutes, timeOfDayMask,
+                boundKind, boundUntilOn, boundWeeks, remaining, deadlineOn, note);
     }
 
     public Task withOccurrenceState(boolean newArchived, LocalDate newNextDueOn,
@@ -202,38 +184,37 @@ public final class Task {
                                     boolean newHasCompletedOccurrence) {
         return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing,
                 conditionText, conditionDone, newArchived, newNextDueOn,
-                newLastScheduledOn, newLastCompletedOn, routineProgress, displayOrder,
+                newLastScheduledOn, newLastCompletedOn, displayOrder,
                 newHasCompletedOccurrence, estimatedMinutes, timeOfDayMask, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
     }
 
     public Task closeCondition(LocalDate completedOn) {
         return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
-                true, true, nextDueOn, lastScheduledOn, completedOn, routineProgress,
-                displayOrder, hasCompletedOccurrence, estimatedMinutes, timeOfDayMask,
-                boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
+                true, true, nextDueOn, lastScheduledOn, completedOn, displayOrder,
+                hasCompletedOccurrence, estimatedMinutes, timeOfDayMask, boundKind,
+                boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
     }
 
     public Task reopenCondition() {
         return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
-                false, false, nextDueOn, lastScheduledOn, lastCompletedOn, routineProgress,
-                displayOrder, hasCompletedOccurrence, estimatedMinutes, timeOfDayMask,
-                boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
+                false, false, nextDueOn, lastScheduledOn, lastCompletedOn, displayOrder,
+                hasCompletedOccurrence, estimatedMinutes, timeOfDayMask, boundKind,
+                boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
     }
 
     private Task copy(String newTitle, TaskSlot newSlot, Recurrence newRecurrence,
                       int newIntervalDays, int newWeekdayMask, boolean newOngoing,
                       String newConditionText, boolean newConditionDone, boolean newArchived,
                       LocalDate newNextDueOn, LocalDate newLastScheduledOn,
-                      LocalDate newLastCompletedOn, RoutineProgress newProgress,
-                      long newDisplayOrder, boolean newHasCompletedOccurrence,
-                      Integer newEstimatedMinutes, int newTimeOfDayMask,
-                      TaskBoundKind newBoundKind, LocalDate newBoundUntilOn,
-                      Integer newBoundWeeks, Integer newRemainingCount,
-                      LocalDate newDeadlineOn, String newNote) {
+                      LocalDate newLastCompletedOn, long newDisplayOrder,
+                      boolean newHasCompletedOccurrence, Integer newEstimatedMinutes,
+                      int newTimeOfDayMask, TaskBoundKind newBoundKind,
+                      LocalDate newBoundUntilOn, Integer newBoundWeeks,
+                      Integer newRemainingCount, LocalDate newDeadlineOn, String newNote) {
         return restore(id, newTitle, newSlot, newRecurrence, newIntervalDays, newWeekdayMask,
                 newOngoing, newConditionText, newConditionDone, newArchived, newNextDueOn,
-                newLastScheduledOn, newLastCompletedOn, newProgress, newDisplayOrder,
+                newLastScheduledOn, newLastCompletedOn, newDisplayOrder,
                 newHasCompletedOccurrence, newEstimatedMinutes, newTimeOfDayMask,
                 newBoundKind, newBoundUntilOn, newBoundWeeks, newRemainingCount,
                 newDeadlineOn, newNote);

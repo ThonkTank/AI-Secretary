@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
@@ -20,12 +21,14 @@ public class OccurrenceStepEntity {
     public Integer plannedDurationSeconds;
     @NonNull public String note;
     @NonNull public String actualRepetitions;
+    @Nullable public String sourceTemplateId;
     @NonNull public String comboOwnerId;
     public int earnedXp;
     public int comboPointDelta;
     @Ignore public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
                                 int position, @NonNull String text, boolean done) {
-        this(id, occurrenceId, position, text, done, "NONE", null, null, null, "", "", "", 0, 0);
+        this(id, occurrenceId, position, text, done, "NONE", null, null, null, "", "",
+                null, "", 0, 0);
     }
     @Ignore public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
                                 int position, @NonNull String text, boolean done,
@@ -33,13 +36,14 @@ public class OccurrenceStepEntity {
                                 Integer plannedReps, Integer plannedDurationSeconds,
                                 @NonNull String note, @NonNull String actualRepetitions) {
         this(id, occurrenceId, position, text, done, amountKind, plannedSets, plannedReps,
-                plannedDurationSeconds, note, actualRepetitions, "", 0, 0);
+                plannedDurationSeconds, note, actualRepetitions, null, "", 0, 0);
     }
     public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
                                 int position, @NonNull String text, boolean done,
                                 @NonNull String amountKind, Integer plannedSets,
                                 Integer plannedReps, Integer plannedDurationSeconds,
                                 @NonNull String note, @NonNull String actualRepetitions,
+                                @Nullable String sourceTemplateId,
                                 @NonNull String comboOwnerId, int earnedXp,
                                 int comboPointDelta) {
         this.id = id; this.occurrenceId = occurrenceId; this.position = position;
@@ -47,6 +51,7 @@ public class OccurrenceStepEntity {
         this.plannedSets = plannedSets; this.plannedReps = plannedReps;
         this.plannedDurationSeconds = plannedDurationSeconds; this.note = note;
         this.actualRepetitions = actualRepetitions;
+        this.sourceTemplateId = sourceTemplateId;
         this.comboOwnerId = comboOwnerId;
         this.earnedXp = earnedXp;
         this.comboPointDelta = comboPointDelta;

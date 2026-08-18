@@ -122,32 +122,10 @@ public final class TaskServiceCharacterizationTest {
         assertEquals(10, after.xp);
     }
 
-    @Test public void sameWeekCompletionsCountOnlyOneRingWeekAndLateCompletionRestartsIt() {
-        TaskEntity task = task("routine", "Routine", TaskSlot.MORNING.storageCode, "DAILY", 1_001_000L);
-        dao.insertTask(task);
-        dao.insertOccurrence(new OccurrenceEntity("day-one", task.id, TODAY.toString(), "OPEN", 1000, ""));
-
-        service.complete("day-one");
-        assertEquals(1, dao.task(task.id).routineStreakWeeks);
-
-        TaskEntity afterFirst = dao.task(task.id);
-        dao.insertOccurrence(new OccurrenceEntity("day-two", task.id, TODAY.plusDays(1).toString(), "OPEN", 1000, ""));
-        TaskService sundayService = service(TODAY.plusDays(1));
-        sundayService.complete("day-two");
-        assertEquals(1, dao.task(task.id).routineStreakWeeks);
-
-        dao.insertOccurrence(new OccurrenceEntity("late", task.id, TODAY.plusDays(2).toString(), "OPEN", 1000, ""));
-        TaskService lateService = service(TODAY.plusDays(3));
-        lateService.complete("late");
-        assertEquals(0, dao.task(task.id).routineStreakWeeks);
-        assertTrue(dao.task(task.id).routineLevel >= afterFirst.routineLevel);
-        assertFalse(dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).stream()
-                .anyMatch(item -> "late".equals(item.id)));
-    }
-
     private static TaskEntity task(String id, String title, String slot, String recurrence, long order) {
         return new TaskEntity(id, title, slot, recurrence, 1, 0, false, "", false, false,
-                TODAY.toString(), "", "", 1, 0, 0, "", order, false);
+                TODAY.toString(), "", "", order, false, null,
+                "ONCE".equals(recurrence) ? 0 : 1, "FOREVER", "", null, null, "", "");
     }
 
     private static Clock clock(LocalDate day) {

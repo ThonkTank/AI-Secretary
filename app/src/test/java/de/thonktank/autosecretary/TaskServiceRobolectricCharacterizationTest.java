@@ -119,7 +119,8 @@ public final class TaskServiceRobolectricCharacterizationTest {
 
     private static TaskEntity task(String id, String title, String slot, String recurrence, long order) {
         return new TaskEntity(id, title, slot, recurrence, 1, 0, false, "", false, false,
-                TODAY.toString(), "", "", 1, 0, 0, "", order, false);
+                TODAY.toString(), "", "", order, false, null,
+                "ONCE".equals(recurrence) ? 0 : 1, "FOREVER", "", null, null, "", "");
     }
 
     private static Clock clock(LocalDate day) {

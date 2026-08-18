@@ -187,6 +187,65 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test public void migration5To6RemovesLegacyColumnsAndKeepsRewardState() throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 5);
+        database.execSQL("INSERT INTO tasks (id,title,slot,recurrence,intervalDays,weekdayMask,"
+                + "ongoing,conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,"
+                + "lastCompletedOn,routineLevel,routineStreak,routineStreakWeeks,lastStreakWeek,"
+                + "displayOrder,hasCompletedOccurrence,estimatedMinutes,timeOfDayMask,boundKind,"
+                + "boundUntilOn,boundWeeks,remainingCount,deadlineOn,note) VALUES "
+                + "('v5','Routine','MORNING','DAILY',1,0,0,'',0,0,'2026-08-18','','',"
+                + "4,8,3,'2026-08-11',1001,1,NULL,1,'FOREVER','',NULL,NULL,'','')");
+        database.execSQL("INSERT INTO task_steps (id,taskId,position,text,weekdayMask,amountKind,"
+                + "plannedSets,plannedReps,plannedDurationSeconds,note) VALUES "
+                + "('stable','v5',0,'Schritt',0,'NONE',NULL,NULL,NULL,'')");
+        database.execSQL("INSERT INTO occurrences (id,taskId,scheduledOn,state,sortOrder,"
+                + "completedOn,slot,awardedXp,comboPointDelta) VALUES "
+                + "('open','v5','2026-08-18','OPEN',1,'','MORNING',0,0),"
+                + "('done','v5','2026-08-17','COMPLETED',2,'2026-08-17','MORNING',10,3)");
+        database.execSQL("INSERT INTO occurrence_steps (id,occurrenceId,position,text,done,"
+                + "amountKind,plannedSets,plannedReps,plannedDurationSeconds,note,"
+                + "actualRepetitions,comboOwnerId,earnedXp,comboPointDelta) VALUES "
+                + "('snapshot','open',0,'Schritt',1,'NONE',NULL,NULL,NULL,'','',"
+                + "'step:stable',10,1)");
+        database.execSQL("INSERT INTO stats (id,xp) VALUES (1,137)");
+        database.execSQL("INSERT INTO combo_progress (ownerId,taskId,kind,points,settledThroughOn) "
+                + "VALUES ('task:v5','v5','TASK',5,'2026-08-17'),"
+                + "('step:stable','v5','STEP',7,'2026-08-18')");
+        database.close();
+
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 6, true, DatabaseMigrations.MIGRATION_5_6);
+        try (Cursor cursor = database.query("SELECT sourceTemplateId,comboOwnerId,earnedXp,"
+                + "comboPointDelta FROM occurrence_steps WHERE id='snapshot'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("stable", cursor.getString(0));
+            assertEquals("step:stable", cursor.getString(1));
+            assertEquals(10, cursor.getInt(2));
+            assertEquals(1, cursor.getInt(3));
+        }
+        try (Cursor cursor = database.query("SELECT awardedXp,comboPointDelta FROM occurrences "
+                + "WHERE id='done'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(10, cursor.getInt(0));
+            assertEquals(3, cursor.getInt(1));
+        }
+        try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(137, cursor.getInt(0));
+        }
+        try (Cursor cursor = database.query("SELECT points FROM combo_progress "
+                + "WHERE ownerId='step:stable'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(7, cursor.getInt(0));
+        }
+        try (Cursor cursor = database.query("PRAGMA table_info(tasks)")) {
+            while (cursor.moveToNext()) {
+                String column = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+                assertTrue(!column.startsWith("routine") && !column.equals("lastStreakWeek"));
+            }
+        }
+        database.close();
+    }
+
     private static void assertIndexExists(SupportSQLiteDatabase database, String index) {
         try (Cursor cursor = database.query(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='" + index + "'")) {

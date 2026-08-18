@@ -101,5 +101,90 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Rebuilds the task aggregate without obsolete streak columns and adds stable step origin. */
+    public static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE _m_tasks AS SELECT id,title,slot,recurrence,"
+                    + "intervalDays,weekdayMask,ongoing,conditionText,conditionDone,archived,"
+                    + "nextDueOn,lastScheduledOn,lastCompletedOn,displayOrder,"
+                    + "hasCompletedOccurrence,estimatedMinutes,timeOfDayMask,boundKind,"
+                    + "boundUntilOn,boundWeeks,remainingCount,deadlineOn,note FROM tasks");
+            database.execSQL("CREATE TABLE _m_task_steps AS SELECT * FROM task_steps");
+            database.execSQL("CREATE TABLE _m_occurrences AS SELECT * FROM occurrences");
+            database.execSQL("CREATE TABLE _m_occurrence_steps AS SELECT * FROM occurrence_steps");
+            database.execSQL("CREATE TABLE _m_combo_progress AS SELECT * FROM combo_progress");
+
+            database.execSQL("DROP TABLE occurrence_steps");
+            database.execSQL("DROP TABLE combo_progress");
+            database.execSQL("DROP TABLE occurrences");
+            database.execSQL("DROP TABLE task_steps");
+            database.execSQL("DROP TABLE tasks");
+
+            database.execSQL("CREATE TABLE tasks (id TEXT NOT NULL, title TEXT NOT NULL, "
+                    + "slot TEXT NOT NULL, recurrence TEXT NOT NULL, intervalDays INTEGER NOT NULL, "
+                    + "weekdayMask INTEGER NOT NULL, ongoing INTEGER NOT NULL, conditionText TEXT NOT NULL, "
+                    + "conditionDone INTEGER NOT NULL, archived INTEGER NOT NULL, nextDueOn TEXT NOT NULL, "
+                    + "lastScheduledOn TEXT NOT NULL, lastCompletedOn TEXT NOT NULL, "
+                    + "displayOrder INTEGER NOT NULL, hasCompletedOccurrence INTEGER NOT NULL, "
+                    + "estimatedMinutes INTEGER, timeOfDayMask INTEGER NOT NULL, boundKind TEXT NOT NULL, "
+                    + "boundUntilOn TEXT NOT NULL, boundWeeks INTEGER, remainingCount INTEGER, "
+                    + "deadlineOn TEXT NOT NULL, note TEXT NOT NULL, PRIMARY KEY(id))");
+            database.execSQL("INSERT INTO tasks SELECT * FROM _m_tasks");
+            database.execSQL("CREATE INDEX index_tasks_archived_conditionDone_displayOrder "
+                    + "ON tasks (archived,conditionDone,displayOrder)");
+
+            database.execSQL("CREATE TABLE task_steps (id TEXT NOT NULL, taskId TEXT NOT NULL, "
+                    + "position INTEGER NOT NULL, text TEXT NOT NULL, weekdayMask INTEGER NOT NULL, "
+                    + "amountKind TEXT NOT NULL, plannedSets INTEGER, plannedReps INTEGER, "
+                    + "plannedDurationSeconds INTEGER, note TEXT NOT NULL, PRIMARY KEY(id), "
+                    + "FOREIGN KEY(taskId) REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO task_steps SELECT * FROM _m_task_steps");
+            database.execSQL("CREATE INDEX index_task_steps_taskId ON task_steps(taskId)");
+
+            database.execSQL("CREATE TABLE occurrences (id TEXT NOT NULL, taskId TEXT NOT NULL, "
+                    + "scheduledOn TEXT NOT NULL, state TEXT NOT NULL, sortOrder INTEGER NOT NULL, "
+                    + "completedOn TEXT NOT NULL, slot TEXT NOT NULL, awardedXp INTEGER NOT NULL, "
+                    + "comboPointDelta INTEGER NOT NULL, PRIMARY KEY(id), FOREIGN KEY(taskId) "
+                    + "REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO occurrences SELECT * FROM _m_occurrences");
+            database.execSQL("CREATE INDEX index_occurrences_taskId ON occurrences(taskId)");
+            database.execSQL("CREATE INDEX index_occurrences_state_completedOn "
+                    + "ON occurrences(state,completedOn)");
+            database.execSQL("CREATE UNIQUE INDEX index_occurrences_taskId_scheduledOn_slot "
+                    + "ON occurrences(taskId,scheduledOn,slot)");
+
+            database.execSQL("CREATE TABLE occurrence_steps (id TEXT NOT NULL, "
+                    + "occurrenceId TEXT NOT NULL, position INTEGER NOT NULL, text TEXT NOT NULL, "
+                    + "done INTEGER NOT NULL, amountKind TEXT NOT NULL, plannedSets INTEGER, "
+                    + "plannedReps INTEGER, plannedDurationSeconds INTEGER, note TEXT NOT NULL, "
+                    + "actualRepetitions TEXT NOT NULL, sourceTemplateId TEXT, "
+                    + "comboOwnerId TEXT NOT NULL, earnedXp INTEGER NOT NULL, "
+                    + "comboPointDelta INTEGER NOT NULL, PRIMARY KEY(id), FOREIGN KEY(occurrenceId) "
+                    + "REFERENCES occurrences(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO occurrence_steps SELECT os.id,os.occurrenceId,os.position,"
+                    + "os.text,os.done,os.amountKind,os.plannedSets,os.plannedReps,"
+                    + "os.plannedDurationSeconds,os.note,os.actualRepetitions,(SELECT ts.id FROM "
+                    + "_m_task_steps ts JOIN _m_occurrences o ON o.taskId=ts.taskId "
+                    + "WHERE o.id=os.occurrenceId AND ('step:' || ts.id)=os.comboOwnerId "
+                    + "GROUP BY ts.id HAVING COUNT(*)=1),os.comboOwnerId,os.earnedXp,"
+                    + "os.comboPointDelta FROM _m_occurrence_steps os");
+            database.execSQL("CREATE INDEX index_occurrence_steps_occurrenceId "
+                    + "ON occurrence_steps(occurrenceId)");
+
+            database.execSQL("CREATE TABLE combo_progress (ownerId TEXT NOT NULL, "
+                    + "taskId TEXT NOT NULL, kind TEXT NOT NULL, points INTEGER NOT NULL, "
+                    + "settledThroughOn TEXT NOT NULL, PRIMARY KEY(ownerId), FOREIGN KEY(taskId) "
+                    + "REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO combo_progress SELECT * FROM _m_combo_progress");
+            database.execSQL("CREATE INDEX index_combo_progress_taskId ON combo_progress(taskId)");
+
+            database.execSQL("DROP TABLE _m_occurrence_steps");
+            database.execSQL("DROP TABLE _m_combo_progress");
+            database.execSQL("DROP TABLE _m_occurrences");
+            database.execSQL("DROP TABLE _m_task_steps");
+            database.execSQL("DROP TABLE _m_tasks");
+        }
+    };
+
     private DatabaseMigrations() { }
 }

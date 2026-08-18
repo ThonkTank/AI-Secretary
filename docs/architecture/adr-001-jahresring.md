@@ -31,11 +31,15 @@ haben jeweils ein eigenes Punktekonto; eine Kombostufe wird nie als Zahl ausgege
   reines Bearbeiten bewahrt den Zustand, und Wiederöffnen bewahrt den erfassten Fortschritt.
 - Die Migration erhält Gesamt-XP, startet alle Kombos bewusst bei null und übernimmt keine
   nicht belegbare Wochenhistorie.
+- Seit Schema 6 enthält jeder neue Vorkommensschritt seine `sourceTemplateId`. Historische
+  Schritte erhalten sie nur bei einem eindeutigen Owner-/Template-Match; ein unbekannter Owner
+  bleibt erhalten, ohne eine Template-Identität zu erfinden.
 
 ## Konsequenzen
 
 Der Dashboard-Refresh rechnet fälligen Komboverfall explizit ab. Das Kopfblatt leitet seine
-Stufe ausschließlich aus Gesamt-XP ab. Alte Routine-Level- und Wochenringfelder bleiben in
-Schema 5 nur als kompatible Altdaten erhalten und steuern kein Verhalten oder sichtbare Kopie.
+Stufe ausschließlich aus Gesamt-XP ab. Schema 6 entfernt die alten Routine-Level- und
+Wochenringfelder durch einen verlustfreien Tabellenneuaufbau; sie gehören nicht mehr zum aktiven
+Task-Modell.
 Today-Aktionen werden seriell animiert und respektieren die systemweite Einstellung für
 reduzierte Animationen; die Zustandsänderung selbst bleibt davon unabhängig.

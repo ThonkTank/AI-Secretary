@@ -16,6 +16,7 @@ public final class OccurrenceStep {
     public final Integer plannedDurationSeconds;
     public final String note;
     public final List<Integer> actualRepetitions;
+    public final String sourceTemplateId;
     public final String comboOwnerId;
     public final int earnedXp;
     public final int comboPointDelta;
@@ -38,6 +39,16 @@ public final class OccurrenceStep {
                           Integer plannedDurationSeconds, String note,
                           List<Integer> actualRepetitions, String comboOwnerId,
                           int earnedXp, int comboPointDelta) {
+        this(id, occurrenceId, position, text, done, amountKind, plannedSets, plannedReps,
+                plannedDurationSeconds, note, actualRepetitions, null, comboOwnerId,
+                earnedXp, comboPointDelta);
+    }
+
+    public OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
+                          StepAmountKind amountKind, Integer plannedSets, Integer plannedReps,
+                          Integer plannedDurationSeconds, String note,
+                          List<Integer> actualRepetitions, String sourceTemplateId,
+                          String comboOwnerId, int earnedXp, int comboPointDelta) {
         if (id == null || id.isEmpty() || occurrenceId == null || occurrenceId.isEmpty()
                 || text == null || text.trim().isEmpty() || amountKind == null
                 || actualRepetitions == null || comboOwnerId == null)
@@ -65,6 +76,8 @@ public final class OccurrenceStep {
         this.note = checked.note;
         this.actualRepetitions = Collections.unmodifiableList(actual);
         this.done = done;
+        this.sourceTemplateId = sourceTemplateId == null || sourceTemplateId.isEmpty()
+                ? null : sourceTemplateId;
         this.comboOwnerId = comboOwnerId.isEmpty() ? "step:" + id : comboOwnerId;
         this.earnedXp = Math.max(0, earnedXp);
         this.comboPointDelta = comboPointDelta;
@@ -73,13 +86,14 @@ public final class OccurrenceStep {
     public OccurrenceStep toggle() {
         return new OccurrenceStep(id, occurrenceId, position, text, !done, amountKind,
                 plannedSets, plannedReps, plannedDurationSeconds, note, actualRepetitions,
-                comboOwnerId, done ? 0 : earnedXp, done ? 0 : comboPointDelta);
+                sourceTemplateId, comboOwnerId, done ? 0 : earnedXp,
+                done ? 0 : comboPointDelta);
     }
 
     public OccurrenceStep complete() {
         return done ? this : new OccurrenceStep(id, occurrenceId, position, text, true,
                 amountKind, plannedSets, plannedReps, plannedDurationSeconds, note,
-                actualRepetitions, comboOwnerId, earnedXp, comboPointDelta);
+                actualRepetitions, sourceTemplateId, comboOwnerId, earnedXp, comboPointDelta);
     }
 
     public OccurrenceStep confirmSet(int repetitions) {
@@ -90,25 +104,26 @@ public final class OccurrenceStep {
         values.add(repetitions);
         return new OccurrenceStep(id, occurrenceId, position, text,
                 values.size() == plannedSets, amountKind, plannedSets, plannedReps,
-                plannedDurationSeconds, note, values, comboOwnerId, earnedXp, comboPointDelta);
+                plannedDurationSeconds, note, values, sourceTemplateId, comboOwnerId,
+                earnedXp, comboPointDelta);
     }
 
     public OccurrenceStep award(int xp, int pointDelta) {
         return new OccurrenceStep(id, occurrenceId, position, text, true, amountKind,
                 plannedSets, plannedReps, plannedDurationSeconds, note, actualRepetitions,
-                comboOwnerId, xp, pointDelta);
+                sourceTemplateId, comboOwnerId, xp, pointDelta);
     }
 
     public OccurrenceStep resetReward() {
         return new OccurrenceStep(id, occurrenceId, position, text, false, amountKind,
                 plannedSets, plannedReps, plannedDurationSeconds, note, actualRepetitions,
-                comboOwnerId, 0, 0);
+                sourceTemplateId, comboOwnerId, 0, 0);
     }
 
     public OccurrenceStep withActualRepetitions(List<Integer> values) {
         return new OccurrenceStep(id, occurrenceId, position, text, done, amountKind,
                 plannedSets, plannedReps, plannedDurationSeconds, note, values,
-                comboOwnerId, earnedXp, comboPointDelta);
+                sourceTemplateId, comboOwnerId, earnedXp, comboPointDelta);
     }
 
     public int nextSetNumber() { return actualRepetitions.size() + 1; }

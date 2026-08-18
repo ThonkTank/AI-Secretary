@@ -8,7 +8,6 @@ import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.RoutineProgress;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
@@ -21,8 +20,6 @@ import java.time.LocalDate;
 
 public final class TaskEntityMapper {
     public Task toDomain(TaskEntity entity) {
-        LocalDate lastCountedWeek = date(entity.lastStreakWeek);
-        if (lastCountedWeek != null) lastCountedWeek = RoutineProgress.weekStart(lastCountedWeek);
         TaskSlot slot = TaskSlot.fromStorage(entity.slot);
         int times = entity.timeOfDayMask;
         if (times == 0 && !"ONCE".equalsIgnoreCase(entity.recurrence))
@@ -31,8 +28,6 @@ public final class TaskEntityMapper {
                 Recurrence.fromStorage(entity.recurrence), entity.intervalDays, entity.weekdayMask,
                 entity.ongoing, entity.conditionText, entity.conditionDone, entity.archived,
                 date(entity.nextDueOn), date(entity.lastScheduledOn), date(entity.lastCompletedOn),
-                new RoutineProgress(entity.routineLevel, entity.routineStreak,
-                        entity.routineStreakWeeks, lastCountedWeek),
                 entity.displayOrder, entity.hasCompletedOccurrence, entity.estimatedMinutes,
                 times, TaskBoundKind.fromStorage(entity.boundKind),
                 date(entity.boundUntilOn), entity.boundWeeks, entity.remainingCount,
@@ -43,9 +38,7 @@ public final class TaskEntityMapper {
         return new TaskEntity(task.id.value, task.title, task.slot.storageCode,
                 task.recurrence.storageCode(), task.intervalDays, task.weekdayMask, task.ongoing,
                 task.conditionText, task.conditionDone, task.archived, text(task.nextDueOn),
-                text(task.lastScheduledOn), text(task.lastCompletedOn), task.routineProgress.level,
-                task.routineProgress.occurrenceStreak, task.routineProgress.weekStreak,
-                text(task.routineProgress.lastCountedWeek), task.displayOrder,
+                text(task.lastScheduledOn), text(task.lastCompletedOn), task.displayOrder,
                 task.hasCompletedOccurrence, task.estimatedMinutes, task.timeOfDayMask,
                 task.boundKind.storageCode(), text(task.boundUntilOn), task.boundWeeks,
                 task.remainingCount, text(task.deadlineOn), task.note);
@@ -81,16 +74,17 @@ public final class TaskEntityMapper {
         return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text,
                 entity.done, StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
                 entity.plannedReps, entity.plannedDurationSeconds, entity.note,
-                RepetitionProgressCodec.decode(entity.actualRepetitions), entity.comboOwnerId,
-                entity.earnedXp, entity.comboPointDelta);
+                RepetitionProgressCodec.decode(entity.actualRepetitions),
+                entity.sourceTemplateId, entity.comboOwnerId, entity.earnedXp,
+                entity.comboPointDelta);
     }
 
     public OccurrenceStepEntity toEntity(OccurrenceStep step) {
         return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
                 step.done, step.amountKind.storageCode(), step.plannedSets, step.plannedReps,
                 step.plannedDurationSeconds, step.note,
-                RepetitionProgressCodec.encode(step.actualRepetitions), step.comboOwnerId,
-                step.earnedXp, step.comboPointDelta);
+                RepetitionProgressCodec.encode(step.actualRepetitions), step.sourceTemplateId,
+                step.comboOwnerId, step.earnedXp, step.comboPointDelta);
     }
 
     private static LocalDate date(String value) {

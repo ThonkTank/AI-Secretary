@@ -21,6 +21,14 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
+import de.thonktank.autosecretary.data.local.RoomTaskRepository;
+import de.thonktank.autosecretary.domain.model.OccurrenceState;
+import de.thonktank.autosecretary.domain.model.RewardReceipt;
+import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
+
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {26, 35})
 public final class DatabaseMigrationRobolectricTest {
@@ -43,27 +51,25 @@ public final class DatabaseMigrationRobolectricTest {
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_1_2,
                         DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4,
-                        DatabaseMigrations.MIGRATION_4_5)
+                        DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
 
-        try (Cursor cursor = database.query("SELECT id,slot,routineStreakWeeks,lastStreakWeek,displayOrder "
+        try (Cursor cursor = database.query("SELECT id,slot,displayOrder "
                 + "FROM tasks ORDER BY id")) {
             assertEquals(2, cursor.getCount());
             assertTrue(cursor.moveToFirst());
             assertEquals("later", cursor.getString(0));
             assertEquals("LATER", cursor.getString(1));
-            assertEquals(0, cursor.getInt(2));
-            assertTrue(cursor.getLong(4) >= 4_000_000L);
+            assertTrue(cursor.getLong(2) >= 4_000_000L);
 
             assertTrue(cursor.moveToNext());
             assertEquals("morning", cursor.getString(0));
             assertEquals("MORNING", cursor.getString(1));
-            assertEquals(1, cursor.getInt(2));
-            assertEquals("2026-08-15", cursor.getString(3));
-            assertTrue(cursor.getLong(4) >= 1_000_000L && cursor.getLong(4) < 2_000_000L);
+            assertTrue(cursor.getLong(2) >= 1_000_000L && cursor.getLong(2) < 2_000_000L);
             assertXpAndZeroCombos(database, 53);
+            assertLegacyColumnsRemoved(database);
         } finally {
             migrated.close();
         }
@@ -75,7 +81,8 @@ public final class DatabaseMigrationRobolectricTest {
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_2_3,
-                        DatabaseMigrations.MIGRATION_3_4, DatabaseMigrations.MIGRATION_4_5)
+                        DatabaseMigrations.MIGRATION_3_4, DatabaseMigrations.MIGRATION_4_5,
+                        DatabaseMigrations.MIGRATION_5_6)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -86,6 +93,7 @@ public final class DatabaseMigrationRobolectricTest {
             assertTrue(cursor.moveToNext());
             assertEquals("MORNING", cursor.getString(1));
             assertXpAndZeroCombos(database, 53);
+            assertLegacyColumnsRemoved(database);
         } finally {
             migrated.close();
         }
@@ -119,7 +127,7 @@ public final class DatabaseMigrationRobolectricTest {
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_3_4,
-                        DatabaseMigrations.MIGRATION_4_5)
+                        DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT recurrence,ongoing,note,archived FROM tasks "
@@ -142,10 +150,49 @@ public final class DatabaseMigrationRobolectricTest {
             assertTrue(cursor.moveToFirst()); assertEquals(70, cursor.getInt(0));
         }
         assertXpAndZeroCombos(database, 70);
+        assertLegacyColumnsRemoved(database);
         migrated.close();
     }
 
-    @Test public void migrationFourToFivePreservesXpAndResetsEveryCombo() {
+    @Test public void migrationFiveToSixKeepsUnknownOwnerWithoutInventingTemplateId() {
+        createVersionOneDatabase();
+        upgradeFixtureToVersionFive();
+        SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
+                .builder(context).name(DATABASE)
+                .callback(new SupportSQLiteOpenHelper.Callback(5) {
+                    @Override public void onCreate(SupportSQLiteDatabase database) { }
+                    @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                    int oldVersion, int newVersion) { }
+                }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory().create(configuration);
+        SupportSQLiteDatabase old = helper.getWritableDatabase();
+        old.execSQL("INSERT INTO occurrences (id,taskId,scheduledOn,state,sortOrder,completedOn,"
+                + "slot,awardedXp,comboPointDelta) VALUES "
+                + "('unknown-occ','morning','2026-08-18','OPEN',1,'','MORNING',0,0)");
+        old.execSQL("INSERT INTO occurrence_steps (id,occurrenceId,position,text,done,amountKind,"
+                + "plannedSets,plannedReps,plannedDurationSeconds,note,actualRepetitions,"
+                + "comboOwnerId,earnedXp,comboPointDelta) VALUES "
+                + "('unknown-step','unknown-occ',0,'Historisch',1,'NONE',NULL,NULL,NULL,'','',"
+                + "'step:missing-template',10,0)");
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.MIGRATION_5_6)
+                .allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        try (Cursor cursor = database.query("SELECT sourceTemplateId,comboOwnerId,earnedXp "
+                + "FROM occurrence_steps WHERE id='unknown-step'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(null, cursor.getString(0));
+            assertEquals("step:missing-template", cursor.getString(1));
+            assertEquals(10, cursor.getInt(2));
+        }
+        assertXpAndZeroCombos(database, 53);
+        assertLegacyColumnsRemoved(database);
+        migrated.close();
+    }
+
+    @Test public void migrationFourToSixPreservesXpCombosRewardsAndStableSource() {
         createVersionOneDatabase();
         upgradeFixtureToVersionFour();
         SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
@@ -170,7 +217,8 @@ public final class DatabaseMigrationRobolectricTest {
         helper.close();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.MIGRATION_4_5)
+                .addMigrations(DatabaseMigrations.MIGRATION_4_5,
+                        DatabaseMigrations.MIGRATION_5_6)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
@@ -180,16 +228,26 @@ public final class DatabaseMigrationRobolectricTest {
             assertTrue(cursor.moveToFirst()); assertTrue(cursor.getInt(0) >= 3);
             assertEquals(0, cursor.getInt(1));
         }
-        try (Cursor cursor = database.query("SELECT comboOwnerId,earnedXp,comboPointDelta "
+        try (Cursor cursor = database.query("SELECT sourceTemplateId,comboOwnerId,earnedXp,comboPointDelta "
                 + "FROM occurrence_steps WHERE id='open-step'")) {
-            assertTrue(cursor.moveToFirst()); assertEquals("step:stable-step", cursor.getString(0));
-            assertEquals(10, cursor.getInt(1)); assertEquals(0, cursor.getInt(2));
+            assertTrue(cursor.moveToFirst()); assertEquals("stable-step", cursor.getString(0));
+            assertEquals("step:stable-step", cursor.getString(1));
+            assertEquals(10, cursor.getInt(2)); assertEquals(0, cursor.getInt(3));
         }
         try (Cursor cursor = database.query("SELECT awardedXp,comboPointDelta FROM occurrences "
                 + "WHERE id='done-v4'")) {
             assertTrue(cursor.moveToFirst()); assertEquals(10, cursor.getInt(0));
             assertEquals(0, cursor.getInt(1));
         }
+        assertLegacyColumnsRemoved(database);
+        RewardReceipt undo = new UndoOccurrence(new RoomTaskRepository(migrated), new Clock() {
+            @Override public LocalDate today() { return LocalDate.of(2026, 8, 17); }
+            @Override public LocalTime time() { return LocalTime.NOON; }
+        }).execute("done-v4");
+        assertEquals(10, undo.xp);
+        assertEquals(127, new RoomTaskRepository(migrated).xp());
+        assertEquals(OccurrenceState.OPEN,
+                new RoomTaskRepository(migrated).findOccurrence("done-v4").state);
         migrated.close();
     }
 
@@ -272,6 +330,22 @@ public final class DatabaseMigrationRobolectricTest {
         helper.getWritableDatabase(); helper.close();
     }
 
+    private void upgradeFixtureToVersionFive() {
+        upgradeFixtureToVersionFour();
+        SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
+                .builder(context).name(DATABASE)
+                .callback(new SupportSQLiteOpenHelper.Callback(5) {
+                    @Override public void onCreate(SupportSQLiteDatabase database) { }
+                    @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                    int oldVersion, int newVersion) {
+                        assertEquals(4, oldVersion); assertEquals(5, newVersion);
+                        DatabaseMigrations.MIGRATION_4_5.migrate(database);
+                    }
+                }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory().create(configuration);
+        helper.getWritableDatabase(); helper.close();
+    }
+
     private static void createVersionOneSchema(SupportSQLiteDatabase database) {
         database.execSQL("CREATE TABLE IF NOT EXISTS tasks (id TEXT NOT NULL, title TEXT NOT NULL, slot TEXT NOT NULL, "
                 + "recurrence TEXT NOT NULL, intervalDays INTEGER NOT NULL, weekdayMask INTEGER NOT NULL, ongoing INTEGER NOT NULL, "
@@ -302,6 +376,17 @@ public final class DatabaseMigrationRobolectricTest {
         try (Cursor cursor = database.query("SELECT COUNT(*),MAX(points) FROM combo_progress")) {
             assertTrue(cursor.moveToFirst()); assertTrue(cursor.getInt(0) >= 2);
             assertEquals(0, cursor.getInt(1));
+        }
+    }
+
+    private static void assertLegacyColumnsRemoved(SupportSQLiteDatabase database) {
+        try (Cursor cursor = database.query("PRAGMA table_info(tasks)")) {
+            while (cursor.moveToNext()) {
+                String column = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+                assertTrue(!column.equals("routineLevel") && !column.equals("routineStreak")
+                        && !column.equals("routineStreakWeeks")
+                        && !column.equals("lastStreakWeek"));
+            }
         }
     }
 }

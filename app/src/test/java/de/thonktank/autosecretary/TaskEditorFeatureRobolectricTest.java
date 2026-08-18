@@ -139,6 +139,7 @@ public final class TaskEditorFeatureRobolectricTest {
         TaskStepTemplate template = repository.templates(task.id).get(0);
         OccurrenceStep snapshot = repository.occurrenceSteps(occurrence.id).get(0);
         assertEquals(stableId, template.id);
+        assertEquals(stableId, snapshot.sourceTemplateId);
         assertEquals("Neu", template.text);
         assertEquals("Alt", snapshot.text);
         assertEquals(Integer.valueOf(3), snapshot.plannedSets);
