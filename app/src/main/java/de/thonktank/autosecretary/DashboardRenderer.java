@@ -27,6 +27,7 @@ public final class DashboardRenderer {
     private final UiStyle style;
     private final Actions actions;
     private final String version;
+    private final RewardAnchorRegistry rewardAnchors;
     private NavigationDestination mounted;
     private FocusTaskView focus;
     private LinearLayout timeline;
@@ -38,17 +39,23 @@ public final class DashboardRenderer {
 
     public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
                              Actions actions, String version) {
+        this(context, scroll, content, actions, version, new RewardAnchorRegistry());
+    }
+
+    public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
+                             Actions actions, String version, RewardAnchorRegistry rewardAnchors) {
         this.context = context;
         this.scroll = scroll;
         this.content = content;
         this.actions = actions;
         this.version = version;
+        this.rewardAnchors = rewardAnchors;
         style = new UiStyle(context);
     }
 
     public void render(DashboardUiState state, UiThemeMode themeMode, UpdateUiState updateState) {
         if (mounted != state.navigation) mount(state.navigation);
-        if (state.navigation == NavigationDestination.TODAY) bindToday(state.dashboard, state.palette);
+        if (state.navigation == NavigationDestination.TODAY) bindToday(state);
         else if (state.navigation == NavigationDestination.ALL_TASKS)
             allPlaceholder.bind(state.palette, true);
         else options.bind(state.palette, themeMode, state.calendarPermission, state.calendar,
@@ -113,9 +120,11 @@ public final class DashboardRenderer {
     private void mountToday() {
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
-        focus = new FocusTaskView(context);
+        focus = new FocusTaskView(context, rewardAnchors);
+        focus.setId(R.id.dashboard_focus);
         content.addView(focus, new LinearLayout.LayoutParams(-1, -2));
         timeline = new LinearLayout(context);
+        timeline.setId(R.id.dashboard_timeline);
         timeline.setOrientation(LinearLayout.VERTICAL);
         content.addView(timeline, new LinearLayout.LayoutParams(-1, -2));
         more = style.serif("", 14, 0, true, 300);
@@ -126,7 +135,10 @@ public final class DashboardRenderer {
         content.addView(empty, new LinearLayout.LayoutParams(-1, -2));
     }
 
-    private void bindToday(DashboardUiModel dashboard, DayPalette palette) {
+    private void bindToday(DashboardUiState state) {
+        TodayUiModel dashboard = state.dashboard;
+        DayPalette palette = state.palette;
+        rewardAnchors.clearDynamic();
         TaskSnapshot focusTask = dashboard.firstOpen();
         boolean hasFocus = focusTask != null;
         focus.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
@@ -143,7 +155,8 @@ public final class DashboardRenderer {
                 style.dimen(R.dimen.page_end), style.dp(26));
         int open = 0;
         for (TaskSnapshot task : dashboard.tasks) if (!task.done) open++;
-        focus.bind(focusTask, dashboard.timeline.size() > 0, open > 1, palette, actions);
+        focus.bind(focusTask, dashboard.timeline.size() > 0, open > 1, palette,
+                state.setProgressEditor, actions);
         bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
         more.setText(context.getResources().getQuantityString(
@@ -185,6 +198,11 @@ public final class DashboardRenderer {
                 ((TaskLeafView) view).bind(item.task, marker,
                         !item.task.done && !firstOpenAfterFocus, palette,
                         actions::onTaskAction, actions::onTaskMenu);
+                RewardAnchorKey.Kind kind = item.task.terminalCondition
+                        ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE;
+                rewardAnchors.register(new RewardAnchorKey(kind, item.task.terminalCondition
+                        ? item.task.taskId : item.task.occurrenceId),
+                        ((TaskLeafView) view).rewardAnchor());
             }
             if (view.getParent() != timeline) {
                 if (view.getParent() instanceof android.view.ViewGroup)

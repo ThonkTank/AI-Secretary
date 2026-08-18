@@ -54,9 +54,9 @@ public final class TaskServiceCharacterizationTest {
                 new TaskStepEntity("template-1", task.id, 0, "Duschen"),
                 new TaskStepEntity("template-2", task.id, 1, "Anziehen")));
 
-        DashboardState before = service.dashboard();
+        TodayUiModel before = service.dashboard();
         service.materializeDueTasks();
-        DashboardState state = service.dashboard();
+        TodayUiModel state = service.dashboard();
 
         assertNull(before.firstOpen());
         assertEquals(1, dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).size());
@@ -75,7 +75,7 @@ public final class TaskServiceCharacterizationTest {
         dao.insertOccurrence(occurrence);
 
         service.complete(occurrence.id);
-        DashboardState state = service.dashboard();
+        TodayUiModel state = service.dashboard();
 
         assertEquals(10, state.xp);
         assertEquals(1, state.tasks.size());
@@ -94,7 +94,7 @@ public final class TaskServiceCharacterizationTest {
 
         service.defer("first-occurrence");
 
-        DashboardState state = service.dashboard();
+        TodayUiModel state = service.dashboard();
         assertEquals("second", state.firstOpen().taskId);
         assertEquals(1_001_000L, dao.task("first").displayOrder);
         assertEquals(1_002_000L, dao.task("second").displayOrder);
@@ -109,13 +109,13 @@ public final class TaskServiceCharacterizationTest {
         task.nextDueOn = "";
         dao.insertTask(task);
 
-        DashboardState before = service.dashboard();
+        TodayUiModel before = service.dashboard();
         assertNotNull(before.firstOpen());
         assertTrue(before.firstOpen().terminalCondition);
 
         service.closeOngoingTask(task.id);
 
-        DashboardState after = service.dashboard();
+        TodayUiModel after = service.dashboard();
         assertNull(after.firstOpen());
         assertEquals(1, after.tasks.size());
         assertTrue(after.tasks.get(0).done);

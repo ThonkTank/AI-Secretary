@@ -55,11 +55,11 @@ public final class TaskServiceRobolectricCharacterizationTest {
                 new TaskStepEntity("one", task.id, 0, "Duschen"),
                 new TaskStepEntity("two", task.id, 1, "Anziehen")));
 
-        DashboardState before = service.dashboard();
+        TodayUiModel before = service.dashboard();
         service.materializeDueTasks();
-        DashboardState first = service.dashboard();
+        TodayUiModel first = service.dashboard();
         service.materializeDueTasks();
-        DashboardState second = service.dashboard();
+        TodayUiModel second = service.dashboard();
 
         assertNull(before.firstOpen());
         assertEquals(1, dao.occurrencesByState(OccurrenceState.OPEN.storageCode()).size());
@@ -74,7 +74,7 @@ public final class TaskServiceRobolectricCharacterizationTest {
 
         service.complete("occurrence");
         service.complete("occurrence");
-        DashboardState state = service.dashboard();
+        TodayUiModel state = service.dashboard();
 
         assertEquals(10, state.xp);
         assertEquals(1, state.tasks.size());
@@ -110,7 +110,7 @@ public final class TaskServiceRobolectricCharacterizationTest {
         assertNotNull(service.dashboard().firstOpen());
         service.closeOngoingTask(task.id);
 
-        DashboardState state = service.dashboard();
+        TodayUiModel state = service.dashboard();
         assertNull(state.firstOpen());
         assertEquals(1, state.tasks.size());
         assertTrue(state.tasks.get(0).done);

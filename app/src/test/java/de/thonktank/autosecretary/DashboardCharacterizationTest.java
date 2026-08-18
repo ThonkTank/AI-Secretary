@@ -39,14 +39,14 @@ public final class DashboardCharacterizationTest {
     @Test public void completedTaskKeepsItsPositionButIsSkippedAsFocus() {
         TaskSnapshot done = DashboardFixtures.completedTodayTask();
         TaskSnapshot open = DashboardFixtures.overdueTask();
-        DashboardState state = new DashboardState(10, java.util.Arrays.asList(done, open));
+        TodayUiModel state = DashboardFixtures.today(10, java.util.Arrays.asList(done, open));
 
         assertSame(open, state.firstOpen());
         assertTrue(state.tasks.get(0).done);
     }
 
     @Test public void fullFixtureCoversTheDashboardStatesFromTheHandoff() {
-        DashboardState state = DashboardFixtures.fullDashboard();
+        TodayUiModel state = DashboardFixtures.fullDashboard();
 
         assertEquals(120, state.xp);
         assertEquals(5, state.tasks.size());
@@ -89,17 +89,17 @@ public final class DashboardCharacterizationTest {
                 new NoOpActions(), "test");
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
-        DashboardState dashboardState = new DashboardState(10, java.util.Arrays.asList(
+        TodayUiModel dashboardState = DashboardFixtures.today(10, java.util.Arrays.asList(
                 DashboardFixtures.simpleTask(), DashboardFixtures.completedTodayTask(),
                 DashboardFixtures.recurringTask(), DashboardFixtures.ongoingTask()));
         DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.AUTO);
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        DashboardUiModel.compose(dashboardState, events),
+                        TodayUiModel.compose(dashboardState, events),
                         CalendarUiState.from(new CalendarResult.Success(events)), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
                         EditorUiState.closed()), UiThemeMode.AUTO, UpdateUiState.idle());
 
-        LinearLayout timeline = (LinearLayout) content.getChildAt(1);
+        LinearLayout timeline = content.findViewById(R.id.dashboard_timeline);
         List<String> text = new ArrayList<>();
         collectText(timeline, text);
         assertEquals(3, timeline.getChildCount());

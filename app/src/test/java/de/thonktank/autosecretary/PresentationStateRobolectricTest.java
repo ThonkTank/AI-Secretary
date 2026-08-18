@@ -80,7 +80,7 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void composerMergesCalendarAndTasksOutsideTheActivity() {
-        DashboardUiModel model = DashboardUiModel.compose(
+        TodayUiModel model = TodayUiModel.compose(
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
 
         assertEquals(6, model.timeline.size());
@@ -90,7 +90,7 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void presentationCollectionsCannotBeMutated() {
-        DashboardUiModel model = DashboardUiModel.compose(
+        TodayUiModel model = TodayUiModel.compose(
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
         try {
             model.tasks.clear();
@@ -139,7 +139,8 @@ public final class PresentationStateRobolectricTest {
         viewModel.create("Einmal", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
                 Collections.emptyList(), false, "");
 
-        await(() -> !value().isRunning("create"));
+        await(() -> !value().isRunning(
+                new UiCommand(UiCommand.Kind.CREATE, "new")));
         assertEquals(1, repository.allTasks().size());
     }
 

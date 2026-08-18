@@ -6,13 +6,14 @@ import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.XpProgress;
 
 /** Deterministic examples shared by characterization tests and future presenter tests. */
 final class DashboardFixtures {
     private DashboardFixtures() { }
 
-    static DashboardState emptyDashboard() {
-        return new DashboardState(0, Collections.emptyList());
+    static TodayUiModel emptyDashboard() {
+        return today(0, Collections.emptyList());
     }
 
     static TaskSnapshot simpleTask() {
@@ -48,8 +49,8 @@ final class DashboardFixtures {
                 Collections.emptyList(), 0, false, false, true, false, 3, 1_003_000L);
     }
 
-    static DashboardState fullDashboard() {
-        return new DashboardState(120, Arrays.asList(
+    static TodayUiModel fullDashboard() {
+        return today(120, Arrays.asList(
                 taskWithSteps(), completedTodayTask(), overdueTask(), recurringTask(), ongoingTask()));
     }
 
@@ -67,5 +68,11 @@ final class DashboardFixtures {
                 title, slot, "weiche Zeit", terminalCondition ? "Bedingung" : "Nächster Schritt",
                 recurrence, steps, remainingSteps, terminalCondition, ongoing, done, overdue,
                 comboStage, displayOrder);
+    }
+
+    static TodayUiModel today(int xp, List<TaskSnapshot> tasks) {
+        TaskSnapshot focus = null;
+        for (TaskSnapshot task : tasks) if (!task.done) { focus = task; break; }
+        return new TodayUiModel(xp, new XpProgress(xp), tasks, focus);
     }
 }

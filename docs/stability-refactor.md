@@ -71,16 +71,21 @@ Woche wird aber unter Schema 3 korrekt fortgeführt.
 ## Einheitlicher Präsentationszustand
 
 `TaskViewModel` veröffentlicht einen unveränderlichen `DashboardUiState`. Darin liegen das
-typisierte Navigationsziel, das bereits mit Kalenderterminen sortierte `DashboardUiModel`,
+typisierte Navigationsziel, das bereits mit Kalenderterminen sortierte `TodayUiModel`,
 der Kalender- und Berechtigungszustand, die aktuelle Palette, Ladeinformationen, laufende
-Aktionsschlüssel und der offene Editor. Die Activity führt Aufgaben und Termine daher nicht
+`UiCommand`s, der offene Vollbildeditor und der `SetProgressEditorState`. Die Activity führt Aufgaben und Termine daher nicht
 mehr selbst zusammen und sortiert keine fachlichen Einträge.
 
 Navigation und Editorziel werden mit `SavedStateHandle` wiederhergestellt. Laufende
-Kommandos werden synchron über stabile Aktionsschlüssel gesperrt, sodass Doppelklicks nicht
+Kommandos werden synchron über typisierte Identitäten gesperrt, sodass Doppelklicks nicht
 mehrere identische Schreibvorgänge anstellen. Fehler, Bestätigungsdialoge,
 Berechtigungsanfragen und externe Navigation sind konsumierbare `UiEvent`s statt
 wiederholender `LiveData<String>`-Werte.
+
+Rewardanimationen sind keine konsumierbaren `UiEvent`s mehr. Das ViewModel führt eine
+ID-deduplizierte FIFO-Queue aus `RewardEffect`s; der eigenständige `RewardAnimator` bestätigt
+jeden Effekt nach Abschluss. Ein explizites `RewardAnchorRegistry` ersetzt View-Tags und
+Hierarchiesuche.
 
 ## Komponentenbasierte Views
 
@@ -95,6 +100,11 @@ Header, Fokusaufgabe, Aufgabenblatt, Kalenderblatt, Leerzustand, Footer-Navigati
 Kombo-Maserung und Optionen sind eigenständige Views. Wiederverwendbare Typografie-, Maß- und
 Form-Helfer liegen in `UiStyle`, Produkttexte und zentrale Maße in Android-Ressourcen. Die
 Activity nutzt die AndroidX-Edge-to-edge- und WindowInsets-APIs.
+
+`TaskEditorCoordinator` montiert und bindet den Vollbildeditor außerhalb der Activity.
+`SetProgressEditorView` besitzt keine versteckten Entwurfsdaten: Expansion, Eingabe und Fehler
+liegen immutable im Presentation-State und überleben normale Dashboard-Re-Renders. Stabile
+Ressourcen-IDs bilden Testseams für die zentralen programmgesteuerten Komponenten.
 
 Der `TaskEditorDialog` besitzt einen vollständigen, über `SavedStateHandle` gesicherten
 Entwurf und einen separaten `TaskEditorValidator`. Beim Bearbeiten können Titel,

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="dashboard_screen" type="id" />
+    <item name="dashboard_scroll" type="id" />
+    <item name="dashboard_content" type="id" />
+    <item name="dashboard_focus" type="id" />
+    <item name="dashboard_timeline" type="id" />
+    <item name="header_add_task" type="id" />
+    <item name="header_add_task_visual" type="id" />
+    <item name="header_reward_anchor" type="id" />
+    <item name="navigation_today" type="id" />
+    <item name="navigation_all_tasks" type="id" />
+    <item name="navigation_options" type="id" />
+    <item name="set_progress_editor" type="id" />
+    <item name="set_progress_input" type="id" />
+    <item name="set_progress_save" type="id" />
+    <item name="set_progress_toggle_done" type="id" />
+</resources>

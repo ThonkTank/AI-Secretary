@@ -72,8 +72,6 @@ public final class TaskLeafView extends FrameLayout {
         WoodGrainView.applyTextHalo(marker, leafColor);
         WoodGrainView.applyTextHalo(softTime, leafColor);
         int value = task.done ? task.awardedXp : task.claimableXp;
-        dot.setTag(task.terminalCondition ? "task:" + task.taskId
-                : "occurrence:" + task.occurrenceId);
         dot.bind(task.done, false, palette, value);
         dot.setEnabled(task.done ? task.undoAvailable : !task.occurrenceId.isEmpty());
         dot.setContentDescription((task.done ? getContext().getString(R.string.marker_done) + ": " : "")
@@ -90,6 +88,8 @@ public final class TaskLeafView extends FrameLayout {
                     new WoodGrainView.Anchor(dot, task.comboStage)), faded);
         });
     }
+
+    View rewardAnchor() { return dot; }
 
     private void bindProgress(TaskSnapshot task, DayPalette palette) {
         boolean visible = task.steps.size() > 1 && !task.done;

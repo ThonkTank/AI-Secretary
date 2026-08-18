@@ -6,18 +6,28 @@ import java.util.Set;
 
 public final class DashboardUiState {
     public final NavigationDestination navigation;
-    public final DashboardUiModel dashboard;
+    public final TodayUiModel dashboard;
     public final CalendarUiState calendar;
     public final DayPalette palette;
     public final CalendarPermissionStatus calendarPermission;
     public final boolean loading;
-    public final Set<String> runningActions;
+    public final Set<UiCommand> runningActions;
     public final EditorUiState editor;
+    public final SetProgressEditorState setProgressEditor;
 
-    public DashboardUiState(NavigationDestination navigation, DashboardUiModel dashboard,
+    public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
                             CalendarUiState calendar, DayPalette palette,
                             CalendarPermissionStatus calendarPermission, boolean loading,
-                            Set<String> runningActions, EditorUiState editor) {
+                            Set<UiCommand> runningActions, EditorUiState editor) {
+        this(navigation, dashboard, calendar, palette, calendarPermission, loading,
+                runningActions, editor, SetProgressEditorState.closed());
+    }
+
+    public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
+                            CalendarUiState calendar, DayPalette palette,
+                            CalendarPermissionStatus calendarPermission, boolean loading,
+                            Set<UiCommand> runningActions, EditorUiState editor,
+                            SetProgressEditorState setProgressEditor) {
         this.navigation = navigation;
         this.dashboard = dashboard;
         this.calendar = calendar;
@@ -26,54 +36,63 @@ public final class DashboardUiState {
         this.loading = loading;
         this.runningActions = Collections.unmodifiableSet(new LinkedHashSet<>(runningActions));
         this.editor = editor;
+        this.setProgressEditor = setProgressEditor;
     }
 
     public DashboardUiState withNavigation(NavigationDestination value) {
         return copy(value, dashboard, calendar, palette, calendarPermission, loading,
-                runningActions, editor);
+                runningActions, editor, setProgressEditor);
     }
 
     public DashboardUiState withEditor(EditorUiState value) {
         return copy(navigation, dashboard, calendar, palette, calendarPermission, loading,
-                runningActions, value);
+                runningActions, value, setProgressEditor);
     }
 
     public DashboardUiState withPalette(DayPalette value) {
         return copy(navigation, dashboard, calendar, value, calendarPermission, loading,
-                runningActions, editor);
+                runningActions, editor, setProgressEditor);
     }
 
     public DashboardUiState withPermission(CalendarPermissionStatus value) {
         return copy(navigation, dashboard, calendar, palette, value, loading,
-                runningActions, editor);
+                runningActions, editor, setProgressEditor);
     }
 
     public DashboardUiState withLoading(boolean value) {
         return copy(navigation, dashboard, value ? CalendarUiState.loading(calendar) : calendar, palette,
-                calendarPermission, value, runningActions, editor);
+                calendarPermission, value, runningActions, editor, setProgressEditor);
     }
 
-    public DashboardUiState withContent(DashboardUiModel dashboardValue,
+    public DashboardUiState withContent(TodayUiModel dashboardValue,
                                         CalendarUiState calendarValue) {
         return copy(navigation, dashboardValue, calendarValue, palette, calendarPermission,
-                false, runningActions, editor);
+                false, runningActions, editor,
+                setProgressEditor.closeIfMissing(dashboardValue.tasks));
     }
 
-    public DashboardUiState withRunningActions(Set<String> value) {
+    public DashboardUiState withRunningActions(Set<UiCommand> value) {
         return copy(navigation, dashboard, calendar, palette, calendarPermission, loading,
-                value, editor);
+                value, editor, setProgressEditor);
     }
 
-    public boolean isRunning(String key) {
+    public DashboardUiState withSetProgressEditor(SetProgressEditorState value) {
+        return copy(navigation, dashboard, calendar, palette, calendarPermission, loading,
+                runningActions, editor, value);
+    }
+
+    public boolean isRunning(UiCommand key) {
         return runningActions.contains(key);
     }
 
     private DashboardUiState copy(NavigationDestination navigationValue,
-                                  DashboardUiModel dashboardValue,
+                                  TodayUiModel dashboardValue,
                                   CalendarUiState calendarValue, DayPalette paletteValue,
                                   CalendarPermissionStatus permissionValue, boolean loadingValue,
-                                  Set<String> actionsValue, EditorUiState editorValue) {
+                                  Set<UiCommand> actionsValue, EditorUiState editorValue,
+                                  SetProgressEditorState setProgressEditorValue) {
         return new DashboardUiState(navigationValue, dashboardValue, calendarValue,
-                paletteValue, permissionValue, loadingValue, actionsValue, editorValue);
+                paletteValue, permissionValue, loadingValue, actionsValue, editorValue,
+                setProgressEditorValue);
     }
 }

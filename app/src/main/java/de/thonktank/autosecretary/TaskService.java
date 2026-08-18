@@ -59,13 +59,13 @@ public final class TaskService {
     }
 
     /** Pure read. It never creates occurrences or changes ordering. */
-    public DashboardState dashboard() {
+    public TodayUiModel dashboard() {
         java.time.LocalDate today = clock.today();
         return uiMapper.map(loadDashboard.execute(today), today);
     }
 
     /** Explicit command followed by a pure read for app-level refreshes. */
-    public DashboardState refreshDashboard() {
+    public TodayUiModel refreshDashboard() {
         materialize.execute();
         return dashboard();
     }

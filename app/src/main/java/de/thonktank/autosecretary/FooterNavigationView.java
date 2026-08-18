@@ -26,8 +26,10 @@ public final class FooterNavigationView extends LinearLayout {
         setGravity(Gravity.TOP);
         setPadding(style.dp(60), style.dp(16), style.dp(26), style.dp(16));
         int[] names = {R.string.nav_today, R.string.nav_all, R.string.nav_options};
+        int[] ids = {R.id.navigation_today, R.id.navigation_all_tasks, R.id.navigation_options};
         for (int i = 0; i < labels.length; i++) {
             NavLabel label = new NavLabel(context);
+            label.setId(ids[i]);
             label.setText(names[i]);
             label.setGravity(Gravity.CENTER);
             label.setMinHeight(style.dp(48));

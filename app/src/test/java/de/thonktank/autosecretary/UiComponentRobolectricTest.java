@@ -106,14 +106,14 @@ public final class UiComponentRobolectricTest {
         DashboardUiState first = state(morning);
 
         renderer.render(first, UiThemeMode.AUTO, UpdateUiState.idle());
-        View focus = content.getChildAt(0);
+        View focus = content.findViewById(R.id.dashboard_focus);
         focus.setFocusableInTouchMode(true);
         focus.requestFocus();
 
         renderer.render(state(DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)),
                 UiThemeMode.AUTO, UpdateUiState.idle());
 
-        assertSame(focus, content.getChildAt(0));
+        assertSame(focus, content.findViewById(R.id.dashboard_focus));
         assertSame(focus, content.findFocus());
     }
 
@@ -124,12 +124,11 @@ public final class UiComponentRobolectricTest {
         assertEquals(style.dp(82), context.getResources().getDimensionPixelSize(R.dimen.header_height));
         assertEquals(style.dp(80), context.getResources().getDimensionPixelSize(R.dimen.footer_height));
         HeaderView header = new HeaderView(context, () -> { });
-        android.widget.LinearLayout headerRow = (android.widget.LinearLayout) header.getChildAt(0);
-        View add = headerRow.getChildAt(1);
+        View add = header.findViewById(R.id.header_add_task);
         assertTrue(add.getLayoutParams().width >= target);
         assertTrue(add.getLayoutParams().height >= target);
         assertEquals(context.getString(R.string.content_add_task), add.getContentDescription());
-        View addVisual = ((android.widget.FrameLayout) add).getChildAt(0);
+        View addVisual = header.findViewById(R.id.header_add_task_visual);
         assertEquals(style.dp(40), addVisual.getLayoutParams().width);
         assertEquals(style.dp(40), addVisual.getLayoutParams().height);
 
@@ -156,7 +155,7 @@ public final class UiComponentRobolectricTest {
         footer.measure(View.MeasureSpec.makeMeasureSpec(style.dp(412), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(80), View.MeasureSpec.EXACTLY));
         footer.layout(0, 0, footer.getMeasuredWidth(), footer.getMeasuredHeight());
-        View today = footer.getChildAt(0);
+        View today = footer.findViewById(R.id.navigation_today);
         android.graphics.Rect target = footer.effectiveTouchBounds(today);
         float x = target.left + 1;
         float y = target.centerY();
@@ -205,7 +204,8 @@ public final class UiComponentRobolectricTest {
         vessel.bind(30, 3, 3, true, 5, palette);
         HeaderView header = new HeaderView(activity, () -> { });
         root.addView(header, new FrameLayout.LayoutParams(600, 164));
-        header.bind(LocalTime.NOON, palette, 70);
+        header.bind(LocalTime.NOON, palette,
+                new de.thonktank.autosecretary.domain.model.XpProgress(70));
         header.playRewardGlint(palette);
 
         assertFalse(vessel.isPulsing());
@@ -229,13 +229,20 @@ public final class UiComponentRobolectricTest {
                 Collections.singletonList(set), 1, false, false, false, false,
                 2, 1_000L, 15, 0, 0, false);
         AtomicReference<java.util.List<Integer>> saved = new AtomicReference<>();
+        AtomicReference<SetProgressEditorState> editorState =
+                new AtomicReference<>(SetProgressEditorState.closed());
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        focus.bind(task, false, false, palette, editorState.get(),
                 new NoOpActions() {
                     @Override public void onEditStepProgress(TaskStepSnapshot step,
                                                              java.util.List<Integer> repetitions,
                                                              boolean done) {
                         saved.set(repetitions);
+                    }
+                    @Override public void onSetProgressEditorStateChanged(
+                            SetProgressEditorState state) {
+                        editorState.set(state);
                     }
                 });
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
@@ -251,15 +258,35 @@ public final class UiComponentRobolectricTest {
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
-        EditText input = null;
-        TextView save = null;
-        for (View view : descendants(focus)) {
-            if (view instanceof EditText && view.getVisibility() == View.VISIBLE)
-                input = (EditText) view;
-            if (view instanceof TextView && context.getString(R.string.set_progress_save)
-                    .contentEquals(((TextView) view).getText())) save = (TextView) view;
-        }
+        EditText input = focus.findViewById(R.id.set_progress_input);
+        TextView save = focus.findViewById(R.id.set_progress_save);
         assertNotNull(input); assertNotNull(save);
+        input.setText("10, 11");
+        focus.bind(task, false, false, palette, editorState.get(), new NoOpActions() {
+            @Override public void onEditStepProgress(TaskStepSnapshot step,
+                                                     java.util.List<Integer> repetitions,
+                                                     boolean done) { saved.set(repetitions); }
+            @Override public void onSetProgressEditorStateChanged(SetProgressEditorState state) {
+                editorState.set(state);
+            }
+        });
+        input = focus.findViewById(R.id.set_progress_input);
+        save = focus.findViewById(R.id.set_progress_save);
+        assertEquals("10, 11", input.getText().toString());
+        input.setText("10, 11, 12, 13");
+        save.performClick();
+        assertNotNull(editorState.get().error(set.id));
+        focus.bind(task, false, false, palette, editorState.get(), new NoOpActions() {
+            @Override public void onEditStepProgress(TaskStepSnapshot step,
+                                                     java.util.List<Integer> repetitions,
+                                                     boolean done) { saved.set(repetitions); }
+            @Override public void onSetProgressEditorStateChanged(SetProgressEditorState state) {
+                editorState.set(state);
+            }
+        });
+        input = focus.findViewById(R.id.set_progress_input);
+        save = focus.findViewById(R.id.set_progress_save);
+        assertNotNull(input.getError());
         input.setText("10, 11");
         save.performClick();
         assertEquals(Arrays.asList(10, 11), saved.get());
@@ -295,10 +322,7 @@ public final class UiComponentRobolectricTest {
             }
         assertNotNull(dew);
         dew.performClick();
-        TextView reopen = null;
-        for (View view : descendants(focus))
-            if (view instanceof TextView && context.getString(R.string.set_reopen)
-                    .contentEquals(((TextView) view).getText())) reopen = (TextView) view;
+        TextView reopen = focus.findViewById(R.id.set_progress_toggle_done);
         assertNotNull(reopen);
         reopen.performClick();
         assertEquals(full, reopened.get());
@@ -317,7 +341,7 @@ public final class UiComponentRobolectricTest {
     }
 
     private static DashboardUiState state(DayPalette palette) {
-        DashboardUiModel dashboard = DashboardUiModel.compose(
+        TodayUiModel dashboard = TodayUiModel.compose(
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
         return new DashboardUiState(NavigationDestination.TODAY, dashboard,
                 CalendarUiState.from(new CalendarResult.Success(DashboardFixtures.calendarEvents())), palette,

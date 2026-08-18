@@ -63,7 +63,7 @@ public final class WidgetPresenterTest {
     }
 
     @Test public void terminalConditionIsNeverExecutedDirectlyByTheWidget() {
-        DashboardState state = new DashboardState(0,
+        TodayUiModel state = DashboardFixtures.today(0,
                 Collections.singletonList(DashboardFixtures.ongoingTask()));
         WidgetUiModel model = presenter.present(new WidgetPresenter.CycleData(state,
                         new CalendarResult.PermissionMissing(), palette),

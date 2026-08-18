@@ -10,11 +10,11 @@ import de.thonktank.autosecretary.calendar.CalendarResult;
 
 public final class WidgetPresenter {
     public static final class CycleData {
-        final DashboardState dashboard;
+        final TodayUiModel dashboard;
         final CalendarResult calendar;
         final DayPalette palette;
 
-        CycleData(DashboardState dashboard, CalendarResult calendar, DayPalette palette) {
+        CycleData(TodayUiModel dashboard, CalendarResult calendar, DayPalette palette) {
             this.dashboard = dashboard;
             this.calendar = calendar;
             this.palette = palette;
@@ -90,7 +90,7 @@ public final class WidgetPresenter {
         return new WidgetUiModel.CalendarItem(event.time, event.title);
     }
 
-    private static String nextOpenTitle(DashboardState state, TaskSnapshot focus) {
+    private static String nextOpenTitle(TodayUiModel state, TaskSnapshot focus) {
         for (TaskSnapshot task : state.tasks)
             if (!task.done && task != focus) return task.title;
         return null;

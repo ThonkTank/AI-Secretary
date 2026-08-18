@@ -12,13 +12,10 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-
-import de.thonktank.autosecretary.domain.model.RewardReceipt;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
@@ -54,9 +51,10 @@ public class MainActivity extends ComponentActivity {
     private DashboardRenderer renderer;
     private FrameLayout root;
     private LinearLayout dashboardScreen;
-    private TaskEditorView taskEditor;
+    private TaskEditorCoordinator editorCoordinator;
     private int systemTopInset;
-    private final RewardAnimationQueue rewardAnimations = new RewardAnimationQueue();
+    private final RewardAnchorRegistry rewardAnchors = new RewardAnchorRegistry();
+    private RewardAnimator rewardAnimator;
 
     private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
@@ -76,6 +74,19 @@ public class MainActivity extends ComponentActivity {
         buildShell();
         viewModel = new ViewModelProvider(this,
                 new TaskViewModel.Factory(container)).get(TaskViewModel.class);
+        editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
+                new TaskEditorView.Listener() {
+                    @Override public void onDraftChanged(EditorUiState draft) {
+                        viewModel.updateEditorDraft(draft);
+                    }
+                    @Override public void onSave(EditorUiState draft) {
+                        viewModel.saveEditor(draft);
+                    }
+                    @Override public void onDelete(String taskId) {
+                        viewModel.deleteFromEditor(taskId);
+                    }
+                    @Override public void onDismiss() { viewModel.dismissEditor(); }
+                });
         UpdateViewModel updateViewModel = new ViewModelProvider(this, new UpdateViewModel.Factory(
                 container.updates, container.updatePreferences,
                 failure -> container.logger.error("Updater", failure.getMessage(), failure),
@@ -88,11 +99,12 @@ public class MainActivity extends ComponentActivity {
                 container.texts, container.updateConfiguration.automaticChecksEnabled);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
+        viewModel.rewardEffects().observe(this, this::handleRewardEffects);
         updates.state().observe(this, this::renderUpdate);
         updates.effects().observe(this, updates::handleEffect);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {
-                if (taskEditor != null && taskEditor.handleBack()) return;
+                if (editorCoordinator != null && editorCoordinator.handleBack()) return;
                 setEnabled(false);
                 getOnBackPressedDispatcher().onBackPressed();
                 setEnabled(true);
@@ -132,15 +144,19 @@ public class MainActivity extends ComponentActivity {
         root.addView(forest, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout screen = new LinearLayout(this);
         dashboardScreen = screen;
+        screen.setId(R.id.dashboard_screen);
         screen.setOrientation(LinearLayout.VERTICAL);
         root.addView(screen, new FrameLayout.LayoutParams(-1, -1));
         header = new HeaderView(this, this::openEditorWithFlight);
+        rewardAnchors.register(RewardAnchorKey.head(), header.rewardAnchor());
         screen.addView(header, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.header_height)));
         scroll = new ScrollView(this);
+        scroll.setId(R.id.dashboard_scroll);
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
         LinearLayout content = new LinearLayout(this);
+        content.setId(R.id.dashboard_content);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setLayoutTransition(new LayoutTransition());
         content.getLayoutTransition().setDuration(MotionTokens.standard().stateChangeDurationMs);
@@ -149,19 +165,21 @@ public class MainActivity extends ComponentActivity {
         footer = new FooterNavigationView(this, destination -> viewModel.navigate(destination));
         screen.addView(footer, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
-        renderer = new DashboardRenderer(this, scroll, content, dashboardActions(), versionName());
+        renderer = new DashboardRenderer(this, scroll, content, dashboardActions(), versionName(),
+                rewardAnchors);
+        rewardAnimator = new RewardAnimator(root, header, rewardAnchors);
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             systemTopInset = bars.top;
             screen.setPadding(0, bars.top, 0, 0);
-            if (taskEditor != null) taskEditor.setPadding(0, bars.top, 0, bars.bottom);
+            if (editorCoordinator != null) editorCoordinator.setInsets(bars.top, bars.bottom);
             return insets;
         });
         setContentView(root);
         ViewCompat.requestApplyInsets(root);
         DayPalette initial = DayPalette.at(container.clock.time(), DayPalette.Mode.AUTO);
         forest.setPalette(initial);
-        header.bind(container.clock.time(), initial);
+        header.bind(container.clock.time(), initial, TodayUiModel.empty().xpProgress);
         footer.bind(NavigationDestination.TODAY, initial);
     }
 
@@ -198,6 +216,10 @@ public class MainActivity extends ComponentActivity {
                                                     java.util.List<Integer> repetitions) {
                 viewModel.reopenExercise(step.id, repetitions);
             }
+            @Override public void onSetProgressEditorStateChanged(
+                    SetProgressEditorState state) {
+                viewModel.updateSetProgressEditor(state);
+            }
             @Override public void onTheme(UiThemeMode mode) {
                 container.uiPreferences.setThemeMode(mode);
                 viewModel.minuteChanged();
@@ -219,7 +241,7 @@ public class MainActivity extends ComponentActivity {
                 getWindow().getDecorView());
         controller.setAppearanceLightStatusBars(light);
         controller.setAppearanceLightNavigationBars(light);
-        syncEditor(state.editor);
+        editorCoordinator.render(state.editor, state.palette, container.clock.today());
         TaskWidgetProvider.updateAll(this);
     }
 
@@ -282,30 +304,6 @@ public class MainActivity extends ComponentActivity {
                         (dialog, which) -> viewModel.close(taskId)).show();
     }
 
-    private void syncEditor(EditorUiState editor) {
-        if (!editor.open) {
-            if (taskEditor != null) {
-                root.removeView(taskEditor);
-                taskEditor = null;
-            }
-            dashboardScreen.setVisibility(android.view.View.VISIBLE);
-            return;
-        }
-        dashboardScreen.setVisibility(android.view.View.INVISIBLE);
-        if (editor.loading) return;
-        if (taskEditor == null) {
-            taskEditor = new TaskEditorView(this, new TaskEditorView.Listener() {
-            @Override public void onDraftChanged(EditorUiState draft) { viewModel.updateEditorDraft(draft); }
-            @Override public void onSave(EditorUiState draft) { viewModel.saveEditor(draft); }
-            @Override public void onDelete(String taskId) { viewModel.deleteFromEditor(taskId); }
-            @Override public void onDismiss() { viewModel.dismissEditor(); }
-            });
-            taskEditor.setPadding(0, systemTopInset, 0, 0);
-            root.addView(taskEditor, new FrameLayout.LayoutParams(-1, -1));
-        }
-        taskEditor.bind(editor, uiState.palette, container.clock.today());
-    }
-
     private void handleEvent(UiEvent event) {
         if (event == null || !event.consume()) return;
         if (event.type == UiEvent.Type.ERROR)
@@ -321,99 +319,13 @@ public class MainActivity extends ComponentActivity {
         else if (event.type == UiEvent.Type.OPEN_APP_SETTINGS)
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName())));
-        else if (event.type == UiEvent.Type.REWARD) {
-            rewardAnimations.offer(event);
-            playNextReward();
-        }
     }
 
-    private void playNextReward() {
-        if (uiState == null) return;
-        UiEvent event = rewardAnimations.startNext();
-        if (event == null) return;
-        if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
-            if (event.rewardXp > 0
-                    && event.rewardTarget == RewardReceipt.Target.HEAD)
-                header.playRewardGlint(uiState.palette);
-            rewardAnimations.finish();
-            playNextReward();
-            return;
-        }
-        UiStyle style = new UiStyle(this);
-        TextView value = style.serif(event.rewardXp + " XP", 17, uiState.palette.light, true, 300);
-        value.setSingleLine(true);
-        root.addView(value, new FrameLayout.LayoutParams(-2, -2));
-        boolean head = event.rewardTarget
-                == RewardReceipt.Target.HEAD;
-        View sourceView = rewardSource(event.rewardActionKey);
-        View targetView = head ? root.findViewWithTag("reward-head")
-                : firstVisibleVessel(root);
-        float[] source = centerInRoot(sourceView, head ? root.getWidth() * .77f
-                : root.getWidth() * .30f, head ? systemTopInset + style.dp(180)
-                : systemTopInset + style.dp(245));
-        float[] target = centerInRoot(targetView, head ? root.getWidth() * .67f
-                : root.getWidth() * .77f, head ? systemTopInset + style.dp(46)
-                : systemTopInset + style.dp(180));
-        float fromX = source[0], fromY = source[1];
-        float toX = target[0], toY = target[1];
-        if (event.rewardXp < 0) {
-            float swapX = fromX; fromX = toX; toX = swapX;
-            float swapY = fromY; fromY = toY; toY = swapY;
-        }
-        value.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        float halfWidth = value.getMeasuredWidth() / 2f;
-        float halfHeight = value.getMeasuredHeight() / 2f;
-        value.setX(fromX - halfWidth); value.setY(fromY - halfHeight);
-        value.setScaleX(.92f); value.setScaleY(.92f);
-        value.animate().x(toX - halfWidth).y(toY - halfHeight).alpha(0f)
-                .scaleX(.7f).scaleY(.7f)
-                .setDuration(uiState.palette.motion.rewardFlightDurationMs)
-                .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
-                .withEndAction(() -> {
-                    root.removeView(value);
-                    if (event.rewardXp > 0 && head) header.playRewardGlint(uiState.palette);
-                    rewardAnimations.finish();
-                    playNextReward();
-                });
-    }
-
-    private View rewardSource(String actionKey) {
-        if (actionKey == null) return null;
-        int separator = actionKey.indexOf(':');
-        String action = separator < 0 ? actionKey : actionKey.substring(0, separator);
-        String id = separator < 0 ? "" : actionKey.substring(separator + 1);
-        String tag;
-        if (action.equals("step") || action.equals("set")
-                || action.equals("finish-step") || action.equals("reopen-step")
-                || action.equals("edit-step-progress"))
-            tag = "step:" + id;
-        else if (action.equals("harvest")) tag = "vessel:" + id;
-        else if (action.equals("complete-rest")) tag = "rest:" + id;
-        else if (action.equals("close")) tag = "task:" + id;
-        else tag = "occurrence:" + id;
-        return root.findViewWithTag(tag);
-    }
-
-    private static View firstVisibleVessel(View view) {
-        if (view instanceof XpVesselView && view.getVisibility() == View.VISIBLE) return view;
-        if (!(view instanceof ViewGroup)) return null;
-        ViewGroup group = (ViewGroup) view;
-        for (int index = 0; index < group.getChildCount(); index++) {
-            View result = firstVisibleVessel(group.getChildAt(index));
-            if (result != null) return result;
-        }
-        return null;
-    }
-
-    private float[] centerInRoot(View view, float fallbackX, float fallbackY) {
-        if (view == null || view.getWidth() == 0 || view.getHeight() == 0)
-            return new float[]{fallbackX, fallbackY};
-        int[] rootLocation = new int[2];
-        int[] viewLocation = new int[2];
-        root.getLocationOnScreen(rootLocation);
-        view.getLocationOnScreen(viewLocation);
-        return new float[]{viewLocation[0] - rootLocation[0] + view.getWidth() / 2f,
-                viewLocation[1] - rootLocation[1] + view.getHeight() / 2f};
+    private void handleRewardEffects(RewardEffectQueue.Snapshot snapshot) {
+        if (snapshot == null || uiState == null || rewardAnimator == null) return;
+        RewardEffect effect = snapshot.first();
+        if (effect != null) rewardAnimator.play(effect, uiState.palette, systemTopInset,
+                () -> viewModel.acknowledgeRewardEffect(effect.id));
     }
 
     private void syncCalendarPermission() {

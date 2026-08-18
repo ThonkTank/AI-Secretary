@@ -34,7 +34,7 @@ import java.util.concurrent.Executors;
 public final class TaskViewModel extends ViewModel {
     private static final String NAVIGATION = "navigation";
     private static final String EDITOR = "editor";
-    private static final String REFRESH = "refresh";
+    private static final UiCommand REFRESH = new UiCommand(UiCommand.Kind.REFRESH, "today");
 
     private final TaskUseCases tasks;
     private final DashboardPresenter dashboard;
@@ -48,6 +48,9 @@ public final class TaskViewModel extends ViewModel {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final MutableLiveData<DashboardUiState> state = new MutableLiveData<>();
     private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
+    private final RewardEffectQueue rewardQueue = new RewardEffectQueue();
+    private final MutableLiveData<RewardEffectQueue.Snapshot> rewardEffects =
+            new MutableLiveData<>(rewardQueue.snapshot());
     private final Object stateLock = new Object();
     private DashboardUiState current;
 
@@ -70,7 +73,7 @@ public final class TaskViewModel extends ViewModel {
         this.savedState = savedState;
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
         EditorUiState editor = EditorUiState.fromBundle(savedState.get(EDITOR));
-        current = new DashboardUiState(navigation, DashboardUiModel.empty(),
+        current = new DashboardUiState(navigation, TodayUiModel.empty(),
                 CalendarUiState.empty(), palette(), CalendarPermissionStatus.UNKNOWN,
                 false, Collections.emptySet(), editor);
         state.setValue(current);
@@ -81,6 +84,11 @@ public final class TaskViewModel extends ViewModel {
 
     LiveData<DashboardUiState> state() { return state; }
     LiveData<UiEvent> events() { return events; }
+    LiveData<RewardEffectQueue.Snapshot> rewardEffects() { return rewardEffects; }
+
+    void acknowledgeRewardEffect(String id) {
+        rewardEffects.setValue(rewardQueue.acknowledge(id));
+    }
 
     void load() {
         if (!begin(REFRESH, true)) return;
@@ -97,6 +105,10 @@ public final class TaskViewModel extends ViewModel {
         update(value -> value.withPalette(palette()));
     }
 
+    void updateSetProgressEditor(SetProgressEditorState editor) {
+        if (editor != null) update(value -> value.withSetProgressEditor(editor));
+    }
+
     void navigate(NavigationDestination destination) {
         savedState.set(NAVIGATION, destination.name());
         update(value -> value.withNavigation(destination));
@@ -107,7 +119,7 @@ public final class TaskViewModel extends ViewModel {
             setEditor(EditorUiState.create(defaultEditorSlot(clock.time())));
             return;
         }
-        String key = actionKey("load-editor", taskId);
+        UiCommand key = command(UiCommand.Kind.LOAD_EDITOR, taskId);
         setEditor(EditorUiState.loading(taskId));
         if (!begin(key, false)) return;
         worker.execute(() -> {
@@ -123,7 +135,7 @@ public final class TaskViewModel extends ViewModel {
                 EditorUiState loaded = EditorUiState.edit(details);
                 savedState.set(EDITOR, loaded.toBundle());
                 synchronized (stateLock) {
-                    Set<String> actions = new LinkedHashSet<>(current.runningActions);
+                    Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
                     actions.remove(key);
                     current = current.withEditor(loaded).withRunningActions(actions);
                     state.postValue(current);
@@ -158,8 +170,8 @@ public final class TaskViewModel extends ViewModel {
             setEditor(draft.withFeedback(errors, EditorUiState.Prompt.NONE, ""));
             return;
         }
-        String key = actionKey(draft.taskId == null ? "create" : "update",
-                draft.taskId == null ? "new" : draft.taskId);
+        UiCommand key = command(draft.taskId == null ? UiCommand.Kind.CREATE
+                : UiCommand.Kind.UPDATE, draft.taskId == null ? "new" : draft.taskId);
         if (!begin(key, false)) return;
         setEditor(draft.withSaving(true));
         worker.execute(() -> {
@@ -169,9 +181,9 @@ public final class TaskViewModel extends ViewModel {
                 Content content = loadContent();
                 savedState.set(EDITOR, null);
                 synchronized (stateLock) {
-                    Set<String> actions = new LinkedHashSet<>(current.runningActions);
+                    Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
                     actions.remove(key);
-                    current = current.withContent(DashboardUiModel.compose(content.dashboard,
+                    current = current.withContent(content.dashboard.withCalendar(
                                     content.calendar.events()), CalendarUiState.from(content.calendar))
                             .withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
@@ -179,7 +191,7 @@ public final class TaskViewModel extends ViewModel {
             } catch (RuntimeException error) {
                 logger.error("TaskViewModel", "Editor save failed", error);
                 synchronized (stateLock) {
-                    Set<String> actions = new LinkedHashSet<>(current.runningActions);
+                    Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
                     actions.remove(key);
                     EditorUiState failed = draft.withSaving(false).withFeedback(
                             Collections.emptySet(), EditorUiState.Prompt.NONE,
@@ -194,7 +206,7 @@ public final class TaskViewModel extends ViewModel {
 
     void deleteFromEditor(String taskId) {
         if (taskId == null) return;
-        String key = actionKey("delete", taskId);
+        UiCommand key = command(UiCommand.Kind.DELETE, taskId);
         if (!begin(key, false)) return;
         EditorUiState draft;
         synchronized (stateLock) { draft = current.editor; }
@@ -205,9 +217,9 @@ public final class TaskViewModel extends ViewModel {
                 Content content = loadContent();
                 savedState.set(EDITOR, null);
                 synchronized (stateLock) {
-                    Set<String> actions = new LinkedHashSet<>(current.runningActions);
+                    Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
                     actions.remove(key);
-                    current = current.withContent(DashboardUiModel.compose(content.dashboard,
+                    current = current.withContent(content.dashboard.withCalendar(
                                     content.calendar.events()), CalendarUiState.from(content.calendar))
                             .withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
@@ -256,60 +268,60 @@ public final class TaskViewModel extends ViewModel {
 
     void create(String title, TaskSlot slot, Recurrence recurrence, int interval, int weekdays,
                 List<String> steps, boolean ongoing, String condition) {
-        run("create", () -> {
+        run(command(UiCommand.Kind.CREATE, "new"), () -> {
             validate(title, recurrence, weekdays, ongoing, condition);
             tasks.create.execute(title, slot, recurrence, interval, weekdays, steps, ongoing, condition);
         });
     }
 
-    void complete(String occurrenceId) { runReward(actionKey("complete", occurrenceId), () -> tasks.complete.execute(occurrenceId)); }
+    void complete(String occurrenceId) { runReward(command(UiCommand.Kind.COMPLETE, occurrenceId), () -> tasks.complete.execute(occurrenceId)); }
     void completeRemaining(String occurrenceId) {
-        runReward(actionKey("complete-rest", occurrenceId),
+        runReward(command(UiCommand.Kind.COMPLETE_REMAINING, occurrenceId),
                 () -> tasks.completeRemainingSteps.execute(occurrenceId));
     }
     void harvest(String occurrenceId) {
-        runReward(actionKey("harvest", occurrenceId), () -> tasks.harvest.execute(occurrenceId));
+        runReward(command(UiCommand.Kind.HARVEST, occurrenceId), () -> tasks.harvest.execute(occurrenceId));
     }
     void undoOccurrence(String occurrenceId) {
-        runReward(actionKey("undo", occurrenceId), () -> tasks.undoOccurrence.execute(occurrenceId));
+        runReward(command(UiCommand.Kind.UNDO, occurrenceId), () -> tasks.undoOccurrence.execute(occurrenceId));
     }
-    void toggleStep(String stepId) { runReward(actionKey("step", stepId), () -> tasks.toggleStep.execute(stepId)); }
+    void toggleStep(String stepId) { runReward(command(UiCommand.Kind.TOGGLE_STEP, stepId), () -> tasks.toggleStep.execute(stepId)); }
     void confirmSet(String stepId, int repetitions) {
-        runReward(actionKey("set", stepId),
+        runReward(command(UiCommand.Kind.CONFIRM_SET, stepId),
                 () -> tasks.confirmSet.execute(stepId, repetitions));
     }
     void finishExercise(String stepId) {
-        runReward(actionKey("finish-step", stepId),
+        runReward(command(UiCommand.Kind.FINISH_EXERCISE, stepId),
                 () -> tasks.finishExercise.execute(stepId));
     }
     void reopenExercise(String stepId, List<Integer> repetitions) {
-        runReward(actionKey("reopen-step", stepId),
+        runReward(command(UiCommand.Kind.REOPEN_EXERCISE, stepId),
                 () -> tasks.reopenExercise.execute(stepId, repetitions));
     }
     void editStepProgress(String stepId, List<Integer> repetitions) {
-        runReward(actionKey("edit-step-progress", stepId),
+        runReward(command(UiCommand.Kind.EDIT_STEP_PROGRESS, stepId),
                 () -> tasks.editStepProgress.execute(stepId, repetitions));
     }
-    void defer(String occurrenceId) { run(actionKey("defer", occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
+    void defer(String occurrenceId) { run(command(UiCommand.Kind.DEFER, occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
     void close(String taskId) {
-        runReward(actionKey("close", taskId),
+        runReward(command(UiCommand.Kind.CLOSE, taskId),
                 () -> tasks.closeOngoing.execute(TaskId.of(taskId)));
     }
     void update(String taskId, String title, TaskSlot slot) {
-        run(actionKey("update", taskId), () -> {
+        run(command(UiCommand.Kind.UPDATE, taskId), () -> {
             if (title == null || title.trim().isEmpty())
                 throw new IllegalArgumentException(texts.text(R.string.error_name));
             tasks.update.execute(TaskId.of(taskId), title, slot);
         });
     }
-    void move(String taskId, TaskSlot slot) { run(actionKey("move", taskId), () -> tasks.move.execute(TaskId.of(taskId), slot)); }
-    void delete(String taskId) { run(actionKey("delete", taskId), () -> tasks.delete.execute(TaskId.of(taskId))); }
+    void move(String taskId, TaskSlot slot) { run(command(UiCommand.Kind.MOVE, taskId), () -> tasks.move.execute(TaskId.of(taskId), slot)); }
+    void delete(String taskId) { run(command(UiCommand.Kind.DELETE, taskId), () -> tasks.delete.execute(TaskId.of(taskId))); }
 
-    static String actionKey(String action, String id) {
-        return action + ":" + id;
+    static UiCommand command(UiCommand.Kind kind, String id) {
+        return new UiCommand(kind, id);
     }
 
-    private void run(String key, Action action) {
+    private void run(UiCommand key, Action action) {
         if (!begin(key, false)) return;
         worker.execute(() -> {
             try {
@@ -323,14 +335,14 @@ public final class TaskViewModel extends ViewModel {
         });
     }
 
-    private void runReward(String key, RewardAction action) {
+    private void runReward(UiCommand key, RewardAction action) {
         if (!begin(key, false)) return;
         worker.execute(() -> {
             try {
                 RewardReceipt result = action.run();
                 publishContent(key, loadContent());
-                if (result.target != RewardReceipt.Target.NONE)
-                    events.postValue(UiEvent.reward(result, key));
+                RewardEffect effect = RewardEffect.from(result, key);
+                if (effect != null) rewardEffects.postValue(rewardQueue.enqueue(effect));
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
             } catch (RuntimeException error) {
@@ -340,14 +352,14 @@ public final class TaskViewModel extends ViewModel {
     }
 
     private Content loadContent() {
-        DashboardState loadedDashboard = dashboard.refresh();
+        TodayUiModel loadedDashboard = dashboard.refresh();
         return new Content(loadedDashboard, calendar.loadToday());
     }
 
-    private boolean begin(String key, boolean loading) {
+    private boolean begin(UiCommand key, boolean loading) {
         synchronized (stateLock) {
             if (current.runningActions.contains(key)) return false;
-            Set<String> actions = new LinkedHashSet<>(current.runningActions);
+            Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
             actions.add(key);
             current = current.withRunningActions(actions);
             if (loading) current = current.withLoading(true);
@@ -356,22 +368,21 @@ public final class TaskViewModel extends ViewModel {
         }
     }
 
-    private void publishContent(String key, Content content) {
+    private void publishContent(UiCommand key, Content content) {
         synchronized (stateLock) {
-            Set<String> actions = new LinkedHashSet<>(current.runningActions);
+            Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
             actions.remove(key);
             CalendarUiState calendarState = CalendarUiState.from(content.calendar);
-            current = current.withContent(DashboardUiModel.compose(content.dashboard,
-                            content.calendar.events()),
+            current = current.withContent(content.dashboard.withCalendar(content.calendar.events()),
                     calendarState).withRunningActions(actions);
             state.postValue(current);
         }
     }
 
-    private void fail(String key, String message, RuntimeException error) {
+    private void fail(UiCommand key, String message, RuntimeException error) {
         logger.error("TaskViewModel", "Presentation operation failed: " + key, error);
         synchronized (stateLock) {
-            Set<String> actions = new LinkedHashSet<>(current.runningActions);
+            Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
             actions.remove(key);
             current = current.withRunningActions(actions).withLoading(false);
             state.postValue(current);
@@ -424,9 +435,9 @@ public final class TaskViewModel extends ViewModel {
     interface StateChange { DashboardUiState apply(DashboardUiState state); }
 
     private static final class Content {
-        final DashboardState dashboard;
+        final TodayUiModel dashboard;
         final CalendarResult calendar;
-        Content(DashboardState dashboard, CalendarResult calendar) {
+        Content(TodayUiModel dashboard, CalendarResult calendar) {
             this.dashboard = dashboard;
             this.calendar = calendar;
         }

@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary.presentation;
 
-import de.thonktank.autosecretary.DashboardState;
+import de.thonktank.autosecretary.TodayUiModel;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.TaskSnapshot;
 import de.thonktank.autosecretary.TaskStepSnapshot;
@@ -12,6 +12,7 @@ import de.thonktank.autosecretary.domain.model.RewardPolicy;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
+import de.thonktank.autosecretary.domain.model.XpProgress;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,10 +25,12 @@ public final class DashboardUiMapper {
         this.texts = texts;
     }
 
-    public DashboardState map(Dashboard dashboard, LocalDate today) {
+    public TodayUiModel map(Dashboard dashboard, LocalDate today) {
         List<TaskSnapshot> snapshots = new ArrayList<>();
         for (DashboardTask item : dashboard.tasks) snapshots.add(snapshot(item, today, dashboard));
-        return new DashboardState(dashboard.xp, snapshots);
+        TaskSnapshot focus = null;
+        for (TaskSnapshot task : snapshots) if (!task.done) { focus = task; break; }
+        return new TodayUiModel(dashboard.xp, new XpProgress(dashboard.xp), snapshots, focus);
     }
 
     private TaskSnapshot snapshot(DashboardTask item, LocalDate today, Dashboard dashboard) {
@@ -73,7 +76,8 @@ public final class DashboardUiMapper {
                 steps, remaining, !task.conditionText.isEmpty(), task.ongoing, item.done, overdue,
                 taskStage, task.displayOrder, claimable, item.done ? 0 : collected,
                 item.awardedXp,
-                !item.done && !steps.isEmpty() && remaining == 0 && collected > 0);
+                !item.done && !steps.isEmpty() && remaining == 0 && collected > 0,
+                item.done && item.occurrence != null);
     }
 
     public String softTime(TaskSlot slot, boolean ongoing) {

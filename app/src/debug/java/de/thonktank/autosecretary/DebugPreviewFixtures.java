@@ -6,12 +6,13 @@ import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.XpProgress;
 
 /** Deterministic debug-only states for the reference preview gallery and layout inspectors. */
 public final class DebugPreviewFixtures {
     private DebugPreviewFixtures() { }
 
-    public static DashboardState busyDay() {
+    public static TodayUiModel busyDay() {
         TaskSnapshot focus = new TaskSnapshot("preview-morning", "preview-occurrence",
                 "Morgenroutine", TaskSlot.MORNING, "heute am Morgen", "Anziehen",
                 Recurrence.DAILY, Arrays.asList(
@@ -23,11 +24,11 @@ public final class DebugPreviewFixtures {
                 "Brief beantworten", TaskSlot.MIDDAY, "um die Mittagszeit", "Erledigen",
                 Recurrence.ONCE, Collections.emptyList(), 0, false, false, false,
                 false, 0, 2_001_000L);
-        return new DashboardState(120, Arrays.asList(focus, after));
+        return today(120, Arrays.asList(focus, after));
     }
 
-    public static DashboardState emptyDay() {
-        return new DashboardState(0, Collections.emptyList());
+    public static TodayUiModel emptyDay() {
+        return today(0, Collections.emptyList());
     }
 
     public static List<CalendarEventSnapshot> calendar() {
@@ -35,14 +36,14 @@ public final class DebugPreviewFixtures {
                 new CalendarEventSnapshot("10:15", "Arzttermin", 10 * 60 + 15));
     }
 
-    public static DashboardState reference(String state) {
-        if ("empty-vessel".equals(state)) return new DashboardState(70,
+    public static TodayUiModel reference(String state) {
+        if ("empty-vessel".equals(state)) return today(70,
                 Collections.singletonList(vesselTask(0, false)));
-        if ("partial-vessel".equals(state)) return new DashboardState(70,
+        if ("partial-vessel".equals(state)) return today(70,
                 Collections.singletonList(vesselTask(1, false)));
-        if ("harvest-ready".equals(state)) return new DashboardState(70,
+        if ("harvest-ready".equals(state)) return today(70,
                 Collections.singletonList(vesselTask(3, true)));
-        if ("three-digit".equals(state)) return new DashboardState(70,
+        if ("three-digit".equals(state)) return today(70,
                 Collections.singletonList(threeDigitTask()));
         TaskSnapshot morning = morning(false, "step".equals(state));
         TaskSnapshot after = task("preview-after", "Abgabe Statistik-Übung", TaskSlot.MORNING,
@@ -53,18 +54,18 @@ public final class DebugPreviewFixtures {
                 "", false, false, 4_000L);
         TaskSnapshot hiddenTwo = task("preview-hidden-2", "Pflanzen gießen", TaskSlot.LATER,
                 "", false, false, 5_000L);
-        if ("empty".equals(state)) return new DashboardState(0, Collections.emptyList());
-        if ("later".equals(state)) return new DashboardState(120,
+        if ("empty".equals(state)) return today(0, Collections.emptyList());
+        if ("later".equals(state)) return today(120,
                 Arrays.asList(after, morning, laundry, hiddenOne, hiddenTwo));
-        if ("complete".equals(state) || "harvested".equals(state)) return new DashboardState(120,
+        if ("complete".equals(state) || "harvested".equals(state)) return today(120,
                 Arrays.asList(morning(true, true), after, laundry, hiddenOne, hiddenTwo));
         if ("evening".equals(state)) {
             TaskSnapshot ongoing = new TaskSnapshot("preview-ongoing", "preview-ongoing-occurrence",
                     "Praktikum", TaskSlot.LATER, "fortlaufend, bis es angenommen ist", "angenommen",
                     Recurrence.ONCE, Collections.emptyList(), 0, true, true, false, false, 6, 900L);
-            return new DashboardState(150, Arrays.asList(ongoing, morning(true, true), laundry));
+            return today(150, Arrays.asList(ongoing, morning(true, true), laundry));
         }
-        return new DashboardState(120, Arrays.asList(
+        return today(120, Arrays.asList(
                 morning, after, laundry, hiddenOne, hiddenTwo));
     }
 
@@ -116,5 +117,11 @@ public final class DebugPreviewFixtures {
                 "Steuerunterlagen abgeben", TaskSlot.MORNING, "", "erledigen",
                 Recurrence.ONCE, Collections.emptyList(), 0, false, false, false,
                 true, 12, 1_000L, 125, 0, 0, false);
+    }
+
+    private static TodayUiModel today(int xp, List<TaskSnapshot> tasks) {
+        TaskSnapshot focus = null;
+        for (TaskSnapshot task : tasks) if (!task.done) { focus = task; break; }
+        return new TodayUiModel(xp, new XpProgress(xp), tasks, focus);
     }
 }

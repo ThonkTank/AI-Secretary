@@ -1,7 +1,7 @@
 package de.thonktank.autosecretary.presentation;
 
 import de.thonktank.autosecretary.Clock;
-import de.thonktank.autosecretary.DashboardState;
+import de.thonktank.autosecretary.TodayUiModel;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.ApplyComboDecay;
@@ -31,12 +31,12 @@ public final class DashboardPresenter {
         this.decay = decay;
     }
 
-    public DashboardState load() {
+    public TodayUiModel load() {
         LocalDate today = clock.today();
         return mapper.map(loadDashboard.execute(today), today);
     }
 
-    public DashboardState refresh() {
+    public TodayUiModel refresh() {
         if (decay != null) decay.execute();
         materializeDue.execute();
         return load();

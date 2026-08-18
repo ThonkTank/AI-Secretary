@@ -33,7 +33,7 @@ public final class HeaderView extends FrameLayout {
         setPadding(style.dp(60), style.dp(12), style.dp(22), 0);
         LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL);
         leaf = new FrameLayout(context); leaf.setRotation(1.1f); leaf.setClipChildren(true);
-        leaf.setTag("reward-head");
+        leaf.setId(R.id.header_reward_anchor);
         grain = new WoodGrainView(context); leaf.addView(grain, new LayoutParams(-1, -1));
         LinearLayout status = new LinearLayout(context); status.setGravity(Gravity.CENTER_VERTICAL);
         status.setPadding(style.dp(22), style.dp(10), style.dp(24), style.dp(13));
@@ -51,19 +51,15 @@ public final class HeaderView extends FrameLayout {
         row.addView(leaf, new LinearLayout.LayoutParams(0, style.dp(69), 1));
 
         FrameLayout addTarget = new FrameLayout(context);
+        addTarget.setId(R.id.header_add_task);
         addTarget.setContentDescription(context.getString(R.string.content_add_task));
         addTarget.setOnClickListener(view -> onAdd.run());
         add = style.sans("＋", 23, 0, false); add.setGravity(Gravity.CENTER);
+        add.setId(R.id.header_add_task_visual);
         addTarget.addView(add, new LayoutParams(style.dp(40), style.dp(40), Gravity.CENTER));
         LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(style.dp(48), style.dp(48));
         addParams.leftMargin = style.dp(10); row.addView(addTarget, addParams);
         addView(row, new LayoutParams(-1, -1));
-    }
-
-    public void bind(LocalTime time, DayPalette palette) { bind(time, palette, 0); }
-
-    public void bind(LocalTime time, DayPalette palette, int xp) {
-        bind(time, palette, new XpProgress(xp));
     }
 
     public void bind(LocalTime time, DayPalette palette, XpProgress value) {
@@ -99,4 +95,5 @@ public final class HeaderView extends FrameLayout {
     }
 
     boolean isGlintVisible() { return glint.getVisibility() == VISIBLE; }
+    View rewardAnchor() { return leaf; }
 }

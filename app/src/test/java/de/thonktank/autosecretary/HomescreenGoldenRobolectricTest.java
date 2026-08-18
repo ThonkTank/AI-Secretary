@@ -56,8 +56,7 @@ public final class HomescreenGoldenRobolectricTest {
             HomescreenPreviewActivity activity = controller.setup().get();
             View content = activity.findViewById(android.R.id.content);
             if (emulateSystemInsets) {
-                View appRoot = ((android.view.ViewGroup) content).getChildAt(0);
-                LinearLayout screen = (LinearLayout) ((android.view.ViewGroup) appRoot).getChildAt(1);
+                LinearLayout screen = activity.findViewById(R.id.dashboard_screen);
                 float density = activity.getResources().getDisplayMetrics().density;
                 screen.setPadding(0, Math.round(28 * density), 0, 0);
             }

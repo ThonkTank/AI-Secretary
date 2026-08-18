@@ -50,6 +50,18 @@ public final class TaskSnapshot {
                  boolean terminalCondition, boolean ongoing, boolean done, boolean overdue,
                  int comboStage, long displayOrder, int claimableXp,
                  int collectedXp, int awardedXp, boolean harvestReady) {
+        this(taskId, occurrenceId, title, slot, softTime, nextAction, recurrence, steps,
+                remainingSteps, terminalCondition, ongoing, done, overdue, comboStage,
+                displayOrder, claimableXp, collectedXp, awardedXp, harvestReady, false);
+    }
+
+    public TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId,
+                 @NonNull String title, @NonNull TaskSlot slot, @NonNull String softTime,
+                 @NonNull String nextAction, @NonNull Recurrence recurrence,
+                 @NonNull List<TaskStepSnapshot> steps, int remainingSteps,
+                 boolean terminalCondition, boolean ongoing, boolean done, boolean overdue,
+                 int comboStage, long displayOrder, int claimableXp,
+                 int collectedXp, int awardedXp, boolean harvestReady, boolean undoAvailable) {
         this.taskId = taskId; this.occurrenceId = occurrenceId; this.title = title; this.slot = slot;
         this.softTime = softTime; this.nextAction = nextAction; this.recurrence = recurrence;
         this.steps = Collections.unmodifiableList(new ArrayList<>(steps)); this.remainingSteps = remainingSteps; this.terminalCondition = terminalCondition;
@@ -60,7 +72,7 @@ public final class TaskSnapshot {
         this.collectedXp = Math.max(0, collectedXp);
         this.awardedXp = Math.max(0, awardedXp);
         this.harvestReady = harvestReady;
-        this.undoAvailable = done && !occurrenceId.isEmpty();
+        this.undoAvailable = undoAvailable;
     }
 
     public boolean routine() { return recurrence != Recurrence.ONCE; }

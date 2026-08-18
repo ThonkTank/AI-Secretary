@@ -41,10 +41,11 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         forest.setPalette(palette);
         root.addView(forest, new FrameLayout.LayoutParams(-1, -1));
         LinearLayout screen = new LinearLayout(this);
+        screen.setId(R.id.dashboard_screen);
         screen.setOrientation(LinearLayout.VERTICAL);
         root.addView(screen, new FrameLayout.LayoutParams(-1, -1));
         HeaderView header = new HeaderView(this, () -> { });
-        DashboardState dashboard = DebugPreviewFixtures.reference(preview);
+        TodayUiModel dashboard = DebugPreviewFixtures.reference(preview);
         header.bind(time, palette, dashboard.xpProgress);
         screen.addView(header, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.header_height)));
@@ -62,7 +63,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
                 new PreviewActions(), "preview");
         java.util.List<CalendarEventSnapshot> events = DebugPreviewFixtures.referenceCalendar(preview);
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        DashboardUiModel.compose(dashboard, events),
+                        TodayUiModel.compose(dashboard, events),
                         CalendarUiState.from(new CalendarResult.Success(events)), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
                         EditorUiState.closed()), UiThemeMode.AUTO, UpdateUiState.idle());
@@ -79,7 +80,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         WidgetSizeClassifier.Size size = WidgetSizeClassifier.Size.valueOf(name.toUpperCase());
         LocalTime time = size == WidgetSizeClassifier.Size.LARGE ? LocalTime.of(23, 50)
                 : size == WidgetSizeClassifier.Size.TALL ? LocalTime.of(19, 35) : LocalTime.of(9, 40);
-        DashboardState dashboard = DebugPreviewFixtures.reference("full");
+        TodayUiModel dashboard = DebugPreviewFixtures.reference("full");
         CalendarResult calendar = new CalendarResult.Success(DebugPreviewFixtures.referenceCalendar("full"));
         WidgetPresenter presenter = new WidgetPresenter(this);
         WidgetUiModel model = presenter.present(new WidgetPresenter.CycleData(dashboard, calendar,

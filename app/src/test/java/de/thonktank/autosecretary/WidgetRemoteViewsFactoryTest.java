@@ -139,7 +139,7 @@ public final class WidgetRemoteViewsFactoryTest {
     public void finalConditionActionLaunchesConfirmationInTheApp() {
         WidgetPresenter presenter = new WidgetPresenter(context);
         WidgetUiModel model = presenter.present(new WidgetPresenter.CycleData(
-                        new DashboardState(0, java.util.Collections.singletonList(
+                        DashboardFixtures.today(0, java.util.Collections.singletonList(
                                 DashboardFixtures.ongoingTask())),
                         new CalendarResult.PermissionMissing(),
                         DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)),

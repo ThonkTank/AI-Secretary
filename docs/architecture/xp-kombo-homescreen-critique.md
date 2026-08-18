@@ -17,7 +17,12 @@ Stand: 2026-08-19
   `RewardCalculator`, `CompletionStateMachine` und `ScheduleProjector` sind reine Komponenten,
   der `CompletionService` orchestriert sie. Schedule-Reconciliation nutzt zwei gezielte Queries,
   und `OccurrenceKind` ersetzt Stringpräfixe in der Fachlogik.
-- Phasen 5–7 bleiben offen.
+- Phase 5 behoben: `TodayUiModel` ist das einzige kanonische Today-Read-Model; der Mapper
+  berechnet XP-Fortschritt, Fokus, Erntereife und Undo-Verfügbarkeit. Commands, Rewardeffekte und
+  Anchors sind typisiert, Rewardeffekte werden per ID bestätigt, und View-Tags beziehungsweise
+  Action-Strings wurden entfernt. Rewardanimation, Satzeditor und Editor-Mounting besitzen eigene
+  Komponenten; Inline-Entwurf, Expansion und Fehler überleben Re-Rendering im Presentation-State.
+- Phasen 6–7 bleiben offen.
 
 ## Umfang und Gesamturteil
 
@@ -223,26 +228,27 @@ Converter besitzen, damit Stringformate nicht durch UI, Migration und Domäne du
 
 ## Verbleibende Schwächen in Presentation und UI
 
-### Zu viele ähnliche Dashboard-Modelle können auseinanderlaufen
+### Phase 5 behoben: ähnliche Dashboard-Modelle
 
-Der Zustand läuft über `Dashboard`, `DashboardState`, `DashboardUiModel`, `TaskSnapshot`,
-`TaskStepSnapshot` und schließlich `WidgetUiModel`. `DashboardState` und `DashboardUiModel`
-halten beide `xp` und leiten beide `XpProgress` neu ab. Fokuswahl und Aufgabenlisten werden
-ebenfalls an mehreren Stellen erneut interpretiert.
+Die Ausgangslage führte den Zustand über `Dashboard`, `DashboardState`, `DashboardUiModel`,
+`TaskSnapshot`, `TaskStepSnapshot` und schließlich `WidgetUiModel`. `DashboardState` und
+`DashboardUiModel` hielten beide `xp` und leiteten beide `XpProgress` neu ab. Fokuswahl und
+Aufgabenlisten wurden ebenfalls an mehreren Stellen erneut interpretiert.
 
 Diese Vervielfachung war beim Entfernen von `ringWeeks` konkret störend: derselbe alte Vertrag
 musste aus mehreren Modellen, Mappern, Widgetklassen, Activity-Ereignissen, Strings und Fixtures
 entfernt werden. Das ist genau die Art technischer Schuld, bei der eine kleine Fachänderung einen
 breiten mechanischen Diff erzeugt.
 
-Gewünscht wäre ein kanonisches, unveränderliches `TodayUiModel`, aus dem App und Widget jeweils
-bewusst kleine Projektionen erzeugen. Abgeleitete Werte wie `XpProgress`, `undoAvailable` und
-Fokus sollten genau einmal berechnet werden. Konstruktoren mit vielen primitiven Parametern
-sollten durch benannte Builder oder kleine Value Objects ersetzt werden.
+`DashboardState` und `DashboardUiModel` wurden durch genau ein unveränderliches `TodayUiModel`
+ersetzt. `DashboardUiMapper` berechnet `XpProgress`, Fokus, `harvestReady` und `undoAvailable`
+einmal; Kalender und Widget bilden daraus kleine, explizite Projektionen. Bewusst verbleibt die
+primitive, lange `TaskSnapshot`-Konstruktorsignatur. Benannte Builder oder kleinere Value Objects
+wären der nächste sinnvolle Schritt, sind aber keine Voraussetzung mehr für korrekte Ableitungen.
 
-### UI-Aktionen und Animationsziele sind stringly typed
+### Phase 5 behoben: stringbasierte UI-Aktionen und Animationsziele
 
-`TaskViewModel` baut Schlüssel wie `action:id`. `UiEvent` transportiert denselben String, und
+`TaskViewModel` baute Schlüssel wie `action:id`. `UiEvent` transportierte denselben String, und
 `MainActivity.rewardSource` zerlegt ihn wieder, mappt Aktionsnamen auf View-Tags wie
 `step:<id>`, `vessel:<id>` oder `reward-head` und sucht anschließend rekursiv im View-Baum.
 
@@ -251,14 +257,15 @@ Umbenennen einer Aktion kann dazu führen, dass die Fachaktion korrekt ausgefüh
 Animation lautlos auf eine Fallbackkoordinate fliegt. IDs, Doppelpunkte und Sonderfälle für
 fortlaufende Vorhaben werden zu einem inoffiziellen Protokoll.
 
-Ein typisiertes `RewardEffect` mit `SourceKind`, `sourceId`, `TargetKind` und Buchungswert wäre
-deutlich sicherer. Die gerenderte Oberfläche sollte ein kleines `RewardAnchorRegistry` führen,
-statt den allgemeinen View-Baum über String-Tags zu durchsuchen.
+`UiCommand`, `RewardEffect` und `RewardAnchorKey` bilden jetzt den gemeinsamen Vertrag.
+`RewardAnchorRegistry` hält explizite, schwache View-Referenzen und verwirft dynamische Anchors
+vor jedem Today-Bind. `RewardAnimator` benötigt weder Tags noch rekursive Hierarchiesuche.
+Fallbackkoordinaten bleiben absichtlich erhalten, falls ein Effekt nach Navigation oder
+Lifecycle-Wechsel keinen sichtbaren Anchor mehr besitzt.
 
-### `MainActivity`, `TaskViewModel` und `FocusTaskView` sind überladen
+### Phase 5 teilweise behoben: große UI-Klassen
 
-Nach der Änderung haben die drei Klassen ungefähr 469, 451 und 462 Zeilen. Ihre Verantwortungen
-sind breit:
+In der Ausgangslage waren ihre Verantwortungen breit:
 
 - `MainActivity` besitzt Lifecycle, Insets, Berechtigungen, Navigation, Dialoge, Editor-Mounting,
   Reward-Queue, Koordinatenauflösung und Animation;
@@ -268,15 +275,18 @@ sind breit:
   parst Satzlisten, validiert Eingaben, registriert Actions, synchronisiert Ebenen und animiert.
 
 Diese Konzentration verlangsamte die Arbeit, weil eine Änderung am Rewardfluss gleichzeitig
-Activity, ViewModel, View-Tags und konkrete Views berührte. Sinnvolle Extraktionen wären:
+Activity, ViewModel, View-Tags und konkrete Views berührte. Phase 5 hat `RewardAnimator`,
+`TaskEditorCoordinator` und `SetProgressEditorView` extrahiert. `MainActivity` besitzt keine
+Rewardkoordinaten, Effect-Serialisierung oder Editor-View mehr; `FocusTaskView` parst und
+validiert keine Satzlisten mehr. Bewusst verbleibt der breite `TaskViewModel`, der
+Dashboardladen, Commands, Vollbildeditor, Fehler und Nebenläufigkeit bündelt. Ein späterer
+`TodayController` oder mehrere Stores wären sinnvoll, sobald weitere Screens oder parallele
+Workflows hinzukommen. Nicht umgesetzt wurde deshalb insbesondere:
 
 - ein `TodayController` beziehungsweise kleiner Store für Zustände und Commands;
-- ein eigener `RewardAnimator` mit typisierten Anchors;
-- ein `TaskEditorCoordinator` außerhalb der Activity;
-- eine eigenständige `SetProgressEditorView` mit Eingabemodell und Validator;
 - ein `FocusCardRenderer`, der keine Fachaktionen parst.
 
-### Programmatisch gebaute Views erschweren Strukturtests und Wartung
+### Phase 5 verbessert: programmatisch gebaute Views und Testseams
 
 Die rein native, programmatische Oberfläche passt zum bestehenden Stil und ermöglicht die
 ungewöhnlichen Blattformen. Es fehlen aber stabile IDs und deklarative Hierarchie. Tests griffen
@@ -284,35 +294,40 @@ deshalb teilweise über `getChildAt(n)` auf Komponenten zu. Beim Entfernen der v
 Zeile brach ein alter Charakterisierungstest lediglich deshalb, weil sich der Index der Timeline
 verschoben hatte.
 
-Stabile View-IDs, kleine Komponentenverträge und Test-Selektoren würden solche Fehler vermeiden.
-XML oder Compose ist nicht zwingend erforderlich; auch programmgesteuerte Views können ihre
-wichtigen Knoten benennen und über Methoden zugänglich machen. Die aktuelle Mischung aus
-Child-Indizes, rekursiver Textsuche und Tags macht Tests unnötig abhängig von der Implementierung.
+Zentrale Knoten von Shell, Header, Navigation, Fokus, Timeline und Satzeditor besitzen nun stabile
+Ressourcen-IDs. Komponententests finden diese Knoten nicht mehr über feste Child-Indizes oder
+Textinhalte; Rewards verwenden keine View-Tags. Traversierende Assertions bleiben dort bestehen,
+wo bewusst alle Accessibility-Ziele oder Texte einer Komponente geprüft werden. Die Oberfläche
+bleibt programmatisch und damit für große strukturelle Umbauten aufwendiger als eine deklarative
+Hierarchie, aber ihre zentralen Testseams sind nicht mehr indexabhängig.
 
-### Expandierter Satzeditorzustand lebt nur in der View
+### Phase 5 behoben: Inline-Satzeditorzustand
 
-`expandedStepId` liegt in `FocusTaskView`. Bei Re-Rendering, Fokuswechsel oder
+`expandedStepId` lag in `FocusTaskView`. Bei Re-Rendering, Fokuswechsel oder
 Konfigurationsänderung kann die Expansion verschwinden. Eingabewerte werden direkt aus einem
 `EditText` gelesen und sind nicht Teil des ViewModel-Zustands. Das ist für eine kurze lokale
 Interaktion akzeptabel, aber anfällig bei Rotation, Prozesswiederherstellung oder einem parallel
 eintreffenden Dashboardrefresh.
 
-Gewünscht wäre ein kleiner `SetProgressEditorState` im Presentation-State mit Entwurf,
-Validierungsfehler und explizitem Speichern/Verwerfen. Damit ließen sich UI und Regeln ohne
-View-Hierarchie testen.
+`SetProgressEditorState` liegt jetzt immutable in `DashboardUiState`; Expansion, Entwurf und
+Validierungsfehler werden beim Re-Render erneut gebunden. Die eigenständige
+`SetProgressEditorView` rendert und meldet Zustand, besitzt ihn aber nicht. Der State überlebt den
+View-Neuaufbau und einen Activity-Konfigurationswechsel über das ViewModel, jedoch noch keinen
+vom System beendeten Prozess, weil er nicht im `SavedStateHandle` serialisiert wird.
 
-### Einmalige UI-Effekte bleiben konsumierbare mutable Events
+### Phase 5 für Rewards behoben: konsumierbare mutable Events
 
-`UiEvent` besitzt ein atomisches `consume()`-Flag. Das verhindert normale Doppelzustellung,
+Allgemeine Dialog- und Plattformereignisse besitzen weiterhin ein atomisches `consume()`-Flag.
+Das verhindert normale Doppelzustellung,
 mischt aber Ereignisinhalt und Zustellungszustand. Rewardanimationen werden erst nach dem neuen
 Dashboardzustand veröffentlicht; ihre Quelle kann zu diesem Zeitpunkt schon aus dem View-Baum
 verschwunden sein, weshalb Fallbackkoordinaten nötig sind.
 
-Eine explizite Effect-Queue im ViewModel/Store mit IDs und Acknowledgement würde Reihenfolge und
-Prozesswiederherstellung klarer machen. Für visuelle Effekte wäre außerdem ein zweiphasiger
-Übergang hilfreich: alter Renderzustand plus Effekt, danach bestätigter neuer Zustand. Die
-aktuelle `RewardAnimationQueue` serialisiert nur das Abspielen innerhalb der Activity, nicht die
-gesamte Zustands-/Effekttransaktion.
+Rewardanimationen sind davon getrennt: `RewardEffectQueue` dedupliziert über Transaktions-IDs,
+hält FIFO-Reihenfolge und entfernt einen Effekt erst nach Acknowledgement des `RewardAnimator`.
+Die Queue lebt im ViewModel und übersteht Activity-Neuerstellung. Bewusst verbleiben zwei Risiken:
+Sie ist nicht prozesspersistent, und Dashboardzustand plus Effekt sind kein atomarer
+zweiphasiger Presentation-Übergang. Dafür bleiben robuste Fallbackanchors nötig.
 
 ## Canvas-Renderer: gute Trennung, aber hoher technischer Preis
 
@@ -436,38 +451,38 @@ Loads, globale Comboscans und Canvas-Cache sollten mit realistischen Mengen geme
 - visuelle Diff-Artefakte für jede Golden-Änderung;
 - eine Umsetzung in kleinen, vertikalen, jeweils grünen und reviewbaren Schritten.
 
-## Priorisierte nächste Schritte
+## Priorisierte Maßnahmen und Umsetzungsstatus
 
-1. **Satzschritt-Invariante entscheiden und korrigieren.** Festlegen, ob `done` explizit oder
+1. **Erledigt in Phase 1 – Satzschritt-Invariante entscheiden und korrigieren.** Festlegen, ob `done` explizit oder
    abgeleitet ist; UI, Modell, Edit-Use-Case und Undo-Tests danach vereinheitlichen.
-2. **Legacy-Fortschritt aus der aktiven Domäne entfernen.** `RoutineProgress` aus `Task`, Mappern
+2. **Erledigt in Phase 2 – Legacy-Fortschritt aus der aktiven Domäne entfernen.** `RoutineProgress` aus `Task`, Mappern
    und aktuellen Tests lösen; Schema 6 als kontrollierten Tabellenneuaufbau planen.
-3. **Rewardbuchungen explizit modellieren.** Zunächst einen typisierten, vorzeichenbehafteten
+3. **Erledigt in Phase 3 – Rewardbuchungen explizit modellieren.** Zunächst einen typisierten, vorzeichenbehafteten
    Buchungsdatensatz und Gegenbuchungen einführen; erst danach Statistiken oder Synchronisation
    auf den aktuellen Feldern aufbauen.
-4. **Completion-Orchestrierung schneiden.** Rewardberechnung, Vorkommenszustand und
+4. **Erledigt in Phase 4 – Completion-Orchestrierung schneiden.** Rewardberechnung, Vorkommenszustand und
    Terminprojektion separat testen und über einen generischen Transaktionsport verbinden.
-5. **Presentation-Verträge typisieren.** String-Aktionsschlüssel und View-Tag-Protokoll durch
+5. **Erledigt in Phase 5 – Presentation-Verträge typisieren.** String-Aktionsschlüssel und View-Tag-Protokoll durch
    Commands, Effects und ein Anchor-Registry ersetzen; doppelten Dashboardzustand reduzieren.
-6. **Große UI-Klassen zerlegen.** Rewardanimation, Satzeditor und Editor-Koordination aus
+6. **Teilweise erledigt in Phase 5 – große UI-Klassen zerlegen.** Rewardanimation, Satzeditor und Editor-Koordination aus
    `MainActivity`, `TaskViewModel` und `FocusTaskView` extrahieren; stabile IDs ergänzen.
-7. **Renderer messen, bevor er erweitert wird.** API-26-Framezeit, Speicher und Cache-Hit-Rate
+7. **Offen für Phase 6 – Renderer messen, bevor er erweitert wird.** API-26-Framezeit, Speicher und Cache-Hit-Rate
    erfassen; Geometrie vorab berechnen und den Cache anhand realer Messwerte begrenzen.
-8. **Testpyramide beschleunigen.** In-Memory-Repository für Fachabläufe, gemeinsame
+8. **Offen für Phase 7 – Testpyramide beschleunigen.** In-Memory-Repository für Fachabläufe, gemeinsame
    Room-Migrationsfixtures und visuelle Diff-Artefakte einführen.
-9. **Skalierungs- und Accessibility-Matrix ergänzen.** Große Schrift, schmale Breite,
+9. **Offen für Phase 7 – Skalierungs- und Accessibility-Matrix ergänzen.** Große Schrift, schmale Breite,
    TalkBack-Reihenfolge, Tastaturbedienung und alle Tagespaletten automatisiert prüfen.
 
 ## Schlussfolgerung
 
-Die Implementierung ist für den aktuellen Produktumfang tragfähig und durch ungewöhnlich breite
-Tests abgesichert. Ihre größte Schwäche ist nicht eine einzelne Klasse, sondern fehlende
-Eindeutigkeit an den Grenzen: alter und neuer Fortschritt koexistieren, Buchungen sind über
-Zustandsobjekte verteilt, `done` ist Zustand und Ableitung zugleich, Presentation kommuniziert
-über Strings und der Renderer rekonstruiert Layoutwissen aus Views.
+Die Implementierung ist für den aktuellen Produktumfang tragfähig und durch breite Tests
+abgesichert. Phasen 1 bis 5 haben die zuvor fehlende Eindeutigkeit bei Satzabschluss,
+Legacyfortschritt, Buchungen, Completion-Orchestrierung und Presentation-Verträgen beseitigt.
+Die verbleibende Hauptschuld liegt jetzt klarer abgegrenzt im Maserungsrenderer, in der langsamen
+Room-lastigen Testpyramide, in duplizierten Migrationsfixtures und in noch unvollständigen
+Skalierungs-, Accessibility- und Dauerlast-Gates.
 
-Weitere Features sollten deshalb nicht einfach auf die vorhandenen Pfade aufgesetzt werden.
-Zuerst sollten Satzinvariante, Legacy-Modell und Buchungsbegriff bereinigt werden. Danach lohnt
-sich die Entkopplung von Presentation und Renderer. So wird aus einer gut getesteten
-pragmatischen Erweiterung eine Architektur, die auch weitere Belohnungsregeln, Synchronisation
-oder komplexere Today-Interaktionen ohne erneuten Big-Bang tragen kann.
+Weitere Reward- oder Today-Features können auf den typisierten Verträgen aufbauen. Größere
+visuelle Erweiterungen sollten dagegen Phase 6 abwarten, damit keine weitere Geometriearbeit auf
+dem UI-Thread entsteht. Prozesspersistente Presentation-Effects, kleinere Stores und Builder für
+die langen Snapshot-Konstruktoren bleiben sinnvolle, aber bewusst nachrangige Verbesserungen.
