@@ -67,17 +67,28 @@ public final class TaskLeafView extends FrameLayout {
         marker.setVisibility(markerText.isEmpty() ? GONE : VISIBLE);
         softTime.setText(task.softTime); softTime.setTextColor(palette.hint);
         softTime.setVisibility(task.softTime.isEmpty() || task.done || task.overdue ? GONE : VISIBLE);
+        int leafColor = deep ? palette.leaf3 : palette.leaf2;
+        WoodGrainView.applyTextHalo(title, leafColor);
+        WoodGrainView.applyTextHalo(marker, leafColor);
+        WoodGrainView.applyTextHalo(softTime, leafColor);
         int value = task.done ? task.awardedXp : task.claimableXp;
+        dot.setTag(task.terminalCondition ? "task:" + task.taskId
+                : "occurrence:" + task.occurrenceId);
         dot.bind(task.done, false, palette, value);
-        dot.setEnabled(!task.occurrenceId.isEmpty());
+        dot.setEnabled(task.done ? task.undoAvailable : !task.occurrenceId.isEmpty());
         dot.setContentDescription((task.done ? getContext().getString(R.string.marker_done) + ": " : "")
                 + task.title + ", " + value + " XP");
         dot.setOnClickListener(view -> complete.accept(task));
         menu.setVisibility(task.done ? GONE : VISIBLE); menu.setTextColor(palette.dot);
         menu.setOnClickListener(view -> showMenu.accept(task));
         bindProgress(task, palette);
-        post(() -> grain.bind(palette, Collections.singletonList(
-                new WoodGrainView.Anchor(dot, task.comboStage))));
+        post(() -> {
+            List<View> faded = new ArrayList<>();
+            faded.add(title); faded.add(marker); faded.add(softTime);
+            if (progress.getVisibility() == VISIBLE) faded.add(progressLabel);
+            grain.bind(palette, Collections.singletonList(
+                    new WoodGrainView.Anchor(dot, task.comboStage)), faded);
+        });
     }
 
     private void bindProgress(TaskSnapshot task, DayPalette palette) {

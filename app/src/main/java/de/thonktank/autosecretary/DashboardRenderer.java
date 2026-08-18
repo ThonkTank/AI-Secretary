@@ -28,7 +28,6 @@ public final class DashboardRenderer {
     private final Actions actions;
     private final String version;
     private NavigationDestination mounted;
-    private TextView xp;
     private FocusTaskView focus;
     private LinearLayout timeline;
     private TextView more;
@@ -114,11 +113,6 @@ public final class DashboardRenderer {
     private void mountToday() {
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
-        xp = style.serif("", 14, 0, true, 300);
-        xp.setVisibility(View.GONE);
-        LinearLayout.LayoutParams xpParams = new LinearLayout.LayoutParams(-1, -2);
-        xpParams.setMargins(0, 0, 0, style.dp(12));
-        content.addView(xp, xpParams);
         focus = new FocusTaskView(context);
         content.addView(focus, new LinearLayout.LayoutParams(-1, -2));
         timeline = new LinearLayout(context);
@@ -135,7 +129,6 @@ public final class DashboardRenderer {
     private void bindToday(DashboardUiModel dashboard, DayPalette palette) {
         TaskSnapshot focusTask = dashboard.firstOpen();
         boolean hasFocus = focusTask != null;
-        xp.setVisibility(View.GONE);
         focus.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
         timeline.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
         more.setVisibility(hasFocus && dashboard.timeline.size() > 3 ? View.VISIBLE : View.GONE);

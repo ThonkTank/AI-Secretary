@@ -96,7 +96,7 @@
     <string name="delete_task_loss">Die Aufgabe geht verloren.</string>
     <string name="close_task_title">Vorhaben abschließen?</string>
     <string name="this_project">dieses Vorhaben</string>
-    <string name="close_task_message">„%1$s“ wird geschlossen.%2$s</string>
+    <string name="close_task_message">„%1$s“ wird geschlossen.</string>
     <string name="editor_new_title">Neue Aufgabe</string>
     <string name="editor_edit_title">Aufgabe bearbeiten</string>
     <string name="editor_name_hint">Name der Aufgabe, z. B. Morgenroutine</string>
@@ -203,6 +203,7 @@
     <string name="set_progress_edit_title">heutigen Fortschritt bearbeiten</string>
     <string name="set_edit_hint">Ist-Wiederholungen, durch Komma getrennt</string>
     <string name="set_progress_save">Fortschritt speichern</string>
+    <string name="set_reopen">wieder öffnen</string>
     <string name="action_save">Speichern</string>
     <string name="action_discard">verwerfen</string>
     <string name="action_delete">Löschen</string>
@@ -221,6 +222,7 @@
     <string name="err_timeofday_empty">geht so nicht — wähle mindestens eine Tageszeit.</string>
     <string name="err_amount_zero">geht so nicht — die Menge braucht mindestens eine Wiederholung.</string>
     <string name="err_set_zero">geht so nicht — ein bestätigter Satz braucht mindestens eine Wiederholung.</string>
+    <string name="err_set_count">mehr Sätze als geplant können nicht gespeichert werden.</string>
     <string name="ask_discard_kicker">nicht gespeichert</string>
     <string name="ask_discard_title">verwerfen, was du geändert hast?</string>
     <string name="ask_discard_body">Deine Eingaben gehen verloren.</string>
@@ -245,12 +247,5 @@
         <item quantity="one">%1$d von %2$d</item>
         <item quantity="other">%1$d von %2$d</item>
     </plurals>
-    <plurals name="delete_routine_loss">
-        <item quantity="one">Die Routine und ihre Kombo gehen verloren.</item>
-        <item quantity="other">Die Routine und ihre Kombo gehen verloren.</item>
-    </plurals>
-    <plurals name="close_ring_suffix">
-        <item quantity="one"> Ihre Kombo bleibt als Fortschritt gespeichert.</item>
-        <item quantity="other"> Ihre Kombo bleibt als Fortschritt gespeichert.</item>
-    </plurals>
+    <string name="delete_routine_loss">Die Routine und ihre Kombo gehen verloren.</string>
 </resources>

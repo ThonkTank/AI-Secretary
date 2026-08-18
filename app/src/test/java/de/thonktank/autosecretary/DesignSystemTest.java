@@ -85,6 +85,10 @@ public final class DesignSystemTest {
         assertEquals(420L, day.motion.leafFlightDurationMs);
         assertEquals(520L, day.motion.glintDurationMs);
         assertEquals(1_000L, day.motion.afterglowDurationMs);
+        assertEquals(470L, day.motion.rewardFlightDurationMs);
+        assertEquals(240L, day.motion.vesselFillDurationMs);
+        assertEquals(2_400L, day.motion.vesselPulseDurationMs);
+        assertEquals(600L, day.motion.headerAfterglowDurationMs);
         assertEquals(11_000L, day.motion.forestBreathDurationMs);
         assertEquals(18f, day.motion.forestBreathDistanceDp, .0001f);
         assertEquals(7f, day.motion.forestBreathVerticalDp, .0001f);

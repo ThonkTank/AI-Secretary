@@ -62,10 +62,10 @@ final class DashboardFixtures {
     private static TaskSnapshot task(String id, String title, TaskSlot slot, Recurrence recurrence,
                                      List<TaskStepSnapshot> steps, int remainingSteps,
                                      boolean terminalCondition, boolean ongoing, boolean done,
-                                     boolean overdue, int ringWeeks, long displayOrder) {
+                                     boolean overdue, int comboStage, long displayOrder) {
         return new TaskSnapshot(id, done ? "occurrence-done" : "occurrence-" + id,
                 title, slot, "weiche Zeit", terminalCondition ? "Bedingung" : "Nächster Schritt",
                 recurrence, steps, remainingSteps, terminalCondition, ongoing, done, overdue,
-                ringWeeks, displayOrder);
+                comboStage, displayOrder);
     }
 }

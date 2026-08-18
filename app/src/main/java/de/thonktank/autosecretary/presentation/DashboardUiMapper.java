@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.domain.model.Dashboard;
 import de.thonktank.autosecretary.domain.model.DashboardTask;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.RewardPolicy;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
@@ -15,7 +16,6 @@ import de.thonktank.autosecretary.domain.model.ComboProgress;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.time.temporal.ChronoUnit;
 
 public final class DashboardUiMapper {
     private final UiTextProvider texts;
@@ -39,7 +39,7 @@ public final class DashboardUiMapper {
             boolean done = item.done || step.done;
             ComboProgress stepCombo = dashboard.combos.get(step.comboOwnerId);
             int stepStage = stepCombo == null ? 0 : stepCombo.level();
-            int claimable = (int) Math.round(10d * (1d + stepStage * .5d));
+            int claimable = RewardPolicy.stepXp(stepCombo);
             steps.add(new TaskStepSnapshot(step.id, step.text, done, step.amountKind,
                     step.plannedSets, step.plannedReps, step.plannedDurationSeconds,
                     step.note, step.actualRepetitions, stepStage, claimable, step.earnedXp));
@@ -55,7 +55,6 @@ public final class DashboardUiMapper {
         boolean overdue = !item.done && due != null && due.isBefore(today);
         ComboProgress taskCombo = dashboard.combos.get(ComboProgress.taskOwner(task.id));
         int taskStage = taskCombo == null ? 0 : taskCombo.level();
-        double taskFactor = 1d + taskStage * .5d;
         int collected = 0, projected = 0;
         for (TaskStepSnapshot step : steps) {
             collected += step.earnedXp;
@@ -63,16 +62,15 @@ public final class DashboardUiMapper {
         }
         int claimable;
         if (steps.isEmpty()) {
-            long late = due == null ? 0 : Math.max(0, ChronoUnit.DAYS.between(due, today));
-            int base = Math.min(30, 10 + Math.toIntExact(Math.min(4, late)) * 5);
-            claimable = (int) Math.round(base * taskFactor);
-        } else claimable = (int) Math.round(projected * taskFactor);
+            long late = item.occurrence == null ? 0
+                    : RewardPolicy.lateDays(task, item.occurrence, today);
+            claimable = RewardPolicy.singleTaskXp(late, taskCombo);
+        } else claimable = RewardPolicy.routineXp(projected, taskCombo);
         TaskSlot displaySlot = item.occurrence == null ? task.slot : item.occurrence.slot;
         return new TaskSnapshot(task.id.value, item.occurrence == null ? "" : item.occurrence.id,
                 task.title, displaySlot, softTime(displaySlot, task.ongoing), next, task.recurrence,
                 steps, remaining, !task.conditionText.isEmpty(), task.ongoing, item.done, overdue,
-                task.recurrence == Recurrence.ONCE ? 0 : task.routineProgress.weekStreak,
-                task.displayOrder, taskStage, claimable, item.done ? 0 : collected,
+                taskStage, task.displayOrder, claimable, item.done ? 0 : collected,
                 item.occurrence == null ? 0 : item.occurrence.awardedXp,
                 !item.done && !steps.isEmpty() && remaining == 0 && collected > 0);
     }

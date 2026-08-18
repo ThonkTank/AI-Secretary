@@ -10,6 +10,8 @@ Eine persönliche, deutschsprachige ADHS-Task-App. Sie zeigt nur **jetzt**, **da
 - Nicht erledigte Aufgaben werden sanft weitergetragen. Überfälligkeit bleibt eine ruhige Information statt eines Alarms.
 - Jede Aufgabe und jeder Schritt hat eine eigene Kombo. Rechtzeitige Aktivität stärkt ihre Maserung, Inaktivität und verspätete Einzelaufgaben lassen sie langsam abklingen.
 - Schritte sammeln ihre kombomultiplizierten XP in einem Gefäß; eine Routine-Ernte multipliziert die Summe erneut. Gesamt-XP treiben die Stufe im Kopfblatt.
+- „Rest erledigen“ füllt in der App zunächst nur das Gefäß. Die bewusste Ernte schließt das Vorkommen; das heute erledigte Blatt erlaubt ein exaktes Undo.
+- Mengen- und Satzschritte werden im Fokusblatt ausgeklappt und dort bearbeitet. Nur der Wechsel zwischen offen und erledigt verändert XP oder Kombo.
 - Das Widget ist der Arbeitsbereich: abhaken, später setzen und Bedingungen erfüllen. Erstellen und Bearbeiten öffnen die App.
 - Benachrichtigungen sind im Stabilitäts-Release bewusst deaktiviert. Sie kommen erst mit einer fälligkeitsbasierten, getesteten Umsetzung zurück.
 

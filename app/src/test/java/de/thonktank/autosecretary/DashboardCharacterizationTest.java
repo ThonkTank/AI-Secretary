@@ -99,7 +99,7 @@ public final class DashboardCharacterizationTest {
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
                         EditorUiState.closed()), UiThemeMode.AUTO, UpdateUiState.idle());
 
-        LinearLayout timeline = (LinearLayout) content.getChildAt(2);
+        LinearLayout timeline = (LinearLayout) content.getChildAt(1);
         List<String> text = new ArrayList<>();
         collectText(timeline, text);
         assertEquals(3, timeline.getChildCount());

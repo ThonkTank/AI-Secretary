@@ -20,6 +20,12 @@ haben jeweils ein eigenes Punktekonto; eine Kombostufe wird nie als Zahl ausgege
   zwei. Jeder vollständig inaktive Kalendertag kostet zwei Punkte.
 - XP, angewandte Punktedeltas und stabile Schritt-Owner werden am Vorkommen gespeichert,
   damit ein heutiger Abschluss vollständig und idempotent rückgängig gemacht werden kann.
+- „Rest erledigen“ und Ernte sind in der App getrennte Transaktionen. Die unveränderte
+  Widget-Oberfläche führt beide Schritte atomar aus.
+- Die Maserringe werden von einem gemeinsamen, gecachten Canvas-Renderer aus SDF-Konturen
+  erzeugt. Er begrenzt nur die sichtbare Ringzahl; der fachliche Kombofaktor bleibt offen.
+- Satzfortschritt ist ein editierbarer Zustand. Erst ein Wechsel zwischen offen und erledigt
+  erzeugt beziehungsweise reversiert eine persistierte XP-/Kombo-Buchung.
 - Die Migration erhält Gesamt-XP, startet alle Kombos bewusst bei null und übernimmt keine
   nicht belegbare Wochenhistorie.
 
@@ -28,3 +34,5 @@ haben jeweils ein eigenes Punktekonto; eine Kombostufe wird nie als Zahl ausgege
 Der Dashboard-Refresh rechnet fälligen Komboverfall explizit ab. Das Kopfblatt leitet seine
 Stufe ausschließlich aus Gesamt-XP ab. Alte Routine-Level- und Wochenringfelder bleiben in
 Schema 5 nur als kompatible Altdaten erhalten und steuern kein Verhalten oder sichtbare Kopie.
+Today-Aktionen werden seriell animiert und respektieren die systemweite Einstellung für
+reduzierte Animationen; die Zustandsänderung selbst bleibt davon unabhängig.

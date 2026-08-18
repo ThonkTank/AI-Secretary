@@ -1,12 +1,15 @@
 package de.thonktank.autosecretary;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.text.InputType;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.style.StrikethroughSpan;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.graphics.Color;
@@ -16,6 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import de.thonktank.autosecretary.domain.model.StepAmountKind;
+
 public final class FocusTaskView extends FrameLayout {
     public interface Actions {
         void onComplete(TaskSnapshot task);
@@ -23,6 +28,9 @@ public final class FocusTaskView extends FrameLayout {
         default void onHarvest(TaskSnapshot task) { onComplete(task); }
         void onDefer(TaskSnapshot task);
         void onToggleStep(TaskStepSnapshot step);
+        default void onEditStepProgress(TaskStepSnapshot step, List<Integer> repetitions,
+                                        boolean done) { }
+        default void onFinishExercise(TaskStepSnapshot step) { }
     }
 
     private final UiStyle style;
@@ -48,6 +56,7 @@ public final class FocusTaskView extends FrameLayout {
     private final View afterglow;
     private String boundTaskId;
     private boolean deferPending;
+    private String expandedStepId;
 
     public FocusTaskView(Context context) {
         super(context);
@@ -173,16 +182,20 @@ public final class FocusTaskView extends FrameLayout {
         title.setText(task.title);
         title.setTextSize(30);
         title.setTextColor(palette.ink);
+        WoodGrainView.applyTextHalo(title, palette.leaf1);
         softTime.setVisibility(GONE);
         boolean vessel = !task.steps.isEmpty();
         ring.setVisibility(vessel ? VISIBLE : GONE);
         taskDew.setVisibility(vessel ? GONE : VISIBLE);
         int doneCount = task.steps.size() - task.remainingSteps;
         if (vessel) {
+            ring.setTag("vessel:" + task.occurrenceId);
             ring.bind(task.collectedXp, doneCount, task.steps.size(), task.harvestReady,
                     task.comboStage, palette);
             ring.setOnClickListener(task.harvestReady ? view -> callbacks.onHarvest(task) : null);
         } else {
+            taskDew.setTag(task.terminalCondition ? "task:" + task.taskId
+                    : "occurrence:" + task.occurrenceId);
             taskDew.bind(false, false, palette, task.claimableXp);
             taskDew.setOnClickListener(view -> callbacks.onComplete(task));
         }
@@ -194,6 +207,7 @@ public final class FocusTaskView extends FrameLayout {
         primary.setBackground(style.pill(palette.accent, 26));
         style.shadow(primary, palette, 5, .7f);
         primary.setOnClickListener(view -> callbacks.onCompleteRemaining(task));
+        primary.setTag("rest:" + task.occurrenceId);
         primary.setVisibility(vessel && task.remainingSteps > 0 ? VISIBLE : GONE);
         later.setVisibility(allowDefer ? VISIBLE : GONE);
         later.bind(palette.hint, palette.dot);
@@ -202,17 +216,7 @@ public final class FocusTaskView extends FrameLayout {
             callbacks.onDefer(task);
         });
         if (focusChanged) animateFocusChange(palette);
-        post(() -> {
-            LayoutParams surface = (LayoutParams) cardSurface.getLayoutParams();
-            surface.topMargin = cardParams.topMargin; surface.height = card.getHeight(); cardSurface.setLayoutParams(surface);
-            LayoutParams gp = (LayoutParams) grain.getLayoutParams();
-            gp.topMargin = cardParams.topMargin; gp.height = card.getHeight(); grain.setLayoutParams(gp);
-            List<WoodGrainView.Anchor> anchors = new ArrayList<>();
-            anchors.add(new WoodGrainView.Anchor(vessel ? ring : taskDew, task.comboStage));
-            for (int i = 0; i < task.steps.size() && i < stepRows.size(); i++)
-                anchors.add(new WoodGrainView.Anchor(stepRows.get(i).dot, task.steps.get(i).comboStage));
-            grain.bind(palette, anchors);
-        });
+        post(() -> syncLayersAndGrain(task, palette));
     }
 
     private void bindSteps(TaskSnapshot task, DayPalette palette, Actions callbacks) {
@@ -230,28 +234,176 @@ public final class FocusTaskView extends FrameLayout {
             }
             row.root.setVisibility(VISIBLE);
             TaskStepSnapshot step = task.steps.get(i);
+            row.dot.setTag("step:" + step.id);
             row.dot.bind(step.done, false, palette, step.done ? step.earnedXp : step.claimableXp);
             row.dot.setContentDescription((step.done ? getContext().getString(R.string.marker_done) + ": " : "") + step.label);
-            row.dot.setOnClickListener(view -> callbacks.onToggleStep(step));
             row.label.setText(step.done ? strike(step.label) : step.label);
             row.label.setTextColor(step.done ? palette.done : palette.ink);
+            WoodGrainView.applyTextHalo(row.label, palette.leaf1);
+            if (step.amountKind == StepAmountKind.SETS_REPS) {
+                View.OnClickListener expand = view -> {
+                    expandedStepId = step.id.equals(expandedStepId) ? null : step.id;
+                    bindSteps(task, palette, callbacks);
+                    post(() -> syncLayersAndGrain(task, palette));
+                };
+                row.dot.setOnClickListener(expand);
+                row.label.setOnClickListener(expand);
+                row.bindEditor(step, palette, callbacks);
+            } else {
+                row.dot.setOnClickListener(view -> callbacks.onToggleStep(step));
+                row.label.setOnClickListener(null);
+                row.editor.setVisibility(GONE);
+            }
         }
     }
 
     private final class StepRow {
         final LinearLayout root = new LinearLayout(getContext());
+        final LinearLayout header = new LinearLayout(getContext());
         final DewDotView dot = new DewDotView(getContext());
         final TextView label = style.sans("", 19, 0, false);
+        final LinearLayout editor = new LinearLayout(getContext());
+        final TextView progress = style.sans("", 14, 0, false);
+        final EditText repetitions = new EditText(getContext());
+        final TextView save = new TextView(getContext());
+        final TextView toggleDone = new TextView(getContext());
 
         StepRow(Context context) {
-            root.setGravity(Gravity.CENTER_VERTICAL);
+            root.setOrientation(LinearLayout.VERTICAL);
+            header.setGravity(Gravity.CENTER_VERTICAL);
             LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(style.dp(48), style.dp(48));
             dotParams.setMargins(0, -style.dp(3), 0, -style.dp(4));
-            root.addView(dot, dotParams);
+            header.addView(dot, dotParams);
             LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1);
             labelParams.setMargins(style.dp(4), 0, 0, 0);
-            root.addView(label, labelParams);
+            header.addView(label, labelParams);
+            root.addView(header, new LinearLayout.LayoutParams(-1, -2));
+
+            editor.setOrientation(LinearLayout.VERTICAL);
+            editor.setPadding(style.dp(52), 0, 0, style.dp(8));
+            editor.addView(progress, new LinearLayout.LayoutParams(-1, -2));
+            repetitions.setSingleLine(true);
+            repetitions.setTextSize(17);
+            repetitions.setTypeface(style.sans);
+            repetitions.setInputType(InputType.TYPE_CLASS_TEXT);
+            repetitions.setMinHeight(style.dp(48));
+            LinearLayout.LayoutParams input = new LinearLayout.LayoutParams(-1, style.dp(48));
+            input.topMargin = style.dp(4);
+            editor.addView(repetitions, input);
+            LinearLayout actionRow = new LinearLayout(context);
+            actionRow.setGravity(Gravity.CENTER_VERTICAL);
+            save.setGravity(Gravity.CENTER);
+            save.setMinHeight(style.dp(48));
+            save.setPadding(style.dp(16), 0, style.dp(16), 0);
+            save.setTypeface(style.sansBold);
+            save.setTextSize(17);
+            actionRow.addView(save, new LinearLayout.LayoutParams(-2, style.dp(48)));
+            toggleDone.setGravity(Gravity.CENTER);
+            toggleDone.setMinHeight(style.dp(48));
+            toggleDone.setTextSize(17);
+            toggleDone.setTypeface(style.sans);
+            LinearLayout.LayoutParams toggle = new LinearLayout.LayoutParams(-2, style.dp(48));
+            toggle.leftMargin = style.dp(12);
+            actionRow.addView(toggleDone, toggle);
+            LinearLayout.LayoutParams actionParams = new LinearLayout.LayoutParams(-1, -2);
+            actionParams.topMargin = style.dp(7);
+            editor.addView(actionRow, actionParams);
+            editor.setVisibility(GONE);
+            root.addView(editor, new LinearLayout.LayoutParams(-1, -2));
         }
+
+        void bindEditor(TaskStepSnapshot step, DayPalette palette, Actions callbacks) {
+            boolean expanded = step.id.equals(expandedStepId);
+            editor.setVisibility(expanded ? VISIBLE : GONE);
+            if (!expanded) return;
+            progress.setText(getResources().getQuantityString(R.plurals.step_progress,
+                    step.plannedSets == null ? 0 : step.plannedSets,
+                    step.actualRepetitions.size(), step.plannedSets));
+            progress.setTextColor(palette.muted);
+            repetitions.setText(join(step.actualRepetitions));
+            repetitions.setHint(step.plannedReps == null ? "" : String.valueOf(step.plannedReps));
+            repetitions.setTextColor(palette.ink);
+            repetitions.setHintTextColor(palette.hint);
+            repetitions.setBackgroundTintList(ColorStateList.valueOf(palette.accent));
+            repetitions.setContentDescription(getContext().getString(R.string.set_edit_hint));
+            save.setText(R.string.set_progress_save);
+            save.setTextColor(palette.accentText);
+            save.setBackground(style.pill(palette.accent, 24));
+            toggleDone.setText(step.done ? R.string.set_reopen : R.string.set_finish);
+            toggleDone.setTextColor(palette.ink2);
+            save.setOnClickListener(view -> {
+                List<Integer> values = parsedRepetitions(step);
+                if (values != null) callbacks.onEditStepProgress(step, values, step.done);
+            });
+            toggleDone.setOnClickListener(view -> {
+                if (step.done) {
+                    List<Integer> values = parsedRepetitions(step);
+                    if (values != null) callbacks.onEditStepProgress(step, values, false);
+                } else callbacks.onFinishExercise(step);
+            });
+            WoodGrainView.applyTextHalo(progress, palette.leaf1);
+            WoodGrainView.applyTextHalo(toggleDone, palette.leaf1);
+        }
+
+        private List<Integer> parsedRepetitions(TaskStepSnapshot step) {
+            String raw = repetitions.getText().toString().trim();
+            List<Integer> values = new ArrayList<>();
+            if (!raw.isEmpty()) for (String part : raw.split("[,; ]+")) {
+                try {
+                    int value = Integer.parseInt(part);
+                    if (value <= 0) throw new NumberFormatException();
+                    values.add(value);
+                } catch (NumberFormatException error) {
+                    repetitions.setError(getContext().getString(R.string.err_set_zero));
+                    return null;
+                }
+            }
+            if (step.plannedSets != null && values.size() > step.plannedSets) {
+                repetitions.setError(getContext().getString(R.string.err_set_count));
+                return null;
+            }
+            return values;
+        }
+    }
+
+    private void syncLayersAndGrain(TaskSnapshot task, DayPalette palette) {
+        LayoutParams surface = (LayoutParams) cardSurface.getLayoutParams();
+        surface.topMargin = cardParams.topMargin;
+        surface.height = card.getHeight();
+        cardSurface.setLayoutParams(surface);
+        LayoutParams gp = (LayoutParams) grain.getLayoutParams();
+        gp.topMargin = cardParams.topMargin;
+        gp.height = card.getHeight();
+        grain.setLayoutParams(gp);
+        boolean vessel = !task.steps.isEmpty();
+        List<WoodGrainView.Anchor> anchors = new ArrayList<>();
+        anchors.add(new WoodGrainView.Anchor(vessel ? ring : taskDew, task.comboStage));
+        for (int i = 0; i < task.steps.size() && i < stepRows.size(); i++)
+            anchors.add(new WoodGrainView.Anchor(stepRows.get(i).dot,
+                    task.steps.get(i).comboStage));
+        List<View> faded = new ArrayList<>();
+        faded.add(title);
+        for (int i = 0; i < task.steps.size() && i < stepRows.size(); i++) {
+            faded.add(stepRows.get(i).label);
+            if (stepRows.get(i).editor.getVisibility() == VISIBLE) {
+                faded.add(stepRows.get(i).progress);
+                faded.add(stepRows.get(i).repetitions);
+                faded.add(stepRows.get(i).save);
+                faded.add(stepRows.get(i).toggleDone);
+            }
+        }
+        if (primary.getVisibility() == VISIBLE) faded.add(primary);
+        if (later.getVisibility() == VISIBLE) faded.add(later);
+        grain.bind(palette, anchors, faded);
+    }
+
+    private static String join(List<Integer> values) {
+        StringBuilder result = new StringBuilder();
+        for (Integer value : values) {
+            if (result.length() > 0) result.append(", ");
+            result.append(value);
+        }
+        return result.toString();
     }
 
     private void playGlint(int color, long duration, float alpha) {

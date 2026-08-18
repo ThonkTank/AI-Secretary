@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
+import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
@@ -15,9 +16,9 @@ public final class CompleteOccurrence {
         this.rewards = new RewardEngine(repository, clock);
     }
 
-    public RewardResult execute(String occurrenceId) {
-        if (occurrenceId == null || occurrenceId.isEmpty()) return RewardResult.none();
-        final RewardResult[] result = {RewardResult.none()};
+    public RewardReceipt execute(String occurrenceId) {
+        if (occurrenceId == null || occurrenceId.isEmpty()) return RewardReceipt.none();
+        final RewardReceipt[] result = {RewardReceipt.none()};
         repository.inTransaction(() -> {
             Occurrence occurrence = repository.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN) return;

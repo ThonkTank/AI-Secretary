@@ -75,6 +75,9 @@ final class DewDotView extends View {
         }
     }
 
+    float grainWidth() { return style.dp(value >= 100 ? 42 : 26); }
+    float grainHeight() { return style.dp(26); }
+
     @Override protected void onDraw(Canvas canvas) {
         if (palette == null) return;
         float cx = getWidth() / 2f, cy = getHeight() / 2f, radius = style.dp(13);

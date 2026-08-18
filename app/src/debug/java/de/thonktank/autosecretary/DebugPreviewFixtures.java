@@ -36,6 +36,14 @@ public final class DebugPreviewFixtures {
     }
 
     public static DashboardState reference(String state) {
+        if ("empty-vessel".equals(state)) return new DashboardState(70,
+                Collections.singletonList(vesselTask(0, false)));
+        if ("partial-vessel".equals(state)) return new DashboardState(70,
+                Collections.singletonList(vesselTask(1, false)));
+        if ("harvest-ready".equals(state)) return new DashboardState(70,
+                Collections.singletonList(vesselTask(3, true)));
+        if ("three-digit".equals(state)) return new DashboardState(70,
+                Collections.singletonList(threeDigitTask()));
         TaskSnapshot morning = morning(false, "step".equals(state));
         TaskSnapshot after = task("preview-after", "Abgabe Statistik-Übung", TaskSlot.MORNING,
                 "voraussichtlich ab 10:15", false, false, 2_000L);
@@ -48,7 +56,7 @@ public final class DebugPreviewFixtures {
         if ("empty".equals(state)) return new DashboardState(0, Collections.emptyList());
         if ("later".equals(state)) return new DashboardState(120,
                 Arrays.asList(after, morning, laundry, hiddenOne, hiddenTwo));
-        if ("complete".equals(state)) return new DashboardState(120,
+        if ("complete".equals(state) || "harvested".equals(state)) return new DashboardState(120,
                 Arrays.asList(morning(true, true), after, laundry, hiddenOne, hiddenTwo));
         if ("evening".equals(state)) {
             TaskSnapshot ongoing = new TaskSnapshot("preview-ongoing", "preview-ongoing-occurrence",
@@ -79,5 +87,34 @@ public final class DebugPreviewFixtures {
                                      boolean done, boolean overdue, long order) {
         return new TaskSnapshot(id, id + "-occurrence", title, slot, softTime, "erledigen",
                 Recurrence.ONCE, Collections.emptyList(), 0, false, false, done, overdue, 0, order);
+    }
+
+    private static TaskSnapshot vesselTask(int completed, boolean ready) {
+        List<TaskStepSnapshot> steps = Arrays.asList(
+                previewStep("vessel-1", "Duschen", completed >= 1, 10, 2),
+                previewStep("vessel-2", "Haare waschen", completed >= 2, 15, 3),
+                previewStep("vessel-3", "Anziehen", completed >= 3, 20, 5));
+        int collected = completed >= 1 ? 10 : 0;
+        if (completed >= 2) collected += 15;
+        if (completed >= 3) collected += 20;
+        return new TaskSnapshot("preview-vessel", "preview-vessel-occurrence",
+                "Morgenroutine", TaskSlot.MORNING, "", "erledigen", Recurrence.DAILY,
+                steps, 3 - completed, false, false, false, false, 5, 1_000L,
+                68, collected, 0, ready);
+    }
+
+    private static TaskStepSnapshot previewStep(String id, String title, boolean done,
+                                                int value, int combo) {
+        return new TaskStepSnapshot(id, title, done,
+                de.thonktank.autosecretary.domain.model.StepAmountKind.NONE,
+                null, null, null, "", Collections.emptyList(), combo, value,
+                done ? value : 0);
+    }
+
+    private static TaskSnapshot threeDigitTask() {
+        return new TaskSnapshot("preview-three-digit", "preview-three-digit-occurrence",
+                "Steuerunterlagen abgeben", TaskSlot.MORNING, "", "erledigen",
+                Recurrence.ONCE, Collections.emptyList(), 0, false, false, false,
+                true, 12, 1_000L, 125, 0, 0, false);
     }
 }

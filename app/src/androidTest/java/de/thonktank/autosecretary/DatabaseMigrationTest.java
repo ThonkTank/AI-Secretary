@@ -150,6 +150,43 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test public void migration4To5PreservesXpAndStartsCombosAtZero() throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 4);
+        database.execSQL("INSERT INTO tasks (id,title,slot,recurrence,intervalDays,weekdayMask,"
+                + "ongoing,conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,"
+                + "lastCompletedOn,routineLevel,routineStreak,routineStreakWeeks,lastStreakWeek,"
+                + "displayOrder,hasCompletedOccurrence,estimatedMinutes,timeOfDayMask,boundKind,"
+                + "boundUntilOn,boundWeeks,remainingCount,deadlineOn,note) VALUES "
+                + "('v4','Routine','MORNING','DAILY',1,0,0,'',0,0,'2026-08-18','','',"
+                + "1,0,0,'',1,0,NULL,1,'FOREVER','',NULL,NULL,'','')");
+        database.execSQL("INSERT INTO task_steps (id,taskId,position,text,weekdayMask,amountKind,"
+                + "plannedSets,plannedReps,plannedDurationSeconds,note) VALUES "
+                + "('stable','v4',0,'Schritt',0,'NONE',NULL,NULL,NULL,'')");
+        database.execSQL("INSERT INTO occurrences (id,taskId,scheduledOn,slot,state,sortOrder,"
+                + "completedOn) VALUES ('open','v4','2026-08-18','MORNING','OPEN',1,'')");
+        database.execSQL("INSERT INTO occurrence_steps (id,occurrenceId,position,text,done,"
+                + "amountKind,plannedSets,plannedReps,plannedDurationSeconds,note,actualRepetitions) "
+                + "VALUES ('snapshot','open',0,'Schritt',1,'NONE',NULL,NULL,NULL,'','')");
+        database.execSQL("INSERT OR REPLACE INTO stats (id,xp) VALUES (1,137)");
+        database.close();
+
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 5, true, DatabaseMigrations.MIGRATION_4_5);
+        try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(137, cursor.getInt(0));
+        }
+        try (Cursor cursor = database.query("SELECT COUNT(*),MAX(points) FROM combo_progress")) {
+            assertTrue(cursor.moveToFirst()); assertTrue(cursor.getInt(0) >= 2);
+            assertEquals(0, cursor.getInt(1));
+        }
+        try (Cursor cursor = database.query("SELECT comboOwnerId,earnedXp FROM occurrence_steps "
+                + "WHERE id='snapshot'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals("step:stable", cursor.getString(0));
+            assertEquals(10, cursor.getInt(1));
+        }
+        database.close();
+    }
+
     private static void assertIndexExists(SupportSQLiteDatabase database, String index) {
         try (Cursor cursor = database.query(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='" + index + "'")) {

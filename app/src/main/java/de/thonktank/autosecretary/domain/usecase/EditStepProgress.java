@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
@@ -19,8 +20,13 @@ public final class EditStepProgress {
         this.repository = repository; this.clock = clock; rewards = new RewardEngine(repository, clock);
     }
 
-    public RewardResult execute(String stepId, List<Integer> repetitions) {
-        final RewardResult[] result = {RewardResult.none()};
+    public RewardReceipt execute(String stepId, List<Integer> repetitions) {
+        return execute(stepId, repetitions, null);
+    }
+
+    public RewardReceipt execute(String stepId, List<Integer> repetitions,
+                                 Boolean requestedDone) {
+        final RewardReceipt[] result = {RewardReceipt.none()};
         repository.inTransaction(() -> {
             OccurrenceStep current = repository.findOccurrenceStep(stepId);
             if (current == null || current.amountKind != StepAmountKind.SETS_REPS) return;
@@ -34,12 +40,16 @@ public final class EditStepProgress {
             }
             if (current.plannedSets != null && checked.size() > current.plannedSets)
                 throw new IllegalArgumentException("Confirmed set count exceeds planned sets");
-            boolean nextDone = current.plannedSets != null && checked.size() == current.plannedSets;
+            boolean completeByCount = current.plannedSets != null
+                    && checked.size() == current.plannedSets;
+            boolean nextDone = completeByCount
+                    || requestedDone != null && requestedDone;
             if (current.done && !nextDone) {
                 ComboProgress combo = repository.combo(current.comboOwnerId);
                 if (combo != null) repository.putCombo(combo.undo(current.comboPointDelta, clock.today()));
                 repository.updateOccurrenceStep(copy(current, checked, false, 0, 0));
-                result[0] = new RewardResult(current.earnedXp, RewardResult.Target.VESSEL, true);
+                result[0] = new RewardReceipt(current.earnedXp, -current.comboPointDelta,
+                        RewardReceipt.Target.VESSEL, true);
             } else if (!current.done && nextDone) {
                 repository.updateOccurrenceStep(copy(current, checked, true, 0, 0));
                 result[0] = rewards.completeStep(occurrence, repository.findOccurrenceStep(current.id));

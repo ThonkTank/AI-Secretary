@@ -24,22 +24,23 @@ public final class TaskSnapshot {
     public final boolean ongoing;
     public final boolean done;
     public final boolean overdue;
-    public final int ringWeeks;
     public final long displayOrder;
     public final int comboStage;
     public final int claimableXp;
     public final int collectedXp;
     public final int awardedXp;
     public final boolean harvestReady;
+    /** True only while this completed occurrence can still be reversed from today's dashboard. */
+    public final boolean undoAvailable;
 
     public TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId, @NonNull String title,
                  @NonNull TaskSlot slot, @NonNull String softTime, @NonNull String nextAction,
                  @NonNull Recurrence recurrence, @NonNull List<TaskStepSnapshot> steps,
                  int remainingSteps, boolean terminalCondition, boolean ongoing, boolean done,
-                 boolean overdue, int ringWeeks, long displayOrder) {
+                 boolean overdue, int comboStage, long displayOrder) {
         this(taskId, occurrenceId, title, slot, softTime, nextAction, recurrence, steps,
-                remainingSteps, terminalCondition, ongoing, done, overdue, ringWeeks,
-                displayOrder, ringWeeks, 10, 0, done ? 10 : 0, false);
+                remainingSteps, terminalCondition, ongoing, done, overdue, comboStage,
+                displayOrder, 10, 0, done ? 10 : 0, false);
     }
 
     public TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId,
@@ -47,18 +48,19 @@ public final class TaskSnapshot {
                  @NonNull String nextAction, @NonNull Recurrence recurrence,
                  @NonNull List<TaskStepSnapshot> steps, int remainingSteps,
                  boolean terminalCondition, boolean ongoing, boolean done, boolean overdue,
-                 int ringWeeks, long displayOrder, int comboStage, int claimableXp,
+                 int comboStage, long displayOrder, int claimableXp,
                  int collectedXp, int awardedXp, boolean harvestReady) {
         this.taskId = taskId; this.occurrenceId = occurrenceId; this.title = title; this.slot = slot;
         this.softTime = softTime; this.nextAction = nextAction; this.recurrence = recurrence;
         this.steps = Collections.unmodifiableList(new ArrayList<>(steps)); this.remainingSteps = remainingSteps; this.terminalCondition = terminalCondition;
-        this.ongoing = ongoing; this.done = done; this.overdue = overdue; this.ringWeeks = ringWeeks;
+        this.ongoing = ongoing; this.done = done; this.overdue = overdue;
         this.displayOrder = displayOrder;
         this.comboStage = Math.max(0, comboStage);
         this.claimableXp = Math.max(0, claimableXp);
         this.collectedXp = Math.max(0, collectedXp);
         this.awardedXp = Math.max(0, awardedXp);
         this.harvestReady = harvestReady;
+        this.undoAvailable = done && !occurrenceId.isEmpty();
     }
 
     public boolean routine() { return recurrence != Recurrence.ONCE; }

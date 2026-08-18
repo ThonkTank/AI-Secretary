@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 35)
+@Config(sdk = {26, 35})
 public final class DatabaseMigrationRobolectricTest {
     private static final String DATABASE = "migration-robolectric-1-to-2";
 
@@ -63,6 +63,7 @@ public final class DatabaseMigrationRobolectricTest {
             assertEquals(1, cursor.getInt(2));
             assertEquals("2026-08-15", cursor.getString(3));
             assertTrue(cursor.getLong(4) >= 1_000_000L && cursor.getLong(4) < 2_000_000L);
+            assertXpAndZeroCombos(database, 53);
         } finally {
             migrated.close();
         }
@@ -84,6 +85,7 @@ public final class DatabaseMigrationRobolectricTest {
             assertEquals("LATER", cursor.getString(1));
             assertTrue(cursor.moveToNext());
             assertEquals("MORNING", cursor.getString(1));
+            assertXpAndZeroCombos(database, 53);
         } finally {
             migrated.close();
         }
@@ -139,6 +141,55 @@ public final class DatabaseMigrationRobolectricTest {
         try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
             assertTrue(cursor.moveToFirst()); assertEquals(70, cursor.getInt(0));
         }
+        assertXpAndZeroCombos(database, 70);
+        migrated.close();
+    }
+
+    @Test public void migrationFourToFivePreservesXpAndResetsEveryCombo() {
+        createVersionOneDatabase();
+        upgradeFixtureToVersionFour();
+        SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
+                .builder(context).name(DATABASE)
+                .callback(new SupportSQLiteOpenHelper.Callback(4) {
+                    @Override public void onCreate(SupportSQLiteDatabase database) { }
+                    @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                    int oldVersion, int newVersion) { }
+                }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory().create(configuration);
+        SupportSQLiteDatabase old = helper.getWritableDatabase();
+        old.execSQL("INSERT INTO task_steps (id,taskId,position,text,weekdayMask,amountKind,"
+                + "plannedSets,plannedReps,plannedDurationSeconds,note) VALUES "
+                + "('stable-step','morning',0,'Duschen',0,'NONE',NULL,NULL,NULL,'')");
+        old.execSQL("INSERT INTO occurrences (id,taskId,scheduledOn,slot,state,sortOrder,completedOn) "
+                + "VALUES ('open-v4','morning','2026-08-18','MORNING','OPEN',1,''),"
+                + "('done-v4','morning','2026-08-17','MORNING','COMPLETED',2,'2026-08-17')");
+        old.execSQL("INSERT INTO occurrence_steps (id,occurrenceId,position,text,done,amountKind,"
+                + "plannedSets,plannedReps,plannedDurationSeconds,note,actualRepetitions) VALUES "
+                + "('open-step','open-v4',0,'Duschen',1,'NONE',NULL,NULL,NULL,'','')");
+        old.execSQL("INSERT OR REPLACE INTO stats (id,xp) VALUES (1,137)");
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.MIGRATION_4_5)
+                .allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(137, cursor.getInt(0));
+        }
+        try (Cursor cursor = database.query("SELECT COUNT(*),MAX(points) FROM combo_progress")) {
+            assertTrue(cursor.moveToFirst()); assertTrue(cursor.getInt(0) >= 3);
+            assertEquals(0, cursor.getInt(1));
+        }
+        try (Cursor cursor = database.query("SELECT comboOwnerId,earnedXp,comboPointDelta "
+                + "FROM occurrence_steps WHERE id='open-step'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals("step:stable-step", cursor.getString(0));
+            assertEquals(10, cursor.getInt(1)); assertEquals(0, cursor.getInt(2));
+        }
+        try (Cursor cursor = database.query("SELECT awardedXp,comboPointDelta FROM occurrences "
+                + "WHERE id='done-v4'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(10, cursor.getInt(0));
+            assertEquals(0, cursor.getInt(1));
+        }
         migrated.close();
     }
 
@@ -164,6 +215,7 @@ public final class DatabaseMigrationRobolectricTest {
                 + "('morning','Morgenroutine','Morgen','DAILY',1,0,0,'',0,0,'2026-08-16',"
                 + "'2026-08-15','2026-08-15',3,4,1),"
                 + "('later','Ablage','Unbekannt','ONCE',1,0,0,'',0,0,'2026-08-16','','',1,0,0)");
+        database.execSQL("INSERT OR REPLACE INTO stats (id,xp) VALUES (1,53)");
         helper.close();
     }
 
@@ -204,6 +256,22 @@ public final class DatabaseMigrationRobolectricTest {
         helper.getWritableDatabase(); helper.close();
     }
 
+    private void upgradeFixtureToVersionFour() {
+        upgradeFixtureToVersionThree();
+        SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
+                .builder(context).name(DATABASE)
+                .callback(new SupportSQLiteOpenHelper.Callback(4) {
+                    @Override public void onCreate(SupportSQLiteDatabase database) { }
+                    @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                    int oldVersion, int newVersion) {
+                        assertEquals(3, oldVersion); assertEquals(4, newVersion);
+                        DatabaseMigrations.MIGRATION_3_4.migrate(database);
+                    }
+                }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory().create(configuration);
+        helper.getWritableDatabase(); helper.close();
+    }
+
     private static void createVersionOneSchema(SupportSQLiteDatabase database) {
         database.execSQL("CREATE TABLE IF NOT EXISTS tasks (id TEXT NOT NULL, title TEXT NOT NULL, slot TEXT NOT NULL, "
                 + "recurrence TEXT NOT NULL, intervalDays INTEGER NOT NULL, weekdayMask INTEGER NOT NULL, ongoing INTEGER NOT NULL, "
@@ -225,5 +293,15 @@ public final class DatabaseMigrationRobolectricTest {
         database.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)");
         database.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) "
                 + "VALUES(42, 'f4e7f1f252d9e90f53465ed54b2d766f')");
+    }
+
+    private static void assertXpAndZeroCombos(SupportSQLiteDatabase database, int xp) {
+        try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(xp, cursor.getInt(0));
+        }
+        try (Cursor cursor = database.query("SELECT COUNT(*),MAX(points) FROM combo_progress")) {
+            assertTrue(cursor.moveToFirst()); assertTrue(cursor.getInt(0) >= 2);
+            assertEquals(0, cursor.getInt(1));
+        }
     }
 }

@@ -5,14 +5,18 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import de.thonktank.autosecretary.domain.model.XpProgress;
+
 public final class DashboardUiModel {
     public final int xp;
+    public final XpProgress xpProgress;
     public final List<TaskSnapshot> tasks;
     public final List<TimelineItemUiModel> timeline;
 
     private DashboardUiModel(int xp, List<TaskSnapshot> tasks,
                              List<TimelineItemUiModel> timeline) {
         this.xp = xp;
+        this.xpProgress = new XpProgress(xp);
         this.tasks = Collections.unmodifiableList(new ArrayList<>(tasks));
         this.timeline = Collections.unmodifiableList(new ArrayList<>(timeline));
     }

@@ -145,7 +145,7 @@ public final class WidgetRemoteViewsFactory {
         PendingIntent action;
         if (model.primaryAction == WidgetUiModel.PrimaryAction.OPEN_EDITOR) action = openEditor();
         else if (model.primaryAction == WidgetUiModel.PrimaryAction.CONFIRM_CLOSE)
-            action = confirmClose(model.primaryActionId, model.taskTitle, model.ringWeeks);
+            action = confirmClose(model.primaryActionId, model.taskTitle);
         else action = complete(model.primaryActionId);
         views.setOnClickPendingIntent(R.id.widget_action, action);
         views.setContentDescription(R.id.widget_action,
@@ -195,11 +195,10 @@ public final class WidgetRemoteViewsFactory {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    private PendingIntent confirmClose(String taskId, String title, int ringWeeks) {
+    private PendingIntent confirmClose(String taskId, String title) {
         Intent intent = new Intent(context, MainActivity.class)
                 .putExtra(MainActivity.CONFIRM_TASK, taskId)
                 .putExtra(MainActivity.CONFIRM_TASK_TITLE, title)
-                .putExtra(MainActivity.CONFIRM_TASK_RING_WEEKS, ringWeeks)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return PendingIntent.getActivity(context, ("confirm" + taskId).hashCode(), intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);

@@ -4,6 +4,7 @@ import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 
@@ -21,8 +22,8 @@ public final class ToggleStep {
         this.rewards = new RewardEngine(repository, clock);
     }
 
-    public RewardResult execute(String stepId) {
-        final RewardResult[] result = {RewardResult.none()};
+    public RewardReceipt execute(String stepId) {
+        final RewardReceipt[] result = {RewardReceipt.none()};
         repository.inTransaction(() -> {
             OccurrenceStep step = repository.findOccurrenceStep(stepId);
             if (step == null) return;

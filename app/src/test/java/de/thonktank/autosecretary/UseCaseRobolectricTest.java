@@ -31,6 +31,7 @@ import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.MoveTask;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
+import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
 import de.thonktank.autosecretary.domain.usecase.UpdateTask;
 
 import org.junit.After;
@@ -218,7 +219,7 @@ public final class UseCaseRobolectricTest {
         assertEquals(first, after.tasks.get(1).task.id);
     }
 
-    @Test public void closingOngoingTaskWithoutOccurrenceAwardsXpOnlyOnce() {
+    @Test public void closingOngoingTaskCreatesAReceiptAndCanBeFullyUndoneToday() {
         Task ongoing = Task.create(TaskId.of("ongoing"), "Praktikum", TaskSlot.LATER,
                 Recurrence.ONCE, 1, 0, true, "Vertrag unterschrieben", null, 1_024L);
         repository.insertTask(ongoing);
@@ -230,6 +231,15 @@ public final class UseCaseRobolectricTest {
         assertTrue(repository.findTask(ongoing.id).archived);
         assertTrue(repository.findTask(ongoing.id).conditionDone);
         assertEquals(10, repository.xp());
+
+        Occurrence completion = repository.occurrences(ongoing.id).get(0);
+        assertEquals(10, completion.awardedXp);
+        new UndoOccurrence(repository, clock).execute(completion.id);
+
+        assertFalse(repository.findTask(ongoing.id).archived);
+        assertFalse(repository.findTask(ongoing.id).conditionDone);
+        assertEquals(OccurrenceState.OPEN, repository.findOccurrence(completion.id).state);
+        assertEquals(0, repository.xp());
     }
 
     private static final class SequenceIds implements IdGenerator {

@@ -4,11 +4,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import de.thonktank.autosecretary.domain.model.XpProgress;
+
 public final class DashboardState {
     public final int xp;
+    public final XpProgress xpProgress;
     public final List<TaskSnapshot> tasks;
     public DashboardState(int xp, List<TaskSnapshot> tasks) {
         this.xp = xp;
+        this.xpProgress = new XpProgress(xp);
         this.tasks = Collections.unmodifiableList(new ArrayList<>(tasks));
     }
     public TaskSnapshot firstOpen() {

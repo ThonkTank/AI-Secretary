@@ -214,6 +214,13 @@ public final class Task {
                 boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
     }
 
+    public Task reopenCondition() {
+        return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
+                false, false, nextDueOn, lastScheduledOn, lastCompletedOn, routineProgress,
+                displayOrder, hasCompletedOccurrence, estimatedMinutes, timeOfDayMask,
+                boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
+    }
+
     private Task copy(String newTitle, TaskSlot newSlot, Recurrence newRecurrence,
                       int newIntervalDays, int newWeekdayMask, boolean newOngoing,
                       String newConditionText, boolean newConditionDone, boolean newArchived,

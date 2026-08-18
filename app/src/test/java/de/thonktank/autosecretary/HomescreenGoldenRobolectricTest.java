@@ -30,7 +30,9 @@ public final class HomescreenGoldenRobolectricTest {
     @Test
     @Config(sdk = 35, qualifiers = "w412dp-h892dp-xhdpi")
     public void renderPhoneReferenceStates() throws Exception {
-        for (String state : new String[]{"full", "step", "later", "complete", "evening", "empty"})
+        for (String state : new String[]{"full", "step", "later", "complete", "evening", "empty",
+                "empty-vessel", "partial-vessel", "harvest-ready", "harvested",
+                "three-digit", "night"})
             render(state, 824, 1784, true);
     }
 

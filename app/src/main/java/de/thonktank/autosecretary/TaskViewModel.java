@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
@@ -249,8 +250,8 @@ public final class TaskViewModel extends ViewModel {
         events.setValue(UiEvent.confirmDelete(task));
     }
 
-    void requestClose(String taskId, String title, int ringWeeks) {
-        events.setValue(UiEvent.confirmClose(taskId, title, ringWeeks));
+    void requestClose(String taskId, String title) {
+        events.setValue(UiEvent.confirmClose(taskId, title));
     }
 
     void create(String title, TaskSlot slot, Recurrence recurrence, int interval, int weekdays,
@@ -285,8 +286,15 @@ public final class TaskViewModel extends ViewModel {
         runReward(actionKey("edit-step-progress", stepId),
                 () -> tasks.editStepProgress.execute(stepId, repetitions));
     }
+    void editStepProgress(String stepId, List<Integer> repetitions, boolean done) {
+        runReward(actionKey("edit-step-progress", stepId),
+                () -> tasks.editStepProgress.execute(stepId, repetitions, done));
+    }
     void defer(String occurrenceId) { run(actionKey("defer", occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
-    void close(String taskId) { run(actionKey("close", taskId), () -> tasks.closeOngoing.execute(TaskId.of(taskId))); }
+    void close(String taskId) {
+        runReward(actionKey("close", taskId),
+                () -> tasks.closeOngoing.execute(TaskId.of(taskId)));
+    }
     void update(String taskId, String title, TaskSlot slot) {
         run(actionKey("update", taskId), () -> {
             if (title == null || title.trim().isEmpty())
@@ -319,10 +327,10 @@ public final class TaskViewModel extends ViewModel {
         if (!begin(key, false)) return;
         worker.execute(() -> {
             try {
-                de.thonktank.autosecretary.domain.usecase.RewardResult result = action.run();
+                RewardReceipt result = action.run();
                 publishContent(key, loadContent());
-                if (result.target != de.thonktank.autosecretary.domain.usecase.RewardResult.Target.NONE)
-                    events.postValue(UiEvent.reward(result));
+                if (result.target != RewardReceipt.Target.NONE)
+                    events.postValue(UiEvent.reward(result, key));
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
             } catch (RuntimeException error) {
@@ -412,7 +420,7 @@ public final class TaskViewModel extends ViewModel {
     }
 
     interface Action { void run(); }
-    interface RewardAction { de.thonktank.autosecretary.domain.usecase.RewardResult run(); }
+    interface RewardAction { RewardReceipt run(); }
     interface StateChange { DashboardUiState apply(DashboardUiState state); }
 
     private static final class Content {

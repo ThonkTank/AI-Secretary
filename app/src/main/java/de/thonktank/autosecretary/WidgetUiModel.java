@@ -47,14 +47,13 @@ public final class WidgetUiModel {
     @Nullable public final String primaryActionLabel;
     public final boolean showAdd;
     public final String taskTitle;
-    public final int ringWeeks;
 
     WidgetUiModel(WidgetSizeClassifier.Size size, DayPalette palette, String marker,
                   String title, boolean overdue, boolean empty, List<Step> steps,
                   List<Boolean> progress, int additionalStepCount, @Nullable String afterTitle,
                   @Nullable CalendarItem calendar, PrimaryAction primaryAction,
                   @Nullable String primaryActionId, @Nullable String primaryActionLabel,
-                  boolean showAdd, String taskTitle, int ringWeeks) {
+                  boolean showAdd, String taskTitle) {
         this.size = size;
         this.palette = palette;
         this.marker = marker;
@@ -71,6 +70,5 @@ public final class WidgetUiModel {
         this.primaryActionLabel = primaryActionLabel;
         this.showAdd = showAdd;
         this.taskTitle = taskTitle;
-        this.ringWeeks = ringWeeks;
     }
 }

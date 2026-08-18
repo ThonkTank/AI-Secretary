@@ -2,6 +2,8 @@ package de.thonktank.autosecretary;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import de.thonktank.autosecretary.domain.model.RewardReceipt;
+
 public final class UiEvent {
     public enum Type {
         ERROR,
@@ -16,50 +18,50 @@ public final class UiEvent {
     public final String message;
     public final String taskId;
     public final String taskTitle;
-    public final int ringWeeks;
     public final int rewardXp;
-    public final de.thonktank.autosecretary.domain.usecase.RewardResult.Target rewardTarget;
+    public final RewardReceipt.Target rewardTarget;
     public final boolean rewardReversed;
+    public final String rewardActionKey;
     private final AtomicBoolean consumed = new AtomicBoolean();
 
-    private UiEvent(Type type, String message, String taskId, String taskTitle, int ringWeeks) {
-        this(type, message, taskId, taskTitle, ringWeeks, 0,
-                de.thonktank.autosecretary.domain.usecase.RewardResult.Target.NONE, false);
+    private UiEvent(Type type, String message, String taskId, String taskTitle) {
+        this(type, message, taskId, taskTitle, 0,
+                RewardReceipt.Target.NONE, false, null);
     }
 
-    private UiEvent(Type type, String message, String taskId, String taskTitle, int ringWeeks,
+    private UiEvent(Type type, String message, String taskId, String taskTitle,
                     int rewardXp,
-                    de.thonktank.autosecretary.domain.usecase.RewardResult.Target rewardTarget,
-                    boolean rewardReversed) {
+                    RewardReceipt.Target rewardTarget,
+                    boolean rewardReversed, String rewardActionKey) {
         this.type = type;
         this.message = message;
         this.taskId = taskId;
         this.taskTitle = taskTitle;
-        this.ringWeeks = ringWeeks;
         this.rewardXp = rewardXp;
         this.rewardTarget = rewardTarget;
         this.rewardReversed = rewardReversed;
+        this.rewardActionKey = rewardActionKey;
     }
 
     public static UiEvent error(String message) {
-        return new UiEvent(Type.ERROR, message, null, null, 0);
+        return new UiEvent(Type.ERROR, message, null, null);
     }
 
     public static UiEvent action(Type type) {
-        return new UiEvent(type, null, null, null, 0);
+        return new UiEvent(type, null, null, null);
     }
 
     public static UiEvent confirmDelete(TaskSnapshot task) {
-        return new UiEvent(Type.CONFIRM_DELETE, null, task.taskId, task.title, task.ringWeeks);
+        return new UiEvent(Type.CONFIRM_DELETE, null, task.taskId, task.title);
     }
 
-    public static UiEvent confirmClose(String taskId, String title, int ringWeeks) {
-        return new UiEvent(Type.CONFIRM_CLOSE, null, taskId, title, ringWeeks);
+    public static UiEvent confirmClose(String taskId, String title) {
+        return new UiEvent(Type.CONFIRM_CLOSE, null, taskId, title);
     }
 
-    public static UiEvent reward(de.thonktank.autosecretary.domain.usecase.RewardResult result) {
-        return new UiEvent(Type.REWARD, null, null, null, 0, result.xp,
-                result.target, result.reversed);
+    public static UiEvent reward(RewardReceipt result, String actionKey) {
+        return new UiEvent(Type.REWARD, null, null, null, result.xp,
+                result.target, result.reversed, actionKey);
     }
 
     public boolean consume() {

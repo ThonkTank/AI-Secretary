@@ -11,10 +11,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import de.thonktank.autosecretary.domain.model.RewardReceipt;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
@@ -28,7 +32,6 @@ import androidx.lifecycle.ViewModelProvider;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.update.presentation.UpdateUiController;
 import de.thonktank.autosecretary.update.presentation.UpdateViewModel;
@@ -37,7 +40,6 @@ import de.thonktank.autosecretary.update.presentation.UpdateViewModel;
 public class MainActivity extends ComponentActivity {
     public static final String CONFIRM_TASK = "confirm_task";
     public static final String CONFIRM_TASK_TITLE = "confirm_task_title";
-    public static final String CONFIRM_TASK_RING_WEEKS = "confirm_task_ring_weeks";
     public static final String OPEN_EDITOR = "open_editor";
     private final Handler minuteHandler = new Handler(Looper.getMainLooper());
     private AppContainer container;
@@ -53,10 +55,8 @@ public class MainActivity extends ComponentActivity {
     private FrameLayout root;
     private LinearLayout dashboardScreen;
     private TaskEditorView taskEditor;
-    private SetConfirmationView setConfirmation;
     private int systemTopInset;
-    private final java.util.ArrayDeque<UiEvent> rewardQueue = new java.util.ArrayDeque<>();
-    private boolean rewardAnimating;
+    private final RewardAnimationQueue rewardAnimations = new RewardAnimationQueue();
 
     private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
@@ -92,7 +92,6 @@ public class MainActivity extends ComponentActivity {
         updates.effects().observe(this, updates::handleEffect);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {
-                if (setConfirmation != null && setConfirmation.handleBack()) return;
                 if (taskEditor != null && taskEditor.handleBack()) return;
                 setEnabled(false);
                 getOnBackPressedDispatcher().onBackPressed();
@@ -170,7 +169,7 @@ public class MainActivity extends ComponentActivity {
         return new DashboardRenderer.Actions() {
             @Override public void onAddTask() { openEditorWithFlight(); }
             @Override public void onTaskAction(TaskSnapshot task) {
-                if (task.done) viewModel.undoOccurrence(task.occurrenceId);
+                if (task.undoAvailable) viewModel.undoOccurrence(task.occurrenceId);
                 else completeOrConfirm(task);
             }
             @Override public void onTaskMenu(TaskSnapshot task) { showTaskMenu(task); }
@@ -185,9 +184,15 @@ public class MainActivity extends ComponentActivity {
                 viewModel.defer(task.occurrenceId.isEmpty() ? task.taskId : task.occurrenceId);
             }
             @Override public void onToggleStep(TaskStepSnapshot step) {
-                if (step.amountKind == StepAmountKind.SETS_REPS)
-                    showSetConfirmation(step);
-                else viewModel.toggleStep(step.id);
+                viewModel.toggleStep(step.id);
+            }
+            @Override public void onEditStepProgress(TaskStepSnapshot step,
+                                                     java.util.List<Integer> repetitions,
+                                                     boolean done) {
+                viewModel.editStepProgress(step.id, repetitions, done);
+            }
+            @Override public void onFinishExercise(TaskStepSnapshot step) {
+                viewModel.finishExercise(step.id);
             }
             @Override public void onTheme(UiThemeMode mode) {
                 container.uiPreferences.setThemeMode(mode);
@@ -202,7 +207,7 @@ public class MainActivity extends ComponentActivity {
     private void render(DashboardUiState state) {
         uiState = state;
         forest.setPalette(state.palette);
-        header.bind(container.clock.time(), state.palette, state.dashboard.xp);
+        header.bind(container.clock.time(), state.palette, state.dashboard.xpProgress);
         footer.bind(state.navigation, state.palette);
         renderer.render(state, container.uiPreferences.themeMode(), updateState);
         boolean light = luminance(state.palette.background) > .55;
@@ -232,7 +237,7 @@ public class MainActivity extends ComponentActivity {
 
     private void completeOrConfirm(TaskSnapshot task) {
         if (task.terminalCondition)
-            viewModel.requestClose(task.taskId, task.title, task.ringWeeks);
+            viewModel.requestClose(task.taskId, task.title);
         else viewModel.complete(task.occurrenceId);
     }
 
@@ -246,31 +251,6 @@ public class MainActivity extends ComponentActivity {
                 }).show();
     }
 
-    private void showSetConfirmation(TaskStepSnapshot step) {
-        if (setConfirmation != null || taskEditor != null || uiState == null) return;
-        setConfirmation = new SetConfirmationView(this, step, uiState.palette,
-                new SetConfirmationView.Listener() {
-                    @Override public void onConfirm(String stepId, int repetitions) {
-                        viewModel.confirmSet(stepId, repetitions); closeSetConfirmation();
-                    }
-                    @Override public void onFinish(String stepId) {
-                        viewModel.finishExercise(stepId); closeSetConfirmation();
-                    }
-                    @Override public void onEditProgress(String stepId,
-                                                         java.util.List<Integer> repetitions) {
-                        viewModel.editStepProgress(stepId, repetitions); closeSetConfirmation();
-                    }
-                    @Override public void onDismiss() { closeSetConfirmation(); }
-                });
-        setConfirmation.setPadding(0, systemTopInset, 0, 0);
-        root.addView(setConfirmation, new FrameLayout.LayoutParams(-1, -1));
-    }
-
-    private void closeSetConfirmation() {
-        if (setConfirmation != null) root.removeView(setConfirmation);
-        setConfirmation = null;
-    }
-
     private void showMoveDialog(TaskSnapshot task) {
         TaskSlot[] slots = TaskSlot.values();
         new AlertDialog.Builder(this).setTitle(R.string.task_move)
@@ -282,8 +262,7 @@ public class MainActivity extends ComponentActivity {
 
     private void confirmDelete(TaskSnapshot task) {
         String loss = task.routine()
-                ? getResources().getQuantityString(R.plurals.delete_routine_loss,
-                        task.ringWeeks, task.ringWeeks)
+                ? getString(R.string.delete_routine_loss)
                 : getString(R.string.delete_task_loss);
         new AlertDialog.Builder(this).setTitle(getString(R.string.delete_task_title, task.title))
                 .setMessage(loss).setNegativeButton(R.string.keep, null)
@@ -291,11 +270,9 @@ public class MainActivity extends ComponentActivity {
                         (dialog, which) -> viewModel.delete(task.taskId)).show();
     }
 
-    private void confirmClose(String taskId, String title, int ringWeeks) {
-        String suffix = ringWeeks > 0 ? getResources().getQuantityString(
-                R.plurals.close_ring_suffix, ringWeeks, ringWeeks) : "";
+    private void confirmClose(String taskId, String title) {
         new AlertDialog.Builder(this).setTitle(R.string.close_task_title)
-                .setMessage(getString(R.string.close_task_message, title, suffix))
+                .setMessage(getString(R.string.close_task_message, title))
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.condition_met,
                         (dialog, which) -> viewModel.close(taskId)).show();
@@ -334,54 +311,104 @@ public class MainActivity extends ComponentActivity {
             TaskSnapshot task = findTask(event.taskId);
             if (task != null) confirmDelete(task);
         } else if (event.type == UiEvent.Type.CONFIRM_CLOSE)
-            confirmClose(event.taskId, event.taskTitle, event.ringWeeks);
+            confirmClose(event.taskId, event.taskTitle);
         else if (event.type == UiEvent.Type.REQUEST_CALENDAR_PERMISSION)
             calendarPermission.launch(Manifest.permission.READ_CALENDAR);
         else if (event.type == UiEvent.Type.OPEN_APP_SETTINGS)
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName())));
         else if (event.type == UiEvent.Type.REWARD) {
-            rewardQueue.add(event);
+            rewardAnimations.offer(event);
             playNextReward();
         }
     }
 
     private void playNextReward() {
-        if (rewardAnimating || rewardQueue.isEmpty() || uiState == null) return;
-        UiEvent event = rewardQueue.removeFirst();
+        if (uiState == null) return;
+        UiEvent event = rewardAnimations.startNext();
+        if (event == null) return;
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
             if (!event.rewardReversed
-                    && event.rewardTarget == de.thonktank.autosecretary.domain.usecase.RewardResult.Target.HEAD)
+                    && event.rewardTarget == RewardReceipt.Target.HEAD)
                 header.playRewardGlint(uiState.palette);
+            rewardAnimations.finish();
             playNextReward();
             return;
         }
-        rewardAnimating = true;
         UiStyle style = new UiStyle(this);
         TextView value = style.serif(event.rewardXp + " XP", 17, uiState.palette.light, true, 300);
         value.setSingleLine(true);
         root.addView(value, new FrameLayout.LayoutParams(-2, -2));
-        float headX = root.getWidth() * .67f, headY = systemTopInset + style.dp(46);
-        float vesselX = root.getWidth() * .77f, vesselY = systemTopInset + style.dp(180);
         boolean head = event.rewardTarget
-                == de.thonktank.autosecretary.domain.usecase.RewardResult.Target.HEAD;
-        float fromX = head ? vesselX : root.getWidth() * .30f;
-        float fromY = head ? vesselY : systemTopInset + style.dp(245);
-        float toX = head ? headX : vesselX;
-        float toY = head ? headY : vesselY;
+                == RewardReceipt.Target.HEAD;
+        View sourceView = rewardSource(event.rewardActionKey);
+        View targetView = head ? root.findViewWithTag("reward-head")
+                : firstVisibleVessel(root);
+        float[] source = centerInRoot(sourceView, head ? root.getWidth() * .77f
+                : root.getWidth() * .30f, head ? systemTopInset + style.dp(180)
+                : systemTopInset + style.dp(245));
+        float[] target = centerInRoot(targetView, head ? root.getWidth() * .67f
+                : root.getWidth() * .77f, head ? systemTopInset + style.dp(46)
+                : systemTopInset + style.dp(180));
+        float fromX = source[0], fromY = source[1];
+        float toX = target[0], toY = target[1];
         if (event.rewardReversed) {
             float swapX = fromX; fromX = toX; toX = swapX;
             float swapY = fromY; fromY = toY; toY = swapY;
         }
-        value.setX(fromX); value.setY(fromY); value.setScaleX(.92f); value.setScaleY(.92f);
-        value.animate().x(toX).y(toY).alpha(0f).scaleX(.7f).scaleY(.7f).setDuration(470)
+        value.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        float halfWidth = value.getMeasuredWidth() / 2f;
+        float halfHeight = value.getMeasuredHeight() / 2f;
+        value.setX(fromX - halfWidth); value.setY(fromY - halfHeight);
+        value.setScaleX(.92f); value.setScaleY(.92f);
+        value.animate().x(toX - halfWidth).y(toY - halfHeight).alpha(0f)
+                .scaleX(.7f).scaleY(.7f)
+                .setDuration(uiState.palette.motion.rewardFlightDurationMs)
                 .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
                 .withEndAction(() -> {
                     root.removeView(value);
                     if (!event.rewardReversed && head) header.playRewardGlint(uiState.palette);
-                    rewardAnimating = false;
+                    rewardAnimations.finish();
                     playNextReward();
                 });
+    }
+
+    private View rewardSource(String actionKey) {
+        if (actionKey == null) return null;
+        int separator = actionKey.indexOf(':');
+        String action = separator < 0 ? actionKey : actionKey.substring(0, separator);
+        String id = separator < 0 ? "" : actionKey.substring(separator + 1);
+        String tag;
+        if (action.equals("step") || action.equals("set")
+                || action.equals("finish-step") || action.equals("edit-step-progress"))
+            tag = "step:" + id;
+        else if (action.equals("harvest")) tag = "vessel:" + id;
+        else if (action.equals("complete-rest")) tag = "rest:" + id;
+        else if (action.equals("close")) tag = "task:" + id;
+        else tag = "occurrence:" + id;
+        return root.findViewWithTag(tag);
+    }
+
+    private static View firstVisibleVessel(View view) {
+        if (view instanceof XpVesselView && view.getVisibility() == View.VISIBLE) return view;
+        if (!(view instanceof ViewGroup)) return null;
+        ViewGroup group = (ViewGroup) view;
+        for (int index = 0; index < group.getChildCount(); index++) {
+            View result = firstVisibleVessel(group.getChildAt(index));
+            if (result != null) return result;
+        }
+        return null;
+    }
+
+    private float[] centerInRoot(View view, float fallbackX, float fallbackY) {
+        if (view == null || view.getWidth() == 0 || view.getHeight() == 0)
+            return new float[]{fallbackX, fallbackY};
+        int[] rootLocation = new int[2];
+        int[] viewLocation = new int[2];
+        root.getLocationOnScreen(rootLocation);
+        view.getLocationOnScreen(viewLocation);
+        return new float[]{viewLocation[0] - rootLocation[0] + view.getWidth() / 2f,
+                viewLocation[1] - rootLocation[1] + view.getHeight() / 2f};
     }
 
     private void syncCalendarPermission() {
@@ -404,14 +431,11 @@ public class MainActivity extends ComponentActivity {
     private void handleLaunchIntent() {
         String confirmTask = getIntent().getStringExtra(CONFIRM_TASK);
         String confirmTitle = getIntent().getStringExtra(CONFIRM_TASK_TITLE);
-        int confirmRingWeeks = getIntent().getIntExtra(CONFIRM_TASK_RING_WEEKS, 0);
         getIntent().removeExtra(CONFIRM_TASK);
         getIntent().removeExtra(CONFIRM_TASK_TITLE);
-        getIntent().removeExtra(CONFIRM_TASK_RING_WEEKS);
         if (confirmTask != null)
             viewModel.requestClose(confirmTask,
-                    confirmTitle == null ? getString(R.string.this_project) : confirmTitle,
-                    confirmRingWeeks);
+                    confirmTitle == null ? getString(R.string.this_project) : confirmTitle);
         boolean openEditor = getIntent().getBooleanExtra(OPEN_EDITOR, false);
         getIntent().removeExtra(OPEN_EDITOR);
         if (openEditor) viewModel.openEditor(null);

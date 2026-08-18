@@ -66,7 +66,7 @@ public final class WidgetPresenter {
                 focus.title, focus.overdue, false, steps, progress,
                 Math.max(0, focus.steps.size() - 3), after, calendar, action, actionId,
                 size == WidgetSizeClassifier.Size.LARGE ? null : focus.actionLabel(context),
-                size == WidgetSizeClassifier.Size.LARGE, focus.title, focus.ringWeeks);
+                size == WidgetSizeClassifier.Size.LARGE, focus.title);
     }
 
     private WidgetUiModel empty(DayPalette palette, WidgetSizeClassifier.Size size) {
@@ -77,7 +77,7 @@ public final class WidgetPresenter {
                         : WidgetUiModel.PrimaryAction.OPEN_EDITOR,
                 null, size == WidgetSizeClassifier.Size.LARGE ? null
                         : context.getString(R.string.action_add_task),
-                size == WidgetSizeClassifier.Size.LARGE, "", 0);
+                size == WidgetSizeClassifier.Size.LARGE, "");
     }
 
     private static boolean supportsCalendar(WidgetSizeClassifier.Size size) {

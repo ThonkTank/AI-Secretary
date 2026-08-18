@@ -8,10 +8,16 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.app.AlertDialog;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.MotionEvent;
+import android.provider.Settings;
+import android.widget.FrameLayout;
+import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 
@@ -31,9 +37,11 @@ import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowAlertDialog;
+import org.robolectric.shadows.ShadowValueAnimator;
 
 import java.time.LocalTime;
 import java.util.Collections;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(RobolectricTestRunner.class)
@@ -51,8 +59,7 @@ public final class UiComponentRobolectricTest {
         AutoSecretaryApplication.from(context).legacyStateCleaner().acknowledgeResetNotice();
         Intent launch = new Intent(context, MainActivity.class)
                 .putExtra(MainActivity.CONFIRM_TASK, "ongoing")
-                .putExtra(MainActivity.CONFIRM_TASK_TITLE, "Praktikum")
-                .putExtra(MainActivity.CONFIRM_TASK_RING_WEEKS, 3);
+                .putExtra(MainActivity.CONFIRM_TASK_TITLE, "Praktikum");
 
         try (ActivityController<MainActivity> controller =
                      Robolectric.buildActivity(MainActivity.class, launch)) {
@@ -64,7 +71,6 @@ public final class UiComponentRobolectricTest {
                     Shadows.shadowOf(confirmation).getTitle());
             assertFalse(activity.getIntent().hasExtra(MainActivity.CONFIRM_TASK));
             assertFalse(activity.getIntent().hasExtra(MainActivity.CONFIRM_TASK_TITLE));
-            assertFalse(activity.getIntent().hasExtra(MainActivity.CONFIRM_TASK_RING_WEEKS));
 
             ShadowAlertDialog.reset();
             controller.recreate();
@@ -100,14 +106,14 @@ public final class UiComponentRobolectricTest {
         DashboardUiState first = state(morning);
 
         renderer.render(first, UiThemeMode.AUTO, UpdateUiState.idle());
-        View focus = content.getChildAt(1);
+        View focus = content.getChildAt(0);
         focus.setFocusableInTouchMode(true);
         focus.requestFocus();
 
         renderer.render(state(DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)),
                 UiThemeMode.AUTO, UpdateUiState.idle());
 
-        assertSame(focus, content.getChildAt(1));
+        assertSame(focus, content.getChildAt(0));
         assertSame(focus, content.findFocus());
     }
 
@@ -164,6 +170,113 @@ public final class UiComponentRobolectricTest {
         assertEquals(NavigationDestination.TODAY, clicked.get());
     }
 
+    @Test public void valueDewAndVesselExposeLabelsAndFortyEightDpTouchTargets() {
+        Context context = ApplicationProvider.getApplicationContext();
+        UiStyle style = new UiStyle(context);
+        FocusTaskView focus = new FocusTaskView(context);
+        focus.bind(DashboardFixtures.taskWithSteps(), true, true,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), new NoOpActions());
+        focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(style.dp(500), View.MeasureSpec.AT_MOST));
+        focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
+        int minimum = style.dp(48);
+        int dewCount = 0;
+        for (View view : descendants(focus)) {
+            if (!(view instanceof DewDotView) && !(view instanceof XpVesselView)) continue;
+            if (view.getVisibility() != View.VISIBLE) continue;
+            assertTrue(view.getWidth() >= minimum);
+            assertTrue(view.getHeight() >= minimum);
+            assertNotNull(view.getContentDescription());
+            assertTrue(view.getContentDescription().length() > 0);
+            dewCount++;
+        }
+        assertEquals(3, dewCount);
+    }
+
+    @Test public void reducedMotionDisablesPulseAndGlintWithoutChangingState() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        Settings.Global.putFloat(activity.getContentResolver(),
+                Settings.Global.ANIMATOR_DURATION_SCALE, 0f);
+        FrameLayout root = new FrameLayout(activity);
+        activity.setContentView(root);
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        XpVesselView vessel = new XpVesselView(activity);
+        root.addView(vessel, new FrameLayout.LayoutParams(104, 104));
+        vessel.bind(30, 3, 3, true, 5, palette);
+        HeaderView header = new HeaderView(activity, () -> { });
+        root.addView(header, new FrameLayout.LayoutParams(600, 164));
+        header.bind(LocalTime.NOON, palette, 70);
+        header.playRewardGlint(palette);
+
+        assertFalse(vessel.isPulsing());
+        assertEquals(1f, vessel.fillFraction(), 0f);
+        assertFalse(header.isGlintVisible());
+        assertTrue(vessel.isEnabled());
+
+        Settings.Global.putFloat(activity.getContentResolver(),
+                Settings.Global.ANIMATOR_DURATION_SCALE, 1f);
+        ShadowValueAnimator.reset();
+    }
+
+    @Test public void setProgressExpandsAndEditsInlineInsideTheFocusLeaf() {
+        Context context = ApplicationProvider.getApplicationContext();
+        UiStyle style = new UiStyle(context);
+        TaskStepSnapshot set = new TaskStepSnapshot("set-step", "Beinpresse", false,
+                de.thonktank.autosecretary.domain.model.StepAmountKind.SETS_REPS,
+                3, 12, null, "23 kg", Collections.singletonList(10), 2, 15, 0);
+        TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
+                TaskSlot.MORNING, "", "Beinpresse", Recurrence.DAILY,
+                Collections.singletonList(set), 1, false, false, false, false,
+                2, 1_000L, 15, 0, 0, false);
+        AtomicReference<java.util.List<Integer>> saved = new AtomicReference<>();
+        FocusTaskView focus = new FocusTaskView(context);
+        focus.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+                new NoOpActions() {
+                    @Override public void onEditStepProgress(TaskStepSnapshot step,
+                                                             java.util.List<Integer> repetitions,
+                                                             boolean done) {
+                        saved.set(repetitions);
+                    }
+                });
+        focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
+        focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
+        DewDotView dew = null;
+        for (View view : descendants(focus))
+            if (view instanceof DewDotView && view.getVisibility() == View.VISIBLE) {
+                dew = (DewDotView) view; break;
+            }
+        assertNotNull(dew);
+        dew.performClick();
+        focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
+        focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
+        EditText input = null;
+        TextView save = null;
+        for (View view : descendants(focus)) {
+            if (view instanceof EditText && view.getVisibility() == View.VISIBLE)
+                input = (EditText) view;
+            if (view instanceof TextView && context.getString(R.string.set_progress_save)
+                    .contentEquals(((TextView) view).getText())) save = (TextView) view;
+        }
+        assertNotNull(input); assertNotNull(save);
+        input.setText("10, 11");
+        save.performClick();
+        assertEquals(Arrays.asList(10, 11), saved.get());
+    }
+
+    private static java.util.List<View> descendants(View root) {
+        java.util.List<View> result = new java.util.ArrayList<>();
+        if (!(root instanceof ViewGroup)) return result;
+        ViewGroup group = (ViewGroup) root;
+        for (int index = 0; index < group.getChildCount(); index++) {
+            View child = group.getChildAt(index);
+            result.add(child);
+            result.addAll(descendants(child));
+        }
+        return result;
+    }
+
     private static DashboardUiState state(DayPalette palette) {
         DashboardUiModel dashboard = DashboardUiModel.compose(
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
@@ -173,7 +286,7 @@ public final class UiComponentRobolectricTest {
                 EditorUiState.closed());
     }
 
-    private static final class NoOpActions implements DashboardRenderer.Actions {
+    private static class NoOpActions implements DashboardRenderer.Actions {
         @Override public void onAddTask() { }
         @Override public void onTaskAction(TaskSnapshot task) { }
         @Override public void onTaskMenu(TaskSnapshot task) { }

@@ -12,6 +12,7 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 
 import java.time.LocalTime;
+import java.util.Arrays;
 
 import de.thonktank.autosecretary.domain.model.XpProgress;
 
@@ -25,12 +26,14 @@ public final class HeaderView extends FrameLayout {
     private final TextView progress;
     private final TextView add;
     private final View glint;
+    private final View afterglow;
 
     public HeaderView(Context context, Runnable onAdd) {
         super(context); style = new UiStyle(context);
         setPadding(style.dp(60), style.dp(12), style.dp(22), 0);
         LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL);
         leaf = new FrameLayout(context); leaf.setRotation(1.1f); leaf.setClipChildren(true);
+        leaf.setTag("reward-head");
         grain = new WoodGrainView(context); leaf.addView(grain, new LayoutParams(-1, -1));
         LinearLayout status = new LinearLayout(context); status.setGravity(Gravity.CENTER_VERTICAL);
         status.setPadding(style.dp(22), style.dp(10), style.dp(24), style.dp(13));
@@ -43,6 +46,8 @@ public final class HeaderView extends FrameLayout {
         leaf.addView(status, new LayoutParams(-1, -1));
         glint = new View(context); glint.setVisibility(INVISIBLE);
         leaf.addView(glint, new LayoutParams(style.dp(64), -1));
+        afterglow = new View(context); afterglow.setVisibility(INVISIBLE);
+        leaf.addView(afterglow, new LayoutParams(-1, -1));
         row.addView(leaf, new LinearLayout.LayoutParams(0, style.dp(69), 1));
 
         FrameLayout addTarget = new FrameLayout(context);
@@ -58,15 +63,21 @@ public final class HeaderView extends FrameLayout {
     public void bind(LocalTime time, DayPalette palette) { bind(time, palette, 0); }
 
     public void bind(LocalTime time, DayPalette palette, int xp) {
-        XpProgress value = new XpProgress(xp);
+        bind(time, palette, new XpProgress(xp));
+    }
+
+    public void bind(LocalTime time, DayPalette palette, XpProgress value) {
         greeting.setText(DayPalette.greetingRes(time)); greeting.setTextColor(palette.ink2);
         level.setText(getContext().getString(R.string.xp_level, value.level)); level.setTextColor(palette.ink2);
         progress.setText(getContext().getString(R.string.xp_progress, value.inLevel, value.required));
         progress.setTextColor(palette.muted);
+        WoodGrainView.applyTextHalo(greeting, palette.leaf2);
+        WoodGrainView.applyTextHalo(level, palette.leaf2);
+        WoodGrainView.applyTextHalo(progress, palette.leaf2);
         leaf.setBackground(style.leaf(palette.leaf2, palette.leaf2Edge, 8, 56, 8, 56));
         style.shadow(leaf, palette, 7, .7f);
         add.setTextColor(palette.lightText); add.setBackground(style.pill(palette.light, 24));
-        grain.bindCorner(palette, value.ratio);
+        grain.bindCorner(palette, value.ratio, Arrays.asList(greeting, level, progress));
     }
 
     public void playRewardGlint(DayPalette palette) {
@@ -74,8 +85,18 @@ public final class HeaderView extends FrameLayout {
         GradientDrawable light = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{Color.TRANSPARENT, UiStyle.alpha(palette.light, .38f), Color.TRANSPARENT});
         glint.setBackground(light); glint.setTranslationX(-style.dp(64)); glint.setVisibility(VISIBLE);
-        glint.animate().translationX(Math.max(leaf.getWidth(), style.dp(260))).setDuration(520)
+        glint.animate().translationX(Math.max(leaf.getWidth(), style.dp(260)))
+                .setDuration(palette.motion.glintDurationMs)
                 .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
                 .withEndAction(() -> glint.setVisibility(INVISIBLE));
+        GradientDrawable edge = style.leaf(Color.TRANSPARENT, palette.light,
+                8, 56, 8, 56);
+        edge.setStroke(style.dp(2), UiStyle.alpha(palette.light, .58f));
+        afterglow.animate().cancel();
+        afterglow.setBackground(edge); afterglow.setAlpha(1f); afterglow.setVisibility(VISIBLE);
+        afterglow.animate().alpha(0f).setDuration(palette.motion.headerAfterglowDurationMs)
+                .withEndAction(() -> afterglow.setVisibility(INVISIBLE));
     }
+
+    boolean isGlintVisible() { return glint.getVisibility() == VISIBLE; }
 }

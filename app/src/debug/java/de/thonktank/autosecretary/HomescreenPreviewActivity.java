@@ -32,7 +32,8 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
 
     private void showPhone(String preview) {
         EdgeToEdge.enable(this);
-        LocalTime time = "empty".equals(preview) ? LocalTime.of(23, 50)
+        LocalTime time = "empty".equals(preview) || "night".equals(preview)
+                ? LocalTime.of(23, 50)
                 : "evening".equals(preview) ? LocalTime.of(19, 35) : LocalTime.of(9, 40);
         DayPalette palette = DayPalette.at(time, DayPalette.Mode.AUTO);
         FrameLayout root = new FrameLayout(this);
@@ -44,7 +45,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         root.addView(screen, new FrameLayout.LayoutParams(-1, -1));
         HeaderView header = new HeaderView(this, () -> { });
         DashboardState dashboard = DebugPreviewFixtures.reference(preview);
-        header.bind(time, palette, dashboard.xp);
+        header.bind(time, palette, dashboard.xpProgress);
         screen.addView(header, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.header_height)));
         ScrollView scroll = new ScrollView(this);
