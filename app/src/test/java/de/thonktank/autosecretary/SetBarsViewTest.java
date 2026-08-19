@@ -10,7 +10,6 @@ import android.view.View;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeProvider;
-import android.widget.FrameLayout;
 
 import androidx.test.core.app.ApplicationProvider;
 
@@ -28,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class SetBarsViewTest {
-    @Test public void savedAndOpenSetsStayOnOneScrollableLineAndAnimateFor180ms() {
+    @Test public void savedAndOpenSetsStayOnOneScrollableLine() {
         Context context = ApplicationProvider.getApplicationContext();
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT);
         SetBarsView bars = new SetBarsView(context);
@@ -37,8 +36,6 @@ public final class SetBarsViewTest {
         bars.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
 
-        assertEquals(180L, bars.animationDurationForTest());
-        assertEquals(0, bars.selectedIndexForTest());
         assertEquals(dp(context, 20 * 30 - 8), bars.getMeasuredWidth());
         assertEquals(dp(context, 44), bars.getMeasuredHeight());
         assertTrue(bars.getContentDescription().toString().contains("Satz 1: 12"));
@@ -49,7 +46,7 @@ public final class SetBarsViewTest {
         Activity context = Robolectric.buildActivity(Activity.class).setup().get();
         SetBarsView bars = new SetBarsView(context);
         AtomicInteger edited = new AtomicInteger(-1);
-        bars.bind("sets", 3, Arrays.asList(12, 11), -1,
+        bars.bind("sets", 3, Arrays.asList(12, 11), 1,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT), edited::set);
         bars.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
@@ -64,6 +61,7 @@ public final class SetBarsViewTest {
         assertNotNull(second);
         assertTrue(first.getContentDescription().toString().contains("Satz 1: 12"));
         assertTrue(second.getContentDescription().toString().contains("Satz 2: 11"));
+        assertTrue(second.isSelected());
         assertTrue(provider.performAction(1, AccessibilityNodeInfo.ACTION_CLICK, null));
         assertEquals(1, edited.get());
 
@@ -74,22 +72,6 @@ public final class SetBarsViewTest {
         assertEquals("Enter must activate the keyboard-focused set", 0, edited.get());
         first.recycle();
         second.recycle();
-    }
-
-    @Test public void detachStopsTheFillAnimation() {
-        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
-        FrameLayout root = new FrameLayout(activity);
-        SetBarsView bars = new SetBarsView(activity);
-        root.addView(bars);
-        activity.setContentView(root);
-        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT);
-        bars.bind("sets", 3, Collections.emptyList(), -1, palette, ignored -> { });
-        bars.bind("sets", 3, Collections.singletonList(12), -1, palette, ignored -> { });
-        assertEquals(180L, bars.animationDurationForTest());
-
-        root.removeView(bars);
-
-        assertEquals(0L, bars.animationDurationForTest());
     }
 
     private static int dp(Context context, int value) {

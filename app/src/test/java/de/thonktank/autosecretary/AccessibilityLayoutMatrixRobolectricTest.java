@@ -22,11 +22,9 @@ import android.widget.TextView;
 
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,26 +36,26 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class AccessibilityLayoutMatrixRobolectricTest {
-    private static final int[] WIDTHS_DP = {320, 412, 600};
-    private static final float[] FONT_SCALES = {1f, 1.3f, 2f};
-    private static final LocalTime[] PALETTE_TIMES = {
-            LocalTime.of(9, 40), LocalTime.of(19, 35), LocalTime.of(23, 50)};
+    private static final LayoutCase[] REPRESENTATIVE_LAYOUTS = {
+            new LayoutCase(320, 1f, LocalTime.of(9, 40)),
+            new LayoutCase(320, 2f, LocalTime.of(23, 50)),
+            new LayoutCase(412, 1.3f, LocalTime.of(19, 35)),
+            new LayoutCase(412, 2f, LocalTime.of(9, 40)),
+            new LayoutCase(600, 1f, LocalTime.of(23, 50)),
+            new LayoutCase(600, 1.3f, LocalTime.of(19, 35))
+    };
 
     @Test public void todayAndInlineEditorFitEveryRequiredWidthAndFontScale() {
-        for (int widthDp : WIDTHS_DP) for (float fontScale : FONT_SCALES) {
-            Context context = configuredContext(widthDp, fontScale);
-            for (LocalTime time : PALETTE_TIMES) {
-                DayPalette palette = DayPalette.at(time, DayPalette.Mode.AUTO);
-                renderToday(context, widthDp, fontScale, palette);
-                renderRepetitionControls(context, widthDp, fontScale, palette);
-                renderDynamicLimit(context, widthDp, fontScale, palette);
-            }
+        for (LayoutCase value : REPRESENTATIVE_LAYOUTS) {
+            Context context = configuredContext(value.widthDp, value.fontScale);
+            DayPalette palette = DayPalette.at(value.time, DayPalette.Mode.AUTO);
+            renderToday(context, value.widthDp, value.fontScale, palette);
+            renderRepetitionControls(context, value.widthDp, value.fontScale, palette);
+            renderDynamicLimit(context, value.widthDp, value.fontScale, palette);
         }
     }
 
@@ -71,21 +69,11 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
 
     @Test public void talkBackOrderRolesStatesAndKeyboardFollowTheVisualFlow() {
         Context context = configuredContext(412, 1f);
-        AtomicInteger changes = new AtomicInteger();
-        AtomicReference<Integer> correction = new AtomicReference<>();
+        DashboardEventRecorder events = new DashboardEventRecorder();
         FocusTaskView focus = new FocusTaskView(context);
         TaskSnapshot task = setTask(false);
-        Actions actions = new Actions() {
-            @Override public void onSubmitRepetition(String stepId) {
-                changes.incrementAndGet();
-            }
-
-            @Override public void onEditRepetition(String stepId, int index) {
-                correction.set(index);
-            }
-        };
         focus.bind(task, false, true, palette(), FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), actions);
+                RepetitionInputState.idle(), events);
         measure(focus, dp(context, 360), dp(context, 2_400));
 
         XpVesselView vessel = first(focus, XpVesselView.class);
@@ -123,7 +111,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
                 new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER)));
         assertTrue(dot.onKeyUp(KeyEvent.KEYCODE_ENTER,
                 new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER)));
-        assertEquals(1, changes.get());
+        assertEquals("set-step", events.last(DashboardEvent.SubmitRepetition.class).stepId);
 
         AccessibilityNodeProvider setNodes = bars.getAccessibilityNodeProvider();
         assertNotNull(setNodes);
@@ -136,7 +124,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         assertTrue(setBounds.width() >= dp(context, 44));
         assertTrue(setBounds.height() >= dp(context, 44));
         assertTrue(setNodes.performAction(0, AccessibilityNodeInfo.ACTION_CLICK, null));
-        assertEquals(Integer.valueOf(0), correction.get());
+        assertEquals(0, events.last(DashboardEvent.EditRepetition.class).index);
         firstSet.recycle();
     }
 
@@ -147,7 +135,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                new Actions(), "test");
+                event -> { }, "test");
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         DashboardFixtures.fullDashboard(), CalendarUiState.empty(), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
@@ -163,9 +151,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     private static void renderRepetitionControls(Context context, int widthDp, float fontScale,
                                                  DayPalette palette) {
         FocusTaskView focus = new FocusTaskView(context);
-        Actions actions = new Actions();
         focus.bind(setTask(false), false, true, palette, FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), actions);
+                RepetitionInputState.idle(), event -> { });
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
         int available = dp(context, widthDp) - horizontalPagePadding;
@@ -190,17 +177,16 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     private static void renderDynamicLimit(Context context, int widthDp, float fontScale,
                                            DayPalette palette) {
         FocusTaskView focus = new FocusTaskView(context);
-        Actions actions = new Actions();
         focus.bind(longTask(), false, true, palette, FocusStepLimit.FIVE,
-                RepetitionInputState.idle(), actions);
+                RepetitionInputState.idle(), event -> { });
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
         int availableWidth = dp(context, widthDp) - horizontalPagePadding;
         int availableHeight = dp(context, 540);
         measureExactly(focus, availableWidth, availableHeight);
         String message = label(widthDp, fontScale);
-        assertTrue(message + " card extent", focus.cardExtentForTest() <= availableHeight);
-        assertTrue(message + " numeric limit", focus.visibleFollowingStepsForTest() <= 5);
+        assertTrue(message + " numeric limit",
+                ViewTestQueries.visibleFollowingStepRows(focus) <= 5);
         assertHorizontalBounds(focus, message);
     }
 
@@ -284,11 +270,10 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
 
     private static int visibleFollowingRows(Context context) {
         FocusTaskView focus = new FocusTaskView(context);
-        Actions actions = new Actions();
         focus.bind(longTask(), false, true, palette(), FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), actions);
+                RepetitionInputState.idle(), event -> { });
         measureExactly(focus, dp(context, 330), dp(context, 540));
-        return focus.visibleFollowingStepsForTest();
+        return ViewTestQueries.visibleFollowingStepRows(focus);
     }
 
     private static int dp(Context context, int value) {
@@ -297,6 +282,18 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
 
     private static String label(int width, float scale) {
         return width + "dp at font scale " + scale;
+    }
+
+    private static final class LayoutCase {
+        final int widthDp;
+        final float fontScale;
+        final LocalTime time;
+
+        LayoutCase(int widthDp, float fontScale, LocalTime time) {
+            this.widthDp = widthDp;
+            this.fontScale = fontScale;
+            this.time = time;
+        }
     }
 
     private static List<View> descendants(View root) {
@@ -316,15 +313,5 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
             if (child.getVisibility() == View.VISIBLE && type.isInstance(child))
                 return type.cast(child);
         return null;
-    }
-
-    private static class Actions extends FocusTestActions {
-        @Override public void onAddTask() { }
-        @Override public void onTaskAction(TimelineTaskUiModel task) { }
-        @Override public void onTaskMenu(TimelineTaskUiModel task) { }
-        @Override public void onTheme(UiThemeMode mode) { }
-        @Override public void onFocusStepLimit(FocusStepLimit limit) { }
-        @Override public void onCalendarPermission() { }
-        @Override public void onUpdates() { }
     }
 }

@@ -192,8 +192,6 @@ final class FocusCardView extends ViewGroup {
         return ((MarginLayoutParams) child.getLayoutParams()).topMargin;
     }
 
-    int visibleFollowingSteps() { return steps.visibleFollowingSteps(); }
-
     void registerRewardAnchors(RewardAnchorRegistry registry, TaskSnapshot task) {
         if (!task.steps.isEmpty())
             registry.register(new RewardAnchorKey(RewardAnchorKey.Kind.VESSEL,

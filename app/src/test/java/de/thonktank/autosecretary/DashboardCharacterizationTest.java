@@ -21,8 +21,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import de.thonktank.autosecretary.calendar.CalendarResult;
-import de.thonktank.autosecretary.data.preferences.UiThemeMode;
-import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -88,7 +86,7 @@ public final class DashboardCharacterizationTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                new NoOpActions(), "test");
+                event -> { }, "test");
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
         TodayUiModel dashboardState = DashboardFixtures.today(10, java.util.Arrays.asList(
@@ -115,16 +113,5 @@ public final class DashboardCharacterizationTest {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) collectText(group.getChildAt(i), result);
         }
-    }
-
-    private static final class NoOpActions extends FocusTestActions {
-        @Override public void onAddTask() { }
-        @Override public void onTaskAction(TimelineTaskUiModel task) { }
-        @Override public void onTaskMenu(TimelineTaskUiModel task) { }
-        @Override public void onTheme(UiThemeMode mode) { }
-        @Override public void onFocusStepLimit(
-                de.thonktank.autosecretary.data.preferences.FocusStepLimit limit) { }
-        @Override public void onCalendarPermission() { }
-        @Override public void onUpdates() { }
     }
 }

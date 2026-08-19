@@ -54,9 +54,8 @@ public final class FocusTaskViewGoldenRobolectricTest {
         FrameLayout root = new FrameLayout(activity);
         root.setBackgroundColor(palette.background);
         FocusTaskView view = new FocusTaskView(activity);
-        NoOpActions actions = new NoOpActions();
         view.bind(task, false, allowDefer, palette, limit,
-                RepetitionInputState.idle(), actions);
+                RepetitionInputState.idle(), event -> { });
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
         activity.setContentView(root);
 
@@ -64,7 +63,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
         root.layout(0, 0, width, height);
         assertEquals("focus=" + view.getMeasuredHeight() + " root=" + root.getMeasuredHeight(),
-                following, view.visibleFollowingStepsForTest());
+                following, ViewTestQueries.visibleFollowingStepRows(view));
         Shadows.shadowOf(Looper.getMainLooper()).idle();
         WoodGrainView.awaitGeometryForTest();
         Shadows.shadowOf(Looper.getMainLooper()).idle();
@@ -140,5 +139,4 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 0, 10, done ? 10 : 0);
     }
 
-    private static final class NoOpActions extends FocusTestActions { }
 }

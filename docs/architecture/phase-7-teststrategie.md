@@ -1,43 +1,108 @@
-# Phase 7: Testpyramide, Goldens und Accessibility
+# Teststrategie nach dem Today-/Fokus-Refactor
 
-Stand: 2026-08-19
+Stand: 2026-08-20, Phase 8 abgeschlossen
+
+Der Dateiname bleibt für bestehende Links erhalten. Der Inhalt beschreibt den aktuellen Stand
+nach Datenbankschema 8 und der Testbereinigung in Phase 8.
 
 ## Testschichten
 
-- Reines JUnit mit `InMemoryTaskRepository`: Reward, Completion, Undo, Schedule,
-  Transaktionsrollback und Dauerlast. Diese Tests kennen Android und Room nicht.
-- Room/Robolectric: Entity-Mapping, Fremdschlüssel und Unique Constraints, echte
-  Transaktionsgrenzen, SQL-Querybudgets, Serviceintegration, Prozessneustart und Migrationen.
-- Room/Instrumentation: Migrationen mit `MigrationTestHelper` gegen die exportierten Schemas.
-- Robolectric/UI: Today- und Inline-Editor-Matrix, Accessibility-Verträge, Reduced Motion,
-  Palettenkontrast sowie Phone-/Widget-Goldens.
+- Reines JUnit prüft Fachregeln, Reducer und Layoutpolitik. `RepetitionProgress`,
+  `RepetitionInputReducer` und `FocusStepLayoutPolicy` benötigen weder Android noch Room.
+- Tests mit `InMemoryTaskRepository` prüfen Use Cases, Reward, Completion, Undo, Schedule,
+  Transaktionsrollback und Dauerlast ohne SQLite-Setup.
+- Room/Robolectric prüft Entity-Mapping, Fremdschlüssel, Unique Constraints, SQL-Querybudgets,
+  Prozessneustart und die reale Migrationskette.
+- Room/Instrumentation paketiert zusätzlich Migrationstests mit `MigrationTestHelper` gegen die
+  exportierten Schemas.
+- Robolectric/UI prüft Komponentenverträge, Accessibility, Reduced Motion und Goldens.
 
-Room-Integrationsabdeckung bleibt absichtlich bestehen. Der In-Memory-Port soll Fachfehler
-schnell lokalisieren, aber weder SQLite noch Room simulieren.
+Room-Integrationsabdeckung bleibt absichtlich bestehen. Der In-Memory-Port lokalisiert
+Fachfehler schnell, simuliert aber weder SQLite noch Room.
+
+## Layout- und Accessibility-Abdeckung
+
+Die kombinatorische Android-Matrix verwendet sechs gezielt repräsentative Fälle statt des
+früheren vollständigen 3×3×3-Kreuzprodukts. Jeder Wert aus 320/412/600 dp, Font Scale
+1,0/1,3/2,0 und Morgen-/Abend-/Nachtpalette kommt mindestens einmal vor. Die kritischen
+Kombinationen 320 dp mit Font Scale 2,0 sowie beide Breitenextreme bleiben enthalten.
+
+Die vollständige Kombinatorik der Höhenentscheidung liegt in schnellen parametrisierten Tests
+von `FocusStepLayoutPolicy`: Limit, Höhenbudget, aktive Zeile, Folgereihen und Resthinweis werden
+ohne Robolectric geprüft. Androidtests prüfen repräsentativ reale Messung, Text-Clipping,
+horizontale Bounds, TalkBack-Reihenfolge, Rollen, Zustände, virtuelle Satzaktionen,
+Tastatursteuerung und Mindestziele.
+
+Produktivcode stellt dafür keine `*ForTest`-Methoden bereit. Viewtests beobachten öffentliche
+Events oder sichtbaren Viewzustand über die Test-Fixtures `DashboardEventRecorder` und
+`ViewTestQueries`.
 
 ## Migrationsmatrix
 
-`DatabaseMigrationRobolectricTest` läuft mit `@Config(sdk = {26, 35})` und deckt alle
-Ausgangsversionen 1 bis 6 bis Schema 7 ab. `ExportedRoomSchemaFixture` erzeugt historische
-Tabellen, Indizes, Views und Room-Setup direkt aus
-`app/schemas/de.thonktank.autosecretary.AppDatabase/<version>.json`. Szenariospezifische Daten
-werden danach separat geseedet. Damit kann das Fixture-SQL nicht unbemerkt vom veröffentlichten
-Room-Schema abweichen.
+`DatabaseMigrationRobolectricTest` deckt auf API 26 und 35 alle Ausgangsversionen 1 bis 7 bis
+Schema 8 ab. `ExportedRoomSchemaFixture` baut historische Tabellen, Indizes, Views und Room-
+Metadaten direkt aus `app/schemas/de.thonktank.autosecretary.AppDatabase/<version>.json` auf.
+
+Die Migration 7→8 besitzt zusätzliche Fälle für 0, 12, 999, 1200, fehlerhaften Legacytext,
+Idempotenz und die Korrektur genau einer Ergebniszeile. Der Instrumentationstest gegen das
+exportierte v7-Schema wird gebaut; seine Ausführung benötigt weiterhin Emulator oder Gerät.
 
 ## Golden-Vertrag
 
-`GoldenAssertions` schreibt Actual immer nach `app/build/reports/goldens`. Bei einer Abweichung
-entstehen daneben Expected und Diff. Der Diff markiert abweichende Pixel magenta. Baselines
-werden nur mit der jeweils expliziten lokalen Update-Variable geschrieben; sobald `CI` oder
-`GITHUB_ACTIONS` gesetzt ist, bricht ein Updateversuch ab. Phase 7 ändert keine Golden-Baseline.
+`GoldenAssertions` schreibt bei jedem Lauf das tatsächliche Bild nach
+`app/build/reports/goldens/<komponente>`. Bei einer Abweichung liegen dort zusätzlich Expected
+und ein magenta markierter Diff. Dieser Diff muss vor jeder Baselineänderung geprüft werden.
 
-## Accessibility- und Layoutmatrix
+Baselines werden ausschließlich komponentenbezogen aktualisiert:
 
-Today und der expandierte Satzeditor werden für jede Kombination aus 320/412/600 dp und Font
-Scale 1,0/1,3/2,0 gemessen. Zusätzlich werden Default-TalkBack-Reihenfolge, Rollen, Checked-
-State, Beschriftung, Tastaturaktivierung, 48-dp-Ziele und Text-Clipping geprüft. Die bestehenden
-Tests prüfen Reduced Motion sowie Kontrast über alle Tageszeiten und Theme-Modi.
+```bash
+UPDATE_FOCUS_TASK_GOLDENS=1 ./gradlew testDebugUnitTest \
+  --tests de.thonktank.autosecretary.FocusTaskViewGoldenRobolectricTest
+UPDATE_HOMESCREEN_GOLDENS=1 ./gradlew testDebugUnitTest \
+  --tests de.thonktank.autosecretary.HomescreenGoldenRobolectricTest
+UPDATE_TASK_EDITOR_GOLDENS=1 ./gradlew testDebugUnitTest \
+  --tests de.thonktank.autosecretary.TaskEditorGoldenRobolectricTest
+```
 
-Diese Hosttests ersetzen keinen realen Accessibility-Scanner oder eine manuelle TalkBack-
-Prüfung. Ebenso ist der Dauerlastfall ein deterministischer Algorithmuswächter und kein
-Gerätebenchmark; Renderer-Messungen stehen separat in `wood-grain-benchmark.md`.
+Es gibt bewusst keinen globalen Update-Schalter. Ein Fokusupdate kann dadurch Widget- oder
+Editor-Baselines nicht mitschreiben. Unter `CI` oder `GITHUB_ACTIONS` sind Updates gesperrt.
+
+## Lokale Befehle und vollständiges Gate
+
+Schnelle fachliche Rückmeldung:
+
+```bash
+./gradlew testDebugUnitTest --tests '*RepetitionProgressTest' \
+  --tests '*RepetitionInputReducerTest' --tests '*FocusStepLayoutPolicyTest'
+```
+
+Betroffene Fokusoberfläche einschließlich Golden und Accessibility:
+
+```bash
+./gradlew testDebugUnitTest \
+  --tests '*FocusTaskViewTest' --tests '*FocusTaskViewGoldenRobolectricTest' \
+  --tests '*AccessibilityLayoutMatrixRobolectricTest' --tests '*SetBarsViewTest'
+```
+
+Verbindliches Abschluss-Gate:
+
+```bash
+./gradlew testDebugUnitTest --no-parallel --max-workers=1
+./gradlew assembleDebug assembleDebugAndroidTest --no-parallel --max-workers=1
+```
+
+Der serielle Modus ist die reproduzierbare Referenz auf speicherknappen Rechnern. Er ersetzt
+keine Ausführung der Instrumentationstests auf einem Android-Zielsystem.
+
+## Abschlussmessung
+
+Auf derselben lokalen Umgebung sank die Laufzeit der
+`AccessibilityLayoutMatrixRobolectricTest` durch die Verlagerung der Kombinatorik in reine Tests
+von 25,495 s auf 11,219 s. Das serielle vollständige Gate lief nach Phase 8 in 57,88 s bei
+1.138.052 KiB maximaler RSS. Die Phase-0-Referenz desselben Gradle-Gates lag bei 84,50 s und
+1.167.380 KiB. Damit ist das Gesamtgate trotz der zwischenzeitlich ergänzten Fach-, Room- und
+Migrationstests rund 31 % schneller und die gemessene Spitzenbelegung etwas niedriger.
+
+Der Abschlusslauf enthielt 243 Hosttests, davon 242 erfolgreich und einen bewusst übersprungenen
+Test. Alle Fokus-Goldens waren byteidentisch; keine Fokus-, Homescreen-, Widget- oder
+Editor-Baseline wurde in Phase 8 geändert.

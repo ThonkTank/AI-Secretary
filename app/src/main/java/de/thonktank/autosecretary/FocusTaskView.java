@@ -97,6 +97,4 @@ public final class FocusTaskView extends FrameLayout {
         super.onDetachedFromWindow();
     }
 
-    int visibleFollowingStepsForTest() { return card.visibleFollowingSteps(); }
-    int cardExtentForTest() { return cardParams.topMargin + card.getMeasuredHeight(); }
 }

@@ -25,12 +25,10 @@ import android.widget.ScrollView;
 
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.calendar.CalendarResult;
-import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -104,7 +102,7 @@ public final class UiComponentRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                new NoOpActions(), "1.0");
+                event -> { }, "1.0");
         DayPalette morning = DayPalette.at(LocalTime.of(8, 0), DayPalette.Mode.AUTO);
         DashboardUiState first = state(morning);
 
@@ -175,9 +173,8 @@ public final class UiComponentRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
         FocusTaskView focus = new FocusTaskView(context);
-        NoOpActions actions = new NoOpActions();
         focus.bind(DashboardFixtures.taskWithSteps(), true, true,
-                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), actions);
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), event -> { });
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(500), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -295,9 +292,8 @@ public final class UiComponentRobolectricTest {
                 Arrays.asList(set, next), 1, false, false, false, false,
                 2, 1_000L, 15, 15, 0, true);
         FocusTaskView focus = new FocusTaskView(context);
-        NoOpActions actions = new NoOpActions();
         focus.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                actions);
+                event -> { });
         java.util.List<String> texts = new java.util.ArrayList<>();
         for (View view : descendants(focus))
             if (view.getVisibility() == View.VISIBLE && view instanceof TextView)
@@ -333,15 +329,5 @@ public final class UiComponentRobolectricTest {
                 CalendarUiState.from(new CalendarResult.Success(DashboardFixtures.calendarEvents())), palette,
                 CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
                 EditorUiState.closed());
-    }
-
-    private static class NoOpActions extends FocusTestActions {
-        @Override public void onAddTask() { }
-        @Override public void onTaskAction(TimelineTaskUiModel task) { }
-        @Override public void onTaskMenu(TimelineTaskUiModel task) { }
-        @Override public void onTheme(UiThemeMode mode) { }
-        @Override public void onFocusStepLimit(FocusStepLimit limit) { }
-        @Override public void onCalendarPermission() { }
-        @Override public void onUpdates() { }
     }
 }

@@ -229,6 +229,4 @@ public final class SetBarsView extends View {
         }
     }
 
-    long animationDurationForTest() { return animator == null ? 0L : animator.getDuration(); }
-    int selectedIndexForTest() { return selected; }
 }

@@ -164,8 +164,6 @@ final class FocusStepListLayout extends ViewGroup {
         moreStatus.setVisibility(hidden == 0 ? GONE : VISIBLE);
     }
 
-    int visibleFollowingSteps() { return visibleFollowing; }
-
     List<FocusStepUiModel> openSteps() { return openSteps; }
 
     List<FocusStepRowView> visibleRows() {

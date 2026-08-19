@@ -26,14 +26,17 @@ Migrationen und aktualisierte Tests.
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
-[Architekturkritik von XP, Gefäß, Kombo und Today-Screen](xp-kombo-homescreen-critique.md).
+[Architekturkritik von XP, Gefäß, Kombo und Today-Screen](xp-kombo-homescreen-critique.md)
+sowie in der [Kritik des Today-/Fokus-Refactors](today-focus-architecture-critique.md).
 Sie sind keine ADRs, sondern dokumentieren Reibung, technische Schuld und priorisierte
 Folgeschritte.
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
-Die aktuelle Testschichtung, Migrationsmatrix und Golden-/Accessibility-Verträge beschreibt
-[Phase 7: Testpyramide, Goldens und Accessibility](phase-7-teststrategie.md).
+Die [aktuelle Today-/Fokus-Architektur](today-focus-architecture.md) dokumentiert Datenfluss,
+Verantwortlichkeiten, Invarianten, Schema und Widgetinvalidierung. Die aktuelle Testschichtung,
+Migrationsmatrix und Golden-/Accessibility-Verträge beschreibt die
+[Teststrategie nach dem Today-/Fokus-Refactor](phase-7-teststrategie.md).
 Die vor dem Today-/Fokus-Refactor festgehaltenen Datenflüsse, Charakterisierungstests und
 Laufzeit-/Speicherwerte stehen in der
 [Phase-0-Baseline des Today-/Fokus-Refactors](today-focus-baseline.md).

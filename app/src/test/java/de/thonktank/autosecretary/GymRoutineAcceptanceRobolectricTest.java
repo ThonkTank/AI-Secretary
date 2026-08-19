@@ -85,12 +85,14 @@ public final class GymRoutineAcceptanceRobolectricTest {
         FocusTaskView view = new FocusTaskView(context);
         RecordRepetitionResult record = new RecordRepetitionResult(repository, clock);
         CompleteRemainingSteps completeRest = new CompleteRemainingSteps(repository, clock);
-        NoOpActions actions = new NoOpActions() {
-            @Override public void onSubmitRepetition(String stepId) {
+        DashboardEventSink actions = event -> {
+            if (event instanceof DashboardEvent.SubmitRepetition) {
+                String stepId = ((DashboardEvent.SubmitRepetition) event).stepId;
                 record.execute(stepId, 12);
-            }
-
-            @Override public void onCompleteRemaining(TaskSnapshot task) {
+            } else if (event instanceof DashboardEvent.FocusAction
+                    && ((DashboardEvent.FocusAction) event).kind
+                    == DashboardEvent.FocusActionKind.COMPLETE_REMAINING) {
+                TaskSnapshot task = ((DashboardEvent.FocusAction) event).task;
                 completeRest.execute(task.occurrenceId);
             }
         };
@@ -198,6 +200,4 @@ public final class GymRoutineAcceptanceRobolectricTest {
         @Override public LocalDate today() { return TODAY; }
         @Override public LocalTime time() { return LocalTime.of(9, 40); }
     }
-
-    private static class NoOpActions extends FocusTestActions { }
 }

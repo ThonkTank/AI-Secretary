@@ -1,0 +1,101 @@
+# Today-/Fokus-Architektur
+
+Stand: 2026-08-20, Datenbankschema 8
+
+## Datenfluss und Zustandsbesitz
+
+Der Today-Screen folgt einem unidirektionalen Vertrag:
+
+```text
+Android View
+  → DashboardEvent
+  → MainActivity (System-/Dialog-Routing) oder TaskViewModel
+  → RepetitionInputReducer beziehungsweise persistierender Use Case
+  → TaskRepository / Room
+  → DashboardPresenter und verbraucherspezifische Mapper
+  → DashboardUiState
+  → DashboardRenderer
+  → bind() der bestehenden Views
+```
+
+Views emittieren Absichten und mutieren keinen autoritativen Draft. Der
+`RepetitionInputReducer` ist der einzige Übergang für Stepperänderung, Auswahl eines gespeicherten
+Satzes und Submission. `DashboardUiState` besitzt den renderbaren Snapshot einschließlich
+Navigation, Today-Modell, Kalender, Palette, Theme, Fokuslimit, Editor, laufenden Aktionen,
+Updatezustand und Wiederholungsdraft.
+
+## Modelle nach Verbraucher
+
+- Die Domain besitzt `Dashboard`, `OccurrenceStep`, `RepetitionProgress`, Reward- und
+  Completiontypen. Sie kennt keine Android-Views.
+- `TodayUiModel` enthält die Fokus- und Timelineprojektion. `TaskSnapshot` bleibt die
+  Kompatibilitätsgrenze der Fokuskarte.
+- `FocusStepUiModel` trennt Menge, Notiz und Wiederholungsfortschritt für die Fokuskarte.
+- `TimelineTaskUiModel` und `TimelineStepUiModel` enthalten nur Timeline-Daten.
+- `WidgetDashboardUiModel`, `WidgetTaskUiModel` und `WidgetStepUiModel` werden direkt aus der
+  Domain erzeugt. Das Widget hängt weder von `TodayUiModel` noch von Fokus-Viewmodellen ab.
+
+Gemeinsam ist nur `StepTextFormatter`: Verbraucher teilen Formatierungsregeln, keine fertigen
+Modelle.
+
+## Fokuskomponenten
+
+- `FocusTaskView` ist die Android-Kompositionshülle und gibt das verfügbare Höhenbudget weiter.
+- `FocusCardView` bindet einen vollständigen `FocusCardUiModel` und reserviert Kopf-, Aktions-
+  und Schrittbereich.
+- `FocusStepListLayout` misst aktive Zeile, Folgereihen und Resthinweis innerhalb eines harten
+  Budgets.
+- `FocusStepLayoutPolicy` entscheidet als reine Funktion, wie viele Folgezeilen hineinpassen.
+- `FocusStepRowView` rendert genau einen Schritt und emittiert typisierte Events.
+- `FocusCardDecoration` besitzt Papierlagen, Grain und Reward-Anker; sie entscheidet nicht über
+  Inhalt.
+- `FocusCardAnimationController` besitzt Fokuswechsel, Glint und Afterglow und beendet
+  Animationen beim Detach/Rebind.
+- `SetBarsView` stellt gespeicherte Sätze über virtuelle Accessibility-Buttons bereit. Visuelle,
+  Touch-, Tastatur- und semantische Reihenfolge sind identisch.
+
+## Fachliche Invarianten für Wiederholungen
+
+`RepetitionProgress` garantiert positive geplante Slots, höchstens ein nichtnegatives Ergebnis
+pro Slot und einen daraus abgeleiteten nächsten offenen Slot. Neue und korrigierte Eingaben
+liegen in 0…999; größere historische Werte bleiben lesbar. Die möglichen Zustände sind
+`IN_PROGRESS`, `RESULTS_COMPLETE` und `COMPLETED_WITHOUT_RESULTS`.
+
+Eine Submission friert Step-ID, Wert und optionalen Korrekturindex atomar ein. Events für einen
+nicht mehr aktiven Schritt werden verworfen beziehungsweise mit dem aktuellen Fokus
+reconciled. Wiederöffnen eines vollständig erfassten Schritts entfernt den letzten Wert; ein
+explizit ohne vollständige Ergebnisse abgeschlossener Schritt behält seine Teilwerte.
+
+## Persistenzschema 8
+
+`repetition_results(stepId, slotIndex, actualRepetitions)` normalisiert die früher im
+Komma-Text gespeicherten Ergebnisse. `(stepId, slotIndex)` ist der Primärschlüssel; `stepId`
+referenziert `occurrence_steps` mit Cascade Delete und besitzt einen Index.
+
+Reads laden Ergebniszeilen geordnet und gruppiert. Writes bilden einen Zeilendiff: neue oder
+geänderte Slots werden einzeln upserted, entfernte Endslots gelöscht. Die alte
+`occurrence_steps.actualRepetitions`-Spalte ist als `legacyActualRepetitions` nur noch für einen
+sicheren Übergang vorhanden und wird produktiv leer geschrieben.
+
+Die Migration 7→8 übernimmt gültige Legacywerte einschließlich 0 und Werten über 999. Bei
+fehlerhaftem Text wird keine partielle Liste erzeugt; die Step-ID wird geloggt und der Rohtext
+bleibt erhalten. Alle exportierten Schemas 1 bis 8 sind Teil des Migrationsvertrags.
+
+## Widgetaktualisierung
+
+Widgetinvalidierung ist ein injizierter Nebeneffekt des ViewModels, kein Effekt von
+`MainActivity.render`. Sie erfolgt nach erfolgreich persistierenden Commands, tatsächlich
+schreibender Materialisierung/Combo-Abrechnung, relevanten externen Kalenderänderungen,
+Themeänderung sowie Widgetaktion oder Größenänderung. Draft, Navigation, Editoröffnung und
+reines Re-Rendering lösen kein Update aus.
+
+`WidgetUpdateCoordinator` lädt pro Zyklus einmal, projiziert danach je Widgetgröße und isoliert
+Fehler einzelner Widget-IDs. Ein Widgetfehler macht einen bereits erfolgreichen Fachcommand
+nicht rückwirkend fehlerhaft.
+
+## Qualitätssicherung
+
+Die Pyramide besteht aus reinen Domain-, Reducer- und Layouttests, In-Memory-Use-Case-Tests,
+Room-/Migrationsintegration, repräsentativen Robolectric-Komponententests, Accessibilitytests und
+komponentenbezogenen Goldens. Details und ausführbare Befehle stehen in der
+[Teststrategie](phase-7-teststrategie.md).

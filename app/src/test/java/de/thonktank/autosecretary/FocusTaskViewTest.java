@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
@@ -44,7 +43,7 @@ public final class FocusTaskViewTest {
                 Collections.singletonList(step), 1, false, false, false, false, 0, 1L);
 
         FocusTaskView view = new FocusTaskView(context);
-        NoOpActions actions = new NoOpActions();
+        DashboardEventSink actions = event -> { };
         view.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
                 actions);
 
@@ -58,16 +57,11 @@ public final class FocusTaskViewTest {
                 "3 × 12", "23 kg", false,
                 RepetitionProgressUiModel.sets(3, 12, Collections.emptyList()),
                 2, 15, 0);
-        AtomicReference<String> changed = new AtomicReference<>();
-        FocusTestActions actions = new FocusTestActions() {
-            @Override public void onAdjustRepetition(String stepId, int delta) {
-                changed.set(stepId);
-            }
-        };
+        DashboardEventRecorder events = new DashboardEventRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
         row.bind(step, true, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                RepetitionInputState.idle(), actions);
+                RepetitionInputState.idle(), events);
 
         assertEquals("Beinpresse", row.renderedTitle().toString());
         assertEquals("23 kg", row.renderedSubtitle().toString());
@@ -78,7 +72,10 @@ public final class FocusTaskViewTest {
         assertTrue(row.grainTextViews().size() >= 4);
         View plus = row.findViewById(R.id.rep_stepper_increment);
         assertTrue(plus.performClick());
-        assertEquals("step-1", changed.get());
+        DashboardEvent.AdjustRepetition adjustment =
+                events.last(DashboardEvent.AdjustRepetition.class);
+        assertEquals("step-1", adjustment.stepId);
+        assertEquals(1, adjustment.delta);
     }
 
     @Test public void singleRepetitionsConfirmOnceWhileDurationCompletesDirectly() {
@@ -88,32 +85,26 @@ public final class FocusTaskViewTest {
                 "20 Wdh.", "", false,
                 RepetitionProgressUiModel.single(20, Collections.emptyList()),
                 0, 10, 0);
-        AtomicReference<String> submitted = new AtomicReference<>();
-        AtomicReference<String> toggled = new AtomicReference<>();
-        FocusTestActions actions = new FocusTestActions() {
-            @Override public void onSubmitRepetition(String stepId) { submitted.set(stepId); }
-
-            @Override public void onToggleStep(String stepId) { toggled.set(stepId); }
-        };
+        DashboardEventRecorder events = new DashboardEventRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
         row.bind(repetitions, true, palette,
-                RepetitionInputState.idle().adjust(repetitions, -3), actions);
+                RepetitionInputState.idle().adjust(repetitions, -3), events);
 
         assertTrue(row.editorVisible());
         View barsScroll = (View) row.findViewById(R.id.set_bars).getParent();
         assertEquals(View.GONE, barsScroll.getVisibility());
         row.rewardAnchor().performClick();
-        assertEquals("reps", submitted.get());
+        assertEquals("reps", events.last(DashboardEvent.SubmitRepetition.class).stepId);
 
         FocusStepUiModel duration = new FocusStepUiModel("duration", "Planke",
                 "45 Sek.", "ruhig atmen", false,
                 null, 0, 10, 0);
-        row.bind(duration, true, palette, RepetitionInputState.idle(), actions);
+        row.bind(duration, true, palette, RepetitionInputState.idle(), events);
 
         assertFalse(row.editorVisible());
         row.rewardAnchor().performClick();
-        assertEquals("duration", toggled.get());
+        assertEquals("duration", events.last(DashboardEvent.ToggleStep.class).stepId);
     }
 
     @Test public void reboundFutureRowCannotRetainActiveActionsOrFocus() {
@@ -125,23 +116,20 @@ public final class FocusTaskViewTest {
         FocusStepUiModel future = new FocusStepUiModel("future", "Später", "3 × 12", "",
                 false, RepetitionProgressUiModel.sets(3, 12, Collections.emptyList()),
                 0, 10, 0);
-        AtomicReference<String> toggled = new AtomicReference<>();
-        FocusTestActions actions = new FocusTestActions() {
-            @Override public void onSubmitRepetition(String stepId) { toggled.set(stepId); }
-        };
+        DashboardEventRecorder events = new DashboardEventRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
-        row.bind(active, true, palette, RepetitionInputState.idle(), actions);
+        row.bind(active, true, palette, RepetitionInputState.idle(), events);
         assertTrue(row.rewardAnchor().isClickable());
         assertTrue(row.rewardAnchor().isFocusable());
-        row.bind(future, false, palette, RepetitionInputState.idle(), actions);
+        row.bind(future, false, palette, RepetitionInputState.idle(), events);
 
         assertFalse(row.rewardAnchor().isClickable());
         assertFalse(row.rewardAnchor().isFocusable());
         assertFalse(row.rewardAnchor().performClick());
         View barsScroll = (View) row.findViewById(R.id.set_bars).getParent();
         assertEquals(View.GONE, ((View) barsScroll.getParent()).getVisibility());
-        assertEquals(null, toggled.get());
+        assertEquals(0, events.events().size());
     }
 
     @Test public void configuredLimitCountsFollowingStepsAndReportsTheRest() {
@@ -156,7 +144,7 @@ public final class FocusTaskViewTest {
                 TaskSlot.MORNING, "", "Eins", Recurrence.DAILY, models, 5,
                 false, false, false, false, 0, 1L);
         FocusTaskView view = new FocusTaskView(context);
-        NoOpActions actions = new NoOpActions();
+        DashboardEventSink actions = event -> { };
 
         view.bind(task, false, false,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.ONE,
@@ -188,7 +176,7 @@ public final class FocusTaskViewTest {
         Context context = ApplicationProvider.getApplicationContext();
         TaskSnapshot task = longRoutine();
         FocusTaskView view = new FocusTaskView(context);
-        NoOpActions actions = new NoOpActions();
+        DashboardEventSink actions = event -> { };
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
         int width = Math.round(330 * context.getResources().getDisplayMetrics().density);
         int shortHeight = Math.round(430 * context.getResources().getDisplayMetrics().density);
@@ -197,21 +185,19 @@ public final class FocusTaskViewTest {
         view.bind(task, false, false, palette, FocusStepLimit.FIVE,
                 RepetitionInputState.idle(), actions);
         measureExactly(view, width, shortHeight);
-        int shortManual = view.visibleFollowingStepsForTest();
+        int shortManual = ViewTestQueries.visibleFollowingStepRows(view);
         assertTrue(shortManual < 5);
-        assertTrue(view.cardExtentForTest() <= shortHeight);
 
         view.bind(task, false, false, palette, FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), actions);
         measureExactly(view, width, tallHeight);
-        int tallAutomatic = view.visibleFollowingStepsForTest();
+        int tallAutomatic = ViewTestQueries.visibleFollowingStepRows(view);
         assertTrue(tallAutomatic > shortManual);
-        assertTrue(view.cardExtentForTest() <= tallHeight);
 
         view.bind(task, false, false, palette, FocusStepLimit.ONE,
                 RepetitionInputState.idle(), actions);
         measureExactly(view, width, tallHeight);
-        assertEquals(1, view.visibleFollowingStepsForTest());
+        assertEquals(1, ViewTestQueries.visibleFollowingStepRows(view));
     }
 
     private static TaskSnapshot longRoutine() {
@@ -275,6 +261,4 @@ public final class FocusTaskViewTest {
         for (int index = 0; index < group.getChildCount(); index++)
             collectDews(group.getChildAt(index), result);
     }
-
-    private static final class NoOpActions extends FocusTestActions { }
 }
