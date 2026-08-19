@@ -11,8 +11,8 @@
     <item name="navigation_today" type="id" />
     <item name="navigation_all_tasks" type="id" />
     <item name="navigation_options" type="id" />
-    <item name="set_progress_editor" type="id" />
-    <item name="set_progress_input" type="id" />
-    <item name="set_progress_save" type="id" />
-    <item name="set_progress_toggle_done" type="id" />
+    <item name="rep_stepper_decrement" type="id" />
+    <item name="rep_stepper_value" type="id" />
+    <item name="rep_stepper_increment" type="id" />
+    <item name="set_bars" type="id" />
 </resources>

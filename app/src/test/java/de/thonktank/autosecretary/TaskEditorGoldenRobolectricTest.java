@@ -1,8 +1,5 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
-import de.thonktank.autosecretary.presentation.SetProgressUiModel;
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -43,7 +40,7 @@ public final class TaskEditorGoldenRobolectricTest {
             "03-taeglich-befristet", "04-intervall", "05-schritte-liste",
             "06-schritt-bearbeiten", "07-schritt-verschieben", "08-schritt-fehler",
             "09-mehrmals-am-tag", "10-schritte-mit-menge", "11-menge-bearbeiten",
-            "12-notizen", "13-satz-bestaetigen"};
+            "12-notizen"};
     private static final String[] FOUNDATIONS = {"01-freie-minuten", "02-fehler-am-feld",
             "03-abbrechen-rueckfrage", "04-loeschen-rueckfrage"};
 
@@ -58,21 +55,10 @@ public final class TaskEditorGoldenRobolectricTest {
         FrameLayout root = new FrameLayout(context);
         ForestBackdropView forest = new ForestBackdropView(context); forest.setPalette(palette);
         root.addView(forest, new FrameLayout.LayoutParams(-1, -1));
-        if (name.equals("13-satz-bestaetigen")) {
-            TaskStepUiModel step = new TaskStepUiModel("set", "Beinpresse",
-                    "3 × 12 Wdh. · 23 kg, Sitz 5", false,
-                    new SetProgressUiModel(3, 12, "23 kg, Sitz 5",
-                            java.util.Arrays.asList(12, 12)), 0, 10, 0);
-            SetConfirmationView prompt = new SetConfirmationView(context, step, palette,
-                    new NoopSetListener());
-            prompt.setPadding(0, dp(context, 28), 0, 0);
-            root.addView(prompt, new FrameLayout.LayoutParams(-1, -1));
-        } else {
-            TaskEditorView editor = new TaskEditorView(context, new NoopEditorListener());
-            editor.setPadding(0, dp(context, 28), 0, 0);
-            root.addView(editor, new FrameLayout.LayoutParams(-1, -1));
-            editor.bind(fixture(name), palette, TODAY);
-        }
+        TaskEditorView editor = new TaskEditorView(context, new NoopEditorListener());
+        editor.setPadding(0, dp(context, 28), 0, 0);
+        root.addView(editor, new FrameLayout.LayoutParams(-1, -1));
+        editor.bind(fixture(name), palette, TODAY);
         root.measure(View.MeasureSpec.makeMeasureSpec(824, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(1784, View.MeasureSpec.EXACTLY));
         root.layout(0, 0, 824, 1784);
@@ -170,11 +156,6 @@ public final class TaskEditorGoldenRobolectricTest {
         @Override public void onDraftChanged(EditorUiState draft) { }
         @Override public void onSave(EditorUiState draft) { }
         @Override public void onDelete(String taskId) { }
-        @Override public void onDismiss() { }
-    }
-    private static final class NoopSetListener implements SetConfirmationView.Listener {
-        @Override public void onConfirm(String stepId, int repetitions) { }
-        @Override public void onFinish(String stepId) { }
         @Override public void onDismiss() { }
     }
 }

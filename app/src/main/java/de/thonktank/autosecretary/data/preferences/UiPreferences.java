@@ -12,6 +12,7 @@ public final class UiPreferences {
     private static final String THEME_MODE = "theme_mode";
     private static final String CALENDAR_ASKED = "calendar_asked";
     private static final String CALENDAR_POLICY = "calendar_policy";
+    private static final String FOCUS_STEP_LIMIT = "focus_step_limit";
 
     private final SharedPreferences preferences;
     private final AppLogger logger;
@@ -34,6 +35,20 @@ public final class UiPreferences {
 
     public void setThemeMode(UiThemeMode mode) {
         preferences.edit().putString(THEME_MODE, mode.name()).apply();
+    }
+
+    public FocusStepLimit focusStepLimit() {
+        String stored = preferences.getString(FOCUS_STEP_LIMIT, FocusStepLimit.AUTO.name());
+        try {
+            return FocusStepLimit.valueOf(stored);
+        } catch (IllegalArgumentException error) {
+            logger.error(TAG, "Ignoring unsupported focus step limit: " + stored, error);
+            return FocusStepLimit.AUTO;
+        }
+    }
+
+    public void setFocusStepLimit(FocusStepLimit limit) {
+        preferences.edit().putString(FOCUS_STEP_LIMIT, limit.name()).apply();
     }
 
     public boolean calendarPermissionAsked() {

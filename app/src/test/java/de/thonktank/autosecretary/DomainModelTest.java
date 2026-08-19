@@ -10,6 +10,8 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.domain.model.RepetitionProgressCodec;
 
 import org.junit.Test;
 
@@ -75,5 +77,23 @@ public final class DomainModelTest {
                 assertEquals(Integer.valueOf(90), stored.plannedDurationSeconds);
             }
         }
+    }
+
+    @Test public void repetitionProgressAcceptsZeroForSetsAndSingleValues() {
+        OccurrenceStep sets = new OccurrenceStep("sets", "occ", 0, "Kniebeugen", false,
+                StepAmount.setsReps(2, 12), "", java.util.Collections.emptyList());
+        OccurrenceStep first = sets.confirmRepetitions(0);
+        OccurrenceStep second = first.confirmRepetitions(999);
+        OccurrenceStep single = new OccurrenceStep("single", "occ", 1, "Liegestütze", false,
+                StepAmount.repetitions(12), "", java.util.Collections.emptyList())
+                .confirmRepetitions(0);
+
+        assertEquals(java.util.Arrays.asList(0, 999), second.actualRepetitions);
+        assertEquals(true, second.done);
+        assertEquals(java.util.Collections.singletonList(0), single.actualRepetitions);
+        assertEquals(true, single.done);
+        assertEquals("0,999", RepetitionProgressCodec.encode(second.actualRepetitions));
+        assertEquals(second.actualRepetitions, RepetitionProgressCodec.decode("0,999"));
+        assertThrows(IllegalArgumentException.class, () -> first.confirmRepetitions(1000));
     }
 }

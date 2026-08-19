@@ -22,6 +22,7 @@ final class DewDotView extends View {
     private final Path dropPath = new Path();
     private boolean on;
     private boolean dim;
+    private boolean activeOutline;
     private DayPalette palette;
     private ValueAnimator dropAnimator;
     private float dropScale = 1f;
@@ -77,6 +78,18 @@ final class DewDotView extends View {
         }
     }
 
+    void setActiveOutline(boolean active) {
+        activeOutline = active;
+        invalidate();
+    }
+
+    void setActionEnabled(boolean enabled) {
+        setClickable(enabled);
+        setFocusable(enabled);
+        if (enabled) AccessibilityRoles.toggleButton(this, () -> on);
+        else setAccessibilityDelegate(null);
+    }
+
     float grainWidth() { return style.dp(value >= 100 ? 42 : 26); }
     float grainHeight() { return style.dp(26); }
 
@@ -86,7 +99,8 @@ final class DewDotView extends View {
         float halfWidth = value >= 100 ? style.dp(21) : radius;
         paint.setStyle(on ? Paint.Style.FILL : Paint.Style.STROKE);
         paint.setStrokeWidth(style.dp(1.5f));
-        paint.setColor(on ? (dim ? UiStyle.alpha(palette.dot, .2f) : palette.accent) : palette.dot);
+        paint.setColor(on ? (dim ? UiStyle.alpha(palette.dot, .2f) : palette.accent)
+                : activeOutline ? palette.accent : palette.dot);
         RectF capsule = new RectF(cx - halfWidth, cy - radius, cx + halfWidth, cy + radius);
         canvas.drawRoundRect(capsule, radius, radius, paint);
         if (!on) {

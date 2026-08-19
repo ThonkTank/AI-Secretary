@@ -1,0 +1,49 @@
+package de.thonktank.autosecretary.presentation;
+
+import androidx.annotation.NonNull;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/** Presentation-ready repetition slots for a set-based or single-value step. */
+public final class RepetitionProgressUiModel {
+    public enum Kind { SETS, SINGLE }
+
+    @NonNull public final Kind kind;
+    public final int slotCount;
+    public final int plannedRepetitions;
+    @NonNull public final List<Integer> actualRepetitions;
+
+    private RepetitionProgressUiModel(@NonNull Kind kind, int slotCount,
+                                      int plannedRepetitions,
+                                      @NonNull List<Integer> actualRepetitions) {
+        if (slotCount <= 0 || plannedRepetitions <= 0)
+            throw new IllegalArgumentException("Repetition progress needs positive targets");
+        if (kind == Kind.SINGLE && slotCount != 1)
+            throw new IllegalArgumentException("Single repetition progress has one slot");
+        if (actualRepetitions.size() > slotCount)
+            throw new IllegalArgumentException("Actual repetitions exceed available slots");
+        for (Integer value : actualRepetitions)
+            if (value == null || value < 0)
+                throw new IllegalArgumentException("Actual repetitions must not be negative");
+        this.kind = kind;
+        this.slotCount = slotCount;
+        this.plannedRepetitions = plannedRepetitions;
+        this.actualRepetitions = Collections.unmodifiableList(
+                new ArrayList<>(actualRepetitions));
+    }
+
+    public static RepetitionProgressUiModel sets(int sets, int repetitions,
+                                                  @NonNull List<Integer> actual) {
+        return new RepetitionProgressUiModel(Kind.SETS, sets, repetitions, actual);
+    }
+
+    public static RepetitionProgressUiModel single(int repetitions,
+                                                    @NonNull List<Integer> actual) {
+        return new RepetitionProgressUiModel(Kind.SINGLE, 1, repetitions, actual);
+    }
+
+    public int nextSlotNumber() { return actualRepetitions.size() + 1; }
+    public boolean showsBars() { return kind == Kind.SETS; }
+}

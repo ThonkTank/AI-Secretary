@@ -123,6 +123,8 @@ public final class DashboardCharacterizationTest {
         @Override public void onTaskAction(TaskSnapshot task) { }
         @Override public void onTaskMenu(TaskSnapshot task) { }
         @Override public void onTheme(UiThemeMode mode) { }
+        @Override public void onFocusStepLimit(
+                de.thonktank.autosecretary.data.preferences.FocusStepLimit limit) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }
     }

@@ -15,6 +15,7 @@
     <string name="content_add_task">Aufgabe anlegen</string>
     <string name="content_task_menu">Aufgabenmenü</string>
     <string name="content_complete_task">%1$s erledigen, %2$d XP</string>
+    <string name="content_complete_step">%1$s erledigen, %2$d XP</string>
     <string name="marker_now">jetzt</string>
     <string name="marker_after">danach</string>
     <string name="marker_later">später, sobald Platz ist</string>
@@ -54,6 +55,9 @@
     <string name="options_title">optionen</string>
     <string name="options_appearance">Darstellung</string>
     <string name="options_appearance_description">Farben folgen der Uhr. Der Sonnenstand bleibt immer in Bewegung.</string>
+    <string name="options_focus_steps">Folgeschritte im Fokusblatt</string>
+    <string name="options_focus_steps_description">Automatisch nutzt den verfügbaren Platz. Eine Zahl setzt die maximale Anzahl sichtbarer Folgeschritte.</string>
+    <string name="focus_steps_auto">automatisch</string>
     <string name="theme_auto">automatisch</string>
     <string name="theme_light">hell</string>
     <string name="theme_dark">dunkel</string>
@@ -197,19 +201,20 @@
     <string name="amount_reps_unit">Wiederholungen</string>
     <string name="amount_seconds_unit">Sekunden</string>
     <string name="step_amount_sets_reps_summary">%1$d × %2$d Wdh.</string>
+    <string name="step_amount_sets_reps_compact">%1$d × %2$d</string>
     <string name="step_amount_reps_summary">%1$d Wdh.</string>
     <string name="step_amount_minutes_summary">%1$d Min.</string>
     <string name="step_amount_seconds_summary">%1$d Sek.</string>
     <string name="step_amount_note_summary">%1$s · %2$s</string>
     <string name="step_note_label">Notiz</string>
-    <string name="set_title">Satz %1$d von %2$d</string>
-    <string name="set_progress">%1$d von %2$d</string>
-    <string name="set_confirm">Satz bestätigen</string>
-    <string name="set_finish">Übung beenden</string>
-    <string name="set_progress_edit_title">heutigen Fortschritt bearbeiten</string>
-    <string name="set_edit_hint">Ist-Wiederholungen, durch Komma getrennt</string>
-    <string name="set_progress_save">Fortschritt speichern</string>
-    <string name="set_reopen">wieder öffnen</string>
+    <string name="content_repetition_less">eine Wiederholung weniger</string>
+    <string name="content_repetition_more">eine Wiederholung mehr</string>
+    <string name="content_confirm_set">Satz %1$d mit %2$d Wiederholungen sichern</string>
+    <string name="content_update_set">Satz %1$d mit %2$d Wiederholungen aktualisieren</string>
+    <string name="content_confirm_repetitions">%1$d Wiederholungen sichern</string>
+    <string name="content_edit_set">Satz %1$d bearbeiten</string>
+    <string name="content_set_value">Satz %1$d: %2$d</string>
+    <string name="content_set_open">Satz %1$d offen</string>
     <string name="action_save">Speichern</string>
     <string name="action_discard">verwerfen</string>
     <string name="action_delete">Löschen</string>
@@ -227,8 +232,6 @@
     <string name="err_step_empty">geht so nicht — ein Schritt braucht einen Namen.</string>
     <string name="err_timeofday_empty">geht so nicht — wähle mindestens eine Tageszeit.</string>
     <string name="err_amount_zero">geht so nicht — die Menge braucht mindestens eine Wiederholung.</string>
-    <string name="err_set_zero">geht so nicht — ein bestätigter Satz braucht mindestens eine Wiederholung.</string>
-    <string name="err_set_count">mehr Sätze als geplant können nicht gespeichert werden.</string>
     <string name="ask_discard_kicker">nicht gespeichert</string>
     <string name="ask_discard_title">verwerfen, was du geändert hast?</string>
     <string name="ask_discard_body">Deine Eingaben gehen verloren.</string>
@@ -248,6 +251,14 @@
     <plurals name="more_items">
         <item quantity="one">%1$d weitere – sie läuft nicht weg.</item>
         <item quantity="other">%1$d weitere – sie laufen nicht weg.</item>
+    </plurals>
+    <plurals name="focus_steps_done">
+        <item quantity="one">%1$d fertig</item>
+        <item quantity="other">%1$d fertig</item>
+    </plurals>
+    <plurals name="focus_steps_more">
+        <item quantity="one">%1$d weitere</item>
+        <item quantity="other">%1$d weitere</item>
     </plurals>
     <plurals name="step_progress">
         <item quantity="one">%1$d von %2$d</item>

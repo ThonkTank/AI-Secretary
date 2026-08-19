@@ -7,6 +7,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
+import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import java.util.ArrayList;
@@ -55,12 +56,17 @@ public final class DashboardRenderer {
     }
 
     public void render(DashboardUiState state, UiThemeMode themeMode, UpdateUiState updateState) {
+        render(state, themeMode, FocusStepLimit.AUTO, updateState);
+    }
+
+    public void render(DashboardUiState state, UiThemeMode themeMode,
+                       FocusStepLimit focusStepLimit, UpdateUiState updateState) {
         if (mounted != state.navigation) mount(state.navigation);
-        if (state.navigation == NavigationDestination.TODAY) bindToday(state);
+        if (state.navigation == NavigationDestination.TODAY) bindToday(state, focusStepLimit);
         else if (state.navigation == NavigationDestination.ALL_TASKS)
             allPlaceholder.bind(state.palette, true);
-        else options.bind(state.palette, themeMode, state.calendarPermission, state.calendar,
-                    version, updateState);
+        else options.bind(state.palette, themeMode, focusStepLimit,
+                    state.calendarPermission, state.calendar, version, updateState);
     }
 
     public void animateEditorTransition(Runnable finished) {
@@ -136,7 +142,7 @@ public final class DashboardRenderer {
         content.addView(empty, new LinearLayout.LayoutParams(-1, -2));
     }
 
-    private void bindToday(DashboardUiState state) {
+    private void bindToday(DashboardUiState state, FocusStepLimit focusStepLimit) {
         TodayUiModel dashboard = state.dashboard;
         DayPalette palette = state.palette;
         rewardAnchors.clearDynamic();
@@ -157,7 +163,7 @@ public final class DashboardRenderer {
         int open = 0;
         for (TaskSnapshot task : dashboard.tasks) if (!task.done) open++;
         focus.bind(focusTask, dashboard.timeline.size() > 0, open > 1, palette,
-                state.setProgressEditor, actions, actions);
+                focusStepLimit, state.repetitionInput, actions, actions);
         bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
         more.setText(context.getResources().getQuantityString(

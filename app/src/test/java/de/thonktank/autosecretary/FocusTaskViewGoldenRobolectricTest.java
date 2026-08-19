@@ -1,7 +1,7 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.TaskStepUiModel;
-import de.thonktank.autosecretary.presentation.SetProgressUiModel;
+import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -24,6 +24,7 @@ import java.util.Arrays;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(RobolectricTestRunner.class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -45,6 +46,8 @@ public final class FocusTaskViewGoldenRobolectricTest {
         root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
         root.layout(0, 0, width, height);
+        assertEquals("focus=" + view.getMeasuredHeight() + " root=" + root.getMeasuredHeight(),
+                2, view.visibleFollowingStepsForTest());
         Shadows.shadowOf(Looper.getMainLooper()).idle();
         WoodGrainView.awaitGeometryForTest();
         Shadows.shadowOf(Looper.getMainLooper()).idle();
@@ -61,13 +64,16 @@ public final class FocusTaskViewGoldenRobolectricTest {
 
     private static TaskSnapshot gymTask() {
         TaskStepUiModel press = new TaskStepUiModel("press", "Beinpresse",
-                "3 × 12 Wdh. · 23 kg, Sitz 5", false,
-                new SetProgressUiModel(3, 12, "23 kg, Sitz 5", Arrays.asList(12, 11)),
+                "3 × 12 Wdh. · 23 kg, Sitz 5", "3 × 12", "23 kg, Sitz 5", false,
+                RepetitionProgressUiModel.sets(3, 12, Arrays.asList(12, 11)),
                 0, 10, 0);
         TaskStepUiModel pushups = new TaskStepUiModel("pushups", "Liegestütze",
-                "20 Wdh.", false, null, 0, 10, 0);
+                "20 Wdh.", "20 Wdh.", "", false,
+                RepetitionProgressUiModel.single(20, java.util.Collections.emptyList()),
+                0, 10, 0);
         TaskStepUiModel plank = new TaskStepUiModel("plank", "Planke",
-                "2 Min. · Bauch fest", false, null, 0, 10, 0);
+                "2 Min. · Bauch fest", "2 Min.", "Bauch fest", false,
+                null, 0, 10, 0);
         return new TaskSnapshot("gym", "gym-today", "Gym", TaskSlot.MORNING,
                 "heute am Morgen", "Beinpresse", Recurrence.DAILY,
                 Arrays.asList(press, pushups, plank), 3, false, false, false,

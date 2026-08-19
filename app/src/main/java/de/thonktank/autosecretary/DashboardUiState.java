@@ -13,21 +13,21 @@ public final class DashboardUiState {
     public final boolean loading;
     public final Set<UiCommand> runningActions;
     public final EditorUiState editor;
-    public final SetProgressEditorState setProgressEditor;
+    public final RepetitionInputState repetitionInput;
 
     public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
                             CalendarUiState calendar, DayPalette palette,
                             CalendarPermissionStatus calendarPermission, boolean loading,
                             Set<UiCommand> runningActions, EditorUiState editor) {
         this(navigation, dashboard, calendar, palette, calendarPermission, loading,
-                runningActions, editor, SetProgressEditorState.closed());
+                runningActions, editor, RepetitionInputState.idle());
     }
 
     public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
                             CalendarUiState calendar, DayPalette palette,
                             CalendarPermissionStatus calendarPermission, boolean loading,
                             Set<UiCommand> runningActions, EditorUiState editor,
-                            SetProgressEditorState setProgressEditor) {
+                            RepetitionInputState repetitionInput) {
         this.navigation = navigation;
         this.dashboard = dashboard;
         this.calendar = calendar;
@@ -36,63 +36,62 @@ public final class DashboardUiState {
         this.loading = loading;
         this.runningActions = Collections.unmodifiableSet(new LinkedHashSet<>(runningActions));
         this.editor = editor;
-        this.setProgressEditor = setProgressEditor;
+        this.repetitionInput = repetitionInput;
     }
 
     public DashboardUiState withNavigation(NavigationDestination value) {
         return copy(value, dashboard, calendar, palette, calendarPermission, loading,
-                runningActions, editor, setProgressEditor);
+                runningActions, editor, repetitionInput);
     }
 
     public DashboardUiState withEditor(EditorUiState value) {
         return copy(navigation, dashboard, calendar, palette, calendarPermission, loading,
-                runningActions, value, setProgressEditor);
+                runningActions, value, repetitionInput);
     }
 
     public DashboardUiState withPalette(DayPalette value) {
         return copy(navigation, dashboard, calendar, value, calendarPermission, loading,
-                runningActions, editor, setProgressEditor);
+                runningActions, editor, repetitionInput);
     }
 
     public DashboardUiState withPermission(CalendarPermissionStatus value) {
         return copy(navigation, dashboard, calendar, palette, value, loading,
-                runningActions, editor, setProgressEditor);
+                runningActions, editor, repetitionInput);
     }
 
     public DashboardUiState withLoading(boolean value) {
-        return copy(navigation, dashboard, value ? CalendarUiState.loading(calendar) : calendar, palette,
-                calendarPermission, value, runningActions, editor, setProgressEditor);
+        return copy(navigation, dashboard,
+                value ? CalendarUiState.loading(calendar) : calendar, palette,
+                calendarPermission, value, runningActions, editor, repetitionInput);
     }
 
     public DashboardUiState withContent(TodayUiModel dashboardValue,
                                         CalendarUiState calendarValue) {
         return copy(navigation, dashboardValue, calendarValue, palette, calendarPermission,
                 false, runningActions, editor,
-                setProgressEditor.closeIfMissing(dashboardValue.tasks));
+                repetitionInput.reconcile(dashboardValue.tasks));
     }
 
     public DashboardUiState withRunningActions(Set<UiCommand> value) {
         return copy(navigation, dashboard, calendar, palette, calendarPermission, loading,
-                value, editor, setProgressEditor);
+                value, editor, repetitionInput);
     }
 
-    public DashboardUiState withSetProgressEditor(SetProgressEditorState value) {
+    public DashboardUiState withRepetitionInput(RepetitionInputState value) {
         return copy(navigation, dashboard, calendar, palette, calendarPermission, loading,
                 runningActions, editor, value);
     }
 
-    public boolean isRunning(UiCommand key) {
-        return runningActions.contains(key);
-    }
+    public boolean isRunning(UiCommand key) { return runningActions.contains(key); }
 
     private DashboardUiState copy(NavigationDestination navigationValue,
                                   TodayUiModel dashboardValue,
                                   CalendarUiState calendarValue, DayPalette paletteValue,
                                   CalendarPermissionStatus permissionValue, boolean loadingValue,
                                   Set<UiCommand> actionsValue, EditorUiState editorValue,
-                                  SetProgressEditorState setProgressEditorValue) {
+                                  RepetitionInputState repetitionInputValue) {
         return new DashboardUiState(navigationValue, dashboardValue, calendarValue,
                 paletteValue, permissionValue, loadingValue, actionsValue, editorValue,
-                setProgressEditorValue);
+                repetitionInputValue);
     }
 }

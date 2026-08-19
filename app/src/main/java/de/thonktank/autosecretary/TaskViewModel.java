@@ -107,8 +107,12 @@ public final class TaskViewModel extends ViewModel {
         update(value -> value.withPalette(palette()));
     }
 
-    void updateSetProgressEditor(SetProgressEditorState editor) {
-        if (editor != null) update(value -> value.withSetProgressEditor(editor));
+    void displayPreferencesChanged() {
+        update(value -> value.withPalette(palette()));
+    }
+
+    void updateRepetitionInput(RepetitionInputState input) {
+        if (input != null) update(value -> value.withRepetitionInput(input));
     }
 
     void navigate(NavigationDestination destination) {

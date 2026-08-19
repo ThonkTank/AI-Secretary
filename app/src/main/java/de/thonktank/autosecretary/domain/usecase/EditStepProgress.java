@@ -19,18 +19,22 @@ public final class EditStepProgress {
     public RewardReceipt execute(String stepId, List<Integer> repetitions) {
         return repository.inTransaction(() -> {
             OccurrenceStep current = repository.findOccurrenceStep(stepId);
-            if (current == null || !(current.amount instanceof StepAmount.SetsReps))
+            if (current == null || (!(current.amount instanceof StepAmount.SetsReps)
+                    && !(current.amount instanceof StepAmount.Repetitions)))
                 return RewardReceipt.none();
             Occurrence occurrence = repository.findOccurrence(current.occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
             List<Integer> checked = new ArrayList<>();
             for (Integer value : repetitions) {
-                if (value == null || value <= 0)
-                    throw new IllegalArgumentException("Confirmed repetitions must be positive");
+                if (value == null || value < 0)
+                    throw new IllegalArgumentException(
+                            "Confirmed repetitions must not be negative");
                 checked.add(value);
             }
-            if (checked.size() > ((StepAmount.SetsReps) current.amount).sets)
+            int capacity = current.amount instanceof StepAmount.SetsReps
+                    ? ((StepAmount.SetsReps) current.amount).sets : 1;
+            if (checked.size() > capacity)
                 throw new IllegalArgumentException("Confirmed set count exceeds planned sets");
             repository.updateOccurrenceStep(copy(current, checked, current.done));
             return RewardReceipt.none();

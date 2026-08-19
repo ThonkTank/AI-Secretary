@@ -11,8 +11,8 @@ public final class RepetitionProgressCodec {
         if (values == null || values.isEmpty()) return "";
         StringBuilder result = new StringBuilder();
         for (Integer value : values) {
-            if (value == null || value <= 0)
-                throw new IllegalArgumentException("Confirmed repetitions must be positive");
+            if (value == null || value < 0)
+                throw new IllegalArgumentException("Confirmed repetitions must not be negative");
             if (result.length() > 0) result.append(',');
             result.append(value);
         }
@@ -21,7 +21,7 @@ public final class RepetitionProgressCodec {
 
     public static List<Integer> decode(String stored) {
         if (stored == null || stored.isEmpty()) return Collections.emptyList();
-        if (!stored.matches("[1-9][0-9]*(,[1-9][0-9]*)*"))
+        if (!stored.matches("(?:0|[1-9][0-9]*)(?:,(?:0|[1-9][0-9]*))*"))
             throw new IllegalArgumentException("Invalid stored repetition progress");
         List<Integer> values = new ArrayList<>();
         for (String part : stored.split(",", -1)) {

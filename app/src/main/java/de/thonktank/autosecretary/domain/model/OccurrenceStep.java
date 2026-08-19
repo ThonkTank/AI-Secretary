@@ -45,15 +45,19 @@ public final class OccurrenceStep {
         TaskStepDefinition checked = new TaskStepDefinition(id, position, text, 0, amount, note);
         List<Integer> actual = new ArrayList<>();
         for (Integer value : actualRepetitions) {
-            if (value == null || value <= 0)
-                throw new IllegalArgumentException("Confirmed repetitions must be positive");
+            if (value == null || value < 0)
+                throw new IllegalArgumentException("Confirmed repetitions must not be negative");
             actual.add(value);
         }
-        if (!(checked.amount instanceof StepAmount.SetsReps) && !actual.isEmpty())
-            throw new IllegalArgumentException("Only set-based steps have repetition progress");
+        boolean acceptsProgress = checked.amount instanceof StepAmount.SetsReps
+                || checked.amount instanceof StepAmount.Repetitions;
+        if (!acceptsProgress && !actual.isEmpty())
+            throw new IllegalArgumentException("Step amount does not accept repetition progress");
         if (checked.amount instanceof StepAmount.SetsReps
                 && actual.size() > ((StepAmount.SetsReps) checked.amount).sets)
             throw new IllegalArgumentException("Confirmed set count exceeds planned sets");
+        if (checked.amount instanceof StepAmount.Repetitions && actual.size() > 1)
+            throw new IllegalArgumentException("Single repetition progress has one value");
         this.id = id;
         this.occurrenceId = occurrenceId;
         this.position = checked.position;
@@ -82,16 +86,23 @@ public final class OccurrenceStep {
                 note, actualRepetitions, sourceTemplateId, comboOwnerId) : this;
     }
 
-    public OccurrenceStep confirmSet(int repetitions) {
-        if (!(amount instanceof StepAmount.SetsReps) || done)
-            throw new IllegalStateException("Step does not accept another set");
-        if (repetitions <= 0) throw new IllegalArgumentException("Repetitions must be positive");
+    public OccurrenceStep confirmRepetitions(int repetitions) {
+        if ((!(amount instanceof StepAmount.SetsReps)
+                && !(amount instanceof StepAmount.Repetitions)) || done)
+            throw new IllegalStateException("Step does not accept repetition progress");
+        if (repetitions < 0 || repetitions > 999)
+            throw new IllegalArgumentException("Repetitions must be between 0 and 999");
         List<Integer> values = new ArrayList<>(actualRepetitions);
         values.add(repetitions);
-        int plannedSets = ((StepAmount.SetsReps) amount).sets;
+        int plannedSets = amount instanceof StepAmount.SetsReps
+                ? ((StepAmount.SetsReps) amount).sets : 1;
         return new OccurrenceStep(id, occurrenceId, position, text,
                 values.size() == plannedSets, amount, note, values,
                 sourceTemplateId, comboOwnerId);
+    }
+
+    public OccurrenceStep confirmSet(int repetitions) {
+        return confirmRepetitions(repetitions);
     }
 
     public OccurrenceStep withActualRepetitions(List<Integer> values) {

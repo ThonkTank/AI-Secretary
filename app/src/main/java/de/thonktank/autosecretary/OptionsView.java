@@ -9,14 +9,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
+import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
-
-import java.util.function.Consumer;
 
 @SuppressLint("ViewConstructor")
 public final class OptionsView extends LinearLayout {
     public interface Actions {
         void onTheme(UiThemeMode mode);
+        void onFocusStepLimit(FocusStepLimit limit);
         void onCalendarPermission();
         void onUpdates();
     }
@@ -24,9 +24,11 @@ public final class OptionsView extends LinearLayout {
     private final UiStyle style;
     private final TextView heading;
     private final OptionLeaf appearance;
+    private final OptionLeaf focusSteps;
     private final OptionLeaf calendar;
     private final OptionLeaf updates;
     private final TextView[] themeButtons = new TextView[3];
+    private final TextView[] focusStepButtons = new TextView[FocusStepLimit.values().length];
     private final TextView calendarButton;
     private final TextView updateButton;
     private final Actions actions;
@@ -59,6 +61,26 @@ public final class OptionsView extends LinearLayout {
                 R.string.options_appearance_description, themes);
         addLeaf(appearance);
 
+        EditorFlowLayout focusLimits = new EditorFlowLayout(context);
+        FocusStepLimit[] limits = FocusStepLimit.values();
+        for (int i = 0; i < limits.length; i++) {
+            FocusStepLimit limit = limits[i];
+            String label = limit.automatic() ? context.getString(R.string.focus_steps_auto)
+                    : String.valueOf(limit.maximumFollowingSteps);
+            TextView button = style.sans(label, 15, 0, true);
+            button.setGravity(Gravity.CENTER);
+            button.setMinWidth(style.dp(48));
+            button.setMinHeight(style.dp(48));
+            button.setPadding(style.dp(14), 0, style.dp(14), 0);
+            button.setOnClickListener(view -> actions.onFocusStepLimit(limit));
+            focusLimits.addView(button, new android.view.ViewGroup.LayoutParams(
+                    -2, style.dp(48)));
+            focusStepButtons[i] = button;
+        }
+        focusSteps = new OptionLeaf(context, R.string.options_focus_steps,
+                R.string.options_focus_steps_description, focusLimits);
+        addLeaf(focusSteps);
+
         calendarButton = outlineButton(context.getString(R.string.calendar_grant));
         calendarButton.setOnClickListener(view -> actions.onCalendarPermission());
         LinearLayout calendarActions = new LinearLayout(context);
@@ -82,7 +104,7 @@ public final class OptionsView extends LinearLayout {
         addLeaf(updates);
     }
 
-    public void bind(DayPalette palette, UiThemeMode mode,
+    public void bind(DayPalette palette, UiThemeMode mode, FocusStepLimit focusStepLimit,
                      CalendarPermissionStatus permission, CalendarUiState calendarState,
                      String version, UpdateUiState updateState) {
         heading.setTextColor(palette.accent);
@@ -93,6 +115,18 @@ public final class OptionsView extends LinearLayout {
             TextView button = themeButtons[i];
             button.setTextColor(selected ? palette.accentText : palette.ink2);
             GradientDrawable background = style.pill(selected ? palette.accent : Color.TRANSPARENT, 24);
+            if (!selected) background.setStroke(style.dp(1), palette.dot);
+            button.setBackground(background);
+        }
+        focusSteps.bind(palette,
+                getContext().getString(R.string.options_focus_steps_description));
+        FocusStepLimit[] limits = FocusStepLimit.values();
+        for (int i = 0; i < focusStepButtons.length; i++) {
+            boolean selected = limits[i] == focusStepLimit;
+            TextView button = focusStepButtons[i];
+            button.setTextColor(selected ? palette.accentText : palette.ink2);
+            GradientDrawable background = style.pill(
+                    selected ? palette.accent : Color.TRANSPARENT, 24);
             if (!selected) background.setStroke(style.dp(1), palette.dot);
             button.setBackground(background);
         }

@@ -58,9 +58,9 @@ public final class CompletionService {
             OccurrenceStep step = repository.findOccurrenceStep(stepId);
             if (step == null) return RewardReceipt.none();
             Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
-            if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
+            if (step.done || occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
-            OccurrenceStep changed = step.confirmSet(repetitions);
+            OccurrenceStep changed = step.confirmRepetitions(repetitions);
             repository.updateOccurrenceStep(changed);
             return !step.done && changed.done
                     ? completeStep(occurrence, changed, newId()) : RewardReceipt.none();

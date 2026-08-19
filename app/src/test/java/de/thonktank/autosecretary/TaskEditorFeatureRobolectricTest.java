@@ -219,6 +219,25 @@ public final class TaskEditorFeatureRobolectricTest {
         assertFalse(next.done);
     }
 
+    @Test public void singleRepetitionValuePersistsAndCompletesWithOneReward() {
+        TaskStepDefinition exercise = new TaskStepDefinition(null, 0, "Liegestütze", 0,
+                StepAmount.repetitions(12), "auf Fäusten");
+        new CreateTask(repository, clock, ids, new TaskOrdering()).execute(definition(
+                "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
+                Collections.singletonList(exercise)));
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        OccurrenceStep step = repository.occurrenceSteps(
+                repository.openOccurrences().get(0).id).get(0);
+
+        assertEquals(10, new ConfirmSet(repository, clock).execute(step.id, 0).xp);
+
+        OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
+        assertTrue(restored.done);
+        assertEquals(Collections.singletonList(0), restored.actualRepetitions);
+        assertEquals(1, repository.combo(step.comboOwnerId).points);
+        assertEquals(0, new ConfirmSet(repository, clock).execute(step.id, 1).xp);
+    }
+
     @Test public void editorBundleKeepsDirtyExpandedStepsAndErrors() {
         EditorUiState initial = EditorUiState.create();
         EditorStepState step = EditorStepState.blank(1).withText("Bad putzen");

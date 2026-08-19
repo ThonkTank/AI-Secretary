@@ -11,6 +11,8 @@ public final class StepTextFormatterTest {
     private final StepTextFormatter formatter = new StepTextFormatter((resource, arguments) -> {
         if (resource == R.string.step_amount_sets_reps_summary)
             return arguments[0] + " × " + arguments[1] + " Wdh.";
+        if (resource == R.string.step_amount_sets_reps_compact)
+            return arguments[0] + " × " + arguments[1];
         if (resource == R.string.step_amount_reps_summary)
             return arguments[0] + " Wdh.";
         if (resource == R.string.step_amount_minutes_summary)
@@ -33,5 +35,7 @@ public final class StepTextFormatterTest {
                 StepAmount.duration(45), ""));
         assertEquals("ruhig atmen", formatter.format(
                 StepAmount.none(), " ruhig atmen "));
+        assertEquals("3 × 12", formatter.compactAmount(
+                StepAmount.setsReps(3, 12)));
     }
 }

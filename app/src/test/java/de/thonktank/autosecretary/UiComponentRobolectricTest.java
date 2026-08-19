@@ -1,7 +1,7 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.TaskStepUiModel;
-import de.thonktank.autosecretary.presentation.SetProgressUiModel;
+import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -19,7 +19,6 @@ import android.view.ViewGroup;
 import android.view.MotionEvent;
 import android.provider.Settings;
 import android.widget.FrameLayout;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -27,6 +26,7 @@ import android.widget.ScrollView;
 import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
+import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.calendar.CalendarResult;
@@ -193,7 +193,7 @@ public final class UiComponentRobolectricTest {
             assertTrue(view.getContentDescription().length() > 0);
             dewCount++;
         }
-        assertEquals(3, dewCount);
+        assertEquals(2, dewCount);
     }
 
     @Test public void reducedMotionDisablesPulseAndGlintWithoutChangingState() {
@@ -222,102 +222,92 @@ public final class UiComponentRobolectricTest {
         ShadowValueAnimator.reset();
     }
 
-    @Test public void setProgressExpandsAndEditsInlineInsideTheFocusLeaf() {
+    @Test public void repetitionStepperConfirmsAndEditsSavedSetsInline() {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
         TaskStepUiModel set = new TaskStepUiModel("set-step", "Beinpresse",
-                "3 × 12 Wdh. · 23 kg", false,
-                new SetProgressUiModel(3, 12, "23 kg", Collections.singletonList(10)),
+                "3 × 12 Wdh. · 23 kg", "3 × 12", "23 kg", false,
+                RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(10)),
                 2, 15, 0);
         TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
                 TaskSlot.MORNING, "", "Beinpresse", Recurrence.DAILY,
                 Collections.singletonList(set), 1, false, false, false, false,
                 2, 1_000L, 15, 0, 0, false);
-        AtomicReference<java.util.List<Integer>> saved = new AtomicReference<>();
-        AtomicReference<SetProgressEditorState> editorState =
-                new AtomicReference<>(SetProgressEditorState.closed());
+        AtomicReference<Integer> confirmed = new AtomicReference<>();
+        AtomicReference<java.util.List<Integer>> edited = new AtomicReference<>();
+        AtomicReference<RepetitionInputState> input =
+                new AtomicReference<>(RepetitionInputState.idle());
         FocusTaskView focus = new FocusTaskView(context);
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
         NoOpActions actions = new NoOpActions() {
-            @Override public void onEditStepProgress(String stepId,
-                                                     java.util.List<Integer> repetitions,
-                                                     boolean done) {
-                saved.set(repetitions);
+            @Override public void onConfirmRepetitions(String stepId, int repetitions) {
+                confirmed.set(repetitions);
             }
-            @Override public void onSetProgressEditorStateChanged(
-                    SetProgressEditorState state) {
-                editorState.set(state);
+            @Override public void onEditRepetitions(String stepId,
+                                                    java.util.List<Integer> repetitions) {
+                edited.set(repetitions);
+            }
+            @Override public void onRepetitionInputStateChanged(RepetitionInputState state) {
+                input.set(state);
             }
         };
-        focus.bind(task, false, false, palette, editorState.get(), actions, actions);
+        focus.bind(task, false, false, palette, FocusStepLimit.AUTO,
+                input.get(), actions, actions);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
-        DewDotView dew = null;
-        for (View view : descendants(focus))
-            if (view instanceof DewDotView && view.getVisibility() == View.VISIBLE) {
-                dew = (DewDotView) view; break;
-            }
+        View plus = focus.findViewById(R.id.rep_stepper_increment);
+        assertNotNull(plus);
+        plus.performClick();
+        DewDotView dew = firstDew(focus);
         assertNotNull(dew);
         dew.performClick();
+        assertEquals(Integer.valueOf(13), confirmed.get());
+
+        focus.bind(task, false, false, palette, FocusStepLimit.AUTO,
+                RepetitionInputState.idle(), actions, actions);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
-        EditText input = focus.findViewById(R.id.set_progress_input);
-        TextView save = focus.findViewById(R.id.set_progress_save);
-        assertNotNull(input); assertNotNull(save);
-        input.setText("10, 11");
-        focus.bind(task, false, false, palette, editorState.get(), actions, actions);
-        input = focus.findViewById(R.id.set_progress_input);
-        save = focus.findViewById(R.id.set_progress_save);
-        assertEquals("10, 11", input.getText().toString());
-        input.setText("10, 11, 12, 13");
-        save.performClick();
-        assertNotNull(editorState.get().error(set.id));
-        focus.bind(task, false, false, palette, editorState.get(), actions, actions);
-        input = focus.findViewById(R.id.set_progress_input);
-        save = focus.findViewById(R.id.set_progress_save);
-        assertNotNull(input.getError());
-        input.setText("10, 11");
-        save.performClick();
-        assertEquals(Arrays.asList(10, 11), saved.get());
+        SetBarsView bars = focus.findViewById(R.id.set_bars);
+        assertNotNull(bars);
+        float x = style.dp(11), y = style.dp(20);
+        bars.dispatchTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, x, y, 0));
+        bars.dispatchTouchEvent(MotionEvent.obtain(0, 1, MotionEvent.ACTION_UP, x, y, 0));
+        focus.findViewById(R.id.rep_stepper_increment).performClick();
+        firstDew(focus).performClick();
+        assertEquals(Collections.singletonList(11), edited.get());
     }
 
-    @Test public void completedSetStepCanReopenWithoutDiscardingFullProgress() {
+    @Test public void completedStepsCollapseIntoTheDoneStatus() {
         Context context = ApplicationProvider.getApplicationContext();
-        UiStyle style = new UiStyle(context);
         java.util.List<Integer> full = Arrays.asList(10, 11, 12);
         TaskStepUiModel set = new TaskStepUiModel("set-step", "Beinpresse",
-                "3 × 12 Wdh. · 23 kg", true,
-                new SetProgressUiModel(3, 12, "23 kg", full), 2, 15, 15);
+                "3 × 12 Wdh. · 23 kg", "3 × 12", "23 kg", true,
+                RepetitionProgressUiModel.sets(3, 12, full), 2, 15, 15);
+        TaskStepUiModel next = new TaskStepUiModel("next", "Duschen", false);
         TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
                 TaskSlot.MORNING, "", "", Recurrence.DAILY,
-                Collections.singletonList(set), 0, false, false, false, false,
+                Arrays.asList(set, next), 1, false, false, false, false,
                 2, 1_000L, 15, 15, 0, true);
-        AtomicReference<java.util.List<Integer>> reopened = new AtomicReference<>();
         FocusTaskView focus = new FocusTaskView(context);
-        NoOpActions actions = new NoOpActions() {
-            @Override public void onReopenExercise(String stepId,
-                                                   java.util.List<Integer> repetitions) {
-                reopened.set(repetitions);
-            }
-        };
+        NoOpActions actions = new NoOpActions();
         focus.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
                 actions, actions);
-        focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
-        focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
-        DewDotView dew = null;
+        java.util.List<String> texts = new java.util.ArrayList<>();
         for (View view : descendants(focus))
-            if (view instanceof DewDotView && view.getVisibility() == View.VISIBLE) {
-                dew = (DewDotView) view; break;
-            }
-        assertNotNull(dew);
-        dew.performClick();
-        TextView reopen = focus.findViewById(R.id.set_progress_toggle_done);
-        assertNotNull(reopen);
-        reopen.performClick();
-        assertEquals(full, reopened.get());
+            if (view.getVisibility() == View.VISIBLE && view instanceof TextView)
+                texts.add(((TextView) view).getText().toString());
+        assertTrue(texts.contains("1 fertig"));
+        assertFalse(texts.contains("Beinpresse"));
+        assertTrue(texts.contains("Duschen"));
+    }
+
+    private static DewDotView firstDew(View root) {
+        for (View view : descendants(root))
+            if (view instanceof DewDotView && view.getVisibility() == View.VISIBLE)
+                return (DewDotView) view;
+        return null;
     }
 
     private static java.util.List<View> descendants(View root) {
@@ -347,6 +337,7 @@ public final class UiComponentRobolectricTest {
         @Override public void onTaskAction(TaskSnapshot task) { }
         @Override public void onTaskMenu(TaskSnapshot task) { }
         @Override public void onTheme(UiThemeMode mode) { }
+        @Override public void onFocusStepLimit(FocusStepLimit limit) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }
     }

@@ -71,6 +71,12 @@ public final class GymRoutineAcceptanceRobolectricTest {
         TaskSnapshot focus = dashboard.firstOpen();
         assertTrue("The materialized gym routine must become today's focus", focus != null);
         assertEquals(4, focus.steps.size());
+        assertEquals("3 × 12", focus.steps.get(0).amountLabel);
+        assertEquals("23 kg, Sitz 5", focus.steps.get(0).note);
+        assertEquals("20 Wdh.", focus.steps.get(1).amountLabel);
+        assertEquals("2 Min.", focus.steps.get(2).amountLabel);
+        assertEquals("Bauch fest", focus.steps.get(2).note);
+        assertEquals("ruhig atmen", focus.steps.get(3).note);
 
         FocusTaskView view = new FocusTaskView(context);
         NoOpActions actions = new NoOpActions();
@@ -78,12 +84,10 @@ public final class GymRoutineAcceptanceRobolectricTest {
                 DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
 
         List<String> texts = visibleTexts(view);
-        assertTrue(texts.contains("3 × 12 Wdh. · 23 kg, Sitz 5"));
-        assertTrue(texts.contains("20 Wdh."));
-        assertTrue(texts.contains("2 Min. · Bauch fest"));
-        assertTrue(texts.contains("ruhig atmen"));
+        assertTrue(texts.contains("23 kg, Sitz 5"));
+        assertTrue(texts.contains("12"));
         assertTrue(contentDescriptions(view).stream()
-                .anyMatch(value -> value.contains("Beinpresse, 3 × 12 Wdh. · 23 kg, Sitz 5")));
+                .anyMatch(value -> value.contains("Satz 1 mit 12 Wiederholungen")));
     }
 
     private static TaskStepDefinition step(int position, String title, StepAmountKind kind,

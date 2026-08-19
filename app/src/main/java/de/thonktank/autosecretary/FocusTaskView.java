@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 
 import android.content.Context;
 import android.view.Gravity;
@@ -37,7 +38,10 @@ public final class FocusTaskView extends FrameLayout {
     private final XpVesselView ring;
     private final DewDotView taskDew;
     private final LinearLayout steps;
+    private final TextView doneStatus;
+    private final TextView moreStatus;
     private final List<FocusStepRowView> stepRows = new ArrayList<>();
+    private final List<TaskStepUiModel> openSteps = new ArrayList<>();
     private final LinearLayout actions;
     private final LinearLayout.LayoutParams actionParams;
     private final TextView primary;
@@ -46,6 +50,8 @@ public final class FocusTaskView extends FrameLayout {
     private final View afterglow;
     private String boundTaskId;
     private boolean deferPending;
+    private FocusStepLimit boundStepLimit = FocusStepLimit.AUTO;
+    private int visibleFollowingSteps;
 
     public FocusTaskView(Context context) {
         this(context, new RewardAnchorRegistry());
@@ -109,8 +115,14 @@ public final class FocusTaskView extends FrameLayout {
         steps = new LinearLayout(context);
         steps.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams stepsParams = new LinearLayout.LayoutParams(-1, -2);
-        stepsParams.setMargins(0, style.dp(18), 0, 0);
+        stepsParams.setMargins(0, style.dp(24), 0, 0);
         card.addView(steps, stepsParams);
+        doneStatus = style.serif("", 15, 0, true, 400);
+        steps.addView(doneStatus, new LinearLayout.LayoutParams(-1, -2));
+        moreStatus = style.serif("", 15, 0, true, 400);
+        LinearLayout.LayoutParams moreStepParams = new LinearLayout.LayoutParams(-1, -2);
+        moreStepParams.setMargins(style.dp(52), style.dp(10), 0, 0);
+        steps.addView(moreStatus, moreStepParams);
         actions = new LinearLayout(context);
         actions.setGravity(Gravity.CENTER_VERTICAL);
         actionParams = new LinearLayout.LayoutParams(-1, -2);
@@ -147,17 +159,18 @@ public final class FocusTaskView extends FrameLayout {
     public void bind(TaskSnapshot task, boolean stacked, boolean allowDefer,
                      DayPalette palette, TaskActions taskActions,
                      FocusStepRowView.Actions stepActions) {
-        bind(task, stacked, allowDefer, palette, SetProgressEditorState.closed(),
-                taskActions, stepActions);
+        bind(task, stacked, allowDefer, palette, FocusStepLimit.AUTO,
+                RepetitionInputState.idle(), taskActions, stepActions);
     }
 
     public void bind(TaskSnapshot task, boolean stacked, boolean allowDefer,
-                     DayPalette palette, SetProgressEditorState editorState,
+                     DayPalette palette, FocusStepLimit stepLimit,
+                     RepetitionInputState inputState,
                      TaskActions taskActions, FocusStepRowView.Actions stepActions) {
         boolean focusChanged = boundTaskId != null && !boundTaskId.equals(task.taskId);
         boundTaskId = task.taskId;
         boolean compactOngoing = task.ongoing && task.steps.isEmpty();
-        setMinimumHeight(style.dp(compactOngoing ? 205 : task.steps.isEmpty() ? 275 : 387));
+        setMinimumHeight(style.dp(compactOngoing ? 205 : task.steps.isEmpty() ? 275 : 0));
         cardParams.topMargin = style.dp(compactOngoing ? 0 : 22);
         card.setLayoutParams(cardParams);
         card.setPadding(style.dp(24), style.dp(24), style.dp(28),
@@ -210,7 +223,8 @@ public final class FocusTaskView extends FrameLayout {
         }
         titleBlock.setPadding(0, 0, 0, 0);
         title.setPadding(0, 0, style.dp(66), 0);
-        bindSteps(task, palette, editorState, stepActions);
+        boundStepLimit = stepLimit == null ? FocusStepLimit.AUTO : stepLimit;
+        bindSteps(task, palette, inputState, stepActions);
         primary.setText(R.string.action_complete_rest);
         primary.setTextColor(palette.accentText);
         primary.setBackground(style.pill(palette.accent, 26));
@@ -230,51 +244,97 @@ public final class FocusTaskView extends FrameLayout {
     }
 
     private void bindSteps(TaskSnapshot task, DayPalette palette,
-                           SetProgressEditorState editorState,
+                           RepetitionInputState inputState,
                            FocusStepRowView.Actions callbacks) {
         steps.setVisibility(task.steps.isEmpty() ? GONE : VISIBLE);
-        while (stepRows.size() < task.steps.size()) {
+        openSteps.clear();
+        int doneCount = 0;
+        for (TaskStepUiModel step : task.steps) {
+            if (step.done) doneCount++;
+            else openSteps.add(step);
+        }
+        doneStatus.setText(doneCount == 0 ? "" : getResources().getQuantityString(
+                R.plurals.focus_steps_done, doneCount, doneCount));
+        doneStatus.setTextColor(palette.done);
+        doneStatus.setVisibility(doneCount == 0 ? GONE : VISIBLE);
+        WoodGrainView.applyTextHalo(doneStatus, palette.leaf1);
+        while (stepRows.size() < openSteps.size()) {
             FocusStepRowView row = new FocusStepRowView(getContext());
-            steps.addView(row, new LinearLayout.LayoutParams(-1, -2));
+            steps.addView(row, steps.getChildCount() - 1,
+                    new LinearLayout.LayoutParams(-1, -2));
             stepRows.add(row);
         }
         for (int i = 0; i < stepRows.size(); i++) {
             FocusStepRowView row = stepRows.get(i);
-            if (i >= task.steps.size()) {
+            if (i >= openSteps.size()) {
                 row.setVisibility(GONE);
                 continue;
             }
             row.setVisibility(VISIBLE);
-            TaskStepUiModel step = task.steps.get(i);
+            TaskStepUiModel step = openSteps.get(i);
+            boolean active = i == 0;
             rewardAnchors.register(new RewardAnchorKey(RewardAnchorKey.Kind.STEP, step.id),
                     row.rewardAnchor());
-            row.bind(step, palette, editorState, new FocusStepRowView.Actions() {
+            row.bind(step, active, palette, inputState, new FocusStepRowView.Actions() {
                 @Override public void onToggleStep(String stepId) {
                     callbacks.onToggleStep(stepId);
                 }
 
-                @Override public void onEditStepProgress(String stepId,
-                        List<Integer> repetitions, boolean done) {
-                    callbacks.onEditStepProgress(stepId, repetitions, done);
+                @Override public void onConfirmRepetitions(String stepId, int repetitions) {
+                    callbacks.onConfirmRepetitions(stepId, repetitions);
                 }
 
-                @Override public void onFinishExercise(String stepId) {
-                    callbacks.onFinishExercise(stepId);
+                @Override public void onEditRepetitions(String stepId,
+                                                        List<Integer> repetitions) {
+                    callbacks.onEditRepetitions(stepId, repetitions);
                 }
 
-                @Override public void onReopenExercise(String stepId,
-                        List<Integer> repetitions) {
-                    callbacks.onReopenExercise(stepId, repetitions);
-                }
-
-                @Override public void onSetProgressEditorStateChanged(
-                        SetProgressEditorState state) {
-                    callbacks.onSetProgressEditorStateChanged(state);
+                @Override public void onRepetitionInputStateChanged(
+                        RepetitionInputState state) {
+                    callbacks.onRepetitionInputStateChanged(state);
                     bindSteps(task, palette, state, callbacks);
                     post(() -> syncLayersAndGrain(task, palette));
                 }
             });
         }
+        int available = Math.max(0, openSteps.size() - 1);
+        int requested = boundStepLimit.automatic()
+                ? Math.min(automaticFollowingCapacity(), available)
+                : Math.min(boundStepLimit.maximumFollowingSteps, available);
+        applyStepVisibility(requested, palette);
+    }
+
+    private int automaticFollowingCapacity() {
+        android.content.res.Configuration configuration = getResources().getConfiguration();
+        int height = configuration.screenHeightDp;
+        int capacity = height >= 1_000 ? 5 : height >= 800 ? 3 : height >= 700 ? 2 : 1;
+        if (configuration.fontScale >= 1.3f) capacity--;
+        if (configuration.fontScale >= 1.8f) capacity--;
+        return Math.max(0, capacity);
+    }
+
+    private void applyStepVisibility(int following, DayPalette palette) {
+        visibleFollowingSteps = Math.max(0,
+                Math.min(following, Math.max(0, openSteps.size() - 1)));
+        for (int index = 0; index < stepRows.size(); index++) {
+            boolean shown = index < openSteps.size()
+                    && (index == 0 || index <= visibleFollowingSteps);
+            stepRows.get(index).setVisibility(shown ? VISIBLE : GONE);
+            if (shown) {
+                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams)
+                        stepRows.get(index).getLayoutParams();
+                params.topMargin = index == 0
+                        ? (doneStatus.getVisibility() == VISIBLE ? style.dp(10) : 0)
+                        : style.dp(index == 1 ? 12 : 2);
+                stepRows.get(index).setLayoutParams(params);
+            }
+        }
+        int hidden = Math.max(0, openSteps.size() - 1 - visibleFollowingSteps);
+        moreStatus.setText(hidden == 0 ? "" : getResources().getQuantityString(
+                R.plurals.focus_steps_more, hidden, hidden));
+        moreStatus.setTextColor(palette.muted);
+        moreStatus.setVisibility(hidden == 0 ? GONE : VISIBLE);
+        WoodGrainView.applyTextHalo(moreStatus, palette.leaf1);
     }
 
     private void syncLayersAndGrain(TaskSnapshot task, DayPalette palette) {
@@ -294,14 +354,17 @@ public final class FocusTaskView extends FrameLayout {
         List<WoodGrainView.Anchor> anchors = new ArrayList<>();
         View taskAnchor = vessel ? ring : taskDew;
         anchors.add(new WoodGrainView.Anchor(grainBounds(taskAnchor), task.comboStage));
-        for (int i = 0; i < task.steps.size() && i < stepRows.size(); i++)
-            anchors.add(new WoodGrainView.Anchor(grainBounds(stepRows.get(i).rewardAnchor()),
-                    task.steps.get(i).comboStage));
+        for (int i = 0; i < openSteps.size() && i < stepRows.size(); i++)
+            if (stepRows.get(i).getVisibility() == VISIBLE)
+                anchors.add(new WoodGrainView.Anchor(grainBounds(stepRows.get(i).rewardAnchor()),
+                        openSteps.get(i).comboStage));
         List<View> faded = new ArrayList<>();
         faded.add(title);
-        for (int i = 0; i < task.steps.size() && i < stepRows.size(); i++) {
-            faded.addAll(stepRows.get(i).grainTextViews());
-        }
+        if (doneStatus.getVisibility() == VISIBLE) faded.add(doneStatus);
+        for (int i = 0; i < openSteps.size() && i < stepRows.size(); i++)
+            if (stepRows.get(i).getVisibility() == VISIBLE)
+                faded.addAll(stepRows.get(i).grainTextViews());
+        if (moreStatus.getVisibility() == VISIBLE) faded.add(moreStatus);
         if (primary.getVisibility() == VISIBLE) faded.add(primary);
         if (later.getVisibility() == VISIBLE) faded.add(later);
         grain.bind(palette, anchors, WoodGrainCoordinates.visibleBounds(grain, faded));
@@ -313,6 +376,8 @@ public final class FocusTaskView extends FrameLayout {
                     ((DewDotView) view).grainWidth(), ((DewDotView) view).grainHeight());
         return WoodGrainCoordinates.bounds(grain, view);
     }
+
+    int visibleFollowingStepsForTest() { return visibleFollowingSteps; }
 
     private void playGlint(int color, long duration, float alpha) {
         glint.animate().cancel();

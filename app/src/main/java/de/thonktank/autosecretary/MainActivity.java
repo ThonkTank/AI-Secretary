@@ -204,26 +204,26 @@ public class MainActivity extends ComponentActivity {
             @Override public void onToggleStep(String stepId) {
                 viewModel.toggleStep(stepId);
             }
-            @Override public void onEditStepProgress(String stepId,
-                                                     java.util.List<Integer> repetitions,
-                                                     boolean done) {
+            @Override public void onConfirmRepetitions(String stepId, int repetitions) {
+                viewModel.confirmSet(stepId, repetitions);
+            }
+            @Override public void onEditRepetitions(String stepId,
+                                                     java.util.List<Integer> repetitions) {
                 viewModel.editStepProgress(stepId, repetitions);
             }
-            @Override public void onFinishExercise(String stepId) {
-                viewModel.finishExercise(stepId);
-            }
-            @Override public void onReopenExercise(String stepId,
-                                                    java.util.List<Integer> repetitions) {
-                viewModel.reopenExercise(stepId, repetitions);
-            }
-            @Override public void onSetProgressEditorStateChanged(
-                    SetProgressEditorState state) {
-                viewModel.updateSetProgressEditor(state);
+            @Override public void onRepetitionInputStateChanged(
+                    RepetitionInputState state) {
+                viewModel.updateRepetitionInput(state);
             }
             @Override public void onTheme(UiThemeMode mode) {
                 container.uiPreferences.setThemeMode(mode);
                 viewModel.minuteChanged();
                 TaskWidgetProvider.updateAll(MainActivity.this);
+            }
+            @Override public void onFocusStepLimit(
+                    de.thonktank.autosecretary.data.preferences.FocusStepLimit limit) {
+                container.uiPreferences.setFocusStepLimit(limit);
+                viewModel.displayPreferencesChanged();
             }
             @Override public void onCalendarPermission() { viewModel.onCalendarPermissionAction(); }
             @Override public void onUpdates() { updates.onManualAction(); }
@@ -235,7 +235,8 @@ public class MainActivity extends ComponentActivity {
         forest.setPalette(state.palette);
         header.bind(container.clock.time(), state.palette, state.dashboard.xpProgress);
         footer.bind(state.navigation, state.palette);
-        renderer.render(state, container.uiPreferences.themeMode(), updateState);
+        renderer.render(state, container.uiPreferences.themeMode(),
+                container.uiPreferences.focusStepLimit(), updateState);
         boolean light = luminance(state.palette.background) > .55;
         WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(),
                 getWindow().getDecorView());
@@ -258,7 +259,8 @@ public class MainActivity extends ComponentActivity {
     private void renderUpdate(UpdateUiState state) {
         updateState = state == null ? UpdateUiState.idle() : state;
         if (uiState != null)
-            renderer.render(uiState, container.uiPreferences.themeMode(), updateState);
+            renderer.render(uiState, container.uiPreferences.themeMode(),
+                    container.uiPreferences.focusStepLimit(), updateState);
     }
 
     private void completeOrConfirm(TaskSnapshot task) {

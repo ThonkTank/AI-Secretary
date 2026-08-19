@@ -45,15 +45,21 @@ public final class DashboardUiMapper {
             ComboProgress stepCombo = dashboard.combos.get(step.comboOwnerId);
             int stepStage = stepCombo == null ? 0 : stepCombo.level();
             int claimable = RewardPolicy.stepXp(stepCombo);
-            SetProgressUiModel setProgress = null;
+            RepetitionProgressUiModel repetitionProgress = null;
             if (step.amount instanceof StepAmount.SetsReps) {
                 StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
-                setProgress = new SetProgressUiModel(amount.sets, amount.repetitions,
-                        step.note, step.actualRepetitions);
+                repetitionProgress = RepetitionProgressUiModel.sets(amount.sets,
+                        amount.repetitions, step.actualRepetitions);
+            } else if (step.amount instanceof StepAmount.Repetitions) {
+                repetitionProgress = RepetitionProgressUiModel.single(
+                        ((StepAmount.Repetitions) step.amount).repetitions,
+                        step.actualRepetitions);
             }
             steps.add(new TaskStepUiModel(step.id, step.text,
                     stepTexts.format(step.amount, step.note),
-                    done, setProgress, stepStage, claimable, item.earnedXp(step.id)));
+                    stepTexts.compactAmount(step.amount), step.note,
+                    done, repetitionProgress, stepStage, claimable,
+                    item.earnedXp(step.id)));
             if (!done) {
                 remaining++;
                 if (remaining == 1) next = step.text;
