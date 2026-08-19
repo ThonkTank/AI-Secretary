@@ -48,7 +48,7 @@ public final class WidgetPresenter {
         if (size != WidgetSizeClassifier.Size.SMALL) {
             for (int i = 0; i < Math.min(3, focus.steps.size()); i++) {
                 TaskStepUiModel step = focus.steps.get(i);
-                steps.add(new WidgetUiModel.Step(step.id, step.title, step.done));
+                steps.add(new WidgetUiModel.Step(step.id, step.title, step.subtitle, step.done));
             }
         }
         List<Boolean> progress = new ArrayList<>();

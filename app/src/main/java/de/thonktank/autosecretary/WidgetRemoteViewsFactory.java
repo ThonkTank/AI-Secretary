@@ -16,6 +16,8 @@ public final class WidgetRemoteViewsFactory {
             R.id.widget_step_dot_3};
     private static final int[] STEP_TEXTS = {R.id.widget_step_text_1, R.id.widget_step_text_2,
             R.id.widget_step_text_3};
+    private static final int[] STEP_SUBTITLES = {R.id.widget_step_subtitle_1,
+            R.id.widget_step_subtitle_2, R.id.widget_step_subtitle_3};
     private static final int[] PROGRESS = {R.id.widget_progress_1, R.id.widget_progress_2,
             R.id.widget_progress_3};
 
@@ -123,14 +125,21 @@ public final class WidgetRemoteViewsFactory {
             views.setViewVisibility(STEP_ROWS[i], visible ? View.VISIBLE : View.GONE);
             if (!visible) continue;
             WidgetUiModel.Step step = model.steps.get(i);
-            views.setInt(STEP_TEXTS[i], "setMaxLines",
-                    model.size == WidgetSizeClassifier.Size.WIDE ? 2 : 1);
             views.setImageViewBitmap(STEP_DOTS[i], forests.dew(step.done, model.palette));
-            views.setTextViewText(STEP_TEXTS[i], step.done ? strike(step.label) : step.label);
+            views.setTextViewText(STEP_TEXTS[i], step.done ? strike(step.title) : step.title);
             views.setTextColor(STEP_TEXTS[i], step.done ? model.palette.done : model.palette.ink);
+            boolean hasSubtitle = !step.subtitle.isEmpty();
+            views.setViewVisibility(STEP_SUBTITLES[i], hasSubtitle ? View.VISIBLE : View.GONE);
+            if (hasSubtitle) {
+                views.setTextViewText(STEP_SUBTITLES[i],
+                        step.done ? strike(step.subtitle) : step.subtitle);
+                views.setTextColor(STEP_SUBTITLES[i], step.done
+                        ? model.palette.done : model.palette.muted);
+            }
             views.setOnClickPendingIntent(STEP_DOTS[i], toggleStep(step.id));
+            String fullLabel = step.title + (hasSubtitle ? ", " + step.subtitle : "");
             views.setContentDescription(STEP_DOTS[i],
-                    context.getString(R.string.widget_toggle_step, step.label));
+                    context.getString(R.string.widget_toggle_step, fullLabel));
         }
     }
 

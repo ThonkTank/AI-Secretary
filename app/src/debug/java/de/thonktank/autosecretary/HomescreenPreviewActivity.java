@@ -81,7 +81,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         WidgetSizeClassifier.Size size = WidgetSizeClassifier.Size.valueOf(name.toUpperCase());
         LocalTime time = size == WidgetSizeClassifier.Size.LARGE ? LocalTime.of(23, 50)
                 : size == WidgetSizeClassifier.Size.TALL ? LocalTime.of(19, 35) : LocalTime.of(9, 40);
-        TodayUiModel dashboard = DebugPreviewFixtures.reference("full");
+        TodayUiModel dashboard = DebugPreviewFixtures.widgetReference();
         CalendarResult calendar = new CalendarResult.Success(DebugPreviewFixtures.referenceCalendar("full"));
         WidgetPresenter presenter = new WidgetPresenter(this);
         WidgetUiModel model = presenter.present(new WidgetPresenter.CycleData(dashboard, calendar,

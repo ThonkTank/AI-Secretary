@@ -29,6 +29,22 @@ public final class DebugPreviewFixtures {
         return today(120, Arrays.asList(focus, after));
     }
 
+    public static TodayUiModel widgetReference() {
+        TaskSnapshot gym = new TaskSnapshot("preview-gym", "preview-gym-occurrence",
+                "Gym Routine", TaskSlot.MORNING, "etwa eine Stunde", "Rudern",
+                Recurrence.DAILY, Arrays.asList(
+                        new TaskStepUiModel("preview-gym-1", "Bankdrücken",
+                                "3 Sätze · 8 Wiederholungen · 60 kg", true, null, 2, 10, 10),
+                        new TaskStepUiModel("preview-gym-2", "Rudern",
+                                "3 Sätze · 10 Wiederholungen · 45 kg", false, null, 1, 10, 0),
+                        new TaskStepUiModel("preview-gym-3", "Plank",
+                                "60 Sekunden · ruhig atmen", false, null, 0, 10, 0)),
+                2, false, false, false, false, 4, 1_000L);
+        TaskSnapshot after = task("preview-letter", "Brief beantworten", TaskSlot.MIDDAY,
+                "um die Mittagszeit", false, false, 2_000L);
+        return today(120, Arrays.asList(gym, after));
+    }
+
     public static TodayUiModel emptyDay() {
         return today(0, Collections.emptyList());
     }

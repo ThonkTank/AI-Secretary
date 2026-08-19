@@ -56,6 +56,17 @@ final class DashboardFixtures {
                 taskWithSteps(), completedTodayTask(), overdueTask(), recurringTask(), ongoingTask()));
     }
 
+    static TodayUiModel widgetDashboard() {
+        TaskSnapshot focus = task("steps", "Morgenroutine", TaskSlot.MORNING,
+                Recurrence.DAILY, Arrays.asList(
+                        new TaskStepUiModel("step-1", "Duschen",
+                                "3 Sätze · 8 Wiederholungen", true, null, 0, 10, 10),
+                        new TaskStepUiModel("step-2", "Anziehen", false)),
+                1, false, false, false, false, 6, 1_002_000L);
+        return today(120, Arrays.asList(focus, completedTodayTask(), overdueTask(),
+                recurringTask(), ongoingTask()));
+    }
+
     static List<CalendarEventSnapshot> calendarEvents() {
         return Arrays.asList(
                 new CalendarEventSnapshot("ganztägig", "Urlaub", 0),

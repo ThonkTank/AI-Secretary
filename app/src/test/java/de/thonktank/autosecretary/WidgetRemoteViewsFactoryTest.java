@@ -112,6 +112,24 @@ public final class WidgetRemoteViewsFactoryTest {
         assertEquals(dp(48), dew.getLayoutParams().height);
     }
 
+    @Test @Config(sdk = 35)
+    public void responsiveRowsBindCompactMetadataAndExposeTheFullAccessibleLabel() {
+        View applied = new WidgetRemoteViewsFactory(context, new WidgetForestCache())
+                .create(model(WidgetSizeClassifier.Size.WIDE, DayPalette.Mode.AUTO))
+                .apply(context, new FrameLayout(context));
+
+        TextView title = applied.findViewById(R.id.widget_step_text_1);
+        TextView subtitle = applied.findViewById(R.id.widget_step_subtitle_1);
+        View toggle = applied.findViewById(R.id.widget_step_dot_1);
+
+        assertEquals("Duschen", title.getText().toString());
+        assertEquals("3 Sätze · 8 Wiederholungen", subtitle.getText().toString());
+        assertEquals(View.VISIBLE, subtitle.getVisibility());
+        assertEquals(context.getString(R.string.widget_toggle_step,
+                        "Duschen, 3 Sätze · 8 Wiederholungen"),
+                toggle.getContentDescription());
+    }
+
     @Test @Config(sdk = 26)
     public void allFourLayoutsAlsoBindOnMinimumApi() {
         WidgetForestCache cache = new WidgetForestCache();
@@ -187,7 +205,7 @@ public final class WidgetRemoteViewsFactoryTest {
 
     private WidgetUiModel model(WidgetSizeClassifier.Size size, DayPalette.Mode mode) {
         WidgetPresenter presenter = new WidgetPresenter(context);
-        return presenter.present(new WidgetPresenter.CycleData(DashboardFixtures.fullDashboard(),
+        return presenter.present(new WidgetPresenter.CycleData(DashboardFixtures.widgetDashboard(),
                         new CalendarResult.Success(DashboardFixtures.calendarEvents()),
                         DayPalette.at(LocalTime.of(22, 0), mode)), size);
     }

@@ -25,9 +25,9 @@ Größenbezogener Ausschnitt:
 | Größe | Inhalt |
 | --- | --- |
 | Small / 2×2 | Marker, Fokustitel, kompakter Fortschritt, Primäraktion |
-| Wide / 4×2 | Fokus und bis zu drei Schritte mit Restzahl |
-| Tall / 3×4 | Fokus, bis zu drei Schritte, Primäraktion, nächster Kalendertermin |
-| Large / 4×4 | Fokus, bis zu drei Schritte, danach-Blatt, nächster Kalendertermin, Plus |
+| Wide / 4×2 | Fokus und bis zu drei Schritte mit kompakter Mengen-/Notizzeile und Restzahl |
+| Tall / 3×4 | Fokus, bis zu drei Schritte mit kompakter Mengen-/Notizzeile, Primäraktion, nächster Kalendertermin |
+| Large / 4×4 | Fokus, bis zu drei Schritte mit kompakter Mengen-/Notizzeile, danach-Blatt, nächster Kalendertermin, Plus |
 
 Alle bedienbaren Flächen sollen mindestens 48 dp erreichen. Wo ein Launcher die effektive
 Widgetfläche kleiner liefert, wird Inhalt reduziert statt das Touchziel weiter zu
@@ -37,3 +37,6 @@ verkleinern.
 
 Ein gemeinsames Widget-UI-Modell wird größenabhängig projiziert. Daten werden pro
 Updatezyklus einmal geladen und anschließend für alle Widget-IDs gerendert.
+Schritttitel und Metadaten stammen aus demselben präsentationsfertigen Modell wie im
+Dashboard; das Widget formatiert keine fachlichen Mengen. Die vollständige Kombination aus
+Titel und Metadaten bleibt auch bei visueller Kürzung als Inhaltsbeschreibung verfügbar.

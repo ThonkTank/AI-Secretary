@@ -33,10 +33,32 @@ public final class HomescreenGoldenRobolectricTest {
     @Test
     @Config(sdk = 35, qualifiers = "xxhdpi")
     public void renderWidgetReferenceStates() throws Exception {
-        render("widget-small", 480, 480, false);
-        render("widget-wide", 1032, 480, false);
-        render("widget-large", 1032, 1032, false);
-        render("widget-tall", 840, 1032, false);
+        AssertionError mismatch = null;
+        for (WidgetGolden golden : new WidgetGolden[]{
+                new WidgetGolden("widget-small", 480, 480),
+                new WidgetGolden("widget-wide", 1032, 480),
+                new WidgetGolden("widget-large", 1032, 1032),
+                new WidgetGolden("widget-tall", 840, 1032)}) {
+            try {
+                render(golden.name, golden.width, golden.height, false);
+            } catch (AssertionError error) {
+                if (mismatch == null) mismatch = error;
+                else mismatch.addSuppressed(error);
+            }
+        }
+        if (mismatch != null) throw mismatch;
+    }
+
+    private static final class WidgetGolden {
+        final String name;
+        final int width;
+        final int height;
+
+        WidgetGolden(String name, int width, int height) {
+            this.name = name;
+            this.width = width;
+            this.height = height;
+        }
     }
 
     private static void render(String preview, int width, int height,

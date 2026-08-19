@@ -28,7 +28,7 @@ public final class WidgetPresenterTest {
 
     @Test public void everySizeGetsItsDocumentedProjection() {
         WidgetPresenter.CycleData data = new WidgetPresenter.CycleData(
-                DashboardFixtures.fullDashboard(),
+                DashboardFixtures.widgetDashboard(),
                 new CalendarResult.Success(DashboardFixtures.calendarEvents()), palette);
 
         WidgetUiModel small = presenter.present(data, WidgetSizeClassifier.Size.SMALL);
@@ -40,6 +40,8 @@ public final class WidgetPresenterTest {
         assertEquals(java.util.Arrays.asList(true, false), small.progress);
         assertNull(small.calendar);
         assertEquals(2, wide.steps.size());
+        assertEquals("Duschen", wide.steps.get(0).title);
+        assertEquals("3 Sätze · 8 Wiederholungen", wide.steps.get(0).subtitle);
         assertNull(wide.calendar);
         assertEquals("Urlaub", tall.calendar.title);
         assertEquals("Rechnung bezahlen", large.afterTitle);

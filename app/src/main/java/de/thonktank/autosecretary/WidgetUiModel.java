@@ -11,12 +11,14 @@ public final class WidgetUiModel {
 
     public static final class Step {
         public final String id;
-        public final String label;
+        public final String title;
+        public final String subtitle;
         public final boolean done;
 
-        Step(String id, String label, boolean done) {
+        Step(String id, String title, String subtitle, boolean done) {
             this.id = id;
-            this.label = label;
+            this.title = title;
+            this.subtitle = subtitle;
             this.done = done;
         }
     }
