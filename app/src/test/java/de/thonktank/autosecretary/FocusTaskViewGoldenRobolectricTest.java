@@ -35,7 +35,8 @@ public final class FocusTaskViewGoldenRobolectricTest {
         FrameLayout root = new FrameLayout(activity);
         root.setBackgroundColor(palette.background);
         FocusTaskView view = new FocusTaskView(activity);
-        view.bind(gymTask(), false, false, palette, new NoOpActions());
+        NoOpActions actions = new NoOpActions();
+        view.bind(gymTask(), false, false, palette, actions, actions);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
         activity.setContentView(root);
 
@@ -73,9 +74,5 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 false, 0, 1L);
     }
 
-    private static final class NoOpActions implements FocusTaskView.Actions {
-        @Override public void onComplete(TaskSnapshot task) { }
-        @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepUiModel step) { }
-    }
+    private static final class NoOpActions extends FocusTestActions { }
 }

@@ -117,13 +117,11 @@ public final class DashboardCharacterizationTest {
         }
     }
 
-    private static final class NoOpActions implements DashboardRenderer.Actions {
+    private static final class NoOpActions extends FocusTestActions
+            implements DashboardRenderer.Actions {
         @Override public void onAddTask() { }
         @Override public void onTaskAction(TaskSnapshot task) { }
         @Override public void onTaskMenu(TaskSnapshot task) { }
-        @Override public void onComplete(TaskSnapshot task) { }
-        @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepUiModel step) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }

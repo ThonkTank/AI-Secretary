@@ -1,7 +1,5 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
-
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -16,6 +14,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import java.time.LocalTime;
 import java.util.Collections;
+import java.util.List;
 
 import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
@@ -119,7 +118,12 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         @Override public void onCompleteRemaining(TaskSnapshot task) { }
         @Override public void onHarvest(TaskSnapshot task) { }
         @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepUiModel step) { }
+        @Override public void onToggleStep(String stepId) { }
+        @Override public void onEditStepProgress(String stepId, List<Integer> repetitions,
+                                                 boolean done) { }
+        @Override public void onFinishExercise(String stepId) { }
+        @Override public void onReopenExercise(String stepId, List<Integer> repetitions) { }
+        @Override public void onSetProgressEditorStateChanged(SetProgressEditorState state) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }

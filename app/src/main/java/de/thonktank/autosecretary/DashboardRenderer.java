@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 public final class DashboardRenderer {
-    public interface Actions extends FocusTaskView.Actions, OptionsView.Actions {
+    public interface Actions extends FocusTaskView.TaskActions, FocusStepRowView.Actions,
+            OptionsView.Actions {
         void onAddTask();
         void onTaskAction(TaskSnapshot task);
         void onTaskMenu(TaskSnapshot task);
@@ -156,7 +157,7 @@ public final class DashboardRenderer {
         int open = 0;
         for (TaskSnapshot task : dashboard.tasks) if (!task.done) open++;
         focus.bind(focusTask, dashboard.timeline.size() > 0, open > 1, palette,
-                state.setProgressEditor, actions);
+                state.setProgressEditor, actions, actions);
         bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
         more.setText(context.getResources().getQuantityString(

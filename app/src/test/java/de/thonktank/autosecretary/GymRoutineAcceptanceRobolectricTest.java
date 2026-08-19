@@ -72,8 +72,9 @@ public final class GymRoutineAcceptanceRobolectricTest {
         assertEquals(4, focus.steps.size());
 
         FocusTaskView view = new FocusTaskView(context);
+        NoOpActions actions = new NoOpActions();
         view.bind(focus, false, false,
-                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), new NoOpActions());
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
 
         List<String> texts = visibleTexts(view);
         assertTrue(texts.contains("3 × 12 Wdh. · 23 kg, Sitz 5"));
@@ -127,9 +128,5 @@ public final class GymRoutineAcceptanceRobolectricTest {
         @Override public LocalTime time() { return LocalTime.of(9, 40); }
     }
 
-    private static final class NoOpActions implements FocusTaskView.Actions {
-        @Override public void onComplete(TaskSnapshot task) { }
-        @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepUiModel step) { }
-    }
+    private static final class NoOpActions extends FocusTestActions { }
 }

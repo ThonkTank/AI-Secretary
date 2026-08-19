@@ -203,20 +203,20 @@ public class MainActivity extends ComponentActivity {
             @Override public void onDefer(TaskSnapshot task) {
                 viewModel.defer(task.occurrenceId.isEmpty() ? task.taskId : task.occurrenceId);
             }
-            @Override public void onToggleStep(TaskStepUiModel step) {
-                viewModel.toggleStep(step.id);
+            @Override public void onToggleStep(String stepId) {
+                viewModel.toggleStep(stepId);
             }
-            @Override public void onEditStepProgress(TaskStepUiModel step,
+            @Override public void onEditStepProgress(String stepId,
                                                      java.util.List<Integer> repetitions,
                                                      boolean done) {
-                viewModel.editStepProgress(step.id, repetitions);
+                viewModel.editStepProgress(stepId, repetitions);
             }
-            @Override public void onFinishExercise(TaskStepUiModel step) {
-                viewModel.finishExercise(step.id);
+            @Override public void onFinishExercise(String stepId) {
+                viewModel.finishExercise(stepId);
             }
-            @Override public void onReopenExercise(TaskStepUiModel step,
+            @Override public void onReopenExercise(String stepId,
                                                     java.util.List<Integer> repetitions) {
-                viewModel.reopenExercise(step.id, repetitions);
+                viewModel.reopenExercise(stepId, repetitions);
             }
             @Override public void onSetProgressEditorStateChanged(
                     SetProgressEditorState state) {

@@ -57,11 +57,12 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         AtomicInteger changes = new AtomicInteger();
         FocusTaskView focus = new FocusTaskView(context);
         TaskSnapshot task = setTask(false);
-        focus.bind(task, false, true, palette(), expanded(), new Actions() {
+        Actions actions = new Actions() {
             @Override public void onSetProgressEditorStateChanged(SetProgressEditorState state) {
                 changes.incrementAndGet();
             }
-        });
+        };
+        focus.bind(task, false, true, palette(), expanded(), actions, actions);
         measure(focus, dp(context, 360), dp(context, 2_400));
 
         XpVesselView vessel = first(focus, XpVesselView.class);
@@ -120,7 +121,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
 
     private static void renderInlineEditor(Context context, int widthDp, float fontScale) {
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(setTask(false), false, true, palette(), expanded(), new Actions());
+        Actions actions = new Actions();
+        focus.bind(setTask(false), false, true, palette(), expanded(), actions, actions);
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
         int available = dp(context, widthDp) - horizontalPagePadding;
@@ -224,13 +226,10 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         return null;
     }
 
-    private static class Actions implements DashboardRenderer.Actions {
+    private static class Actions extends FocusTestActions implements DashboardRenderer.Actions {
         @Override public void onAddTask() { }
         @Override public void onTaskAction(TaskSnapshot task) { }
         @Override public void onTaskMenu(TaskSnapshot task) { }
-        @Override public void onComplete(TaskSnapshot task) { }
-        @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepUiModel step) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }

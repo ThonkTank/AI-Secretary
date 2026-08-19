@@ -176,8 +176,9 @@ public final class UiComponentRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
         FocusTaskView focus = new FocusTaskView(context);
+        NoOpActions actions = new NoOpActions();
         focus.bind(DashboardFixtures.taskWithSteps(), true, true,
-                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), new NoOpActions());
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), actions, actions);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(500), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -237,18 +238,18 @@ public final class UiComponentRobolectricTest {
                 new AtomicReference<>(SetProgressEditorState.closed());
         FocusTaskView focus = new FocusTaskView(context);
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
-        focus.bind(task, false, false, palette, editorState.get(),
-                new NoOpActions() {
-                    @Override public void onEditStepProgress(TaskStepUiModel step,
-                                                             java.util.List<Integer> repetitions,
-                                                             boolean done) {
-                        saved.set(repetitions);
-                    }
-                    @Override public void onSetProgressEditorStateChanged(
-                            SetProgressEditorState state) {
-                        editorState.set(state);
-                    }
-                });
+        NoOpActions actions = new NoOpActions() {
+            @Override public void onEditStepProgress(String stepId,
+                                                     java.util.List<Integer> repetitions,
+                                                     boolean done) {
+                saved.set(repetitions);
+            }
+            @Override public void onSetProgressEditorStateChanged(
+                    SetProgressEditorState state) {
+                editorState.set(state);
+            }
+        };
+        focus.bind(task, false, false, palette, editorState.get(), actions, actions);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -266,28 +267,14 @@ public final class UiComponentRobolectricTest {
         TextView save = focus.findViewById(R.id.set_progress_save);
         assertNotNull(input); assertNotNull(save);
         input.setText("10, 11");
-        focus.bind(task, false, false, palette, editorState.get(), new NoOpActions() {
-            @Override public void onEditStepProgress(TaskStepUiModel step,
-                                                     java.util.List<Integer> repetitions,
-                                                     boolean done) { saved.set(repetitions); }
-            @Override public void onSetProgressEditorStateChanged(SetProgressEditorState state) {
-                editorState.set(state);
-            }
-        });
+        focus.bind(task, false, false, palette, editorState.get(), actions, actions);
         input = focus.findViewById(R.id.set_progress_input);
         save = focus.findViewById(R.id.set_progress_save);
         assertEquals("10, 11", input.getText().toString());
         input.setText("10, 11, 12, 13");
         save.performClick();
         assertNotNull(editorState.get().error(set.id));
-        focus.bind(task, false, false, palette, editorState.get(), new NoOpActions() {
-            @Override public void onEditStepProgress(TaskStepUiModel step,
-                                                     java.util.List<Integer> repetitions,
-                                                     boolean done) { saved.set(repetitions); }
-            @Override public void onSetProgressEditorStateChanged(SetProgressEditorState state) {
-                editorState.set(state);
-            }
-        });
+        focus.bind(task, false, false, palette, editorState.get(), actions, actions);
         input = focus.findViewById(R.id.set_progress_input);
         save = focus.findViewById(R.id.set_progress_save);
         assertNotNull(input.getError());
@@ -309,13 +296,14 @@ public final class UiComponentRobolectricTest {
                 2, 1_000L, 15, 15, 0, true);
         AtomicReference<java.util.List<Integer>> reopened = new AtomicReference<>();
         FocusTaskView focus = new FocusTaskView(context);
+        NoOpActions actions = new NoOpActions() {
+            @Override public void onReopenExercise(String stepId,
+                                                   java.util.List<Integer> repetitions) {
+                reopened.set(repetitions);
+            }
+        };
         focus.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                new NoOpActions() {
-                    @Override public void onReopenExercise(TaskStepUiModel step,
-                                                           java.util.List<Integer> repetitions) {
-                        reopened.set(repetitions);
-                    }
-                });
+                actions, actions);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -353,13 +341,11 @@ public final class UiComponentRobolectricTest {
                 EditorUiState.closed());
     }
 
-    private static class NoOpActions implements DashboardRenderer.Actions {
+    private static class NoOpActions extends FocusTestActions
+            implements DashboardRenderer.Actions {
         @Override public void onAddTask() { }
         @Override public void onTaskAction(TaskSnapshot task) { }
         @Override public void onTaskMenu(TaskSnapshot task) { }
-        @Override public void onComplete(TaskSnapshot task) { }
-        @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepUiModel step) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }

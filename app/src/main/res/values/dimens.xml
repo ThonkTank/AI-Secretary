@@ -12,4 +12,10 @@
     <dimen name="editor_action_height">52dp</dimen>
     <dimen name="editor_outline_height">46dp</dimen>
     <dimen name="editor_step_gap">14dp</dimen>
+    <dimen name="focus_step_text_start">52dp</dimen>
+    <dimen name="focus_step_header_text_gap">4dp</dimen>
+    <dimen name="focus_step_dot_top_offset">-3dp</dimen>
+    <dimen name="focus_step_dot_bottom_offset">-4dp</dimen>
+    <dimen name="focus_step_subtitle_top_offset">-7dp</dimen>
+    <dimen name="focus_step_subtitle_bottom_gap">7dp</dimen>
 </resources>

@@ -22,9 +22,9 @@ import java.util.List;
 public final class SetProgressEditorView extends LinearLayout {
     public interface Listener {
         void onStateChanged(SetProgressEditorState state);
-        void onSave(TaskStepUiModel step, List<Integer> repetitions);
-        void onFinish(TaskStepUiModel step);
-        void onReopen(TaskStepUiModel step, List<Integer> repetitions);
+        void onSave(String stepId, List<Integer> repetitions);
+        void onFinish(String stepId);
+        void onReopen(String stepId, List<Integer> repetitions);
     }
 
     private final UiStyle style;
@@ -43,7 +43,8 @@ public final class SetProgressEditorView extends LinearLayout {
         style = new UiStyle(context);
         setId(R.id.set_progress_editor);
         setOrientation(VERTICAL);
-        setPadding(style.dp(52), 0, 0, style.dp(8));
+        setPadding(getResources().getDimensionPixelSize(R.dimen.focus_step_text_start),
+                0, 0, style.dp(8));
         progress = style.sans("", 14, 0, false);
         addView(progress, new LayoutParams(-1, -2));
         repetitions = new EditText(context);
@@ -128,10 +129,10 @@ public final class SetProgressEditorView extends LinearLayout {
         save.setBackground(style.pill(palette.accent, 24));
         toggleDone.setText(step.done ? R.string.set_reopen : R.string.set_finish);
         toggleDone.setTextColor(palette.ink2);
-        save.setOnClickListener(view -> withParsed(values -> callbacks.onSave(step, values)));
+        save.setOnClickListener(view -> withParsed(values -> callbacks.onSave(step.id, values)));
         toggleDone.setOnClickListener(view -> {
-            if (step.done) withParsed(values -> callbacks.onReopen(step, values));
-            else callbacks.onFinish(step);
+            if (step.done) withParsed(values -> callbacks.onReopen(step.id, values));
+            else callbacks.onFinish(step.id);
         });
         WoodGrainView.applyTextHalo(progress, palette.leaf1);
         WoodGrainView.applyTextHalo(toggleDone, palette.leaf1);
