@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

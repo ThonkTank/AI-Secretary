@@ -1,12 +1,12 @@
 package de.thonktank.autosecretary;
 
 public final class TimelineItemUiModel {
-    public final TaskSnapshot task;
+    public final TimelineTaskUiModel task;
     public final CalendarEventSnapshot event;
     final int minute;
     final long order;
 
-    private TimelineItemUiModel(TaskSnapshot task, CalendarEventSnapshot event,
+    private TimelineItemUiModel(TimelineTaskUiModel task, CalendarEventSnapshot event,
                                 int minute, long order) {
         this.task = task;
         this.event = event;
@@ -14,7 +14,7 @@ public final class TimelineItemUiModel {
         this.order = order;
     }
 
-    public static TimelineItemUiModel task(TaskSnapshot task) {
+    public static TimelineItemUiModel task(TimelineTaskUiModel task) {
         return new TimelineItemUiModel(task, null, task.slot.anchorMinute, task.displayOrder);
     }
 

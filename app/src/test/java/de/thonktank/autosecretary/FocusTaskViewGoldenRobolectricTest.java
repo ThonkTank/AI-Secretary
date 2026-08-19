@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 
 import android.app.Activity;
@@ -80,16 +80,16 @@ public final class FocusTaskViewGoldenRobolectricTest {
     }
 
     private static TaskSnapshot gymTask() {
-        TaskStepUiModel press = new TaskStepUiModel("press", "Beinpresse",
-                "3 × 12 Wdh. · 23 kg, Sitz 5", "3 × 12", "23 kg, Sitz 5", false,
+        FocusStepUiModel press = new FocusStepUiModel("press", "Beinpresse",
+                "3 × 12", "23 kg, Sitz 5", false,
                 RepetitionProgressUiModel.sets(3, 12, Arrays.asList(12, 11)),
                 0, 10, 0);
-        TaskStepUiModel pushups = new TaskStepUiModel("pushups", "Liegestütze",
-                "20 Wdh.", "20 Wdh.", "", false,
+        FocusStepUiModel pushups = new FocusStepUiModel("pushups", "Liegestütze",
+                "20 Wdh.", "", false,
                 RepetitionProgressUiModel.single(20, java.util.Collections.emptyList()),
                 0, 10, 0);
-        TaskStepUiModel plank = new TaskStepUiModel("plank", "Planke",
-                "2 Min. · Bauch fest", "2 Min.", "Bauch fest", false,
+        FocusStepUiModel plank = new FocusStepUiModel("plank", "Planke",
+                "2 Min.", "Bauch fest", false,
                 null, 0, 10, 0);
         return new TaskSnapshot("gym", "gym-today", "Gym", TaskSlot.MORNING,
                 "heute am Morgen", "Beinpresse", Recurrence.DAILY,
@@ -98,17 +98,17 @@ public final class FocusTaskViewGoldenRobolectricTest {
     }
 
     private static TaskSnapshot allAmountKindsTask() {
-        TaskStepUiModel warmup = step("warmup", "Aufwärmen", "", "", true, null);
-        TaskStepUiModel squats = step("squats", "Kniebeugen", "3 × 12",
+        FocusStepUiModel warmup = step("warmup", "Aufwärmen", "", "", true, null);
+        FocusStepUiModel squats = step("squats", "Kniebeugen", "3 × 12",
                 "Hantel 10 kg, langsam runter", false,
                 RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(12)));
-        TaskStepUiModel pushups = step("pushups", "Liegestütze", "12 Wdh.",
+        FocusStepUiModel pushups = step("pushups", "Liegestütze", "12 Wdh.",
                 "auf Fäusten", false,
                 RepetitionProgressUiModel.single(12, Collections.emptyList()));
-        TaskStepUiModel plank = step("plank", "Plank", "45 Sek.", "", false, null);
-        TaskStepUiModel stretch = step("stretch", "Dehnen", "",
+        FocusStepUiModel plank = step("plank", "Plank", "45 Sek.", "", false, null);
+        FocusStepUiModel stretch = step("stretch", "Dehnen", "",
                 "Waden und Hüfte, ohne Eile", false, null);
-        TaskStepUiModel shower = step("shower", "Duschen", "", "", false, null);
+        FocusStepUiModel shower = step("shower", "Duschen", "", "", false, null);
         return new TaskSnapshot("morning", "morning-today", "Morgenroutine",
                 TaskSlot.MORNING, "", "Kniebeugen", Recurrence.DAILY,
                 Arrays.asList(warmup, squats, pushups, plank, stretch, shower),
@@ -116,7 +116,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
     }
 
     private static TaskSnapshot activeWithoutAmountTask() {
-        TaskStepUiModel shower = step("shower", "Duschen", "", "", false, null);
+        FocusStepUiModel shower = step("shower", "Duschen", "", "", false, null);
         return new TaskSnapshot("morning-late", "morning-late-today", "Morgenroutine",
                 TaskSlot.MORNING, "", "Dehnen", Recurrence.DAILY,
                 Arrays.asList(
@@ -133,12 +133,10 @@ public final class FocusTaskViewGoldenRobolectricTest {
                         shower), 2, false, false, false, false, 4, 1L);
     }
 
-    private static TaskStepUiModel step(String id, String title, String amount, String note,
+    private static FocusStepUiModel step(String id, String title, String amount, String note,
                                         boolean done,
                                         RepetitionProgressUiModel progress) {
-        String subtitle = amount.isEmpty() ? note
-                : note.isEmpty() ? amount : amount + " · " + note;
-        return new TaskStepUiModel(id, title, subtitle, amount, note, done, progress,
+        return new FocusStepUiModel(id, title, amount, note, done, progress,
                 0, 10, done ? 10 : 0);
     }
 

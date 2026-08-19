@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.TodayUiModel;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.ApplyComboDecay;
+import de.thonktank.autosecretary.domain.model.Dashboard;
 
 import java.time.LocalDate;
 
@@ -33,12 +34,21 @@ public final class DashboardPresenter {
 
     public TodayUiModel load() {
         LocalDate today = clock.today();
-        return mapper.map(loadDashboard.execute(today), today);
+        return mapper.map(loadDomain(today), today);
     }
 
     public TodayUiModel refresh() {
+        LocalDate today = clock.today();
+        return mapper.map(refreshDomain(today), today);
+    }
+
+    public Dashboard loadDomain(LocalDate today) {
+        return loadDashboard.execute(today);
+    }
+
+    public Dashboard refreshDomain(LocalDate today) {
         if (decay != null) decay.execute();
         materializeDue.execute();
-        return load();
+        return loadDomain(today);
     }
 }

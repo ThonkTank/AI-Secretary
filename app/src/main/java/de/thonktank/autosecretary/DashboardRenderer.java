@@ -19,8 +19,8 @@ public final class DashboardRenderer {
     public interface Actions extends FocusTaskView.TaskActions, FocusStepRowView.Actions,
             OptionsView.Actions {
         void onAddTask();
-        void onTaskAction(TaskSnapshot task);
-        void onTaskMenu(TaskSnapshot task);
+        void onTaskAction(TimelineTaskUiModel task);
+        void onTaskMenu(TimelineTaskUiModel task);
     }
 
     private final Context context;

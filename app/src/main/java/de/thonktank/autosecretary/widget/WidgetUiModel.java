@@ -12,20 +12,6 @@ import de.thonktank.autosecretary.WidgetSizeClassifier;
 public final class WidgetUiModel {
     public enum PrimaryAction { NONE, OPEN_EDITOR, COMPLETE_OCCURRENCE, CONFIRM_CLOSE }
 
-    public static final class Step {
-        public final String id;
-        public final String title;
-        public final String subtitle;
-        public final boolean done;
-
-        Step(String id, String title, String subtitle, boolean done) {
-            this.id = id;
-            this.title = title;
-            this.subtitle = subtitle;
-            this.done = done;
-        }
-    }
-
     public static final class CalendarItem {
         public final String time;
         public final String title;
@@ -42,7 +28,7 @@ public final class WidgetUiModel {
     public final String title;
     public final boolean overdue;
     public final boolean empty;
-    public final List<Step> steps;
+    public final List<WidgetStepUiModel> steps;
     public final List<Boolean> progress;
     public final int additionalStepCount;
     @Nullable public final String afterTitle;
@@ -54,7 +40,7 @@ public final class WidgetUiModel {
     public final String taskTitle;
 
     WidgetUiModel(WidgetSizeClassifier.Size size, DayPalette palette, String marker,
-                  String title, boolean overdue, boolean empty, List<Step> steps,
+                  String title, boolean overdue, boolean empty, List<WidgetStepUiModel> steps,
                   List<Boolean> progress, int additionalStepCount, @Nullable String afterTitle,
                   @Nullable CalendarItem calendar, PrimaryAction primaryAction,
                   @Nullable String primaryActionId, @Nullable String primaryActionLabel,

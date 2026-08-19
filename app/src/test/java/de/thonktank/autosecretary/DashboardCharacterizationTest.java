@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -120,8 +120,8 @@ public final class DashboardCharacterizationTest {
     private static final class NoOpActions extends FocusTestActions
             implements DashboardRenderer.Actions {
         @Override public void onAddTask() { }
-        @Override public void onTaskAction(TaskSnapshot task) { }
-        @Override public void onTaskMenu(TaskSnapshot task) { }
+        @Override public void onTaskAction(TimelineTaskUiModel task) { }
+        @Override public void onTaskMenu(TimelineTaskUiModel task) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onFocusStepLimit(
                 de.thonktank.autosecretary.data.preferences.FocusStepLimit limit) { }

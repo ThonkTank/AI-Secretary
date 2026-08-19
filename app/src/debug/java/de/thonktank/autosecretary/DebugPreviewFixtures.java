@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -9,6 +9,9 @@ import java.util.List;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
+import de.thonktank.autosecretary.widget.WidgetDashboardUiModel;
+import de.thonktank.autosecretary.widget.WidgetStepUiModel;
+import de.thonktank.autosecretary.widget.WidgetTaskUiModel;
 
 /** Deterministic debug-only states for the reference preview gallery and layout inspectors. */
 public final class DebugPreviewFixtures {
@@ -18,9 +21,9 @@ public final class DebugPreviewFixtures {
         TaskSnapshot focus = new TaskSnapshot("preview-morning", "preview-occurrence",
                 "Morgenroutine", TaskSlot.MORNING, "heute am Morgen", "Anziehen",
                 Recurrence.DAILY, Arrays.asList(
-                        new TaskStepUiModel("preview-step-1", "Duschen", true),
-                        new TaskStepUiModel("preview-step-2", "Anziehen", false),
-                        new TaskStepUiModel("preview-step-3", "Frühstück", false)),
+                        new FocusStepUiModel("preview-step-1", "Duschen", true),
+                        new FocusStepUiModel("preview-step-2", "Anziehen", false),
+                        new FocusStepUiModel("preview-step-3", "Frühstück", false)),
                 2, false, false, false, false, 6, 1_001_000L);
         TaskSnapshot after = new TaskSnapshot("preview-letter", "preview-letter-occurrence",
                 "Brief beantworten", TaskSlot.MIDDAY, "um die Mittagszeit", "Erledigen",
@@ -29,20 +32,17 @@ public final class DebugPreviewFixtures {
         return today(120, Arrays.asList(focus, after));
     }
 
-    public static TodayUiModel widgetReference() {
-        TaskSnapshot gym = new TaskSnapshot("preview-gym", "preview-gym-occurrence",
-                "Gym Routine", TaskSlot.MORNING, "etwa eine Stunde", "Rudern",
-                Recurrence.DAILY, Arrays.asList(
-                        new TaskStepUiModel("preview-gym-1", "Bankdrücken",
-                                "3 Sätze · 8 Wiederholungen · 60 kg", true, null, 2, 10, 10),
-                        new TaskStepUiModel("preview-gym-2", "Rudern",
-                                "3 Sätze · 10 Wiederholungen · 45 kg", false, null, 1, 10, 0),
-                        new TaskStepUiModel("preview-gym-3", "Plank",
-                                "60 Sekunden · ruhig atmen", false, null, 0, 10, 0)),
-                2, false, false, false, false, 4, 1_000L);
-        TaskSnapshot after = task("preview-letter", "Brief beantworten", TaskSlot.MIDDAY,
-                "um die Mittagszeit", false, false, 2_000L);
-        return today(120, Arrays.asList(gym, after));
+    public static WidgetDashboardUiModel widgetReference() {
+        WidgetTaskUiModel gym = WidgetTaskUiModel.of("preview-gym",
+                "preview-gym-occurrence", "Gym Routine", false, false, "Rest erledigen",
+                Arrays.asList(
+                        WidgetStepUiModel.of("preview-gym-1", "Bankdrücken",
+                                "3 Sätze · 8 Wiederholungen · 60 kg", true),
+                        WidgetStepUiModel.of("preview-gym-2", "Rudern",
+                                "3 Sätze · 10 Wiederholungen · 45 kg", false),
+                        WidgetStepUiModel.of("preview-gym-3", "Plank",
+                                "60 Sekunden · ruhig atmen", false)));
+        return WidgetDashboardUiModel.of(gym, "Brief beantworten");
     }
 
     public static TodayUiModel emptyDay() {
@@ -95,10 +95,10 @@ public final class DebugPreviewFixtures {
     private static TaskSnapshot morning(boolean done, boolean secondStepDone) {
         return new TaskSnapshot("preview-morning", "preview-morning-occurrence", "Morgenroutine",
                 TaskSlot.MORNING, "etwa eine halbe Stunde", "Haare waschen", Recurrence.DAILY,
-                Arrays.asList(new TaskStepUiModel("preview-step-1", "Duschen", true),
-                        new TaskStepUiModel("preview-step-2", "Haare waschen", secondStepDone || done),
-                        new TaskStepUiModel("preview-step-3", "Anziehen", done),
-                        new TaskStepUiModel("preview-step-4", "Tabletten nehmen", done)),
+                Arrays.asList(new FocusStepUiModel("preview-step-1", "Duschen", true),
+                        new FocusStepUiModel("preview-step-2", "Haare waschen", secondStepDone || done),
+                        new FocusStepUiModel("preview-step-3", "Anziehen", done),
+                        new FocusStepUiModel("preview-step-4", "Tabletten nehmen", done)),
                 done ? 0 : secondStepDone ? 2 : 3, false, false, done, false, 6, 1_000L);
     }
 
@@ -109,7 +109,7 @@ public final class DebugPreviewFixtures {
     }
 
     private static TaskSnapshot vesselTask(int completed, boolean ready) {
-        List<TaskStepUiModel> steps = Arrays.asList(
+        List<FocusStepUiModel> steps = Arrays.asList(
                 previewStep("vessel-1", "Duschen", completed >= 1, 10, 2),
                 previewStep("vessel-2", "Haare waschen", completed >= 2, 15, 3),
                 previewStep("vessel-3", "Anziehen", completed >= 3, 20, 5));
@@ -122,9 +122,9 @@ public final class DebugPreviewFixtures {
                 68, collected, 0, ready);
     }
 
-    private static TaskStepUiModel previewStep(String id, String title, boolean done,
+    private static FocusStepUiModel previewStep(String id, String title, boolean done,
                                                 int value, int combo) {
-        return new TaskStepUiModel(id, title, "", done, null, combo, value,
+        return new FocusStepUiModel(id, title, "", "", done, null, combo, value,
                 done ? value : 0);
     }
 

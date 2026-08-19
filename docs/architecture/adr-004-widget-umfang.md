@@ -35,8 +35,12 @@ verkleinern.
 
 ## Konsequenzen
 
-Ein gemeinsames Widget-UI-Modell wird größenabhängig projiziert. Daten werden pro
+Ein widgeteigenes UI-Modell wird größenabhängig projiziert. Daten werden pro
 Updatezyklus einmal geladen und anschließend für alle Widget-IDs gerendert.
-Schritttitel und Metadaten stammen aus demselben präsentationsfertigen Modell wie im
-Dashboard; das Widget formatiert keine fachlichen Mengen. Die vollständige Kombination aus
-Titel und Metadaten bleibt auch bei visueller Kürzung als Inhaltsbeschreibung verfügbar.
+Schritttitel und Metadaten werden aus demselben Domain-Dashboard wie die Today-Ansicht, aber
+durch einen widgeteigenen Mapper erzeugt. Gemeinsame Formatierungsregeln liegen im
+`StepTextFormatter`; fertige Fokusmodelle werden nicht geteilt. Die vollständige Kombination
+aus Titel und Metadaten bleibt auch bei visueller Kürzung als Inhaltsbeschreibung verfügbar.
+
+Die verbraucherspezifische Modellgrenze wird in
+[ADR-011](adr-011-verbraucherspezifische-praesentationsmodelle.md) festgelegt.

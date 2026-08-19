@@ -126,7 +126,7 @@ public final class WidgetRemoteViewsFactory {
             boolean visible = i < model.steps.size();
             views.setViewVisibility(STEP_ROWS[i], visible ? View.VISIBLE : View.GONE);
             if (!visible) continue;
-            WidgetUiModel.Step step = model.steps.get(i);
+            de.thonktank.autosecretary.widget.WidgetStepUiModel step = model.steps.get(i);
             views.setImageViewBitmap(STEP_DOTS[i], forests.dew(step.done, model.palette));
             views.setTextViewText(STEP_TEXTS[i], step.done ? strike(step.title) : step.title);
             views.setTextColor(STEP_TEXTS[i], step.done ? model.palette.done : model.palette.ink);

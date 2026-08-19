@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 
 import static org.junit.Assert.assertEquals;
@@ -225,8 +225,8 @@ public final class UiComponentRobolectricTest {
     @Test public void repetitionStepperConfirmsAndEditsSavedSetsInline() {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
-        TaskStepUiModel set = new TaskStepUiModel("set-step", "Beinpresse",
-                "3 × 12 Wdh. · 23 kg", "3 × 12", "23 kg", false,
+        FocusStepUiModel set = new FocusStepUiModel("set-step", "Beinpresse",
+                "3 × 12", "23 kg", false,
                 RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(10)),
                 2, 15, 0);
         TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
@@ -286,10 +286,10 @@ public final class UiComponentRobolectricTest {
     @Test public void completedStepsCollapseIntoTheDoneStatus() {
         Context context = ApplicationProvider.getApplicationContext();
         java.util.List<Integer> full = Arrays.asList(10, 11, 12);
-        TaskStepUiModel set = new TaskStepUiModel("set-step", "Beinpresse",
-                "3 × 12 Wdh. · 23 kg", "3 × 12", "23 kg", true,
+        FocusStepUiModel set = new FocusStepUiModel("set-step", "Beinpresse",
+                "3 × 12", "23 kg", true,
                 RepetitionProgressUiModel.sets(3, 12, full), 2, 15, 15);
-        TaskStepUiModel next = new TaskStepUiModel("next", "Duschen", false);
+        FocusStepUiModel next = new FocusStepUiModel("next", "Duschen", false);
         TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
                 TaskSlot.MORNING, "", "", Recurrence.DAILY,
                 Arrays.asList(set, next), 1, false, false, false, false,
@@ -338,8 +338,8 @@ public final class UiComponentRobolectricTest {
     private static class NoOpActions extends FocusTestActions
             implements DashboardRenderer.Actions {
         @Override public void onAddTask() { }
-        @Override public void onTaskAction(TaskSnapshot task) { }
-        @Override public void onTaskMenu(TaskSnapshot task) { }
+        @Override public void onTaskAction(TimelineTaskUiModel task) { }
+        @Override public void onTaskMenu(TimelineTaskUiModel task) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onFocusStepLimit(FocusStepLimit limit) { }
         @Override public void onCalendarPermission() { }

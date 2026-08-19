@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
 /** Modular focus-card row for the running step and compact following steps. */
 public final class FocusStepRowView extends LinearLayout {
@@ -93,7 +93,7 @@ public final class FocusStepRowView extends LinearLayout {
         body.addView(controls, controlsParams);
     }
 
-    public void bind(TaskStepUiModel step, boolean active, DayPalette palette,
+    public void bind(FocusStepUiModel step, boolean active, DayPalette palette,
                      RepetitionInputState input, Actions actions) {
         topLine.setVisibility(active ? VISIBLE : GONE);
         bottomLine.setVisibility(active ? VISIBLE : GONE);
@@ -175,7 +175,7 @@ public final class FocusStepRowView extends LinearLayout {
     CharSequence renderedSubtitle() { return note.getText(); }
     boolean editorVisible() { return controls.getVisibility() == VISIBLE; }
 
-    private static void commit(TaskStepUiModel step, RepetitionInputState input,
+    private static void commit(FocusStepUiModel step, RepetitionInputState input,
                                Actions actions) {
         int value = input.valueFor(step);
         int editingIndex = input.editingIndexFor(step);

@@ -53,7 +53,7 @@ public final class WidgetPresenterTest {
 
     @Test public void emptyProjectionOnlyOffersSafeEditorNavigation() {
         WidgetPresenter.CycleData data = new WidgetPresenter.CycleData(
-                DashboardFixtures.emptyDashboard(),
+                DashboardFixtures.emptyWidgetDashboard(),
                 new CalendarResult.Success(Collections.emptyList()), palette);
 
         WidgetUiModel small = presenter.present(data, WidgetSizeClassifier.Size.SMALL);
@@ -67,9 +67,8 @@ public final class WidgetPresenterTest {
     }
 
     @Test public void terminalConditionIsNeverExecutedDirectlyByTheWidget() {
-        TodayUiModel state = DashboardFixtures.today(0,
-                Collections.singletonList(DashboardFixtures.ongoingTask()));
-        WidgetUiModel model = presenter.present(new WidgetPresenter.CycleData(state,
+        WidgetUiModel model = presenter.present(new WidgetPresenter.CycleData(
+                        DashboardFixtures.ongoingWidgetDashboard(),
                         new CalendarResult.PermissionMissing(), palette),
                 WidgetSizeClassifier.Size.TALL);
 

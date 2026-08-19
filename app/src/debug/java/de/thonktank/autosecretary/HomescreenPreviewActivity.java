@@ -20,6 +20,7 @@ import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.widget.WidgetPresenter;
+import de.thonktank.autosecretary.widget.WidgetDashboardUiModel;
 import de.thonktank.autosecretary.widget.WidgetUiModel;
 
 /** Debug-only deterministic gallery for the ten supplied visual reference states. */
@@ -83,7 +84,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         WidgetSizeClassifier.Size size = WidgetSizeClassifier.Size.valueOf(name.toUpperCase());
         LocalTime time = size == WidgetSizeClassifier.Size.LARGE ? LocalTime.of(23, 50)
                 : size == WidgetSizeClassifier.Size.TALL ? LocalTime.of(19, 35) : LocalTime.of(9, 40);
-        TodayUiModel dashboard = DebugPreviewFixtures.widgetReference();
+        WidgetDashboardUiModel dashboard = DebugPreviewFixtures.widgetReference();
         CalendarResult calendar = new CalendarResult.Success(DebugPreviewFixtures.referenceCalendar("full"));
         WidgetPresenter presenter = new WidgetPresenter(this);
         WidgetUiModel model = presenter.present(new WidgetPresenter.CycleData(dashboard, calendar,
@@ -114,8 +115,8 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
 
     private static final class PreviewActions implements DashboardRenderer.Actions {
         @Override public void onAddTask() { }
-        @Override public void onTaskAction(TaskSnapshot task) { }
-        @Override public void onTaskMenu(TaskSnapshot task) { }
+        @Override public void onTaskAction(TimelineTaskUiModel task) { }
+        @Override public void onTaskMenu(TimelineTaskUiModel task) { }
         @Override public void onComplete(TaskSnapshot task) { }
         @Override public void onCompleteRemaining(TaskSnapshot task) { }
         @Override public void onHarvest(TaskSnapshot task) { }

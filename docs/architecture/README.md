@@ -17,6 +17,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-008: Deterministische Update-Abhängigkeiten und Konfiguration](adr-008-deterministische-update-abhaengigkeiten.md)
 - [ADR-009: Vertrauensgrenze für Update-Transport und Download](adr-009-update-transport-und-download-vertrauen.md)
 - [ADR-010: Unveränderliches Reward-Ledger und Gegenbuchungen](adr-010-reward-ledger-und-gegenbuchungen.md)
+- [ADR-011: Verbraucherspezifische Today-Präsentationsmodelle](adr-011-verbraucherspezifische-praesentationsmodelle.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -40,9 +41,9 @@ Die App bleibt bewusst ein Android-Modul. Innerhalb dieses Moduls markieren Pake
 belastbaren Verantwortungsgrenzen:
 
 - `domain.model` und `domain.usecase`: fachliche Typen und Abläufe, einschließlich `StepAmount`;
-- `presentation`: präsentationsfertige Dashboard-Schritte und lokalisierte Textformatierung;
+- `presentation`: präsentationsfertige Fokus-Schritte und lokalisierte Textformatierung;
 - `editor`: reine, Android-unabhängige Zustandsübergänge des Aufgabeneditors;
-- `widget`: größenabhängige Widget-Projektion und ihr UI-Modell;
+- `widget`: direkte Domain-zu-Widget-Projektion und größenabhängige UI-Modelle;
 - Root-Paket: Android-Views, Lifecycle-/Composition-Root und historisch noch nicht verschobene
   kleine Adapter.
 

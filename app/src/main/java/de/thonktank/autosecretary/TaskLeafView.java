@@ -56,8 +56,9 @@ public final class TaskLeafView extends FrameLayout {
         progressLabel = style.sans("", 14, 0, false);
     }
 
-    public void bind(TaskSnapshot task, String markerText, boolean deep, DayPalette palette,
-                     Consumer<TaskSnapshot> complete, Consumer<TaskSnapshot> showMenu) {
+    public void bind(TimelineTaskUiModel task, String markerText, boolean deep,
+                     DayPalette palette, Consumer<TimelineTaskUiModel> complete,
+                     Consumer<TimelineTaskUiModel> showMenu) {
         setBackground(style.leaf(deep ? palette.leaf3 : palette.leaf2,
                 style.edge(palette, deep ? 3 : 2), 56, 8, 56, 8));
         setRotation(deep ? 1.5f : 1.1f); style.shadow(this, palette, deep ? 5 : 7, deep ? .6f : .7f);
@@ -93,7 +94,7 @@ public final class TaskLeafView extends FrameLayout {
 
     View rewardAnchor() { return dot; }
 
-    private void bindProgress(TaskSnapshot task, DayPalette palette) {
+    private void bindProgress(TimelineTaskUiModel task, DayPalette palette) {
         boolean visible = task.steps.size() > 1 && !task.done;
         progress.setVisibility(visible ? VISIBLE : GONE); if (!visible) return;
         while (bars.size() < task.steps.size()) {

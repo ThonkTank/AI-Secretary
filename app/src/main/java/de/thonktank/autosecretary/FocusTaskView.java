@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 
 import android.content.Context;
@@ -41,7 +41,7 @@ public final class FocusTaskView extends FrameLayout {
     private final TextView doneStatus;
     private final TextView moreStatus;
     private final List<FocusStepRowView> stepRows = new ArrayList<>();
-    private final List<TaskStepUiModel> openSteps = new ArrayList<>();
+    private final List<FocusStepUiModel> openSteps = new ArrayList<>();
     private final LinearLayout actions;
     private final LinearLayout.LayoutParams actionParams;
     private final TextView primary;
@@ -256,7 +256,7 @@ public final class FocusTaskView extends FrameLayout {
         steps.setVisibility(task.steps.isEmpty() ? GONE : VISIBLE);
         openSteps.clear();
         int doneCount = 0;
-        for (TaskStepUiModel step : task.steps) {
+        for (FocusStepUiModel step : task.steps) {
             if (step.done) doneCount++;
             else openSteps.add(step);
         }
@@ -278,7 +278,7 @@ public final class FocusTaskView extends FrameLayout {
                 continue;
             }
             row.setVisibility(VISIBLE);
-            TaskStepUiModel step = openSteps.get(i);
+            FocusStepUiModel step = openSteps.get(i);
             boolean active = i == 0;
             rewardAnchors.register(new RewardAnchorKey(RewardAnchorKey.Kind.STEP, step.id),
                     row.rewardAnchor());

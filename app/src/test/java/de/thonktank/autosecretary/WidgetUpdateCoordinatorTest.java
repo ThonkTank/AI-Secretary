@@ -98,7 +98,7 @@ public final class WidgetUpdateCoordinatorTest {
     }
 
     private WidgetPresenter.CycleData data() {
-        return new WidgetPresenter.CycleData(DashboardFixtures.emptyDashboard(),
+        return new WidgetPresenter.CycleData(DashboardFixtures.emptyWidgetDashboard(),
                 new CalendarResult.Success(Collections.emptyList()),
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO));
     }

@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 
 import static org.junit.Assert.assertEquals;
@@ -225,8 +225,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     }
 
     private static TaskSnapshot setTask(boolean done) {
-        TaskStepUiModel step = new TaskStepUiModel("set-step", "Beinpresse",
-                "3 × 12 Wdh. · 23 kg", "3 × 12", "23 kg", done,
+        FocusStepUiModel step = new FocusStepUiModel("set-step", "Beinpresse",
+                "3 × 12", "23 kg", done,
                 RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(10)),
                 2, 15, done ? 15 : 0);
         return new TaskSnapshot("training", "training-today", "Training mit langem Titel",
@@ -236,15 +236,14 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     }
 
     private static TaskSnapshot longTask() {
-        List<TaskStepUiModel> steps = new ArrayList<>();
-        steps.add(new TaskStepUiModel("active", "Kniebeugen", "3 × 12 Wdh. · langsam",
-                "3 × 12", "Hantel 10 kg, langsam runter", false,
+        List<FocusStepUiModel> steps = new ArrayList<>();
+        steps.add(new FocusStepUiModel("active", "Kniebeugen", "3 × 12",
+                "Hantel 10 kg, langsam runter", false,
                 RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(12)),
                 1, 10, 0));
         for (int index = 1; index <= 5; index++)
-            steps.add(new TaskStepUiModel("future-" + index,
+            steps.add(new FocusStepUiModel("future-" + index,
                     "Ein ausgesprochen langer Folgeschritt " + index,
-                    "12 Wdh. · Lange Notiz, die bei großer Schrift zwei Zeilen benötigt",
                     "12 Wdh.", "Lange Notiz, die bei großer Schrift zwei Zeilen benötigt",
                     false, RepetitionProgressUiModel.single(12, Collections.emptyList()),
                     0, 10, 0));
@@ -317,8 +316,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
 
     private static class Actions extends FocusTestActions implements DashboardRenderer.Actions {
         @Override public void onAddTask() { }
-        @Override public void onTaskAction(TaskSnapshot task) { }
-        @Override public void onTaskMenu(TaskSnapshot task) { }
+        @Override public void onTaskAction(TimelineTaskUiModel task) { }
+        @Override public void onTaskMenu(TimelineTaskUiModel task) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onFocusStepLimit(FocusStepLimit limit) { }
         @Override public void onCalendarPermission() { }

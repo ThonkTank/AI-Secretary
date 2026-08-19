@@ -1,9 +1,8 @@
 package de.thonktank.autosecretary.widget;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
-
 import android.content.Context;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -13,17 +12,16 @@ import de.thonktank.autosecretary.AppContainer;
 import de.thonktank.autosecretary.CalendarEventSnapshot;
 import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.R;
-import de.thonktank.autosecretary.TaskSnapshot;
-import de.thonktank.autosecretary.TodayUiModel;
 import de.thonktank.autosecretary.WidgetSizeClassifier;
 
 public final class WidgetPresenter {
     public static final class CycleData {
-        final TodayUiModel dashboard;
+        final WidgetDashboardUiModel dashboard;
         final CalendarResult calendar;
         final DayPalette palette;
 
-        public CycleData(TodayUiModel dashboard, CalendarResult calendar, DayPalette palette) {
+        public CycleData(WidgetDashboardUiModel dashboard, CalendarResult calendar,
+                         DayPalette palette) {
             this.dashboard = dashboard;
             this.calendar = calendar;
             this.palette = palette;
@@ -32,10 +30,12 @@ public final class WidgetPresenter {
 
     private final Context context;
     private final AppContainer container;
+    private final WidgetDashboardMapper dashboardMapper;
 
     public WidgetPresenter(Context context, AppContainer container) {
         this.context = context.getApplicationContext();
         this.container = container;
+        this.dashboardMapper = container == null ? null : new WidgetDashboardMapper(container.texts);
     }
 
     public WidgetPresenter(Context context) {
@@ -44,25 +44,27 @@ public final class WidgetPresenter {
 
     public CycleData load() {
         DayPalette.Mode mode = DayPalette.Mode.valueOf(container.uiPreferences.themeMode().name());
-        return new CycleData(container.dashboardPresenter.refresh(), container.calendar.loadToday(),
+        LocalDate today = container.clock.today();
+        WidgetDashboardUiModel dashboard = dashboardMapper.map(
+                container.dashboardPresenter.refreshDomain(today), today);
+        return new CycleData(dashboard, container.calendar.loadToday(),
                 DayPalette.at(container.clock.time(), mode));
     }
 
     public WidgetUiModel present(CycleData data, WidgetSizeClassifier.Size size) {
-        TaskSnapshot focus = data.dashboard.firstOpen();
+        WidgetTaskUiModel focus = data.dashboard.focus;
         if (focus == null) return empty(data.palette, size);
-        List<WidgetUiModel.Step> steps = new ArrayList<>();
+        List<WidgetStepUiModel> steps = new ArrayList<>();
         if (size != WidgetSizeClassifier.Size.SMALL) {
             for (int i = 0; i < Math.min(3, focus.steps.size()); i++) {
-                TaskStepUiModel step = focus.steps.get(i);
-                steps.add(new WidgetUiModel.Step(step.id, step.title, step.subtitle, step.done));
+                steps.add(focus.steps.get(i));
             }
         }
         List<Boolean> progress = new ArrayList<>();
         for (int i = 0; i < Math.min(3, focus.steps.size()); i++)
             progress.add(focus.steps.get(i).done);
         String after = size == WidgetSizeClassifier.Size.LARGE
-                ? nextOpenTitle(data.dashboard, focus) : null;
+                ? data.dashboard.afterTitle : null;
         WidgetUiModel.CalendarItem calendar = supportsCalendar(size)
                 ? firstCalendar(data.calendar) : null;
         WidgetUiModel.PrimaryAction action = size == WidgetSizeClassifier.Size.LARGE
@@ -74,7 +76,7 @@ public final class WidgetPresenter {
                 context.getString(focus.overdue ? R.string.marker_overdue : R.string.marker_now),
                 focus.title, focus.overdue, false, steps, progress,
                 Math.max(0, focus.steps.size() - 3), after, calendar, action, actionId,
-                size == WidgetSizeClassifier.Size.LARGE ? null : focus.actionLabel(context),
+                size == WidgetSizeClassifier.Size.LARGE ? null : focus.primaryActionLabel,
                 size == WidgetSizeClassifier.Size.LARGE, focus.title);
     }
 
@@ -99,9 +101,4 @@ public final class WidgetPresenter {
         return new WidgetUiModel.CalendarItem(event.time, event.title);
     }
 
-    private static String nextOpenTitle(TodayUiModel state, TaskSnapshot focus) {
-        for (TaskSnapshot task : state.tasks)
-            if (!task.done && task != focus) return task.title;
-        return null;
-    }
 }

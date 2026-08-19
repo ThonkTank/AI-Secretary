@@ -186,11 +186,15 @@ public class MainActivity extends ComponentActivity {
     private DashboardRenderer.Actions dashboardActions() {
         return new DashboardRenderer.Actions() {
             @Override public void onAddTask() { openEditorWithFlight(); }
-            @Override public void onTaskAction(TaskSnapshot task) {
+            @Override public void onTaskAction(TimelineTaskUiModel task) {
                 if (task.undoAvailable) viewModel.undoOccurrence(task.occurrenceId);
-                else completeOrConfirm(task);
+                else if (task.terminalCondition) viewModel.requestClose(task.taskId, task.title);
+                else viewModel.complete(task.occurrenceId);
             }
-            @Override public void onTaskMenu(TaskSnapshot task) { showTaskMenu(task); }
+            @Override public void onTaskMenu(TimelineTaskUiModel task) {
+                TaskSnapshot source = findTask(task.taskId);
+                if (source != null) showTaskMenu(source);
+            }
             @Override public void onComplete(TaskSnapshot task) { completeOrConfirm(task); }
             @Override public void onCompleteRemaining(TaskSnapshot task) {
                 viewModel.completeRemaining(task.occurrenceId);

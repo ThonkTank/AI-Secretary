@@ -5,13 +5,13 @@ import static org.junit.Assert.assertEquals;
 import java.util.Arrays;
 
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
 import org.junit.Test;
 
 public final class RepetitionInputStateTest {
     @Test public void draftClampsAndKeepsTheSelectedSavedSet() {
-        TaskStepUiModel step = new TaskStepUiModel("step", "Kniebeugen", "", "3 × 12", "",
+        FocusStepUiModel step = new FocusStepUiModel("step", "Kniebeugen", "3 × 12", "",
                 false, RepetitionProgressUiModel.sets(3, 12, Arrays.asList(10, 11)),
                 0, 10, 0);
 

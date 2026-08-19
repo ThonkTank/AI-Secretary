@@ -37,7 +37,7 @@ public final class DashboardUiMapper {
 
     private TaskSnapshot snapshot(DashboardTask item, LocalDate today, Dashboard dashboard) {
         Task task = item.task;
-        List<TaskStepUiModel> steps = new ArrayList<>();
+        List<FocusStepUiModel> steps = new ArrayList<>();
         int remaining = 0;
         String next = task.conditionText;
         for (OccurrenceStep step : item.steps) {
@@ -55,8 +55,7 @@ public final class DashboardUiMapper {
                         ((StepAmount.Repetitions) step.amount).repetitions,
                         step.repetitionProgress.actualRepetitions);
             }
-            steps.add(new TaskStepUiModel(step.id, step.text,
-                    stepTexts.format(step.amount, step.note),
+            steps.add(new FocusStepUiModel(step.id, step.text,
                     stepTexts.compactAmount(step.amount), step.note,
                     done, repetitionProgress, stepStage, claimable,
                     item.earnedXp(step.id)));
@@ -73,7 +72,7 @@ public final class DashboardUiMapper {
         ComboProgress taskCombo = dashboard.combos.get(ComboProgress.taskOwner(task.id));
         int taskStage = taskCombo == null ? 0 : taskCombo.level();
         int collected = 0, projected = 0;
-        for (TaskStepUiModel step : steps) {
+        for (FocusStepUiModel step : steps) {
             collected += step.earnedXp;
             projected += step.done ? step.earnedXp : step.claimableXp;
         }

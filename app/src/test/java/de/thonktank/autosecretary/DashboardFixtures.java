@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -9,6 +9,9 @@ import java.util.List;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
+import de.thonktank.autosecretary.widget.WidgetDashboardUiModel;
+import de.thonktank.autosecretary.widget.WidgetStepUiModel;
+import de.thonktank.autosecretary.widget.WidgetTaskUiModel;
 
 /** Deterministic examples shared by characterization tests and future presenter tests. */
 final class DashboardFixtures {
@@ -26,8 +29,8 @@ final class DashboardFixtures {
     static TaskSnapshot taskWithSteps() {
         return task("steps", "Morgenroutine", TaskSlot.MORNING, Recurrence.DAILY,
                 Arrays.asList(
-                        new TaskStepUiModel("step-1", "Duschen", true),
-                        new TaskStepUiModel("step-2", "Anziehen", false)),
+                        new FocusStepUiModel("step-1", "Duschen", true),
+                        new FocusStepUiModel("step-2", "Anziehen", false)),
                 1, false, false, false, false, 6, 1_002_000L);
     }
 
@@ -56,15 +59,23 @@ final class DashboardFixtures {
                 taskWithSteps(), completedTodayTask(), overdueTask(), recurringTask(), ongoingTask()));
     }
 
-    static TodayUiModel widgetDashboard() {
-        TaskSnapshot focus = task("steps", "Morgenroutine", TaskSlot.MORNING,
-                Recurrence.DAILY, Arrays.asList(
-                        new TaskStepUiModel("step-1", "Duschen",
-                                "3 Sätze · 8 Wiederholungen", true, null, 0, 10, 10),
-                        new TaskStepUiModel("step-2", "Anziehen", false)),
-                1, false, false, false, false, 6, 1_002_000L);
-        return today(120, Arrays.asList(focus, completedTodayTask(), overdueTask(),
-                recurringTask(), ongoingTask()));
+    static WidgetDashboardUiModel widgetDashboard() {
+        WidgetTaskUiModel focus = WidgetTaskUiModel.of("steps", "occurrence-steps",
+                "Morgenroutine", false, false, "Rest erledigen", Arrays.asList(
+                        WidgetStepUiModel.of("step-1", "Duschen",
+                                "3 Sätze · 8 Wiederholungen", true),
+                        WidgetStepUiModel.of("step-2", "Anziehen", "", false)));
+        return WidgetDashboardUiModel.of(focus, "Rechnung bezahlen");
+    }
+
+    static WidgetDashboardUiModel emptyWidgetDashboard() {
+        return WidgetDashboardUiModel.empty();
+    }
+
+    static WidgetDashboardUiModel ongoingWidgetDashboard() {
+        return WidgetDashboardUiModel.of(WidgetTaskUiModel.of("ongoing",
+                "occurrence-ongoing", "Praktikum", false, true, "Bedingung erfüllt",
+                Collections.emptyList()), null);
     }
 
     static List<CalendarEventSnapshot> calendarEvents() {
@@ -74,7 +85,7 @@ final class DashboardFixtures {
     }
 
     private static TaskSnapshot task(String id, String title, TaskSlot slot, Recurrence recurrence,
-                                     List<TaskStepUiModel> steps, int remainingSteps,
+                                     List<FocusStepUiModel> steps, int remainingSteps,
                                      boolean terminalCondition, boolean ongoing, boolean done,
                                      boolean overdue, int comboStage, long displayOrder) {
         return new TaskSnapshot(id, done ? "occurrence-done" : "occurrence-" + id,
