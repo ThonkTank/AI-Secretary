@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import androidx.core.content.pm.PackageInfoCompat;
@@ -19,9 +20,18 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import de.thonktank.autosecretary.calendar.CalendarPolicy;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
@@ -37,6 +47,7 @@ public final class UpgradePersistenceTest {
     private static final String TEMPLATE_ID = "upgrade-e2e-template";
     private static final String OCCURRENCE_ID = "upgrade-e2e-occurrence";
     private static final String STEP_ID = "upgrade-e2e-step";
+    private static final String BOOKING_ID = "upgrade-e2e-booking";
     private static final String TITLE = "Upgrade-Daten bleiben erhalten";
     private static final String STEP_TEXT = "Persistierten Schritt lesen";
     private static final String PROBE_PREFERENCES = "upgrade_e2e_probe";
@@ -56,16 +67,7 @@ public final class UpgradePersistenceTest {
                 path.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE)) {
             database.beginTransaction();
             try {
-                database.delete("occurrence_steps", "id = ?", new String[]{STEP_ID});
-                database.delete("occurrences", "id = ?", new String[]{OCCURRENCE_ID});
-                database.delete("task_steps", "id = ?", new String[]{TEMPLATE_ID});
-                database.delete("tasks", "id = ?", new String[]{TASK_ID});
-                database.insertOrThrow("tasks", null, taskValues());
-                database.insertOrThrow("task_steps", null, templateValues());
-                database.insertOrThrow("occurrences", null, occurrenceValues());
-                database.insertOrThrow("occurrence_steps", null, occurrenceStepValues());
-                database.insertWithOnConflict("stats", null, statsValues(),
-                        SQLiteDatabase.CONFLICT_REPLACE);
+                seedFixture(database);
                 database.setTransactionSuccessful();
             } finally {
                 database.endTransaction();
@@ -93,6 +95,25 @@ public final class UpgradePersistenceTest {
                 context.getSharedPreferences(PROBE_PREFERENCES, Context.MODE_PRIVATE).edit()
                 .putLong(PREVIOUS_VERSION, previousVersion)
                 .commit());
+    }
+
+    @Test public void seedContractSupportsEveryExportedRoomSchema() throws Exception {
+        for (int version = 1; version <= 7; version++) {
+            try (SQLiteDatabase database = SQLiteDatabase.create(null)) {
+                createExportedSchema(database, version);
+                seedFixture(database);
+                assertEquals("task fixture in schema " + version, 1,
+                        count(database, "tasks", "id", TASK_ID));
+                assertEquals("template fixture in schema " + version, 1,
+                        count(database, "task_steps", "id", TEMPLATE_ID));
+                assertEquals("occurrence fixture in schema " + version, 1,
+                        count(database, "occurrences", "id", OCCURRENCE_ID));
+                assertEquals("step fixture in schema " + version, 1,
+                        count(database, "occurrence_steps", "id", STEP_ID));
+                if (version == 7) assertEquals(1,
+                        count(database, "reward_bookings", "id", BOOKING_ID));
+            }
+        }
     }
 
     @Test public void currentVersionStartsAndReadsPreviousData() throws Exception {
@@ -195,6 +216,14 @@ public final class UpgradePersistenceTest {
         values.put("lastStreakWeek", "2026-08-10");
         values.put("displayOrder", 4_001_024L);
         values.put("hasCompletedOccurrence", 1);
+        values.putNull("estimatedMinutes");
+        values.put("timeOfDayMask", 0);
+        values.put("boundKind", "FOREVER");
+        values.put("boundUntilOn", "");
+        values.putNull("boundWeeks");
+        values.putNull("remainingCount");
+        values.put("deadlineOn", "");
+        values.put("note", "");
         return values;
     }
 
@@ -204,6 +233,12 @@ public final class UpgradePersistenceTest {
         values.put("taskId", TASK_ID);
         values.put("position", 0);
         values.put("text", STEP_TEXT);
+        values.put("weekdayMask", 0);
+        values.put("amountKind", "NONE");
+        values.putNull("plannedSets");
+        values.putNull("plannedReps");
+        values.putNull("plannedDurationSeconds");
+        values.put("note", "");
         return values;
     }
 
@@ -215,6 +250,9 @@ public final class UpgradePersistenceTest {
         values.put("state", "OPEN");
         values.put("sortOrder", 42);
         values.put("completedOn", "");
+        values.put("slot", "LATER");
+        values.put("awardedXp", 0);
+        values.put("comboPointDelta", 0);
         return values;
     }
 
@@ -225,6 +263,16 @@ public final class UpgradePersistenceTest {
         values.put("position", 0);
         values.put("text", STEP_TEXT);
         values.put("done", 1);
+        values.put("amountKind", "NONE");
+        values.putNull("plannedSets");
+        values.putNull("plannedReps");
+        values.putNull("plannedDurationSeconds");
+        values.put("note", "");
+        values.put("actualRepetitions", "");
+        values.put("sourceTemplateId", TEMPLATE_ID);
+        values.put("comboOwnerId", "step:" + TEMPLATE_ID);
+        values.put("earnedXp", 10);
+        values.put("comboPointDelta", 0);
         return values;
     }
 
@@ -233,5 +281,100 @@ public final class UpgradePersistenceTest {
         values.put("id", 1);
         values.put("xp", 73);
         return values;
+    }
+
+    private static ContentValues bookingValues() {
+        ContentValues values = new ContentValues();
+        values.put("id", BOOKING_ID);
+        values.put("transactionId", "upgrade-e2e-transaction");
+        values.put("occurrenceId", OCCURRENCE_ID);
+        values.put("occurrenceStepId", STEP_ID);
+        values.put("ownerId", "step:" + TEMPLATE_ID);
+        values.put("kind", "LEGACY_STEP");
+        values.put("target", "VESSEL");
+        values.put("xpDelta", 10);
+        values.put("comboPointDelta", 0);
+        values.put("bookedOn", "2999-12-31");
+        values.putNull("reversesBookingId");
+        return values;
+    }
+
+    private static void seedFixture(SQLiteDatabase database) {
+        deleteIfPresent(database, "reward_bookings", "id", BOOKING_ID);
+        deleteIfPresent(database, "occurrence_steps", "id", STEP_ID);
+        deleteIfPresent(database, "occurrences", "id", OCCURRENCE_ID);
+        deleteIfPresent(database, "task_steps", "id", TEMPLATE_ID);
+        deleteIfPresent(database, "tasks", "id", TASK_ID);
+        insertCompatible(database, "tasks", taskValues(), SQLiteDatabase.CONFLICT_ABORT);
+        insertCompatible(database, "task_steps", templateValues(), SQLiteDatabase.CONFLICT_ABORT);
+        insertCompatible(database, "occurrences", occurrenceValues(), SQLiteDatabase.CONFLICT_ABORT);
+        insertCompatible(database, "occurrence_steps", occurrenceStepValues(),
+                SQLiteDatabase.CONFLICT_ABORT);
+        insertCompatible(database, "stats", statsValues(), SQLiteDatabase.CONFLICT_REPLACE);
+        if (tableExists(database, "reward_bookings"))
+            insertCompatible(database, "reward_bookings", bookingValues(),
+                    SQLiteDatabase.CONFLICT_ABORT);
+    }
+
+    private static void insertCompatible(SQLiteDatabase database, String table,
+                                         ContentValues superset, int conflict) {
+        Set<String> columns = columns(database, table);
+        if (columns.isEmpty()) throw new AssertionError("Missing fixture table " + table);
+        ContentValues compatible = new ContentValues(superset);
+        for (String key : new HashSet<>(compatible.keySet()))
+            if (!columns.contains(key)) compatible.remove(key);
+        long row = database.insertWithOnConflict(table, null, compatible, conflict);
+        if (row == -1L) throw new AssertionError("Could not seed fixture table " + table);
+    }
+
+    private static void deleteIfPresent(SQLiteDatabase database, String table,
+                                        String column, String value) {
+        if (tableExists(database, table))
+            database.delete(table, column + " = ?", new String[]{value});
+    }
+
+    private static boolean tableExists(SQLiteDatabase database, String table) {
+        return !columns(database, table).isEmpty();
+    }
+
+    private static Set<String> columns(SQLiteDatabase database, String table) {
+        Set<String> result = new HashSet<>();
+        try (Cursor cursor = database.rawQuery("PRAGMA table_info(`" + table + "`)", null)) {
+            int name = cursor.getColumnIndexOrThrow("name");
+            while (cursor.moveToNext()) result.add(cursor.getString(name));
+        }
+        return result;
+    }
+
+    private static int count(SQLiteDatabase database, String table,
+                             String column, String value) {
+        try (Cursor cursor = database.rawQuery("SELECT COUNT(*) FROM `" + table
+                + "` WHERE `" + column + "` = ?", new String[]{value})) {
+            assertTrue(cursor.moveToFirst());
+            return cursor.getInt(0);
+        }
+    }
+
+    private static void createExportedSchema(SQLiteDatabase database, int version)
+            throws Exception {
+        String resource = "de.thonktank.autosecretary.AppDatabase/" + version + ".json";
+        try (InputStream stream = InstrumentationRegistry.getInstrumentation()
+                .getContext().getAssets().open(resource);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(
+                     stream, StandardCharsets.UTF_8))) {
+            JSONObject exported = new JSONObject(reader.lines().collect(
+                    Collectors.joining("\n"))).getJSONObject("database");
+            JSONArray entities = exported.getJSONArray("entities");
+            for (int index = 0; index < entities.length(); index++) {
+                JSONObject entity = entities.getJSONObject(index);
+                String table = entity.getString("tableName");
+                database.execSQL(entity.getString("createSql")
+                        .replace("${TABLE_NAME}", table));
+                JSONArray indices = entity.getJSONArray("indices");
+                for (int entry = 0; entry < indices.length(); entry++)
+                    database.execSQL(indices.getJSONObject(entry).getString("createSql")
+                            .replace("${TABLE_NAME}", table));
+            }
+        }
     }
 }
