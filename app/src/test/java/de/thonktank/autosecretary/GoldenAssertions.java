@@ -17,14 +17,7 @@ final class GoldenAssertions {
     static void compare(Class<?> owner, String resource, File baseline, File reportStem,
                         Bitmap actual, int channelTolerance, double maximumChangedRatio,
                         String updateEnvironment) throws Exception {
-        write(artifact(reportStem, "actual"), actual);
         boolean update = "1".equals(System.getenv(updateEnvironment));
-        if (update) {
-            if (!baselineUpdatesAllowed(true, isCi()))
-                throw new AssertionError("CI may not update golden baselines");
-            write(baseline, actual);
-            return;
-        }
         try (InputStream stream = owner.getResourceAsStream(resource)) {
             assertNotNull("Missing golden " + resource, stream);
             Bitmap expected = BitmapFactory.decodeStream(stream);
@@ -48,10 +41,38 @@ final class GoldenAssertions {
                 changed++;
             }
             double ratio = sameSize ? changed / (double) Math.max(1, width * height) : 1d;
-            if (!sameSize || ratio > maximumChangedRatio) {
-                write(artifact(reportStem, "expected"), expected);
-                Bitmap difference = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            boolean mismatch = !sameSize || ratio > maximumChangedRatio;
+            Bitmap difference = null;
+            if (mismatch) {
+                difference = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
                 difference.setPixels(differencePixels, 0, width, 0, 0, width, height);
+            }
+            if (update) {
+                if (!baselineUpdatesAllowed(true, isCi())) {
+                    if (difference != null) difference.recycle();
+                    expected.recycle();
+                    throw new AssertionError("CI may not update golden baselines");
+                }
+                if (!mismatch) {
+                    write(artifact(reportStem, "actual"), actual);
+                    expected.recycle();
+                    return;
+                }
+                if (!reviewedArtifactsAvailable(reportStem, expected, actual, difference)) {
+                    difference.recycle();
+                    expected.recycle();
+                    throw new AssertionError("Run without " + updateEnvironment
+                            + " first, inspect the generated expected/actual/diff files, "
+                            + "then rerun with the component update enabled");
+                }
+                write(baseline, actual);
+                difference.recycle();
+                expected.recycle();
+                return;
+            }
+            write(artifact(reportStem, "actual"), actual);
+            if (mismatch) {
+                write(artifact(reportStem, "expected"), expected);
                 write(artifact(reportStem, "diff"), difference);
                 difference.recycle();
                 expected.recycle();
@@ -61,6 +82,13 @@ final class GoldenAssertions {
             }
             expected.recycle();
         }
+    }
+
+    static boolean reviewedArtifactsAvailable(File reportStem, Bitmap expected,
+                                               Bitmap actual, Bitmap difference) {
+        return sameBitmap(artifact(reportStem, "expected"), expected)
+                && sameBitmap(artifact(reportStem, "actual"), actual)
+                && sameBitmap(artifact(reportStem, "diff"), difference);
     }
 
     static boolean baselineUpdatesAllowed(boolean requested, boolean ci) {
@@ -81,6 +109,25 @@ final class GoldenAssertions {
         return Math.max(Math.abs(((expected >>> 16) & 255) - ((actual >>> 16) & 255)),
                 Math.max(Math.abs(((expected >>> 8) & 255) - ((actual >>> 8) & 255)),
                         Math.abs((expected & 255) - (actual & 255)))) > tolerance;
+    }
+
+    private static boolean sameBitmap(File file, Bitmap expected) {
+        if (!file.isFile()) return false;
+        Bitmap actual = BitmapFactory.decodeFile(file.getAbsolutePath());
+        if (actual == null) return false;
+        try {
+            if (actual.getWidth() != expected.getWidth()
+                    || actual.getHeight() != expected.getHeight()) return false;
+            int width = actual.getWidth();
+            int height = actual.getHeight();
+            int[] actualPixels = new int[width * height];
+            int[] expectedPixels = new int[width * height];
+            actual.getPixels(actualPixels, 0, width, 0, 0, width, height);
+            expected.getPixels(expectedPixels, 0, width, 0, 0, width, height);
+            return java.util.Arrays.equals(actualPixels, expectedPixels);
+        } finally {
+            actual.recycle();
+        }
     }
 
     private static File artifact(File stem, String kind) {

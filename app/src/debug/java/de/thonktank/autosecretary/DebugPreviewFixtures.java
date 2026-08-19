@@ -21,9 +21,9 @@ public final class DebugPreviewFixtures {
         TaskSnapshot focus = new TaskSnapshot("preview-morning", "preview-occurrence",
                 "Morgenroutine", TaskSlot.MORNING, "heute am Morgen", "Anziehen",
                 Recurrence.DAILY, Arrays.asList(
-                        new FocusStepUiModel("preview-step-1", "Duschen", true),
-                        new FocusStepUiModel("preview-step-2", "Anziehen", false),
-                        new FocusStepUiModel("preview-step-3", "Frühstück", false)),
+                        FocusStepUiModel.of("preview-step-1", "Duschen", true),
+                        FocusStepUiModel.of("preview-step-2", "Anziehen", false),
+                        FocusStepUiModel.of("preview-step-3", "Frühstück", false)),
                 2, false, false, false, false, 6, 1_001_000L);
         TaskSnapshot after = new TaskSnapshot("preview-letter", "preview-letter-occurrence",
                 "Brief beantworten", TaskSlot.MIDDAY, "um die Mittagszeit", "Erledigen",
@@ -95,10 +95,10 @@ public final class DebugPreviewFixtures {
     private static TaskSnapshot morning(boolean done, boolean secondStepDone) {
         return new TaskSnapshot("preview-morning", "preview-morning-occurrence", "Morgenroutine",
                 TaskSlot.MORNING, "etwa eine halbe Stunde", "Haare waschen", Recurrence.DAILY,
-                Arrays.asList(new FocusStepUiModel("preview-step-1", "Duschen", true),
-                        new FocusStepUiModel("preview-step-2", "Haare waschen", secondStepDone || done),
-                        new FocusStepUiModel("preview-step-3", "Anziehen", done),
-                        new FocusStepUiModel("preview-step-4", "Tabletten nehmen", done)),
+                Arrays.asList(FocusStepUiModel.of("preview-step-1", "Duschen", true),
+                        FocusStepUiModel.of("preview-step-2", "Haare waschen", secondStepDone || done),
+                        FocusStepUiModel.of("preview-step-3", "Anziehen", done),
+                        FocusStepUiModel.of("preview-step-4", "Tabletten nehmen", done)),
                 done ? 0 : secondStepDone ? 2 : 3, false, false, done, false, 6, 1_000L);
     }
 
@@ -124,7 +124,7 @@ public final class DebugPreviewFixtures {
 
     private static FocusStepUiModel previewStep(String id, String title, boolean done,
                                                 int value, int combo) {
-        return new FocusStepUiModel(id, title, "", "", done, null, combo, value,
+        return FocusStepUiModel.of(id, title, "", "", done, null, combo, value,
                 done ? value : 0);
     }
 

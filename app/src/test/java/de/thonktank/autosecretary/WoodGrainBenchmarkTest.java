@@ -34,28 +34,27 @@ public final class WoodGrainBenchmarkTest {
         fixture.awaitGeometry();
         for (int index = 0; index < 8; index++) fixture.draw();
 
-        WoodGrainView.clearGeometryCacheForTest();
+        WoodGrainRenderRequest request = fixture.request();
+        WoodGrainRenderPipeline.clearForTest();
         List<Long> misses = new ArrayList<>();
         for (int index = 0; index < 12; index++) {
-            WoodGrainView.clearGeometryCacheForTest();
+            WoodGrainRenderPipeline.clearForTest();
             long started = System.nanoTime();
-            fixture.grain.forceGeometryRequestForTest();
-            fixture.awaitGeometry();
+            WoodGrainRenderPipeline.request(request).join();
             misses.add(System.nanoTime() - started);
         }
 
-        fixture.draw();
+        WoodGrainRenderPipeline.request(request).join();
         List<Long> cacheHits = new ArrayList<>();
         for (int index = 0; index < 40; index++) {
             long started = System.nanoTime();
-            fixture.grain.forceGeometryRequestForTest();
-            fixture.awaitGeometry();
+            WoodGrainRenderPipeline.request(request).join();
             cacheHits.add(System.nanoTime() - started);
         }
         List<Long> frames = new ArrayList<>();
         for (int index = 0; index < 120; index++) frames.add(fixture.timedDraw());
 
-        WoodGrainView.clearGeometryCacheForTest();
+        WoodGrainRenderPipeline.clearForTest();
         forceGc();
         long memoryBefore = usedHeap();
         for (int index = 0; index < 16; index++) {
@@ -81,9 +80,9 @@ public final class WoodGrainBenchmarkTest {
                         + "\"cacheEntries\":%d,\"cacheBytes\":%d,"
                         + "\"heapDeltaBytes\":%d,\"buildCount\":%d}%n",
                 missMedian, cacheHitMedian, frameMedian, frameP95,
-                WoodGrainView.geometryCacheEntriesForTest(),
-                WoodGrainView.geometryCacheBytesForTest(), memoryDelta,
-                WoodGrainView.geometryBuildCountForTest());
+                WoodGrainRenderPipeline.cacheEntriesForTest(),
+                WoodGrainRenderPipeline.cacheBytesForTest(), memoryDelta,
+                WoodGrainRenderPipeline.buildCountForTest());
         assertTrue(missMedian >= 0d);
     }
 
@@ -140,8 +139,19 @@ public final class WoodGrainBenchmarkTest {
 
         void draw() { grain.draw(canvas); }
         void awaitGeometry() {
-            WoodGrainView.awaitGeometryForTest();
+            WoodGrainRenderPipeline.awaitIdleForTest();
             Shadows.shadowOf(Looper.getMainLooper()).idle();
+        }
+        WoodGrainRenderRequest request() {
+            float density = grain.getResources().getDisplayMetrics().density;
+            return WoodGrainRenderRequest.anchors(grain.getWidth(), grain.getHeight(), density,
+                    Arrays.asList(
+                            new WoodGrainRenderRequest.Anchor(
+                                    new android.graphics.RectF(130, 120, 274, 264), 12),
+                            new WoodGrainRenderRequest.Anchor(
+                                    new android.graphics.RectF(355, 250, 499, 394), 10),
+                            new WoodGrainRenderRequest.Anchor(
+                                    new android.graphics.RectF(620, 420, 764, 564), 8)));
         }
         long timedDraw() {
             long started = System.nanoTime();

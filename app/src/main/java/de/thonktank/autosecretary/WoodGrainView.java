@@ -173,21 +173,4 @@ public final class WoodGrainView extends View {
         return Collections.unmodifiableList(result);
     }
 
-    static void clearGeometryCacheForTest() { WoodGrainRenderPipeline.clearForTest(); }
-    static int geometryCacheEntriesForTest() {
-        return WoodGrainRenderPipeline.cacheEntriesForTest();
-    }
-    static int geometryCacheBytesForTest() {
-        return WoodGrainRenderPipeline.cacheBytesForTest();
-    }
-    static int geometryBuildCountForTest() {
-        return WoodGrainRenderPipeline.buildCountForTest();
-    }
-    static void awaitGeometryForTest() { WoodGrainRenderPipeline.awaitIdleForTest(); }
-    void forceGeometryRequestForTest() {
-        requestedKey = null;
-        renderData = null;
-        requestGeometry();
-    }
-    boolean hasRenderDataForTest() { return renderData != null; }
 }

@@ -55,7 +55,7 @@ public final class DashboardUiMapper {
                         ((StepAmount.Repetitions) step.amount).repetitions,
                         step.repetitionProgress.actualRepetitions);
             }
-            steps.add(new FocusStepUiModel(step.id, step.text,
+            steps.add(FocusStepUiModel.of(step.id, step.text,
                     stepTexts.compactAmount(step.amount), step.note,
                     done, repetitionProgress, stepStage, claimable,
                     item.earnedXp(step.id)));

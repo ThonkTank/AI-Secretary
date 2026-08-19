@@ -26,7 +26,10 @@ Jeder Verbraucher besitzt eine eigene unveränderliche Projektion:
 Lokalisierte Mengen- und Notizregeln bleiben im gemeinsamen `StepTextFormatter`. Der Formatter
 teilt Regeln, nicht fertige Modelle. Consumer-Modelle mit alternativen Zuständen verwenden
 benannte Factory-Methoden; private Konstruktoren und defensive Listenkopien verhindern
-unvollständige oder nachträglich veränderbare Instanzen.
+unvollständige oder nachträglich veränderbare Instanzen. `FocusStepUiModel.of` weist zusätzlich
+eine Wiederholungsprojektion ohne Mengenlabel und einen offenen Schritt mit bereits vollständig
+belegten Ergebnisslots zurück. Ein als „Rest erledigt“ abgeschlossener Schritt darf weiterhin
+bewusst nur Teilergebnisse enthalten.
 
 Der `DashboardPresenter` stellt dafür neben der Today-Projektion das Domain-Dashboard für einen
 expliziten Stichtag bereit. Activity und Widget erfassen diesen Tag je Ladezyklus genau einmal,

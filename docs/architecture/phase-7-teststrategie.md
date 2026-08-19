@@ -45,7 +45,9 @@ Metadaten direkt aus `app/schemas/de.thonktank.autosecretary.AppDatabase/<versio
 
 Die Migration 7→8 besitzt zusätzliche Fälle für 0, 12, 999, 1200, fehlerhaften Legacytext,
 Idempotenz und die Korrektur genau einer Ergebniszeile. Der Instrumentationstest gegen das
-exportierte v7-Schema wird gebaut; seine Ausführung benötigt weiterhin Emulator oder Gerät.
+exportierte v7-Schema wird lokal als Test-APK gebaut. Im CI-Lauf des Phase-7-Commits
+`4ed5201c` liefen Instrumentation und der echte Upgrade-Probe jeweils auf API 26 und API 35
+erfolgreich; eine erneute lokale Ausführung benötigt weiterhin Emulator oder Gerät.
 
 ## Golden-Vertrag
 
@@ -53,7 +55,10 @@ exportierte v7-Schema wird gebaut; seine Ausführung benötigt weiterhin Emulato
 `app/build/reports/goldens/<komponente>`. Bei einer Abweichung liegen dort zusätzlich Expected
 und ein magenta markierter Diff. Dieser Diff muss vor jeder Baselineänderung geprüft werden.
 
-Baselines werden ausschließlich komponentenbezogen aktualisiert:
+Baselines werden ausschließlich komponentenbezogen und in zwei Schritten aktualisiert. Zuerst
+läuft der betroffene Test ohne Updatevariable. Bei einer Abweichung muss er fehlschlagen und das
+zu genau diesem Renderstand gehörende Expected-/Actual-/Diff-Triplet erzeugen. Erst nach dessen
+Prüfung darf derselbe Test mit seiner Updatevariable erneut laufen:
 
 ```bash
 UPDATE_FOCUS_TASK_GOLDENS=1 ./gradlew testDebugUnitTest \
@@ -65,7 +70,10 @@ UPDATE_TASK_EDITOR_GOLDENS=1 ./gradlew testDebugUnitTest \
 ```
 
 Es gibt bewusst keinen globalen Update-Schalter. Ein Fokusupdate kann dadurch Widget- oder
-Editor-Baselines nicht mitschreiben. Unter `CI` oder `GITHUB_ACTIONS` sind Updates gesperrt.
+Editor-Baselines nicht mitschreiben. `GoldenAssertions` übernimmt eine Baseline nur, wenn das
+vorher erzeugte Triplet pixelgenau zum aktuellen Expected und Actual passt; ein fehlendes oder
+veraltetes Triplet bricht den Updateversuch ab. Unter `CI` oder `GITHUB_ACTIONS` sind Updates
+gesperrt.
 
 ## Lokale Befehle und vollständiges Gate
 
@@ -98,11 +106,12 @@ keine Ausführung der Instrumentationstests auf einem Android-Zielsystem.
 
 Auf derselben lokalen Umgebung sank die Laufzeit der
 `AccessibilityLayoutMatrixRobolectricTest` durch die Verlagerung der Kombinatorik in reine Tests
-von 25,495 s auf 11,219 s. Das serielle vollständige Gate lief nach Phase 8 in 57,88 s bei
-1.138.052 KiB maximaler RSS. Die Phase-0-Referenz desselben Gradle-Gates lag bei 84,50 s und
-1.167.380 KiB. Damit ist das Gesamtgate trotz der zwischenzeitlich ergänzten Fach-, Room- und
-Migrationstests rund 31 % schneller und die gemessene Spitzenbelegung etwas niedriger.
+von 25,495 s auf 11,169 bis 15,979 s in den vollständigen Abschlussläufen. Das letzte serielle
+vollständige Gate lief nach dem Abschlussaudit in 63,78 s bei 1.132.312 KiB maximaler RSS. Die
+Phase-0-Referenz desselben Gradle-Gates lag bei 84,50 s und 1.167.380 KiB. Damit ist das
+Gesamtgate trotz der zwischenzeitlich ergänzten Fach-, Room-, Migration- und
+Golden-Vertragstests rund 25 % schneller und die gemessene Spitzenbelegung rund 3 % niedriger.
 
-Der Abschlusslauf enthielt 243 Hosttests, davon 242 erfolgreich und einen bewusst übersprungenen
+Der Abschlusslauf enthielt 246 Hosttests, davon 245 erfolgreich und einen bewusst übersprungenen
 Test. Alle Fokus-Goldens waren byteidentisch; keine Fokus-, Homescreen-, Widget- oder
 Editor-Baseline wurde in Phase 8 geändert.

@@ -65,7 +65,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
         assertEquals("focus=" + view.getMeasuredHeight() + " root=" + root.getMeasuredHeight(),
                 following, ViewTestQueries.visibleFollowingStepRows(view));
         Shadows.shadowOf(Looper.getMainLooper()).idle();
-        WoodGrainView.awaitGeometryForTest();
+        WoodGrainRenderPipeline.awaitIdleForTest();
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
         Bitmap actual = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
@@ -79,15 +79,15 @@ public final class FocusTaskViewGoldenRobolectricTest {
     }
 
     private static TaskSnapshot gymTask() {
-        FocusStepUiModel press = new FocusStepUiModel("press", "Beinpresse",
+        FocusStepUiModel press = FocusStepUiModel.of("press", "Beinpresse",
                 "3 × 12", "23 kg, Sitz 5", false,
                 RepetitionProgressUiModel.sets(3, 12, Arrays.asList(12, 11)),
                 0, 10, 0);
-        FocusStepUiModel pushups = new FocusStepUiModel("pushups", "Liegestütze",
+        FocusStepUiModel pushups = FocusStepUiModel.of("pushups", "Liegestütze",
                 "20 Wdh.", "", false,
                 RepetitionProgressUiModel.single(20, java.util.Collections.emptyList()),
                 0, 10, 0);
-        FocusStepUiModel plank = new FocusStepUiModel("plank", "Planke",
+        FocusStepUiModel plank = FocusStepUiModel.of("plank", "Planke",
                 "2 Min.", "Bauch fest", false,
                 null, 0, 10, 0);
         return new TaskSnapshot("gym", "gym-today", "Gym", TaskSlot.MORNING,
@@ -135,7 +135,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
     private static FocusStepUiModel step(String id, String title, String amount, String note,
                                         boolean done,
                                         RepetitionProgressUiModel progress) {
-        return new FocusStepUiModel(id, title, amount, note, done, progress,
+        return FocusStepUiModel.of(id, title, amount, note, done, progress,
                 0, 10, done ? 10 : 0);
     }
 

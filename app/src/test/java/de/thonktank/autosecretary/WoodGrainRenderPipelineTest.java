@@ -77,20 +77,22 @@ public final class WoodGrainRenderPipelineTest {
                 Collections.singletonList(new WoodGrainView.Anchor(
                         new RectF(180, 140, 300, 260), 8)));
         root.removeView(grain);
-        WoodGrainView.awaitGeometryForTest();
+        WoodGrainRenderPipeline.awaitIdleForTest();
         Shadows.shadowOf(Looper.getMainLooper()).idle();
-        assertFalse(grain.hasRenderDataForTest());
+        Bitmap bitmap = Bitmap.createBitmap(600, 480, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        grain.draw(canvas);
+        assertFalse(grain.isDirty());
 
         root.addView(grain, new FrameLayout.LayoutParams(600, 480));
         root.measure(exact(600), exact(480));
         root.layout(0, 0, 600, 480);
+        grain.draw(canvas);
+        assertFalse(grain.isDirty());
+        WoodGrainRenderPipeline.awaitIdleForTest();
         Shadows.shadowOf(Looper.getMainLooper()).idle();
-        WoodGrainView.awaitGeometryForTest();
-        Shadows.shadowOf(Looper.getMainLooper()).idle();
-        assertTrue(grain.hasRenderDataForTest());
+        assertTrue("accepted geometry must invalidate the reattached view", grain.isDirty());
         int builds = WoodGrainRenderPipeline.buildCountForTest();
-        Bitmap bitmap = Bitmap.createBitmap(600, 480, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
         for (int index = 0; index < 8; index++) grain.draw(canvas);
         assertEquals(builds, WoodGrainRenderPipeline.buildCountForTest());
         bitmap.recycle();
@@ -110,4 +112,5 @@ public final class WoodGrainRenderPipelineTest {
     private static int exact(int size) {
         return View.MeasureSpec.makeMeasureSpec(size, View.MeasureSpec.EXACTLY);
     }
+
 }

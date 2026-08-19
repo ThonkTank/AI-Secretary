@@ -215,7 +215,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     }
 
     private static TaskSnapshot setTask(boolean done) {
-        FocusStepUiModel step = new FocusStepUiModel("set-step", "Beinpresse",
+        FocusStepUiModel step = FocusStepUiModel.of("set-step", "Beinpresse",
                 "3 × 12", "23 kg", done,
                 RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(10)),
                 2, 15, done ? 15 : 0);
@@ -227,12 +227,12 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
 
     private static TaskSnapshot longTask() {
         List<FocusStepUiModel> steps = new ArrayList<>();
-        steps.add(new FocusStepUiModel("active", "Kniebeugen", "3 × 12",
+        steps.add(FocusStepUiModel.of("active", "Kniebeugen", "3 × 12",
                 "Hantel 10 kg, langsam runter", false,
                 RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(12)),
                 1, 10, 0));
         for (int index = 1; index <= 5; index++)
-            steps.add(new FocusStepUiModel("future-" + index,
+            steps.add(FocusStepUiModel.of("future-" + index,
                     "Ein ausgesprochen langer Folgeschritt " + index,
                     "12 Wdh.", "Lange Notiz, die bei großer Schrift zwei Zeilen benötigt",
                     false, RepetitionProgressUiModel.single(12, Collections.emptyList()),

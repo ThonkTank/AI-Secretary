@@ -7,7 +7,8 @@ Stand: 2026-08-19
 Der Benchmark verwendet dieselbe deterministische 1080×900-xxhdpi-Fixture mit drei
 überlappenden Anchors, 8–14 Konturen und einer Textmaske. Er misst Geometrieverfügbarkeit bei
 Cache-Miss, Cache-Hit, wiederholte Draw-Zeiten sowie Heap- und Cachewachstum über 16 verschiedene
-Größen. Er läuft absichtlich nicht im normalen Unit-Gate:
+Größen. Miss und Hit werden direkt am Pipelinevertrag gemessen; die Draw-Verteilung verwendet
+weiterhin den gebundenen `WoodGrainView`. Er läuft absichtlich nicht im normalen Unit-Gate:
 
 ```bash
 ./gradlew testDebugUnitTest \

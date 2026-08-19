@@ -79,7 +79,17 @@ No-op-Callbacks eine zweite, nur in Tests existierende Event-API.
 Phase 8 entfernt diese Seams. Tests lesen sichtbaren Viewzustand oder zeichnen echte
 `DashboardEvent`s auf. Verbleibende `*ForTest`-Hooks des Wood-Grain-Renderers sind eine bewusste
 Ausnahme für asynchrone Pipeline-, Cache- und Benchmarkinvarianten; sie sollten nicht als
-Vorbild für normale UI-Tests dienen.
+Vorbild für normale UI-Tests dienen. Das Abschlussaudit entfernte auch dort die vermeidbaren
+Durchreichmethoden und die direkte `renderData`-Abfrage aus `WoodGrainView`; übrig bleiben nur
+package-private Synchronisations- und Messpunkte an der tatsächlich asynchronen globalen
+Pipeline. Der View-Lifecycle-Test beobachtet stattdessen den öffentlichen Invalidierungsvertrag.
+
+Beim Abschlussaudit fiel außerdem auf, dass der komponentenbezogene Golden-Schalter die
+Baseline unmittelbar schreiben konnte. Die Dokumentation verlangte zwar eine vorherige
+Diffprüfung, der Helper erzwang sie aber nicht. Der Updatepfad akzeptiert deshalb jetzt nur noch
+ein bereits in einem fehlgeschlagenen normalen Lauf erzeugtes, pixelgenau zum aktuellen Render
+passendes Expected-/Actual-/Diff-Triplet. So ist die Prüfung weiterhin eine bewusste menschliche
+Entscheidung, ein versehentlich übersprungener Erzeugungsschritt aber technisch ausgeschlossen.
 
 ### Die alte Satzliste war technische Schuld im Schema
 
@@ -120,9 +130,9 @@ ein datengetriebener Invalidierungsmechanismus beziehungsweise eine Outbox verl�
    konsistent bleiben; stärkere Datenbankconstraints oder eine einzige kanonische Speicherung
    wären robuster.
 7. Das einmodulige Root-Paket besitzt keine automatisierten Architekturgrenzen.
-8. Robolectric deckt Accessibilitysemantik gut ab, ersetzt aber weder Geräte-Instrumentation,
-   Accessibility Scanner noch manuelle TalkBack-Prüfung. Der paketierte v7→v8-Test wurde ohne
-   angeschlossenes Zielsystem nicht ausgeführt.
+8. Robolectric deckt Accessibilitysemantik gut ab, ersetzt aber weder Accessibility Scanner
+   noch eine manuelle TalkBack-Prüfung. Instrumentation und echter Upgrade-Probe liefen für den
+   Phase-7-Commit im CI auf API 26 und 35; lokal wurde mangels Zielsystem nur das Test-APK gebaut.
 9. Native-Graphics-Goldens sind wertvoll, aber werkzeug- und Renderingversionssensitiv. Der
    komponentenbezogene Updatevertrag begrenzt Schäden, beseitigt diese Empfindlichkeit nicht.
 10. Widgetinvalidierung ist explizite Aufrufdisziplin; neue persistierende Commands benötigen

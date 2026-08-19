@@ -74,6 +74,16 @@ public final class SetBarsViewTest {
         second.recycle();
     }
 
+    @Test public void legacyValueAboveTheCurrentInputLimitRemainsReadable() {
+        Context context = ApplicationProvider.getApplicationContext();
+        SetBarsView bars = new SetBarsView(context);
+
+        bars.bind("legacy", 2, Collections.singletonList(1_200), -1,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT), ignored -> { });
+
+        assertTrue(bars.getContentDescription().toString().contains("Satz 1: 1200"));
+    }
+
     private static int dp(Context context, int value) {
         return Math.round(value * context.getResources().getDisplayMetrics().density);
     }

@@ -29,8 +29,8 @@ final class DashboardFixtures {
     static TaskSnapshot taskWithSteps() {
         return task("steps", "Morgenroutine", TaskSlot.MORNING, Recurrence.DAILY,
                 Arrays.asList(
-                        new FocusStepUiModel("step-1", "Duschen", true),
-                        new FocusStepUiModel("step-2", "Anziehen", false)),
+                        FocusStepUiModel.of("step-1", "Duschen", true),
+                        FocusStepUiModel.of("step-2", "Anziehen", false)),
                 1, false, false, false, false, 6, 1_002_000L);
     }
 

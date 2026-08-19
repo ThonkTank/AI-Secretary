@@ -80,7 +80,7 @@ public final class HomescreenGoldenRobolectricTest {
                     View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
             content.layout(0, 0, width, height);
             Shadows.shadowOf(Looper.getMainLooper()).idle();
-            WoodGrainView.awaitGeometryForTest();
+            WoodGrainRenderPipeline.awaitIdleForTest();
             Shadows.shadowOf(Looper.getMainLooper()).idle();
             Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             content.draw(new Canvas(bitmap));

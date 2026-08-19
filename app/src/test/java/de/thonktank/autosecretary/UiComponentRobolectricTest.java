@@ -221,7 +221,7 @@ public final class UiComponentRobolectricTest {
     @Test public void repetitionStepperRoundTripsThroughReducerBeforeRendering() {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
-        FocusStepUiModel set = new FocusStepUiModel("set-step", "Beinpresse",
+        FocusStepUiModel set = FocusStepUiModel.of("set-step", "Beinpresse",
                 "3 × 12", "23 kg", false,
                 RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(10)),
                 2, 15, 0);
@@ -283,10 +283,10 @@ public final class UiComponentRobolectricTest {
     @Test public void completedStepsCollapseIntoTheDoneStatus() {
         Context context = ApplicationProvider.getApplicationContext();
         java.util.List<Integer> full = Arrays.asList(10, 11, 12);
-        FocusStepUiModel set = new FocusStepUiModel("set-step", "Beinpresse",
+        FocusStepUiModel set = FocusStepUiModel.of("set-step", "Beinpresse",
                 "3 × 12", "23 kg", true,
                 RepetitionProgressUiModel.sets(3, 12, full), 2, 15, 15);
-        FocusStepUiModel next = new FocusStepUiModel("next", "Duschen", false);
+        FocusStepUiModel next = FocusStepUiModel.of("next", "Duschen", false);
         TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
                 TaskSlot.MORNING, "", "", Recurrence.DAILY,
                 Arrays.asList(set, next), 1, false, false, false, false,

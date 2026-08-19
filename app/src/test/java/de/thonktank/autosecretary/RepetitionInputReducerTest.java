@@ -73,7 +73,7 @@ public final class RepetitionInputReducerTest {
 
     private static FocusStepUiModel repetition(String id, boolean done,
                                                 java.util.List<Integer> actual) {
-        return new FocusStepUiModel(id, "Kniebeugen", "3 × 12", "", done,
+        return FocusStepUiModel.of(id, "Kniebeugen", "3 × 12", "", done,
                 RepetitionProgressUiModel.sets(3, 12, actual), 0, 10, 0);
     }
 
