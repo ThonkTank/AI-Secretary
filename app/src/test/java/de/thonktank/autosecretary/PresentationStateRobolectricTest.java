@@ -3,6 +3,7 @@ package de.thonktank.autosecretary;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -19,6 +20,11 @@ import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
+import de.thonktank.autosecretary.domain.model.TaskDefinition;
+import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
+import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
@@ -164,12 +170,48 @@ public final class PresentationStateRobolectricTest {
         assertFalse(event.consume());
     }
 
+    @Test public void repetitionDraftsDoNotInvalidateWidgetsButSubmissionDoes() {
+        AtomicInteger invalidations = new AtomicInteger();
+        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(),
+                invalidations::incrementAndGet);
+        TaskDefinition definition = new TaskDefinition("Gym", null, TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
+                null, null, null, null, "", Collections.singletonList(
+                        new TaskStepDefinition(null, 0, "Kniebeugen", 0,
+                                StepAmount.setsReps(3, 12), "")));
+        tasks.create.execute(definition);
+        viewModel.load();
+        invalidations.set(0);
+        viewModel.load();
+        assertEquals(0, invalidations.get());
+        String stepId = value().dashboard.focus.steps.get(0).id;
+
+        viewModel.reduceRepetitionInput(DashboardEvent.adjustRepetition(stepId, 1));
+        viewModel.reduceRepetitionInput(DashboardEvent.adjustRepetition(stepId, 1));
+
+        assertEquals(14, value().repetitionInput.value);
+        assertEquals(0, invalidations.get());
+
+        viewModel.reduceRepetitionInput(DashboardEvent.submitRepetition(stepId));
+
+        assertEquals(1, invalidations.get());
+        assertNull(value().repetitionInput.stepId);
+        assertEquals(Collections.singletonList(14),
+                repository.findOccurrenceStep(stepId).repetitionProgress.actualRepetitions);
+    }
+
     private TaskViewModel newViewModel(SavedStateHandle handle) {
         return newViewModel(handle, new DirectExecutor());
     }
 
     private TaskViewModel newViewModel(SavedStateHandle handle,
                                        AbstractExecutorService worker) {
+        return newViewModel(handle, worker, () -> { });
+    }
+
+    private TaskViewModel newViewModel(SavedStateHandle handle,
+                                       AbstractExecutorService worker,
+                                       WidgetInvalidator widgets) {
         CalendarDataSource calendar = new CalendarDataSource() {
             @Override public CalendarResult loadToday() {
                 return new CalendarResult.Success(DashboardFixtures.calendarEvents());
@@ -180,7 +222,7 @@ public final class PresentationStateRobolectricTest {
             }
         };
         return new TaskViewModel(tasks, presenter, calendar, preferences, clock, logger,
-                new AndroidUiTextProvider(context), handle, worker);
+                new AndroidUiTextProvider(context), handle, worker, widgets);
     }
 
     private DashboardUiState value() {

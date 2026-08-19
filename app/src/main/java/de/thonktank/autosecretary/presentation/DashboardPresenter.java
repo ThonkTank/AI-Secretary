@@ -10,6 +10,16 @@ import de.thonktank.autosecretary.domain.model.Dashboard;
 import java.time.LocalDate;
 
 public final class DashboardPresenter {
+    public static final class Refresh {
+        public final TodayUiModel dashboard;
+        public final boolean persistedChanges;
+
+        private Refresh(TodayUiModel dashboard, boolean persistedChanges) {
+            this.dashboard = dashboard;
+            this.persistedChanges = persistedChanges;
+        }
+    }
+
     private final Clock clock;
     private final LoadDashboard loadDashboard;
     private final MaterializeDueOccurrences materializeDue;
@@ -38,8 +48,13 @@ public final class DashboardPresenter {
     }
 
     public TodayUiModel refresh() {
+        return refreshWithChanges().dashboard;
+    }
+
+    public Refresh refreshWithChanges() {
         LocalDate today = clock.today();
-        return mapper.map(refreshDomain(today), today);
+        boolean changed = prepareDomain();
+        return new Refresh(mapper.map(loadDomain(today), today), changed);
     }
 
     public Dashboard loadDomain(LocalDate today) {
@@ -47,8 +62,12 @@ public final class DashboardPresenter {
     }
 
     public Dashboard refreshDomain(LocalDate today) {
-        if (decay != null) decay.execute();
-        materializeDue.execute();
+        prepareDomain();
         return loadDomain(today);
+    }
+
+    private boolean prepareDomain() {
+        boolean changed = decay != null && decay.execute();
+        return materializeDue.execute() || changed;
     }
 }

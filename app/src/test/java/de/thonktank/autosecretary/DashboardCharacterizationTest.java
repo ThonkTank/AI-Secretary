@@ -117,8 +117,7 @@ public final class DashboardCharacterizationTest {
         }
     }
 
-    private static final class NoOpActions extends FocusTestActions
-            implements DashboardRenderer.Actions {
+    private static final class NoOpActions extends FocusTestActions {
         @Override public void onAddTask() { }
         @Override public void onTaskAction(TimelineTaskUiModel task) { }
         @Override public void onTaskMenu(TimelineTaskUiModel task) { }

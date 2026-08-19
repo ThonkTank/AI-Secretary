@@ -44,12 +44,14 @@ public final class TaskViewModel extends ViewModel {
     private final Clock clock;
     private final AppLogger logger;
     private final UiTextProvider texts;
+    private final WidgetInvalidator widgets;
     private final SavedStateHandle savedState;
     private final CalendarDataSource.Subscription calendarSubscription;
     private final ExecutorService worker;
     private final MutableLiveData<DashboardUiState> state = new MutableLiveData<>();
     private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
     private final RewardEffectQueue rewardQueue = new RewardEffectQueue();
+    private final RepetitionInputReducer repetitionInputReducer = new RepetitionInputReducer();
     private final MutableLiveData<RewardEffectQueue.Snapshot> rewardEffects =
             new MutableLiveData<>(rewardQueue.snapshot());
     private final Object stateLock = new Object();
@@ -58,12 +60,20 @@ public final class TaskViewModel extends ViewModel {
     TaskViewModel(AppContainer container, SavedStateHandle savedState, ExecutorService worker) {
         this(container.tasks, container.dashboardPresenter, container.calendar,
                 container.uiPreferences, container.clock, container.logger, container.texts,
-                savedState, worker);
+                savedState, worker, container.widgetUpdates::updateAll);
     }
 
     TaskViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
                   UiPreferences preferences, Clock clock, AppLogger logger,
                   UiTextProvider texts, SavedStateHandle savedState, ExecutorService worker) {
+        this(tasks, dashboard, calendar, preferences, clock, logger, texts, savedState,
+                worker, () -> { });
+    }
+
+    TaskViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
+                  UiPreferences preferences, Clock clock, AppLogger logger,
+                  UiTextProvider texts, SavedStateHandle savedState, ExecutorService worker,
+                  WidgetInvalidator widgets) {
         this.tasks = tasks;
         this.dashboard = dashboard;
         this.calendar = calendar;
@@ -71,6 +81,7 @@ public final class TaskViewModel extends ViewModel {
         this.clock = clock;
         this.logger = logger;
         this.texts = texts;
+        this.widgets = widgets;
         this.savedState = savedState;
         this.worker = worker;
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
@@ -79,7 +90,7 @@ public final class TaskViewModel extends ViewModel {
                 CalendarUiState.empty(), palette(), CalendarPermissionStatus.UNKNOWN,
                 false, Collections.emptySet(), editor);
         state.setValue(current);
-        calendarSubscription = calendar.observeChanges(this::load);
+        calendarSubscription = calendar.observeChanges(this::calendarChanged);
         load();
         if (editor.open && editor.loading && editor.taskId != null) openEditor(editor.taskId);
     }
@@ -96,7 +107,7 @@ public final class TaskViewModel extends ViewModel {
         if (!begin(REFRESH, true)) return;
         worker.execute(() -> {
             try {
-                publishContent(REFRESH, loadContent());
+                publishContent(REFRESH, loadContent(), false);
             } catch (RuntimeException error) {
                 fail(REFRESH, texts.text(R.string.error_dashboard_load), error);
             }
@@ -111,8 +122,22 @@ public final class TaskViewModel extends ViewModel {
         update(value -> value.withPalette(palette()));
     }
 
-    void updateRepetitionInput(RepetitionInputState input) {
-        if (input != null) update(value -> value.withRepetitionInput(input));
+    void reduceRepetitionInput(DashboardEvent event) {
+        RepetitionInputReducer.Submission submission;
+        synchronized (stateLock) {
+            RepetitionInputReducer.Result result = repetitionInputReducer.reduce(
+                    current.repetitionInput, current.dashboard, event);
+            submission = result.submission;
+            if (result.state != current.repetitionInput) {
+                current = current.withRepetitionInput(result.state);
+                state.postValue(current);
+            }
+        }
+        if (submission == null) return;
+        if (submission.correction())
+            correctRepetitionResult(submission.stepId, submission.editingIndex,
+                    submission.value);
+        else recordRepetitionResult(submission.stepId, submission.value);
     }
 
     void navigate(NavigationDestination destination) {
@@ -194,6 +219,7 @@ public final class TaskViewModel extends ViewModel {
                             .withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
                 }
+                invalidateWidgets();
             } catch (RuntimeException error) {
                 logger.error("TaskViewModel", "Editor save failed", error);
                 synchronized (stateLock) {
@@ -230,6 +256,7 @@ public final class TaskViewModel extends ViewModel {
                             .withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
                 }
+                invalidateWidgets();
             } catch (RuntimeException error) {
                 logger.error("TaskViewModel", "Editor delete failed", error);
                 setEditor(draft.withSaving(false).withFeedback(Collections.emptySet(),
@@ -249,7 +276,10 @@ public final class TaskViewModel extends ViewModel {
             changed = current.calendarPermission != permission;
         }
         update(value -> value.withPermission(permission));
-        if (changed) load();
+        if (changed) {
+            load();
+            invalidateWidgets();
+        }
     }
 
     void onCalendarPermissionAction() {
@@ -324,7 +354,7 @@ public final class TaskViewModel extends ViewModel {
         worker.execute(() -> {
             try {
                 action.run();
-                publishContent(key, loadContent());
+                publishContent(key, loadContent(), true);
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
             } catch (RuntimeException error) {
@@ -338,7 +368,7 @@ public final class TaskViewModel extends ViewModel {
         worker.execute(() -> {
             try {
                 RewardReceipt result = action.run();
-                publishContent(key, loadContent());
+                publishContent(key, loadContent(), true);
                 RewardEffect effect = RewardEffect.from(result, key);
                 if (effect != null) rewardEffects.postValue(rewardQueue.enqueue(effect));
             } catch (IllegalArgumentException error) {
@@ -350,8 +380,8 @@ public final class TaskViewModel extends ViewModel {
     }
 
     private Content loadContent() {
-        TodayUiModel loadedDashboard = dashboard.refresh();
-        return new Content(loadedDashboard, calendar.loadToday());
+        DashboardPresenter.Refresh refresh = dashboard.refreshWithChanges();
+        return new Content(refresh.dashboard, calendar.loadToday(), refresh.persistedChanges);
     }
 
     private boolean begin(UiCommand key, boolean loading) {
@@ -366,7 +396,7 @@ public final class TaskViewModel extends ViewModel {
         }
     }
 
-    private void publishContent(UiCommand key, Content content) {
+    private void publishContent(UiCommand key, Content content, boolean commandPersisted) {
         synchronized (stateLock) {
             Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
             actions.remove(key);
@@ -375,6 +405,8 @@ public final class TaskViewModel extends ViewModel {
                     calendarState).withRunningActions(actions);
             state.postValue(current);
         }
+        if (commandPersisted || content.persistedChanges)
+            invalidateWidgets();
     }
 
     private void fail(UiCommand key, String message, RuntimeException error) {
@@ -392,6 +424,19 @@ public final class TaskViewModel extends ViewModel {
         synchronized (stateLock) {
             current = change.apply(current);
             state.postValue(current);
+        }
+    }
+
+    private void calendarChanged() {
+        load();
+        invalidateWidgets();
+    }
+
+    private void invalidateWidgets() {
+        try {
+            widgets.invalidate();
+        } catch (RuntimeException error) {
+            logger.error("TaskViewModel", "Could not invalidate widgets", error);
         }
     }
 
@@ -435,9 +480,11 @@ public final class TaskViewModel extends ViewModel {
     private static final class Content {
         final TodayUiModel dashboard;
         final CalendarResult calendar;
-        Content(TodayUiModel dashboard, CalendarResult calendar) {
+        final boolean persistedChanges;
+        Content(TodayUiModel dashboard, CalendarResult calendar, boolean persistedChanges) {
             this.dashboard = dashboard;
             this.calendar = calendar;
+            this.persistedChanges = persistedChanges;
         }
     }
 

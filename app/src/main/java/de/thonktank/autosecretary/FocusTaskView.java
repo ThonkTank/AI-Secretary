@@ -16,13 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class FocusTaskView extends FrameLayout {
-    public interface TaskActions {
-        void onComplete(TaskSnapshot task);
-        void onCompleteRemaining(TaskSnapshot task);
-        void onHarvest(TaskSnapshot task);
-        void onDefer(TaskSnapshot task);
-    }
-
     private final UiStyle style;
     private final RewardAnchorRegistry rewardAnchors;
     private final View back;
@@ -163,16 +156,15 @@ public final class FocusTaskView extends FrameLayout {
     }
 
     public void bind(TaskSnapshot task, boolean stacked, boolean allowDefer,
-                     DayPalette palette, TaskActions taskActions,
-                     FocusStepRowView.Actions stepActions) {
+                     DayPalette palette, DashboardEventSink events) {
         bind(task, stacked, allowDefer, palette, FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), taskActions, stepActions);
+                RepetitionInputState.idle(), events);
     }
 
     public void bind(TaskSnapshot task, boolean stacked, boolean allowDefer,
                      DayPalette palette, FocusStepLimit stepLimit,
                      RepetitionInputState inputState,
-                     TaskActions taskActions, FocusStepRowView.Actions stepActions) {
+                     DashboardEventSink events) {
         boolean focusChanged = boundTaskId != null && !boundTaskId.equals(task.taskId);
         boundTaskId = task.taskId;
         boolean compactOngoing = task.ongoing && task.steps.isEmpty();
@@ -217,7 +209,8 @@ public final class FocusTaskView extends FrameLayout {
             ring.bind(task.collectedXp, doneCount, task.steps.size(), task.harvestReady,
                     task.comboStage, palette);
             ring.setOnClickListener(task.harvestReady
-                    ? view -> taskActions.onHarvest(task) : null);
+                    ? view -> events.emit(DashboardEvent.focusAction(
+                            DashboardEvent.FocusActionKind.HARVEST, task)) : null);
         } else {
             rewardAnchors.register(new RewardAnchorKey(task.terminalCondition
                     ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE,
@@ -225,18 +218,20 @@ public final class FocusTaskView extends FrameLayout {
             taskDew.bind(false, false, palette, task.claimableXp);
             taskDew.setContentDescription(getContext().getString(
                     R.string.content_complete_task, task.title, task.claimableXp));
-            taskDew.setOnClickListener(view -> taskActions.onComplete(task));
+            taskDew.setOnClickListener(view -> events.emit(DashboardEvent.focusAction(
+                    DashboardEvent.FocusActionKind.COMPLETE, task)));
         }
         titleBlock.setPadding(0, 0, 0, 0);
         title.setPadding(0, 0, style.dp(66), 0);
         boundStepLimit = stepLimit == null ? FocusStepLimit.AUTO : stepLimit;
         boundPalette = palette;
-        bindSteps(task, palette, inputState, stepActions);
+        bindSteps(task, palette, inputState, events);
         primary.setText(R.string.action_complete_rest);
         primary.setTextColor(palette.accentText);
         primary.setBackground(style.pill(palette.accent, 26));
         style.shadow(primary, palette, 5, .7f);
-        primary.setOnClickListener(view -> taskActions.onCompleteRemaining(task));
+        primary.setOnClickListener(view -> events.emit(DashboardEvent.focusAction(
+                DashboardEvent.FocusActionKind.COMPLETE_REMAINING, task)));
         rewardAnchors.register(new RewardAnchorKey(RewardAnchorKey.Kind.REST,
                 task.occurrenceId), primary);
         primary.setVisibility(vessel && task.remainingSteps > 0 ? VISIBLE : GONE);
@@ -244,7 +239,8 @@ public final class FocusTaskView extends FrameLayout {
         later.bind(palette.hint, palette.dot);
         later.setOnClickListener(view -> {
             deferPending = true;
-            taskActions.onDefer(task);
+            events.emit(DashboardEvent.focusAction(
+                    DashboardEvent.FocusActionKind.DEFER, task));
         });
         if (focusChanged) animateFocusChange(palette);
         post(() -> syncLayersAndGrain(task, palette));
@@ -252,7 +248,7 @@ public final class FocusTaskView extends FrameLayout {
 
     private void bindSteps(TaskSnapshot task, DayPalette palette,
                            RepetitionInputState inputState,
-                           FocusStepRowView.Actions callbacks) {
+                           DashboardEventSink events) {
         steps.setVisibility(task.steps.isEmpty() ? GONE : VISIBLE);
         openSteps.clear();
         int doneCount = 0;
@@ -282,27 +278,7 @@ public final class FocusTaskView extends FrameLayout {
             boolean active = i == 0;
             rewardAnchors.register(new RewardAnchorKey(RewardAnchorKey.Kind.STEP, step.id),
                     row.rewardAnchor());
-            row.bind(step, active, palette, inputState, new FocusStepRowView.Actions() {
-                @Override public void onToggleStep(String stepId) {
-                    callbacks.onToggleStep(stepId);
-                }
-
-                @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
-                    callbacks.onRecordRepetitionResult(stepId, repetitions);
-                }
-
-                @Override public void onCorrectRepetitionResult(String stepId, int index,
-                                                                int repetitions) {
-                    callbacks.onCorrectRepetitionResult(stepId, index, repetitions);
-                }
-
-                @Override public void onRepetitionInputStateChanged(
-                        RepetitionInputState state) {
-                    callbacks.onRepetitionInputStateChanged(state);
-                    bindSteps(task, palette, state, callbacks);
-                    post(() -> syncLayersAndGrain(task, palette));
-                }
-            });
+            row.bind(step, active, palette, inputState, events);
         }
         int available = Math.max(0, openSteps.size() - 1);
         requestedFollowingSteps = boundStepLimit.automatic()

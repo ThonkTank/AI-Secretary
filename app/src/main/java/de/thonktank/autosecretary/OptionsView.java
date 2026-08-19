@@ -14,13 +14,6 @@ import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 @SuppressLint("ViewConstructor")
 public final class OptionsView extends LinearLayout {
-    public interface Actions {
-        void onTheme(UiThemeMode mode);
-        void onFocusStepLimit(FocusStepLimit limit);
-        void onCalendarPermission();
-        void onUpdates();
-    }
-
     private final UiStyle style;
     private final TextView heading;
     private final OptionLeaf appearance;
@@ -31,11 +24,11 @@ public final class OptionsView extends LinearLayout {
     private final TextView[] focusStepButtons = new TextView[FocusStepLimit.values().length];
     private final TextView calendarButton;
     private final TextView updateButton;
-    private final Actions actions;
+    private final DashboardEventSink events;
 
-    public OptionsView(Context context, Actions actions) {
+    public OptionsView(Context context, DashboardEventSink events) {
         super(context);
-        this.actions = actions;
+        this.events = events;
         style = new UiStyle(context);
         setOrientation(VERTICAL);
         setPadding(style.dp(60), style.dp(18), style.dp(22), style.dp(26));
@@ -51,7 +44,8 @@ public final class OptionsView extends LinearLayout {
             button.setMinHeight(style.dp(48));
             button.setPadding(style.dp(14), 0, style.dp(14), 0);
             UiThemeMode mode = modes[i];
-            button.setOnClickListener(view -> actions.onTheme(mode));
+            button.setOnClickListener(view ->
+                    events.emit(DashboardEvent.themeSelected(mode)));
             LayoutParams params = new LayoutParams(-2, style.dp(48));
             params.setMargins(0, 0, style.dp(8), 0);
             themes.addView(button, params);
@@ -74,7 +68,8 @@ public final class OptionsView extends LinearLayout {
             button.setPadding(style.dp(14), 0, style.dp(14), 0);
             button.setTag(limit);
             AccessibilityRoles.button(button);
-            button.setOnClickListener(view -> actions.onFocusStepLimit(limit));
+            button.setOnClickListener(view ->
+                    events.emit(DashboardEvent.focusStepLimitSelected(limit)));
             focusLimits.addView(button, new android.view.ViewGroup.LayoutParams(
                     -2, style.dp(48)));
             focusStepButtons[i] = button;
@@ -84,7 +79,8 @@ public final class OptionsView extends LinearLayout {
         addLeaf(focusSteps);
 
         calendarButton = outlineButton(context.getString(R.string.calendar_grant));
-        calendarButton.setOnClickListener(view -> actions.onCalendarPermission());
+        calendarButton.setOnClickListener(view ->
+                events.emit(DashboardEvent.calendarPermission()));
         LinearLayout calendarActions = new LinearLayout(context);
         calendarActions.addView(calendarButton, new LayoutParams(-2, style.dp(48)));
         calendar = new OptionLeaf(context, R.string.options_calendar,
@@ -98,7 +94,7 @@ public final class OptionsView extends LinearLayout {
         updateButton.setPadding(style.dp(28), 0, style.dp(28), 0);
         updateButton.setTypeface(style.sansBold);
         updateButton.setTextSize(17);
-        updateButton.setOnClickListener(view -> actions.onUpdates());
+        updateButton.setOnClickListener(view -> events.emit(DashboardEvent.checkUpdates()));
         LinearLayout updateActions = new LinearLayout(context);
         updateActions.addView(updateButton, new LayoutParams(-2, style.dp(52)));
         updates = new OptionLeaf(context, R.string.options_updates,

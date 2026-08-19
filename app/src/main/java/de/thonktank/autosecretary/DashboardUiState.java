@@ -69,7 +69,7 @@ public final class DashboardUiState {
                                         CalendarUiState calendarValue) {
         return copy(navigation, dashboardValue, calendarValue, palette, calendarPermission,
                 false, runningActions, editor,
-                repetitionInput.reconcile(dashboardValue.tasks));
+                repetitionInput.reconcile(dashboardValue.focus));
     }
 
     public DashboardUiState withRunningActions(Set<UiCommand> value) {

@@ -16,13 +16,6 @@ import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
 /** Modular focus-card row for the running step and compact following steps. */
 public final class FocusStepRowView extends LinearLayout {
-    public interface Actions {
-        void onToggleStep(String stepId);
-        void onRecordRepetitionResult(String stepId, int repetitions);
-        void onCorrectRepetitionResult(String stepId, int index, int repetitions);
-        void onRepetitionInputStateChanged(RepetitionInputState state);
-    }
-
     private final UiStyle style;
     private final View topLine;
     private final View bottomLine;
@@ -94,7 +87,7 @@ public final class FocusStepRowView extends LinearLayout {
     }
 
     public void bind(FocusStepUiModel step, boolean active, DayPalette palette,
-                     RepetitionInputState input, Actions actions) {
+                     RepetitionInputState input, DashboardEventSink events) {
         topLine.setVisibility(active ? VISIBLE : GONE);
         bottomLine.setVisibility(active ? VISIBLE : GONE);
         int divider = UiStyle.alpha(palette.dot, .45f);
@@ -122,22 +115,24 @@ public final class FocusStepRowView extends LinearLayout {
             int current = input.valueFor(step);
             int editingIndex = input.editingIndexFor(step);
             stepper.bind(current, palette,
-                    delta -> actions.onRepetitionInputStateChanged(input.adjust(step, delta)));
+                    delta -> events.emit(DashboardEvent.adjustRepetition(step.id, delta)));
             barsScroll.setVisibility(progress.showsBars() ? VISIBLE : GONE);
             if (progress.showsBars()) bars.bind(step.id, progress.slotCount,
                     progress.actualRepetitions, editingIndex, palette,
-                    index -> actions.onRepetitionInputStateChanged(input.edit(step, index)));
+                    index -> events.emit(DashboardEvent.editRepetition(step.id, index)));
             reward.setContentDescription(progress.kind == RepetitionProgressUiModel.Kind.SINGLE
                     ? getContext().getString(R.string.content_confirm_repetitions, current)
                     : getContext().getString(editingIndex >= 0
                             ? R.string.content_update_set : R.string.content_confirm_set,
                     editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber(), current));
-            reward.setOnClickListener(view -> commit(step, input, actions));
+            reward.setOnClickListener(view ->
+                    events.emit(DashboardEvent.submitRepetition(step.id)));
             reward.setActionEnabled(true);
         } else if (active) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step, step.title, step.claimableXp));
-            reward.setOnClickListener(view -> actions.onToggleStep(step.id));
+            reward.setOnClickListener(view ->
+                    events.emit(DashboardEvent.toggleStep(step.id)));
             reward.setActionEnabled(true);
         } else {
             StringBuilder description = new StringBuilder(step.title);
@@ -175,15 +170,4 @@ public final class FocusStepRowView extends LinearLayout {
     CharSequence renderedSubtitle() { return note.getText(); }
     boolean editorVisible() { return controls.getVisibility() == VISIBLE; }
 
-    private static void commit(FocusStepUiModel step, RepetitionInputState input,
-                               Actions actions) {
-        int value = input.valueFor(step);
-        int editingIndex = input.editingIndexFor(step);
-        actions.onRepetitionInputStateChanged(RepetitionInputState.idle());
-        if (editingIndex < 0) {
-            actions.onRecordRepetitionResult(step.id, value);
-            return;
-        }
-        actions.onCorrectRepetitionResult(step.id, editingIndex, value);
-    }
 }

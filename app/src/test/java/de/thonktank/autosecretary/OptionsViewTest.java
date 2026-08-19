@@ -30,10 +30,9 @@ public final class OptionsViewTest {
     @Test public void everyFocusLimitIsSelectableAndTheBoundValueIsExposed() {
         Context context = ApplicationProvider.getApplicationContext();
         AtomicReference<FocusStepLimit> selected = new AtomicReference<>();
-        OptionsView view = new OptionsView(context, new Actions() {
-            @Override public void onFocusStepLimit(FocusStepLimit limit) {
-                selected.set(limit);
-            }
+        OptionsView view = new OptionsView(context, event -> {
+            if (event instanceof DashboardEvent.FocusStepLimitSelected)
+                selected.set(((DashboardEvent.FocusStepLimitSelected) event).limit);
         });
         view.bind(DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT), UiThemeMode.AUTO,
                 FocusStepLimit.THREE, CalendarPermissionStatus.GRANTED,
@@ -80,11 +79,5 @@ public final class OptionsViewTest {
 
     private static int dp(Context context, int value) {
         return Math.round(value * context.getResources().getDisplayMetrics().density);
-    }
-
-    private abstract static class Actions implements OptionsView.Actions {
-        @Override public void onTheme(UiThemeMode mode) { }
-        @Override public void onCalendarPermission() { }
-        @Override public void onUpdates() { }
     }
 }

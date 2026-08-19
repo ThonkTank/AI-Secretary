@@ -165,7 +165,8 @@ public class MainActivity extends ComponentActivity {
         footer = new FooterNavigationView(this, destination -> viewModel.navigate(destination));
         screen.addView(footer, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
-        renderer = new DashboardRenderer(this, scroll, content, dashboardActions(), versionName(),
+        renderer = new DashboardRenderer(this, scroll, content, this::handleDashboardEvent,
+                versionName(),
                 rewardAnchors);
         rewardAnimator = new RewardAnimator(root, header, rewardAnchors);
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
@@ -183,55 +184,48 @@ public class MainActivity extends ComponentActivity {
         footer.bind(NavigationDestination.TODAY, initial);
     }
 
-    private DashboardRenderer.Actions dashboardActions() {
-        return new DashboardRenderer.Actions() {
-            @Override public void onAddTask() { openEditorWithFlight(); }
-            @Override public void onTaskAction(TimelineTaskUiModel task) {
-                if (task.undoAvailable) viewModel.undoOccurrence(task.occurrenceId);
-                else if (task.terminalCondition) viewModel.requestClose(task.taskId, task.title);
-                else viewModel.complete(task.occurrenceId);
-            }
-            @Override public void onTaskMenu(TimelineTaskUiModel task) {
-                TaskSnapshot source = findTask(task.taskId);
-                if (source != null) showTaskMenu(source);
-            }
-            @Override public void onComplete(TaskSnapshot task) { completeOrConfirm(task); }
-            @Override public void onCompleteRemaining(TaskSnapshot task) {
+    private void handleDashboardEvent(DashboardEvent event) {
+        if (event instanceof DashboardEvent.AddTask) {
+            openEditorWithFlight();
+        } else if (event instanceof DashboardEvent.TimelinePrimary) {
+            TimelineTaskUiModel task = ((DashboardEvent.TimelinePrimary) event).task;
+            if (task.undoAvailable) viewModel.undoOccurrence(task.occurrenceId);
+            else if (task.terminalCondition) viewModel.requestClose(task.taskId, task.title);
+            else viewModel.complete(task.occurrenceId);
+        } else if (event instanceof DashboardEvent.TimelineMenu) {
+            TimelineTaskUiModel task = ((DashboardEvent.TimelineMenu) event).task;
+            TaskSnapshot source = findTask(task.taskId);
+            if (source != null) showTaskMenu(source);
+        } else if (event instanceof DashboardEvent.FocusAction) {
+            DashboardEvent.FocusAction action = (DashboardEvent.FocusAction) event;
+            TaskSnapshot task = action.task;
+            if (action.kind == DashboardEvent.FocusActionKind.COMPLETE) completeOrConfirm(task);
+            else if (action.kind == DashboardEvent.FocusActionKind.COMPLETE_REMAINING)
                 viewModel.completeRemaining(task.occurrenceId);
-            }
-            @Override public void onHarvest(TaskSnapshot task) {
+            else if (action.kind == DashboardEvent.FocusActionKind.HARVEST)
                 viewModel.harvest(task.occurrenceId);
-            }
-            @Override public void onDefer(TaskSnapshot task) {
-                viewModel.defer(task.occurrenceId.isEmpty() ? task.taskId : task.occurrenceId);
-            }
-            @Override public void onToggleStep(String stepId) {
-                viewModel.toggleStep(stepId);
-            }
-            @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
-                viewModel.recordRepetitionResult(stepId, repetitions);
-            }
-            @Override public void onCorrectRepetitionResult(String stepId, int index,
-                                                            int repetitions) {
-                viewModel.correctRepetitionResult(stepId, index, repetitions);
-            }
-            @Override public void onRepetitionInputStateChanged(
-                    RepetitionInputState state) {
-                viewModel.updateRepetitionInput(state);
-            }
-            @Override public void onTheme(UiThemeMode mode) {
-                container.uiPreferences.setThemeMode(mode);
-                viewModel.minuteChanged();
-                TaskWidgetProvider.updateAll(MainActivity.this);
-            }
-            @Override public void onFocusStepLimit(
-                    de.thonktank.autosecretary.data.preferences.FocusStepLimit limit) {
-                container.uiPreferences.setFocusStepLimit(limit);
-                viewModel.displayPreferencesChanged();
-            }
-            @Override public void onCalendarPermission() { viewModel.onCalendarPermissionAction(); }
-            @Override public void onUpdates() { updates.onManualAction(); }
-        };
+            else viewModel.defer(task.occurrenceId.isEmpty()
+                    ? task.taskId : task.occurrenceId);
+        } else if (event instanceof DashboardEvent.ToggleStep) {
+            viewModel.toggleStep(((DashboardEvent.ToggleStep) event).stepId);
+        } else if (event instanceof DashboardEvent.AdjustRepetition
+                || event instanceof DashboardEvent.EditRepetition
+                || event instanceof DashboardEvent.SubmitRepetition) {
+            viewModel.reduceRepetitionInput(event);
+        } else if (event instanceof DashboardEvent.ThemeSelected) {
+            UiThemeMode mode = ((DashboardEvent.ThemeSelected) event).mode;
+            container.uiPreferences.setThemeMode(mode);
+            viewModel.minuteChanged();
+            TaskWidgetProvider.updateAll(this);
+        } else if (event instanceof DashboardEvent.FocusStepLimitSelected) {
+            container.uiPreferences.setFocusStepLimit(
+                    ((DashboardEvent.FocusStepLimitSelected) event).limit);
+            viewModel.displayPreferencesChanged();
+        } else if (event instanceof DashboardEvent.CalendarPermission) {
+            viewModel.onCalendarPermissionAction();
+        } else if (event instanceof DashboardEvent.CheckUpdates) {
+            updates.onManualAction();
+        }
     }
 
     private void render(DashboardUiState state) {
@@ -247,7 +241,6 @@ public class MainActivity extends ComponentActivity {
         controller.setAppearanceLightStatusBars(light);
         controller.setAppearanceLightNavigationBars(light);
         editorCoordinator.render(state.editor, state.palette, container.clock.today());
-        TaskWidgetProvider.updateAll(this);
     }
 
     private void openEditorWithFlight() {

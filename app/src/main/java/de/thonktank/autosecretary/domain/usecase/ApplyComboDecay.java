@@ -12,15 +12,18 @@ public final class ApplyComboDecay {
     public ApplyComboDecay(TaskRepository repository, Clock clock) {
         this.repository = repository; this.clock = clock;
     }
-    public void execute() {
-        repository.inTransaction(() -> {
+    public boolean execute() {
+        return repository.inTransaction(() -> {
+            boolean changed = false;
             for (ComboProgress current : repository.combos()) {
                 ComboProgress settled = current.settle(clock.today());
                 if (settled.points != current.points
-                        || !Objects.equals(settled.settledThroughOn, current.settledThroughOn))
+                        || !Objects.equals(settled.settledThroughOn, current.settledThroughOn)) {
                     repository.putCombo(settled);
+                    changed = true;
+                }
             }
-            return null;
+            return changed;
         });
     }
 }

@@ -2,8 +2,6 @@ package de.thonktank.autosecretary;
 
 import androidx.annotation.Nullable;
 
-import java.util.List;
-
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.domain.model.RepetitionProgress;
 
@@ -45,11 +43,15 @@ public final class RepetitionInputState {
                 step.repetitionProgress.actualRepetitions.get(index), index);
     }
 
-    public RepetitionInputState reconcile(List<TaskSnapshot> tasks) {
+    public RepetitionInputState reconcile(@Nullable TaskSnapshot focus) {
         if (stepId == null) return this;
-        for (TaskSnapshot task : tasks)
-            for (FocusStepUiModel step : task.steps)
-                if (stepId.equals(step.id) && !step.done) return this;
+        if (focus != null) {
+            for (FocusStepUiModel step : focus.steps) {
+                if (step.done) continue;
+                return stepId.equals(step.id) && step.repetitionProgress != null
+                        ? this : idle();
+            }
+        }
         return idle();
     }
 

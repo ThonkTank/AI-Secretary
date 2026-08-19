@@ -71,20 +71,20 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     @Test public void talkBackOrderRolesStatesAndKeyboardFollowTheVisualFlow() {
         Context context = configuredContext(412, 1f);
         AtomicInteger changes = new AtomicInteger();
-        AtomicReference<RepetitionInputState> correction = new AtomicReference<>();
+        AtomicReference<Integer> correction = new AtomicReference<>();
         FocusTaskView focus = new FocusTaskView(context);
         TaskSnapshot task = setTask(false);
         Actions actions = new Actions() {
-            @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
+            @Override public void onSubmitRepetition(String stepId) {
                 changes.incrementAndGet();
             }
 
-            @Override public void onRepetitionInputStateChanged(RepetitionInputState state) {
-                correction.set(state);
+            @Override public void onEditRepetition(String stepId, int index) {
+                correction.set(index);
             }
         };
         focus.bind(task, false, true, palette(), FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
         measure(focus, dp(context, 360), dp(context, 2_400));
 
         XpVesselView vessel = first(focus, XpVesselView.class);
@@ -132,7 +132,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
                         && action.getLabel().toString().contains("Satz 1"))
                 .findFirst().orElseThrow(AssertionError::new);
         assertTrue(bars.performAccessibilityAction(edit.getId(), null));
-        assertEquals(0, correction.get().editingIndex);
+        assertEquals(Integer.valueOf(0), correction.get());
         barsInfo.recycle();
     }
 
@@ -161,7 +161,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         FocusTaskView focus = new FocusTaskView(context);
         Actions actions = new Actions();
         focus.bind(setTask(false), false, true, palette, FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
         int available = dp(context, widthDp) - horizontalPagePadding;
@@ -188,7 +188,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         FocusTaskView focus = new FocusTaskView(context);
         Actions actions = new Actions();
         focus.bind(longTask(), false, true, palette, FocusStepLimit.FIVE,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
         int availableWidth = dp(context, widthDp) - horizontalPagePadding;
@@ -282,7 +282,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         FocusTaskView focus = new FocusTaskView(context);
         Actions actions = new Actions();
         focus.bind(longTask(), false, true, palette(), FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
         measureExactly(focus, dp(context, 330), dp(context, 540));
         return focus.visibleFollowingStepsForTest();
     }
@@ -314,7 +314,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         return null;
     }
 
-    private static class Actions extends FocusTestActions implements DashboardRenderer.Actions {
+    private static class Actions extends FocusTestActions {
         @Override public void onAddTask() { }
         @Override public void onTaskAction(TimelineTaskUiModel task) { }
         @Override public void onTaskMenu(TimelineTaskUiModel task) { }

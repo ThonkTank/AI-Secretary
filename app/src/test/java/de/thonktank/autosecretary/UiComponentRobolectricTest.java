@@ -178,7 +178,7 @@ public final class UiComponentRobolectricTest {
         FocusTaskView focus = new FocusTaskView(context);
         NoOpActions actions = new NoOpActions();
         focus.bind(DashboardFixtures.taskWithSteps(), true, true,
-                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), actions, actions);
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), actions);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(500), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -222,7 +222,7 @@ public final class UiComponentRobolectricTest {
         ShadowValueAnimator.reset();
     }
 
-    @Test public void repetitionStepperConfirmsAndEditsSavedSetsInline() {
+    @Test public void repetitionStepperRoundTripsThroughReducerBeforeRendering() {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
         FocusStepUiModel set = new FocusStepUiModel("set-step", "Beinpresse",
@@ -233,42 +233,43 @@ public final class UiComponentRobolectricTest {
                 TaskSlot.MORNING, "", "Beinpresse", Recurrence.DAILY,
                 Collections.singletonList(set), 1, false, false, false, false,
                 2, 1_000L, 15, 0, 0, false);
-        AtomicReference<Integer> confirmed = new AtomicReference<>();
-        AtomicReference<Integer> editedIndex = new AtomicReference<>();
-        AtomicReference<Integer> editedValue = new AtomicReference<>();
         AtomicReference<RepetitionInputState> input =
                 new AtomicReference<>(RepetitionInputState.idle());
+        AtomicReference<RepetitionInputReducer.Submission> submitted = new AtomicReference<>();
+        TodayUiModel dashboard = new TodayUiModel(0,
+                new de.thonktank.autosecretary.domain.model.XpProgress(0),
+                Collections.singletonList(task), task);
+        RepetitionInputReducer reducer = new RepetitionInputReducer();
         FocusTaskView focus = new FocusTaskView(context);
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
-        NoOpActions actions = new NoOpActions() {
-            @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
-                confirmed.set(repetitions);
-            }
-            @Override public void onCorrectRepetitionResult(String stepId, int index,
-                                                            int repetitions) {
-                editedIndex.set(index);
-                editedValue.set(repetitions);
-            }
-            @Override public void onRepetitionInputStateChanged(RepetitionInputState state) {
-                input.set(state);
-            }
+        DashboardEventSink events = event -> {
+            RepetitionInputReducer.Result result = reducer.reduce(input.get(), dashboard, event);
+            input.set(result.state);
+            if (result.submission != null) submitted.set(result.submission);
         };
         focus.bind(task, false, false, palette, FocusStepLimit.AUTO,
-                input.get(), actions, actions);
+                input.get(), events);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
         View plus = focus.findViewById(R.id.rep_stepper_increment);
         assertNotNull(plus);
         plus.performClick();
+        assertEquals(13, input.get().valueFor(set));
+        assertEquals("12", ((TextView) focus.findViewById(R.id.rep_stepper_value))
+                .getText().toString());
+        focus.bind(task, false, false, palette, FocusStepLimit.AUTO, input.get(), events);
+        assertEquals("13", ((TextView) focus.findViewById(R.id.rep_stepper_value))
+                .getText().toString());
         DewDotView dew = firstDew(focus);
         assertNotNull(dew);
         dew.performClick();
-        assertEquals(Integer.valueOf(13), confirmed.get());
+        assertEquals(13, submitted.get().value);
+        assertFalse(submitted.get().correction());
         assertNull(input.get().stepId);
 
         focus.bind(task, false, false, palette, FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), events);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -279,8 +280,8 @@ public final class UiComponentRobolectricTest {
         bars.dispatchTouchEvent(MotionEvent.obtain(0, 1, MotionEvent.ACTION_UP, x, y, 0));
         focus.findViewById(R.id.rep_stepper_increment).performClick();
         firstDew(focus).performClick();
-        assertEquals(Integer.valueOf(0), editedIndex.get());
-        assertEquals(Integer.valueOf(11), editedValue.get());
+        assertEquals(0, submitted.get().editingIndex);
+        assertEquals(11, submitted.get().value);
     }
 
     @Test public void completedStepsCollapseIntoTheDoneStatus() {
@@ -297,7 +298,7 @@ public final class UiComponentRobolectricTest {
         FocusTaskView focus = new FocusTaskView(context);
         NoOpActions actions = new NoOpActions();
         focus.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                actions, actions);
+                actions);
         java.util.List<String> texts = new java.util.ArrayList<>();
         for (View view : descendants(focus))
             if (view.getVisibility() == View.VISIBLE && view instanceof TextView)
@@ -335,8 +336,7 @@ public final class UiComponentRobolectricTest {
                 EditorUiState.closed());
     }
 
-    private static class NoOpActions extends FocusTestActions
-            implements DashboardRenderer.Actions {
+    private static class NoOpActions extends FocusTestActions {
         @Override public void onAddTask() { }
         @Override public void onTaskAction(TimelineTaskUiModel task) { }
         @Override public void onTaskMenu(TimelineTaskUiModel task) { }

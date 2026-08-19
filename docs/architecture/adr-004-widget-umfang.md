@@ -44,3 +44,6 @@ aus Titel und Metadaten bleibt auch bei visueller Kürzung als Inhaltsbeschreibu
 
 Die verbraucherspezifische Modellgrenze wird in
 [ADR-011](adr-011-verbraucherspezifische-praesentationsmodelle.md) festgelegt.
+Widgetinvalidierungen erfolgen gemäß [ADR-012](adr-012-unidirektionaler-dashboard-zustand.md)
+nur nach widgetrelevanten Änderungen; reine Dashboard-Render- oder Stepper-Draftänderungen
+lösen keinen Aktualisierungszyklus aus.

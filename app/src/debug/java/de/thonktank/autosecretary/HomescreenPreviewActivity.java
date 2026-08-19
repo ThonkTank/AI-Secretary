@@ -64,7 +64,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         screen.addView(footer, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
         DashboardRenderer renderer = new DashboardRenderer(this, scroll, content,
-                new PreviewActions(), "preview");
+                event -> { }, "preview");
         java.util.List<CalendarEventSnapshot> events = DebugPreviewFixtures.referenceCalendar(preview);
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         TodayUiModel.compose(dashboard, events),
@@ -111,25 +111,5 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         super.onDestroy();
         if (widgetCache != null) widgetCache.clear();
         widgetCache = null;
-    }
-
-    private static final class PreviewActions implements DashboardRenderer.Actions {
-        @Override public void onAddTask() { }
-        @Override public void onTaskAction(TimelineTaskUiModel task) { }
-        @Override public void onTaskMenu(TimelineTaskUiModel task) { }
-        @Override public void onComplete(TaskSnapshot task) { }
-        @Override public void onCompleteRemaining(TaskSnapshot task) { }
-        @Override public void onHarvest(TaskSnapshot task) { }
-        @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(String stepId) { }
-        @Override public void onRecordRepetitionResult(String stepId, int repetitions) { }
-        @Override public void onCorrectRepetitionResult(
-                String stepId, int index, int repetitions) { }
-        @Override public void onRepetitionInputStateChanged(RepetitionInputState state) { }
-        @Override public void onTheme(UiThemeMode mode) { }
-        @Override public void onFocusStepLimit(
-                de.thonktank.autosecretary.data.preferences.FocusStepLimit limit) { }
-        @Override public void onCalendarPermission() { }
-        @Override public void onUpdates() { }
     }
 }

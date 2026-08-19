@@ -34,8 +34,9 @@ public final class MaterializeDueOccurrences {
         this.ids = ids;
     }
 
-    public void execute() {
-        repository.inTransaction(() -> {
+    public boolean execute() {
+        return repository.inTransaction(() -> {
+            boolean changed = false;
             List<Occurrence> occurrences = repository.allOccurrences();
             Set<String> existing = new HashSet<>();
             for (Occurrence occurrence : occurrences) existing.add(key(occurrence.taskId,
@@ -70,11 +71,12 @@ public final class MaterializeDueOccurrences {
                     repository.insertOccurrenceSteps(snapshotSteps(occurrence,
                             templates.get(task.id)));
                     created++;
+                    changed = true;
                 }
                 if (created > 0 && task.boundKind == TaskBoundKind.N_TIMES)
                     repository.updateTask(task.afterMaterializing(created));
             }
-            return null;
+            return changed;
         });
     }
 

@@ -18,6 +18,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-009: Vertrauensgrenze für Update-Transport und Download](adr-009-update-transport-und-download-vertrauen.md)
 - [ADR-010: Unveränderliches Reward-Ledger und Gegenbuchungen](adr-010-reward-ledger-und-gegenbuchungen.md)
 - [ADR-011: Verbraucherspezifische Today-Präsentationsmodelle](adr-011-verbraucherspezifische-praesentationsmodelle.md)
+- [ADR-012: Unidirektionaler Dashboard-Zustand](adr-012-unidirektionaler-dashboard-zustand.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der

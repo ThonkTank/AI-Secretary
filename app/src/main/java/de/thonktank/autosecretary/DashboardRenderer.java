@@ -16,18 +16,11 @@ import java.util.List;
 import java.util.Map;
 
 public final class DashboardRenderer {
-    public interface Actions extends FocusTaskView.TaskActions, FocusStepRowView.Actions,
-            OptionsView.Actions {
-        void onAddTask();
-        void onTaskAction(TimelineTaskUiModel task);
-        void onTaskMenu(TimelineTaskUiModel task);
-    }
-
     private final Context context;
     private final ScrollView scroll;
     private final LinearLayout content;
     private final UiStyle style;
-    private final Actions actions;
+    private final DashboardEventSink events;
     private final String version;
     private final RewardAnchorRegistry rewardAnchors;
     private NavigationDestination mounted;
@@ -40,16 +33,17 @@ public final class DashboardRenderer {
     private final Map<String, View> timelineViews = new LinkedHashMap<>();
 
     public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
-                             Actions actions, String version) {
-        this(context, scroll, content, actions, version, new RewardAnchorRegistry());
+                             DashboardEventSink events, String version) {
+        this(context, scroll, content, events, version, new RewardAnchorRegistry());
     }
 
     public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
-                             Actions actions, String version, RewardAnchorRegistry rewardAnchors) {
+                             DashboardEventSink events, String version,
+                             RewardAnchorRegistry rewardAnchors) {
         this.context = context;
         this.scroll = scroll;
         this.content = content;
-        this.actions = actions;
+        this.events = events;
         this.version = version;
         this.rewardAnchors = rewardAnchors;
         style = new UiStyle(context);
@@ -114,11 +108,12 @@ public final class DashboardRenderer {
         else if (destination == NavigationDestination.ALL_TASKS) {
             content.setPadding(style.dimen(R.dimen.page_start), style.dp(120),
                     style.dimen(R.dimen.page_end), style.dp(26));
-            if (allPlaceholder == null) allPlaceholder = new EmptyStateView(context, actions::onAddTask);
+            if (allPlaceholder == null) allPlaceholder = new EmptyStateView(context,
+                    () -> events.emit(DashboardEvent.addTask()));
             content.addView(allPlaceholder, new LinearLayout.LayoutParams(-1, -2));
         } else {
             content.setPadding(0, 0, 0, 0);
-            if (options == null) options = new OptionsView(context, actions);
+            if (options == null) options = new OptionsView(context, events);
             content.addView(options, new LinearLayout.LayoutParams(-1, -2));
         }
         scroll.post(() -> scroll.scrollTo(0, scrollY));
@@ -138,7 +133,7 @@ public final class DashboardRenderer {
         LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(-1, -2);
         moreParams.setMargins(0, style.dp(16), 0, 0);
         content.addView(more, moreParams);
-        empty = new EmptyStateView(context, actions::onAddTask);
+        empty = new EmptyStateView(context, () -> events.emit(DashboardEvent.addTask()));
         content.addView(empty, new LinearLayout.LayoutParams(-1, -2));
     }
 
@@ -163,7 +158,7 @@ public final class DashboardRenderer {
         int open = 0;
         for (TaskSnapshot task : dashboard.tasks) if (!task.done) open++;
         focus.bind(focusTask, dashboard.timeline.size() > 0, open > 1, palette,
-                focusStepLimit, state.repetitionInput, actions, actions);
+                focusStepLimit, state.repetitionInput, events);
         bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
         more.setText(context.getResources().getQuantityString(
@@ -204,7 +199,8 @@ public final class DashboardRenderer {
                         : firstOpenAfterFocus ? R.string.marker_after : R.string.marker_later);
                 ((TaskLeafView) view).bind(item.task, marker,
                         !item.task.done && !firstOpenAfterFocus, palette,
-                        actions::onTaskAction, actions::onTaskMenu);
+                        task -> events.emit(DashboardEvent.timelinePrimary(task)),
+                        task -> events.emit(DashboardEvent.timelineMenu(task)));
                 RewardAnchorKey.Kind kind = item.task.terminalCondition
                         ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE;
                 rewardAnchors.register(new RewardAnchorKey(kind, item.task.terminalCondition

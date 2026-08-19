@@ -86,8 +86,8 @@ public final class GymRoutineAcceptanceRobolectricTest {
         RecordRepetitionResult record = new RecordRepetitionResult(repository, clock);
         CompleteRemainingSteps completeRest = new CompleteRemainingSteps(repository, clock);
         NoOpActions actions = new NoOpActions() {
-            @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
-                record.execute(stepId, repetitions);
+            @Override public void onSubmitRepetition(String stepId) {
+                record.execute(stepId, 12);
             }
 
             @Override public void onCompleteRemaining(TaskSnapshot task) {
@@ -95,7 +95,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
             }
         };
         view.bind(focus, false, false,
-                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
 
         List<String> texts = visibleTexts(view);
         assertTrue(texts.contains("23kg, Sitz 5"));
@@ -106,7 +106,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
         for (int set = 0; set < 3; set++) {
             TaskSnapshot current = dashboard(repository, clock, context).firstOpen();
             view.bind(current, false, false,
-                    DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
+                    DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
             assertTrue(firstDew(view).performClick());
         }
 
@@ -114,7 +114,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
         assertTrue(advanced.steps.get(0).done);
         assertEquals("Liegestütze", advanced.nextAction);
         view.bind(advanced, false, false,
-                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
         texts = visibleTexts(view);
         assertTrue(!texts.contains("Beinpresse"));
         assertTrue(texts.contains("Liegestütze"));
@@ -127,7 +127,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
         assertEquals(0, completed.remainingSteps);
         assertTrue(completed.steps.stream().allMatch(step -> step.done));
         view.bind(completed, false, false,
-                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
         assertTrue(visibleTexts(view).contains("4 fertig"));
         assertTrue(!visibleTexts(view).contains("Rest erledigen"));
     }

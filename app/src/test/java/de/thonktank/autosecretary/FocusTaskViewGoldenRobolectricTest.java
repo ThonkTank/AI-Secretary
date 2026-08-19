@@ -56,7 +56,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
         FocusTaskView view = new FocusTaskView(activity);
         NoOpActions actions = new NoOpActions();
         view.bind(task, false, allowDefer, palette, limit,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
         activity.setContentView(root);
 

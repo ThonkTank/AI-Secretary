@@ -46,7 +46,7 @@ public final class FocusTaskViewTest {
         FocusTaskView view = new FocusTaskView(context);
         NoOpActions actions = new NoOpActions();
         view.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                actions, actions);
+                actions);
 
         assertTrue(visibleTexts(view).contains("23 kg, Sitz 5"));
         assertTrue(visibleTexts(view).contains("12"));
@@ -60,9 +60,8 @@ public final class FocusTaskViewTest {
                 2, 15, 0);
         AtomicReference<String> changed = new AtomicReference<>();
         FocusTestActions actions = new FocusTestActions() {
-            @Override public void onRepetitionInputStateChanged(
-                    RepetitionInputState state) {
-                changed.set(state.stepId);
+            @Override public void onAdjustRepetition(String stepId, int delta) {
+                changed.set(stepId);
             }
         };
         FocusStepRowView row = new FocusStepRowView(context);
@@ -89,12 +88,10 @@ public final class FocusTaskViewTest {
                 "20 Wdh.", "", false,
                 RepetitionProgressUiModel.single(20, Collections.emptyList()),
                 0, 10, 0);
-        AtomicReference<Integer> confirmed = new AtomicReference<>();
+        AtomicReference<String> submitted = new AtomicReference<>();
         AtomicReference<String> toggled = new AtomicReference<>();
         FocusTestActions actions = new FocusTestActions() {
-            @Override public void onRecordRepetitionResult(String stepId, int value) {
-                confirmed.set(value);
-            }
+            @Override public void onSubmitRepetition(String stepId) { submitted.set(stepId); }
 
             @Override public void onToggleStep(String stepId) { toggled.set(stepId); }
         };
@@ -107,7 +104,7 @@ public final class FocusTaskViewTest {
         View barsScroll = (View) row.findViewById(R.id.set_bars).getParent();
         assertEquals(View.GONE, barsScroll.getVisibility());
         row.rewardAnchor().performClick();
-        assertEquals(Integer.valueOf(17), confirmed.get());
+        assertEquals("reps", submitted.get());
 
         FocusStepUiModel duration = new FocusStepUiModel("duration", "Planke",
                 "45 Sek.", "ruhig atmen", false,
@@ -135,7 +132,7 @@ public final class FocusTaskViewTest {
 
         view.bind(task, false, false,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.ONE,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
 
         List<String> texts = visibleTexts(view);
         assertTrue(texts.contains("Eins"));
@@ -151,7 +148,7 @@ public final class FocusTaskViewTest {
 
         view.bind(task, false, false,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.THREE,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
 
         texts = visibleTexts(view);
         assertTrue(texts.contains("Vier"));
@@ -170,21 +167,21 @@ public final class FocusTaskViewTest {
         int tallHeight = Math.round(720 * context.getResources().getDisplayMetrics().density);
 
         view.bind(task, false, false, palette, FocusStepLimit.FIVE,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
         measureExactly(view, width, shortHeight);
         int shortManual = view.visibleFollowingStepsForTest();
         assertTrue(shortManual < 5);
         assertTrue(view.cardExtentForTest() <= shortHeight);
 
         view.bind(task, false, false, palette, FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
         measureExactly(view, width, tallHeight);
         int tallAutomatic = view.visibleFollowingStepsForTest();
         assertTrue(tallAutomatic > shortManual);
         assertTrue(view.cardExtentForTest() <= tallHeight);
 
         view.bind(task, false, false, palette, FocusStepLimit.ONE,
-                RepetitionInputState.idle(), actions, actions);
+                RepetitionInputState.idle(), actions);
         measureExactly(view, width, tallHeight);
         assertEquals(1, view.visibleFollowingStepsForTest());
     }
