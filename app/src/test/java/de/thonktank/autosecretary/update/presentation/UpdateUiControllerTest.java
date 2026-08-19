@@ -85,7 +85,7 @@ public final class UpdateUiControllerTest {
     private static UpdateUiController controller(FakeFlow flow, FakeDialogs dialogs,
                                                  FakePlatform platform,
                                                  boolean automaticChecks) {
-        return new UpdateUiController(flow, dialogs, platform, resource -> {
+        return new UpdateUiController(flow, dialogs, platform, (resource, arguments) -> {
             if (resource == de.thonktank.autosecretary.R.string.error_update_download)
                 return "download failed";
             return "check failed";

@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -117,7 +119,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         @Override public void onCompleteRemaining(TaskSnapshot task) { }
         @Override public void onHarvest(TaskSnapshot task) { }
         @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepSnapshot step) { }
+        @Override public void onToggleStep(TaskStepUiModel step) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }

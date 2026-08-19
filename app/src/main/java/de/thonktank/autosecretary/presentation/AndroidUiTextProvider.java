@@ -9,7 +9,7 @@ public final class AndroidUiTextProvider implements UiTextProvider {
         this.context = context.getApplicationContext();
     }
 
-    @Override public String text(int resourceId) {
-        return context.getString(resourceId);
+    @Override public String text(int resourceId, Object... arguments) {
+        return context.getString(resourceId, arguments);
     }
 }

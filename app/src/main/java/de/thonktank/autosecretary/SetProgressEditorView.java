@@ -1,5 +1,8 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.SetProgressUiModel;
+
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.text.Editable;
@@ -19,9 +22,9 @@ import java.util.List;
 public final class SetProgressEditorView extends LinearLayout {
     public interface Listener {
         void onStateChanged(SetProgressEditorState state);
-        void onSave(TaskStepSnapshot step, List<Integer> repetitions);
-        void onFinish(TaskStepSnapshot step);
-        void onReopen(TaskStepSnapshot step, List<Integer> repetitions);
+        void onSave(TaskStepUiModel step, List<Integer> repetitions);
+        void onFinish(TaskStepUiModel step);
+        void onReopen(TaskStepUiModel step, List<Integer> repetitions);
     }
 
     private final UiStyle style;
@@ -31,7 +34,7 @@ public final class SetProgressEditorView extends LinearLayout {
     private final TextView save;
     private final TextView toggleDone;
     private boolean binding;
-    private TaskStepSnapshot boundStep;
+    private TaskStepUiModel boundStep;
     private SetProgressEditorState boundState = SetProgressEditorState.closed();
     private Listener listener;
 
@@ -91,8 +94,11 @@ public final class SetProgressEditorView extends LinearLayout {
         });
     }
 
-    public void bind(TaskStepSnapshot step, DayPalette palette,
+    public void bind(TaskStepUiModel step, DayPalette palette,
                      SetProgressEditorState state, Listener callbacks) {
+        SetProgressUiModel setProgress = step.setProgress;
+        if (setProgress == null)
+            throw new IllegalArgumentException("Set editor requires set progress");
         boundStep = step;
         boundState = state;
         listener = callbacks;
@@ -101,17 +107,17 @@ public final class SetProgressEditorView extends LinearLayout {
         setVisibility(expanded ? VISIBLE : GONE);
         if (!expanded) return;
         progress.setText(getResources().getQuantityString(R.plurals.step_progress,
-                step.plannedSets == null ? 0 : step.plannedSets,
-                step.actualRepetitions.size(), step.plannedSets));
+                setProgress.plannedSets,
+                setProgress.actualRepetitions.size(), setProgress.plannedSets));
         progress.setTextColor(palette.muted);
-        String draft = state.draft(step.id, join(step.actualRepetitions));
+        String draft = state.draft(step.id, join(setProgress.actualRepetitions));
         if (!draft.equals(repetitions.getText().toString())) {
             binding = true;
             repetitions.setText(draft);
             repetitions.setSelection(repetitions.length());
             binding = false;
         }
-        repetitions.setHint(step.plannedReps == null ? "" : String.valueOf(step.plannedReps));
+        repetitions.setHint(String.valueOf(setProgress.plannedRepetitions));
         repetitions.setTextColor(palette.ink);
         repetitions.setHintTextColor(palette.hint);
         repetitions.setBackgroundTintList(ColorStateList.valueOf(palette.accent));
@@ -168,7 +174,8 @@ public final class SetProgressEditorView extends LinearLayout {
                 return reject(getContext().getString(R.string.err_set_zero));
             }
         }
-        if (boundStep.plannedSets != null && values.size() > boundStep.plannedSets)
+        if (boundStep.setProgress != null
+                && values.size() > boundStep.setProgress.plannedSets)
             return reject(getContext().getString(R.string.err_set_count));
         boundState = boundState.withError(boundStep.id, null);
         listener.onStateChanged(boundState);

@@ -3,7 +3,6 @@ package de.thonktank.autosecretary.presentation;
 import de.thonktank.autosecretary.TodayUiModel;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.TaskSnapshot;
-import de.thonktank.autosecretary.TaskStepSnapshot;
 import de.thonktank.autosecretary.domain.model.Dashboard;
 import de.thonktank.autosecretary.domain.model.DashboardTask;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
@@ -13,6 +12,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.XpProgress;
+import de.thonktank.autosecretary.domain.model.StepAmountKind;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -20,9 +20,11 @@ import java.util.List;
 
 public final class DashboardUiMapper {
     private final UiTextProvider texts;
+    private final StepTextFormatter stepTexts;
 
     public DashboardUiMapper(UiTextProvider texts) {
         this.texts = texts;
+        this.stepTexts = new StepTextFormatter(texts);
     }
 
     public TodayUiModel map(Dashboard dashboard, LocalDate today) {
@@ -35,7 +37,7 @@ public final class DashboardUiMapper {
 
     private TaskSnapshot snapshot(DashboardTask item, LocalDate today, Dashboard dashboard) {
         Task task = item.task;
-        List<TaskStepSnapshot> steps = new ArrayList<>();
+        List<TaskStepUiModel> steps = new ArrayList<>();
         int remaining = 0;
         String next = task.conditionText;
         for (OccurrenceStep step : item.steps) {
@@ -43,10 +45,15 @@ public final class DashboardUiMapper {
             ComboProgress stepCombo = dashboard.combos.get(step.comboOwnerId);
             int stepStage = stepCombo == null ? 0 : stepCombo.level();
             int claimable = RewardPolicy.stepXp(stepCombo);
-            steps.add(new TaskStepSnapshot(step.id, step.text, done, step.amountKind,
-                    step.plannedSets, step.plannedReps, step.plannedDurationSeconds,
-                    step.note, step.actualRepetitions, stepStage, claimable,
-                    item.earnedXp(step.id)));
+            SetProgressUiModel setProgress = step.amountKind == StepAmountKind.SETS_REPS
+                    && step.plannedSets != null && step.plannedReps != null
+                    ? new SetProgressUiModel(step.plannedSets, step.plannedReps,
+                            step.note, step.actualRepetitions)
+                    : null;
+            steps.add(new TaskStepUiModel(step.id, step.text,
+                    stepTexts.format(step.amountKind, step.plannedSets, step.plannedReps,
+                            step.plannedDurationSeconds, step.note),
+                    done, setProgress, stepStage, claimable, item.earnedXp(step.id)));
             if (!done) {
                 remaining++;
                 if (remaining == 1) next = step.text;
@@ -60,7 +67,7 @@ public final class DashboardUiMapper {
         ComboProgress taskCombo = dashboard.combos.get(ComboProgress.taskOwner(task.id));
         int taskStage = taskCombo == null ? 0 : taskCombo.level();
         int collected = 0, projected = 0;
-        for (TaskStepSnapshot step : steps) {
+        for (TaskStepUiModel step : steps) {
             collected += step.earnedXp;
             projected += step.done ? step.earnedXp : step.claimableXp;
         }

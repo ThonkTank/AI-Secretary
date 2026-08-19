@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
@@ -18,7 +20,7 @@ public final class TaskSnapshot {
     @NonNull public final String softTime;
     @NonNull public final String nextAction;
     @NonNull public final Recurrence recurrence;
-    @NonNull public final List<TaskStepSnapshot> steps;
+    @NonNull public final List<TaskStepUiModel> steps;
     public final int remainingSteps;
     public final boolean terminalCondition;
     public final boolean ongoing;
@@ -35,7 +37,7 @@ public final class TaskSnapshot {
 
     public TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId, @NonNull String title,
                  @NonNull TaskSlot slot, @NonNull String softTime, @NonNull String nextAction,
-                 @NonNull Recurrence recurrence, @NonNull List<TaskStepSnapshot> steps,
+                 @NonNull Recurrence recurrence, @NonNull List<TaskStepUiModel> steps,
                  int remainingSteps, boolean terminalCondition, boolean ongoing, boolean done,
                  boolean overdue, int comboStage, long displayOrder) {
         this(taskId, occurrenceId, title, slot, softTime, nextAction, recurrence, steps,
@@ -46,7 +48,7 @@ public final class TaskSnapshot {
     public TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId,
                  @NonNull String title, @NonNull TaskSlot slot, @NonNull String softTime,
                  @NonNull String nextAction, @NonNull Recurrence recurrence,
-                 @NonNull List<TaskStepSnapshot> steps, int remainingSteps,
+                 @NonNull List<TaskStepUiModel> steps, int remainingSteps,
                  boolean terminalCondition, boolean ongoing, boolean done, boolean overdue,
                  int comboStage, long displayOrder, int claimableXp,
                  int collectedXp, int awardedXp, boolean harvestReady) {
@@ -58,7 +60,7 @@ public final class TaskSnapshot {
     public TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId,
                  @NonNull String title, @NonNull TaskSlot slot, @NonNull String softTime,
                  @NonNull String nextAction, @NonNull Recurrence recurrence,
-                 @NonNull List<TaskStepSnapshot> steps, int remainingSteps,
+                 @NonNull List<TaskStepUiModel> steps, int remainingSteps,
                  boolean terminalCondition, boolean ongoing, boolean done, boolean overdue,
                  int comboStage, long displayOrder, int claimableXp,
                  int collectedXp, int awardedXp, boolean harvestReady, boolean undoAvailable) {

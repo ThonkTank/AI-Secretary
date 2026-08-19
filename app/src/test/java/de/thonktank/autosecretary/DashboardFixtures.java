@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -24,8 +26,8 @@ final class DashboardFixtures {
     static TaskSnapshot taskWithSteps() {
         return task("steps", "Morgenroutine", TaskSlot.MORNING, Recurrence.DAILY,
                 Arrays.asList(
-                        new TaskStepSnapshot("step-1", "Duschen", true),
-                        new TaskStepSnapshot("step-2", "Anziehen", false)),
+                        new TaskStepUiModel("step-1", "Duschen", true),
+                        new TaskStepUiModel("step-2", "Anziehen", false)),
                 1, false, false, false, false, 6, 1_002_000L);
     }
 
@@ -61,7 +63,7 @@ final class DashboardFixtures {
     }
 
     private static TaskSnapshot task(String id, String title, TaskSlot slot, Recurrence recurrence,
-                                     List<TaskStepSnapshot> steps, int remainingSteps,
+                                     List<TaskStepUiModel> steps, int remainingSteps,
                                      boolean terminalCondition, boolean ongoing, boolean done,
                                      boolean overdue, int comboStage, long displayOrder) {
         return new TaskSnapshot(id, done ? "occurrence-done" : "occurrence-" + id,

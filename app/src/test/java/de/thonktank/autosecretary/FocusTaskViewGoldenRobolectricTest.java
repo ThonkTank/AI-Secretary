@@ -1,5 +1,8 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.SetProgressUiModel;
+
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -18,10 +21,8 @@ import org.robolectric.annotation.GraphicsMode;
 import java.io.File;
 import java.time.LocalTime;
 import java.util.Arrays;
-import java.util.Collections;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 
 @RunWith(RobolectricTestRunner.class)
@@ -58,14 +59,14 @@ public final class FocusTaskViewGoldenRobolectricTest {
     }
 
     private static TaskSnapshot gymTask() {
-        TaskStepSnapshot press = new TaskStepSnapshot("press", "Beinpresse", false,
-                StepAmountKind.SETS_REPS, 3, 12, null, "23 kg, Sitz 5",
-                Arrays.asList(12, 11));
-        TaskStepSnapshot pushups = new TaskStepSnapshot("pushups", "Liegestütze", false,
-                StepAmountKind.REPS, null, 20, null, "", Collections.emptyList());
-        TaskStepSnapshot plank = new TaskStepSnapshot("plank", "Planke", false,
-                StepAmountKind.DURATION, null, null, 120, "Bauch fest",
-                Collections.emptyList());
+        TaskStepUiModel press = new TaskStepUiModel("press", "Beinpresse",
+                "3 × 12 Wdh. · 23 kg, Sitz 5", false,
+                new SetProgressUiModel(3, 12, "23 kg, Sitz 5", Arrays.asList(12, 11)),
+                0, 10, 0);
+        TaskStepUiModel pushups = new TaskStepUiModel("pushups", "Liegestütze",
+                "20 Wdh.", false, null, 0, 10, 0);
+        TaskStepUiModel plank = new TaskStepUiModel("plank", "Planke",
+                "2 Min. · Bauch fest", false, null, 0, 10, 0);
         return new TaskSnapshot("gym", "gym-today", "Gym", TaskSlot.MORNING,
                 "heute am Morgen", "Beinpresse", Recurrence.DAILY,
                 Arrays.asList(press, pushups, plank), 3, false, false, false,
@@ -75,6 +76,6 @@ public final class FocusTaskViewGoldenRobolectricTest {
     private static final class NoOpActions implements FocusTaskView.Actions {
         @Override public void onComplete(TaskSnapshot task) { }
         @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepSnapshot step) { }
+        @Override public void onToggleStep(TaskStepUiModel step) { }
     }
 }

@@ -1,5 +1,8 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.SetProgressUiModel;
+
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.text.Editable;
@@ -24,17 +27,21 @@ public final class SetConfirmationView extends FrameLayout {
     }
 
     private final UiStyle style;
-    private final TaskStepSnapshot step;
+    private final TaskStepUiModel step;
+    private final SetProgressUiModel setProgress;
     private final DayPalette palette;
     private final Listener listener;
     private final EditText repetitions;
     private final TextView inlineError;
     private final LinearLayout card;
 
-    public SetConfirmationView(Context context, TaskStepSnapshot step, DayPalette palette,
+    public SetConfirmationView(Context context, TaskStepUiModel step, DayPalette palette,
                                Listener listener) {
         super(context);
+        if (step.setProgress == null)
+            throw new IllegalArgumentException("Set confirmation requires set progress");
         this.style = new UiStyle(context); this.step = step; this.palette = palette;
+        this.setProgress = step.setProgress;
         this.listener = listener;
         setBackgroundColor(0x88060c08); setClickable(true); setFocusable(true);
         card = new LinearLayout(context); card.setOrientation(LinearLayout.VERTICAL);
@@ -42,14 +49,14 @@ public final class SetConfirmationView extends FrameLayout {
         card.setBackground(new LeafShapeDrawable(palette.leaf1, palette.leaf1Edge, style.dp(1),
                 style.dp(10), style.dp(64), style.dp(10), style.dp(64)));
         style.shadow(card, palette, 20, 1f);
-        card.addView(style.serif(step.label, 19, palette.accent, true, 300));
+        card.addView(style.serif(step.title, 19, palette.accent, true, 300));
         card.addView(style.serif(step.done ? context.getString(R.string.set_progress_edit_title)
-                : context.getString(R.string.set_title, step.nextSetNumber(),
-                        step.plannedSets), 29, palette.ink, false, 200), margin(6));
+                : context.getString(R.string.set_title, setProgress.nextSetNumber(),
+                        setProgress.plannedSets), 29, palette.ink, false, 200), margin(6));
         addProgress();
         repetitions = new EditText(context);
-        repetitions.setText(step.done ? join(step.actualRepetitions)
-                : String.valueOf(step.plannedReps)); repetitions.setTextSize(23);
+        repetitions.setText(step.done ? join(setProgress.actualRepetitions)
+                : String.valueOf(setProgress.plannedRepetitions)); repetitions.setTextSize(23);
         repetitions.setTypeface(style.serif); repetitions.setTextColor(palette.ink);
         repetitions.setSingleLine(true); repetitions.setInputType(step.done
                 ? InputType.TYPE_CLASS_TEXT : InputType.TYPE_CLASS_NUMBER);
@@ -72,7 +79,8 @@ public final class SetConfirmationView extends FrameLayout {
             @Override public void afterTextChanged(Editable value) { }
         });
         card.addView(value, margin(16));
-        if (!step.note.isEmpty()) card.addView(style.sans(step.note, 15, palette.ink2, false), margin(14));
+        if (!setProgress.note.isEmpty()) card.addView(style.sans(
+                setProgress.note, 15, palette.ink2, false), margin(14));
         addActions();
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(-1, -2);
         params.leftMargin = style.dp(60); params.rightMargin = style.dp(22);
@@ -83,17 +91,18 @@ public final class SetConfirmationView extends FrameLayout {
 
     private void addProgress() {
         LinearLayout row = new LinearLayout(getContext()); row.setGravity(Gravity.CENTER_VERTICAL);
-        for (int i = 0; i < step.plannedSets; i++) {
+        for (int i = 0; i < setProgress.plannedSets; i++) {
             TextView bar = new TextView(getContext());
             android.graphics.drawable.GradientDrawable bg = style.pill(
-                    i < step.actualRepetitions.size() ? palette.accent
+                    i < setProgress.actualRepetitions.size() ? palette.accent
                             : UiStyle.alpha(palette.dot, .4f), 3);
             bar.setBackground(bg);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(style.dp(22), style.dp(5));
             if (i > 0) params.setMargins(style.dp(8), 0, 0, 0); row.addView(bar, params);
         }
         TextView label = style.serif(getContext().getString(R.string.set_progress,
-                step.actualRepetitions.size(), step.plannedSets), 14, palette.muted, true, 300);
+                setProgress.actualRepetitions.size(), setProgress.plannedSets),
+                14, palette.muted, true, 300);
         LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(-2, -2);
         labelParams.setMargins(style.dp(12), 0, 0, 0); row.addView(label, labelParams);
         card.addView(row, margin(8));
@@ -137,7 +146,9 @@ public final class SetConfirmationView extends FrameLayout {
                 inlineError.setVisibility(VISIBLE); return;
             }
         }
-        if (values.size() > step.plannedSets) { inlineError.setVisibility(VISIBLE); return; }
+        if (values.size() > setProgress.plannedSets) {
+            inlineError.setVisibility(VISIBLE); return;
+        }
         listener.onEditProgress(step.id, values);
     }
 

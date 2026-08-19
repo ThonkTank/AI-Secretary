@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import android.content.Context;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -15,19 +17,17 @@ import android.graphics.drawable.GradientDrawable;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
-
 public final class FocusTaskView extends FrameLayout {
     public interface Actions {
         void onComplete(TaskSnapshot task);
         default void onCompleteRemaining(TaskSnapshot task) { onComplete(task); }
         default void onHarvest(TaskSnapshot task) { onComplete(task); }
         void onDefer(TaskSnapshot task);
-        void onToggleStep(TaskStepSnapshot step);
-        default void onEditStepProgress(TaskStepSnapshot step, List<Integer> repetitions,
+        void onToggleStep(TaskStepUiModel step);
+        default void onEditStepProgress(TaskStepUiModel step, List<Integer> repetitions,
                                         boolean done) { }
-        default void onFinishExercise(TaskStepSnapshot step) { }
-        default void onReopenExercise(TaskStepSnapshot step, List<Integer> repetitions) { }
+        default void onFinishExercise(TaskStepUiModel step) { }
+        default void onReopenExercise(TaskStepUiModel step, List<Integer> repetitions) { }
         default void onSetProgressEditorStateChanged(SetProgressEditorState state) { }
     }
 
@@ -250,14 +250,14 @@ public final class FocusTaskView extends FrameLayout {
                 continue;
             }
             row.root.setVisibility(VISIBLE);
-            TaskStepSnapshot step = task.steps.get(i);
+            TaskStepUiModel step = task.steps.get(i);
             rewardAnchors.register(new RewardAnchorKey(RewardAnchorKey.Kind.STEP, step.id), row.dot);
             row.dot.bind(step.done, false, palette, step.done ? step.earnedXp : step.claimableXp);
-            String details = stepDetails(getContext(), step);
-            String description = step.label + (details.isEmpty() ? "" : ", " + details);
+            String details = step.subtitle;
+            String description = step.title + (details.isEmpty() ? "" : ", " + details);
             row.dot.setContentDescription((step.done
                     ? getContext().getString(R.string.marker_done) + ": " : "") + description);
-            row.label.setText(step.done ? strike(step.label) : step.label);
+            row.label.setText(step.done ? strike(step.title) : step.title);
             row.label.setTextColor(step.done ? palette.done : palette.ink);
             row.label.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             row.details.setText(details);
@@ -266,10 +266,10 @@ public final class FocusTaskView extends FrameLayout {
             row.details.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             WoodGrainView.applyTextHalo(row.label, palette.leaf1);
             WoodGrainView.applyTextHalo(row.details, palette.leaf1);
-            if (step.amountKind == StepAmountKind.SETS_REPS) {
+            if (step.setProgress != null) {
                 View.OnClickListener expand = view -> {
                     SetProgressEditorState next = editorState.toggle(step.id,
-                            SetProgressEditorView.join(step.actualRepetitions));
+                            SetProgressEditorView.join(step.setProgress.actualRepetitions));
                     callbacks.onSetProgressEditorStateChanged(next);
                     bindSteps(task, palette, next, callbacks);
                     post(() -> syncLayersAndGrain(task, palette));
@@ -313,19 +313,19 @@ public final class FocusTaskView extends FrameLayout {
             root.addView(editor, new LinearLayout.LayoutParams(-1, -2));
         }
 
-        void bindEditor(TaskStepSnapshot step, DayPalette palette,
+        void bindEditor(TaskStepUiModel step, DayPalette palette,
                         SetProgressEditorState editorState, Actions callbacks) {
             editor.bind(step, palette, editorState, new SetProgressEditorView.Listener() {
                 @Override public void onStateChanged(SetProgressEditorState state) {
                     callbacks.onSetProgressEditorStateChanged(state);
                 }
-                @Override public void onSave(TaskStepSnapshot value, List<Integer> repetitions) {
+                @Override public void onSave(TaskStepUiModel value, List<Integer> repetitions) {
                     callbacks.onEditStepProgress(value, repetitions, value.done);
                 }
-                @Override public void onFinish(TaskStepSnapshot value) {
+                @Override public void onFinish(TaskStepUiModel value) {
                     callbacks.onFinishExercise(value);
                 }
-                @Override public void onReopen(TaskStepSnapshot value,
+                @Override public void onReopen(TaskStepUiModel value,
                                                List<Integer> repetitions) {
                     callbacks.onReopenExercise(value, repetitions);
                 }
@@ -421,27 +421,6 @@ public final class FocusTaskView extends FrameLayout {
         afterglow.animate().alpha(0f).setDuration(palette.motion.afterglowDurationMs)
                 .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
                 .withEndAction(() -> afterglow.setVisibility(INVISIBLE));
-    }
-
-    static String stepDetails(Context context, TaskStepSnapshot step) {
-        String amount = "";
-        if (step.amountKind == StepAmountKind.SETS_REPS
-                && step.plannedSets != null && step.plannedReps != null) {
-            amount = context.getString(R.string.step_amount_sets_reps_summary,
-                    step.plannedSets, step.plannedReps);
-        } else if (step.amountKind == StepAmountKind.REPS && step.plannedReps != null) {
-            amount = context.getString(R.string.step_amount_reps_summary, step.plannedReps);
-        } else if (step.amountKind == StepAmountKind.DURATION
-                && step.plannedDurationSeconds != null) {
-            int seconds = step.plannedDurationSeconds;
-            amount = seconds >= 60 && seconds % 60 == 0
-                    ? context.getString(R.string.step_amount_minutes_summary, seconds / 60)
-                    : context.getString(R.string.step_amount_seconds_summary, seconds);
-        }
-        String note = step.note.trim();
-        if (amount.isEmpty()) return note;
-        if (note.isEmpty()) return amount;
-        return context.getString(R.string.step_amount_note_summary, amount, note);
     }
 
     private static CharSequence strike(String text) {

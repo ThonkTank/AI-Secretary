@@ -1,5 +1,8 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.SetProgressUiModel;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -55,9 +58,10 @@ public final class TaskEditorGoldenRobolectricTest {
         ForestBackdropView forest = new ForestBackdropView(context); forest.setPalette(palette);
         root.addView(forest, new FrameLayout.LayoutParams(-1, -1));
         if (name.equals("13-satz-bestaetigen")) {
-            TaskStepSnapshot step = new TaskStepSnapshot("set", "Beinpresse", false,
-                    StepAmountKind.SETS_REPS, 3, 12, null, "23 kg, Sitz 5",
-                    java.util.Arrays.asList(12, 12));
+            TaskStepUiModel step = new TaskStepUiModel("set", "Beinpresse",
+                    "3 × 12 Wdh. · 23 kg, Sitz 5", false,
+                    new SetProgressUiModel(3, 12, "23 kg, Sitz 5",
+                            java.util.Arrays.asList(12, 12)), 0, 10, 0);
             SetConfirmationView prompt = new SetConfirmationView(context, step, palette,
                     new NoopSetListener());
             prompt.setPadding(0, dp(context, 28), 0, 0);

@@ -1,5 +1,8 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.SetProgressUiModel;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -20,7 +23,6 @@ import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
@@ -161,9 +163,10 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     }
 
     private static TaskSnapshot setTask(boolean done) {
-        TaskStepSnapshot step = new TaskStepSnapshot("set-step", "Beinpresse", done,
-                StepAmountKind.SETS_REPS, 3, 12, null, "23 kg",
-                Collections.singletonList(10), 2, 15, done ? 15 : 0);
+        TaskStepUiModel step = new TaskStepUiModel("set-step", "Beinpresse",
+                "3 × 12 Wdh. · 23 kg", done,
+                new SetProgressUiModel(3, 12, "23 kg", Collections.singletonList(10)),
+                2, 15, done ? 15 : 0);
         return new TaskSnapshot("training", "training-today", "Training mit langem Titel",
                 TaskSlot.MORNING, "", "Beinpresse", Recurrence.DAILY,
                 Collections.singletonList(step), done ? 0 : 1, false, false, false, false,
@@ -227,7 +230,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         @Override public void onTaskMenu(TaskSnapshot task) { }
         @Override public void onComplete(TaskSnapshot task) { }
         @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepSnapshot step) { }
+        @Override public void onToggleStep(TaskStepUiModel step) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }
