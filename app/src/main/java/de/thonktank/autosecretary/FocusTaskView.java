@@ -292,7 +292,6 @@ public final class FocusTaskView extends FrameLayout {
         final LinearLayout root = new LinearLayout(getContext());
         final LinearLayout header = new LinearLayout(getContext());
         final DewDotView dot = new DewDotView(getContext());
-        final LinearLayout text = new LinearLayout(getContext());
         final TextView label = style.sans("", 19, 0, false);
         final TextView details = style.sans("", 14, 0, false);
         final SetProgressEditorView editor = new SetProgressEditorView(getContext());
@@ -303,16 +302,14 @@ public final class FocusTaskView extends FrameLayout {
             LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(style.dp(48), style.dp(48));
             dotParams.setMargins(0, -style.dp(3), 0, -style.dp(4));
             header.addView(dot, dotParams);
-            text.setOrientation(LinearLayout.VERTICAL);
-            text.addView(label, new LinearLayout.LayoutParams(-1, -2));
-            LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(-1, -2);
-            detailsParams.topMargin = style.dp(1);
-            text.addView(details, detailsParams);
-            LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, -2, 1);
-            textParams.setMargins(style.dp(4), 0, 0, 0);
-            header.addView(text, textParams);
+            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1);
+            labelParams.setMargins(style.dp(4), 0, 0, 0);
+            header.addView(label, labelParams);
             root.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
+            LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(-1, -2);
+            detailsParams.setMargins(style.dp(52), -style.dp(7), 0, style.dp(7));
+            root.addView(details, detailsParams);
             root.addView(editor, new LinearLayout.LayoutParams(-1, -2));
         }
 
@@ -360,6 +357,8 @@ public final class FocusTaskView extends FrameLayout {
         faded.add(title);
         for (int i = 0; i < task.steps.size() && i < stepRows.size(); i++) {
             faded.add(stepRows.get(i).label);
+            if (stepRows.get(i).details.getVisibility() == VISIBLE)
+                faded.add(stepRows.get(i).details);
             if (stepRows.get(i).editor.getVisibility() == VISIBLE) {
                 faded.addAll(stepRows.get(i).editor.grainTextViews());
             }
