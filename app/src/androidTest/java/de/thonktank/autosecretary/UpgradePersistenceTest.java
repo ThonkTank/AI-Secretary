@@ -370,7 +370,8 @@ public final class UpgradePersistenceTest {
                 String table = entity.getString("tableName");
                 database.execSQL(entity.getString("createSql")
                         .replace("${TABLE_NAME}", table));
-                JSONArray indices = entity.getJSONArray("indices");
+                JSONArray indices = entity.optJSONArray("indices");
+                if (indices == null) continue;
                 for (int entry = 0; entry < indices.length(); entry++)
                     database.execSQL(indices.getJSONObject(entry).getString("createSql")
                             .replace("${TABLE_NAME}", table));
