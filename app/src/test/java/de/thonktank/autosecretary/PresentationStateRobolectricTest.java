@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -18,6 +19,8 @@ import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
+import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
+import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
@@ -32,6 +35,7 @@ import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
+import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import org.junit.After;
 import org.junit.Before;
@@ -198,6 +202,30 @@ public final class PresentationStateRobolectricTest {
         assertNull(value().repetitionInput.stepId);
         assertEquals(Collections.singletonList(14),
                 repository.findOccurrenceStep(stepId).repetitionProgress.actualRepetitions);
+    }
+
+    @Test public void displayPreferencesAndUpdateStatusJoinStateWithoutReloadingContent() {
+        AtomicInteger invalidations = new AtomicInteger();
+        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(),
+                invalidations::incrementAndGet);
+        TodayUiModel dashboardBefore = value().dashboard;
+
+        preferences.setFocusStepLimit(FocusStepLimit.THREE);
+
+        assertEquals(FocusStepLimit.THREE, value().focusStepLimit);
+        assertSame(dashboardBefore, value().dashboard);
+        assertEquals(0, invalidations.get());
+
+        preferences.setThemeMode(UiThemeMode.DARK);
+        assertEquals(UiThemeMode.DARK, value().themeMode);
+        assertEquals(DayPalette.at(clock.time(), DayPalette.Mode.DARK).background,
+                value().palette.background);
+        assertSame(dashboardBefore, value().dashboard);
+        assertEquals(1, invalidations.get());
+
+        viewModel.updateUpdateState(UpdateUiState.checking());
+        assertEquals(UpdateUiState.Status.CHECKING, value().update.status);
+        assertSame(dashboardBefore, value().dashboard);
     }
 
     private TaskViewModel newViewModel(SavedStateHandle handle) {

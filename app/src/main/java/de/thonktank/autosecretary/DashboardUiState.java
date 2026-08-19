@@ -4,6 +4,11 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import de.thonktank.autosecretary.data.preferences.DisplayPreferences;
+import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
+import de.thonktank.autosecretary.data.preferences.UiThemeMode;
+import de.thonktank.autosecretary.update.presentation.UpdateUiState;
+
 public final class DashboardUiState {
     public final NavigationDestination navigation;
     public final TodayUiModel dashboard;
@@ -14,13 +19,17 @@ public final class DashboardUiState {
     public final Set<UiCommand> runningActions;
     public final EditorUiState editor;
     public final RepetitionInputState repetitionInput;
+    public final UiThemeMode themeMode;
+    public final FocusStepLimit focusStepLimit;
+    public final UpdateUiState update;
 
     public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
                             CalendarUiState calendar, DayPalette palette,
                             CalendarPermissionStatus calendarPermission, boolean loading,
                             Set<UiCommand> runningActions, EditorUiState editor) {
         this(navigation, dashboard, calendar, palette, calendarPermission, loading,
-                runningActions, editor, RepetitionInputState.idle());
+                runningActions, editor, RepetitionInputState.idle(), UiThemeMode.AUTO,
+                FocusStepLimit.AUTO, UpdateUiState.idle());
     }
 
     public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
@@ -28,6 +37,19 @@ public final class DashboardUiState {
                             CalendarPermissionStatus calendarPermission, boolean loading,
                             Set<UiCommand> runningActions, EditorUiState editor,
                             RepetitionInputState repetitionInput) {
+        this(navigation, dashboard, calendar, palette, calendarPermission, loading,
+                runningActions, editor, repetitionInput, UiThemeMode.AUTO,
+                FocusStepLimit.AUTO, UpdateUiState.idle());
+    }
+
+    public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
+                            CalendarUiState calendar, DayPalette palette,
+                            CalendarPermissionStatus calendarPermission, boolean loading,
+                            Set<UiCommand> runningActions, EditorUiState editor,
+                            RepetitionInputState repetitionInput, UiThemeMode themeMode,
+                            FocusStepLimit focusStepLimit, UpdateUiState update) {
+        if (themeMode == null || focusStepLimit == null || update == null)
+            throw new IllegalArgumentException("Complete render preferences are required");
         this.navigation = navigation;
         this.dashboard = dashboard;
         this.calendar = calendar;
@@ -37,6 +59,9 @@ public final class DashboardUiState {
         this.runningActions = Collections.unmodifiableSet(new LinkedHashSet<>(runningActions));
         this.editor = editor;
         this.repetitionInput = repetitionInput;
+        this.themeMode = themeMode;
+        this.focusStepLimit = focusStepLimit;
+        this.update = update;
     }
 
     public DashboardUiState withNavigation(NavigationDestination value) {
@@ -82,6 +107,19 @@ public final class DashboardUiState {
                 runningActions, editor, value);
     }
 
+    public DashboardUiState withDisplayPreferences(DisplayPreferences value,
+                                                   DayPalette paletteValue) {
+        return new DashboardUiState(navigation, dashboard, calendar, paletteValue,
+                calendarPermission, loading, runningActions, editor, repetitionInput,
+                value.themeMode, value.focusStepLimit, update);
+    }
+
+    public DashboardUiState withUpdate(UpdateUiState value) {
+        return new DashboardUiState(navigation, dashboard, calendar, palette,
+                calendarPermission, loading, runningActions, editor, repetitionInput,
+                themeMode, focusStepLimit, value);
+    }
+
     public boolean isRunning(UiCommand key) { return runningActions.contains(key); }
 
     private DashboardUiState copy(NavigationDestination navigationValue,
@@ -92,6 +130,6 @@ public final class DashboardUiState {
                                   RepetitionInputState repetitionInputValue) {
         return new DashboardUiState(navigationValue, dashboardValue, calendarValue,
                 paletteValue, permissionValue, loadingValue, actionsValue, editorValue,
-                repetitionInputValue);
+                repetitionInputValue, themeMode, focusStepLimit, update);
     }
 }

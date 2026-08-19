@@ -108,13 +108,12 @@ public final class UiComponentRobolectricTest {
         DayPalette morning = DayPalette.at(LocalTime.of(8, 0), DayPalette.Mode.AUTO);
         DashboardUiState first = state(morning);
 
-        renderer.render(first, UiThemeMode.AUTO, UpdateUiState.idle());
+        renderer.render(first);
         View focus = content.findViewById(R.id.dashboard_focus);
         focus.setFocusableInTouchMode(true);
         focus.requestFocus();
 
-        renderer.render(state(DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)),
-                UiThemeMode.AUTO, UpdateUiState.idle());
+        renderer.render(state(DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)));
 
         assertSame(focus, content.findViewById(R.id.dashboard_focus));
         assertSame(focus, content.findFocus());

@@ -3,10 +3,17 @@ package de.thonktank.autosecretary.data.preferences;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.calendar.CalendarPolicy;
 
 public final class UiPreferences {
+    public interface Subscription extends AutoCloseable {
+        @Override void close();
+    }
+
     private static final String TAG = "UiPreferences";
     private static final String FILE = "forest_ui";
     private static final String THEME_MODE = "theme_mode";
@@ -49,6 +56,25 @@ public final class UiPreferences {
 
     public void setFocusStepLimit(FocusStepLimit limit) {
         preferences.edit().putString(FOCUS_STEP_LIMIT, limit.name()).apply();
+    }
+
+    public DisplayPreferences displayPreferences() {
+        return new DisplayPreferences(themeMode(), focusStepLimit());
+    }
+
+    public Subscription observeDisplayPreferences(Consumer<DisplayPreferences> observer) {
+        if (observer == null) throw new IllegalArgumentException("Observer is required");
+        SharedPreferences.OnSharedPreferenceChangeListener listener = (source, key) -> {
+            if (THEME_MODE.equals(key) || FOCUS_STEP_LIMIT.equals(key))
+                observer.accept(displayPreferences());
+        };
+        preferences.registerOnSharedPreferenceChangeListener(listener);
+        observer.accept(displayPreferences());
+        AtomicBoolean closed = new AtomicBoolean();
+        return () -> {
+            if (closed.compareAndSet(false, true))
+                preferences.unregisterOnSharedPreferenceChangeListener(listener);
+        };
     }
 
     public boolean calendarPermissionAsked() {

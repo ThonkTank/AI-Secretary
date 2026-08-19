@@ -6,9 +6,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
-import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -49,18 +47,14 @@ public final class DashboardRenderer {
         style = new UiStyle(context);
     }
 
-    public void render(DashboardUiState state, UiThemeMode themeMode, UpdateUiState updateState) {
-        render(state, themeMode, FocusStepLimit.AUTO, updateState);
-    }
-
-    public void render(DashboardUiState state, UiThemeMode themeMode,
-                       FocusStepLimit focusStepLimit, UpdateUiState updateState) {
+    public void render(DashboardUiState state) {
         if (mounted != state.navigation) mount(state.navigation);
-        if (state.navigation == NavigationDestination.TODAY) bindToday(state, focusStepLimit);
+        if (state.navigation == NavigationDestination.TODAY)
+            bindToday(state, state.focusStepLimit);
         else if (state.navigation == NavigationDestination.ALL_TASKS)
             allPlaceholder.bind(state.palette, true);
-        else options.bind(state.palette, themeMode, focusStepLimit,
-                    state.calendarPermission, state.calendar, version, updateState);
+        else options.bind(state.palette, state.themeMode, state.focusStepLimit,
+                    state.calendarPermission, state.calendar, version, state.update);
     }
 
     public void animateEditorTransition(Runnable finished) {

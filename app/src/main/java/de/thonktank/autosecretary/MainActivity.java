@@ -43,7 +43,6 @@ public class MainActivity extends ComponentActivity {
     private TaskViewModel viewModel;
     private UpdateUiController updates;
     private DashboardUiState uiState;
-    private UpdateUiState updateState = UpdateUiState.idle();
     private ForestBackdropView forest;
     private HeaderView header;
     private FooterNavigationView footer;
@@ -215,12 +214,9 @@ public class MainActivity extends ComponentActivity {
         } else if (event instanceof DashboardEvent.ThemeSelected) {
             UiThemeMode mode = ((DashboardEvent.ThemeSelected) event).mode;
             container.uiPreferences.setThemeMode(mode);
-            viewModel.minuteChanged();
-            TaskWidgetProvider.updateAll(this);
         } else if (event instanceof DashboardEvent.FocusStepLimitSelected) {
             container.uiPreferences.setFocusStepLimit(
                     ((DashboardEvent.FocusStepLimitSelected) event).limit);
-            viewModel.displayPreferencesChanged();
         } else if (event instanceof DashboardEvent.CalendarPermission) {
             viewModel.onCalendarPermissionAction();
         } else if (event instanceof DashboardEvent.CheckUpdates) {
@@ -233,8 +229,7 @@ public class MainActivity extends ComponentActivity {
         forest.setPalette(state.palette);
         header.bind(container.clock.time(), state.palette, state.dashboard.xpProgress);
         footer.bind(state.navigation, state.palette);
-        renderer.render(state, container.uiPreferences.themeMode(),
-                container.uiPreferences.focusStepLimit(), updateState);
+        renderer.render(state);
         boolean light = luminance(state.palette.background) > .55;
         WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(),
                 getWindow().getDecorView());
@@ -254,10 +249,8 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void renderUpdate(UpdateUiState state) {
-        updateState = state == null ? UpdateUiState.idle() : state;
-        if (uiState != null)
-            renderer.render(uiState, container.uiPreferences.themeMode(),
-                    container.uiPreferences.focusStepLimit(), updateState);
+        if (viewModel != null)
+            viewModel.updateUpdateState(state == null ? UpdateUiState.idle() : state);
     }
 
     private void completeOrConfirm(TaskSnapshot task) {

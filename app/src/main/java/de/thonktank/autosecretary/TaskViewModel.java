@@ -12,7 +12,9 @@ import androidx.lifecycle.viewmodel.CreationExtras;
 
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.calendar.CalendarResult;
+import de.thonktank.autosecretary.data.preferences.DisplayPreferences;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
+import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.TaskId;
@@ -21,6 +23,7 @@ import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
+import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -47,6 +50,7 @@ public final class TaskViewModel extends ViewModel {
     private final WidgetInvalidator widgets;
     private final SavedStateHandle savedState;
     private final CalendarDataSource.Subscription calendarSubscription;
+    private final UiPreferences.Subscription displayPreferencesSubscription;
     private final ExecutorService worker;
     private final MutableLiveData<DashboardUiState> state = new MutableLiveData<>();
     private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
@@ -86,10 +90,15 @@ public final class TaskViewModel extends ViewModel {
         this.worker = worker;
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
         EditorUiState editor = EditorUiState.fromBundle(savedState.get(EDITOR));
+        DisplayPreferences display = preferences.displayPreferences();
         current = new DashboardUiState(navigation, TodayUiModel.empty(),
-                CalendarUiState.empty(), palette(), CalendarPermissionStatus.UNKNOWN,
-                false, Collections.emptySet(), editor);
+                CalendarUiState.empty(), palette(display.themeMode),
+                CalendarPermissionStatus.UNKNOWN, false, Collections.emptySet(), editor,
+                RepetitionInputState.idle(), display.themeMode, display.focusStepLimit,
+                UpdateUiState.idle());
         state.setValue(current);
+        displayPreferencesSubscription = preferences.observeDisplayPreferences(
+                this::onDisplayPreferences);
         calendarSubscription = calendar.observeChanges(this::calendarChanged);
         load();
         if (editor.open && editor.loading && editor.taskId != null) openEditor(editor.taskId);
@@ -115,11 +124,11 @@ public final class TaskViewModel extends ViewModel {
     }
 
     void minuteChanged() {
-        update(value -> value.withPalette(palette()));
+        update(value -> value.withPalette(palette(value.themeMode)));
     }
 
-    void displayPreferencesChanged() {
-        update(value -> value.withPalette(palette()));
+    void updateUpdateState(UpdateUiState updateState) {
+        update(value -> value.withUpdate(updateState));
     }
 
     void reduceRepetitionInput(DashboardEvent event) {
@@ -440,8 +449,18 @@ public final class TaskViewModel extends ViewModel {
         }
     }
 
-    private DayPalette palette() {
-        return DayPalette.at(clock.time(), DayPalette.Mode.valueOf(preferences.themeMode().name()));
+    private void onDisplayPreferences(DisplayPreferences value) {
+        boolean themeChanged;
+        synchronized (stateLock) {
+            themeChanged = current.themeMode != value.themeMode;
+            current = current.withDisplayPreferences(value, palette(value.themeMode));
+            state.postValue(current);
+        }
+        if (themeChanged) invalidateWidgets();
+    }
+
+    private DayPalette palette(UiThemeMode mode) {
+        return DayPalette.at(clock.time(), DayPalette.Mode.valueOf(mode.name()));
     }
 
     private static NavigationDestination restoredNavigation(String stored) {
@@ -470,6 +489,7 @@ public final class TaskViewModel extends ViewModel {
 
     @Override protected void onCleared() {
         calendarSubscription.close();
+        displayPreferencesSubscription.close();
         worker.shutdownNow();
     }
 

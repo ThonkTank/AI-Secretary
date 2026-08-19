@@ -99,7 +99,7 @@ public final class DashboardCharacterizationTest {
                         TodayUiModel.compose(dashboardState, events),
                         CalendarUiState.from(new CalendarResult.Success(events)), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
-                        EditorUiState.closed()), UiThemeMode.AUTO, UpdateUiState.idle());
+                        EditorUiState.closed()));
 
         LinearLayout timeline = content.findViewById(R.id.dashboard_timeline);
         List<String> text = new ArrayList<>();
