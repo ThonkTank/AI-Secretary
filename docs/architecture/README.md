@@ -28,6 +28,9 @@ Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
 Die aktuelle Testschichtung, Migrationsmatrix und Golden-/Accessibility-Verträge beschreibt
 [Phase 7: Testpyramide, Goldens und Accessibility](phase-7-teststrategie.md).
+Die vor dem Today-/Fokus-Refactor festgehaltenen Datenflüsse, Charakterisierungstests und
+Laufzeit-/Speicherwerte stehen in der
+[Phase-0-Baseline des Today-/Fokus-Refactors](today-focus-baseline.md).
 
 ## Paketgrenzen des schrittweisen Refactorings
 
