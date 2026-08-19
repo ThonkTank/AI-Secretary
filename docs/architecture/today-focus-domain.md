@@ -35,13 +35,13 @@ vorhandenen Teilwerte.
 
 ## Rückwärtskompatibilität
 
-Phase 1 ändert weder Room-Version noch Tabellen oder gespeicherte Spalten. Die bestehende
-Komma-Repräsentation wird am Data-Layer weiterhin gelesen und geschrieben. Nichtnegative
-Legacy-Werte oberhalb von 999 bleiben vollständig lesbar, darstellbar und erneut
-serialisierbar. Sie dürfen lediglich nicht als neuer oder korrigierter Wert durch die
-fachliche Schreibgrenze gelangen.
-
-Die Normalisierung der Persistenz ist bewusst erst für Phase 7 vorgesehen.
+Phase 1 änderte weder Room-Version noch Tabellen. Seit Phase 7 speichert Datenbankversion 8
+Ist-Werte als adressierbare Zeilen in `repetition_results`. Nichtnegative Legacy-Werte oberhalb
+von 999 werden bei der Migration vollständig übernommen und bleiben lesbar und darstellbar. Sie
+dürfen weiterhin nicht als neuer oder korrigierter Wert durch die fachliche Schreibgrenze
+gelangen. Der alte Komma-Text verbleibt nur als dokumentiertes Übergangsfeld; produktive Reads
+und Writes verwenden ihn nicht mehr. Details stehen in
+[ADR-016](adr-016-normalisierte-wiederholungsergebnisse.md).
 
 ## Fachliche Befehle
 
@@ -57,9 +57,6 @@ Abschließen bleibt über den sichtbaren Befehl „Rest erledigen“ erhalten un
 
 ## Verbleibende Schulden
 
-- `done` ist bis zur späteren Schemamigration eine redundante Persistenzprojektion.
-- Ist-Werte werden bis Phase 7 weiterhin als ein String statt als adressierbare Datensätze
-  gespeichert.
-- Das aktuelle Präsentationsmodell kopiert die Ist-Werte noch in ein eigenes UI-Modell; diese
-  Verbrauchertrennung erfolgt in Phase 2.
-
+- `done` ist weiterhin eine redundante Persistenzprojektion.
+- Die alte Textspalte bleibt in Datenbankversion 8 für Diagnose und einen sicheren gestaffelten
+  Rollout erhalten, ist aber keine autoritative Datenquelle mehr.

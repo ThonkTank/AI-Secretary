@@ -11,7 +11,6 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
-import de.thonktank.autosecretary.domain.model.RepetitionProgressCodec;
 
 import org.junit.Test;
 
@@ -94,10 +93,6 @@ public final class DomainModelTest {
         assertEquals(java.util.Collections.singletonList(0),
                 single.repetitionProgress.actualRepetitions);
         assertEquals(true, single.done);
-        assertEquals("0,999", RepetitionProgressCodec.encode(
-                second.repetitionProgress.actualRepetitions));
-        assertEquals(second.repetitionProgress.actualRepetitions,
-                RepetitionProgressCodec.decode("0,999"));
         assertThrows(IllegalArgumentException.class, () -> first.recordRepetitionResult(1000));
     }
 
@@ -106,8 +101,5 @@ public final class DomainModelTest {
                 StepAmount.setsReps(2, 12), "", Arrays.asList(1_200));
 
         assertEquals(Arrays.asList(1_200), legacy.repetitionProgress.actualRepetitions);
-        assertEquals(Arrays.asList(1_200), RepetitionProgressCodec.decode("1200"));
-        assertEquals("1200", RepetitionProgressCodec.encode(
-                legacy.repetitionProgress.actualRepetitions));
     }
 }

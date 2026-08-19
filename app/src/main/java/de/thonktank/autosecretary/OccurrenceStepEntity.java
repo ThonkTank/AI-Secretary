@@ -6,6 +6,7 @@ import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
+import androidx.room.ColumnInfo;
 
 @Entity(tableName = "occurrence_steps",
         foreignKeys = @ForeignKey(entity = OccurrenceEntity.class, parentColumns = "id",
@@ -22,7 +23,9 @@ public class OccurrenceStepEntity {
     public Integer plannedReps;
     public Integer plannedDurationSeconds;
     @NonNull public String note;
-    @NonNull public String actualRepetitions;
+    /** Transitional v4-v7 payload; v8 writes an empty value and reads structured rows only. */
+    @ColumnInfo(name = "actualRepetitions") @NonNull
+    public String legacyActualRepetitions;
     @Nullable public String sourceTemplateId;
     @NonNull public String comboOwnerId;
 
@@ -30,14 +33,16 @@ public class OccurrenceStepEntity {
                                 int position, @NonNull String text, boolean done,
                                 @NonNull String amountKind, Integer plannedSets,
                                 Integer plannedReps, Integer plannedDurationSeconds,
-                                @NonNull String note, @NonNull String actualRepetitions,
+                                @NonNull String note,
+                                @NonNull String legacyActualRepetitions,
                                 @Nullable String sourceTemplateId,
                                 @NonNull String comboOwnerId) {
         this.id = id; this.occurrenceId = occurrenceId; this.position = position;
         this.text = text; this.done = done; this.amountKind = amountKind;
         this.plannedSets = plannedSets; this.plannedReps = plannedReps;
         this.plannedDurationSeconds = plannedDurationSeconds; this.note = note;
-        this.actualRepetitions = actualRepetitions; this.sourceTemplateId = sourceTemplateId;
+        this.legacyActualRepetitions = legacyActualRepetitions;
+        this.sourceTemplateId = sourceTemplateId;
         this.comboOwnerId = comboOwnerId;
     }
 }

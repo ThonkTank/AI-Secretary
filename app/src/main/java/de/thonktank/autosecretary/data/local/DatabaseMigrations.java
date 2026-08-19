@@ -1,7 +1,13 @@
 package de.thonktank.autosecretary.data.local;
 
+import android.database.Cursor;
+import android.util.Log;
+
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class DatabaseMigrations {
     public static final Migration MIGRATION_1_2 = new Migration(1, 2) {
@@ -253,6 +259,51 @@ public final class DatabaseMigrations {
             database.execSQL("DROP TABLE _m_occurrences");
         }
     };
+
+    /** Normalizes the transitional comma payload into addressable per-slot result rows. */
+    public static final Migration MIGRATION_7_8 = new Migration(7, 8) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS repetition_results ("
+                    + "stepId TEXT NOT NULL, slotIndex INTEGER NOT NULL, "
+                    + "actualRepetitions INTEGER NOT NULL, PRIMARY KEY(stepId,slotIndex), "
+                    + "FOREIGN KEY(stepId) REFERENCES occurrence_steps(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS index_repetition_results_stepId "
+                    + "ON repetition_results(stepId)");
+            try (Cursor cursor = database.query("SELECT id,actualRepetitions "
+                    + "FROM occurrence_steps WHERE actualRepetitions <> ''")) {
+                while (cursor.moveToNext()) {
+                    String stepId = cursor.getString(0);
+                    String legacy = cursor.getString(1);
+                    List<Integer> values = parseLegacyRepetitions(stepId, legacy);
+                    if (values == null) continue;
+                    for (int index = 0; index < values.size(); index++)
+                        database.execSQL("INSERT OR REPLACE INTO repetition_results"
+                                        + "(stepId,slotIndex,actualRepetitions) VALUES (?,?,?)",
+                                new Object[]{stepId, index, values.get(index)});
+                }
+            }
+        }
+    };
+
+    private static List<Integer> parseLegacyRepetitions(String stepId, String stored) {
+        List<Integer> values = new ArrayList<>();
+        try {
+            for (String part : stored.split(",", -1)) {
+                if (part.trim().isEmpty()) throw new NumberFormatException("empty slot");
+                int value = Integer.parseInt(part.trim());
+                if (value < 0) throw new NumberFormatException("negative slot");
+                values.add(value);
+            }
+            return values;
+        } catch (NumberFormatException invalid) {
+            // Keep the raw transitional column untouched for recovery and make the loss of a
+            // structured projection observable without preventing the rest of the DB upgrade.
+            Log.e("DatabaseMigrations", "Skipped malformed repetition progress for step "
+                    + stepId + ": " + stored, invalid);
+            return null;
+        }
+    }
 
     private DatabaseMigrations() { }
 }

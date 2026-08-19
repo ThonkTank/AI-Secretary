@@ -42,6 +42,17 @@ public interface TaskDao {
     @Query("SELECT * FROM occurrence_steps WHERE occurrenceId IN (:occurrenceIds) ORDER BY occurrenceId, position") List<OccurrenceStepEntity> occurrenceStepsFor(List<String> occurrenceIds);
     @Query("SELECT * FROM occurrence_steps WHERE id = :id LIMIT 1") OccurrenceStepEntity occurrenceStep(String id);
     @Update void updateOccurrenceStep(OccurrenceStepEntity step);
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void putRepetitionResult(RepetitionResultEntity result);
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void putRepetitionResults(List<RepetitionResultEntity> results);
+    @Query("SELECT * FROM repetition_results WHERE stepId = :stepId ORDER BY slotIndex")
+    List<RepetitionResultEntity> repetitionResults(String stepId);
+    @Query("SELECT * FROM repetition_results WHERE stepId IN (:stepIds) "
+            + "ORDER BY stepId, slotIndex")
+    List<RepetitionResultEntity> repetitionResultsFor(List<String> stepIds);
+    @Query("DELETE FROM repetition_results WHERE stepId = :stepId AND slotIndex >= :fromIndex")
+    void deleteRepetitionResultsFrom(String stepId, int fromIndex);
     @Insert(onConflict = OnConflictStrategy.REPLACE) void putStats(StatsEntity stats);
     @Query("SELECT * FROM stats WHERE id = 1") StatsEntity stats();
     @Insert(onConflict = OnConflictStrategy.REPLACE) void putCombo(ComboEntity combo);

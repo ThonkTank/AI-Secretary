@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.OccurrenceStepEntity;
 import de.thonktank.autosecretary.StatsEntity;
 import de.thonktank.autosecretary.ComboEntity;
 import de.thonktank.autosecretary.RewardBookingEntity;
+import de.thonktank.autosecretary.RepetitionResultEntity;
 import de.thonktank.autosecretary.TaskDao;
 import de.thonktank.autosecretary.TaskEntity;
 import de.thonktank.autosecretary.TaskStepEntity;
@@ -23,6 +24,8 @@ import de.thonktank.autosecretary.domain.model.RewardBooking;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 public final class RoomTaskRepository implements TaskRepository {
@@ -163,32 +166,41 @@ public final class RoomTaskRepository implements TaskRepository {
     }
 
     @Override public void insertOccurrenceSteps(List<OccurrenceStep> steps) {
-        List<OccurrenceStepEntity> entities = new ArrayList<>();
-        for (OccurrenceStep step : steps) entities.add(mapper.toEntity(step));
-        if (!entities.isEmpty()) dao.insertOccurrenceSteps(entities);
+        database.runInTransaction(() -> {
+            List<OccurrenceStepEntity> entities = new ArrayList<>();
+            for (OccurrenceStep step : steps) entities.add(mapper.toEntity(step));
+            if (!entities.isEmpty()) dao.insertOccurrenceSteps(entities);
+            List<RepetitionResultEntity> results = new ArrayList<>();
+            for (OccurrenceStep step : steps) {
+                List<Integer> values = step.repetitionProgress == null
+                        ? java.util.Collections.emptyList()
+                        : step.repetitionProgress.actualRepetitions;
+                for (int index = 0; index < values.size(); index++)
+                    results.add(new RepetitionResultEntity(step.id, index, values.get(index)));
+            }
+            if (!results.isEmpty()) dao.putRepetitionResults(results);
+        });
     }
 
     @Override public List<OccurrenceStep> occurrenceSteps(String occurrenceId) {
-        List<OccurrenceStep> result = new ArrayList<>();
-        for (OccurrenceStepEntity entity : dao.occurrenceSteps(occurrenceId)) result.add(mapper.toDomain(entity));
-        return result;
+        return mapOccurrenceSteps(dao.occurrenceSteps(occurrenceId));
     }
 
     @Override public List<OccurrenceStep> occurrenceStepsFor(List<String> occurrenceIds) {
         if (occurrenceIds.isEmpty()) return new ArrayList<>();
-        List<OccurrenceStep> result = new ArrayList<>();
-        for (OccurrenceStepEntity entity : dao.occurrenceStepsFor(occurrenceIds))
-            result.add(mapper.toDomain(entity));
-        return result;
+        return mapOccurrenceSteps(dao.occurrenceStepsFor(occurrenceIds));
     }
 
     @Override public OccurrenceStep findOccurrenceStep(String id) {
         OccurrenceStepEntity entity = dao.occurrenceStep(id);
-        return entity == null ? null : mapper.toDomain(entity);
+        return entity == null ? null : mapper.toDomain(entity, repetitions(id));
     }
 
     @Override public void updateOccurrenceStep(OccurrenceStep step) {
-        dao.updateOccurrenceStep(mapper.toEntity(step));
+        database.runInTransaction(() -> {
+            dao.updateOccurrenceStep(mapper.toEntity(step));
+            syncRepetitionResults(step);
+        });
     }
 
     @Override public int xp() {
@@ -259,5 +271,51 @@ public final class RoomTaskRepository implements TaskRepository {
         List<Occurrence> result = new ArrayList<>();
         for (OccurrenceEntity entity : entities) result.add(mapper.toDomain(entity));
         return result;
+    }
+
+    private List<OccurrenceStep> mapOccurrenceSteps(List<OccurrenceStepEntity> entities) {
+        if (entities.isEmpty()) return new ArrayList<>();
+        List<String> ids = new ArrayList<>();
+        Map<String, List<Integer>> repetitions = new LinkedHashMap<>();
+        for (OccurrenceStepEntity entity : entities) {
+            ids.add(entity.id);
+            repetitions.put(entity.id, new ArrayList<>());
+        }
+        for (RepetitionResultEntity result : dao.repetitionResultsFor(ids)) {
+            List<Integer> values = repetitions.get(result.stepId);
+            if (values == null) continue;
+            if (result.slotIndex == values.size()) values.add(result.actualRepetitions);
+            else android.util.Log.w("RoomTaskRepository", "Ignoring non-contiguous repetition "
+                    + "result for step " + result.stepId + " at slot " + result.slotIndex);
+        }
+        List<OccurrenceStep> result = new ArrayList<>();
+        for (OccurrenceStepEntity entity : entities)
+            result.add(mapper.toDomain(entity, repetitions.get(entity.id)));
+        return result;
+    }
+
+    private List<Integer> repetitions(String stepId) {
+        List<Integer> result = new ArrayList<>();
+        for (RepetitionResultEntity value : dao.repetitionResults(stepId)) {
+            if (value.slotIndex == result.size()) result.add(value.actualRepetitions);
+            else android.util.Log.w("RoomTaskRepository", "Ignoring non-contiguous repetition "
+                    + "result for step " + stepId + " at slot " + value.slotIndex);
+        }
+        return result;
+    }
+
+    /** Applies a minimal row diff, so correcting one slot writes only that slot. */
+    private void syncRepetitionResults(OccurrenceStep step) {
+        List<Integer> desired = step.repetitionProgress == null
+                ? java.util.Collections.emptyList()
+                : step.repetitionProgress.actualRepetitions;
+        List<RepetitionResultEntity> stored = dao.repetitionResults(step.id);
+        for (int index = 0; index < desired.size(); index++) {
+            int value = desired.get(index);
+            if (index >= stored.size() || stored.get(index).slotIndex != index
+                    || stored.get(index).actualRepetitions != value)
+                dao.putRepetitionResult(new RepetitionResultEntity(step.id, index, value));
+        }
+        dao.deleteRepetitionResultsFrom(step.id, desired.size());
     }
 }

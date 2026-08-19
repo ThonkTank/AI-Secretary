@@ -25,13 +25,14 @@ public final class ExportedRoomSchemaFixture {
                 JSONObject entity = entities.getJSONObject(index);
                 String table = entity.getString("tableName");
                 database.execSQL(resolve(entity.getString("createSql"), table));
-                JSONArray indices = entity.getJSONArray("indices");
+                JSONArray indices = entity.optJSONArray("indices");
+                if (indices == null) continue;
                 for (int entry = 0; entry < indices.length(); entry++)
                     database.execSQL(resolve(indices.getJSONObject(entry)
                             .getString("createSql"), table));
             }
-            JSONArray views = exported.getJSONArray("views");
-            for (int index = 0; index < views.length(); index++)
+            JSONArray views = exported.optJSONArray("views");
+            if (views != null) for (int index = 0; index < views.length(); index++)
                 database.execSQL(views.getJSONObject(index).getString("createSql"));
             JSONArray setup = exported.getJSONArray("setupQueries");
             for (int index = 0; index < setup.length(); index++)

@@ -98,7 +98,7 @@ public final class UpgradePersistenceTest {
     }
 
     @Test public void seedContractSupportsEveryExportedRoomSchema() throws Exception {
-        for (int version = 1; version <= 7; version++) {
+        for (int version = 1; version <= 8; version++) {
             try (SQLiteDatabase database = SQLiteDatabase.create(null)) {
                 createExportedSchema(database, version);
                 seedFixture(database);
@@ -110,7 +110,7 @@ public final class UpgradePersistenceTest {
                         count(database, "occurrences", "id", OCCURRENCE_ID));
                 assertEquals("step fixture in schema " + version, 1,
                         count(database, "occurrence_steps", "id", STEP_ID));
-                if (version == 7) assertEquals(1,
+                if (version >= 7) assertEquals(1,
                         count(database, "reward_bookings", "id", BOOKING_ID));
             }
         }
@@ -128,7 +128,7 @@ public final class UpgradePersistenceTest {
 
         AutoSecretaryApplication application = AutoSecretaryApplication.from(context);
         AppDatabase database = application.container().database;
-        assertEquals(7, database.getOpenHelper().getReadableDatabase().getVersion());
+        assertEquals(8, database.getOpenHelper().getReadableDatabase().getVersion());
 
         TaskEntity task = database.tasks().task(TASK_ID);
         assertNotNull(task);
@@ -154,7 +154,7 @@ public final class UpgradePersistenceTest {
         assertEquals(STEP_TEXT, occurrenceStep.text);
         assertTrue(occurrenceStep.done);
         assertEquals("NONE", occurrenceStep.amountKind);
-        assertEquals("", occurrenceStep.actualRepetitions);
+        assertEquals("", occurrenceStep.legacyActualRepetitions);
         assertEquals(TEMPLATE_ID, occurrenceStep.sourceTemplateId);
         assertEquals(1, database.tasks().rewardBookings(OCCURRENCE_ID).size());
         assertEquals(10, database.tasks().rewardBookings(OCCURRENCE_ID).get(0).xpDelta);

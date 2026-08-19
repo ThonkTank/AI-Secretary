@@ -291,6 +291,42 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test public void migration7To8PreservesLegacyValuesInStructuredRows() throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 7);
+        database.execSQL("INSERT INTO tasks (id,title,slot,recurrence,intervalDays,weekdayMask,"
+                + "ongoing,conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,"
+                + "lastCompletedOn,displayOrder,hasCompletedOccurrence,estimatedMinutes,"
+                + "timeOfDayMask,boundKind,boundUntilOn,boundWeeks,remainingCount,deadlineOn,note) "
+                + "VALUES ('v7','Routine','MORNING','DAILY',1,0,0,'',0,0,'2026-08-20','',"
+                + "'',1,0,NULL,1,'FOREVER','',NULL,NULL,'','')");
+        database.execSQL("INSERT INTO occurrences (id,taskId,scheduledOn,state,sortOrder,"
+                + "completedOn,slot) VALUES ('v7-occ','v7','2026-08-20','OPEN',1,'','MORNING')");
+        database.execSQL("INSERT INTO occurrence_steps (id,occurrenceId,position,text,done,"
+                + "amountKind,plannedSets,plannedReps,plannedDurationSeconds,note,"
+                + "actualRepetitions,sourceTemplateId,comboOwnerId) VALUES "
+                + "('v7-step','v7-occ',0,'Sätze',1,'SETS_REPS',3,12,NULL,'',"
+                + "'0,999,1200',NULL,'step:v7')");
+        database.close();
+
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 8, true, DatabaseMigrations.MIGRATION_7_8);
+        try (Cursor cursor = database.query("SELECT slotIndex,actualRepetitions "
+                + "FROM repetition_results WHERE stepId='v7-step' ORDER BY slotIndex")) {
+            assertEquals(3, cursor.getCount());
+            assertTrue(cursor.moveToFirst());
+            assertEquals(0, cursor.getInt(0)); assertEquals(0, cursor.getInt(1));
+            assertTrue(cursor.moveToNext());
+            assertEquals(1, cursor.getInt(0)); assertEquals(999, cursor.getInt(1));
+            assertTrue(cursor.moveToNext());
+            assertEquals(2, cursor.getInt(0)); assertEquals(1_200, cursor.getInt(1));
+        }
+        try (Cursor cursor = database.query("SELECT actualRepetitions FROM occurrence_steps "
+                + "WHERE id='v7-step'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals("0,999,1200", cursor.getString(0));
+        }
+        database.close();
+    }
+
     private static void assertColumnsMissing(SupportSQLiteDatabase database, String table,
                                              String... forbidden) {
         try (Cursor cursor = database.query("PRAGMA table_info(" + table + ")")) {

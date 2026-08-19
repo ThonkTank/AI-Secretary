@@ -16,9 +16,9 @@ import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
-import de.thonktank.autosecretary.domain.model.RepetitionProgressCodec;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public final class TaskEntityMapper {
     public Task toDomain(TaskEntity entity) {
@@ -73,12 +73,12 @@ public final class TaskEntityMapper {
                 amount.repetitions, amount.durationSeconds, step.note);
     }
 
-    public OccurrenceStep toDomain(OccurrenceStepEntity entity) {
+    public OccurrenceStep toDomain(OccurrenceStepEntity entity, List<Integer> repetitions) {
         return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text,
                 entity.done, StepAmount.fromStorage(StepAmountKind.fromStorage(entity.amountKind),
                         entity.plannedSets, entity.plannedReps,
                         entity.plannedDurationSeconds), entity.note,
-                RepetitionProgressCodec.decode(entity.actualRepetitions),
+                repetitions,
                 entity.sourceTemplateId, entity.comboOwnerId);
     }
 
@@ -86,10 +86,7 @@ public final class TaskEntityMapper {
         StoredAmount amount = stored(step.amount);
         return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
                 step.done, amount.kind.storageCode(), amount.sets, amount.repetitions,
-                amount.durationSeconds, step.note,
-                RepetitionProgressCodec.encode(step.repetitionProgress == null
-                        ? java.util.Collections.emptyList()
-                        : step.repetitionProgress.actualRepetitions), step.sourceTemplateId,
+                amount.durationSeconds, step.note, "", step.sourceTemplateId,
                 step.comboOwnerId);
     }
 
