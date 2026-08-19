@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -128,6 +130,6 @@ public final class GymRoutineAcceptanceRobolectricTest {
     private static final class NoOpActions implements FocusTaskView.Actions {
         @Override public void onComplete(TaskSnapshot task) { }
         @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepSnapshot step) { }
+        @Override public void onToggleStep(TaskStepUiModel step) { }
     }
 }

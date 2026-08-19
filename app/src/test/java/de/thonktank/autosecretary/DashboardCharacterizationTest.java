@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -121,7 +123,7 @@ public final class DashboardCharacterizationTest {
         @Override public void onTaskMenu(TaskSnapshot task) { }
         @Override public void onComplete(TaskSnapshot task) { }
         @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepSnapshot step) { }
+        @Override public void onToggleStep(TaskStepUiModel step) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }

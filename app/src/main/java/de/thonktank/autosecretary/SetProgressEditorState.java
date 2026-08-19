@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import androidx.annotation.Nullable;
 
 import java.util.Collections;
@@ -62,7 +64,7 @@ public final class SetProgressEditorState {
     public SetProgressEditorState closeIfMissing(Iterable<TaskSnapshot> tasks) {
         if (expandedStepId == null) return this;
         for (TaskSnapshot task : tasks)
-            for (TaskStepSnapshot step : task.steps)
+            for (TaskStepUiModel step : task.steps)
                 if (expandedStepId.equals(step.id)) return this;
         return new SetProgressEditorState(null, drafts, errors);
     }

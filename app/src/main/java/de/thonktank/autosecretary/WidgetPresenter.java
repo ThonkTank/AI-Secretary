@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import android.content.Context;
 
 import java.util.ArrayList;
@@ -45,8 +47,8 @@ public final class WidgetPresenter {
         List<WidgetUiModel.Step> steps = new ArrayList<>();
         if (size != WidgetSizeClassifier.Size.SMALL) {
             for (int i = 0; i < Math.min(3, focus.steps.size()); i++) {
-                TaskStepSnapshot step = focus.steps.get(i);
-                steps.add(new WidgetUiModel.Step(step.id, step.label, step.done));
+                TaskStepUiModel step = focus.steps.get(i);
+                steps.add(new WidgetUiModel.Step(step.id, step.title, step.done));
             }
         }
         List<Boolean> progress = new ArrayList<>();

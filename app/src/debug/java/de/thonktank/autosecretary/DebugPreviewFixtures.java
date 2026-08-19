@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -16,9 +18,9 @@ public final class DebugPreviewFixtures {
         TaskSnapshot focus = new TaskSnapshot("preview-morning", "preview-occurrence",
                 "Morgenroutine", TaskSlot.MORNING, "heute am Morgen", "Anziehen",
                 Recurrence.DAILY, Arrays.asList(
-                        new TaskStepSnapshot("preview-step-1", "Duschen", true),
-                        new TaskStepSnapshot("preview-step-2", "Anziehen", false),
-                        new TaskStepSnapshot("preview-step-3", "Frühstück", false)),
+                        new TaskStepUiModel("preview-step-1", "Duschen", true),
+                        new TaskStepUiModel("preview-step-2", "Anziehen", false),
+                        new TaskStepUiModel("preview-step-3", "Frühstück", false)),
                 2, false, false, false, false, 6, 1_001_000L);
         TaskSnapshot after = new TaskSnapshot("preview-letter", "preview-letter-occurrence",
                 "Brief beantworten", TaskSlot.MIDDAY, "um die Mittagszeit", "Erledigen",
@@ -77,10 +79,10 @@ public final class DebugPreviewFixtures {
     private static TaskSnapshot morning(boolean done, boolean secondStepDone) {
         return new TaskSnapshot("preview-morning", "preview-morning-occurrence", "Morgenroutine",
                 TaskSlot.MORNING, "etwa eine halbe Stunde", "Haare waschen", Recurrence.DAILY,
-                Arrays.asList(new TaskStepSnapshot("preview-step-1", "Duschen", true),
-                        new TaskStepSnapshot("preview-step-2", "Haare waschen", secondStepDone || done),
-                        new TaskStepSnapshot("preview-step-3", "Anziehen", done),
-                        new TaskStepSnapshot("preview-step-4", "Tabletten nehmen", done)),
+                Arrays.asList(new TaskStepUiModel("preview-step-1", "Duschen", true),
+                        new TaskStepUiModel("preview-step-2", "Haare waschen", secondStepDone || done),
+                        new TaskStepUiModel("preview-step-3", "Anziehen", done),
+                        new TaskStepUiModel("preview-step-4", "Tabletten nehmen", done)),
                 done ? 0 : secondStepDone ? 2 : 3, false, false, done, false, 6, 1_000L);
     }
 
@@ -91,7 +93,7 @@ public final class DebugPreviewFixtures {
     }
 
     private static TaskSnapshot vesselTask(int completed, boolean ready) {
-        List<TaskStepSnapshot> steps = Arrays.asList(
+        List<TaskStepUiModel> steps = Arrays.asList(
                 previewStep("vessel-1", "Duschen", completed >= 1, 10, 2),
                 previewStep("vessel-2", "Haare waschen", completed >= 2, 15, 3),
                 previewStep("vessel-3", "Anziehen", completed >= 3, 20, 5));
@@ -104,11 +106,9 @@ public final class DebugPreviewFixtures {
                 68, collected, 0, ready);
     }
 
-    private static TaskStepSnapshot previewStep(String id, String title, boolean done,
+    private static TaskStepUiModel previewStep(String id, String title, boolean done,
                                                 int value, int combo) {
-        return new TaskStepSnapshot(id, title, done,
-                de.thonktank.autosecretary.domain.model.StepAmountKind.NONE,
-                null, null, null, "", Collections.emptyList(), combo, value,
+        return new TaskStepUiModel(id, title, "", done, null, combo, value,
                 done ? value : 0);
     }
 

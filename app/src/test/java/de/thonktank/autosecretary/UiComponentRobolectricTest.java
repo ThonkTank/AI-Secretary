@@ -1,5 +1,8 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.presentation.SetProgressUiModel;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -221,9 +224,10 @@ public final class UiComponentRobolectricTest {
     @Test public void setProgressExpandsAndEditsInlineInsideTheFocusLeaf() {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
-        TaskStepSnapshot set = new TaskStepSnapshot("set-step", "Beinpresse", false,
-                de.thonktank.autosecretary.domain.model.StepAmountKind.SETS_REPS,
-                3, 12, null, "23 kg", Collections.singletonList(10), 2, 15, 0);
+        TaskStepUiModel set = new TaskStepUiModel("set-step", "Beinpresse",
+                "3 × 12 Wdh. · 23 kg", false,
+                new SetProgressUiModel(3, 12, "23 kg", Collections.singletonList(10)),
+                2, 15, 0);
         TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
                 TaskSlot.MORNING, "", "Beinpresse", Recurrence.DAILY,
                 Collections.singletonList(set), 1, false, false, false, false,
@@ -235,7 +239,7 @@ public final class UiComponentRobolectricTest {
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
         focus.bind(task, false, false, palette, editorState.get(),
                 new NoOpActions() {
-                    @Override public void onEditStepProgress(TaskStepSnapshot step,
+                    @Override public void onEditStepProgress(TaskStepUiModel step,
                                                              java.util.List<Integer> repetitions,
                                                              boolean done) {
                         saved.set(repetitions);
@@ -263,7 +267,7 @@ public final class UiComponentRobolectricTest {
         assertNotNull(input); assertNotNull(save);
         input.setText("10, 11");
         focus.bind(task, false, false, palette, editorState.get(), new NoOpActions() {
-            @Override public void onEditStepProgress(TaskStepSnapshot step,
+            @Override public void onEditStepProgress(TaskStepUiModel step,
                                                      java.util.List<Integer> repetitions,
                                                      boolean done) { saved.set(repetitions); }
             @Override public void onSetProgressEditorStateChanged(SetProgressEditorState state) {
@@ -277,7 +281,7 @@ public final class UiComponentRobolectricTest {
         save.performClick();
         assertNotNull(editorState.get().error(set.id));
         focus.bind(task, false, false, palette, editorState.get(), new NoOpActions() {
-            @Override public void onEditStepProgress(TaskStepSnapshot step,
+            @Override public void onEditStepProgress(TaskStepUiModel step,
                                                      java.util.List<Integer> repetitions,
                                                      boolean done) { saved.set(repetitions); }
             @Override public void onSetProgressEditorStateChanged(SetProgressEditorState state) {
@@ -296,9 +300,9 @@ public final class UiComponentRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
         java.util.List<Integer> full = Arrays.asList(10, 11, 12);
-        TaskStepSnapshot set = new TaskStepSnapshot("set-step", "Beinpresse", true,
-                de.thonktank.autosecretary.domain.model.StepAmountKind.SETS_REPS,
-                3, 12, null, "23 kg", full, 2, 15, 15);
+        TaskStepUiModel set = new TaskStepUiModel("set-step", "Beinpresse",
+                "3 × 12 Wdh. · 23 kg", true,
+                new SetProgressUiModel(3, 12, "23 kg", full), 2, 15, 15);
         TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
                 TaskSlot.MORNING, "", "", Recurrence.DAILY,
                 Collections.singletonList(set), 0, false, false, false, false,
@@ -307,7 +311,7 @@ public final class UiComponentRobolectricTest {
         FocusTaskView focus = new FocusTaskView(context);
         focus.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
                 new NoOpActions() {
-                    @Override public void onReopenExercise(TaskStepSnapshot step,
+                    @Override public void onReopenExercise(TaskStepUiModel step,
                                                            java.util.List<Integer> repetitions) {
                         reopened.set(repetitions);
                     }
@@ -355,7 +359,7 @@ public final class UiComponentRobolectricTest {
         @Override public void onTaskMenu(TaskSnapshot task) { }
         @Override public void onComplete(TaskSnapshot task) { }
         @Override public void onDefer(TaskSnapshot task) { }
-        @Override public void onToggleStep(TaskStepSnapshot step) { }
+        @Override public void onToggleStep(TaskStepUiModel step) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onCalendarPermission() { }
         @Override public void onUpdates() { }

@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+
 import android.Manifest;
 import android.animation.LayoutTransition;
 import android.app.AlertDialog;
@@ -201,18 +203,18 @@ public class MainActivity extends ComponentActivity {
             @Override public void onDefer(TaskSnapshot task) {
                 viewModel.defer(task.occurrenceId.isEmpty() ? task.taskId : task.occurrenceId);
             }
-            @Override public void onToggleStep(TaskStepSnapshot step) {
+            @Override public void onToggleStep(TaskStepUiModel step) {
                 viewModel.toggleStep(step.id);
             }
-            @Override public void onEditStepProgress(TaskStepSnapshot step,
+            @Override public void onEditStepProgress(TaskStepUiModel step,
                                                      java.util.List<Integer> repetitions,
                                                      boolean done) {
                 viewModel.editStepProgress(step.id, repetitions);
             }
-            @Override public void onFinishExercise(TaskStepSnapshot step) {
+            @Override public void onFinishExercise(TaskStepUiModel step) {
                 viewModel.finishExercise(step.id);
             }
-            @Override public void onReopenExercise(TaskStepSnapshot step,
+            @Override public void onReopenExercise(TaskStepUiModel step,
                                                     java.util.List<Integer> repetitions) {
                 viewModel.reopenExercise(step.id, repetitions);
             }
