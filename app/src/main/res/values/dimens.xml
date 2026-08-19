@@ -18,4 +18,21 @@
     <dimen name="focus_step_dot_bottom_offset">-4dp</dimen>
     <dimen name="focus_step_subtitle_top_offset">-7dp</dimen>
     <dimen name="focus_step_subtitle_bottom_gap">7dp</dimen>
+    <dimen name="focus_card_top">22dp</dimen>
+    <dimen name="focus_card_padding_start">24dp</dimen>
+    <dimen name="focus_card_padding_end">28dp</dimen>
+    <dimen name="focus_card_padding_vertical">24dp</dimen>
+    <dimen name="focus_card_compact_padding_bottom">30dp</dimen>
+    <dimen name="focus_card_steps_gap">24dp</dimen>
+    <dimen name="focus_card_actions_gap">22dp</dimen>
+    <dimen name="focus_card_compact_actions_gap">30dp</dimen>
+    <dimen name="focus_card_compact_min_height">205dp</dimen>
+    <dimen name="focus_card_empty_min_height">275dp</dimen>
+    <dimen name="focus_step_done_gap">10dp</dimen>
+    <dimen name="focus_step_first_following_gap">12dp</dimen>
+    <dimen name="focus_step_following_gap">2dp</dimen>
+    <dimen name="focus_step_more_start">52dp</dimen>
+    <dimen name="focus_step_more_gap">10dp</dimen>
+    <dimen name="focus_stack_back_height">82dp</dimen>
+    <dimen name="focus_stack_middle_height">88dp</dimen>
 </resources>
