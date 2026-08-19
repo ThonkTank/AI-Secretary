@@ -38,9 +38,12 @@ import org.robolectric.annotation.Config;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BooleanSupplier;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
@@ -109,7 +112,7 @@ public final class PresentationStateRobolectricTest {
     @Test public void navigationAndOpenEditorRestoreFromSavedState() throws Exception {
         SavedStateHandle handle = new SavedStateHandle();
         viewModel = newViewModel(handle);
-        await(() -> !value().loading);
+        assertFalse(value().loading);
 
         tasks.create.execute("Bearbeitbar", TaskSlot.EVENING, Recurrence.INTERVAL, 4, 0,
                 java.util.Arrays.asList("A", "B"), true, "Fertig");
@@ -117,7 +120,7 @@ public final class PresentationStateRobolectricTest {
 
         viewModel.navigate(NavigationDestination.OPTIONS);
         viewModel.openEditor(taskId);
-        await(() -> value().editor.open && !value().editor.loading);
+        assertTrue(value().editor.open && !value().editor.loading);
         assertEquals("Bearbeitbar", value().editor.title);
         assertEquals(4, value().editor.intervalDays);
         assertEquals(2, value().editor.steps.size());
@@ -131,27 +134,29 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void duplicateCommandsAreIgnoredWhileTheFirstIsRunning() throws Exception {
-        viewModel = newViewModel(new SavedStateHandle());
-        await(() -> !value().loading);
+        ManualExecutor worker = new ManualExecutor();
+        viewModel = newViewModel(new SavedStateHandle(), worker);
+        worker.runNext();
+        assertFalse(value().loading);
 
         viewModel.create("Einmal", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
                 Collections.emptyList(), false, "");
         viewModel.create("Einmal", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
                 Collections.emptyList(), false, "");
 
-        await(() -> !value().isRunning(
-                new UiCommand(UiCommand.Kind.CREATE, "new")));
+        worker.runNext();
+        assertFalse(value().isRunning(new UiCommand(UiCommand.Kind.CREATE, "new")));
         assertEquals(1, repository.allTasks().size());
     }
 
     @Test public void errorsAreTypedOneShotEvents() throws Exception {
         viewModel = newViewModel(new SavedStateHandle());
-        await(() -> !value().loading);
+        assertFalse(value().loading);
 
         viewModel.create("", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
                 Collections.emptyList(), false, "");
 
-        await(() -> viewModel.events().getValue() != null);
+        assertNotNull(viewModel.events().getValue());
         UiEvent event = viewModel.events().getValue();
         assertNotNull(event);
         assertEquals(UiEvent.Type.ERROR, event.type);
@@ -160,6 +165,11 @@ public final class PresentationStateRobolectricTest {
     }
 
     private TaskViewModel newViewModel(SavedStateHandle handle) {
+        return newViewModel(handle, new DirectExecutor());
+    }
+
+    private TaskViewModel newViewModel(SavedStateHandle handle,
+                                       AbstractExecutorService worker) {
         CalendarDataSource calendar = new CalendarDataSource() {
             @Override public CalendarResult loadToday() {
                 return new CalendarResult.Success(DashboardFixtures.calendarEvents());
@@ -170,18 +180,35 @@ public final class PresentationStateRobolectricTest {
             }
         };
         return new TaskViewModel(tasks, presenter, calendar, preferences, clock, logger,
-                new AndroidUiTextProvider(context), handle);
+                new AndroidUiTextProvider(context), handle, worker);
     }
 
     private DashboardUiState value() {
         return viewModel.state().getValue();
     }
 
-    private static void await(BooleanSupplier condition) throws Exception {
-        long deadline = System.currentTimeMillis() + 3_000L;
-        while (!condition.getAsBoolean() && System.currentTimeMillis() < deadline)
-            Thread.sleep(10L);
-        assertTrue("Timed out waiting for asynchronous state", condition.getAsBoolean());
+    private static class DirectExecutor extends AbstractExecutorService {
+        private boolean shutdown;
+        @Override public void shutdown() { shutdown = true; }
+        @Override public List<Runnable> shutdownNow() {
+            shutdown = true;
+            return Collections.emptyList();
+        }
+        @Override public boolean isShutdown() { return shutdown; }
+        @Override public boolean isTerminated() { return shutdown; }
+        @Override public boolean awaitTermination(long timeout, TimeUnit unit) {
+            return shutdown;
+        }
+        @Override public void execute(Runnable command) {
+            if (shutdown) throw new IllegalStateException("Executor is shut down");
+            command.run();
+        }
+    }
+
+    private static final class ManualExecutor extends DirectExecutor {
+        private final ArrayDeque<Runnable> pending = new ArrayDeque<>();
+        @Override public void execute(Runnable command) { pending.add(command); }
+        void runNext() { pending.remove().run(); }
     }
 
     private static final class FixedClock implements Clock {

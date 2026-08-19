@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 public final class TaskViewModel extends ViewModel {
     private static final String NAVIGATION = "navigation";
@@ -45,7 +46,7 @@ public final class TaskViewModel extends ViewModel {
     private final UiTextProvider texts;
     private final SavedStateHandle savedState;
     private final CalendarDataSource.Subscription calendarSubscription;
-    private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    private final ExecutorService worker;
     private final MutableLiveData<DashboardUiState> state = new MutableLiveData<>();
     private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
     private final RewardEffectQueue rewardQueue = new RewardEffectQueue();
@@ -54,15 +55,15 @@ public final class TaskViewModel extends ViewModel {
     private final Object stateLock = new Object();
     private DashboardUiState current;
 
-    TaskViewModel(AppContainer container, SavedStateHandle savedState) {
+    TaskViewModel(AppContainer container, SavedStateHandle savedState, ExecutorService worker) {
         this(container.tasks, container.dashboardPresenter, container.calendar,
                 container.uiPreferences, container.clock, container.logger, container.texts,
-                savedState);
+                savedState, worker);
     }
 
     TaskViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
                   UiPreferences preferences, Clock clock, AppLogger logger,
-                  UiTextProvider texts, SavedStateHandle savedState) {
+                  UiTextProvider texts, SavedStateHandle savedState, ExecutorService worker) {
         this.tasks = tasks;
         this.dashboard = dashboard;
         this.calendar = calendar;
@@ -71,6 +72,7 @@ public final class TaskViewModel extends ViewModel {
         this.logger = logger;
         this.texts = texts;
         this.savedState = savedState;
+        this.worker = worker;
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
         EditorUiState editor = EditorUiState.fromBundle(savedState.get(EDITOR));
         current = new DashboardUiState(navigation, TodayUiModel.empty(),
@@ -445,9 +447,15 @@ public final class TaskViewModel extends ViewModel {
 
     public static final class Factory implements ViewModelProvider.Factory {
         private final AppContainer container;
+        private final Supplier<ExecutorService> workers;
 
         public Factory(AppContainer container) {
+            this(container, Executors::newSingleThreadExecutor);
+        }
+
+        Factory(AppContainer container, Supplier<ExecutorService> workers) {
             this.container = container;
+            this.workers = workers;
         }
 
         @NonNull @Override @SuppressWarnings("unchecked")
@@ -456,7 +464,7 @@ public final class TaskViewModel extends ViewModel {
             if (!modelClass.isAssignableFrom(TaskViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
             return (T) new TaskViewModel(container,
-                    SavedStateHandleSupport.createSavedStateHandle(extras));
+                    SavedStateHandleSupport.createSavedStateHandle(extras), workers.get());
         }
     }
 }
