@@ -31,6 +31,7 @@ import java.util.Set;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
@@ -458,51 +459,68 @@ public final class TaskEditorView extends FrameLayout {
 
     private void addAmountChip(EditorFlowLayout row, int label, StepAmountKind kind,
                                EditorStepState step, int index) {
-        addChip(row, label, step.amountKind == kind, false, () -> {
-            Integer sets = kind == StepAmountKind.SETS_REPS
-                    ? step.plannedSets == null ? 3 : step.plannedSets : null;
-            Integer reps = kind == StepAmountKind.SETS_REPS || kind == StepAmountKind.REPS
-                    ? step.plannedReps == null ? 12 : step.plannedReps : null;
-            Integer duration = kind == StepAmountKind.DURATION
-                    ? step.plannedDurationSeconds == null ? 45 : step.plannedDurationSeconds : null;
-            updateStep(index, step.withAmount(kind, sets, reps, duration), true);
-        });
+        addChip(row, label, step.amount.kind() == kind, false,
+                () -> updateStep(index, step.withAmount(selectedAmount(kind, step.amount)), true));
     }
 
     private void addAmountInputs(LinearLayout card, EditorStepState step, int index) {
-        if (step.amountKind == StepAmountKind.NONE) return;
+        if (step.amount instanceof StepAmount.None) return;
         LinearLayout row = new LinearLayout(getContext()); row.setGravity(Gravity.BOTTOM);
-        if (step.amountKind == StepAmountKind.SETS_REPS) {
-            row.addView(numberInput(step.plannedSets, R.string.amount_sets_unit,
+        if (step.amount instanceof StepAmount.SetsReps) {
+            StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
+            row.addView(numberInput(amount.sets, R.string.amount_sets_unit,
                     value -> { EditorStepState current = currentStep(index);
-                        updateStep(index, current.withAmount(current.amountKind, value,
-                                current.plannedReps, null), false); }),
+                        StepAmount.SetsReps currentAmount = (StepAmount.SetsReps) current.amount;
+                        updateStep(index, current.withAmount(StepAmount.setsReps(
+                                value == null ? 0 : value, currentAmount.repetitions)), false); }),
                     new LinearLayout.LayoutParams(0, -2, 1));
             TextView multiply = style.serif("×", 22, palette.muted, false, 300);
             multiply.setGravity(Gravity.CENTER); row.addView(multiply,
                     new LinearLayout.LayoutParams(style.dp(34), style.dp(58)));
-            row.addView(numberInput(step.plannedReps, R.string.amount_reps_unit,
+            row.addView(numberInput(amount.repetitions, R.string.amount_reps_unit,
                     value -> { EditorStepState current = currentStep(index);
-                        updateStep(index, current.withAmount(current.amountKind,
-                                current.plannedSets, value, null), false); }),
+                        StepAmount.SetsReps currentAmount = (StepAmount.SetsReps) current.amount;
+                        updateStep(index, current.withAmount(StepAmount.setsReps(
+                                currentAmount.sets, value == null ? 0 : value)), false); }),
                     new LinearLayout.LayoutParams(0, -2, 1));
-        } else if (step.amountKind == StepAmountKind.REPS) {
-            row.addView(numberInput(step.plannedReps, R.string.amount_reps_unit,
+        } else if (step.amount instanceof StepAmount.Repetitions) {
+            row.addView(numberInput(((StepAmount.Repetitions) step.amount).repetitions,
+                    R.string.amount_reps_unit,
                     value -> { EditorStepState current = currentStep(index);
-                        updateStep(index, current.withAmount(current.amountKind, null,
-                                value, null), false); }), new LinearLayout.LayoutParams(0, -2, 1));
+                        updateStep(index, current.withAmount(StepAmount.repetitions(
+                                value == null ? 0 : value)), false); }),
+                    new LinearLayout.LayoutParams(0, -2, 1));
         } else {
-            row.addView(numberInput(step.plannedDurationSeconds, R.string.amount_seconds_unit,
+            row.addView(numberInput(((StepAmount.Duration) step.amount).seconds,
+                    R.string.amount_seconds_unit,
                     value -> { EditorStepState current = currentStep(index);
-                        updateStep(index, current.withAmount(current.amountKind, null,
-                                null, value), false); }), new LinearLayout.LayoutParams(0, -2, 1));
+                        updateStep(index, current.withAmount(StepAmount.duration(
+                                value == null ? 0 : value)), false); }),
+                    new LinearLayout.LayoutParams(0, -2, 1));
         }
         card.addView(row, params(-1, -2, 0, 12, 0, 0));
     }
 
+    private static StepAmount selectedAmount(StepAmountKind kind, StepAmount previous) {
+        if (kind == StepAmountKind.SETS_REPS) {
+            if (previous instanceof StepAmount.SetsReps) return previous;
+            return StepAmount.setsReps(3, 12);
+        }
+        if (kind == StepAmountKind.REPS) {
+            if (previous instanceof StepAmount.Repetitions) return previous;
+            return StepAmount.repetitions(12);
+        }
+        if (kind == StepAmountKind.DURATION) {
+            if (previous instanceof StepAmount.Duration) return previous;
+            return StepAmount.duration(45);
+        }
+        return StepAmount.none();
+    }
+
     private LinearLayout numberInput(Integer value, int unit, IntegerListener listener) {
         LinearLayout wrapper = new LinearLayout(getContext()); wrapper.setOrientation(LinearLayout.VERTICAL);
-        EditText input = new EditText(getContext()); input.setText(value == null ? "" : String.valueOf(value));
+        EditText input = new EditText(getContext());
+        input.setText(value == null || value <= 0 ? "" : String.valueOf(value));
         input.setTextSize(23); input.setTypeface(style.serif); input.setTextColor(palette.ink);
         input.setSingleLine(true); input.setInputType(InputType.TYPE_CLASS_NUMBER);
         input.setBackgroundTintList(ColorStateList.valueOf(palette.accent));
@@ -763,12 +781,14 @@ public final class TaskEditorView extends FrameLayout {
             for (int i = 0; i < 7; i++) if ((step.weekdayMask & 1 << i) != 0) selected.add(days[i]);
             values.add(android.text.TextUtils.join(" · ", selected));
         }
-        if (step.amountKind == StepAmountKind.SETS_REPS && step.plannedSets != null
-                && step.plannedReps != null) values.add(step.plannedSets + " × " + step.plannedReps);
-        else if (step.amountKind == StepAmountKind.REPS && step.plannedReps != null)
-            values.add(step.plannedReps + " ×");
-        else if (step.amountKind == StepAmountKind.DURATION
-                && step.plannedDurationSeconds != null) values.add(step.plannedDurationSeconds + " Sek");
+        if (step.amount instanceof StepAmount.SetsReps) {
+            StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
+            values.add(amount.sets + " × " + amount.repetitions);
+        } else if (step.amount instanceof StepAmount.Repetitions) {
+            values.add(((StepAmount.Repetitions) step.amount).repetitions + " ×");
+        } else if (step.amount instanceof StepAmount.Duration) {
+            values.add(((StepAmount.Duration) step.amount).seconds + " Sek");
+        }
         return android.text.TextUtils.join(" · ", values);
     }
 

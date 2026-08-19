@@ -4,7 +4,7 @@ import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ public final class EditStepProgress {
     public RewardReceipt execute(String stepId, List<Integer> repetitions) {
         return repository.inTransaction(() -> {
             OccurrenceStep current = repository.findOccurrenceStep(stepId);
-            if (current == null || current.amountKind != StepAmountKind.SETS_REPS)
+            if (current == null || !(current.amount instanceof StepAmount.SetsReps))
                 return RewardReceipt.none();
             Occurrence occurrence = repository.findOccurrence(current.occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
@@ -30,7 +30,7 @@ public final class EditStepProgress {
                     throw new IllegalArgumentException("Confirmed repetitions must be positive");
                 checked.add(value);
             }
-            if (current.plannedSets != null && checked.size() > current.plannedSets)
+            if (checked.size() > ((StepAmount.SetsReps) current.amount).sets)
                 throw new IllegalArgumentException("Confirmed set count exceeds planned sets");
             repository.updateOccurrenceStep(copy(current, checked, current.done));
             return RewardReceipt.none();
@@ -40,8 +40,7 @@ public final class EditStepProgress {
     private static OccurrenceStep copy(OccurrenceStep value, List<Integer> repetitions,
                                        boolean done) {
         return new OccurrenceStep(value.id, value.occurrenceId, value.position, value.text,
-                done, value.amountKind, value.plannedSets, value.plannedReps,
-                value.plannedDurationSeconds, value.note, repetitions, value.sourceTemplateId,
+                done, value.amount, value.note, repetitions, value.sourceTemplateId,
                 value.comboOwnerId);
     }
 }

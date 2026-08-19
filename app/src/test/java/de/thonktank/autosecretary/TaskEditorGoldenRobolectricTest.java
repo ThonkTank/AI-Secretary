@@ -29,6 +29,7 @@ import java.util.Set;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
@@ -131,8 +132,7 @@ public final class TaskEditorGoldenRobolectricTest {
             return Collections.emptyList();
         List<EditorStepState> result = new ArrayList<>();
         if (name.equals("08-schritt-fehler")) {
-            result.add(new EditorStepState("s1", "Küche", 0, StepAmountKind.NONE,
-                    null, null, null, ""));
+            result.add(new EditorStepState("s1", "Küche", 0, StepAmount.none(), ""));
             result.add(EditorStepState.blank(2));
             return result;
         }
@@ -144,9 +144,10 @@ public final class TaskEditorGoldenRobolectricTest {
                     ? i < 2 ? StepAmountKind.SETS_REPS : StepAmountKind.DURATION
                     : StepAmountKind.NONE;
             result.add(new EditorStepState("s" + i, labels[i], i == 1 ? 1 | 8 : 0,
-                    kind, kind == StepAmountKind.SETS_REPS ? 3 : null,
-                    kind == StepAmountKind.SETS_REPS ? 12 + i * 3 : null,
-                    kind == StepAmountKind.DURATION ? 45 : null,
+                    kind == StepAmountKind.SETS_REPS
+                            ? StepAmount.setsReps(3, 12 + i * 3)
+                            : kind == StepAmountKind.DURATION
+                            ? StepAmount.duration(45) : StepAmount.none(),
                     name.equals("12-notizen") && i < 2 ? i == 0 ? "23 kg, Sitz 5"
                             : "35 kg, Griff weit" : ""));
         }

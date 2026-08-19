@@ -12,7 +12,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.XpProgress;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -45,14 +45,14 @@ public final class DashboardUiMapper {
             ComboProgress stepCombo = dashboard.combos.get(step.comboOwnerId);
             int stepStage = stepCombo == null ? 0 : stepCombo.level();
             int claimable = RewardPolicy.stepXp(stepCombo);
-            SetProgressUiModel setProgress = step.amountKind == StepAmountKind.SETS_REPS
-                    && step.plannedSets != null && step.plannedReps != null
-                    ? new SetProgressUiModel(step.plannedSets, step.plannedReps,
-                            step.note, step.actualRepetitions)
-                    : null;
+            SetProgressUiModel setProgress = null;
+            if (step.amount instanceof StepAmount.SetsReps) {
+                StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
+                setProgress = new SetProgressUiModel(amount.sets, amount.repetitions,
+                        step.note, step.actualRepetitions);
+            }
             steps.add(new TaskStepUiModel(step.id, step.text,
-                    stepTexts.format(step.amountKind, step.plannedSets, step.plannedReps,
-                            step.plannedDurationSeconds, step.note),
+                    stepTexts.format(step.amount, step.note),
                     done, setProgress, stepStage, claimable, item.earnedXp(step.id)));
             if (!done) {
                 remaining++;

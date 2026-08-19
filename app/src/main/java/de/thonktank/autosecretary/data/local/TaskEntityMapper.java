@@ -15,6 +15,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.RepetitionProgressCodec;
 
 import java.time.LocalDate;
@@ -60,30 +61,63 @@ public final class TaskEntityMapper {
 
     public TaskStepTemplate toDomain(TaskStepEntity entity) {
         return new TaskStepTemplate(entity.id, TaskId.of(entity.taskId), entity.position, entity.text,
-                entity.weekdayMask, StepAmountKind.fromStorage(entity.amountKind),
-                entity.plannedSets, entity.plannedReps, entity.plannedDurationSeconds, entity.note);
+                entity.weekdayMask, StepAmount.fromStorage(
+                        StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
+                        entity.plannedReps, entity.plannedDurationSeconds), entity.note);
     }
 
     public TaskStepEntity toEntity(TaskStepTemplate step) {
+        StoredAmount amount = stored(step.amount);
         return new TaskStepEntity(step.id, step.taskId.value, step.position, step.text,
-                step.weekdayMask, step.amountKind.storageCode(), step.plannedSets,
-                step.plannedReps, step.plannedDurationSeconds, step.note);
+                step.weekdayMask, amount.kind.storageCode(), amount.sets,
+                amount.repetitions, amount.durationSeconds, step.note);
     }
 
     public OccurrenceStep toDomain(OccurrenceStepEntity entity) {
         return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text,
-                entity.done, StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
-                entity.plannedReps, entity.plannedDurationSeconds, entity.note,
+                entity.done, StepAmount.fromStorage(StepAmountKind.fromStorage(entity.amountKind),
+                        entity.plannedSets, entity.plannedReps,
+                        entity.plannedDurationSeconds), entity.note,
                 RepetitionProgressCodec.decode(entity.actualRepetitions),
                 entity.sourceTemplateId, entity.comboOwnerId);
     }
 
     public OccurrenceStepEntity toEntity(OccurrenceStep step) {
+        StoredAmount amount = stored(step.amount);
         return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
-                step.done, step.amountKind.storageCode(), step.plannedSets, step.plannedReps,
-                step.plannedDurationSeconds, step.note,
+                step.done, amount.kind.storageCode(), amount.sets, amount.repetitions,
+                amount.durationSeconds, step.note,
                 RepetitionProgressCodec.encode(step.actualRepetitions), step.sourceTemplateId,
                 step.comboOwnerId);
+    }
+
+    private static StoredAmount stored(StepAmount amount) {
+        if (amount instanceof StepAmount.SetsReps) {
+            StepAmount.SetsReps value = (StepAmount.SetsReps) amount;
+            return new StoredAmount(amount.kind(), value.sets, value.repetitions, null);
+        }
+        if (amount instanceof StepAmount.Repetitions)
+            return new StoredAmount(amount.kind(), null,
+                    ((StepAmount.Repetitions) amount).repetitions, null);
+        if (amount instanceof StepAmount.Duration)
+            return new StoredAmount(amount.kind(), null, null,
+                    ((StepAmount.Duration) amount).seconds);
+        return new StoredAmount(StepAmountKind.NONE, null, null, null);
+    }
+
+    private static final class StoredAmount {
+        final StepAmountKind kind;
+        final Integer sets;
+        final Integer repetitions;
+        final Integer durationSeconds;
+
+        StoredAmount(StepAmountKind kind, Integer sets, Integer repetitions,
+                     Integer durationSeconds) {
+            this.kind = kind;
+            this.sets = sets;
+            this.repetitions = repetitions;
+            this.durationSeconds = durationSeconds;
+        }
     }
 
     private static LocalDate date(String value) {

@@ -28,7 +28,7 @@ import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
@@ -69,16 +69,16 @@ public final class TaskEditorFeatureRobolectricTest {
 
     @After public void tearDown() { database.close(); }
 
-    @Test public void definitionRejectsInvalidCombinationsAndNeutralizesUnusedAmounts() {
+    @Test public void definitionRejectsInvalidTypedAmounts() {
         assertThrows(IllegalArgumentException.class, () -> definition("", Recurrence.ONCE,
                 0, TaskBoundKind.FOREVER, null, Collections.emptyList()));
         assertThrows(IllegalArgumentException.class, () -> definition("Routine",
                 Recurrence.WEEKDAYS, 0, TaskBoundKind.FOREVER, null, Collections.emptyList()));
         TaskStepDefinition none = new TaskStepDefinition(null, 0, "Schritt", 0,
-                StepAmountKind.NONE, 4, 12, 60, "Notiz");
-        assertNull(none.plannedSets);
-        assertNull(none.plannedReps);
-        assertNull(none.plannedDurationSeconds);
+                StepAmount.none(), "Notiz");
+        assertEquals(StepAmount.none(), none.amount);
+        assertThrows(IllegalArgumentException.class, () -> new TaskStepDefinition(
+                null, 0, "Schritt", 0, StepAmount.setsReps(0, 12), ""));
     }
 
     @Test public void multipleTimesMaterializeDistinctIdempotentOccurrencesAndRespectCount() {
@@ -120,7 +120,7 @@ public final class TaskEditorFeatureRobolectricTest {
 
     @Test public void templateUpdateKeepsIdentityAndDoesNotMutateOpenSnapshot() {
         TaskStepDefinition original = new TaskStepDefinition(null, 0, "Alt", 0,
-                StepAmountKind.SETS_REPS, 3, 12, null, "23 kg");
+                StepAmount.setsReps(3, 12), "23 kg");
         TaskDefinition definition = definition("Training", Recurrence.DAILY, 0,
                 TaskBoundKind.FOREVER, null, Collections.singletonList(original));
         CreateTask create = new CreateTask(repository, clock, ids, new TaskOrdering());
@@ -131,7 +131,7 @@ public final class TaskEditorFeatureRobolectricTest {
         Occurrence occurrence = repository.openOccurrences().get(0);
 
         TaskStepDefinition edited = new TaskStepDefinition(stableId, 0, "Neu", 0,
-                StepAmountKind.SETS_REPS, 4, 10, null, "25 kg");
+                StepAmount.setsReps(4, 10), "25 kg");
         new UpdateTask(repository, new TaskOrdering(), ids, clock).execute(task.id,
                 definition("Training neu", Recurrence.DAILY, 0, TaskBoundKind.FOREVER,
                         null, Collections.singletonList(edited)));
@@ -142,14 +142,14 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(stableId, snapshot.sourceTemplateId);
         assertEquals("Neu", template.text);
         assertEquals("Alt", snapshot.text);
-        assertEquals(Integer.valueOf(3), snapshot.plannedSets);
+        assertEquals(3, ((StepAmount.SetsReps) snapshot.amount).sets);
         assertEquals("23 kg", snapshot.note);
     }
 
     @Test public void setProgressAndExplicitCompletionSurviveReloadAndReverseExactly() {
         int monday = 1;
         TaskStepDefinition mondayStep = new TaskStepDefinition(null, 0, "Beinpresse", monday,
-                StepAmountKind.SETS_REPS, 3, 12, null, "23 kg, Sitz 5");
+                StepAmount.setsReps(3, 12), "23 kg, Sitz 5");
         new CreateTask(repository, clock, ids, new TaskOrdering()).execute(new TaskDefinition(
                 "Training", 45, TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
                 TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER, null, null, null, null,
@@ -200,7 +200,7 @@ public final class TaskEditorFeatureRobolectricTest {
 
     @Test public void finishExerciseClosesEarlyAndNewOccurrenceStartsEmpty() {
         TaskStepDefinition exercise = new TaskStepDefinition(null, 0, "Kniebeugen", 0,
-                StepAmountKind.SETS_REPS, 3, 15, null, "");
+                StepAmount.setsReps(3, 15), "");
         new CreateTask(repository, clock, ids, new TaskOrdering()).execute(definition(
                 "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
                 Collections.singletonList(exercise)));

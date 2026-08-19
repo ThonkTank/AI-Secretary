@@ -6,7 +6,6 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 
 public final class TaskEditorValidator {
@@ -46,12 +45,7 @@ public final class TaskEditorValidator {
         }
         for (EditorStepState step : draft.stepStates) {
             if (step.text.trim().isEmpty()) errors.add(STEP_PREFIX + step.id);
-            boolean invalid = step.amountKind == StepAmountKind.SETS_REPS
-                    && (notPositive(step.plannedSets) || notPositive(step.plannedReps));
-            invalid |= step.amountKind == StepAmountKind.REPS && notPositive(step.plannedReps);
-            invalid |= step.amountKind == StepAmountKind.DURATION
-                    && notPositive(step.plannedDurationSeconds);
-            if (invalid) errors.add(AMOUNT_PREFIX + step.id);
+            if (!step.amount.isValid()) errors.add(AMOUNT_PREFIX + step.id);
         }
         return Collections.unmodifiableSet(errors);
     }
@@ -64,6 +58,4 @@ public final class TaskEditorValidator {
             return Error.CONDITION;
         return Error.NONE;
     }
-
-    private static boolean notPositive(Integer value) { return value == null || value < 1; }
 }

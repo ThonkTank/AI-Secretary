@@ -85,8 +85,7 @@ public final class MaterializeDueOccurrences {
         for (TaskStepTemplate step : templates) {
             if (!ScheduleCalculator.appliesOn(step.weekdayMask, occurrence.scheduledOn)) continue;
             result.add(new OccurrenceStep(ids.nextId(), occurrence.id, result.size(), step.text,
-                    false, step.amountKind, step.plannedSets, step.plannedReps,
-                    step.plannedDurationSeconds, step.note, Collections.emptyList(),
+                    false, step.amount, step.note, Collections.emptyList(),
                     step.id, ComboProgress.stepOwner(step.id)));
         }
         return result;

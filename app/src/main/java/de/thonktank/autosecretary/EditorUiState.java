@@ -248,9 +248,8 @@ public final class EditorUiState {
                 + Objects.toString(note, ""));
         for (EditorStepState step : steps)
             result.append('|').append(step.id).append(':').append(step.text).append(':')
-                    .append(step.weekdayMask).append(':').append(step.amountKind).append(':')
-                    .append(step.plannedSets).append(':').append(step.plannedReps).append(':')
-                    .append(step.plannedDurationSeconds).append(':').append(step.note);
+                    .append(step.weekdayMask).append(':').append(step.amount).append(':')
+                    .append(step.note);
         return result.toString();
     }
 

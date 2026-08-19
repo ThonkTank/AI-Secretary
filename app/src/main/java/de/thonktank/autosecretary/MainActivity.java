@@ -1,7 +1,5 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.TaskStepUiModel;
-
 import android.Manifest;
 import android.animation.LayoutTransition;
 import android.app.AlertDialog;

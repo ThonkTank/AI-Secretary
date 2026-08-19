@@ -5,7 +5,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import de.thonktank.autosecretary.R;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 
 public final class StepTextFormatterTest {
     private final StepTextFormatter formatter = new StepTextFormatter((resource, arguments) -> {
@@ -24,19 +24,14 @@ public final class StepTextFormatterTest {
 
     @Test public void formatsEveryAmountShapeAndTrimmedNotes() {
         assertEquals("3 × 12 Wdh. · 23 kg", formatter.format(
-                StepAmountKind.SETS_REPS, 3, 12, null, " 23 kg "));
+                StepAmount.setsReps(3, 12), " 23 kg "));
         assertEquals("20 Wdh.", formatter.format(
-                StepAmountKind.REPS, null, 20, null, ""));
+                StepAmount.repetitions(20), ""));
         assertEquals("2 Min. · Bauch fest", formatter.format(
-                StepAmountKind.DURATION, null, null, 120, "Bauch fest"));
+                StepAmount.duration(120), "Bauch fest"));
         assertEquals("45 Sek.", formatter.format(
-                StepAmountKind.DURATION, null, null, 45, ""));
+                StepAmount.duration(45), ""));
         assertEquals("ruhig atmen", formatter.format(
-                StepAmountKind.NONE, null, null, null, " ruhig atmen "));
-    }
-
-    @Test public void incompleteLegacyAmountsFallBackToTheNote() {
-        assertEquals("Sitz 5", formatter.format(
-                StepAmountKind.SETS_REPS, 3, null, null, "Sitz 5"));
+                StepAmount.none(), " ruhig atmen "));
     }
 }

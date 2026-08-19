@@ -3,7 +3,7 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.ScheduleCalculator;
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
@@ -104,7 +104,7 @@ public final class UpdateTask {
         for (String text : stepTexts) if (text != null && !text.trim().isEmpty()) {
             TaskStepTemplate old = current.get(steps.size());
             steps.add(new TaskStepDefinition(old == null ? null : old.id, steps.size(), text,
-                    0, StepAmountKind.NONE, null, null, null, ""));
+                    0, StepAmount.none(), ""));
         }
         execute(id, new TaskDefinition(title, null, slot, recurrence, intervalDays,
                 weekdayMask, recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(slot).bit,
@@ -137,8 +137,7 @@ public final class UpdateTask {
                     ? step.id : ids.nextId();
             retained.add(identity);
             updated.add(new TaskStepTemplate(identity, taskId, i, step.text,
-                    step.weekdayMask, step.amountKind, step.plannedSets, step.plannedReps,
-                    step.plannedDurationSeconds, step.note));
+                    step.weekdayMask, step.amount, step.note));
         }
         for (TaskStepTemplate old : existing)
             if (!retained.contains(old.id)) repository.deleteTemplate(old.id);

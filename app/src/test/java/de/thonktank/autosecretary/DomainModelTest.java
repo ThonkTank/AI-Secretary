@@ -8,10 +8,14 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 
 import org.junit.Test;
 
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 
 public final class DomainModelTest {
     @Test public void taskSlotsUseOnlyStableStorageCodes() {
@@ -44,5 +48,32 @@ public final class DomainModelTest {
         assertEquals("MORNING", roundTrip.slot);
         assertEquals("DAILY", roundTrip.recurrence);
         assertEquals(1_001_000L, roundTrip.displayOrder);
+    }
+
+    @Test public void everyTypedStepAmountRoundTripsThroughTheUnchangedRoomColumns() {
+        TaskEntityMapper mapper = new TaskEntityMapper();
+        List<StepAmount> amounts = Arrays.asList(StepAmount.none(),
+                StepAmount.setsReps(3, 12), StepAmount.repetitions(20),
+                StepAmount.duration(90));
+
+        for (int index = 0; index < amounts.size(); index++) {
+            StepAmount amount = amounts.get(index);
+            TaskStepTemplate template = new TaskStepTemplate("step-" + index,
+                    TaskId.of("task"), index, "Schritt " + index, 0, amount, "Notiz");
+
+            TaskStepEntity stored = mapper.toEntity(template);
+            TaskStepTemplate restored = mapper.toDomain(stored);
+
+            assertEquals(amount, restored.amount);
+            assertEquals(amount.kind().storageCode(), stored.amountKind);
+            if (amount instanceof StepAmount.SetsReps) {
+                assertEquals(Integer.valueOf(3), stored.plannedSets);
+                assertEquals(Integer.valueOf(12), stored.plannedReps);
+            } else if (amount instanceof StepAmount.Repetitions) {
+                assertEquals(Integer.valueOf(20), stored.plannedReps);
+            } else if (amount instanceof StepAmount.Duration) {
+                assertEquals(Integer.valueOf(90), stored.plannedDurationSeconds);
+            }
+        }
     }
 }

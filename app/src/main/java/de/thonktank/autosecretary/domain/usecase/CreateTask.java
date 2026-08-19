@@ -3,7 +3,7 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.ScheduleCalculator;
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
@@ -73,7 +73,7 @@ public final class CreateTask {
         for (String value : stepTexts)
             if (value != null && !value.trim().isEmpty())
                 steps.add(new TaskStepDefinition(null, steps.size(), value, 0,
-                        StepAmountKind.NONE, null, null, null, ""));
+                        StepAmount.none(), ""));
         execute(new TaskDefinition(title, null, slot, recurrence, intervalDays, weekdayMask,
                 recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(slot).bit,
                 TaskBoundKind.FOREVER, null, null, null, null, "", steps));
@@ -86,8 +86,7 @@ public final class CreateTask {
             TaskStepDefinition step = definitions.get(i);
             String id = step.id == null ? ids.nextId() : step.id;
             result.add(new TaskStepTemplate(id, taskId, i, step.text, step.weekdayMask,
-                    step.amountKind, step.plannedSets, step.plannedReps,
-                    step.plannedDurationSeconds, step.note));
+                    step.amount, step.note));
         }
         return result;
     }

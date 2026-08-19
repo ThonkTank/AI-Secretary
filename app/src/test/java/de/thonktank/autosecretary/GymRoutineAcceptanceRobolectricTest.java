@@ -25,6 +25,7 @@ import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
@@ -88,8 +89,8 @@ public final class GymRoutineAcceptanceRobolectricTest {
     private static TaskStepDefinition step(int position, String title, StepAmountKind kind,
                                            Integer sets, Integer repetitions, Integer duration,
                                            String note) {
-        return new TaskStepDefinition(null, position, title, 0, kind, sets, repetitions,
-                duration, note);
+        return new TaskStepDefinition(null, position, title, 0,
+                StepAmount.fromStorage(kind, sets, repetitions, duration), note);
     }
 
     private static List<String> visibleTexts(View root) {

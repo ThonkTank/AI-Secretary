@@ -8,7 +8,7 @@ import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
-import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
@@ -45,7 +45,7 @@ public final class CompletionService {
     public RewardReceipt toggleStep(String stepId) {
         return repository.inTransaction(() -> {
             OccurrenceStep step = repository.findOccurrenceStep(stepId);
-            if (step == null || step.amountKind == StepAmountKind.SETS_REPS)
+            if (step == null || step.amount instanceof StepAmount.SetsReps)
                 return RewardReceipt.none();
             Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
             return step.done ? undoStep(occurrence, step) : completeStep(occurrence, step,
@@ -78,7 +78,7 @@ public final class CompletionService {
     public RewardReceipt reopenExercise(String stepId, List<Integer> repetitions) {
         return repository.inTransaction(() -> {
             OccurrenceStep step = repository.findOccurrenceStep(stepId);
-            if (step == null || step.amountKind != StepAmountKind.SETS_REPS || !step.done)
+            if (step == null || !(step.amount instanceof StepAmount.SetsReps) || !step.done)
                 return RewardReceipt.none();
             Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
