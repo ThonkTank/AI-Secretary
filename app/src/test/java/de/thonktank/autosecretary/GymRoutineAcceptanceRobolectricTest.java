@@ -1,5 +1,6 @@
 package de.thonktank.autosecretary;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -66,6 +67,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
                 new LoadDashboard(repository).execute(TODAY), TODAY);
         TaskSnapshot focus = dashboard.firstOpen();
         assertTrue("The materialized gym routine must become today's focus", focus != null);
+        assertEquals(4, focus.steps.size());
 
         FocusTaskView view = new FocusTaskView(context);
         view.bind(focus, false, false,
