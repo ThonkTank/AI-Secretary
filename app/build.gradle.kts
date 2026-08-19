@@ -102,6 +102,7 @@ tasks.withType<JavaCompile>().configureEach {
 dependencies {
     //noinspection GradleDependency -- newer Core releases require a newer compile SDK.
     implementation("androidx.core:core:1.13.1")
+    implementation("androidx.customview:customview:1.1.0")
     implementation("androidx.room:room-runtime:2.8.4")
     annotationProcessor("androidx.room:room-compiler:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.11.0")

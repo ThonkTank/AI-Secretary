@@ -4,23 +4,28 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.DecelerateInterpolator;
+
+import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
+import androidx.customview.widget.ExploreByTouchHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.IntConsumer;
 
-/** Compact, horizontally scrollable set bars exposed as one accessibility group. */
+/** Compact, horizontally scrollable set bars with one virtual action node per saved set. */
 public final class SetBarsView extends View {
-    private static final int ACTION_EDIT_BASE = 0x01020000;
     private final UiStyle style;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final SetAccessibilityHelper accessibility;
     private String stepId;
     private int slots;
     private List<Integer> actual = Collections.emptyList();
@@ -36,8 +41,11 @@ public final class SetBarsView extends View {
         style = new UiStyle(context);
         setId(R.id.set_bars);
         setFocusable(true);
-        setClickable(true);
+        // The host routes keyboard focus; only its virtual saved-set nodes are actions.
+        setClickable(false);
         setMinimumHeight(style.dp(44));
+        accessibility = new SetAccessibilityHelper(this);
+        ViewCompat.setAccessibilityDelegate(this, accessibility);
     }
 
     public void bind(String boundStepId, int slotCount, List<Integer> values,
@@ -51,8 +59,14 @@ public final class SetBarsView extends View {
         listener = edits == null ? ignored -> { } : edits;
         setEnabled(!actual.isEmpty());
         setContentDescription(description());
+        accessibility.invalidateRoot();
         if (actual.size() > previousCount) animateFill(actual.size() - 1);
-        else { animatedSlot = -1; fillProgress = 1f; invalidate(); }
+        else {
+            stopAnimation();
+            animatedSlot = -1;
+            fillProgress = 1f;
+            invalidate();
+        }
         requestLayout();
     }
 
@@ -112,23 +126,18 @@ public final class SetBarsView extends View {
         return true;
     }
 
-    @Override public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
-        super.onInitializeAccessibilityNodeInfo(info);
-        info.setClassName(View.class.getName());
-        info.setContentDescription(description());
-        for (int index = 0; index < actual.size(); index++)
-            info.addAction(new AccessibilityNodeInfo.AccessibilityAction(
-                    ACTION_EDIT_BASE + index,
-                    getContext().getString(R.string.content_edit_set, index + 1)));
+    @Override public boolean dispatchHoverEvent(MotionEvent event) {
+        return accessibility.dispatchHoverEvent(event) || super.dispatchHoverEvent(event);
     }
 
-    @Override public boolean performAccessibilityAction(int action, Bundle arguments) {
-        int index = action - ACTION_EDIT_BASE;
-        if (index >= 0 && index < actual.size()) {
-            listener.accept(index);
-            return true;
-        }
-        return super.performAccessibilityAction(action, arguments);
+    @Override public boolean dispatchKeyEvent(KeyEvent event) {
+        return accessibility.dispatchKeyEvent(event) || super.dispatchKeyEvent(event);
+    }
+
+    @Override protected void onFocusChanged(boolean gainFocus, int direction,
+                                             Rect previouslyFocusedRect) {
+        super.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
+        accessibility.onFocusChanged(gainFocus, direction, previouslyFocusedRect);
     }
 
     private String description() {
@@ -144,7 +153,7 @@ public final class SetBarsView extends View {
     }
 
     private void animateFill(int index) {
-        if (animator != null) animator.cancel();
+        stopAnimation();
         animatedSlot = index;
         fillProgress = 0f;
         animator = ValueAnimator.ofFloat(0f, 1f);
@@ -157,10 +166,67 @@ public final class SetBarsView extends View {
         animator.start();
     }
 
-    @Override protected void onDetachedFromWindow() {
+    private void stopAnimation() {
         if (animator != null) animator.cancel();
         animator = null;
+    }
+
+    @Override protected void onDetachedFromWindow() {
+        stopAnimation();
         super.onDetachedFromWindow();
+    }
+
+    private final class SetAccessibilityHelper extends ExploreByTouchHelper {
+        SetAccessibilityHelper(View host) { super(host); }
+
+        @Override protected int getVirtualViewAt(float x, float y) {
+            if (y < 0 || y > getHeight() || actual.isEmpty()) return INVALID_ID;
+            int index = Math.max(0, Math.min(slots - 1,
+                    Math.round((x - style.dp(11)) / style.dp(30f))));
+            return index < interactiveSetCount() ? index : INVALID_ID;
+        }
+
+        @Override protected void getVisibleVirtualViews(List<Integer> virtualViewIds) {
+            for (int index = 0; index < interactiveSetCount(); index++)
+                virtualViewIds.add(index);
+        }
+
+        @SuppressWarnings("deprecation") // ExploreByTouchHelper 1.1 requires parent bounds.
+        @Override protected void onPopulateNodeForVirtualView(
+                int virtualViewId, AccessibilityNodeInfoCompat node) {
+            int number = virtualViewId + 1;
+            node.setClassName(android.widget.Button.class.getName());
+            node.setContentDescription(getContext().getString(R.string.content_set_value,
+                    number, actual.get(virtualViewId)) + ", "
+                    + getContext().getString(R.string.content_edit_set, number));
+            node.setBoundsInParent(touchBounds(virtualViewId));
+            node.setClickable(true);
+            node.setFocusable(true);
+            node.setEnabled(isEnabled());
+            node.setSelected(virtualViewId == selected);
+            node.addAction(AccessibilityNodeInfoCompat.ACTION_CLICK);
+        }
+
+        @Override protected boolean onPerformActionForVirtualView(
+                int virtualViewId, int action, Bundle arguments) {
+            if (action != AccessibilityNodeInfoCompat.ACTION_CLICK
+                    || !isEnabled() || virtualViewId < 0
+                    || virtualViewId >= interactiveSetCount()) return false;
+            listener.accept(virtualViewId);
+            sendEventForVirtualView(virtualViewId,
+                    android.view.accessibility.AccessibilityEvent.TYPE_VIEW_CLICKED);
+            return true;
+        }
+
+        private Rect touchBounds(int index) {
+            int center = style.dp(index * 30 + 11);
+            int half = style.dp(22);
+            return new Rect(center - half, 0, center + half, style.dp(44));
+        }
+
+        private int interactiveSetCount() {
+            return Math.min(actual.size(), Math.max(0, slots));
+        }
     }
 
     long animationDurationForTest() { return animator == null ? 0L : animator.getDuration(); }

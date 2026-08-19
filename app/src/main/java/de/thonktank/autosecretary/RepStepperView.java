@@ -18,7 +18,7 @@ import java.util.function.IntConsumer;
 
 import de.thonktank.autosecretary.domain.model.RepetitionProgress;
 
-/** Stateless minus/value/plus control with repeat-on-hold behavior. */
+/** Minus/value/plus control that owns repeat-on-hold gesture state. */
 public final class RepStepperView extends LinearLayout {
     private static final long REPEAT_MS = 300L;
 
@@ -28,6 +28,8 @@ public final class RepStepperView extends LinearLayout {
     private final TextView plusVisual;
     private final FrameLayout minus;
     private final FrameLayout plus;
+    private final RepeatTouchListener minusRepeat;
+    private final RepeatTouchListener plusRepeat;
     private IntConsumer listener = ignored -> { };
 
     public RepStepperView(Context context) {
@@ -37,9 +39,13 @@ public final class RepStepperView extends LinearLayout {
         minusVisual = visual("−");
         plusVisual = visual("＋");
         minus = target(minusVisual, R.id.rep_stepper_decrement,
-                R.string.content_repetition_less, -1);
+                R.string.content_repetition_less);
         plus = target(plusVisual, R.id.rep_stepper_increment,
-                R.string.content_repetition_more, 1);
+                R.string.content_repetition_more);
+        minusRepeat = new RepeatTouchListener(minus, -1);
+        plusRepeat = new RepeatTouchListener(plus, 1);
+        minus.setOnTouchListener(minusRepeat);
+        plus.setOnTouchListener(plusRepeat);
         addView(minus, new LayoutParams(style.dp(44), style.dp(44)));
         value = style.serif("0", 26, 0, false, 400);
         value.setId(R.id.rep_stepper_value);
@@ -74,7 +80,7 @@ public final class RepStepperView extends LinearLayout {
         return visual;
     }
 
-    private FrameLayout target(TextView visual, int id, int description, int delta) {
+    private FrameLayout target(TextView visual, int id, int description) {
         FrameLayout target = new FrameLayout(getContext());
         target.setId(id);
         target.setContentDescription(getContext().getString(description));
@@ -82,8 +88,6 @@ public final class RepStepperView extends LinearLayout {
         FrameLayout.LayoutParams visualParams = new FrameLayout.LayoutParams(
                 style.dp(34), style.dp(34), Gravity.CENTER);
         target.addView(visual, visualParams);
-        target.setOnClickListener(view -> listener.accept(delta));
-        target.setOnTouchListener(new RepeatTouchListener(target, delta));
         return target;
     }
 
@@ -112,6 +116,7 @@ public final class RepStepperView extends LinearLayout {
         RepeatTouchListener(View target, int delta) {
             this.target = target;
             this.delta = delta;
+            target.setOnClickListener(view -> listener.accept(delta));
         }
 
         @Override public boolean onTouch(View view, MotionEvent event) {
@@ -135,5 +140,17 @@ public final class RepStepperView extends LinearLayout {
             }
             return true;
         }
+
+        void cancel() {
+            handler.removeCallbacks(repeat);
+            repeated = false;
+            target.setPressed(false);
+        }
+    }
+
+    @Override protected void onDetachedFromWindow() {
+        minusRepeat.cancel();
+        plusRepeat.cancel();
+        super.onDetachedFromWindow();
     }
 }

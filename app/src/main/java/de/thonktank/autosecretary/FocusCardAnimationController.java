@@ -41,6 +41,16 @@ final class FocusCardAnimationController {
                 });
     }
 
+    void cancel() {
+        card.animate().cancel();
+        glint.animate().cancel();
+        afterglow.animate().cancel();
+        card.setTranslationY(0f);
+        card.setAlpha(1f);
+        glint.setVisibility(View.INVISIBLE);
+        afterglow.setVisibility(View.INVISIBLE);
+    }
+
     private void playGlint(int color, long duration, float alpha) {
         glint.animate().cancel();
         glint.layout(0, card.getTop(), style.dp(64), card.getBottom());

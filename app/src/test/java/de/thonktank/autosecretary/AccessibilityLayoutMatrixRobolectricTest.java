@@ -14,6 +14,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityNodeProvider;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -124,16 +125,19 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
                 new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER)));
         assertEquals(1, changes.get());
 
-        AccessibilityNodeInfo barsInfo = AccessibilityNodeInfo.obtain();
-        bars.onInitializeAccessibilityNodeInfo(barsInfo);
-        assertTrue(barsInfo.getContentDescription().toString().contains("Satz 1: 10"));
-        AccessibilityNodeInfo.AccessibilityAction edit = barsInfo.getActionList().stream()
-                .filter(action -> action.getLabel() != null
-                        && action.getLabel().toString().contains("Satz 1"))
-                .findFirst().orElseThrow(AssertionError::new);
-        assertTrue(bars.performAccessibilityAction(edit.getId(), null));
+        AccessibilityNodeProvider setNodes = bars.getAccessibilityNodeProvider();
+        assertNotNull(setNodes);
+        AccessibilityNodeInfo firstSet = setNodes.createAccessibilityNodeInfo(0);
+        assertNotNull(firstSet);
+        assertEquals(android.widget.Button.class.getName(), firstSet.getClassName());
+        assertTrue(firstSet.getContentDescription().toString().contains("Satz 1: 10"));
+        android.graphics.Rect setBounds = new android.graphics.Rect();
+        firstSet.getBoundsInParent(setBounds);
+        assertTrue(setBounds.width() >= dp(context, 44));
+        assertTrue(setBounds.height() >= dp(context, 44));
+        assertTrue(setNodes.performAction(0, AccessibilityNodeInfo.ACTION_CLICK, null));
         assertEquals(Integer.valueOf(0), correction.get());
-        barsInfo.recycle();
+        firstSet.recycle();
     }
 
     private static void renderToday(Context context, int widthDp, float fontScale,

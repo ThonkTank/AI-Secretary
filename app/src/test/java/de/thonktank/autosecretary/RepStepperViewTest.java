@@ -4,15 +4,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import android.app.Activity;
 import android.content.Context;
 import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.FrameLayout;
 
 import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
@@ -45,5 +48,24 @@ public final class RepStepperViewTest {
         stepper.bind(999, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT),
                 changes::addAndGet);
         assertFalse(plus.isEnabled());
+    }
+
+    @Test public void detachCancelsPendingRepeatGesture() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        FrameLayout root = new FrameLayout(activity);
+        RepStepperView stepper = new RepStepperView(activity);
+        AtomicInteger changes = new AtomicInteger();
+        stepper.bind(12, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT),
+                changes::addAndGet);
+        root.addView(stepper);
+        activity.setContentView(root);
+        View plus = stepper.findViewById(R.id.rep_stepper_increment);
+
+        plus.dispatchTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1, 1, 0));
+        root.removeView(stepper);
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1));
+
+        assertEquals(0, changes.get());
+        assertFalse(plus.isPressed());
     }
 }

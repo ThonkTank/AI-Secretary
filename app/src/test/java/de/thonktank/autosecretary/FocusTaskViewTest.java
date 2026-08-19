@@ -116,6 +116,34 @@ public final class FocusTaskViewTest {
         assertEquals("duration", toggled.get());
     }
 
+    @Test public void reboundFutureRowCannotRetainActiveActionsOrFocus() {
+        Context context = ApplicationProvider.getApplicationContext();
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        FocusStepUiModel active = new FocusStepUiModel("active", "Aktiv", "3 × 12", "",
+                false, RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(10)),
+                0, 10, 0);
+        FocusStepUiModel future = new FocusStepUiModel("future", "Später", "3 × 12", "",
+                false, RepetitionProgressUiModel.sets(3, 12, Collections.emptyList()),
+                0, 10, 0);
+        AtomicReference<String> toggled = new AtomicReference<>();
+        FocusTestActions actions = new FocusTestActions() {
+            @Override public void onSubmitRepetition(String stepId) { toggled.set(stepId); }
+        };
+        FocusStepRowView row = new FocusStepRowView(context);
+
+        row.bind(active, true, palette, RepetitionInputState.idle(), actions);
+        assertTrue(row.rewardAnchor().isClickable());
+        assertTrue(row.rewardAnchor().isFocusable());
+        row.bind(future, false, palette, RepetitionInputState.idle(), actions);
+
+        assertFalse(row.rewardAnchor().isClickable());
+        assertFalse(row.rewardAnchor().isFocusable());
+        assertFalse(row.rewardAnchor().performClick());
+        View barsScroll = (View) row.findViewById(R.id.set_bars).getParent();
+        assertEquals(View.GONE, ((View) barsScroll.getParent()).getVisibility());
+        assertEquals(null, toggled.get());
+    }
+
     @Test public void configuredLimitCountsFollowingStepsAndReportsTheRest() {
         Context context = ApplicationProvider.getApplicationContext();
         List<FocusStepUiModel> models = Arrays.asList(

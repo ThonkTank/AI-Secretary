@@ -73,6 +73,8 @@ final class DewDotView extends View {
             });
             dropAnimator.start();
         } else {
+            if (dropAnimator != null) dropAnimator.cancel();
+            dropAnimator = null;
             dropScale = 1f;
             dropAlpha = 1f;
         }
