@@ -27,6 +27,8 @@ import org.robolectric.annotation.Config;
 
 import java.time.LocalTime;
 import de.thonktank.autosecretary.calendar.CalendarResult;
+import de.thonktank.autosecretary.widget.WidgetPresenter;
+import de.thonktank.autosecretary.widget.WidgetUiModel;
 
 @RunWith(RobolectricTestRunner.class)
 public final class WidgetRemoteViewsFactoryTest {

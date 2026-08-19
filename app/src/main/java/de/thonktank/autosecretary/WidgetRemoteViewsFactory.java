@@ -9,6 +9,8 @@ import android.text.style.StrikethroughSpan;
 import android.view.View;
 import android.widget.RemoteViews;
 
+import de.thonktank.autosecretary.widget.WidgetUiModel;
+
 public final class WidgetRemoteViewsFactory {
     private static final int[] STEP_ROWS = {R.id.widget_step_row_1, R.id.widget_step_row_2,
             R.id.widget_step_row_3};

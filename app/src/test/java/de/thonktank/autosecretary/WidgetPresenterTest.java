@@ -18,6 +18,8 @@ import java.time.LocalTime;
 import java.util.Collections;
 
 import de.thonktank.autosecretary.calendar.CalendarResult;
+import de.thonktank.autosecretary.widget.WidgetPresenter;
+import de.thonktank.autosecretary.widget.WidgetUiModel;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)

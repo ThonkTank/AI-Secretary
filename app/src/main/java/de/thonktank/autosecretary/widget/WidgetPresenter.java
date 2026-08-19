@@ -1,4 +1,4 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.widget;
 
 import de.thonktank.autosecretary.presentation.TaskStepUiModel;
 
@@ -9,6 +9,13 @@ import java.util.Collections;
 import java.util.List;
 
 import de.thonktank.autosecretary.calendar.CalendarResult;
+import de.thonktank.autosecretary.AppContainer;
+import de.thonktank.autosecretary.CalendarEventSnapshot;
+import de.thonktank.autosecretary.DayPalette;
+import de.thonktank.autosecretary.R;
+import de.thonktank.autosecretary.TaskSnapshot;
+import de.thonktank.autosecretary.TodayUiModel;
+import de.thonktank.autosecretary.WidgetSizeClassifier;
 
 public final class WidgetPresenter {
     public static final class CycleData {
@@ -16,7 +23,7 @@ public final class WidgetPresenter {
         final CalendarResult calendar;
         final DayPalette palette;
 
-        CycleData(TodayUiModel dashboard, CalendarResult calendar, DayPalette palette) {
+        public CycleData(TodayUiModel dashboard, CalendarResult calendar, DayPalette palette) {
             this.dashboard = dashboard;
             this.calendar = calendar;
             this.palette = palette;
@@ -26,22 +33,22 @@ public final class WidgetPresenter {
     private final Context context;
     private final AppContainer container;
 
-    WidgetPresenter(Context context, AppContainer container) {
+    public WidgetPresenter(Context context, AppContainer container) {
         this.context = context.getApplicationContext();
         this.container = container;
     }
 
-    WidgetPresenter(Context context) {
+    public WidgetPresenter(Context context) {
         this(context, null);
     }
 
-    CycleData load() {
+    public CycleData load() {
         DayPalette.Mode mode = DayPalette.Mode.valueOf(container.uiPreferences.themeMode().name());
         return new CycleData(container.dashboardPresenter.refresh(), container.calendar.loadToday(),
                 DayPalette.at(container.clock.time(), mode));
     }
 
-    WidgetUiModel present(CycleData data, WidgetSizeClassifier.Size size) {
+    public WidgetUiModel present(CycleData data, WidgetSizeClassifier.Size size) {
         TaskSnapshot focus = data.dashboard.firstOpen();
         if (focus == null) return empty(data.palette, size);
         List<WidgetUiModel.Step> steps = new ArrayList<>();

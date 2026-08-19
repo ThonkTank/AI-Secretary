@@ -42,6 +42,7 @@ jobs:
             app/build/outputs/apk/release/app-release-unsigned.apk
 
   instrumentation:
+    if: github.event_name != 'pull_request'
     needs: quality
     runs-on: ubuntu-latest
     strategy:
@@ -80,7 +81,7 @@ jobs:
   pr-gate:
     name: pull-request-gate
     if: always() && github.event_name == 'pull_request'
-    needs: [quality, instrumentation]
+    needs: [quality]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,10 +89,8 @@ jobs:
       - name: Require every pull-request quality job
         env:
           QUALITY_RESULT: ${{ needs.quality.result }}
-          INSTRUMENTATION_RESULT: ${{ needs.instrumentation.result }}
         run: |
           test "$QUALITY_RESULT" = success
-          test "$INSTRUMENTATION_RESULT" = success
 
   package:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

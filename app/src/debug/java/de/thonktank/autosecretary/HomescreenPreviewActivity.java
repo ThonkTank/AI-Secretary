@@ -19,6 +19,8 @@ import java.util.List;
 import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
+import de.thonktank.autosecretary.widget.WidgetPresenter;
+import de.thonktank.autosecretary.widget.WidgetUiModel;
 
 /** Debug-only deterministic gallery for the ten supplied visual reference states. */
 public final class HomescreenPreviewActivity extends ComponentActivity {

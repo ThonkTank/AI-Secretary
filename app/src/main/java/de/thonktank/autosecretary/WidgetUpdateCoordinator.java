@@ -6,6 +6,9 @@ import android.content.Context;
 import android.os.Bundle;
 import android.widget.RemoteViews;
 
+import de.thonktank.autosecretary.widget.WidgetPresenter;
+import de.thonktank.autosecretary.widget.WidgetUiModel;
+
 import java.util.Arrays;
 import java.util.concurrent.Executor;
 

@@ -21,10 +21,20 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("--key-pass env:KEYSTORE_PASSWORD", WORKFLOW)
 
     def test_pull_requests_have_one_stable_aggregate_check(self):
-        self.assertIn("name: pull-request-gate", WORKFLOW)
-        self.assertIn("needs: [quality, instrumentation]", WORKFLOW)
-        self.assertIn('test "$QUALITY_RESULT" = success', WORKFLOW)
-        self.assertIn('test "$INSTRUMENTATION_RESULT" = success', WORKFLOW)
+        instrumentation = WORKFLOW.split("\n  instrumentation:", 1)[1].split(
+            "\n  pr-gate:", 1
+        )[0]
+        pull_request_gate = WORKFLOW.split("\n  pr-gate:", 1)[1].split(
+            "\n  package:", 1
+        )[0]
+        package = WORKFLOW.split("\n  package:", 1)[1].split("\n  upgrade:", 1)[0]
+
+        self.assertIn("if: github.event_name != 'pull_request'", instrumentation)
+        self.assertIn("name: pull-request-gate", pull_request_gate)
+        self.assertIn("needs: [quality]", pull_request_gate)
+        self.assertIn('test "$QUALITY_RESULT" = success', pull_request_gate)
+        self.assertNotIn("INSTRUMENTATION_RESULT", pull_request_gate)
+        self.assertIn("needs: [quality, instrumentation]", package)
 
 
 if __name__ == "__main__":

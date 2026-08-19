@@ -19,6 +19,7 @@ import java.util.List;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.StepTextFormatter;
 

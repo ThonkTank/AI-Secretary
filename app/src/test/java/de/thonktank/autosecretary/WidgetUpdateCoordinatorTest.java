@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import de.thonktank.autosecretary.calendar.CalendarResult;
+import de.thonktank.autosecretary.widget.WidgetPresenter;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 
 @RunWith(RobolectricTestRunner.class)

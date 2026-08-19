@@ -28,3 +28,20 @@ Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
 Die aktuelle Testschichtung, Migrationsmatrix und Golden-/Accessibility-Verträge beschreibt
 [Phase 7: Testpyramide, Goldens und Accessibility](phase-7-teststrategie.md).
+
+## Paketgrenzen des schrittweisen Refactorings
+
+Die App bleibt bewusst ein Android-Modul. Innerhalb dieses Moduls markieren Pakete die aktuell
+belastbaren Verantwortungsgrenzen:
+
+- `domain.model` und `domain.usecase`: fachliche Typen und Abläufe, einschließlich `StepAmount`;
+- `presentation`: präsentationsfertige Dashboard-Schritte und lokalisierte Textformatierung;
+- `editor`: reine, Android-unabhängige Zustandsübergänge des Aufgabeneditors;
+- `widget`: größenabhängige Widget-Projektion und ihr UI-Modell;
+- Root-Paket: Android-Views, Lifecycle-/Composition-Root und historisch noch nicht verschobene
+  kleine Adapter.
+
+Neue fachlich reine Typen sollen direkt in die passende Grenze eingeordnet werden. Bestehende
+Root-Klassen werden nur bei konkreter Bearbeitung verschoben; eine mechanische Massenverschiebung
+ist ausdrücklich nicht Teil dieses Refactorings. Zusätzliche Gradle-Module, ein DI-Framework,
+Compose oder ein generisches Design-System sind dafür nicht vorgesehen.

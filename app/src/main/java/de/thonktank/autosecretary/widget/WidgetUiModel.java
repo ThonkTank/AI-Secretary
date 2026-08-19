@@ -1,10 +1,13 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.widget;
 
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import de.thonktank.autosecretary.DayPalette;
+import de.thonktank.autosecretary.WidgetSizeClassifier;
 
 public final class WidgetUiModel {
     public enum PrimaryAction { NONE, OPEN_EDITOR, COMPLETE_OCCURRENCE, CONFIRM_CLOSE }

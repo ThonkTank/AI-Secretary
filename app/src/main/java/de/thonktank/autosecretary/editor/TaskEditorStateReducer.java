@@ -1,4 +1,7 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.editor;
+
+import de.thonktank.autosecretary.EditorStepState;
+import de.thonktank.autosecretary.EditorUiState;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -6,6 +6,8 @@ import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
 
+import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
+
 public final class TaskEditorStateReducerTest {
     @Test public void stepTransitionsPreserveStableDraftIdentityAndOrdering() {
         EditorUiState original = EditorUiState.create();
