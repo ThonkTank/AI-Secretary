@@ -31,6 +31,8 @@ Die aktuelle Testschichtung, Migrationsmatrix und Golden-/Accessibility-Verträg
 Die vor dem Today-/Fokus-Refactor festgehaltenen Datenflüsse, Charakterisierungstests und
 Laufzeit-/Speicherwerte stehen in der
 [Phase-0-Baseline des Today-/Fokus-Refactors](today-focus-baseline.md).
+Die in Phase 1 eingeführten Invarianten und Kompatibilitätsregeln für Wiederholungen beschreibt
+der [fachliche Wiederholungsfortschritt](today-focus-domain.md).
 
 ## Paketgrenzen des schrittweisen Refactorings
 

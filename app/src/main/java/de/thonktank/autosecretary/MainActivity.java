@@ -204,12 +204,12 @@ public class MainActivity extends ComponentActivity {
             @Override public void onToggleStep(String stepId) {
                 viewModel.toggleStep(stepId);
             }
-            @Override public void onConfirmRepetitions(String stepId, int repetitions) {
-                viewModel.confirmSet(stepId, repetitions);
+            @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
+                viewModel.recordRepetitionResult(stepId, repetitions);
             }
-            @Override public void onEditRepetition(String stepId, int index,
-                                                   int repetitions) {
-                viewModel.editStepRepetition(stepId, index, repetitions);
+            @Override public void onCorrectRepetitionResult(String stepId, int index,
+                                                            int repetitions) {
+                viewModel.correctRepetitionResult(stepId, index, repetitions);
             }
             @Override public void onRepetitionInputStateChanged(
                     RepetitionInputState state) {

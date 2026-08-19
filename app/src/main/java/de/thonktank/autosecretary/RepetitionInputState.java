@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 import java.util.List;
 
 import de.thonktank.autosecretary.presentation.TaskStepUiModel;
+import de.thonktank.autosecretary.domain.model.RepetitionProgress;
 
 /** Immutable draft for the repetition stepper and an optional saved-slot correction. */
 public final class RepetitionInputState {
@@ -52,5 +53,5 @@ public final class RepetitionInputState {
         return idle();
     }
 
-    private static int clamp(int value) { return Math.max(0, Math.min(999, value)); }
+    private static int clamp(int value) { return RepetitionProgress.clampInput(value); }
 }

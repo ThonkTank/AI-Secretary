@@ -53,39 +53,17 @@ public final class CompletionService {
         });
     }
 
-    public RewardReceipt confirmSet(String stepId, int repetitions) {
+    public RewardReceipt recordRepetitionResult(String stepId, int repetitions) {
         return repository.inTransaction(() -> {
             OccurrenceStep step = repository.findOccurrenceStep(stepId);
             if (step == null) return RewardReceipt.none();
             Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
             if (step.done || occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
-            OccurrenceStep changed = step.confirmRepetitions(repetitions);
+            OccurrenceStep changed = step.recordRepetitionResult(repetitions);
             repository.updateOccurrenceStep(changed);
             return !step.done && changed.done
                     ? completeStep(occurrence, changed, newId()) : RewardReceipt.none();
-        });
-    }
-
-    public RewardReceipt finishExercise(String stepId) {
-        return repository.inTransaction(() -> {
-            OccurrenceStep step = repository.findOccurrenceStep(stepId);
-            Occurrence occurrence = step == null ? null : repository.findOccurrence(step.occurrenceId);
-            return completeStep(occurrence, step, newId());
-        });
-    }
-
-    public RewardReceipt reopenExercise(String stepId, List<Integer> repetitions) {
-        return repository.inTransaction(() -> {
-            OccurrenceStep step = repository.findOccurrenceStep(stepId);
-            if (step == null || !(step.amount instanceof StepAmount.SetsReps) || !step.done)
-                return RewardReceipt.none();
-            Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
-            if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
-                return RewardReceipt.none();
-            OccurrenceStep edited = step.withActualRepetitions(repetitions);
-            repository.updateOccurrenceStep(edited);
-            return undoStep(occurrence, edited);
         });
     }
 

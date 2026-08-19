@@ -121,8 +121,9 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         @Override public void onHarvest(TaskSnapshot task) { }
         @Override public void onDefer(TaskSnapshot task) { }
         @Override public void onToggleStep(String stepId) { }
-        @Override public void onConfirmRepetitions(String stepId, int repetitions) { }
-        @Override public void onEditRepetition(String stepId, int index, int repetitions) { }
+        @Override public void onRecordRepetitionResult(String stepId, int repetitions) { }
+        @Override public void onCorrectRepetitionResult(
+                String stepId, int index, int repetitions) { }
         @Override public void onRepetitionInputStateChanged(RepetitionInputState state) { }
         @Override public void onTheme(UiThemeMode mode) { }
         @Override public void onFocusStepLimit(

@@ -18,8 +18,8 @@ import de.thonktank.autosecretary.presentation.TaskStepUiModel;
 public final class FocusStepRowView extends LinearLayout {
     public interface Actions {
         void onToggleStep(String stepId);
-        void onConfirmRepetitions(String stepId, int repetitions);
-        void onEditRepetition(String stepId, int index, int repetitions);
+        void onRecordRepetitionResult(String stepId, int repetitions);
+        void onCorrectRepetitionResult(String stepId, int index, int repetitions);
         void onRepetitionInputStateChanged(RepetitionInputState state);
     }
 
@@ -181,9 +181,9 @@ public final class FocusStepRowView extends LinearLayout {
         int editingIndex = input.editingIndexFor(step);
         actions.onRepetitionInputStateChanged(RepetitionInputState.idle());
         if (editingIndex < 0) {
-            actions.onConfirmRepetitions(step.id, value);
+            actions.onRecordRepetitionResult(step.id, value);
             return;
         }
-        actions.onEditRepetition(step.id, editingIndex, value);
+        actions.onCorrectRepetitionResult(step.id, editingIndex, value);
     }
 }

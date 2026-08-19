@@ -7,7 +7,7 @@ class FocusTestActions implements FocusTaskView.TaskActions, FocusStepRowView.Ac
     @Override public void onHarvest(TaskSnapshot task) { }
     @Override public void onDefer(TaskSnapshot task) { }
     @Override public void onToggleStep(String stepId) { }
-    @Override public void onConfirmRepetitions(String stepId, int repetitions) { }
-    @Override public void onEditRepetition(String stepId, int index, int repetitions) { }
+    @Override public void onRecordRepetitionResult(String stepId, int repetitions) { }
+    @Override public void onCorrectRepetitionResult(String stepId, int index, int repetitions) { }
     @Override public void onRepetitionInputStateChanged(RepetitionInputState state) { }
 }

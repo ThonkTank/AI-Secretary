@@ -16,6 +16,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntConsumer;
 
+import de.thonktank.autosecretary.domain.model.RepetitionProgress;
+
 /** Stateless minus/value/plus control with repeat-on-hold behavior. */
 public final class RepStepperView extends LinearLayout {
     private static final long REPEAT_MS = 300L;
@@ -58,9 +60,9 @@ public final class RepStepperView extends LinearLayout {
         bindCircle(minusVisual, palette);
         bindCircle(plusVisual, palette);
         minus.setEnabled(current > 0);
-        plus.setEnabled(current < 999);
+        plus.setEnabled(current < RepetitionProgress.MAX_INPUT);
         minus.setAlpha(current > 0 ? 1f : .45f);
-        plus.setAlpha(current < 999 ? 1f : .45f);
+        plus.setAlpha(current < RepetitionProgress.MAX_INPUT ? 1f : .45f);
         WoodGrainView.applyTextHalo(value, palette.leaf1);
     }
 

@@ -49,11 +49,11 @@ public final class DashboardUiMapper {
             if (step.amount instanceof StepAmount.SetsReps) {
                 StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
                 repetitionProgress = RepetitionProgressUiModel.sets(amount.sets,
-                        amount.repetitions, step.actualRepetitions);
+                        amount.repetitions, step.repetitionProgress.actualRepetitions);
             } else if (step.amount instanceof StepAmount.Repetitions) {
                 repetitionProgress = RepetitionProgressUiModel.single(
                         ((StepAmount.Repetitions) step.amount).repetitions,
-                        step.actualRepetitions);
+                        step.repetitionProgress.actualRepetitions);
             }
             steps.add(new TaskStepUiModel(step.id, step.text,
                     stepTexts.format(step.amount, step.note),

@@ -82,27 +82,32 @@ public final class DomainModelTest {
     @Test public void repetitionProgressAcceptsZeroForSetsAndSingleValues() {
         OccurrenceStep sets = new OccurrenceStep("sets", "occ", 0, "Kniebeugen", false,
                 StepAmount.setsReps(2, 12), "", java.util.Collections.emptyList());
-        OccurrenceStep first = sets.confirmRepetitions(0);
-        OccurrenceStep second = first.confirmRepetitions(999);
+        OccurrenceStep first = sets.recordRepetitionResult(0);
+        OccurrenceStep second = first.recordRepetitionResult(999);
         OccurrenceStep single = new OccurrenceStep("single", "occ", 1, "Liegestütze", false,
                 StepAmount.repetitions(12), "", java.util.Collections.emptyList())
-                .confirmRepetitions(0);
+                .recordRepetitionResult(0);
 
-        assertEquals(java.util.Arrays.asList(0, 999), second.actualRepetitions);
+        assertEquals(java.util.Arrays.asList(0, 999),
+                second.repetitionProgress.actualRepetitions);
         assertEquals(true, second.done);
-        assertEquals(java.util.Collections.singletonList(0), single.actualRepetitions);
+        assertEquals(java.util.Collections.singletonList(0),
+                single.repetitionProgress.actualRepetitions);
         assertEquals(true, single.done);
-        assertEquals("0,999", RepetitionProgressCodec.encode(second.actualRepetitions));
-        assertEquals(second.actualRepetitions, RepetitionProgressCodec.decode("0,999"));
-        assertThrows(IllegalArgumentException.class, () -> first.confirmRepetitions(1000));
+        assertEquals("0,999", RepetitionProgressCodec.encode(
+                second.repetitionProgress.actualRepetitions));
+        assertEquals(second.repetitionProgress.actualRepetitions,
+                RepetitionProgressCodec.decode("0,999"));
+        assertThrows(IllegalArgumentException.class, () -> first.recordRepetitionResult(1000));
     }
 
     @Test public void legacyRepetitionValuesAboveTheNewInputLimitRemainReadable() {
         OccurrenceStep legacy = new OccurrenceStep("legacy", "occ", 0, "Beinpresse", false,
                 StepAmount.setsReps(2, 12), "", Arrays.asList(1_200));
 
-        assertEquals(Arrays.asList(1_200), legacy.actualRepetitions);
+        assertEquals(Arrays.asList(1_200), legacy.repetitionProgress.actualRepetitions);
         assertEquals(Arrays.asList(1_200), RepetitionProgressCodec.decode("1200"));
-        assertEquals("1200", RepetitionProgressCodec.encode(legacy.actualRepetitions));
+        assertEquals("1200", RepetitionProgressCodec.encode(
+                legacy.repetitionProgress.actualRepetitions));
     }
 }

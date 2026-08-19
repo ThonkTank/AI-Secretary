@@ -34,7 +34,7 @@ import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteRemainingSteps;
-import de.thonktank.autosecretary.domain.usecase.ConfirmSet;
+import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
@@ -83,11 +83,11 @@ public final class GymRoutineAcceptanceRobolectricTest {
         assertEquals("ruhig atmen", focus.steps.get(3).note);
 
         FocusTaskView view = new FocusTaskView(context);
-        ConfirmSet confirm = new ConfirmSet(repository, clock);
+        RecordRepetitionResult record = new RecordRepetitionResult(repository, clock);
         CompleteRemainingSteps completeRest = new CompleteRemainingSteps(repository, clock);
         NoOpActions actions = new NoOpActions() {
-            @Override public void onConfirmRepetitions(String stepId, int repetitions) {
-                confirm.execute(stepId, repetitions);
+            @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
+                record.execute(stepId, repetitions);
             }
 
             @Override public void onCompleteRemaining(TaskSnapshot task) {

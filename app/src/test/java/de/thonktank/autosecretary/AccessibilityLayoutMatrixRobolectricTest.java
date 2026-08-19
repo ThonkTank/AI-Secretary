@@ -75,7 +75,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         FocusTaskView focus = new FocusTaskView(context);
         TaskSnapshot task = setTask(false);
         Actions actions = new Actions() {
-            @Override public void onConfirmRepetitions(String stepId, int repetitions) {
+            @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
                 changes.incrementAndGet();
             }
 

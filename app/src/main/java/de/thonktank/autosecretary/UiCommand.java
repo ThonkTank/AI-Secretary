@@ -5,8 +5,8 @@ import java.util.Objects;
 /** Typed presentation command identity used for de-duplication and reward anchoring. */
 public final class UiCommand {
     public enum Kind { REFRESH, CREATE, UPDATE, MOVE, DELETE, LOAD_EDITOR, COMPLETE,
-        COMPLETE_REMAINING, HARVEST, UNDO, TOGGLE_STEP, CONFIRM_SET, FINISH_EXERCISE,
-        REOPEN_EXERCISE, EDIT_STEP_PROGRESS, DEFER, CLOSE }
+        COMPLETE_REMAINING, HARVEST, UNDO, TOGGLE_STEP, RECORD_REPETITION_RESULT,
+        CORRECT_REPETITION_RESULT, DEFER, CLOSE }
     public final Kind kind;
     public final String id;
 
@@ -22,8 +22,7 @@ public final class UiCommand {
             case HARVEST: anchor = RewardAnchorKey.Kind.VESSEL; break;
             case COMPLETE_REMAINING: anchor = RewardAnchorKey.Kind.REST; break;
             case CLOSE: anchor = RewardAnchorKey.Kind.TASK; break;
-            case TOGGLE_STEP: case CONFIRM_SET: case FINISH_EXERCISE:
-            case REOPEN_EXERCISE: case EDIT_STEP_PROGRESS:
+            case TOGGLE_STEP: case RECORD_REPETITION_RESULT: case CORRECT_REPETITION_RESULT:
                 anchor = RewardAnchorKey.Kind.STEP; break;
             default: anchor = RewardAnchorKey.Kind.OCCURRENCE;
         }

@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.domain.model;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -12,7 +11,7 @@ public final class OccurrenceStep {
     public final boolean done;
     public final StepAmount amount;
     public final String note;
-    public final List<Integer> actualRepetitions;
+    public final RepetitionProgress repetitionProgress;
     public final String sourceTemplateId;
     public final String comboOwnerId;
 
@@ -43,72 +42,51 @@ public final class OccurrenceStep {
             throw new IllegalArgumentException(
                     "Occurrence step identity, occurrence and text are required");
         TaskStepDefinition checked = new TaskStepDefinition(id, position, text, 0, amount, note);
-        List<Integer> actual = new ArrayList<>();
-        for (Integer value : actualRepetitions) {
-            if (value == null || value < 0)
-                throw new IllegalArgumentException("Confirmed repetitions must not be negative");
-            actual.add(value);
-        }
-        boolean acceptsProgress = checked.amount instanceof StepAmount.SetsReps
-                || checked.amount instanceof StepAmount.Repetitions;
-        if (!acceptsProgress && !actual.isEmpty())
-            throw new IllegalArgumentException("Step amount does not accept repetition progress");
-        if (checked.amount instanceof StepAmount.SetsReps
-                && actual.size() > ((StepAmount.SetsReps) checked.amount).sets)
-            throw new IllegalArgumentException("Confirmed set count exceeds planned sets");
-        if (checked.amount instanceof StepAmount.Repetitions && actual.size() > 1)
-            throw new IllegalArgumentException("Single repetition progress has one value");
+        RepetitionProgress progress = RepetitionProgress.forAmount(
+                checked.amount, actualRepetitions, done);
         this.id = id;
         this.occurrenceId = occurrenceId;
         this.position = checked.position;
         this.text = checked.text;
         this.amount = checked.amount;
         this.note = checked.note;
-        this.actualRepetitions = Collections.unmodifiableList(actual);
-        this.done = done;
+        this.repetitionProgress = progress;
+        this.done = progress == null ? done : progress.completed();
         this.sourceTemplateId = sourceTemplateId == null || sourceTemplateId.isEmpty()
                 ? null : sourceTemplateId;
         this.comboOwnerId = comboOwnerId.isEmpty() ? "step:" + id : comboOwnerId;
     }
 
-    public OccurrenceStep toggle() {
-        return new OccurrenceStep(id, occurrenceId, position, text, !done, amount, note,
-                actualRepetitions, sourceTemplateId, comboOwnerId);
-    }
-
     public OccurrenceStep complete() {
-        return done ? this : new OccurrenceStep(id, occurrenceId, position, text, true,
-                amount, note, actualRepetitions, sourceTemplateId, comboOwnerId);
+        if (done) return this;
+        return repetitionProgress == null
+                ? new OccurrenceStep(id, occurrenceId, position, text, true,
+                        amount, note, Collections.emptyList(), sourceTemplateId, comboOwnerId)
+                : withProgress(repetitionProgress.completeWithoutResults());
     }
 
     public OccurrenceStep reopen() {
-        return done ? new OccurrenceStep(id, occurrenceId, position, text, false, amount,
-                note, actualRepetitions, sourceTemplateId, comboOwnerId) : this;
+        if (!done) return this;
+        return repetitionProgress == null
+                ? new OccurrenceStep(id, occurrenceId, position, text, false, amount,
+                        note, Collections.emptyList(), sourceTemplateId, comboOwnerId)
+                : withProgress(repetitionProgress.reopen());
     }
 
-    public OccurrenceStep confirmRepetitions(int repetitions) {
-        if ((!(amount instanceof StepAmount.SetsReps)
-                && !(amount instanceof StepAmount.Repetitions)) || done)
+    public OccurrenceStep recordRepetitionResult(int repetitions) {
+        if (repetitionProgress == null || done)
             throw new IllegalStateException("Step does not accept repetition progress");
-        if (repetitions < 0 || repetitions > 999)
-            throw new IllegalArgumentException("Repetitions must be between 0 and 999");
-        List<Integer> values = new ArrayList<>(actualRepetitions);
-        values.add(repetitions);
-        int plannedSets = amount instanceof StepAmount.SetsReps
-                ? ((StepAmount.SetsReps) amount).sets : 1;
-        return new OccurrenceStep(id, occurrenceId, position, text,
-                values.size() == plannedSets, amount, note, values,
-                sourceTemplateId, comboOwnerId);
+        return withProgress(repetitionProgress.record(repetitions));
     }
 
-    public OccurrenceStep confirmSet(int repetitions) {
-        return confirmRepetitions(repetitions);
+    public OccurrenceStep correctRepetitionResult(int index, int repetitions) {
+        if (repetitionProgress == null)
+            throw new IllegalStateException("Step does not accept repetition progress");
+        return withProgress(repetitionProgress.correct(index, repetitions));
     }
 
-    public OccurrenceStep withActualRepetitions(List<Integer> values) {
-        return new OccurrenceStep(id, occurrenceId, position, text, done, amount, note,
-                values, sourceTemplateId, comboOwnerId);
+    private OccurrenceStep withProgress(RepetitionProgress progress) {
+        return new OccurrenceStep(id, occurrenceId, position, text, progress.completed(), amount,
+                note, progress.actualRepetitions, sourceTemplateId, comboOwnerId);
     }
-
-    public int nextSetNumber() { return actualRepetitions.size() + 1; }
 }

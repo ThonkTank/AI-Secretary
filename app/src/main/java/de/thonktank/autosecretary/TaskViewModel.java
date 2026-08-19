@@ -292,21 +292,13 @@ public final class TaskViewModel extends ViewModel {
         runReward(command(UiCommand.Kind.UNDO, occurrenceId), () -> tasks.undoOccurrence.execute(occurrenceId));
     }
     void toggleStep(String stepId) { runReward(command(UiCommand.Kind.TOGGLE_STEP, stepId), () -> tasks.toggleStep.execute(stepId)); }
-    void confirmSet(String stepId, int repetitions) {
-        runReward(command(UiCommand.Kind.CONFIRM_SET, stepId),
-                () -> tasks.confirmSet.execute(stepId, repetitions));
+    void recordRepetitionResult(String stepId, int repetitions) {
+        runReward(command(UiCommand.Kind.RECORD_REPETITION_RESULT, stepId),
+                () -> tasks.recordRepetitionResult.execute(stepId, repetitions));
     }
-    void finishExercise(String stepId) {
-        runReward(command(UiCommand.Kind.FINISH_EXERCISE, stepId),
-                () -> tasks.finishExercise.execute(stepId));
-    }
-    void reopenExercise(String stepId, List<Integer> repetitions) {
-        runReward(command(UiCommand.Kind.REOPEN_EXERCISE, stepId),
-                () -> tasks.reopenExercise.execute(stepId, repetitions));
-    }
-    void editStepRepetition(String stepId, int index, int repetitions) {
-        runReward(command(UiCommand.Kind.EDIT_STEP_PROGRESS, stepId),
-                () -> tasks.editStepProgress.execute(stepId, index, repetitions));
+    void correctRepetitionResult(String stepId, int index, int repetitions) {
+        runReward(command(UiCommand.Kind.CORRECT_REPETITION_RESULT, stepId),
+                () -> tasks.correctRepetitionResult.execute(stepId, index, repetitions));
     }
     void defer(String occurrenceId) { run(command(UiCommand.Kind.DEFER, occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
     void close(String taskId) {

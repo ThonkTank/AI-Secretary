@@ -287,13 +287,13 @@ public final class FocusTaskView extends FrameLayout {
                     callbacks.onToggleStep(stepId);
                 }
 
-                @Override public void onConfirmRepetitions(String stepId, int repetitions) {
-                    callbacks.onConfirmRepetitions(stepId, repetitions);
+                @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
+                    callbacks.onRecordRepetitionResult(stepId, repetitions);
                 }
 
-                @Override public void onEditRepetition(String stepId, int index,
-                                                       int repetitions) {
-                    callbacks.onEditRepetition(stepId, index, repetitions);
+                @Override public void onCorrectRepetitionResult(String stepId, int index,
+                                                                int repetitions) {
+                    callbacks.onCorrectRepetitionResult(stepId, index, repetitions);
                 }
 
                 @Override public void onRepetitionInputStateChanged(

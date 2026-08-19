@@ -241,11 +241,11 @@ public final class UiComponentRobolectricTest {
         FocusTaskView focus = new FocusTaskView(context);
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
         NoOpActions actions = new NoOpActions() {
-            @Override public void onConfirmRepetitions(String stepId, int repetitions) {
+            @Override public void onRecordRepetitionResult(String stepId, int repetitions) {
                 confirmed.set(repetitions);
             }
-            @Override public void onEditRepetition(String stepId, int index,
-                                                   int repetitions) {
+            @Override public void onCorrectRepetitionResult(String stepId, int index,
+                                                            int repetitions) {
                 editedIndex.set(index);
                 editedValue.set(repetitions);
             }

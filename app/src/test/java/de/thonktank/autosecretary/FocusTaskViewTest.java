@@ -92,7 +92,7 @@ public final class FocusTaskViewTest {
         AtomicReference<Integer> confirmed = new AtomicReference<>();
         AtomicReference<String> toggled = new AtomicReference<>();
         FocusTestActions actions = new FocusTestActions() {
-            @Override public void onConfirmRepetitions(String stepId, int value) {
+            @Override public void onRecordRepetitionResult(String stepId, int value) {
                 confirmed.set(value);
             }
 

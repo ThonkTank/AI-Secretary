@@ -11,10 +11,8 @@ public final class TaskUseCases {
     public final DeleteTask delete;
     public final DeferTask defer;
     public final ToggleStep toggleStep;
-    public final ConfirmSet confirmSet;
-    public final FinishExercise finishExercise;
-    public final ReopenExercise reopenExercise;
-    public final EditStepProgress editStepProgress;
+    public final RecordRepetitionResult recordRepetitionResult;
+    public final CorrectRepetitionResult correctRepetitionResult;
     public final CompleteOccurrence complete;
     public final CompleteRemainingSteps completeRemainingSteps;
     public final HarvestOccurrence harvest;
@@ -35,10 +33,8 @@ public final class TaskUseCases {
         delete = new DeleteTask(repository);
         defer = new DeferTask(repository, loadDashboard, ordering, clock);
         toggleStep = new ToggleStep(repository, clock);
-        confirmSet = new ConfirmSet(repository, clock);
-        finishExercise = new FinishExercise(repository, clock);
-        reopenExercise = new ReopenExercise(repository, clock);
-        editStepProgress = new EditStepProgress(repository);
+        recordRepetitionResult = new RecordRepetitionResult(repository, clock);
+        correctRepetitionResult = new CorrectRepetitionResult(repository);
         complete = new CompleteOccurrence(repository, clock);
         completeRemainingSteps = new CompleteRemainingSteps(repository, clock);
         harvest = new HarvestOccurrence(repository, clock);

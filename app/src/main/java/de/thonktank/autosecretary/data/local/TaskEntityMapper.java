@@ -87,7 +87,9 @@ public final class TaskEntityMapper {
         return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
                 step.done, amount.kind.storageCode(), amount.sets, amount.repetitions,
                 amount.durationSeconds, step.note,
-                RepetitionProgressCodec.encode(step.actualRepetitions), step.sourceTemplateId,
+                RepetitionProgressCodec.encode(step.repetitionProgress == null
+                        ? java.util.Collections.emptyList()
+                        : step.repetitionProgress.actualRepetitions), step.sourceTemplateId,
                 step.comboOwnerId);
     }
 

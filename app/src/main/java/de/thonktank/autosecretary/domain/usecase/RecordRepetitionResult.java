@@ -6,13 +6,19 @@ import de.thonktank.autosecretary.SystemZoneIdProvider;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
-public final class FinishExercise {
+/** Records the next result of a set-based or single-repetition step. */
+public final class RecordRepetitionResult {
     private final CompletionService completion;
-    public FinishExercise(TaskRepository repository) {
+
+    public RecordRepetitionResult(TaskRepository repository) {
         this(repository, new SystemClock(new SystemZoneIdProvider()));
     }
-    public FinishExercise(TaskRepository repository, Clock clock) {
+
+    public RecordRepetitionResult(TaskRepository repository, Clock clock) {
         completion = new CompletionService(repository, clock);
     }
-    public RewardReceipt execute(String stepId) { return completion.finishExercise(stepId); }
+
+    public RewardReceipt execute(String stepId, int repetitions) {
+        return completion.recordRepetitionResult(stepId, repetitions);
+    }
 }
