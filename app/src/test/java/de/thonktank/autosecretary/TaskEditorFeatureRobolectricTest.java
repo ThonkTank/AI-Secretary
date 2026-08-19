@@ -163,12 +163,17 @@ public final class TaskEditorFeatureRobolectricTest {
         OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
         assertEquals(Arrays.asList(10, 11), restored.actualRepetitions);
         assertFalse(restored.done);
+        EditStepProgress edit = new EditStepProgress(repository);
+        assertEquals(0, edit.execute(step.id, 0, 0).xp);
+        assertEquals(Arrays.asList(0, 11),
+                repository.findOccurrenceStep(step.id).actualRepetitions);
+        assertThrows(IllegalArgumentException.class,
+                () -> edit.execute(step.id, 0, 1_000));
         assertEquals(10, confirm.execute(step.id, 12).xp);
         assertTrue(repository.findOccurrenceStep(step.id).done);
         assertEquals(1, repository.combo(step.comboOwnerId).points);
 
-        EditStepProgress edit = new EditStepProgress(repository);
-        assertEquals(0, edit.execute(step.id, Arrays.asList(9, 11, 12)).xp);
+        assertEquals(0, edit.execute(step.id, 0, 9).xp);
         OccurrenceStep editedDone = repository.findOccurrenceStep(step.id);
         assertTrue(editedDone.done);
         assertEquals(10, vesselXp(occurrence.id));
@@ -182,7 +187,7 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(0, repository.combo(step.comboOwnerId).points);
         assertEquals(0, reopen.execute(step.id, reopened.actualRepetitions).xp);
 
-        assertEquals(0, edit.execute(step.id, Arrays.asList(10, 11, 12)).xp);
+        assertEquals(0, edit.execute(step.id, 0, 10).xp);
         assertFalse(repository.findOccurrenceStep(step.id).done);
         FinishExercise finish = new FinishExercise(repository, clock);
         assertEquals(10, finish.execute(step.id).xp);

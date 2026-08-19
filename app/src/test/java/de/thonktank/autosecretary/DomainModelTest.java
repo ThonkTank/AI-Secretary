@@ -96,4 +96,13 @@ public final class DomainModelTest {
         assertEquals(second.actualRepetitions, RepetitionProgressCodec.decode("0,999"));
         assertThrows(IllegalArgumentException.class, () -> first.confirmRepetitions(1000));
     }
+
+    @Test public void legacyRepetitionValuesAboveTheNewInputLimitRemainReadable() {
+        OccurrenceStep legacy = new OccurrenceStep("legacy", "occ", 0, "Beinpresse", false,
+                StepAmount.setsReps(2, 12), "", Arrays.asList(1_200));
+
+        assertEquals(Arrays.asList(1_200), legacy.actualRepetitions);
+        assertEquals(Arrays.asList(1_200), RepetitionProgressCodec.decode("1200"));
+        assertEquals("1200", RepetitionProgressCodec.encode(legacy.actualRepetitions));
+    }
 }

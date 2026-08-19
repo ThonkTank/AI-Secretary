@@ -72,6 +72,8 @@ public final class FocusTaskViewTest {
 
         assertEquals("Beinpresse", row.renderedTitle().toString());
         assertEquals("23 kg", row.renderedSubtitle().toString());
+        assertFalse(firstText(row, "Beinpresse").hasOnClickListeners());
+        assertFalse(firstText(row, "23 kg").hasOnClickListeners());
         assertTrue(row.rewardAnchor().getContentDescription().toString()
                 .contains("Satz 1 mit 12 Wiederholungen"));
         assertTrue(row.grainTextViews().size() >= 4);
@@ -140,6 +142,12 @@ public final class FocusTaskViewTest {
         assertTrue(texts.contains("Zwei"));
         assertTrue(texts.contains("3 weitere"));
         assertTrue(!texts.contains("Drei"));
+        assertFalse(firstText(view, "3 weitere").isClickable());
+        assertFalse(firstText(view, "3 weitere").hasOnClickListeners());
+        List<DewDotView> dews = visibleDews(view);
+        assertTrue(dews.get(0).isClickable());
+        assertFalse(dews.get(1).getContentDescription() + " / " + dews.size(),
+                dews.get(1).isClickable());
 
         view.bind(task, false, false,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.THREE,
@@ -149,6 +157,59 @@ public final class FocusTaskViewTest {
         assertTrue(texts.contains("Vier"));
         assertTrue(texts.contains("1 weitere"));
         assertTrue(!texts.contains("Fünf"));
+    }
+
+    @Test public void viewportMeasurementSafelyReducesAutomaticAndNumericLimits() {
+        Context context = ApplicationProvider.getApplicationContext();
+        TaskSnapshot task = longRoutine();
+        FocusTaskView view = new FocusTaskView(context);
+        NoOpActions actions = new NoOpActions();
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        int width = Math.round(330 * context.getResources().getDisplayMetrics().density);
+        int shortHeight = Math.round(430 * context.getResources().getDisplayMetrics().density);
+        int tallHeight = Math.round(720 * context.getResources().getDisplayMetrics().density);
+
+        view.bind(task, false, false, palette, FocusStepLimit.FIVE,
+                RepetitionInputState.idle(), actions, actions);
+        measureExactly(view, width, shortHeight);
+        int shortManual = view.visibleFollowingStepsForTest();
+        assertTrue(shortManual < 5);
+        assertTrue(view.cardExtentForTest() <= shortHeight);
+
+        view.bind(task, false, false, palette, FocusStepLimit.AUTO,
+                RepetitionInputState.idle(), actions, actions);
+        measureExactly(view, width, tallHeight);
+        int tallAutomatic = view.visibleFollowingStepsForTest();
+        assertTrue(tallAutomatic > shortManual);
+        assertTrue(view.cardExtentForTest() <= tallHeight);
+
+        view.bind(task, false, false, palette, FocusStepLimit.ONE,
+                RepetitionInputState.idle(), actions, actions);
+        measureExactly(view, width, tallHeight);
+        assertEquals(1, view.visibleFollowingStepsForTest());
+    }
+
+    private static TaskSnapshot longRoutine() {
+        List<TaskStepUiModel> models = new ArrayList<>();
+        models.add(new TaskStepUiModel("active", "Kniebeugen", "3 × 12 Wdh. · langsam",
+                "3 × 12", "Hantel 10 kg, langsam runter", false,
+                RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(12)),
+                0, 10, 0));
+        for (int index = 1; index <= 5; index++)
+            models.add(new TaskStepUiModel("future-" + index, "Folgeschritt " + index,
+                    "12 Wdh. · Eine lange unveränderte Notiz für zwei Zeilen",
+                    "12 Wdh.", "Eine lange unveränderte Notiz für zwei Zeilen", false,
+                    RepetitionProgressUiModel.single(12, Collections.emptyList()),
+                    0, 10, 0));
+        return new TaskSnapshot("routine-long", "today-long", "Lange Routine",
+                TaskSlot.MORNING, "", "Kniebeugen", Recurrence.DAILY, models, models.size(),
+                false, false, false, false, 0, 1L);
+    }
+
+    private static void measureExactly(View view, int width, int height) {
+        view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+        view.layout(0, 0, width, height);
     }
 
     private static List<String> visibleTexts(View root) {
@@ -161,6 +222,34 @@ public final class FocusTaskViewTest {
                 values.addAll(visibleTexts(group.getChildAt(index)));
         }
         return values;
+    }
+
+    private static TextView firstText(View root, String expected) {
+        if (root instanceof TextView
+                && expected.contentEquals(((TextView) root).getText())) return (TextView) root;
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                TextView found = firstText(group.getChildAt(index), expected);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static List<DewDotView> visibleDews(View root) {
+        List<DewDotView> result = new ArrayList<>();
+        collectDews(root, result);
+        return result;
+    }
+
+    private static void collectDews(View root, List<DewDotView> result) {
+        if (root.getVisibility() != View.VISIBLE) return;
+        if (root instanceof DewDotView) result.add((DewDotView) root);
+        if (!(root instanceof ViewGroup)) return;
+        ViewGroup group = (ViewGroup) root;
+        for (int index = 0; index < group.getChildCount(); index++)
+            collectDews(group.getChildAt(index), result);
     }
 
     private static final class NoOpActions extends FocusTestActions { }

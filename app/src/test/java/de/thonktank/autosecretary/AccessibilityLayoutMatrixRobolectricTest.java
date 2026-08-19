@@ -14,6 +14,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -37,29 +38,49 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class AccessibilityLayoutMatrixRobolectricTest {
     private static final int[] WIDTHS_DP = {320, 412, 600};
     private static final float[] FONT_SCALES = {1f, 1.3f, 2f};
+    private static final LocalTime[] PALETTE_TIMES = {
+            LocalTime.of(9, 40), LocalTime.of(19, 35), LocalTime.of(23, 50)};
 
     @Test public void todayAndInlineEditorFitEveryRequiredWidthAndFontScale() {
         for (int widthDp : WIDTHS_DP) for (float fontScale : FONT_SCALES) {
             Context context = configuredContext(widthDp, fontScale);
-            renderToday(context, widthDp, fontScale);
-            renderRepetitionControls(context, widthDp, fontScale);
+            for (LocalTime time : PALETTE_TIMES) {
+                DayPalette palette = DayPalette.at(time, DayPalette.Mode.AUTO);
+                renderToday(context, widthDp, fontScale, palette);
+                renderRepetitionControls(context, widthDp, fontScale, palette);
+                renderDynamicLimit(context, widthDp, fontScale, palette);
+            }
         }
+    }
+
+    @Test public void largeSystemTextNeverShowsMoreFollowingRowsThanDefaultText() {
+        int normal = visibleFollowingRows(configuredContext(412, 1f));
+        int large = visibleFollowingRows(configuredContext(412, 2f));
+
+        assertTrue("default text should leave room for following steps", normal > 0);
+        assertTrue("large text must not increase the visible row count", large <= normal);
     }
 
     @Test public void talkBackOrderRolesStatesAndKeyboardFollowTheVisualFlow() {
         Context context = configuredContext(412, 1f);
         AtomicInteger changes = new AtomicInteger();
+        AtomicReference<RepetitionInputState> correction = new AtomicReference<>();
         FocusTaskView focus = new FocusTaskView(context);
         TaskSnapshot task = setTask(false);
         Actions actions = new Actions() {
             @Override public void onConfirmRepetitions(String stepId, int repetitions) {
                 changes.incrementAndGet();
+            }
+
+            @Override public void onRepetitionInputStateChanged(RepetitionInputState state) {
+                correction.set(state);
             }
         };
         focus.bind(task, false, true, palette(), FocusStepLimit.AUTO,
@@ -102,9 +123,21 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         assertTrue(dot.onKeyUp(KeyEvent.KEYCODE_ENTER,
                 new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER)));
         assertEquals(1, changes.get());
+
+        AccessibilityNodeInfo barsInfo = AccessibilityNodeInfo.obtain();
+        bars.onInitializeAccessibilityNodeInfo(barsInfo);
+        assertTrue(barsInfo.getContentDescription().toString().contains("Satz 1: 10"));
+        AccessibilityNodeInfo.AccessibilityAction edit = barsInfo.getActionList().stream()
+                .filter(action -> action.getLabel() != null
+                        && action.getLabel().toString().contains("Satz 1"))
+                .findFirst().orElseThrow(AssertionError::new);
+        assertTrue(bars.performAccessibilityAction(edit.getId(), null));
+        assertEquals(0, correction.get().editingIndex);
+        barsInfo.recycle();
     }
 
-    private static void renderToday(Context context, int widthDp, float fontScale) {
+    private static void renderToday(Context context, int widthDp, float fontScale,
+                                    DayPalette palette) {
         ScrollView scroll = new ScrollView(context);
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -112,7 +145,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
                 new Actions(), "test");
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        DashboardFixtures.fullDashboard(), CalendarUiState.empty(), palette(),
+                        DashboardFixtures.fullDashboard(), CalendarUiState.empty(), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
                         EditorUiState.closed()), UiThemeMode.AUTO, UpdateUiState.idle());
         measure(scroll, dp(context, widthDp), dp(context, 8_000));
@@ -123,10 +156,11 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         assertHorizontalBounds(content, label(widthDp, fontScale));
     }
 
-    private static void renderRepetitionControls(Context context, int widthDp, float fontScale) {
+    private static void renderRepetitionControls(Context context, int widthDp, float fontScale,
+                                                 DayPalette palette) {
         FocusTaskView focus = new FocusTaskView(context);
         Actions actions = new Actions();
-        focus.bind(setTask(false), false, true, palette(), FocusStepLimit.AUTO,
+        focus.bind(setTask(false), false, true, palette, FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), actions, actions);
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
@@ -149,6 +183,23 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         assertTextFits(input, message);
     }
 
+    private static void renderDynamicLimit(Context context, int widthDp, float fontScale,
+                                           DayPalette palette) {
+        FocusTaskView focus = new FocusTaskView(context);
+        Actions actions = new Actions();
+        focus.bind(longTask(), false, true, palette, FocusStepLimit.FIVE,
+                RepetitionInputState.idle(), actions, actions);
+        int horizontalPagePadding = context.getResources().getDimensionPixelSize(
+                R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
+        int availableWidth = dp(context, widthDp) - horizontalPagePadding;
+        int availableHeight = dp(context, 540);
+        measureExactly(focus, availableWidth, availableHeight);
+        String message = label(widthDp, fontScale);
+        assertTrue(message + " card extent", focus.cardExtentForTest() <= availableHeight);
+        assertTrue(message + " numeric limit", focus.visibleFollowingStepsForTest() <= 5);
+        assertHorizontalBounds(focus, message);
+    }
+
     private static void assertTextFits(TextView view, String message) {
         assertNotNull(message, view.getLayout());
         int contentHeight = view.getHeight() - view.getCompoundPaddingTop()
@@ -162,10 +213,14 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         for (int index = 0; index < group.getChildCount(); index++) {
             View child = group.getChildAt(index);
             if (child.getVisibility() != View.VISIBLE) continue;
-            assertTrue(message + " left " + child.getClass().getSimpleName(), child.getLeft() >= 0);
-            assertTrue(message + " right " + child.getClass().getSimpleName(),
-                    child.getRight() <= group.getWidth());
-            assertHorizontalBounds(child, message);
+            boolean scrollContent = group instanceof HorizontalScrollView;
+            if (!scrollContent) {
+                assertTrue(message + " left " + child.getClass().getSimpleName(),
+                        child.getLeft() >= 0);
+                assertTrue(message + " right " + child.getClass().getSimpleName(),
+                        child.getRight() <= group.getWidth());
+                assertHorizontalBounds(child, message);
+            }
         }
     }
 
@@ -180,11 +235,29 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
                 2, 1_000L, 15, done ? 15 : 0, 0, done);
     }
 
+    private static TaskSnapshot longTask() {
+        List<TaskStepUiModel> steps = new ArrayList<>();
+        steps.add(new TaskStepUiModel("active", "Kniebeugen", "3 × 12 Wdh. · langsam",
+                "3 × 12", "Hantel 10 kg, langsam runter", false,
+                RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(12)),
+                1, 10, 0));
+        for (int index = 1; index <= 5; index++)
+            steps.add(new TaskStepUiModel("future-" + index,
+                    "Ein ausgesprochen langer Folgeschritt " + index,
+                    "12 Wdh. · Lange Notiz, die bei großer Schrift zwei Zeilen benötigt",
+                    "12 Wdh.", "Lange Notiz, die bei großer Schrift zwei Zeilen benötigt",
+                    false, RepetitionProgressUiModel.single(12, Collections.emptyList()),
+                    0, 10, 0));
+        return new TaskSnapshot("long", "long-today", "Routine mit langem Titel",
+                TaskSlot.MORNING, "", "Kniebeugen", Recurrence.DAILY, steps, steps.size(),
+                false, false, false, false, 1, 1_000L);
+    }
+
     private static Context configuredContext(int widthDp, float fontScale) {
         Context base = ApplicationProvider.getApplicationContext();
         Configuration configuration = new Configuration(base.getResources().getConfiguration());
         configuration.screenWidthDp = widthDp;
-        configuration.screenHeightDp = 2_400;
+        configuration.screenHeightDp = 720;
         configuration.smallestScreenWidthDp = Math.min(widthDp, 600);
         configuration.fontScale = fontScale;
         return base.createConfigurationContext(configuration);
@@ -198,6 +271,21 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(maximumHeight, View.MeasureSpec.AT_MOST));
         view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+    }
+
+    private static void measureExactly(View view, int width, int height) {
+        view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+        view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+    }
+
+    private static int visibleFollowingRows(Context context) {
+        FocusTaskView focus = new FocusTaskView(context);
+        Actions actions = new Actions();
+        focus.bind(longTask(), false, true, palette(), FocusStepLimit.AUTO,
+                RepetitionInputState.idle(), actions, actions);
+        measureExactly(focus, dp(context, 330), dp(context, 540));
+        return focus.visibleFollowingStepsForTest();
     }
 
     private static int dp(Context context, int value) {

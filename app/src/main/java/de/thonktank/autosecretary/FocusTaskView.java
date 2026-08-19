@@ -51,7 +51,13 @@ public final class FocusTaskView extends FrameLayout {
     private String boundTaskId;
     private boolean deferPending;
     private FocusStepLimit boundStepLimit = FocusStepLimit.AUTO;
+    private DayPalette boundPalette;
+    private int requestedFollowingSteps;
     private int visibleFollowingSteps;
+    private boolean stepVisibilityNeedsMeasure;
+    private int lastMeasureWidth = -1;
+    private int lastSafeHeight = -1;
+    private float lastFontScale = -1f;
 
     public FocusTaskView(Context context) {
         this(context, new RewardAnchorRegistry());
@@ -224,6 +230,7 @@ public final class FocusTaskView extends FrameLayout {
         titleBlock.setPadding(0, 0, 0, 0);
         title.setPadding(0, 0, style.dp(66), 0);
         boundStepLimit = stepLimit == null ? FocusStepLimit.AUTO : stepLimit;
+        boundPalette = palette;
         bindSteps(task, palette, inputState, stepActions);
         primary.setText(R.string.action_complete_rest);
         primary.setTextColor(palette.accentText);
@@ -284,9 +291,9 @@ public final class FocusTaskView extends FrameLayout {
                     callbacks.onConfirmRepetitions(stepId, repetitions);
                 }
 
-                @Override public void onEditRepetitions(String stepId,
-                                                        List<Integer> repetitions) {
-                    callbacks.onEditRepetitions(stepId, repetitions);
+                @Override public void onEditRepetition(String stepId, int index,
+                                                       int repetitions) {
+                    callbacks.onEditRepetition(stepId, index, repetitions);
                 }
 
                 @Override public void onRepetitionInputStateChanged(
@@ -298,19 +305,60 @@ public final class FocusTaskView extends FrameLayout {
             });
         }
         int available = Math.max(0, openSteps.size() - 1);
-        int requested = boundStepLimit.automatic()
-                ? Math.min(automaticFollowingCapacity(), available)
-                : Math.min(boundStepLimit.maximumFollowingSteps, available);
-        applyStepVisibility(requested, palette);
+        requestedFollowingSteps = boundStepLimit.automatic()
+                ? available : Math.min(boundStepLimit.maximumFollowingSteps, available);
+        stepVisibilityNeedsMeasure = true;
+        applyStepVisibility(requestedFollowingSteps, palette);
     }
 
-    private int automaticFollowingCapacity() {
-        android.content.res.Configuration configuration = getResources().getConfiguration();
-        int height = configuration.screenHeightDp;
-        int capacity = height >= 1_000 ? 5 : height >= 800 ? 3 : height >= 700 ? 2 : 1;
-        if (configuration.fontScale >= 1.3f) capacity--;
-        if (configuration.fontScale >= 1.8f) capacity--;
-        return Math.max(0, capacity);
+    @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        int width = MeasureSpec.getSize(widthMeasureSpec);
+        int safeHeight = safeCardHeight(heightMeasureSpec);
+        float fontScale = getResources().getConfiguration().fontScale;
+        boolean constraintsChanged = width != lastMeasureWidth || safeHeight != lastSafeHeight
+                || Math.abs(fontScale - lastFontScale) > .001f;
+        if (boundPalette != null && visibleFollowingSteps != requestedFollowingSteps
+                && (stepVisibilityNeedsMeasure || constraintsChanged))
+            applyStepVisibility(requestedFollowingSteps, boundPalette);
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        if (boundPalette == null) return;
+        while (visibleFollowingSteps > 0
+                && naturalCardExtent() > safeHeight) {
+            applyStepVisibility(visibleFollowingSteps - 1, boundPalette);
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
+        naturalCardExtent();
+        stepVisibilityNeedsMeasure = false;
+        lastMeasureWidth = width;
+        lastSafeHeight = safeHeight;
+        lastFontScale = fontScale;
+    }
+
+    private int naturalCardExtent() {
+        int width = card.getMeasuredWidth();
+        if (width > 0) card.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+        return cardParams.topMargin + card.getMeasuredHeight();
+    }
+
+    private int safeCardHeight(int heightMeasureSpec) {
+        int mode = MeasureSpec.getMode(heightMeasureSpec);
+        int specified = MeasureSpec.getSize(heightMeasureSpec);
+        if (mode != MeasureSpec.UNSPECIFIED && specified > 0) return specified;
+        android.view.ViewParent ancestor = getParent();
+        while (ancestor instanceof View) {
+            View view = (View) ancestor;
+            if (view instanceof android.widget.ScrollView && view.getMeasuredHeight() > 0)
+                return Math.max(0, view.getMeasuredHeight()
+                        - style.dimen(R.dimen.content_top));
+            ancestor = view.getParent();
+        }
+        int screenHeightDp = getResources().getConfiguration().screenHeightDp;
+        if (screenHeightDp <= 0) return Integer.MAX_VALUE;
+        return Math.max(0, style.dp(screenHeightDp)
+                - style.dimen(R.dimen.header_height)
+                - style.dimen(R.dimen.footer_height)
+                - style.dimen(R.dimen.content_top));
     }
 
     private void applyStepVisibility(int following, DayPalette palette) {
@@ -378,6 +426,7 @@ public final class FocusTaskView extends FrameLayout {
     }
 
     int visibleFollowingStepsForTest() { return visibleFollowingSteps; }
+    int cardExtentForTest() { return cardParams.topMargin + card.getMeasuredHeight(); }
 
     private void playGlint(int color, long duration, float alpha) {
         glint.animate().cancel();

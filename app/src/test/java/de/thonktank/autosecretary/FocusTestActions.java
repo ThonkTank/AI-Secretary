@@ -1,7 +1,5 @@
 package de.thonktank.autosecretary;
 
-import java.util.List;
-
 /** Explicit no-op port used only by focused view tests. */
 class FocusTestActions implements FocusTaskView.TaskActions, FocusStepRowView.Actions {
     @Override public void onComplete(TaskSnapshot task) { }
@@ -10,6 +8,6 @@ class FocusTestActions implements FocusTaskView.TaskActions, FocusStepRowView.Ac
     @Override public void onDefer(TaskSnapshot task) { }
     @Override public void onToggleStep(String stepId) { }
     @Override public void onConfirmRepetitions(String stepId, int repetitions) { }
-    @Override public void onEditRepetitions(String stepId, List<Integer> repetitions) { }
+    @Override public void onEditRepetition(String stepId, int index, int repetitions) { }
     @Override public void onRepetitionInputStateChanged(RepetitionInputState state) { }
 }

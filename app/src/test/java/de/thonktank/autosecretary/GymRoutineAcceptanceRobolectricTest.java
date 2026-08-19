@@ -33,6 +33,8 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
+import de.thonktank.autosecretary.domain.usecase.CompleteRemainingSteps;
+import de.thonktank.autosecretary.domain.usecase.ConfirmSet;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
@@ -53,7 +55,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
         SequenceIds ids = new SequenceIds();
         List<TaskStepDefinition> steps = Arrays.asList(
                 step(0, "Beinpresse", StepAmountKind.SETS_REPS,
-                        3, 12, null, "23 kg, Sitz 5"),
+                        3, 12, null, "23kg, Sitz 5"),
                 step(1, "Liegestütze", StepAmountKind.REPS,
                         null, 20, null, ""),
                 step(2, "Planke", StepAmountKind.DURATION,
@@ -72,22 +74,68 @@ public final class GymRoutineAcceptanceRobolectricTest {
         assertTrue("The materialized gym routine must become today's focus", focus != null);
         assertEquals(4, focus.steps.size());
         assertEquals("3 × 12", focus.steps.get(0).amountLabel);
-        assertEquals("23 kg, Sitz 5", focus.steps.get(0).note);
+        assertEquals("23kg, Sitz 5", focus.steps.get(0).note);
+        assertEquals(12, focus.steps.get(0).repetitionProgress.plannedRepetitions);
+        assertTrue(focus.steps.get(0).repetitionProgress.actualRepetitions.isEmpty());
         assertEquals("20 Wdh.", focus.steps.get(1).amountLabel);
         assertEquals("2 Min.", focus.steps.get(2).amountLabel);
         assertEquals("Bauch fest", focus.steps.get(2).note);
         assertEquals("ruhig atmen", focus.steps.get(3).note);
 
         FocusTaskView view = new FocusTaskView(context);
-        NoOpActions actions = new NoOpActions();
+        ConfirmSet confirm = new ConfirmSet(repository, clock);
+        CompleteRemainingSteps completeRest = new CompleteRemainingSteps(repository, clock);
+        NoOpActions actions = new NoOpActions() {
+            @Override public void onConfirmRepetitions(String stepId, int repetitions) {
+                confirm.execute(stepId, repetitions);
+            }
+
+            @Override public void onCompleteRemaining(TaskSnapshot task) {
+                completeRest.execute(task.occurrenceId);
+            }
+        };
         view.bind(focus, false, false,
                 DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
 
         List<String> texts = visibleTexts(view);
-        assertTrue(texts.contains("23 kg, Sitz 5"));
+        assertTrue(texts.contains("23kg, Sitz 5"));
         assertTrue(texts.contains("12"));
         assertTrue(contentDescriptions(view).stream()
                 .anyMatch(value -> value.contains("Satz 1 mit 12 Wiederholungen")));
+
+        for (int set = 0; set < 3; set++) {
+            TaskSnapshot current = dashboard(repository, clock, context).firstOpen();
+            view.bind(current, false, false,
+                    DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
+            assertTrue(firstDew(view).performClick());
+        }
+
+        TaskSnapshot advanced = dashboard(repository, clock, context).firstOpen();
+        assertTrue(advanced.steps.get(0).done);
+        assertEquals("Liegestütze", advanced.nextAction);
+        view.bind(advanced, false, false,
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
+        texts = visibleTexts(view);
+        assertTrue(!texts.contains("Beinpresse"));
+        assertTrue(texts.contains("Liegestütze"));
+        assertTrue(firstDew(view).getContentDescription().toString()
+                .contains("20 Wiederholungen sichern"));
+
+        TextView rest = firstText(view, "Rest erledigen");
+        assertTrue(rest.performClick());
+        TaskSnapshot completed = dashboard(repository, clock, context).firstOpen();
+        assertEquals(0, completed.remainingSteps);
+        assertTrue(completed.steps.stream().allMatch(step -> step.done));
+        view.bind(completed, false, false,
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions, actions);
+        assertTrue(visibleTexts(view).contains("4 fertig"));
+        assertTrue(!visibleTexts(view).contains("Rest erledigen"));
+    }
+
+    private static TodayUiModel dashboard(InMemoryTaskRepository repository, Clock clock,
+                                           Context context) {
+        return new DashboardUiMapper(new AndroidUiTextProvider(context)).map(
+                new LoadDashboard(repository).execute(clock.today()), clock.today());
     }
 
     private static TaskStepDefinition step(int position, String title, StepAmountKind kind,
@@ -114,6 +162,24 @@ public final class GymRoutineAcceptanceRobolectricTest {
         return values;
     }
 
+    private static DewDotView firstDew(View root) {
+        final DewDotView[] result = {null};
+        visitVisible(root, view -> {
+            if (result[0] == null && view instanceof DewDotView) result[0] = (DewDotView) view;
+        });
+        return result[0];
+    }
+
+    private static TextView firstText(View root, String text) {
+        final TextView[] result = {null};
+        visitVisible(root, view -> {
+            if (result[0] == null && view instanceof TextView
+                    && text.contentEquals(((TextView) view).getText()))
+                result[0] = (TextView) view;
+        });
+        return result[0];
+    }
+
     private static void visitVisible(View root, java.util.function.Consumer<View> visitor) {
         if (root.getVisibility() != View.VISIBLE) return;
         visitor.accept(root);
@@ -133,5 +199,5 @@ public final class GymRoutineAcceptanceRobolectricTest {
         @Override public LocalTime time() { return LocalTime.of(9, 40); }
     }
 
-    private static final class NoOpActions extends FocusTestActions { }
+    private static class NoOpActions extends FocusTestActions { }
 }

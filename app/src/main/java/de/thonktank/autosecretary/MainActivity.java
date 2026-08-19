@@ -207,9 +207,9 @@ public class MainActivity extends ComponentActivity {
             @Override public void onConfirmRepetitions(String stepId, int repetitions) {
                 viewModel.confirmSet(stepId, repetitions);
             }
-            @Override public void onEditRepetitions(String stepId,
-                                                     java.util.List<Integer> repetitions) {
-                viewModel.editStepProgress(stepId, repetitions);
+            @Override public void onEditRepetition(String stepId, int index,
+                                                   int repetitions) {
+                viewModel.editStepRepetition(stepId, index, repetitions);
             }
             @Override public void onRepetitionInputStateChanged(
                     RepetitionInputState state) {

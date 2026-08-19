@@ -304,9 +304,9 @@ public final class TaskViewModel extends ViewModel {
         runReward(command(UiCommand.Kind.REOPEN_EXERCISE, stepId),
                 () -> tasks.reopenExercise.execute(stepId, repetitions));
     }
-    void editStepProgress(String stepId, List<Integer> repetitions) {
+    void editStepRepetition(String stepId, int index, int repetitions) {
         runReward(command(UiCommand.Kind.EDIT_STEP_PROGRESS, stepId),
-                () -> tasks.editStepProgress.execute(stepId, repetitions));
+                () -> tasks.editStepProgress.execute(stepId, index, repetitions));
     }
     void defer(String occurrenceId) { run(command(UiCommand.Kind.DEFER, occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
     void close(String taskId) {

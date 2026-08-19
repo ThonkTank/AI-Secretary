@@ -19,7 +19,7 @@ public final class FocusStepRowView extends LinearLayout {
     public interface Actions {
         void onToggleStep(String stepId);
         void onConfirmRepetitions(String stepId, int repetitions);
-        void onEditRepetitions(String stepId, List<Integer> repetitions);
+        void onEditRepetition(String stepId, int index, int repetitions);
         void onRepetitionInputStateChanged(RepetitionInputState state);
     }
 
@@ -104,7 +104,6 @@ public final class FocusStepRowView extends LinearLayout {
                 0, active ? style.dp(13) : 0);
         reward.bind(false, false, palette, step.claimableXp);
         reward.setActiveOutline(active);
-        reward.setActionEnabled(active);
         title.setText(step.title);
         title.setTextColor(palette.ink);
         amount.setText(step.amountLabel);
@@ -134,10 +133,12 @@ public final class FocusStepRowView extends LinearLayout {
                             ? R.string.content_update_set : R.string.content_confirm_set,
                     editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber(), current));
             reward.setOnClickListener(view -> commit(step, input, actions));
+            reward.setActionEnabled(true);
         } else if (active) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step, step.title, step.claimableXp));
             reward.setOnClickListener(view -> actions.onToggleStep(step.id));
+            reward.setActionEnabled(true);
         } else {
             StringBuilder description = new StringBuilder(step.title);
             if (!step.amountLabel.isEmpty()) description.append(", ").append(step.amountLabel);
@@ -145,6 +146,7 @@ public final class FocusStepRowView extends LinearLayout {
             description.append(", ").append(step.claimableXp).append(" XP");
             reward.setContentDescription(description.toString());
             reward.setOnClickListener(null);
+            reward.setActionEnabled(false);
         }
     }
 
@@ -182,9 +184,6 @@ public final class FocusStepRowView extends LinearLayout {
             actions.onConfirmRepetitions(step.id, value);
             return;
         }
-        List<Integer> values = new ArrayList<>(
-                step.repetitionProgress.actualRepetitions);
-        values.set(editingIndex, value);
-        actions.onEditRepetitions(step.id, values);
+        actions.onEditRepetition(step.id, editingIndex, value);
     }
 }

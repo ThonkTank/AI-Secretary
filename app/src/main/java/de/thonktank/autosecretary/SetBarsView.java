@@ -148,7 +148,7 @@ public final class SetBarsView extends View {
         animatedSlot = index;
         fillProgress = 0f;
         animator = ValueAnimator.ofFloat(0f, 1f);
-        animator.setDuration(palette.motion.stateChangeDurationMs);
+        animator.setDuration(palette.motion.dewDurationMs);
         animator.setInterpolator(new DecelerateInterpolator());
         animator.addUpdateListener(value -> {
             fillProgress = (float) value.getAnimatedValue();
@@ -162,4 +162,7 @@ public final class SetBarsView extends View {
         animator = null;
         super.onDetachedFromWindow();
     }
+
+    long animationDurationForTest() { return animator == null ? 0L : animator.getDuration(); }
+    int selectedIndexForTest() { return selected; }
 }

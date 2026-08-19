@@ -234,7 +234,8 @@ public final class UiComponentRobolectricTest {
                 Collections.singletonList(set), 1, false, false, false, false,
                 2, 1_000L, 15, 0, 0, false);
         AtomicReference<Integer> confirmed = new AtomicReference<>();
-        AtomicReference<java.util.List<Integer>> edited = new AtomicReference<>();
+        AtomicReference<Integer> editedIndex = new AtomicReference<>();
+        AtomicReference<Integer> editedValue = new AtomicReference<>();
         AtomicReference<RepetitionInputState> input =
                 new AtomicReference<>(RepetitionInputState.idle());
         FocusTaskView focus = new FocusTaskView(context);
@@ -243,9 +244,10 @@ public final class UiComponentRobolectricTest {
             @Override public void onConfirmRepetitions(String stepId, int repetitions) {
                 confirmed.set(repetitions);
             }
-            @Override public void onEditRepetitions(String stepId,
-                                                    java.util.List<Integer> repetitions) {
-                edited.set(repetitions);
+            @Override public void onEditRepetition(String stepId, int index,
+                                                   int repetitions) {
+                editedIndex.set(index);
+                editedValue.set(repetitions);
             }
             @Override public void onRepetitionInputStateChanged(RepetitionInputState state) {
                 input.set(state);
@@ -263,6 +265,7 @@ public final class UiComponentRobolectricTest {
         assertNotNull(dew);
         dew.performClick();
         assertEquals(Integer.valueOf(13), confirmed.get());
+        assertNull(input.get().stepId);
 
         focus.bind(task, false, false, palette, FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), actions, actions);
@@ -276,7 +279,8 @@ public final class UiComponentRobolectricTest {
         bars.dispatchTouchEvent(MotionEvent.obtain(0, 1, MotionEvent.ACTION_UP, x, y, 0));
         focus.findViewById(R.id.rep_stepper_increment).performClick();
         firstDew(focus).performClick();
-        assertEquals(Collections.singletonList(11), edited.get());
+        assertEquals(Integer.valueOf(0), editedIndex.get());
+        assertEquals(Integer.valueOf(11), editedValue.get());
     }
 
     @Test public void completedStepsCollapseIntoTheDoneStatus() {

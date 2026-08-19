@@ -16,7 +16,7 @@ public final class EditStepProgress {
         this.repository = repository;
     }
 
-    public RewardReceipt execute(String stepId, List<Integer> repetitions) {
+    public RewardReceipt execute(String stepId, int index, int repetitions) {
         return repository.inTransaction(() -> {
             OccurrenceStep current = repository.findOccurrenceStep(stepId);
             if (current == null || (!(current.amount instanceof StepAmount.SetsReps)
@@ -25,18 +25,14 @@ public final class EditStepProgress {
             Occurrence occurrence = repository.findOccurrence(current.occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
-            List<Integer> checked = new ArrayList<>();
-            for (Integer value : repetitions) {
-                if (value == null || value < 0)
-                    throw new IllegalArgumentException(
-                            "Confirmed repetitions must not be negative");
-                checked.add(value);
-            }
-            int capacity = current.amount instanceof StepAmount.SetsReps
-                    ? ((StepAmount.SetsReps) current.amount).sets : 1;
-            if (checked.size() > capacity)
-                throw new IllegalArgumentException("Confirmed set count exceeds planned sets");
-            repository.updateOccurrenceStep(copy(current, checked, current.done));
+            if (index < 0 || index >= current.actualRepetitions.size())
+                throw new IllegalArgumentException("Confirmed repetition index is out of range");
+            if (repetitions < 0 || repetitions > 999)
+                throw new IllegalArgumentException(
+                        "Confirmed repetitions must be between 0 and 999");
+            List<Integer> corrected = new ArrayList<>(current.actualRepetitions);
+            corrected.set(index, repetitions);
+            repository.updateOccurrenceStep(copy(current, corrected, current.done));
             return RewardReceipt.none();
         });
     }

@@ -72,6 +72,8 @@ public final class OptionsView extends LinearLayout {
             button.setMinWidth(style.dp(48));
             button.setMinHeight(style.dp(48));
             button.setPadding(style.dp(14), 0, style.dp(14), 0);
+            button.setTag(limit);
+            AccessibilityRoles.button(button);
             button.setOnClickListener(view -> actions.onFocusStepLimit(limit));
             focusLimits.addView(button, new android.view.ViewGroup.LayoutParams(
                     -2, style.dp(48)));
@@ -124,6 +126,7 @@ public final class OptionsView extends LinearLayout {
         for (int i = 0; i < focusStepButtons.length; i++) {
             boolean selected = limits[i] == focusStepLimit;
             TextView button = focusStepButtons[i];
+            button.setSelected(selected);
             button.setTextColor(selected ? palette.accentText : palette.ink2);
             GradientDrawable background = style.pill(
                     selected ? palette.accent : Color.TRANSPARENT, 24);
