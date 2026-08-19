@@ -196,6 +196,11 @@
     <string name="amount_sets_unit">Sätze</string>
     <string name="amount_reps_unit">Wiederholungen</string>
     <string name="amount_seconds_unit">Sekunden</string>
+    <string name="step_amount_sets_reps_summary">%1$d × %2$d Wdh.</string>
+    <string name="step_amount_reps_summary">%1$d Wdh.</string>
+    <string name="step_amount_minutes_summary">%1$d Min.</string>
+    <string name="step_amount_seconds_summary">%1$d Sek.</string>
+    <string name="step_amount_note_summary">%1$s · %2$s</string>
     <string name="step_note_label">Notiz</string>
     <string name="set_title">Satz %1$d von %2$d</string>
     <string name="set_progress">%1$d von %2$d</string>

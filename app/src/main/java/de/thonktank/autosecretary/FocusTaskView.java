@@ -253,11 +253,19 @@ public final class FocusTaskView extends FrameLayout {
             TaskStepSnapshot step = task.steps.get(i);
             rewardAnchors.register(new RewardAnchorKey(RewardAnchorKey.Kind.STEP, step.id), row.dot);
             row.dot.bind(step.done, false, palette, step.done ? step.earnedXp : step.claimableXp);
-            row.dot.setContentDescription((step.done ? getContext().getString(R.string.marker_done) + ": " : "") + step.label);
+            String details = stepDetails(getContext(), step);
+            String description = step.label + (details.isEmpty() ? "" : ", " + details);
+            row.dot.setContentDescription((step.done
+                    ? getContext().getString(R.string.marker_done) + ": " : "") + description);
             row.label.setText(step.done ? strike(step.label) : step.label);
             row.label.setTextColor(step.done ? palette.done : palette.ink);
             row.label.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+            row.details.setText(details);
+            row.details.setTextColor(step.done ? palette.done : palette.muted);
+            row.details.setVisibility(details.isEmpty() ? GONE : VISIBLE);
+            row.details.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             WoodGrainView.applyTextHalo(row.label, palette.leaf1);
+            WoodGrainView.applyTextHalo(row.details, palette.leaf1);
             if (step.amountKind == StepAmountKind.SETS_REPS) {
                 View.OnClickListener expand = view -> {
                     SetProgressEditorState next = editorState.toggle(step.id,
@@ -284,7 +292,9 @@ public final class FocusTaskView extends FrameLayout {
         final LinearLayout root = new LinearLayout(getContext());
         final LinearLayout header = new LinearLayout(getContext());
         final DewDotView dot = new DewDotView(getContext());
+        final LinearLayout text = new LinearLayout(getContext());
         final TextView label = style.sans("", 19, 0, false);
+        final TextView details = style.sans("", 14, 0, false);
         final SetProgressEditorView editor = new SetProgressEditorView(getContext());
 
         StepRow(Context context) {
@@ -293,9 +303,14 @@ public final class FocusTaskView extends FrameLayout {
             LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(style.dp(48), style.dp(48));
             dotParams.setMargins(0, -style.dp(3), 0, -style.dp(4));
             header.addView(dot, dotParams);
-            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, -2, 1);
-            labelParams.setMargins(style.dp(4), 0, 0, 0);
-            header.addView(label, labelParams);
+            text.setOrientation(LinearLayout.VERTICAL);
+            text.addView(label, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(-1, -2);
+            detailsParams.topMargin = style.dp(1);
+            text.addView(details, detailsParams);
+            LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, -2, 1);
+            textParams.setMargins(style.dp(4), 0, 0, 0);
+            header.addView(text, textParams);
             root.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
             root.addView(editor, new LinearLayout.LayoutParams(-1, -2));
@@ -407,6 +422,27 @@ public final class FocusTaskView extends FrameLayout {
         afterglow.animate().alpha(0f).setDuration(palette.motion.afterglowDurationMs)
                 .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
                 .withEndAction(() -> afterglow.setVisibility(INVISIBLE));
+    }
+
+    static String stepDetails(Context context, TaskStepSnapshot step) {
+        String amount = "";
+        if (step.amountKind == StepAmountKind.SETS_REPS
+                && step.plannedSets != null && step.plannedReps != null) {
+            amount = context.getString(R.string.step_amount_sets_reps_summary,
+                    step.plannedSets, step.plannedReps);
+        } else if (step.amountKind == StepAmountKind.REPS && step.plannedReps != null) {
+            amount = context.getString(R.string.step_amount_reps_summary, step.plannedReps);
+        } else if (step.amountKind == StepAmountKind.DURATION
+                && step.plannedDurationSeconds != null) {
+            int seconds = step.plannedDurationSeconds;
+            amount = seconds >= 60 && seconds % 60 == 0
+                    ? context.getString(R.string.step_amount_minutes_summary, seconds / 60)
+                    : context.getString(R.string.step_amount_seconds_summary, seconds);
+        }
+        String note = step.note.trim();
+        if (amount.isEmpty()) return note;
+        if (note.isEmpty()) return amount;
+        return context.getString(R.string.step_amount_note_summary, amount, note);
     }
 
     private static CharSequence strike(String text) {
