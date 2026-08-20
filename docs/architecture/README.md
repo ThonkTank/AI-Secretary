@@ -23,6 +23,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-014: Fokuskarte mit explizitem Höhenbudget](adr-014-focuskarte-und-hoehenbudget.md)
 - [ADR-015: Virtuelle Accessibility-Knoten für Satzkorrekturen](adr-015-virtuelle-satzaktionen.md)
 - [ADR-016: Normalisierte Persistenz von Wiederholungsergebnissen](adr-016-normalisierte-wiederholungsergebnisse.md)
+- [ADR-017: Aufgabenverwaltung, Zeitplatzierungen und Schritttransfers](adr-017-aufgabenverwaltung.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der

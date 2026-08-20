@@ -8,6 +8,8 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 - Tageszeiten Morgen, Mittag, Abend und Später
 - Wiederholungen: täglich, alle N Tage und ausgewählte Wochentage, auch mehrmals täglich
 - Fristen und Laufzeitgrenzen sowie Schritte mit Wochentagen, Mengen und Notizen
+- „Alles“-Arbeitsbereich zum Suchen, Filtern, Bearbeiten und manuellen Ordnen von Aufgaben
+  und Schritten, getrennt vom Abarbeiten im Heute-Tab
 - Inline bearbeitbare Ist-Wiederholungen für Übungen; bestehende Tagesvorkommen bleiben unverändert
 - Sanftes Verschieben mit „Später“, XP-Stufen, Routinegefäßen und einer sichtbaren Kombo-Maserung
 - Uhrzeitabhängiger Heute-Screen im Design „Tiefer Wald, goldener Sonnenaufgang“

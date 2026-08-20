@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 import java.time.LocalDate;
@@ -43,6 +44,8 @@ public final class MaterializeDueOccurrences {
             for (Task task : active) taskIds.add(task.id);
             Map<TaskId, List<TaskStepTemplate>> templates = groupTemplates(
                     repository.templatesFor(taskIds));
+            Map<String, Integer> scheduleRanks = scheduleRanks(
+                    repository.scheduleEntriesFor(taskIds));
             List<Occurrence> allOccurrences = repository.allOccurrences();
             Map<TaskId, List<Occurrence>> occurrences = groupOccurrences(allOccurrences);
             List<String> occurrenceIds = new ArrayList<>();
@@ -55,7 +58,7 @@ public final class MaterializeDueOccurrences {
                 changed |= prepareTask(task, today,
                         occurrences.getOrDefault(task.id, Collections.emptyList()),
                         templates.getOrDefault(task.id, Collections.emptyList()),
-                        globalNextOrders, steps);
+                        globalNextOrders, steps, scheduleRanks);
             return changed;
         });
     }
@@ -63,13 +66,14 @@ public final class MaterializeDueOccurrences {
     private boolean prepareTask(Task task, LocalDate today, List<Occurrence> history,
                                 List<TaskStepTemplate> templates,
                                 Map<TaskSlot, Integer> globalNextOrders,
-                                Map<String, List<OccurrenceStep>> stepsByOccurrence) {
+                                Map<String, List<OccurrenceStep>> stepsByOccurrence,
+                                Map<String, Integer> scheduleRanks) {
         OccurrenceCarryForward.Result carry = new OccurrenceCarryForward()
                 .collect(repository, today, history, stepsByOccurrence);
         DueDatePlanner.Plan planned = planner.throughToday(task, today, history, templates);
         boolean changed = carry.changed;
         changed |= new OccurrenceAssembler(repository, ids).assemble(task, today, history,
-                globalNextOrders, carry, planned);
+                globalNextOrders, carry, planned, scheduleRanks);
 
         if (planned.nextDueChanged || planned.materializedCount > 0) {
             repository.updateTask(task.afterPlanning(planned.nextDue, planned.materializedCount));
@@ -108,6 +112,20 @@ public final class MaterializeDueOccurrences {
         Map<TaskId, List<TaskStepTemplate>> result = new HashMap<>();
         for (TaskStepTemplate value : values)
             result.computeIfAbsent(value.taskId, ignored -> new ArrayList<>()).add(value);
+        return result;
+    }
+
+    private static Map<String, Integer> scheduleRanks(List<TaskScheduleEntry> values) {
+        values.sort(java.util.Comparator
+                .comparingInt((TaskScheduleEntry value) -> value.slot.rank)
+                .thenComparingLong(value -> value.displayOrder).thenComparing(value -> value.id));
+        Map<String, Integer> result = new HashMap<>();
+        Map<TaskSlot, Integer> next = new HashMap<>();
+        for (TaskScheduleEntry value : values) {
+            int rank = next.getOrDefault(value.slot, 0) + 1;
+            next.put(value.slot, rank);
+            result.put(value.taskId.value + '|' + value.slot.name(), rank);
+        }
         return result;
     }
 }

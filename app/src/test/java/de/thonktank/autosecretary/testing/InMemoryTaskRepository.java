@@ -9,6 +9,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 import java.time.LocalDate;
@@ -24,6 +25,7 @@ import java.util.Set;
 public final class InMemoryTaskRepository implements TaskRepository {
     private Map<TaskId, Task> tasks = new LinkedHashMap<>();
     private Map<String, TaskStepTemplate> templates = new LinkedHashMap<>();
+    private Map<String, TaskScheduleEntry> schedule = new LinkedHashMap<>();
     private Map<String, Occurrence> occurrences = new LinkedHashMap<>();
     private Map<String, OccurrenceStep> occurrenceSteps = new LinkedHashMap<>();
     private Map<String, ComboProgress> combos = new LinkedHashMap<>();
@@ -52,6 +54,7 @@ public final class InMemoryTaskRepository implements TaskRepository {
     @Override public synchronized void deleteTask(TaskId id) {
         tasks.remove(id);
         deleteTemplates(id);
+        schedule.values().removeIf(value -> value.taskId.equals(id));
         Set<String> occurrenceIds = new HashSet<>();
         occurrences.values().removeIf(value -> {
             boolean remove = value.taskId.equals(id);
@@ -84,6 +87,30 @@ public final class InMemoryTaskRepository implements TaskRepository {
             if (selected.contains(value.taskId)) result.add(value);
         result.sort(Comparator.comparing((TaskStepTemplate value) -> value.taskId.value)
                 .thenComparingInt(value -> value.position));
+        return result;
+    }
+    @Override public synchronized void putScheduleEntries(List<TaskScheduleEntry> values) {
+        for (TaskScheduleEntry value : values) schedule.put(value.id, value);
+    }
+    @Override public synchronized void deleteScheduleEntry(String id) { schedule.remove(id); }
+    @Override public synchronized List<TaskScheduleEntry> scheduleEntries() {
+        List<TaskScheduleEntry> result = new ArrayList<>(schedule.values());
+        result.sort(scheduleOrder());
+        return result;
+    }
+    @Override public synchronized List<TaskScheduleEntry> scheduleEntries(TaskId taskId) {
+        List<TaskScheduleEntry> result = new ArrayList<>();
+        for (TaskScheduleEntry value : schedule.values())
+            if (value.taskId.equals(taskId)) result.add(value);
+        result.sort(scheduleOrder());
+        return result;
+    }
+    @Override public synchronized List<TaskScheduleEntry> scheduleEntriesFor(List<TaskId> taskIds) {
+        Set<TaskId> selected = new HashSet<>(taskIds);
+        List<TaskScheduleEntry> result = new ArrayList<>();
+        for (TaskScheduleEntry value : schedule.values())
+            if (selected.contains(value.taskId)) result.add(value);
+        result.sort(scheduleOrder());
         return result;
     }
 
@@ -171,6 +198,17 @@ public final class InMemoryTaskRepository implements TaskRepository {
     @Override public synchronized void updateOccurrenceStep(OccurrenceStep step) {
         occurrenceSteps.put(step.id, step);
     }
+    @Override public synchronized void moveRewardBookings(String occurrenceStepId,
+                                                           String occurrenceId) {
+        for (Map.Entry<String, RewardBooking> entry : new ArrayList<>(bookings.entrySet())) {
+            RewardBooking value = entry.getValue();
+            if (!occurrenceStepId.equals(value.occurrenceStepId)) continue;
+            bookings.put(entry.getKey(), new RewardBooking(value.id, value.transactionId,
+                    occurrenceId, value.occurrenceStepId, value.ownerId, value.kind,
+                    value.target, value.xpDelta, value.comboPointDelta, value.bookedOn,
+                    value.reversesBookingId));
+        }
+    }
 
     @Override public synchronized int xp() { return xp; }
     @Override public synchronized void setXp(int value) { xp = Math.max(0, value); }
@@ -219,15 +257,22 @@ public final class InMemoryTaskRepository implements TaskRepository {
                 .thenComparing(value -> value.id);
     }
 
+    private static Comparator<TaskScheduleEntry> scheduleOrder() {
+        return Comparator.comparingInt((TaskScheduleEntry value) -> value.slot.rank)
+                .thenComparingLong(value -> value.displayOrder).thenComparing(value -> value.id);
+    }
+
     private Snapshot snapshot() {
         return new Snapshot(new LinkedHashMap<>(tasks), new LinkedHashMap<>(templates),
-                new LinkedHashMap<>(occurrences), new LinkedHashMap<>(occurrenceSteps),
+                new LinkedHashMap<>(schedule), new LinkedHashMap<>(occurrences),
+                new LinkedHashMap<>(occurrenceSteps),
                 new LinkedHashMap<>(combos), new LinkedHashMap<>(bookings), xp);
     }
 
     private void restore(Snapshot value) {
         tasks = value.tasks;
         templates = value.templates;
+        schedule = value.schedule;
         occurrences = value.occurrences;
         occurrenceSteps = value.occurrenceSteps;
         combos = value.combos;
@@ -238,6 +283,7 @@ public final class InMemoryTaskRepository implements TaskRepository {
     private static final class Snapshot {
         final Map<TaskId, Task> tasks;
         final Map<String, TaskStepTemplate> templates;
+        final Map<String, TaskScheduleEntry> schedule;
         final Map<String, Occurrence> occurrences;
         final Map<String, OccurrenceStep> occurrenceSteps;
         final Map<String, ComboProgress> combos;
@@ -245,12 +291,14 @@ public final class InMemoryTaskRepository implements TaskRepository {
         final int xp;
 
         Snapshot(Map<TaskId, Task> tasks, Map<String, TaskStepTemplate> templates,
+                 Map<String, TaskScheduleEntry> schedule,
                  Map<String, Occurrence> occurrences,
                  Map<String, OccurrenceStep> occurrenceSteps,
                  Map<String, ComboProgress> combos, Map<String, RewardBooking> bookings,
                  int xp) {
             this.tasks = tasks;
             this.templates = templates;
+            this.schedule = schedule;
             this.occurrences = occurrences;
             this.occurrenceSteps = occurrenceSteps;
             this.combos = combos;

@@ -7,11 +7,14 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
+import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.TaskSlot;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class DashboardRenderer {
     private final Context context;
@@ -21,12 +24,13 @@ public final class DashboardRenderer {
     private final DashboardEventSink events;
     private final String version;
     private final RewardAnchorRegistry rewardAnchors;
+    private final AllTasksView.Listener allTasksListener;
     private NavigationDestination mounted;
     private FocusTaskView focus;
     private LinearLayout timeline;
     private TextView more;
     private EmptyStateView empty;
-    private EmptyStateView allPlaceholder;
+    private AllTasksView allTasks;
     private OptionsView options;
     private final Map<String, View> timelineViews = new LinkedHashMap<>();
 
@@ -38,12 +42,20 @@ public final class DashboardRenderer {
     public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
                              DashboardEventSink events, String version,
                              RewardAnchorRegistry rewardAnchors) {
+        this(context, scroll, content, events, version, rewardAnchors, NOOP_ALL_TASKS);
+    }
+
+    public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
+                             DashboardEventSink events, String version,
+                             RewardAnchorRegistry rewardAnchors,
+                             AllTasksView.Listener allTasksListener) {
         this.context = context;
         this.scroll = scroll;
         this.content = content;
         this.events = events;
         this.version = version;
         this.rewardAnchors = rewardAnchors;
+        this.allTasksListener = allTasksListener;
         style = new UiStyle(context);
     }
 
@@ -52,7 +64,7 @@ public final class DashboardRenderer {
         if (state.navigation == NavigationDestination.TODAY)
             bindToday(state, state.focusStepLimit);
         else if (state.navigation == NavigationDestination.ALL_TASKS)
-            allPlaceholder.bind(state.palette, true);
+            allTasks.bind(state.allTasks, state.palette);
         else options.bind(state.palette, state.themeMode, state.focusStepLimit,
                     state.calendarPermission, state.calendar, version, state.update);
     }
@@ -100,11 +112,10 @@ public final class DashboardRenderer {
         mounted = destination;
         if (destination == NavigationDestination.TODAY) mountToday();
         else if (destination == NavigationDestination.ALL_TASKS) {
-            content.setPadding(style.dimen(R.dimen.page_start), style.dp(120),
+            content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                     style.dimen(R.dimen.page_end), style.dp(26));
-            if (allPlaceholder == null) allPlaceholder = new EmptyStateView(context,
-                    () -> events.emit(DashboardEvent.addTask()));
-            content.addView(allPlaceholder, new LinearLayout.LayoutParams(-1, -2));
+            if (allTasks == null) allTasks = new AllTasksView(context, scroll, allTasksListener);
+            content.addView(allTasks, new LinearLayout.LayoutParams(-1, -2));
         } else {
             content.setPadding(0, 0, 0, 0);
             if (options == null) options = new OptionsView(context, events);
@@ -112,6 +123,23 @@ public final class DashboardRenderer {
         }
         scroll.post(() -> scroll.scrollTo(0, scrollY));
     }
+
+    private static final AllTasksView.Listener NOOP_ALL_TASKS = new AllTasksView.Listener() {
+        @Override public void onQuery(String query) { }
+        @Override public void onStatus(AllTasksUiState.Status status) { }
+        @Override public void onSlots(Set<TaskSlot> slots) { }
+        @Override public void onRecurrences(Set<Recurrence> recurrences) { }
+        @Override public void onWeekday(int weekday) { }
+        @Override public void onMode(AllTasksUiState.Mode mode) { }
+        @Override public void onToggleTask(String taskId) { }
+        @Override public void onEditTask(String taskId) { }
+        @Override public void onEditStep(String taskId, String stepId) { }
+        @Override public void onAddStep(String taskId) { }
+        @Override public void onDeleteTask(String taskId, String title) { }
+        @Override public void onMoveSchedule(String entryId, TaskSlot slot, String beforeEntryId) { }
+        @Override public void onMoveStep(String stepId, String taskId, String beforeStepId) { }
+        @Override public void onSwapSteps(String stepId, String targetStepId) { }
+    };
 
     private void mountToday() {
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),

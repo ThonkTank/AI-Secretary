@@ -172,6 +172,16 @@ public final class Task {
                 boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
     }
 
+    /** Updates the compatibility projection of normalized schedule placements. */
+    public Task withSchedule(TaskSlot primarySlot, int times, long primaryOrder) {
+        int normalizedTimes = recurrence == Recurrence.ONCE ? 0 : times & TimeOfDay.ALL_MASK;
+        return copy(title, primarySlot, recurrence, intervalDays, weekdayMask, ongoing,
+                conditionText, conditionDone, archived, nextDueOn, lastScheduledOn,
+                lastCompletedOn, primaryOrder, hasCompletedOccurrence, estimatedMinutes,
+                normalizedTimes, boundKind, boundUntilOn, boundWeeks, remainingCount,
+                deadlineOn, note);
+    }
+
     public Task afterPlanning(LocalDate newNextDueOn, int count) {
         Integer remaining = remainingCount;
         if (boundKind == TaskBoundKind.N_TIMES)

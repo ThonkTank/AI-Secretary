@@ -4,6 +4,7 @@ import de.thonktank.autosecretary.OccurrenceEntity;
 import de.thonktank.autosecretary.OccurrenceStepEntity;
 import de.thonktank.autosecretary.TaskEntity;
 import de.thonktank.autosecretary.TaskStepEntity;
+import de.thonktank.autosecretary.TaskScheduleEntity;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceKind;
@@ -14,6 +15,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
@@ -72,6 +74,16 @@ public final class TaskEntityMapper {
         return new TaskStepEntity(step.id, step.taskId.value, step.position, step.text,
                 step.weekdayMask, amount.kind.storageCode(), amount.sets,
                 amount.repetitions, amount.durationSeconds, step.note);
+    }
+
+    public TaskScheduleEntry toDomain(TaskScheduleEntity entity) {
+        return new TaskScheduleEntry(entity.id, TaskId.of(entity.taskId),
+                TaskSlot.fromStorage(entity.slot), entity.displayOrder);
+    }
+
+    public TaskScheduleEntity toEntity(TaskScheduleEntry entry) {
+        return new TaskScheduleEntity(entry.id, entry.taskId.value,
+                entry.slot.storageCode, entry.displayOrder);
     }
 
     public OccurrenceStep toDomain(OccurrenceStepEntity entity, List<Integer> repetitions) {

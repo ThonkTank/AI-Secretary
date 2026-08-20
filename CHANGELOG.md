@@ -2,6 +2,13 @@
 
 ## Nächster automatischer 0.2-Build
 
+- Neuer „Alles“-Tab zum Suchen, Filtern und Bearbeiten aktiver sowie archivierter Aufgaben.
+- Native Drag-and-drop-Sortierung pro Tageszeit, einschließlich mehrmals täglich geplanter
+  Aufgaben und direkter Synchronisierung offener Heute-Vorkommen.
+- Schritte können innerhalb einer Aufgabe und zwischen Aufgaben verschoben oder getauscht
+  werden; passende offene Zustände und Reward-Buchungen wandern konsistent mit.
+- Room-Schema v12 normalisiert die unabhängigen Tageszeit-Platzierungen einer Aufgabe mit
+  verlustfreier Migration aus den bisherigen Zeitmasken.
 - Neuer Vollbild-Aufgabeneditor für Dauer, Rhythmus, mehrere Tageszeiten, Fristen und Grenzen.
 - Stabile Schrittdefinitionen mit Wochentagen, Mengen, Notizen und unveränderlichen Vorkommens-Snapshots.
 - Satzweise Erfassung tatsächlicher Wiederholungen direkt aus der Tagesansicht.

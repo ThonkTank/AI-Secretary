@@ -31,6 +31,7 @@ public interface TaskRepository extends TaskDefinitionRepository {
     List<OccurrenceStep> occurrenceStepsFor(List<String> occurrenceIds);
     OccurrenceStep findOccurrenceStep(String id);
     void updateOccurrenceStep(OccurrenceStep step);
+    void moveRewardBookings(String occurrenceStepId, String occurrenceId);
 
     int xp();
     void setXp(int xp);

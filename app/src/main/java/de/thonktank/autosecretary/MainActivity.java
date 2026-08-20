@@ -166,7 +166,7 @@ public class MainActivity extends ComponentActivity {
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
         renderer = new DashboardRenderer(this, scroll, content, this::handleDashboardEvent,
                 versionName(),
-                rewardAnchors);
+                rewardAnchors, allTasksListener());
         rewardAnimator = new RewardAnimator(root, header, rewardAnchors);
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -273,19 +273,22 @@ public class MainActivity extends ComponentActivity {
         TaskSlot[] slots = TaskSlot.values();
         new AlertDialog.Builder(this).setTitle(R.string.task_move)
                 .setSingleChoiceItems(slotLabels(), task.slot.ordinal(), (dialog, which) -> {
-                    viewModel.move(task.taskId, slots[which]);
+                    viewModel.move(task.taskId, task.slot, slots[which]);
                     dialog.dismiss();
                 }).setNegativeButton(R.string.cancel, null).show();
     }
 
     private void confirmDelete(TaskSnapshot task) {
-        String loss = task.routine()
-                ? getString(R.string.delete_routine_loss)
+        confirmDelete(task.taskId, task.title, task.routine());
+    }
+
+    private void confirmDelete(String taskId, String title, boolean routine) {
+        String loss = routine ? getString(R.string.delete_routine_loss)
                 : getString(R.string.delete_task_loss);
-        new AlertDialog.Builder(this).setTitle(getString(R.string.delete_task_title, task.title))
+        new AlertDialog.Builder(this).setTitle(getString(R.string.delete_task_title, title))
                 .setMessage(loss).setNegativeButton(R.string.keep, null)
                 .setPositiveButton(R.string.delete,
-                        (dialog, which) -> viewModel.delete(task.taskId)).show();
+                        (dialog, which) -> viewModel.delete(taskId)).show();
     }
 
     private void confirmClose(String taskId, String title) {
@@ -304,6 +307,7 @@ public class MainActivity extends ComponentActivity {
         else if (event.type == UiEvent.Type.CONFIRM_DELETE) {
             TaskSnapshot task = findTask(event.taskId);
             if (task != null) confirmDelete(task);
+            else confirmDelete(event.taskId, event.taskTitle, false);
         } else if (event.type == UiEvent.Type.CONFIRM_CLOSE)
             confirmClose(event.taskId, event.taskTitle);
         else if (event.type == UiEvent.Type.REQUEST_CALENDAR_PERMISSION)
@@ -311,6 +315,50 @@ public class MainActivity extends ComponentActivity {
         else if (event.type == UiEvent.Type.OPEN_APP_SETTINGS)
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName())));
+    }
+
+    private AllTasksView.Listener allTasksListener() {
+        return new AllTasksView.Listener() {
+            @Override public void onQuery(String query) { viewModel.updateAllQuery(query); }
+            @Override public void onStatus(AllTasksUiState.Status status) {
+                viewModel.updateAllStatus(status);
+            }
+            @Override public void onSlots(java.util.Set<TaskSlot> slots) {
+                viewModel.updateAllSlots(slots);
+            }
+            @Override public void onRecurrences(java.util.Set<
+                    de.thonktank.autosecretary.domain.model.Recurrence> recurrences) {
+                viewModel.updateAllRecurrences(recurrences);
+            }
+            @Override public void onWeekday(int weekday) { viewModel.updateAllWeekday(weekday); }
+            @Override public void onMode(AllTasksUiState.Mode mode) {
+                viewModel.updateAllMode(mode);
+            }
+            @Override public void onToggleTask(String taskId) {
+                viewModel.toggleAllTask(taskId);
+            }
+            @Override public void onEditTask(String taskId) { viewModel.openEditor(taskId); }
+            @Override public void onEditStep(String taskId, String stepId) {
+                viewModel.openEditorForStep(taskId, stepId, false);
+            }
+            @Override public void onAddStep(String taskId) {
+                viewModel.openEditorForStep(taskId, null, true);
+            }
+            @Override public void onDeleteTask(String taskId, String title) {
+                viewModel.requestDelete(taskId, title);
+            }
+            @Override public void onMoveSchedule(String entryId, TaskSlot slot,
+                                                 String beforeEntryId) {
+                viewModel.moveScheduleEntry(entryId, slot, beforeEntryId);
+            }
+            @Override public void onMoveStep(String stepId, String taskId,
+                                             String beforeStepId) {
+                viewModel.moveStep(stepId, taskId, beforeStepId);
+            }
+            @Override public void onSwapSteps(String stepId, String targetStepId) {
+                viewModel.swapSteps(stepId, targetStepId);
+            }
+        };
     }
 
     private void handleRewardEffects(RewardEffectQueue.Snapshot snapshot) {

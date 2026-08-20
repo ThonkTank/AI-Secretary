@@ -1,6 +1,8 @@
 # Auto Secretary – Produktziele
 
-Eine persönliche, deutschsprachige ADHS-Task-App. Sie zeigt nur **jetzt**, **danach** und einen kleinen Tagesblick (Morgen, Mittag, Abend, Später). Sie hilft beim Handeln statt beim Verwalten.
+Eine persönliche, deutschsprachige ADHS-Task-App. Im Heute-Tab zeigt sie nur **jetzt**,
+**danach** und einen kleinen Tagesblick (Morgen, Mittag, Abend, Später). Der getrennte
+Alles-Tab bietet einen ruhigen Ort zum Organisieren, ohne zum Abarbeiten einzuladen.
 
 ## Verhalten
 
@@ -13,10 +15,16 @@ Eine persönliche, deutschsprachige ADHS-Task-App. Sie zeigt nur **jetzt**, **da
 - „Rest erledigen“ füllt in der App zunächst nur das Gefäß. Die bewusste Ernte schließt das Vorkommen auch mit offenen Schritten; ungeerntete Gefäß-XP verfallen beim Tageswechsel. Das heute erledigte Blatt erlaubt ein exaktes Undo.
 - Mengen- und Satzschritte werden im Fokusblatt ausgeklappt und dort bearbeitet. Nur der Wechsel zwischen offen und erledigt verändert XP oder Kombo.
 - Das Widget ist der Arbeitsbereich: abhaken, später setzen und Bedingungen erfüllen. Erstellen und Bearbeiten öffnen die App.
+- Im Alles-Tab lassen sich aktive und archivierte Aufgaben suchen und nach Status, Tageszeit
+  oder Rhythmus filtern. Aufgaben können bearbeitet und ihre Schritte ergänzt, bearbeitet,
+  verschoben oder getauscht werden.
+- Eine eigene Sortieransicht zeigt jede eingeplante Tageszeit einer Aufgabe separat. Die
+  Reihenfolge und Tageszeit werden ausschließlich per bewusstem Drag-and-drop geändert.
 - Benachrichtigungen sind im Stabilitäts-Release bewusst deaktiviert. Sie kommen erst mit einer fälligkeitsbasierten, getesteten Umsetzung zurück.
 
 ## Bewusste Grenzen
 
-- Keine KI, keine sozialen Vergleiche, kein Bestrafungs-Tracking und keine überwältigende Gesamtliste.
-- Erst später: feste manuelle Reihenfolgen und sanfte Anpassung an oft verschobene Aufgaben. Manuelle Reihenfolgen werden nie überschrieben.
+- Keine KI, keine sozialen Vergleiche, kein Bestrafungs-Tracking und keine zum Erledigen
+  drängende Gesamtliste. „Alles“ bleibt ein explizit geöffneter Verwaltungsbereich.
+- Manuelle Reihenfolgen werden nie automatisch aus dem Nutzungsverhalten überschrieben.
 - Release-APKs kommen über GitHub Releases; reguläre Updates erhalten den lokalen Zustand.

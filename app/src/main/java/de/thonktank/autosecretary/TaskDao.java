@@ -21,6 +21,16 @@ public interface TaskDao {
     @Query("DELETE FROM task_steps WHERE taskId = :taskId") void deleteTemplates(String taskId);
     @Query("SELECT * FROM task_steps WHERE taskId = :taskId ORDER BY position") List<TaskStepEntity> templates(String taskId);
     @Query("SELECT * FROM task_steps WHERE taskId IN (:taskIds) ORDER BY taskId, position") List<TaskStepEntity> templatesFor(List<String> taskIds);
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void putScheduleEntries(List<TaskScheduleEntity> entries);
+    @Query("DELETE FROM task_schedule_entries WHERE id = :id")
+    void deleteScheduleEntry(String id);
+    @Query("SELECT * FROM task_schedule_entries ORDER BY slot, displayOrder, id")
+    List<TaskScheduleEntity> scheduleEntries();
+    @Query("SELECT * FROM task_schedule_entries WHERE taskId = :taskId ORDER BY slot, displayOrder, id")
+    List<TaskScheduleEntity> scheduleEntries(String taskId);
+    @Query("SELECT * FROM task_schedule_entries WHERE taskId IN (:taskIds) ORDER BY slot, displayOrder, id")
+    List<TaskScheduleEntity> scheduleEntriesFor(List<String> taskIds);
     @Insert(onConflict = OnConflictStrategy.IGNORE) void insertOccurrence(OccurrenceEntity occurrence);
     @Update void updateOccurrence(OccurrenceEntity occurrence);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state LIMIT 1") OccurrenceEntity openForTask(String taskId, String state);
@@ -47,6 +57,9 @@ public interface TaskDao {
     @Query("SELECT * FROM occurrence_steps WHERE occurrenceId IN (:occurrenceIds) ORDER BY occurrenceId, position") List<OccurrenceStepEntity> occurrenceStepsFor(List<String> occurrenceIds);
     @Query("SELECT * FROM occurrence_steps WHERE id = :id LIMIT 1") OccurrenceStepEntity occurrenceStep(String id);
     @Update void updateOccurrenceStep(OccurrenceStepEntity step);
+    @Query("UPDATE reward_bookings SET occurrenceId = :occurrenceId "
+            + "WHERE occurrenceStepId = :occurrenceStepId")
+    void moveRewardBookings(String occurrenceStepId, String occurrenceId);
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void putRepetitionResult(RepetitionResultEntity result);
     @Insert(onConflict = OnConflictStrategy.REPLACE)

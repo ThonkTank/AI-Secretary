@@ -22,6 +22,9 @@ public final class TaskUseCases {
     public final MaterializeDueOccurrences materializeDue;
     public final LoadDashboard loadDashboard;
     public final LoadTaskDetails loadTaskDetails;
+    public final LoadTaskCatalog loadTaskCatalog;
+    public final MoveScheduleEntry moveScheduleEntry;
+    public final OrganizeTaskStep organizeTaskStep;
 
     public TaskUseCases(TaskRepository repository, Clock clock, IdGenerator ids) {
         TaskOrdering ordering = new TaskOrdering();
@@ -42,5 +45,8 @@ public final class TaskUseCases {
         applyComboDecay = new ApplyComboDecay(repository, clock);
         closeOngoing = new CloseOngoingTask(repository, clock);
         loadTaskDetails = new LoadTaskDetails(repository);
+        loadTaskCatalog = new LoadTaskCatalog(repository);
+        moveScheduleEntry = new MoveScheduleEntry(repository, clock);
+        organizeTaskStep = new OrganizeTaskStep(repository);
     }
 }

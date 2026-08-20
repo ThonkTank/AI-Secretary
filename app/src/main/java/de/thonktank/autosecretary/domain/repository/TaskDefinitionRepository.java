@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.domain.repository;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 
 import java.util.List;
 
@@ -19,4 +20,9 @@ public interface TaskDefinitionRepository extends TransactionalRepository {
     void deleteTemplate(String id);
     List<TaskStepTemplate> templates(TaskId taskId);
     List<TaskStepTemplate> templatesFor(List<TaskId> taskIds);
+    void putScheduleEntries(List<TaskScheduleEntry> entries);
+    void deleteScheduleEntry(String id);
+    List<TaskScheduleEntry> scheduleEntries();
+    List<TaskScheduleEntry> scheduleEntries(TaskId taskId);
+    List<TaskScheduleEntry> scheduleEntriesFor(List<TaskId> taskIds);
 }

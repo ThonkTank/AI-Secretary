@@ -32,7 +32,7 @@ final class OccurrenceAssembler {
     boolean assemble(Task task, LocalDate today, List<Occurrence> history,
                      Map<TaskSlot, Integer> globalNextOrders,
                      OccurrenceCarryForward.Result carry,
-                     DueDatePlanner.Plan planned) {
+                     DueDatePlanner.Plan planned, Map<String, Integer> scheduleRanks) {
         Set<TaskSlot> targetSlots = new LinkedHashSet<>();
         List<TaskSlot> configuredSlots = task.recurrence == de.thonktank.autosecretary.domain.model.Recurrence.ONCE
                 ? Collections.singletonList(task.slot) : TimeOfDay.slots(task.timeOfDayMask);
@@ -65,7 +65,8 @@ final class OccurrenceAssembler {
                     && !planned.stepsBySlot.containsKey(slot)) continue;
             int order = carried != null && !carried.isEmpty()
                     ? OccurrenceCarryForward.carryOrder(history, slot)
-                    : globalNextOrders.getOrDefault(slot, 0) + 1;
+                    : scheduleRanks.getOrDefault(task.id.value + '|' + slot.name(),
+                    globalNextOrders.getOrDefault(slot, 0) + 1);
             Occurrence occurrence = new Occurrence(ids.nextId(), task.id, today, slot,
                     OccurrenceState.OPEN, order, null);
             repository.insertOccurrence(occurrence);

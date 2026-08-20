@@ -83,6 +83,8 @@ public final class UpdateTask {
             }
             repository.updateTask(current.editDefinition(definition, displayOrder, nextDue));
             syncTemplates(id, definition.steps);
+            new TaskScheduleService(repository, ids).sync(
+                    repository.findTask(id), definition);
             return null;
         });
     }

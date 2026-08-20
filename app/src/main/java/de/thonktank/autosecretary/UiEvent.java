@@ -36,6 +36,10 @@ public final class UiEvent {
         return new UiEvent(Type.CONFIRM_DELETE, null, task.taskId, task.title);
     }
 
+    public static UiEvent confirmDelete(String taskId, String title) {
+        return new UiEvent(Type.CONFIRM_DELETE, null, taskId, title);
+    }
+
     public static UiEvent confirmClose(String taskId, String title) {
         return new UiEvent(Type.CONFIRM_CLOSE, null, taskId, title);
     }

@@ -362,6 +362,40 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Normalizes independently sortable task placements for each configured time of day. */
+    public static final Migration MIGRATION_11_12 = new Migration(11, 12) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE task_schedule_entries (id TEXT NOT NULL, "
+                    + "taskId TEXT NOT NULL, slot TEXT NOT NULL, displayOrder INTEGER NOT NULL, "
+                    + "PRIMARY KEY(id), FOREIGN KEY(taskId) REFERENCES tasks(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_task_schedule_entries_taskId "
+                    + "ON task_schedule_entries(taskId)");
+            database.execSQL("CREATE UNIQUE INDEX index_task_schedule_entries_taskId_slot "
+                    + "ON task_schedule_entries(taskId,slot)");
+            database.execSQL("CREATE INDEX index_task_schedule_entries_slot_displayOrder "
+                    + "ON task_schedule_entries(slot,displayOrder)");
+            database.execSQL("INSERT INTO task_schedule_entries(id,taskId,slot,displayOrder) "
+                    + "SELECT 'schedule:' || id || ':' || slot,id,slot,displayOrder FROM tasks "
+                    + "WHERE recurrence='ONCE'");
+            insertScheduleBit(database, 1, "MORNING");
+            insertScheduleBit(database, 2, "MIDDAY");
+            insertScheduleBit(database, 4, "EVENING");
+            insertScheduleBit(database, 8, "LATER");
+            database.execSQL("INSERT OR IGNORE INTO task_schedule_entries"
+                    + "(id,taskId,slot,displayOrder) SELECT 'schedule:' || id || ':' || slot,"
+                    + "id,slot,displayOrder FROM tasks WHERE recurrence<>'ONCE' "
+                    + "AND (timeOfDayMask & 15)=0");
+        }
+
+        private void insertScheduleBit(SupportSQLiteDatabase database, int bit, String slot) {
+            database.execSQL("INSERT INTO task_schedule_entries(id,taskId,slot,displayOrder) "
+                    + "SELECT 'schedule:' || id || ':" + slot + "',id,'" + slot
+                    + "',displayOrder FROM tasks WHERE recurrence<>'ONCE' "
+                    + "AND (timeOfDayMask & " + bit + ")<>0");
+        }
+    };
+
     private static List<Integer> parseLegacyRepetitions(String stepId, String stored) {
         List<Integer> values = new ArrayList<>();
         try {

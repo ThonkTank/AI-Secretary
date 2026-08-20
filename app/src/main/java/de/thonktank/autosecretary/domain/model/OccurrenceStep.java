@@ -113,4 +113,11 @@ public final class OccurrenceStep {
                         : repetitionProgress.actualRepetitions, sourceTemplateId, comboOwnerId,
                 originId, reason);
     }
+
+    public OccurrenceStep relocate(String targetOccurrenceId, int targetPosition) {
+        return new OccurrenceStep(id, targetOccurrenceId, targetPosition, text, done,
+                amount, note, repetitionProgress == null ? Collections.emptyList()
+                : repetitionProgress.actualRepetitions, sourceTemplateId, comboOwnerId,
+                originOccurrenceId, carryForwardReason);
+    }
 }

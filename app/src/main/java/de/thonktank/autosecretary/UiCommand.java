@@ -6,7 +6,7 @@ import java.util.Objects;
 public final class UiCommand {
     public enum Kind { REFRESH, CREATE, UPDATE, MOVE, DELETE, LOAD_EDITOR, COMPLETE,
         COMPLETE_REMAINING, HARVEST, UNDO, TOGGLE_STEP, RECORD_REPETITION_RESULT,
-        CORRECT_REPETITION_RESULT, DEFER, CLOSE }
+        CORRECT_REPETITION_RESULT, DEFER, CLOSE, ORGANIZE }
     public final Kind kind;
     public final String id;
 

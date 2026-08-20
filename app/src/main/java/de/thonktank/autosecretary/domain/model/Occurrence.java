@@ -67,4 +67,9 @@ public final class Occurrence {
     public Occurrence moveTo(int newSortOrder) {
         return new Occurrence(id, taskId, scheduledOn, slot, state, newSortOrder, completedOn, kind);
     }
+
+    public Occurrence moveTo(TaskSlot newSlot, int newSortOrder) {
+        return new Occurrence(id, taskId, scheduledOn, newSlot, state,
+                newSortOrder, completedOn, kind);
+    }
 }

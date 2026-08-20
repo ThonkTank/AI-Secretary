@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.RepetitionResultEntity;
 import de.thonktank.autosecretary.TaskDao;
 import de.thonktank.autosecretary.TaskEntity;
 import de.thonktank.autosecretary.TaskStepEntity;
+import de.thonktank.autosecretary.TaskScheduleEntity;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
@@ -17,6 +18,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
@@ -106,6 +108,29 @@ public final class RoomTaskRepository implements TaskRepository {
         List<TaskStepTemplate> result = new ArrayList<>();
         for (TaskStepEntity entity : dao.templatesFor(values)) result.add(mapper.toDomain(entity));
         return result;
+    }
+
+    @Override public void putScheduleEntries(List<TaskScheduleEntry> entries) {
+        List<TaskScheduleEntity> values = new ArrayList<>();
+        for (TaskScheduleEntry entry : entries) values.add(mapper.toEntity(entry));
+        if (!values.isEmpty()) dao.putScheduleEntries(values);
+    }
+
+    @Override public void deleteScheduleEntry(String id) { dao.deleteScheduleEntry(id); }
+
+    @Override public List<TaskScheduleEntry> scheduleEntries() {
+        return mapScheduleEntries(dao.scheduleEntries());
+    }
+
+    @Override public List<TaskScheduleEntry> scheduleEntries(TaskId taskId) {
+        return mapScheduleEntries(dao.scheduleEntries(taskId.value));
+    }
+
+    @Override public List<TaskScheduleEntry> scheduleEntriesFor(List<TaskId> taskIds) {
+        if (taskIds.isEmpty()) return new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        for (TaskId id : taskIds) values.add(id.value);
+        return mapScheduleEntries(dao.scheduleEntriesFor(values));
     }
 
     @Override public void insertOccurrence(Occurrence occurrence) {
@@ -211,6 +236,10 @@ public final class RoomTaskRepository implements TaskRepository {
         });
     }
 
+    @Override public void moveRewardBookings(String occurrenceStepId, String occurrenceId) {
+        dao.moveRewardBookings(occurrenceStepId, occurrenceId);
+    }
+
     @Override public int xp() {
         StatsEntity stats = dao.stats();
         return stats == null ? 0 : stats.xp;
@@ -272,6 +301,12 @@ public final class RoomTaskRepository implements TaskRepository {
     private List<Task> mapTasks(List<TaskEntity> entities) {
         List<Task> result = new ArrayList<>();
         for (TaskEntity entity : entities) result.add(mapper.toDomain(entity));
+        return result;
+    }
+
+    private List<TaskScheduleEntry> mapScheduleEntries(List<TaskScheduleEntity> entities) {
+        List<TaskScheduleEntry> result = new ArrayList<>();
+        for (TaskScheduleEntity entity : entities) result.add(mapper.toDomain(entity));
         return result;
     }
 
