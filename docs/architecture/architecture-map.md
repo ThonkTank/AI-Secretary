@@ -68,8 +68,10 @@ Instrumentation-Verhalten.
 
 ## Bekannte technische Schuld
 
-- `MaterializeDueOccurrences` vereinigt Planung, Rollover, Carry-forward und Reconciliation.
-- `Task.nextDueOn` vermischt Planungscursor und historische Schedulingsemantik.
+- `MaterializeDueOccurrences` bleibt der transaktionale Orchestrator, delegiert Planung, Rollover
+  und Assembly aber inzwischen an getrennte Komponenten.
+- `Task.nextDueOn` ist fachlich als Planungscursor geklärt, trägt im Storage aber weiterhin den
+  historischen Feldnamen.
 - Das Open-Occurrence-Limit ist logisch, aber nicht als partieller Datenbank-Constraint geschützt.
 - Carry-forward-Provenienz ist seit Phase 3 fachlich modelliert und seit Schema 9 persistent.
 - Teilernte schließt eine Occurrence trotz offener Schritte; die UI filtert diese Sonderlage.

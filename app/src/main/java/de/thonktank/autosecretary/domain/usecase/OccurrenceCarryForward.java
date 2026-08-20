@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.domain.model.Occurrence;
+import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
@@ -62,7 +63,7 @@ final class OccurrenceCarryForward {
 
     private static Map<TaskSlot, Occurrence> latestOpen(List<Occurrence> values) {
         Map<TaskSlot, Occurrence> result = new HashMap<>();
-        for (Occurrence value : values) if (value.state == de.thonktank.autosecretary.domain.model.OccurrenceState.OPEN) {
+        for (Occurrence value : values) if (value.state == OccurrenceState.OPEN) {
             Occurrence current = result.get(value.slot);
             if (current == null || value.scheduledOn.isAfter(current.scheduledOn))
                 result.put(value.slot, value);
@@ -73,7 +74,7 @@ final class OccurrenceCarryForward {
     private static Occurrence latest(List<Occurrence> values, TaskSlot slot) {
         return values.stream().filter(value -> value.slot == slot)
                 .max(Comparator.comparing((Occurrence value) -> value.scheduledOn)
-                        .thenComparing(value -> value.state == de.thonktank.autosecretary.domain.model.OccurrenceState.OPEN ? 1 : 0))
+                        .thenComparing(value -> value.state == OccurrenceState.OPEN ? 1 : 0))
                 .orElse(null);
     }
 

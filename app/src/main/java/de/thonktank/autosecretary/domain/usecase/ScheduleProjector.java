@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.domain.model.Occurrence;
+import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
 
 import java.time.LocalDate;
@@ -13,7 +14,7 @@ public final class ScheduleProjector {
         // Materialization advances the calendar cursor. Completion and undo must never
         // rewind it to the date on which the user happened to finish the occurrence.
         LocalDate next = task.nextDueOn;
-        boolean archived = task.recurrence == de.thonktank.autosecretary.domain.model.Recurrence.ONCE
+        boolean archived = task.recurrence == Recurrence.ONCE
                 && input.earliestOpen == null && input.latestCompleted != null;
         return task.withOccurrenceState(archived, next,
                 input.latestCompleted == null ? task.lastScheduledOn : input.latestCompleted.scheduledOn,

@@ -1,7 +1,6 @@
 package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.domain.model.TaskId;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
 import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
 
 public final class DeleteTask {

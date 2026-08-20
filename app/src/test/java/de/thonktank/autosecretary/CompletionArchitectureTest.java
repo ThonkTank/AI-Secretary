@@ -59,6 +59,17 @@ public final class CompletionArchitectureTest {
         assertEquals(3, combo.points);
     }
 
+    @Test public void partialHarvestHasDistinctReopenableState() {
+        Occurrence occurrence = occurrence("partial", OccurrenceState.OPEN, null,
+                OccurrenceKind.SCHEDULED, TODAY);
+        CompletionStateMachine states = new CompletionStateMachine();
+
+        Occurrence harvested = states.harvestWithMissedSteps(occurrence, TODAY);
+        assertEquals(OccurrenceState.HARVESTED_WITH_MISSED_STEPS, harvested.state);
+        assertTrue(harvested.state.isHarvested());
+        assertEquals(OccurrenceState.OPEN, states.reopenOccurrence(harvested).state);
+    }
+
     @Test public void scheduleProjectorDoesNotChangePlanningCursor() {
         Task task = task(Recurrence.DAILY);
         Occurrence latest = occurrence("done", OccurrenceState.COMPLETED, TODAY,
