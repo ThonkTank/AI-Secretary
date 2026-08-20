@@ -16,7 +16,9 @@ nicht zu einem überwältigenden Rückstand anwachsen.
 - Verpasste Schritte werden am nächsten Kalendertag nachgeplant. Regulär fällige Schritte
   werden zusätzlich gemäß ihrem festen Rhythmus ergänzt und je Occurrence dedupliziert.
 - Tägliche, Intervall- und Wochentagswiederholungen werden vom geplanten Termin aus
-  weitergerechnet, unabhängig vom tatsächlichen Abschluss.
+  weitergerechnet, unabhängig vom tatsächlichen Abschluss. `Task.nextDueOn` ist dabei
+  ausschließlich der persistierte Planungscursor; Completion und Undo dürfen ihn nicht
+  zurücksetzen.
 - Wochentagswiederholungen bleiben an den ausgewählten Kalendertagen verankert.
 - Abgeschlossene Occurrences bleiben als Historie bestehen.
 - Das Dashboard zeigt pro Task und Tageszeit höchstens einen offenen Eintrag. Eine offene
@@ -42,5 +44,6 @@ Abschluss, Teilernte, Undo und Condition-Close laufen über einen transaktionale
 gutgeschreiben; die offenen Schritte werden danach als verpasst nachgeplant.
 Ein reiner Zustandsautomat führt Occurrence-/Schrittübergänge aus, ein reiner
 `RewardCalculator` berechnet Rewards, und ein `ScheduleProjector` projiziert Archivstatus und
-Folgetermine. Dafür lädt das Repository gezielt nur das früheste offene und das letzte
+Folgetermine aus einem typisierten Occurrence-Snapshot. Die Projektion verändert den
+Planungscursor nicht. Dafür lädt das Repository gezielt nur das früheste offene und das letzte
 abgeschlossene Vorkommen statt der vollständigen Historie.

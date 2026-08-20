@@ -13,6 +13,10 @@ public final class Task {
     public final String conditionText;
     public final boolean conditionDone;
     public final boolean archived;
+    /**
+     * Compatibility storage name for the planning cursor. Materialization advances this
+     * independently of user completion; completion must never rewind it.
+     */
     public final LocalDate nextDueOn;
     public final LocalDate lastScheduledOn;
     public final LocalDate lastCompletedOn;
@@ -168,16 +172,6 @@ public final class Task {
                 boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
     }
 
-    public Task afterMaterializing(int count) {
-        Integer remaining = remainingCount;
-        if (boundKind == TaskBoundKind.N_TIMES)
-            remaining = Math.max(0, (remainingCount == null ? 0 : remainingCount) - count);
-        return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
-                conditionDone, archived, nextDueOn, lastScheduledOn, lastCompletedOn,
-                displayOrder, hasCompletedOccurrence, estimatedMinutes, timeOfDayMask,
-                boundKind, boundUntilOn, boundWeeks, remaining, deadlineOn, note);
-    }
-
     public Task afterPlanning(LocalDate newNextDueOn, int count) {
         Integer remaining = remainingCount;
         if (boundKind == TaskBoundKind.N_TIMES)
@@ -186,6 +180,11 @@ public final class Task {
                 conditionDone, archived, newNextDueOn, lastScheduledOn, lastCompletedOn,
                 displayOrder, hasCompletedOccurrence, estimatedMinutes, timeOfDayMask,
                 boundKind, boundUntilOn, boundWeeks, remaining, deadlineOn, note);
+    }
+
+    /** Explicit semantic name used by scheduling code while storage remains compatible. */
+    public LocalDate planningCursor() {
+        return nextDueOn;
     }
 
     public Task withOccurrenceState(boolean newArchived, LocalDate newNextDueOn,

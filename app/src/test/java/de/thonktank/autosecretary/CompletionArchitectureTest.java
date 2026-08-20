@@ -59,17 +59,18 @@ public final class CompletionArchitectureTest {
         assertEquals(3, combo.points);
     }
 
-    @Test public void scheduleProjectorUsesOnlyItsExplicitBoundaryOccurrences() {
+    @Test public void scheduleProjectorDoesNotChangePlanningCursor() {
         Task task = task(Recurrence.DAILY);
         Occurrence latest = occurrence("done", OccurrenceState.COMPLETED, TODAY,
                 OccurrenceKind.SCHEDULED, TODAY.minusDays(1));
+        Occurrence reopened = latest.reopen();
         ScheduleProjector projector = new ScheduleProjector();
 
-        Task afterCompletion = projector.project(task, null, latest);
+        Task afterCompletion = projector.project(task, new ScheduleProjector.Input(null, latest));
         assertEquals(TODAY, afterCompletion.nextDueOn);
         assertFalse(afterCompletion.archived);
-        Occurrence reopened = latest.reopen();
-        Task afterUndo = projector.project(afterCompletion, reopened, null);
+        Task afterUndo = projector.project(afterCompletion,
+                new ScheduleProjector.Input(reopened, null));
         assertEquals(TODAY, afterUndo.nextDueOn);
     }
 

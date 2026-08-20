@@ -56,6 +56,12 @@ Modelle.
 
 ## Fachliche Invarianten für Wiederholungen
 
+Der persistierte `Task.nextDueOn`-Wert ist der Planungscursor. Er wird ausschließlich durch die
+Materialisierung fälliger Kalendertermine fortgeschrieben. Abschluss, Undo und Condition-Close
+projizieren Archiv- und Abschlussfelder, setzen den Cursor aber nicht auf ein zufällig
+abgeschlossenes Datum zurück. Die spätere Persistenzphase kann diesen kompatiblen Feldnamen in
+getrennte Cursor- und Materialisierungsfelder überführen.
+
 `RepetitionProgress` garantiert positive geplante Slots, höchstens ein nichtnegatives Ergebnis
 pro Slot und einen daraus abgeleiteten nächsten offenen Slot. Neue und korrigierte Eingaben
 liegen in 0…999; größere historische Werte bleiben lesbar. Die möglichen Zustände sind

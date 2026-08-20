@@ -220,9 +220,9 @@ public final class CompletionService {
     private void projectSchedule(TaskId taskId) {
         Task task = repository.findTask(taskId);
         if (task == null) return;
-        repository.updateTask(schedules.project(task,
+        repository.updateTask(schedules.project(task, new ScheduleProjector.Input(
                 repository.earliestOpenOccurrence(taskId),
-                repository.latestCompletedOccurrence(taskId)));
+                repository.latestCompletedOccurrence(taskId))));
     }
 
     private RewardBooking activeOriginal(String occurrenceId, String stepId,

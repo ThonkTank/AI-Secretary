@@ -174,11 +174,11 @@ public final class MaterializeDueOccurrences {
     private Planned plannedThroughToday(Task task, LocalDate today, List<Occurrence> history,
                                         List<TaskStepTemplate> templates) {
         Map<TaskSlot, List<TaskStepTemplate>> result = new LinkedHashMap<>();
-        LocalDate cursor = task.nextDueOn;
+        LocalDate cursor = task.planningCursor();
         int materialized = 0;
         if (task.boundKind == TaskBoundKind.N_TIMES
                 && (task.remainingCount == null || task.remainingCount <= 0))
-            return new Planned(result, null, 0, !same(task.nextDueOn, null));
+            return new Planned(result, null, 0, !same(task.planningCursor(), null));
         Set<String> existingDates = new HashSet<>();
         for (Occurrence occurrence : history)
             existingDates.add(key(occurrence.taskId, occurrence.scheduledOn, occurrence.slot));
@@ -209,12 +209,12 @@ public final class MaterializeDueOccurrences {
             }
             cursor = next;
         }
-        if (task.recurrence == Recurrence.ONCE && task.nextDueOn != null
-                && task.nextDueOn.isAfter(today)) {
-            cursor = task.nextDueOn;
+        if (task.recurrence == Recurrence.ONCE && task.planningCursor() != null
+                && task.planningCursor().isAfter(today)) {
+            cursor = task.planningCursor();
         }
         if (cursor != null && !ScheduleCalculator.withinBound(task, cursor)) cursor = null;
-        return new Planned(result, cursor, materialized, !same(cursor, task.nextDueOn));
+        return new Planned(result, cursor, materialized, !same(cursor, task.planningCursor()));
     }
 
     private boolean canPlan(Task task, LocalDate date) {

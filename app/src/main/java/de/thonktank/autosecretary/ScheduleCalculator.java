@@ -24,7 +24,7 @@ public final class ScheduleCalculator {
         return withinBound(task, candidate) ? candidate : null;
     }
     public static boolean isDue(Task task, LocalDate today) {
-        return task.nextDueOn != null && !task.nextDueOn.isAfter(today);
+        return task.planningCursor() != null && !task.planningCursor().isAfter(today);
     }
     public static boolean completedOnTime(String scheduledOn, LocalDate completedOn) {
         return LocalDate.parse(scheduledOn).equals(completedOn);
