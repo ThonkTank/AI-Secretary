@@ -41,10 +41,10 @@ public final class TaskEntityMapper {
         return new TaskEntity(task.id.value, task.title, task.slot.storageCode,
                 task.recurrence.storageCode(), task.intervalDays, task.weekdayMask, task.ongoing,
                 task.conditionText, task.conditionDone, task.archived, text(task.nextDueOn),
-                text(task.lastScheduledOn), text(task.lastCompletedOn), task.displayOrder,
+                nullableText(task.lastScheduledOn), nullableText(task.lastCompletedOn), task.displayOrder,
                 task.hasCompletedOccurrence, task.estimatedMinutes, task.timeOfDayMask,
-                task.boundKind.storageCode(), text(task.boundUntilOn), task.boundWeeks,
-                task.remainingCount, text(task.deadlineOn), task.note);
+                task.boundKind.storageCode(), nullableText(task.boundUntilOn), task.boundWeeks,
+                task.remainingCount, nullableText(task.deadlineOn), task.note);
     }
 
     public Occurrence toDomain(OccurrenceEntity entity) {

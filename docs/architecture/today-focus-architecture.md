@@ -72,7 +72,7 @@ nicht mehr aktiven Schritt werden verworfen beziehungsweise mit dem aktuellen Fo
 reconciled. Wiederöffnen eines vollständig erfassten Schritts entfernt den letzten Wert; ein
 explizit ohne vollständige Ergebnisse abgeschlossener Schritt behält seine Teilwerte.
 
-## Persistenzschema 10
+## Persistenzschema 11
 
 `repetition_results(stepId, slotIndex, actualRepetitions)` normalisiert die früher im
 Komma-Text gespeicherten Ergebnisse. `(stepId, slotIndex)` ist der Primärschlüssel; `stepId`
@@ -85,10 +85,12 @@ sicheren Übergang vorhanden und wird produktiv leer geschrieben.
 
 Die Migration 7→8 übernimmt gültige Legacywerte einschließlich 0 und Werten über 999. Bei
 fehlerhaftem Text wird keine partielle Liste erzeugt; die Step-ID wird geloggt und der Rohtext
-bleibt erhalten. Alle exportierten Schemas 1 bis 10 sind Teil des Migrationsvertrags. Schema 9
+bleibt erhalten. Alle exportierten Schemas 1 bis 11 sind Teil des Migrationsvertrags. Schema 9
 speichert Carry-forward-Ursprung und -Grund an jedem Occurrence-Schritt und installiert Trigger
 für die Ein-Offene-Occurrence-Invariante. Schema 10 ersetzt den leeren `completedOn`-Sentinel
 durch eine nullable Datumsspalte und rekonstruiert die Trigger nach dem sicheren Tabellenumbau.
+Schema 11 überführt zusätzlich optionale Task-Datumswerte aus historischen leeren Strings in
+echte nullable Spalten; der erforderliche Planungscursor `nextDueOn` bleibt nicht-null.
 
 ## Widgetaktualisierung
 

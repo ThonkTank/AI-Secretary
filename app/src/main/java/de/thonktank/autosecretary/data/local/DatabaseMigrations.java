@@ -336,6 +336,32 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Replaces optional task-date sentinels with real nullable columns. */
+    public static final Migration MIGRATION_10_11 = new Migration(10, 11) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE _m_tasks_nullable AS SELECT * FROM tasks");
+            database.execSQL("DROP TABLE tasks");
+            database.execSQL("CREATE TABLE tasks (id TEXT NOT NULL, title TEXT NOT NULL, "
+                    + "slot TEXT NOT NULL, recurrence TEXT NOT NULL, intervalDays INTEGER NOT NULL, "
+                    + "weekdayMask INTEGER NOT NULL, ongoing INTEGER NOT NULL, conditionText TEXT NOT NULL, "
+                    + "conditionDone INTEGER NOT NULL, archived INTEGER NOT NULL, nextDueOn TEXT NOT NULL, "
+                    + "lastScheduledOn TEXT, lastCompletedOn TEXT, displayOrder INTEGER NOT NULL, "
+                    + "hasCompletedOccurrence INTEGER NOT NULL, estimatedMinutes INTEGER, "
+                    + "timeOfDayMask INTEGER NOT NULL, boundKind TEXT NOT NULL, boundUntilOn TEXT, "
+                    + "boundWeeks INTEGER, remainingCount INTEGER, deadlineOn TEXT, note TEXT NOT NULL, "
+                    + "PRIMARY KEY(id))");
+            database.execSQL("INSERT INTO tasks SELECT id,title,slot,recurrence,intervalDays,weekdayMask,"
+                    + "ongoing,conditionText,conditionDone,archived,nextDueOn,"
+                    + "NULLIF(lastScheduledOn,''),NULLIF(lastCompletedOn,''),displayOrder,"
+                    + "hasCompletedOccurrence,estimatedMinutes,timeOfDayMask,boundKind,"
+                    + "NULLIF(boundUntilOn,''),boundWeeks,remainingCount,NULLIF(deadlineOn,''),note "
+                    + "FROM _m_tasks_nullable");
+            database.execSQL("CREATE INDEX index_tasks_archived_conditionDone_displayOrder "
+                    + "ON tasks (archived,conditionDone,displayOrder)");
+            database.execSQL("DROP TABLE _m_tasks_nullable");
+        }
+    };
+
     private static List<Integer> parseLegacyRepetitions(String stepId, String stored) {
         List<Integer> values = new ArrayList<>();
         try {

@@ -72,11 +72,17 @@ Instrumentation-Verhalten.
   und Assembly aber inzwischen an getrennte Komponenten.
 - `Task.nextDueOn` ist fachlich als Planungscursor geklärt, trägt im Storage aber weiterhin den
   historischen Feldnamen.
-- Das Open-Occurrence-Limit ist logisch, aber nicht als partieller Datenbank-Constraint geschützt.
+- Das Open-Occurrence-Limit wird durch SQLite-Trigger geschützt; Room exportiert diese Trigger
+  nicht vollständig, deshalb müssen sie in jeder betroffenen Migration manuell rekonstruiert
+  und getestet werden.
 - Carry-forward-Provenienz ist seit Phase 3 fachlich modelliert und seit Schema 9 persistent.
 - `Occurrence.completedOn` ist seit Schema 10 nullable statt über einen leeren String codiert.
+- Optionale Task-Daten (`lastScheduledOn`, `lastCompletedOn`, `boundUntilOn`, `deadlineOn`) sind
+  seit Schema 11 ebenfalls nullable; `nextDueOn` bleibt als fachlich erforderlicher Cursor
+  nicht-null.
 - Teilernte schließt eine Occurrence trotz offener Schritte; die UI filtert diese Sonderlage.
-- Room nutzt bei optionalen Datumswerten leere Strings als `null`-Sentinel.
+- Room nutzt in älteren historischen Schemas weiterhin leere Strings; Schema 11 migriert diese
+  Werte beim Öffnen des aktuellen Datenbestands zu SQL-`NULL`.
 - `TaskRepository`, `TaskViewModel` und `MainActivity` bleiben breite Orchestratoren.
 - Das Android-Modul besitzt keine compiler-erzwungenen Architekturgrenzen.
 - Upgrade-, Zeitzonen-, Prozessneustart- und parallele Materialisierungstests sind nicht vollständig

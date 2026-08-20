@@ -33,6 +33,8 @@ Folgeschritte.
 
 Die phasenweise Refactor-Baseline mit Zustandsbesitzern, Abhängigkeiten und überprüfbaren Gates
 steht in der [Architekturkarte](architecture-map.md).
+Der requirementweise Abschlussabgleich der Roadmap steht im
+[Roadmap-Abschlussaudit](roadmap-audit.md).
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.

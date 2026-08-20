@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.room.Entity;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
@@ -18,29 +19,29 @@ public class TaskEntity {
     public boolean conditionDone;
     public boolean archived;
     @NonNull public String nextDueOn;
-    @NonNull public String lastScheduledOn;
-    @NonNull public String lastCompletedOn;
+    @Nullable public String lastScheduledOn;
+    @Nullable public String lastCompletedOn;
     public long displayOrder;
     public boolean hasCompletedOccurrence;
     public Integer estimatedMinutes;
     public int timeOfDayMask;
     @NonNull public String boundKind;
-    @NonNull public String boundUntilOn;
+    @Nullable public String boundUntilOn;
     public Integer boundWeeks;
     public Integer remainingCount;
-    @NonNull public String deadlineOn;
+    @Nullable public String deadlineOn;
     @NonNull public String note;
 
     public TaskEntity(@NonNull String id, @NonNull String title, @NonNull String slot,
                       @NonNull String recurrence, int intervalDays, int weekdayMask,
                       boolean ongoing, @NonNull String conditionText, boolean conditionDone,
                       boolean archived, @NonNull String nextDueOn,
-                      @NonNull String lastScheduledOn, @NonNull String lastCompletedOn,
+                      @Nullable String lastScheduledOn, @Nullable String lastCompletedOn,
                       long displayOrder, boolean hasCompletedOccurrence,
                       Integer estimatedMinutes, int timeOfDayMask,
-                      @NonNull String boundKind, @NonNull String boundUntilOn,
+                      @NonNull String boundKind, @Nullable String boundUntilOn,
                       Integer boundWeeks, Integer remainingCount,
-                      @NonNull String deadlineOn, @NonNull String note) {
+                      @Nullable String deadlineOn, @NonNull String note) {
         this.id = id;
         this.title = title;
         this.slot = slot;
