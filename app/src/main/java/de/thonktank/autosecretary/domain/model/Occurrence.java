@@ -47,6 +47,13 @@ public final class Occurrence {
                 OccurrenceState.COMPLETED, sortOrder, date, kind);
     }
 
+    public Occurrence missed() {
+        if (state != OccurrenceState.OPEN)
+            throw new IllegalStateException("Only an open occurrence can be missed");
+        return new Occurrence(id, taskId, scheduledOn, slot,
+                OccurrenceState.MISSED, sortOrder, null, kind);
+    }
+
     public Occurrence reopen() {
         return new Occurrence(id, taskId, scheduledOn, slot,
                 OccurrenceState.OPEN, sortOrder, null, kind);

@@ -10,16 +10,17 @@ import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 /** Pure schedule rules; all dates are passed in so recurrence behaviour is deterministic in tests. */
 public final class ScheduleCalculator {
     private ScheduleCalculator() { }
-    public static LocalDate nextDue(Task task, LocalDate completedOn) {
+    /** Returns the next calendar occurrence after the supplied planned date. */
+    public static LocalDate nextDue(Task task, LocalDate plannedOn) {
         if (task.recurrence == Recurrence.ONCE) return null;
         if (task.boundKind == TaskBoundKind.N_TIMES
                 && (task.remainingCount == null || task.remainingCount <= 0)) return null;
         LocalDate candidate = null;
-        if (task.recurrence == Recurrence.DAILY) candidate = completedOn.plusDays(1);
+        if (task.recurrence == Recurrence.DAILY) candidate = plannedOn.plusDays(1);
         if (task.recurrence == Recurrence.INTERVAL)
-            candidate = completedOn.plusDays(Math.max(1, task.intervalDays));
+            candidate = plannedOn.plusDays(Math.max(1, task.intervalDays));
         if (task.recurrence == Recurrence.WEEKDAYS)
-            candidate = nextSelectedWeekday(task.weekdayMask, completedOn.plusDays(1));
+            candidate = nextSelectedWeekday(task.weekdayMask, plannedOn.plusDays(1));
         return withinBound(task, candidate) ? candidate : null;
     }
     public static boolean isDue(Task task, LocalDate today) {

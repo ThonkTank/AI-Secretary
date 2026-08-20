@@ -96,7 +96,7 @@ public final class XpComboRobolectricTest {
         assertEquals(harvest.bookings.get(0).id, undo.bookings.get(0).reversesBookingId);
         assertEquals(0, repository.xp());
         assertEquals(OccurrenceState.OPEN, repository.findOccurrence(occurrence.id).state);
-        assertEquals(today, repository.findTask(occurrence.taskId).nextDueOn);
+        assertEquals(today.plusDays(1), repository.findTask(occurrence.taskId).nextDueOn);
         assertTrue(repository.findOccurrenceStep(step.id).done);
         int afterOccurrenceUndo = repository.rewardBookings(occurrence.id).size();
         assertEquals(0, new UndoOccurrence(repository, clock).execute(occurrence.id).xp);

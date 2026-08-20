@@ -20,7 +20,7 @@ public class ScheduleCalculatorTest {
                 1_001_000L, false);
     }
 
-    @Test public void intervalIsAnchoredToActualCompletion() {
+    @Test public void intervalIsAnchoredToPlannedDate() {
         assertEquals(LocalDate.of(2026, 8, 18), ScheduleCalculator.nextDue(
                 task(Recurrence.INTERVAL, 3, 0, LocalDate.of(2026, 8, 15)),
                 LocalDate.of(2026, 8, 15)));

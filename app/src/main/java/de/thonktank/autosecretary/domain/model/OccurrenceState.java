@@ -4,7 +4,8 @@ import java.util.Locale;
 
 public enum OccurrenceState {
     OPEN,
-    COMPLETED;
+    COMPLETED,
+    MISSED;
 
     public String storageCode() {
         return name();

@@ -179,7 +179,6 @@ public final class CompletionService {
                 || activeOriginal(occurrence.id, null, RewardBooking.Target.HEAD) != null)
             return RewardReceipt.none();
         List<OccurrenceStep> steps = repository.occurrenceSteps(occurrence.id);
-        for (OccurrenceStep step : steps) if (!step.done) return RewardReceipt.none();
         int collected = netXp(repository.rewardBookings(occurrence.id), RewardBooking.Target.VESSEL);
         boolean routine = !steps.isEmpty();
         if (routine && collected <= 0) return RewardReceipt.none();

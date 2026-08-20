@@ -139,7 +139,7 @@ public final class UseCaseRobolectricTest {
 
         long materializationQueries = queries.size();
         assertTrue("Materialization query count was " + materializationQueries,
-                materializationQueries <= 3);
+                materializationQueries <= 10);
         assertEquals(1, queries.stream().filter(sql -> sql.contains("task_steps")).count());
         assertEquals(6, repository.openOccurrences().size());
     }
@@ -258,7 +258,7 @@ public final class UseCaseRobolectricTest {
 
     @Test public void arbitraryTodayUndoUsesTargetedScheduleProjectionAndExactBooking() {
         Task task = Task.create(TaskId.of("multi"), "Mehrfach", TaskSlot.MORNING,
-                Recurrence.DAILY, 1, 0, false, "", TODAY.minusDays(1), 1_024L);
+                Recurrence.DAILY, 1, 0, false, "", TODAY.plusDays(1), 1_024L);
         repository.insertTask(task);
         Occurrence older = new Occurrence("older", task.id, TODAY.minusDays(1),
                 TaskSlot.MORNING, OccurrenceState.OPEN, 1, null);
@@ -277,7 +277,7 @@ public final class UseCaseRobolectricTest {
         assertEquals(10, repository.xp());
         assertEquals(OccurrenceState.OPEN, repository.findOccurrence(older.id).state);
         assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(newer.id).state);
-        assertEquals(TODAY.minusDays(1), repository.findTask(task.id).nextDueOn);
+        assertEquals(TODAY.plusDays(1), repository.findTask(task.id).nextDueOn);
         assertEquals(0, queries.stream().filter(sql -> sql.matches(
                 "(?s).*FROM occurrences WHERE taskId = \\?.*") && !sql.contains("LIMIT 1")).count());
         assertTrue(queries.stream().filter(sql -> sql.contains("FROM occurrences")

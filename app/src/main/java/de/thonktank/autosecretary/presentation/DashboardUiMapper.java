@@ -41,6 +41,10 @@ public final class DashboardUiMapper {
         int remaining = 0;
         String next = task.conditionText;
         for (OccurrenceStep step : item.steps) {
+            // A partial harvest closes the occurrence while leaving unfinished
+            // steps as historical missed work. They are carried into the next
+            // active occurrence and must not be rendered as falsely completed.
+            if (item.done && !step.done) continue;
             boolean done = item.done || step.done;
             ComboProgress stepCombo = dashboard.combos.get(step.comboOwnerId);
             int stepStage = stepCombo == null ? 0 : stepCombo.level();
@@ -88,7 +92,7 @@ public final class DashboardUiMapper {
                 steps, remaining, !task.conditionText.isEmpty(), task.ongoing, item.done, overdue,
                 taskStage, task.displayOrder, claimable, item.done ? 0 : collected,
                 item.awardedXp,
-                !item.done && !steps.isEmpty() && remaining == 0 && collected > 0,
+                !item.done && !steps.isEmpty() && collected > 0,
                 item.done && item.occurrence != null);
     }
 

@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.domain.usecase;
 
-import de.thonktank.autosecretary.ScheduleCalculator;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
@@ -11,9 +10,9 @@ import java.time.LocalDate;
 public final class ScheduleProjector {
     public Task project(Task task, Occurrence earliestOpen, Occurrence latestCompleted) {
         if (task == null) throw new IllegalArgumentException("Schedule projection needs a task");
-        LocalDate next = earliestOpen != null ? earliestOpen.scheduledOn
-                : latestCompleted == null ? task.nextDueOn
-                : ScheduleCalculator.nextDue(task, latestCompleted.completedOn);
+        // Materialization advances the calendar cursor. Completion and undo must never
+        // rewind it to the date on which the user happened to finish the occurrence.
+        LocalDate next = task.nextDueOn;
         boolean archived = task.recurrence == Recurrence.ONCE
                 && earliestOpen == null && latestCompleted != null;
         return task.withOccurrenceState(archived, next,

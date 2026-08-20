@@ -178,6 +178,16 @@ public final class Task {
                 boundKind, boundUntilOn, boundWeeks, remaining, deadlineOn, note);
     }
 
+    public Task afterPlanning(LocalDate newNextDueOn, int count) {
+        Integer remaining = remainingCount;
+        if (boundKind == TaskBoundKind.N_TIMES)
+            remaining = Math.max(0, (remainingCount == null ? 0 : remainingCount) - count);
+        return copy(title, slot, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
+                conditionDone, archived, newNextDueOn, lastScheduledOn, lastCompletedOn,
+                displayOrder, hasCompletedOccurrence, estimatedMinutes, timeOfDayMask,
+                boundKind, boundUntilOn, boundWeeks, remaining, deadlineOn, note);
+    }
+
     public Task withOccurrenceState(boolean newArchived, LocalDate newNextDueOn,
                                     LocalDate newLastScheduledOn,
                                     LocalDate newLastCompletedOn,

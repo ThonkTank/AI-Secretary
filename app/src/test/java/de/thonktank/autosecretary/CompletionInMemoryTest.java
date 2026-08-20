@@ -23,6 +23,7 @@ import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
+import de.thonktank.autosecretary.domain.usecase.HarvestOccurrence;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
 import de.thonktank.autosecretary.testing.InMemoryTaskRepository;
@@ -34,6 +35,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 /** Pure domain/use-case coverage: no Android runtime and no Room database. */
 public final class CompletionInMemoryTest {
@@ -70,7 +72,7 @@ public final class CompletionInMemoryTest {
         assertEquals(-70, undone.xp);
         assertEquals(0, repository.xp());
         assertEquals(OccurrenceState.OPEN, repository.findOccurrence(occurrence.id).state);
-        assertEquals(TODAY, repository.findTask(occurrence.taskId).nextDueOn);
+        assertEquals(TODAY.plusDays(1), repository.findTask(occurrence.taskId).nextDueOn);
         assertTrue(repository.findOccurrenceStep(first.id).done);
         assertEquals(4, repository.rewardBookings(occurrence.id).size());
         assertEquals(0, new UndoOccurrence(repository, clock).execute(occurrence.id).xp);
@@ -134,6 +136,41 @@ public final class CompletionInMemoryTest {
         assertTrue(repository.combos().isEmpty());
     }
 
+    @Test public void rolloverCreatesTodaysInstanceWithUnfinishedAndFreshStepsOnce() {
+        Occurrence yesterday = dailyRoutine("Tagesroutine", "Duschen", "Anziehen");
+        OccurrenceStep finished = repository.occurrenceSteps(yesterday.id).get(0);
+        new ToggleStep(repository, clock).execute(finished.id);
+
+        clock.set(TODAY.plusDays(1));
+        new MaterializeDueOccurrences(repository, clock, this::nextId).execute();
+
+        assertEquals(OccurrenceState.MISSED, repository.findOccurrence(yesterday.id).state);
+        List<Occurrence> open = repository.openOccurrences();
+        assertEquals(1, open.size());
+        assertEquals(TODAY.plusDays(1), open.get(0).scheduledOn);
+        assertEquals(Arrays.asList("Anziehen", "Duschen"), texts(open.get(0).id));
+        assertEquals(0, repository.rewardBookings(open.get(0).id).size());
+        new MaterializeDueOccurrences(repository, clock, this::nextId).execute();
+        assertEquals(1, repository.openOccurrences().size());
+        assertEquals(2, repository.occurrenceSteps(open.get(0).id).size());
+    }
+
+    @Test public void partialHarvestClosesOccurrenceAndCarriesOpenStepNextDay() {
+        Occurrence yesterday = dailyRoutine("Teilernte", "Erster", "Zweiter");
+        OccurrenceStep finished = repository.occurrenceSteps(yesterday.id).get(0);
+        new ToggleStep(repository, clock).execute(finished.id);
+
+        assertEquals(10, new HarvestOccurrence(repository, clock).execute(yesterday.id).xp);
+        assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(yesterday.id).state);
+        assertEquals(10, repository.xp());
+
+        clock.set(TODAY.plusDays(1));
+        new MaterializeDueOccurrences(repository, clock, this::nextId).execute();
+        assertEquals(1, repository.openOccurrences().size());
+        assertEquals(Arrays.asList("Zweiter", "Erster"),
+                texts(repository.openOccurrences().get(0).id));
+    }
+
     @Test(timeout = 10_000L)
     public void dashboardRemainsDeterministicUnderManyTasksStepsCombosAndHistory() {
         final int taskCount = 240;
@@ -181,9 +218,16 @@ public final class CompletionInMemoryTest {
 
     private String nextId() { return "memory-id-" + ++id; }
 
+    private java.util.List<String> texts(String occurrenceId) {
+        java.util.List<String> result = new java.util.ArrayList<>();
+        for (OccurrenceStep step : repository.occurrenceSteps(occurrenceId)) result.add(step.text);
+        return result;
+    }
+
     private static final class MutableClock implements Clock {
         private LocalDate date;
         MutableClock(LocalDate date) { this.date = date; }
+        void set(LocalDate date) { this.date = date; }
         @Override public LocalDate today() { return date; }
         @Override public LocalTime time() { return LocalTime.NOON; }
     }

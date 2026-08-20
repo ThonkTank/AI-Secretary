@@ -26,6 +26,7 @@ import de.thonktank.autosecretary.presentation.UiTextProvider;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import java.time.LocalTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -60,6 +61,7 @@ public final class TaskViewModel extends ViewModel {
             new MutableLiveData<>(rewardQueue.snapshot());
     private final Object stateLock = new Object();
     private DashboardUiState current;
+    private LocalDate loadedDate;
 
     TaskViewModel(AppContainer container, SavedStateHandle savedState, ExecutorService worker) {
         this(container.tasks, container.dashboardPresenter, container.calendar,
@@ -125,6 +127,11 @@ public final class TaskViewModel extends ViewModel {
 
     void minuteChanged() {
         update(value -> value.withPalette(palette(value.themeMode)));
+        LocalDate today = clock.today();
+        synchronized (stateLock) {
+            if (loadedDate == null || loadedDate.equals(today)) return;
+        }
+        load();
     }
 
     void updateUpdateState(UpdateUiState updateState) {
@@ -389,8 +396,9 @@ public final class TaskViewModel extends ViewModel {
     }
 
     private Content loadContent() {
+        LocalDate today = clock.today();
         DashboardPresenter.Refresh refresh = dashboard.refreshWithChanges();
-        return new Content(refresh.dashboard, calendar.loadToday(), refresh.persistedChanges);
+        return new Content(refresh.dashboard, calendar.loadToday(), refresh.persistedChanges, today);
     }
 
     private boolean begin(UiCommand key, boolean loading) {
@@ -412,6 +420,7 @@ public final class TaskViewModel extends ViewModel {
             CalendarUiState calendarState = CalendarUiState.from(content.calendar);
             current = current.withContent(content.dashboard.withCalendar(content.calendar.events()),
                     calendarState).withRunningActions(actions);
+            loadedDate = content.date;
             state.postValue(current);
         }
         if (commandPersisted || content.persistedChanges)
@@ -501,10 +510,13 @@ public final class TaskViewModel extends ViewModel {
         final TodayUiModel dashboard;
         final CalendarResult calendar;
         final boolean persistedChanges;
-        Content(TodayUiModel dashboard, CalendarResult calendar, boolean persistedChanges) {
+        final LocalDate date;
+        Content(TodayUiModel dashboard, CalendarResult calendar, boolean persistedChanges,
+                LocalDate date) {
             this.dashboard = dashboard;
             this.calendar = calendar;
             this.persistedChanges = persistedChanges;
+            this.date = date;
         }
     }
 

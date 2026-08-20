@@ -66,11 +66,11 @@ public final class CompletionArchitectureTest {
         ScheduleProjector projector = new ScheduleProjector();
 
         Task afterCompletion = projector.project(task, null, latest);
-        assertEquals(TODAY.plusDays(1), afterCompletion.nextDueOn);
+        assertEquals(TODAY, afterCompletion.nextDueOn);
         assertFalse(afterCompletion.archived);
         Occurrence reopened = latest.reopen();
         Task afterUndo = projector.project(afterCompletion, reopened, null);
-        assertEquals(TODAY.minusDays(1), afterUndo.nextDueOn);
+        assertEquals(TODAY, afterUndo.nextDueOn);
     }
 
     private static Task task(Recurrence recurrence) {
