@@ -89,3 +89,8 @@ Phase 5 führt mit `TaskDefinitionRepository` und `TransactionalRepository` eine
 verbindlichen Fachport ein. Task-Erstellung, Bearbeitung, Löschung, Verschiebung und Detail-Lesen
 hängen nicht mehr vom gesamten Reward-/Occurrence-Vertrag ab. `TaskRepository` bleibt als
 Composition-Root-Kompatibilitätsaggregat erhalten, damit die Migration schrittweise bleibt.
+
+Phase 6 führt `DashboardRefreshReason` und `DashboardRefreshPolicy` ein. Initialer Start,
+Foreground-Rückkehr, externe Datenänderung, persistierende Commands und ein echter Datumswechsel
+sind dadurch getrennte Refresh-Ursachen; ein Minuten-Tick bei unverändertem Datum lädt nicht
+erneut aus der Datenbank.

@@ -60,6 +60,7 @@ public final class TaskViewModel extends ViewModel {
     private final MutableLiveData<RewardEffectQueue.Snapshot> rewardEffects =
             new MutableLiveData<>(rewardQueue.snapshot());
     private final Object stateLock = new Object();
+    private final DashboardRefreshPolicy refreshPolicy = new DashboardRefreshPolicy();
     private DashboardUiState current;
     private LocalDate loadedDate;
 
@@ -102,7 +103,7 @@ public final class TaskViewModel extends ViewModel {
         displayPreferencesSubscription = preferences.observeDisplayPreferences(
                 this::onDisplayPreferences);
         calendarSubscription = calendar.observeChanges(this::calendarChanged);
-        load();
+        refresh(DashboardRefreshReason.INITIAL);
         if (editor.open && editor.loading && editor.taskId != null) openEditor(editor.taskId);
     }
 
@@ -115,6 +116,14 @@ public final class TaskViewModel extends ViewModel {
     }
 
     void load() {
+        refresh(DashboardRefreshReason.PERSISTED_CHANGE);
+    }
+
+    void refresh(DashboardRefreshReason reason) {
+        LocalDate today = clock.today();
+        synchronized (stateLock) {
+            if (!refreshPolicy.requiresLoad(reason, loadedDate, today)) return;
+        }
         if (!begin(REFRESH, true)) return;
         worker.execute(() -> {
             try {
@@ -127,11 +136,7 @@ public final class TaskViewModel extends ViewModel {
 
     void minuteChanged() {
         update(value -> value.withPalette(palette(value.themeMode)));
-        LocalDate today = clock.today();
-        synchronized (stateLock) {
-            if (loadedDate == null || loadedDate.equals(today)) return;
-        }
-        load();
+        refresh(DashboardRefreshReason.DATE_CHANGED);
     }
 
     void updateUpdateState(UpdateUiState updateState) {
@@ -293,7 +298,7 @@ public final class TaskViewModel extends ViewModel {
         }
         update(value -> value.withPermission(permission));
         if (changed) {
-            load();
+            refresh(DashboardRefreshReason.EXTERNAL_DATA);
             invalidateWidgets();
         }
     }
@@ -446,7 +451,7 @@ public final class TaskViewModel extends ViewModel {
     }
 
     private void calendarChanged() {
-        load();
+        refresh(DashboardRefreshReason.EXTERNAL_DATA);
         invalidateWidgets();
     }
 

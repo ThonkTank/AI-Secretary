@@ -97,6 +97,11 @@ schreibender Materialisierung/Combo-Abrechnung, relevanten externen Kalenderänd
 Themeänderung sowie Widgetaktion oder Größenänderung. Draft, Navigation, Editoröffnung und
 reines Re-Rendering lösen kein Update aus.
 
+Der Dashboard-Refresh besitzt zusätzlich explizite Ursachen (`INITIAL`, `FOREGROUND`,
+`DATE_CHANGED`, `PERSISTED_CHANGE`, `EXTERNAL_DATA`). Die reine `DashboardRefreshPolicy` prüft
+den Datumscursor, während das ViewModel die eigentliche Materialisierung und Datenbankarbeit
+ausführt.
+
 `WidgetUpdateCoordinator` lädt pro Zyklus einmal, projiziert danach je Widgetgröße und isoliert
 Fehler einzelner Widget-IDs. Ein Widgetfehler macht einen bereits erfolgreichen Fachcommand
 nicht rückwirkend fehlerhaft.

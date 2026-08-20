@@ -58,7 +58,7 @@ public class MainActivity extends ComponentActivity {
     private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
                 syncCalendarPermission();
-                viewModel.load();
+                viewModel.refresh(DashboardRefreshReason.EXTERNAL_DATA);
             });
 
     private final ActivityResultLauncher<Intent> installPermission = registerForActivityResult(
@@ -119,7 +119,7 @@ public class MainActivity extends ComponentActivity {
         super.onResume();
         if (viewModel != null) {
             syncCalendarPermission();
-            viewModel.load();
+            viewModel.refresh(DashboardRefreshReason.FOREGROUND);
         }
         if (updates != null) updates.onResume();
     }
