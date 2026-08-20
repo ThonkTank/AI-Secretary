@@ -305,6 +305,37 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Replaces the empty completion-date sentinel with a real nullable column. */
+    public static final Migration MIGRATION_9_10 = new Migration(9, 10) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE _m_occurrences_nullable AS SELECT * FROM occurrences");
+            database.execSQL("DROP TABLE occurrences");
+            database.execSQL("CREATE TABLE occurrences (id TEXT NOT NULL, taskId TEXT NOT NULL, "
+                    + "scheduledOn TEXT NOT NULL, state TEXT NOT NULL, sortOrder INTEGER NOT NULL, "
+                    + "completedOn TEXT, slot TEXT NOT NULL, PRIMARY KEY(id), FOREIGN KEY(taskId) "
+                    + "REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO occurrences SELECT id,taskId,scheduledOn,state,sortOrder,"
+                    + "CASE WHEN completedOn = '' THEN NULL ELSE completedOn END,slot "
+                    + "FROM _m_occurrences_nullable");
+            database.execSQL("CREATE INDEX index_occurrences_taskId ON occurrences(taskId)");
+            database.execSQL("CREATE INDEX index_occurrences_state_completedOn "
+                    + "ON occurrences(state,completedOn)");
+            database.execSQL("CREATE UNIQUE INDEX index_occurrences_taskId_scheduledOn_slot "
+                    + "ON occurrences(taskId,scheduledOn,slot)");
+            database.execSQL("CREATE TRIGGER occurrence_one_open_insert "
+                    + "BEFORE INSERT ON occurrences WHEN NEW.state = 'OPEN' AND EXISTS "
+                    + "(SELECT 1 FROM occurrences WHERE taskId = NEW.taskId AND slot = NEW.slot "
+                    + "AND state = 'OPEN') BEGIN SELECT RAISE(ABORT, "
+                    + "'one open occurrence per task and slot'); END");
+            database.execSQL("CREATE TRIGGER occurrence_one_open_update "
+                    + "BEFORE UPDATE OF taskId,slot,state ON occurrences "
+                    + "WHEN NEW.state = 'OPEN' AND EXISTS (SELECT 1 FROM occurrences WHERE "
+                    + "taskId = NEW.taskId AND slot = NEW.slot AND state = 'OPEN' AND id <> NEW.id) "
+                    + "BEGIN SELECT RAISE(ABORT, 'one open occurrence per task and slot'); END");
+            database.execSQL("DROP TABLE _m_occurrences_nullable");
+        }
+    };
+
     private static List<Integer> parseLegacyRepetitions(String stepId, String stored) {
         List<Integer> values = new ArrayList<>();
         try {

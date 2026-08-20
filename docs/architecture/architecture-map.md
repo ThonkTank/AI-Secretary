@@ -74,6 +74,7 @@ Instrumentation-Verhalten.
   historischen Feldnamen.
 - Das Open-Occurrence-Limit ist logisch, aber nicht als partieller Datenbank-Constraint geschützt.
 - Carry-forward-Provenienz ist seit Phase 3 fachlich modelliert und seit Schema 9 persistent.
+- `Occurrence.completedOn` ist seit Schema 10 nullable statt über einen leeren String codiert.
 - Teilernte schließt eine Occurrence trotz offener Schritte; die UI filtert diese Sonderlage.
 - Room nutzt bei optionalen Datumswerten leere Strings als `null`-Sentinel.
 - `TaskRepository`, `TaskViewModel` und `MainActivity` bleiben breite Orchestratoren.

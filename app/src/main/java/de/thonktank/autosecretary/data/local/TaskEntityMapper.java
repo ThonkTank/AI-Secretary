@@ -57,7 +57,7 @@ public final class TaskEntityMapper {
     public OccurrenceEntity toEntity(Occurrence occurrence) {
         return new OccurrenceEntity(occurrence.id, occurrence.taskId.value,
                 occurrence.scheduledOn.toString(), occurrence.state.storageCode(),
-                occurrence.sortOrder, text(occurrence.completedOn), occurrence.slot.storageCode);
+                occurrence.sortOrder, nullableText(occurrence.completedOn), occurrence.slot.storageCode);
     }
 
     public TaskStepTemplate toDomain(TaskStepEntity entity) {
@@ -129,5 +129,9 @@ public final class TaskEntityMapper {
 
     private static String text(LocalDate value) {
         return value == null ? "" : value.toString();
+    }
+
+    private static String nullableText(LocalDate value) {
+        return value == null ? null : value.toString();
     }
 }

@@ -3,7 +3,7 @@
 Stand: 2026-08-20, Phase 8 abgeschlossen
 
 Der Dateiname bleibt für bestehende Links erhalten. Der Inhalt beschreibt den aktuellen Stand
-nach Datenbankschema 9 und der Testbereinigung in Phase 8.
+nach Datenbankschema 10 und der Testbereinigung in Phase 8.
 
 ## Testschichten
 
@@ -40,7 +40,7 @@ Events oder sichtbaren Viewzustand über die Test-Fixtures `DashboardEventRecord
 ## Migrationsmatrix
 
 `DatabaseMigrationRobolectricTest` deckt auf API 26 und 35 alle Ausgangsversionen 1 bis 7 bis
-Schema 9 ab. `ExportedRoomSchemaFixture` baut historische Tabellen, Indizes, Views und Room-
+Schema 10 ab. `ExportedRoomSchemaFixture` baut historische Tabellen, Indizes, Views und Room-
 Metadaten direkt aus `app/schemas/de.thonktank.autosecretary.AppDatabase/<version>.json` auf.
 
 Die Migration 7→8 besitzt zusätzliche Fälle für 0, 12, 999, 1200, fehlerhaften Legacytext,
@@ -50,8 +50,9 @@ exportierte v7-Schema wird lokal als Test-APK gebaut. Im CI-Lauf des Phase-7-Com
 erfolgreich; eine erneute lokale Ausführung benötigt weiterhin Emulator oder Gerät.
 
 Die Migration 8→9 prüft Carry-forward-Spalten, Defaultwerte und den Datenbanktrigger gegen
-doppelte offene Occurrences. Domaintests decken außerdem explizite Teilernte und Refresh-Ursachen
-ab; ein echter Prozessneustart- und DST-Lauf bleibt ein Geräte-/Instrumentation-Gate.
+doppelte offene Occurrences. Die Migration 9→10 prüft die nullable Abschlussdatumsspalte und
+rekonstruiert die Invarianten-Trigger. Domaintests decken außerdem explizite Teilernte und
+Refresh-Ursachen ab; ein echter Prozessneustart- und DST-Lauf bleibt ein Geräte-/Instrumentation-Gate.
 
 ## Golden-Vertrag
 
