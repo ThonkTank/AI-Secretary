@@ -31,6 +31,9 @@ sowie in der [Kritik des Today-/Fokus-Refactors](today-focus-architecture-critiq
 Sie sind keine ADRs, sondern dokumentieren Reibung, technische Schuld und priorisierte
 Folgeschritte.
 
+Die phasenweise Refactor-Baseline mit Zustandsbesitzern, Abhängigkeiten und überprüfbaren Gates
+steht in der [Architekturkarte](architecture-map.md).
+
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
 Die [aktuelle Today-/Fokus-Architektur](today-focus-architecture.md) dokumentiert Datenfluss,
