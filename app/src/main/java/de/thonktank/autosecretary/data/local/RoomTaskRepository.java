@@ -18,6 +18,7 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 
@@ -43,7 +44,7 @@ public final class RoomTaskRepository implements TaskRepository {
         this.mapper = mapper;
     }
 
-    @Override public <T> T inTransaction(TaskRepository.Transaction<T> operation) {
+    @Override public <T> T inTransaction(TransactionalRepository.Transaction<T> operation) {
         return database.runInTransaction((Callable<T>) operation::execute);
     }
 

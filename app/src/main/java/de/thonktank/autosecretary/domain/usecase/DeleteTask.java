@@ -2,11 +2,12 @@ package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
 
 public final class DeleteTask {
-    private final TaskRepository repository;
+    private final TaskDefinitionRepository repository;
 
-    public DeleteTask(TaskRepository repository) {
+    public DeleteTask(TaskDefinitionRepository repository) {
         this.repository = repository;
     }
 

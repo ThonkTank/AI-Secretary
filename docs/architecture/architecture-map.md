@@ -84,3 +84,8 @@ Phase 3 hat die fachliche Carry-forward-Provenienz im Domainmodell eingeführt u
 Room-Spalten, Trigger und die entsprechende Migrationsprüfung sind in Phase 4 ergänzt.
 
 Diese Liste wird in späteren Phasen aktualisiert und nicht stillschweigend als erledigt betrachtet.
+
+Phase 5 führt mit `TaskDefinitionRepository` und `TransactionalRepository` einen ersten
+verbindlichen Fachport ein. Task-Erstellung, Bearbeitung, Löschung, Verschiebung und Detail-Lesen
+hängen nicht mehr vom gesamten Reward-/Occurrence-Vertrag ab. `TaskRepository` bleibt als
+Composition-Root-Kompatibilitätsaggregat erhalten, damit die Migration schrittweise bleibt.

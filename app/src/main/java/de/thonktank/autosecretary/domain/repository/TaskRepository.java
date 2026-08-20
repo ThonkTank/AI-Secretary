@@ -12,22 +12,7 @@ import de.thonktank.autosecretary.domain.model.RewardBooking;
 import java.time.LocalDate;
 import java.util.List;
 
-public interface TaskRepository {
-    @FunctionalInterface interface Transaction<T> { T execute(); }
-
-    <T> T inTransaction(Transaction<T> operation);
-
-    void insertTask(Task task);
-    void updateTask(Task task);
-    Task findTask(TaskId id);
-    List<Task> activeTasks();
-    List<Task> allTasks();
-    void deleteTask(TaskId id);
-    void insertTemplates(List<TaskStepTemplate> steps);
-    void deleteTemplates(TaskId taskId);
-    void deleteTemplate(String id);
-    List<TaskStepTemplate> templates(TaskId taskId);
-    List<TaskStepTemplate> templatesFor(List<TaskId> taskIds);
+public interface TaskRepository extends TaskDefinitionRepository {
 
     void insertOccurrence(Occurrence occurrence);
     void updateOccurrence(Occurrence occurrence);

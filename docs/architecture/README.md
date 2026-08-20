@@ -55,6 +55,8 @@ belastbaren Verantwortungsgrenzen:
 - `presentation`: präsentationsfertige Fokus-Schritte und lokalisierte Textformatierung;
 - `editor`: reine, Android-unabhängige Zustandsübergänge des Aufgabeneditors;
 - `widget`: direkte Domain-zu-Widget-Projektion und größenabhängige UI-Modelle;
+- `domain.repository`: fokussierte Ports wie `TaskDefinitionRepository` neben dem zunächst
+  kompatiblen `TaskRepository`-Aggregat;
 - Root-Paket: Android-Views, Lifecycle-/Composition-Root und historisch noch nicht verschobene
   kleine Adapter.
 

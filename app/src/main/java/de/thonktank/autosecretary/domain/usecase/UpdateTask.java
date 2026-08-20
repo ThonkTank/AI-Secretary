@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,20 +25,20 @@ import java.util.Map;
 import java.util.Set;
 
 public final class UpdateTask {
-    private final TaskRepository repository;
+    private final TaskDefinitionRepository repository;
     private final TaskOrdering ordering;
     private final IdGenerator ids;
     private final Clock clock;
 
-    public UpdateTask(TaskRepository repository, TaskOrdering ordering) {
+    public UpdateTask(TaskDefinitionRepository repository, TaskOrdering ordering) {
         this(repository, ordering, new UuidGenerator(), null);
     }
 
-    public UpdateTask(TaskRepository repository, TaskOrdering ordering, IdGenerator ids) {
+    public UpdateTask(TaskDefinitionRepository repository, TaskOrdering ordering, IdGenerator ids) {
         this(repository, ordering, ids, null);
     }
 
-    public UpdateTask(TaskRepository repository, TaskOrdering ordering, IdGenerator ids,
+    public UpdateTask(TaskDefinitionRepository repository, TaskOrdering ordering, IdGenerator ids,
                       Clock clock) {
         this.repository = repository;
         this.ordering = ordering;

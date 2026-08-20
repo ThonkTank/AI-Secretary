@@ -14,17 +14,18 @@ import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class CreateTask {
-    private final TaskRepository repository;
+    private final TaskDefinitionRepository repository;
     private final Clock clock;
     private final IdGenerator ids;
     private final TaskOrdering ordering;
 
-    public CreateTask(TaskRepository repository, Clock clock, IdGenerator ids,
+    public CreateTask(TaskDefinitionRepository repository, Clock clock, IdGenerator ids,
                       TaskOrdering ordering) {
         this.repository = repository;
         this.clock = clock;
