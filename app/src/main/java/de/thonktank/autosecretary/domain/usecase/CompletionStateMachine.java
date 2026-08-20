@@ -27,8 +27,13 @@ public final class CompletionStateMachine {
         return occurrence.complete(completedOn);
     }
 
+    public Occurrence harvestWithMissedSteps(Occurrence occurrence, LocalDate completedOn) {
+        requireOpen(occurrence);
+        return occurrence.harvestedWithMissedSteps(completedOn);
+    }
+
     public Occurrence reopenOccurrence(Occurrence occurrence) {
-        if (occurrence == null || occurrence.state != OccurrenceState.COMPLETED)
+        if (occurrence == null || !occurrence.state.isHarvested())
             throw new IllegalStateException("Only a completed occurrence can be reopened");
         return occurrence.reopen();
     }

@@ -79,4 +79,8 @@ Instrumentation-Verhalten.
 - Upgrade-, Zeitzonen-, Prozessneustart- und parallele Materialisierungstests sind nicht vollständig
   durch lokale Instrumentation abgesichert.
 
+Phase 3 hat die fachliche Carry-forward-Provenienz im Domainmodell eingeführt und Teilernte in
+`HARVESTED_WITH_MISSED_STEPS` gegenüber vollständiger `COMPLETED`-Ernte unterschieden. Die
+Room-Spalten und die entsprechende Migrationsprüfung folgen in Phase 4.
+
 Diese Liste wird in späteren Phasen aktualisiert und nicht stillschweigend als erledigt betrachtet.

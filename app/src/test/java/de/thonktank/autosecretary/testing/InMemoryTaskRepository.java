@@ -134,14 +134,14 @@ public final class InMemoryTaskRepository implements TaskRepository {
     }
     @Override public synchronized Occurrence latestCompletedOccurrence(TaskId taskId) {
         return occurrences(taskId).stream()
-                .filter(value -> value.state == OccurrenceState.COMPLETED)
+                .filter(value -> value.state.isHarvested())
                 .max(Comparator.comparing((Occurrence value) -> value.completedOn)
                         .thenComparing(value -> value.scheduledOn)).orElse(null);
     }
     @Override public synchronized List<Occurrence> completedOccurrences(LocalDate date) {
         List<Occurrence> result = new ArrayList<>();
         for (Occurrence value : occurrences.values())
-            if (value.state == OccurrenceState.COMPLETED && date.equals(value.completedOn))
+            if (value.state.isHarvested() && date.equals(value.completedOn))
                 result.add(value);
         return result;
     }

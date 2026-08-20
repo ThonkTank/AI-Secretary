@@ -157,12 +157,19 @@ public final class RoomTaskRepository implements TaskRepository {
 
     @Override public Occurrence latestCompletedOccurrence(TaskId taskId) {
         OccurrenceEntity entity = dao.latestCompletedOccurrence(taskId.value,
-                OccurrenceState.COMPLETED.storageCode());
+                harvestedStates());
         return entity == null ? null : mapper.toDomain(entity);
     }
 
     @Override public List<Occurrence> completedOccurrences(LocalDate date) {
-        return mapOccurrences(dao.completedOccurrences(OccurrenceState.COMPLETED.storageCode(), date.toString()));
+        return mapOccurrences(dao.completedOccurrences(harvestedStates(), date.toString()));
+    }
+
+    private static List<String> harvestedStates() {
+        List<String> result = new ArrayList<>();
+        result.add(OccurrenceState.COMPLETED.storageCode());
+        result.add(OccurrenceState.HARVESTED_WITH_MISSED_STEPS.storageCode());
+        return result;
     }
 
     @Override public void insertOccurrenceSteps(List<OccurrenceStep> steps) {

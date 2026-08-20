@@ -30,7 +30,7 @@ public final class Occurrence {
         if (id == null || id.trim().isEmpty() || taskId == null || scheduledOn == null
                 || slot == null || state == null || kind == null)
             throw new IllegalArgumentException("Occurrence identity, task, date and state are required");
-        if (state == OccurrenceState.COMPLETED && completedOn == null)
+        if (state.isHarvested() && completedOn == null)
             throw new IllegalArgumentException("Completed occurrence needs a completion date");
         this.id = id;
         this.taskId = taskId;
@@ -45,6 +45,11 @@ public final class Occurrence {
     public Occurrence complete(LocalDate date) {
         return new Occurrence(id, taskId, scheduledOn, slot,
                 OccurrenceState.COMPLETED, sortOrder, date, kind);
+    }
+
+    public Occurrence harvestedWithMissedSteps(LocalDate date) {
+        return new Occurrence(id, taskId, scheduledOn, slot,
+                OccurrenceState.HARVESTED_WITH_MISSED_STEPS, sortOrder, date, kind);
     }
 
     public Occurrence missed() {

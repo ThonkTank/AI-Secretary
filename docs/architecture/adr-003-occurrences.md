@@ -13,6 +13,8 @@ nicht zu einem überwältigenden Rückstand anwachsen.
 - Pro aktiver Aufgabe und Tageszeit darf höchstens eine offene Occurrence existieren.
 - Beim Tageswechsel wird eine offene Occurrence als `MISSED` historisiert. Nur unerledigte
   Schritte werden in eine heutige Occurrence übernommen; ungeerntete Gefäß-XP verfallen.
+- Eine Teilernte wird als `HARVESTED_WITH_MISSED_STEPS` historisiert, wenn mindestens ein
+  Schritt offen bleibt. Eine vollständig geerntete Occurrence bleibt `COMPLETED`.
 - Verpasste Schritte werden am nächsten Kalendertag nachgeplant. Regulär fällige Schritte
   werden zusätzlich gemäß ihrem festen Rhythmus ergänzt und je Occurrence dedupliziert.
 - Tägliche, Intervall- und Wochentagswiederholungen werden vom geplanten Termin aus
@@ -42,6 +44,9 @@ modelliert.
 Abschluss, Teilernte, Undo und Condition-Close laufen über einen transaktionalen
 `CompletionService`. Eine Ernte darf vorhandene Gefäß-XP auch bei offenen Schritten
 gutgeschreiben; die offenen Schritte werden danach als verpasst nachgeplant.
+Übertragene Schritte tragen fachlich ihre Ursprungs-Occurrence und den Grund
+`UNFINISHED_STEP`; die persistente Speicherung dieser Provenienz ist Bestandteil der nächsten
+Schema-Migration.
 Ein reiner Zustandsautomat führt Occurrence-/Schrittübergänge aus, ein reiner
 `RewardCalculator` berechnet Rewards, und ein `ScheduleProjector` projiziert Archivstatus und
 Folgetermine aus einem typisierten Occurrence-Snapshot. Die Projektion verändert den

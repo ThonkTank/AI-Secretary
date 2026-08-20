@@ -22,6 +22,7 @@ final class OccurrenceCarryForward {
         List<Occurrence> values = new ArrayList<>(history);
         Map<TaskSlot, Occurrence> open = latestOpen(values);
         Map<TaskSlot, List<OccurrenceStep>> carry = new HashMap<>();
+        Map<TaskSlot, String> origins = new HashMap<>();
         boolean changed = false;
 
         for (Map.Entry<TaskSlot, Occurrence> entry : new ArrayList<>(open.entrySet())) {
@@ -30,8 +31,10 @@ final class OccurrenceCarryForward {
             List<OccurrenceStep> existingSteps = stepsByOccurrence.getOrDefault(occurrence.id,
                     Collections.emptyList());
             List<OccurrenceStep> unfinished = unfinished(existingSteps);
-            if (!unfinished.isEmpty() || existingSteps.isEmpty())
+            if (!unfinished.isEmpty() || existingSteps.isEmpty()) {
                 carry.put(entry.getKey(), unfinished);
+                origins.put(entry.getKey(), occurrence.id);
+            }
             repository.updateOccurrence(occurrence.missed());
             open.remove(entry.getKey());
             changed = true;
@@ -43,9 +46,12 @@ final class OccurrenceCarryForward {
             if (latest == null || !latest.scheduledOn.isBefore(today)) continue;
             List<OccurrenceStep> unfinished = unfinished(stepsByOccurrence.getOrDefault(
                     latest.id, Collections.emptyList()));
-            if (!unfinished.isEmpty()) carry.put(slot, unfinished);
+            if (!unfinished.isEmpty()) {
+                carry.put(slot, unfinished);
+                origins.put(slot, latest.id);
+            }
         }
-        return new Result(open, carry, changed);
+        return new Result(open, carry, origins, changed);
     }
 
     private static List<OccurrenceStep> unfinished(List<OccurrenceStep> steps) {
@@ -89,12 +95,14 @@ final class OccurrenceCarryForward {
     static final class Result {
         final Map<TaskSlot, Occurrence> open;
         final Map<TaskSlot, List<OccurrenceStep>> carry;
+        final Map<TaskSlot, String> originOccurrenceIds;
         final boolean changed;
 
         Result(Map<TaskSlot, Occurrence> open, Map<TaskSlot, List<OccurrenceStep>> carry,
-               boolean changed) {
+               Map<TaskSlot, String> originOccurrenceIds, boolean changed) {
             this.open = open;
             this.carry = carry;
+            this.originOccurrenceIds = originOccurrenceIds;
             this.changed = changed;
         }
     }

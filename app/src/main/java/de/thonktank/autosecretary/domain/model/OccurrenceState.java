@@ -5,6 +5,7 @@ import java.util.Locale;
 public enum OccurrenceState {
     OPEN,
     COMPLETED,
+    HARVESTED_WITH_MISSED_STEPS,
     MISSED;
 
     public String storageCode() {
@@ -18,5 +19,9 @@ public enum OccurrenceState {
         } catch (IllegalArgumentException error) {
             throw new IllegalArgumentException("Unsupported occurrence state: " + value, error);
         }
+    }
+
+    public boolean isHarvested() {
+        return this == COMPLETED || this == HARVESTED_WITH_MISSED_STEPS;
     }
 }

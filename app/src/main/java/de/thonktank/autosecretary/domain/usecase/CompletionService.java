@@ -182,6 +182,11 @@ public final class CompletionService {
         int collected = netXp(repository.rewardBookings(occurrence.id), RewardBooking.Target.VESSEL);
         boolean routine = !steps.isEmpty();
         if (routine && collected <= 0) return RewardReceipt.none();
+        boolean hasMissedSteps = false;
+        for (OccurrenceStep step : steps) if (!step.done) {
+            hasMissedSteps = true;
+            break;
+        }
         ComboProgress settled = combo(ComboProgress.taskOwner(task.id), task.id,
                 ComboProgress.Kind.TASK).settle(clock.today());
         RewardCalculator.HarvestReward calculated = rewards.harvest(task, occurrence, routine,
@@ -193,14 +198,16 @@ public final class CompletionService {
         repository.putCombo(change.progress);
         repository.setXp(repository.xp() + booking.xpDelta);
         repository.insertRewardBooking(booking);
-        repository.updateOccurrence(states.completeOccurrence(occurrence, clock.today()));
+        repository.updateOccurrence(hasMissedSteps
+                ? states.harvestWithMissedSteps(occurrence, clock.today())
+                : states.completeOccurrence(occurrence, clock.today()));
         projectSchedule(task.id);
         return RewardReceipt.of(transactionId, Collections.singletonList(booking),
                 RewardReceipt.Target.HEAD);
     }
 
     private RewardReceipt undoHarvest(Occurrence occurrence, Task task) {
-        if (occurrence == null || task == null || occurrence.state != OccurrenceState.COMPLETED
+        if (occurrence == null || task == null || !occurrence.state.isHarvested()
                 || !clock.today().equals(occurrence.completedOn)) return RewardReceipt.none();
         RewardBooking original = activeOriginal(occurrence.id, null, RewardBooking.Target.HEAD);
         if (original == null) return RewardReceipt.none();

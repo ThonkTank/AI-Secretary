@@ -14,6 +14,8 @@ public final class OccurrenceStep {
     public final RepetitionProgress repetitionProgress;
     public final String sourceTemplateId;
     public final String comboOwnerId;
+    public final String originOccurrenceId;
+    public final CarryForwardReason carryForwardReason;
 
     public OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done) {
         this(id, occurrenceId, position, text, done, StepAmount.none(), "",
@@ -36,6 +38,14 @@ public final class OccurrenceStep {
     public OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
                           StepAmount amount, String note, List<Integer> actualRepetitions,
                           String sourceTemplateId, String comboOwnerId) {
+        this(id, occurrenceId, position, text, done, amount, note, actualRepetitions,
+                sourceTemplateId, comboOwnerId, null, CarryForwardReason.NONE);
+    }
+
+    public OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
+                          StepAmount amount, String note, List<Integer> actualRepetitions,
+                          String sourceTemplateId, String comboOwnerId,
+                          String originOccurrenceId, CarryForwardReason carryForwardReason) {
         if (id == null || id.isEmpty() || occurrenceId == null || occurrenceId.isEmpty()
                 || text == null || text.trim().isEmpty() || actualRepetitions == null
                 || comboOwnerId == null)
@@ -55,13 +65,18 @@ public final class OccurrenceStep {
         this.sourceTemplateId = sourceTemplateId == null || sourceTemplateId.isEmpty()
                 ? null : sourceTemplateId;
         this.comboOwnerId = comboOwnerId.isEmpty() ? "step:" + id : comboOwnerId;
+        this.originOccurrenceId = originOccurrenceId == null || originOccurrenceId.isEmpty()
+                ? null : originOccurrenceId;
+        this.carryForwardReason = carryForwardReason == null
+                ? CarryForwardReason.NONE : carryForwardReason;
     }
 
     public OccurrenceStep complete() {
         if (done) return this;
         return repetitionProgress == null
                 ? new OccurrenceStep(id, occurrenceId, position, text, true,
-                        amount, note, Collections.emptyList(), sourceTemplateId, comboOwnerId)
+                        amount, note, Collections.emptyList(), sourceTemplateId, comboOwnerId,
+                        originOccurrenceId, carryForwardReason)
                 : withProgress(repetitionProgress.completeWithoutResults());
     }
 
@@ -69,7 +84,8 @@ public final class OccurrenceStep {
         if (!done) return this;
         return repetitionProgress == null
                 ? new OccurrenceStep(id, occurrenceId, position, text, false, amount,
-                        note, Collections.emptyList(), sourceTemplateId, comboOwnerId)
+                        note, Collections.emptyList(), sourceTemplateId, comboOwnerId,
+                        originOccurrenceId, carryForwardReason)
                 : withProgress(repetitionProgress.reopen());
     }
 
@@ -87,6 +103,14 @@ public final class OccurrenceStep {
 
     private OccurrenceStep withProgress(RepetitionProgress progress) {
         return new OccurrenceStep(id, occurrenceId, position, text, progress.completed(), amount,
-                note, progress.actualRepetitions, sourceTemplateId, comboOwnerId);
+                note, progress.actualRepetitions, sourceTemplateId, comboOwnerId,
+                originOccurrenceId, carryForwardReason);
+    }
+
+    public OccurrenceStep withCarryOrigin(String originId, CarryForwardReason reason) {
+        return new OccurrenceStep(id, occurrenceId, position, text, done, amount, note,
+                repetitionProgress == null ? Collections.emptyList()
+                        : repetitionProgress.actualRepetitions, sourceTemplateId, comboOwnerId,
+                originId, reason);
     }
 }

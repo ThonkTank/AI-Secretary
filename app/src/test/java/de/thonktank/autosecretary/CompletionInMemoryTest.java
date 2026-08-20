@@ -161,7 +161,8 @@ public final class CompletionInMemoryTest {
         new ToggleStep(repository, clock).execute(finished.id);
 
         assertEquals(10, new HarvestOccurrence(repository, clock).execute(yesterday.id).xp);
-        assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(yesterday.id).state);
+        assertEquals(OccurrenceState.HARVESTED_WITH_MISSED_STEPS,
+                repository.findOccurrence(yesterday.id).state);
         assertEquals(10, repository.xp());
 
         clock.set(TODAY.plusDays(1));
@@ -169,6 +170,11 @@ public final class CompletionInMemoryTest {
         assertEquals(1, repository.openOccurrences().size());
         assertEquals(Arrays.asList("Zweiter", "Erster"),
                 texts(repository.openOccurrences().get(0).id));
+        OccurrenceStep carried = repository.occurrenceSteps(
+                repository.openOccurrences().get(0).id).get(0);
+        assertEquals(yesterday.id, carried.originOccurrenceId);
+        assertEquals(de.thonktank.autosecretary.domain.model.CarryForwardReason.UNFINISHED_STEP,
+                carried.carryForwardReason);
     }
 
     @Test(timeout = 10_000L)

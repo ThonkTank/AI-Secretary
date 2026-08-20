@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.domain.model.CarryForwardReason;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
@@ -51,7 +52,8 @@ final class OccurrenceAssembler {
             Set<String> sourceIds = new HashSet<>();
             List<OccurrenceStep> carried = carry.carry.get(slot);
             if (carried != null) for (OccurrenceStep step : carried) {
-                steps.add(copyStep(step, ids.nextId(), "pending:" + task.id.value));
+                steps.add(copyStep(step, ids.nextId(), "pending:" + task.id.value,
+                        carry.originOccurrenceIds.get(slot)));
                 if (step.sourceTemplateId != null) sourceIds.add(step.sourceTemplateId);
             }
             List<TaskStepTemplate> fresh = planned.stepsBySlot.get(slot);
@@ -77,7 +79,8 @@ final class OccurrenceAssembler {
                             step.done, step.amount, step.note,
                             step.repetitionProgress == null ? Collections.emptyList()
                                     : step.repetitionProgress.actualRepetitions,
-                            step.sourceTemplateId, step.comboOwnerId));
+                            step.sourceTemplateId, step.comboOwnerId,
+                            step.originOccurrenceId, step.carryForwardReason));
                 }
                 repository.insertOccurrenceSteps(positioned);
             }
@@ -86,12 +89,14 @@ final class OccurrenceAssembler {
         return changed;
     }
 
-    private OccurrenceStep copyStep(OccurrenceStep step, String id, String comboOwner) {
+    private OccurrenceStep copyStep(OccurrenceStep step, String id, String comboOwner,
+                                    String originOccurrenceId) {
         return new OccurrenceStep(id, "pending", 0, step.text, false, step.amount, step.note,
                 step.repetitionProgress == null ? Collections.emptyList()
                         : step.repetitionProgress.actualRepetitions,
                 step.sourceTemplateId,
-                step.comboOwnerId == null ? comboOwner : step.comboOwnerId);
+                step.comboOwnerId == null ? comboOwner : step.comboOwnerId,
+                originOccurrenceId, CarryForwardReason.UNFINISHED_STEP);
     }
 
     private OccurrenceStep snapshot(TaskStepTemplate template, String id, String comboOwner) {

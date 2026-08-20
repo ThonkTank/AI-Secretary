@@ -36,7 +36,12 @@ public interface TaskDao {
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state "
             + "ORDER BY completedOn DESC, scheduledOn DESC LIMIT 1")
     OccurrenceEntity latestCompletedOccurrence(String taskId, String state);
+    @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state IN (:states) "
+            + "ORDER BY completedOn DESC, scheduledOn DESC LIMIT 1")
+    OccurrenceEntity latestCompletedOccurrence(String taskId, List<String> states);
     @Query("SELECT * FROM occurrences WHERE state = :state AND completedOn = :date") List<OccurrenceEntity> completedOccurrences(String state, String date);
+    @Query("SELECT * FROM occurrences WHERE state IN (:states) AND completedOn = :date")
+    List<OccurrenceEntity> completedOccurrences(List<String> states, String date);
     @Insert(onConflict = OnConflictStrategy.REPLACE) void insertOccurrenceSteps(List<OccurrenceStepEntity> steps);
     @Query("SELECT * FROM occurrence_steps WHERE occurrenceId = :occurrenceId ORDER BY position") List<OccurrenceStepEntity> occurrenceSteps(String occurrenceId);
     @Query("SELECT * FROM occurrence_steps WHERE occurrenceId IN (:occurrenceIds) ORDER BY occurrenceId, position") List<OccurrenceStepEntity> occurrenceStepsFor(List<String> occurrenceIds);
