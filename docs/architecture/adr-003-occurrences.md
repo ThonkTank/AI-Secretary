@@ -25,6 +25,9 @@ nicht zu einem überwältigenden Rückstand anwachsen.
 - Abgeschlossene Occurrences bleiben als Historie bestehen.
 - Das Dashboard zeigt pro Task und Tageszeit höchstens einen offenen Eintrag. Eine offene
   Occurrence hat Vorrang vor einer heute abgeschlossenen Occurrence desselben Tasks.
+- Undo einer historischen Ernte wird abgelehnt, wenn für denselben Task und Slot bereits eine
+  andere offene Occurrence existiert; dadurch wird die Ein-Offene-Occurrence-Invariante nicht
+  durch einen Rücksprung verletzt.
 - Ein einmaliger Task wird nach Abschluss archiviert.
 - Ein fortlaufendes Vorhaben bleibt offen, bis seine ausdrücklich benannte Bedingung erfüllt
   wird. Der Abschluss der Bedingung archiviert das Vorhaben und vergibt höchstens einmal XP.

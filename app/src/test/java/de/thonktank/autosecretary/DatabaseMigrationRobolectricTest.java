@@ -1,10 +1,12 @@
 package de.thonktank.autosecretary;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteConstraintException;
 
 import androidx.room.Room;
 import androidx.sqlite.db.SupportSQLiteDatabase;
@@ -56,7 +58,8 @@ public final class DatabaseMigrationRobolectricTest {
                 .addMigrations(DatabaseMigrations.MIGRATION_1_2,
                         DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4,
                         DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6,
-                        DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8)
+                        DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8,
+                        DatabaseMigrations.MIGRATION_8_9)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -88,7 +91,7 @@ public final class DatabaseMigrationRobolectricTest {
                 .addMigrations(DatabaseMigrations.MIGRATION_2_3,
                         DatabaseMigrations.MIGRATION_3_4, DatabaseMigrations.MIGRATION_4_5,
                         DatabaseMigrations.MIGRATION_5_6, DatabaseMigrations.MIGRATION_6_7,
-                        DatabaseMigrations.MIGRATION_7_8)
+                        DatabaseMigrations.MIGRATION_7_8, DatabaseMigrations.MIGRATION_8_9)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -134,7 +137,8 @@ public final class DatabaseMigrationRobolectricTest {
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_3_4,
                         DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6,
-                        DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8)
+                        DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8,
+                        DatabaseMigrations.MIGRATION_8_9)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT recurrence,ongoing,note,archived FROM tasks "
@@ -185,7 +189,8 @@ public final class DatabaseMigrationRobolectricTest {
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_5_6,
-                        DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8)
+                        DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8,
+                        DatabaseMigrations.MIGRATION_8_9)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT sourceTemplateId,comboOwnerId "
@@ -233,7 +238,7 @@ public final class DatabaseMigrationRobolectricTest {
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_4_5,
                         DatabaseMigrations.MIGRATION_5_6, DatabaseMigrations.MIGRATION_6_7,
-                        DatabaseMigrations.MIGRATION_7_8)
+                        DatabaseMigrations.MIGRATION_7_8, DatabaseMigrations.MIGRATION_8_9)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
@@ -259,13 +264,27 @@ public final class DatabaseMigrationRobolectricTest {
             assertEquals(10, cursor.getInt(1)); assertEquals(0, cursor.getInt(2));
         }
         assertLegacyColumnsRemoved(database);
+        try (Cursor cursor = database.query("SELECT originOccurrenceId,carryForwardReason "
+                + "FROM occurrence_steps WHERE id='open-step'")) {
+            assertTrue(cursor.moveToFirst());
+            assertTrue(cursor.isNull(0));
+            assertEquals("NONE", cursor.getString(1));
+        }
+        try {
+            database.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,sortOrder,"
+                    + "completedOn,slot) VALUES ('duplicate-open','morning','2026-08-19',"
+                    + "'OPEN',3,'','MORNING')");
+            fail("The database must reject a second open occurrence for one task and slot");
+        } catch (SQLiteConstraintException expected) {
+            // The migration trigger enforces the domain invariant at the persistence boundary.
+        }
         RewardReceipt undo = new UndoOccurrence(new RoomTaskRepository(migrated), new Clock() {
             @Override public LocalDate today() { return LocalDate.of(2026, 8, 17); }
             @Override public LocalTime time() { return LocalTime.NOON; }
         }).execute("done-v4");
-        assertEquals(-10, undo.xp);
-        assertEquals(127, new RoomTaskRepository(migrated).xp());
-        assertEquals(OccurrenceState.OPEN,
+        assertEquals(0, undo.xp);
+        assertEquals(137, new RoomTaskRepository(migrated).xp());
+        assertEquals(OccurrenceState.COMPLETED,
                 new RoomTaskRepository(migrated).findOccurrence("done-v4").state);
         migrated.close();
     }
@@ -295,7 +314,7 @@ public final class DatabaseMigrationRobolectricTest {
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_6_7,
-                        DatabaseMigrations.MIGRATION_7_8)
+                        DatabaseMigrations.MIGRATION_7_8, DatabaseMigrations.MIGRATION_8_9)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT target,xpDelta,comboPointDelta "
@@ -321,7 +340,8 @@ public final class DatabaseMigrationRobolectricTest {
         createVersionSevenRepetitionDatabase();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.MIGRATION_7_8)
+                .addMigrations(DatabaseMigrations.MIGRATION_7_8,
+                        DatabaseMigrations.MIGRATION_8_9)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT slotIndex,actualRepetitions "

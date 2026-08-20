@@ -286,6 +286,25 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Persists carry-forward provenance and enforces one open occurrence per task and slot. */
+    public static final Migration MIGRATION_8_9 = new Migration(8, 9) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN originOccurrenceId TEXT");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN carryForwardReason TEXT "
+                    + "NOT NULL DEFAULT 'NONE'");
+            database.execSQL("CREATE TRIGGER IF NOT EXISTS occurrence_one_open_insert "
+                    + "BEFORE INSERT ON occurrences WHEN NEW.state = 'OPEN' AND EXISTS "
+                    + "(SELECT 1 FROM occurrences WHERE taskId = NEW.taskId AND slot = NEW.slot "
+                    + "AND state = 'OPEN') BEGIN SELECT RAISE(ABORT, "
+                    + "'one open occurrence per task and slot'); END");
+            database.execSQL("CREATE TRIGGER IF NOT EXISTS occurrence_one_open_update "
+                    + "BEFORE UPDATE OF taskId,slot,state ON occurrences "
+                    + "WHEN NEW.state = 'OPEN' AND EXISTS (SELECT 1 FROM occurrences WHERE "
+                    + "taskId = NEW.taskId AND slot = NEW.slot AND state = 'OPEN' AND id <> NEW.id) "
+                    + "BEGIN SELECT RAISE(ABORT, 'one open occurrence per task and slot'); END");
+        }
+    };
+
     private static List<Integer> parseLegacyRepetitions(String stepId, String stored) {
         List<Integer> values = new ArrayList<>();
         try {

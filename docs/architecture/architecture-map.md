@@ -71,7 +71,7 @@ Instrumentation-Verhalten.
 - `MaterializeDueOccurrences` vereinigt Planung, Rollover, Carry-forward und Reconciliation.
 - `Task.nextDueOn` vermischt Planungscursor und historische Schedulingsemantik.
 - Das Open-Occurrence-Limit ist logisch, aber nicht als partieller Datenbank-Constraint geschützt.
-- Carry-forward besitzt keine explizite Occurrence-Abstammung oder Carry-Reason.
+- Carry-forward-Provenienz ist seit Phase 3 fachlich modelliert und seit Schema 9 persistent.
 - Teilernte schließt eine Occurrence trotz offener Schritte; die UI filtert diese Sonderlage.
 - Room nutzt bei optionalen Datumswerten leere Strings als `null`-Sentinel.
 - `TaskRepository`, `TaskViewModel` und `MainActivity` bleiben breite Orchestratoren.
@@ -81,6 +81,6 @@ Instrumentation-Verhalten.
 
 Phase 3 hat die fachliche Carry-forward-Provenienz im Domainmodell eingeführt und Teilernte in
 `HARVESTED_WITH_MISSED_STEPS` gegenüber vollständiger `COMPLETED`-Ernte unterschieden. Die
-Room-Spalten und die entsprechende Migrationsprüfung folgen in Phase 4.
+Room-Spalten, Trigger und die entsprechende Migrationsprüfung sind in Phase 4 ergänzt.
 
 Diese Liste wird in späteren Phasen aktualisiert und nicht stillschweigend als erledigt betrachtet.

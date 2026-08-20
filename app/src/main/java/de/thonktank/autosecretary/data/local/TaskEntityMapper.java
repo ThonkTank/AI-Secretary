@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.domain.model.CarryForwardReason;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
@@ -79,7 +80,9 @@ public final class TaskEntityMapper {
                         entity.plannedSets, entity.plannedReps,
                         entity.plannedDurationSeconds), entity.note,
                 repetitions,
-                entity.sourceTemplateId, entity.comboOwnerId);
+                entity.sourceTemplateId, entity.comboOwnerId,
+                entity.originOccurrenceId,
+                CarryForwardReason.fromStorage(entity.carryForwardReason));
     }
 
     public OccurrenceStepEntity toEntity(OccurrenceStep step) {
@@ -87,7 +90,8 @@ public final class TaskEntityMapper {
         return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
                 step.done, amount.kind.storageCode(), amount.sets, amount.repetitions,
                 amount.durationSeconds, step.note, "", step.sourceTemplateId,
-                step.comboOwnerId);
+                step.comboOwnerId, step.originOccurrenceId,
+                step.carryForwardReason.storageCode());
     }
 
     private static StoredAmount stored(StepAmount amount) {

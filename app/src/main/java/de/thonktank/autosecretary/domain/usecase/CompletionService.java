@@ -209,6 +209,8 @@ public final class CompletionService {
     private RewardReceipt undoHarvest(Occurrence occurrence, Task task) {
         if (occurrence == null || task == null || !occurrence.state.isHarvested()
                 || !clock.today().equals(occurrence.completedOn)) return RewardReceipt.none();
+        Occurrence otherOpen = repository.earliestOpenOccurrence(task.id);
+        if (otherOpen != null && !otherOpen.id.equals(occurrence.id)) return RewardReceipt.none();
         RewardBooking original = activeOriginal(occurrence.id, null, RewardBooking.Target.HEAD);
         if (original == null) return RewardReceipt.none();
         String transactionId = newId();

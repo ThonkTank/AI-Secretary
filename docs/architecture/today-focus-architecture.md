@@ -85,7 +85,9 @@ sicheren Übergang vorhanden und wird produktiv leer geschrieben.
 
 Die Migration 7→8 übernimmt gültige Legacywerte einschließlich 0 und Werten über 999. Bei
 fehlerhaftem Text wird keine partielle Liste erzeugt; die Step-ID wird geloggt und der Rohtext
-bleibt erhalten. Alle exportierten Schemas 1 bis 8 sind Teil des Migrationsvertrags.
+bleibt erhalten. Alle exportierten Schemas 1 bis 9 sind Teil des Migrationsvertrags. Schema 9
+speichert Carry-forward-Ursprung und -Grund an jedem Occurrence-Schritt und installiert Trigger
+für die Ein-Offene-Occurrence-Invariante.
 
 ## Widgetaktualisierung
 
