@@ -28,6 +28,7 @@ public final class TaskSnapshot {
     public final boolean overdue;
     public final long displayOrder;
     public final int comboStage;
+    public final double rewardMultiplier;
     public final int claimableXp;
     public final int collectedXp;
     public final int awardedXp;
@@ -42,7 +43,8 @@ public final class TaskSnapshot {
                  boolean overdue, int comboStage, long displayOrder) {
         this(taskId, occurrenceId, title, slot, softTime, nextAction, recurrence, steps,
                 remainingSteps, terminalCondition, ongoing, done, overdue, comboStage,
-                displayOrder, 10, 0, done ? 10 : 0, false);
+                displayOrder, legacyResult(steps, comboStage), legacyBase(steps),
+                done ? legacyResult(steps, comboStage) : 0, false);
     }
 
     public TaskSnapshot(@NonNull String taskId, @NonNull String occurrenceId,
@@ -70,6 +72,7 @@ public final class TaskSnapshot {
         this.ongoing = ongoing; this.done = done; this.overdue = overdue;
         this.displayOrder = displayOrder;
         this.comboStage = Math.max(0, comboStage);
+        this.rewardMultiplier = 1d + this.comboStage * .5d;
         this.claimableXp = Math.max(0, claimableXp);
         this.collectedXp = Math.max(0, collectedXp);
         this.awardedXp = Math.max(0, awardedXp);
@@ -78,6 +81,18 @@ public final class TaskSnapshot {
     }
 
     public boolean routine() { return recurrence != Recurrence.ONCE; }
+
+    private static int legacyBase(List<FocusStepUiModel> steps) {
+        int result = 0;
+        for (FocusStepUiModel step : steps) result += step.earnedXp;
+        return result;
+    }
+
+    private static int legacyResult(List<FocusStepUiModel> steps, int comboStage) {
+        if (steps.isEmpty()) return 10;
+        return (int) Math.round(legacyBase(steps) * (1d + Math.max(0, comboStage) * .5d));
+    }
+
     public String actionLabel(android.content.Context context) {
         if (terminalCondition) return context.getString(R.string.condition_met);
         if (steps.isEmpty()) return context.getString(R.string.action_complete);

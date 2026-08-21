@@ -6,7 +6,8 @@ import java.util.Objects;
 public final class UiCommand {
     public enum Kind { REFRESH, CREATE, UPDATE, MOVE, DELETE, LOAD_EDITOR, COMPLETE,
         COMPLETE_REMAINING, HARVEST, UNDO, TOGGLE_STEP, RECORD_REPETITION_RESULT,
-        CORRECT_REPETITION_RESULT, DEFER, CLOSE, ORGANIZE }
+        CORRECT_REPETITION_RESULT, ADVANCE_TODAY_STEP, MOVE_TODAY_STEP,
+        DEFER, CLOSE, ORGANIZE }
     public final Kind kind;
     public final String id;
 
@@ -23,6 +24,7 @@ public final class UiCommand {
             case COMPLETE_REMAINING: anchor = RewardAnchorKey.Kind.REST; break;
             case CLOSE: anchor = RewardAnchorKey.Kind.TASK; break;
             case TOGGLE_STEP: case RECORD_REPETITION_RESULT: case CORRECT_REPETITION_RESULT:
+            case ADVANCE_TODAY_STEP:
                 anchor = RewardAnchorKey.Kind.STEP; break;
             default: anchor = RewardAnchorKey.Kind.OCCURRENCE;
         }

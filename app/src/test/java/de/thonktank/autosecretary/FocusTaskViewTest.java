@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -107,7 +108,7 @@ public final class FocusTaskViewTest {
         assertEquals("duration", events.last(DashboardEvent.ToggleStep.class).stepId);
     }
 
-    @Test public void reboundFutureRowCannotRetainActiveActionsOrFocus() {
+    @Test public void reboundFutureRowAdvancesWithItsPlannedValueWithoutShowingEditor() {
         Context context = ApplicationProvider.getApplicationContext();
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
         FocusStepUiModel active = FocusStepUiModel.of("active", "Aktiv", "3 × 12", "",
@@ -124,12 +125,12 @@ public final class FocusTaskViewTest {
         assertTrue(row.rewardAnchor().isFocusable());
         row.bind(future, false, palette, RepetitionInputState.idle(), events);
 
-        assertFalse(row.rewardAnchor().isClickable());
-        assertFalse(row.rewardAnchor().isFocusable());
-        assertFalse(row.rewardAnchor().performClick());
+        assertTrue(row.rewardAnchor().isClickable());
+        assertTrue(row.rewardAnchor().isFocusable());
+        assertTrue(row.rewardAnchor().performClick());
         View barsScroll = (View) row.findViewById(R.id.set_bars).getParent();
         assertEquals(View.GONE, ((View) barsScroll.getParent()).getVisibility());
-        assertEquals(0, events.events().size());
+        assertEquals("future", events.last(DashboardEvent.AdvanceTodayStep.class).stepId);
     }
 
     @Test public void configuredLimitCountsFollowingStepsAndReportsTheRest() {
@@ -159,7 +160,7 @@ public final class FocusTaskViewTest {
         assertFalse(firstText(view, "3 weitere").hasOnClickListeners());
         List<DewDotView> dews = visibleDews(view);
         assertTrue(dews.get(0).isClickable());
-        assertFalse(dews.get(1).getContentDescription() + " / " + dews.size(),
+        assertTrue(dews.get(1).getContentDescription() + " / " + dews.size(),
                 dews.get(1).isClickable());
 
         view.bind(task, false, false,
@@ -170,6 +171,29 @@ public final class FocusTaskViewTest {
         assertTrue(texts.contains("Vier"));
         assertTrue(texts.contains("1 weitere"));
         assertTrue(!texts.contains("Fünf"));
+    }
+
+    @Test public void accessibilityActionsCanMoveTheCurrentStepBehindTheNextOne() {
+        Context context = ApplicationProvider.getApplicationContext();
+        List<FocusStepUiModel> models = Arrays.asList(
+                FocusStepUiModel.of("first", "Eins", false),
+                FocusStepUiModel.of("second", "Zwei", false));
+        TaskSnapshot task = new TaskSnapshot("routine", "today", "Routine",
+                TaskSlot.MORNING, "", "Eins", Recurrence.DAILY, models, 2,
+                false, false, false, false, 0, 1L);
+        DashboardEventRecorder events = new DashboardEventRecorder();
+        FocusTaskView view = new FocusTaskView(context);
+        view.bind(task, false, false,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.AUTO,
+                RepetitionInputState.idle(), events);
+
+        FocusStepListLayout list = findFirst(view, FocusStepListLayout.class);
+        View firstBody = list.visibleRows().get(0).stepBody();
+        assertTrue(firstBody.performAccessibilityAction(
+                R.id.action_today_step_down, null));
+        DashboardEvent.MoveTodayStep move = events.last(DashboardEvent.MoveTodayStep.class);
+        assertEquals("first", move.stepId);
+        assertNull(move.beforeStepId);
     }
 
     @Test public void viewportMeasurementSafelyReducesAutomaticAndNumericLimits() {
@@ -220,6 +244,18 @@ public final class FocusTaskViewTest {
         view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
         view.layout(0, 0, width, height);
+    }
+
+    private static <T extends View> T findFirst(View root, Class<T> type) {
+        if (type.isInstance(root)) return type.cast(root);
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                T match = findFirst(group.getChildAt(index), type);
+                if (match != null) return match;
+            }
+        }
+        return null;
     }
 
     private static List<String> visibleTexts(View root) {

@@ -70,6 +70,30 @@ public final class CompletionService {
         });
     }
 
+    public RewardReceipt advanceStepWithPlannedResult(String stepId) {
+        return repository.inTransaction(() -> {
+            OccurrenceStep step = repository.findOccurrenceStep(stepId);
+            if (step == null || step.done) return RewardReceipt.none();
+            Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
+            if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
+                return RewardReceipt.none();
+            if (step.repetitionProgress == null)
+                return completeStep(occurrence, step, newId());
+
+            int planned;
+            if (step.amount instanceof StepAmount.SetsReps)
+                planned = ((StepAmount.SetsReps) step.amount).repetitions;
+            else if (step.amount instanceof StepAmount.Repetitions)
+                planned = ((StepAmount.Repetitions) step.amount).repetitions;
+            else return RewardReceipt.none();
+            OccurrenceStep changed = step.recordRepetitionResult(planned);
+            repository.updateOccurrenceStep(changed);
+            if (changed.done) return completeStep(occurrence, changed, newId());
+            TodayStepOrder.moveToFirstOpen(repository, changed.id);
+            return RewardReceipt.none();
+        });
+    }
+
     public RewardReceipt completeRemainingSteps(String occurrenceId) {
         return repository.inTransaction(() -> {
             String transactionId = newId();

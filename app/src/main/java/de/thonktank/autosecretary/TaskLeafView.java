@@ -32,7 +32,9 @@ public final class TaskLeafView extends FrameLayout {
 
     public TaskLeafView(Context context) {
         super(context); style = new UiStyle(context); setClipChildren(false);
-        grain = new WoodGrainView(context); addView(grain, new LayoutParams(-1, -1));
+        grain = new WoodGrainView(context);
+        grain.setLeafClip(56, 8, 56, 8);
+        addView(grain, new LayoutParams(-1, -1));
         content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(style.dp(24), style.dp(18), style.dp(15), style.dp(18));
         addView(content, new LayoutParams(-1, -2));

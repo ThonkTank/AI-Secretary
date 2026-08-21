@@ -75,17 +75,16 @@ public final class DashboardUiMapper {
         boolean overdue = !item.done && due != null && due.isBefore(today);
         ComboProgress taskCombo = dashboard.combos.get(ComboProgress.taskOwner(task.id));
         int taskStage = taskCombo == null ? 0 : taskCombo.level();
-        int collected = 0, projected = 0;
+        int collected = 0;
         for (FocusStepUiModel step : steps) {
             collected += step.earnedXp;
-            projected += step.done ? step.earnedXp : step.claimableXp;
         }
         int claimable;
         if (steps.isEmpty()) {
             long late = item.occurrence == null ? 0
                     : RewardPolicy.lateDays(task, item.occurrence, today);
             claimable = RewardPolicy.singleTaskXp(late, taskCombo);
-        } else claimable = RewardPolicy.routineXp(projected, taskCombo);
+        } else claimable = RewardPolicy.routineXp(collected, taskCombo);
         TaskSlot displaySlot = item.displaySlot;
         return new TaskSnapshot(task.id.value, item.occurrence == null ? "" : item.occurrence.id,
                 task.title, displaySlot, softTime(displaySlot, task.ongoing), next, task.recurrence,

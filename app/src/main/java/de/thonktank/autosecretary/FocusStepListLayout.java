@@ -3,8 +3,13 @@ package de.thonktank.autosecretary;
 import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
 
 import android.content.Context;
+import android.content.ClipData;
+import android.os.Bundle;
+import android.view.DragEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -30,6 +35,14 @@ final class FocusStepListLayout extends ViewGroup {
     private DayPalette palette;
     private int maximumFollowing;
     private int visibleFollowing;
+    private boolean reordering;
+    private boolean dropped;
+    private String draggingStepId;
+    private FocusCardUiModel boundModel;
+    private DashboardEventSink boundEvents;
+    private ReorderModeListener reorderModeListener = active -> { };
+
+    interface ReorderModeListener { void onReorderModeChanged(boolean active); }
 
     FocusStepListLayout(Context context) {
         super(context);
@@ -41,9 +54,16 @@ final class FocusStepListLayout extends ViewGroup {
         moreParams.leftMargin = style.dimen(R.dimen.focus_step_more_start);
         moreParams.topMargin = style.dimen(R.dimen.focus_step_more_gap);
         addView(moreStatus, moreParams);
+        setOnDragListener(this::onStepDrag);
+    }
+
+    void setReorderModeListener(ReorderModeListener listener) {
+        reorderModeListener = listener == null ? active -> { } : listener;
     }
 
     void bind(FocusCardUiModel model, DashboardEventSink events) {
+        boundModel = model;
+        boundEvents = events;
         palette = model.palette;
         openSteps.clear();
         int doneCount = 0;
@@ -70,6 +90,8 @@ final class FocusStepListLayout extends ViewGroup {
             }
             FocusStepUiModel step = openSteps.get(index);
             row.bind(step, index == 0, model.palette, model.repetitionInput, events);
+            row.setOnStepLongClickListener(view -> beginReorder(row, step.id));
+            configureAccessibility(row, step, index);
         }
         int availableFollowing = Math.max(0, openSteps.size() - 1);
         maximumFollowing = model.stepLimit.automatic() ? availableFollowing
@@ -106,8 +128,9 @@ final class FocusStepListLayout extends ViewGroup {
         int moreExtent = extent(moreStatus);
         int available = MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED
                 ? Integer.MAX_VALUE : MeasureSpec.getSize(heightMeasureSpec);
-        int chosen = FocusStepLayoutPolicy.visibleFollowing(available, required,
-                followingHeights, moreExtent, maximumFollowing);
+        int chosen = reordering ? followingHeights.length
+                : FocusStepLayoutPolicy.visibleFollowing(available, required,
+                        followingHeights, moreExtent, maximumFollowing);
         applyVisibleFollowing(chosen);
         if (moreStatus.getVisibility() == VISIBLE) moreStatus.measure(exactChildWidth,
                 unlimitedHeight);
@@ -157,6 +180,7 @@ final class FocusStepListLayout extends ViewGroup {
     }
 
     private void setMoreText(int hidden) {
+        if (reordering) hidden = 0;
         moreStatus.setText(hidden == 0 ? "" : getResources().getQuantityString(
                 R.plurals.focus_steps_more, hidden, hidden));
         if (palette != null) {
@@ -167,6 +191,156 @@ final class FocusStepListLayout extends ViewGroup {
     }
 
     List<FocusStepUiModel> openSteps() { return openSteps; }
+
+    boolean reordering() { return reordering; }
+
+    private boolean beginReorder(FocusStepRowView row, String stepId) {
+        if (openSteps.size() < 2) return false;
+        reordering = true;
+        dropped = false;
+        draggingStepId = stepId;
+        applyVisibleFollowing(Math.max(0, openSteps.size() - 1));
+        reorderModeListener.onReorderModeChanged(true);
+        requestLayout();
+        ClipData data = ClipData.newPlainText("today-step", stepId);
+        boolean started = row.startDragAndDrop(data, new View.DragShadowBuilder(row), row, 0);
+        if (!started) finishReorder();
+        return started;
+    }
+
+    private boolean onStepDrag(View view, DragEvent event) {
+        if (!reordering) return false;
+        if (event.getAction() == DragEvent.ACTION_DRAG_LOCATION) {
+            moveDraggedRow(targetIndex(event.getY()));
+            autoScroll(event.getY());
+            return true;
+        }
+        if (event.getAction() == DragEvent.ACTION_DROP) {
+            dropped = true;
+            int index = indexOfStep(draggingStepId);
+            String before = index >= 0 && index + 1 < openSteps.size()
+                    ? openSteps.get(index + 1).id : null;
+            boundEvents.emit(DashboardEvent.moveTodayStep(draggingStepId, before));
+            return true;
+        }
+        if (event.getAction() == DragEvent.ACTION_DRAG_ENDED) {
+            finishReorder();
+            return true;
+        }
+        return true;
+    }
+
+    private int targetIndex(float y) {
+        int target = Math.max(0, openSteps.size() - 1);
+        for (int index = 0; index < openSteps.size(); index++) {
+            FocusStepRowView row = rows.get(index);
+            if (y < row.getTop() + row.getHeight() / 2f) return index;
+        }
+        return target;
+    }
+
+    private void moveDraggedRow(int target) {
+        int source = indexOfStep(draggingStepId);
+        if (source < 0 || target < 0 || target >= openSteps.size() || source == target) return;
+        FocusStepUiModel model = openSteps.remove(source);
+        FocusStepRowView row = rows.remove(source);
+        openSteps.add(target, model);
+        rows.add(target, row);
+        MarginLayoutParams params = (MarginLayoutParams) row.getLayoutParams();
+        removeView(row);
+        addView(row, 1 + target, params);
+        requestLayout();
+    }
+
+    private int indexOfStep(String stepId) {
+        for (int index = 0; index < openSteps.size(); index++)
+            if (openSteps.get(index).id.equals(stepId)) return index;
+        return -1;
+    }
+
+    private void autoScroll(float y) {
+        ScrollView scroll = ancestorScrollView();
+        if (scroll == null) return;
+        int edge = style.dp(56);
+        if (y < edge) scroll.scrollBy(0, -style.dp(18));
+        else if (y > getHeight() - edge) scroll.scrollBy(0, style.dp(18));
+    }
+
+    private ScrollView ancestorScrollView() {
+        android.view.ViewParent parent = getParent();
+        while (parent instanceof View) {
+            if (parent instanceof ScrollView) return (ScrollView) parent;
+            parent = parent.getParent();
+        }
+        return null;
+    }
+
+    private void finishReorder() {
+        reordering = false;
+        draggingStepId = null;
+        reorderModeListener.onReorderModeChanged(false);
+        // The view-model refreshes the canonical order after a successful write. Restoring the
+        // bound model here also prevents a failed write from leaving an optimistic order behind.
+        if (boundModel != null && boundEvents != null) bind(boundModel, boundEvents);
+        else requestLayout();
+    }
+
+    private void configureAccessibility(FocusStepRowView row, FocusStepUiModel step,
+                                        int index) {
+        View body = row.stepBody();
+        body.setFocusable(true);
+        body.setContentDescription(getContext().getString(
+                R.string.a11y_today_step_row, step.title));
+        body.setAccessibilityDelegate(new View.AccessibilityDelegate() {
+            @Override public void onInitializeAccessibilityNodeInfo(
+                    View host, AccessibilityNodeInfo info) {
+                super.onInitializeAccessibilityNodeInfo(host, info);
+                int current = indexOfStep(step.id);
+                if (current > 0) {
+                    info.addAction(action(R.id.action_today_step_up,
+                            R.string.a11y_step_up));
+                    info.addAction(action(R.id.action_today_step_front,
+                            R.string.a11y_today_step_front));
+                }
+                if (current >= 0 && current < openSteps.size() - 1) {
+                    info.addAction(action(R.id.action_today_step_down,
+                            R.string.a11y_step_down));
+                    info.addAction(action(R.id.action_today_step_back,
+                            R.string.a11y_today_step_back));
+                }
+            }
+
+            @Override public boolean performAccessibilityAction(View host, int action,
+                                                                Bundle arguments) {
+                int current = indexOfStep(step.id);
+                if (current < 0) return false;
+                if (action == R.id.action_today_step_up && current > 0)
+                    return emitMove(step.id, openSteps.get(current - 1).id);
+                if (action == R.id.action_today_step_down
+                        && current < openSteps.size() - 1)
+                    return emitMove(step.id, current + 2 < openSteps.size()
+                            ? openSteps.get(current + 2).id : null);
+                if (action == R.id.action_today_step_front && current > 0)
+                    return emitMove(step.id, openSteps.get(0).id);
+                if (action == R.id.action_today_step_back
+                        && current < openSteps.size() - 1)
+                    return emitMove(step.id, null);
+                return super.performAccessibilityAction(host, action, arguments);
+            }
+        });
+    }
+
+    private AccessibilityNodeInfo.AccessibilityAction action(int id, int label) {
+        return new AccessibilityNodeInfo.AccessibilityAction(id,
+                getContext().getString(label));
+    }
+
+    private boolean emitMove(String stepId, String beforeStepId) {
+        if (boundEvents == null) return false;
+        boundEvents.emit(DashboardEvent.moveTodayStep(stepId, beforeStepId));
+        announceForAccessibility(getContext().getString(R.string.a11y_today_step_moved));
+        return true;
+    }
 
     List<FocusStepRowView> visibleRows() {
         List<FocusStepRowView> visible = new ArrayList<>();

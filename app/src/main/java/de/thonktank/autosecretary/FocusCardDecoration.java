@@ -32,6 +32,7 @@ final class FocusCardDecoration {
         surface = new View(context);
         root.addView(surface, new FrameLayout.LayoutParams(0, 0));
         grain = new WoodGrainView(context);
+        grain.setLeafClip(10, 64, 10, 64);
         root.addView(grain, new FrameLayout.LayoutParams(0, 0));
     }
 
@@ -53,6 +54,7 @@ final class FocusCardDecoration {
         surface.setRotation(card.getRotation());
         style.shadow(surface, palette, 12, 1f);
         grain.setTranslationZ(style.dp(13));
+        grain.setRotation(card.getRotation());
         card.setTranslationZ(style.dp(14));
     }
 

@@ -64,6 +64,18 @@ public final class WoodGrainRenderPipelineTest {
         assertTrue(cache.bytes() <= cache.maximumBytes());
     }
 
+    @Test public void cornerCenterIsPartOfTheImmutableGeometryRequest() {
+        WoodGrainRenderRequest first = WoodGrainRenderRequest.corner(
+                640, 138, 2f, .5f, 528f, 112f);
+        WoodGrainRenderRequest shifted = WoodGrainRenderRequest.corner(
+                640, 138, 2f, .5f, 500f, 100f);
+
+        assertEquals(528f, first.cornerX, .001f);
+        assertEquals(112f, first.cornerY, .001f);
+        assertFalse(first.key.equals(shifted.key));
+        assertFalse(new WoodGrainRenderBuilder().build(first).strokes.isEmpty());
+    }
+
     @Test public void drawNeverTriggersGeometryAndDetachedViewPublishesOnReattach() {
         WoodGrainRenderPipeline.clearForTest();
         Activity activity = Robolectric.buildActivity(Activity.class).setup().get();

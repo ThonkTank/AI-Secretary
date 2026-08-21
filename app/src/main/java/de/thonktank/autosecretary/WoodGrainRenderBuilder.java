@@ -47,7 +47,7 @@ final class WoodGrainRenderBuilder {
             return result;
         }
         WoodGrainGeometry.Shape unlimited = new WoodGrainGeometry.Shape(0,
-                request.width - request.density * 46f, request.density * 5f,
+                request.cornerX, request.cornerY,
                 0f, 0f, 512);
         int maximum = WoodGrainGeometry.maximumRingCount(request.width, request.height,
                 unlimited, request.density);

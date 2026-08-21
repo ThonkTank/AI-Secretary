@@ -28,6 +28,7 @@ final class FocusCardView extends ViewGroup {
     private final TextView primary;
     private final TextLinkView later;
     private int maximumContentHeight = Integer.MAX_VALUE;
+    private boolean reorderingSteps;
 
     FocusCardView(Context context) {
         super(context);
@@ -46,13 +47,13 @@ final class FocusCardView extends ViewGroup {
         title.setLineSpacing(0, 1.04f);
         title.setLetterSpacing(-.02f);
         title.setTextSize(30);
-        title.setPadding(0, 0, style.dp(66), 0);
+        title.setPadding(0, 0, style.dp(82), 0);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
         titleParams.topMargin = style.dp(4);
         titleBlock.addView(title, titleParams);
         titleRow.addView(titleBlock, new FrameLayout.LayoutParams(-1, -2));
         ring = new XpVesselView(context);
-        titleRow.addView(ring, new FrameLayout.LayoutParams(style.dp(52), style.dp(52),
+        titleRow.addView(ring, new FrameLayout.LayoutParams(style.dp(68), style.dp(68),
                 Gravity.TOP | Gravity.END));
         taskDew = new DewDotView(context);
         taskDew.setVisibility(GONE);
@@ -61,6 +62,10 @@ final class FocusCardView extends ViewGroup {
         addView(titleRow, new MarginLayoutParams(-1, -2));
 
         steps = new FocusStepListLayout(context);
+        steps.setReorderModeListener(active -> {
+            reorderingSteps = active;
+            requestLayout();
+        });
         MarginLayoutParams stepsParams = new MarginLayoutParams(-1, -2);
         stepsParams.topMargin = style.dimen(R.dimen.focus_card_steps_gap);
         addView(steps, stepsParams);
@@ -106,7 +111,8 @@ final class FocusCardView extends ViewGroup {
         taskDew.setVisibility(vessel ? GONE : VISIBLE);
         int doneCount = task.steps.size() - task.remainingSteps;
         if (vessel) {
-            ring.bind(task.collectedXp, doneCount, task.steps.size(), task.harvestReady,
+            ring.bind(task.claimableXp, task.collectedXp, task.rewardMultiplier,
+                    doneCount, task.steps.size(), task.harvestReady,
                     task.comboStage, model.palette);
             ring.setOnClickListener(task.harvestReady
                     ? view -> events.emit(DashboardEvent.focusAction(
@@ -153,13 +159,14 @@ final class FocusCardView extends ViewGroup {
 
         int fixedHeight = getPaddingTop() + getPaddingBottom()
                 + titleRow.getMeasuredHeight() + childExtentWithoutHeight(actions);
-        int listBudget = Math.max(0, maximumContentHeight - fixedHeight
-                - topMargin(steps));
+        int listBudget = reorderingSteps ? Integer.MAX_VALUE
+                : Math.max(0, maximumContentHeight - fixedHeight - topMargin(steps));
         if (steps.getVisibility() != GONE)
             steps.measure(childWidth, MeasureSpec.makeMeasureSpec(listBudget, MeasureSpec.AT_MOST));
         int desiredHeight = fixedHeight;
         if (steps.getVisibility() != GONE) desiredHeight += extent(steps);
-        int constrainedHeight = Math.min(desiredHeight, maximumContentHeight);
+        int constrainedHeight = reorderingSteps ? desiredHeight
+                : Math.min(desiredHeight, maximumContentHeight);
         setMeasuredDimension(resolveSize(width, widthMeasureSpec),
                 resolveSize(constrainedHeight, heightMeasureSpec));
     }

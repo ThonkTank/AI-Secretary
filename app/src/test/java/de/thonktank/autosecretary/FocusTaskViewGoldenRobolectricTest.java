@@ -136,7 +136,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
                                         boolean done,
                                         RepetitionProgressUiModel progress) {
         return FocusStepUiModel.of(id, title, amount, note, done, progress,
-                0, 10, done ? 10 : 0);
+                2, 20, done ? 20 : 0);
     }
 
 }

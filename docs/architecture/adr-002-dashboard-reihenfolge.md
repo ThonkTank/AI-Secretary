@@ -22,8 +22,9 @@ besitzen derzeit grobe Tageszeit-Slots, Kalendertermine dagegen konkrete Uhrzeit
   Kalendertermine sind keine Tauschpartner.
 - Kalendertermine werden in der Präsentationsschicht anhand ihrer Startzeit zwischen die
   Aufgabenblöcke einsortiert. Sie ändern niemals die persistierte Aufgabenreihenfolge.
-- Heute abgeschlossene Aufgaben bleiben an ihrer persistierten Position sichtbar und
-  verschwinden erst am Tageswechsel.
+- Heute abgeschlossene Aufgaben werden aus Fokus und gemischter Tagesfolge entfernt. Unterhalb
+  des Tagesinhalts bleiben sie in einer standardmäßig eingeklappten, kompakten
+  „Heute erledigt“-Historie mit exaktem Undo erreichbar.
 - Der Screen rendert nach dem Fokus höchstens drei weitere Blöcke und fasst den Rest als
   „N weitere“ zusammen.
 

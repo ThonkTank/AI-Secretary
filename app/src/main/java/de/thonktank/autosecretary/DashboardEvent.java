@@ -39,6 +39,28 @@ public abstract class DashboardEvent {
         private ToggleStep(String stepId) { this.stepId = requiredId(stepId); }
     }
 
+    public static final class AdvanceTodayStep extends DashboardEvent {
+        public final String stepId;
+        private AdvanceTodayStep(String stepId) { this.stepId = requiredId(stepId); }
+    }
+
+    public static final class MoveTodayStep extends DashboardEvent {
+        public final String stepId;
+        public final String beforeStepId;
+        private MoveTodayStep(String stepId, String beforeStepId) {
+            this.stepId = requiredId(stepId);
+            this.beforeStepId = beforeStepId == null || beforeStepId.isEmpty()
+                    ? null : beforeStepId;
+        }
+    }
+
+    public static final class UndoCompleted extends DashboardEvent {
+        public final String occurrenceId;
+        private UndoCompleted(String occurrenceId) {
+            this.occurrenceId = requiredId(occurrenceId);
+        }
+    }
+
     public static final class AdjustRepetition extends DashboardEvent {
         public final String stepId;
         public final int delta;
@@ -95,6 +117,15 @@ public abstract class DashboardEvent {
         return new FocusAction(kind, task);
     }
     public static DashboardEvent toggleStep(String stepId) { return new ToggleStep(stepId); }
+    public static DashboardEvent advanceTodayStep(String stepId) {
+        return new AdvanceTodayStep(stepId);
+    }
+    public static DashboardEvent moveTodayStep(String stepId, String beforeStepId) {
+        return new MoveTodayStep(stepId, beforeStepId);
+    }
+    public static DashboardEvent undoCompleted(String occurrenceId) {
+        return new UndoCompleted(occurrenceId);
+    }
     public static DashboardEvent adjustRepetition(String stepId, int delta) {
         return new AdjustRepetition(stepId, delta);
     }

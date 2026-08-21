@@ -16,6 +16,7 @@
     <string name="content_task_menu">Aufgabenmenü</string>
     <string name="content_complete_task">%1$s erledigen, %2$d XP</string>
     <string name="content_complete_step">%1$s erledigen, %2$d XP</string>
+    <string name="content_advance_planned_repetitions">nächsten Planwert %1$d bestätigen, bei Abschluss %2$d XP</string>
     <string name="marker_now">jetzt</string>
     <string name="marker_after">danach</string>
     <string name="marker_later">später, sobald Platz ist</string>
@@ -33,11 +34,17 @@
     <string name="action_complete">erledigen</string>
     <string name="action_complete_all">Alle erledigen</string>
     <string name="action_complete_rest">Rest erledigen</string>
+    <string name="action_undo">rückgängig</string>
+    <string name="content_undo_task">%1$s rückgängig machen, %2$d XP zurücknehmen</string>
+    <string name="completed_today_expand">Heute erledigte Aufgaben anzeigen</string>
+    <string name="completed_today_collapse">Heute erledigte Aufgaben ausblenden</string>
     <string name="xp_summary">%1$d XP · jeder Schritt zählt</string>
     <string name="xp_level">Stufe %1$d</string>
     <string name="xp_progress">%1$d/%2$d</string>
     <string name="vessel_ready">%1$d XP gesammelt, erntereif</string>
     <string name="vessel_progress">%1$d von %2$d Schritten, %3$d XP gesammelt</string>
+    <string name="vessel_ready_breakdown">%1$d XP erntbar; %2$d XP mal Faktor %3$s</string>
+    <string name="vessel_progress_breakdown">%1$d von %2$d Schritten; %3$d XP erntbar; %4$d XP mal Faktor %5$s</string>
     <string name="soft_time_ongoing">fortlaufend, bis die Bedingung erfüllt ist</string>
     <string name="soft_time_morning">heute am Morgen</string>
     <string name="soft_time_midday">um die Mittagszeit</string>
@@ -99,6 +106,10 @@
     <string name="a11y_step_select_swap">Schritt zum Tauschen auswählen</string>
     <string name="a11y_step_swap_selected">Mit ausgewähltem Schritt tauschen</string>
     <string name="a11y_step_selected">Schritt zum Tauschen ausgewählt.</string>
+    <string name="a11y_today_step_row">Schritt %1$s. Lange drücken zum heutigen Verschieben.</string>
+    <string name="a11y_today_step_front">Für heute ganz nach vorn verschieben</string>
+    <string name="a11y_today_step_back">Für heute ganz nach hinten verschieben</string>
+    <string name="a11y_today_step_moved">Heutige Schritt-Reihenfolge geändert.</string>
     <string name="a11y_schedule_up">Zeitplatzierung nach oben verschieben</string>
     <string name="a11y_schedule_down">Zeitplatzierung nach unten verschieben</string>
     <string name="a11y_schedule_previous_slot">In die vorherige Tageszeit verschieben</string>
@@ -311,6 +322,10 @@
     <plurals name="focus_steps_done">
         <item quantity="one">%1$d fertig</item>
         <item quantity="other">%1$d fertig</item>
+    </plurals>
+    <plurals name="completed_today">
+        <item quantity="one">Heute erledigt · %1$d</item>
+        <item quantity="other">Heute erledigt · %1$d</item>
     </plurals>
     <plurals name="focus_steps_more">
         <item quantity="one">%1$d weitere</item>

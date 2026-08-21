@@ -83,14 +83,15 @@ public final class DashboardCharacterizationTest {
         assertFalse(events.get(1).title.isEmpty());
     }
 
-    @Test public void timelineKeepsDoneItemsAssignsAfterAcrossCalendarAndCapsAtThree() {
+    @Test public void timelineExcludesDoneItemsAssignsAfterAcrossCalendarAndCapsAtThree() {
         Context context = ApplicationProvider.getApplicationContext();
         ScrollView scroll = new ScrollView(context);
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
+        DashboardEventRecorder recorded = new DashboardEventRecorder();
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
+                recorded, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
         TodayUiModel dashboardState = DashboardFixtures.today(10, java.util.Arrays.asList(
@@ -107,8 +108,49 @@ public final class DashboardCharacterizationTest {
         List<String> text = new ArrayList<>();
         collectText(timeline, text);
         assertEquals(3, timeline.getChildCount());
-        assertTrue(text.contains(context.getString(R.string.marker_done)));
+        assertFalse(text.contains(context.getString(R.string.marker_done)));
         assertTrue(text.contains(context.getString(R.string.marker_after)));
+        CompletedTodayView completed = content.findViewById(R.id.dashboard_completed_today);
+        assertEquals(View.VISIBLE, completed.getVisibility());
+        assertEquals(View.GONE, completed.getChildAt(1).getVisibility());
+        assertTrue(completed.getChildAt(0).performClick());
+        LinearLayout completedRows = (LinearLayout) completed.getChildAt(1);
+        assertEquals(View.VISIBLE, completedRows.getVisibility());
+        LinearLayout completedRow = (LinearLayout) completedRows.getChildAt(0);
+        assertTrue(completedRow.getChildAt(2).performClick());
+        assertEquals(DashboardFixtures.completedTodayTask().occurrenceId,
+                recorded.last(DashboardEvent.UndoCompleted.class).occurrenceId);
+    }
+
+    @Test public void completedHistoryFollowsTheEmptyStateWhenNothingIsOpen() {
+        Context context = ApplicationProvider.getApplicationContext();
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(content);
+        DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
+                event -> { }, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
+        TodayUiModel today = DashboardFixtures.today(10,
+                Collections.singletonList(DashboardFixtures.completedTodayTask()));
+        DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.AUTO);
+
+        renderer.render(new DashboardUiState(NavigationDestination.TODAY,
+                        today.withCalendar(Collections.emptyList()), CalendarUiState.empty(),
+                        palette, CalendarPermissionStatus.GRANTED, false,
+                        Collections.emptySet(), EditorUiState.closed()),
+                AllTasksUiState.empty());
+
+        View empty = findDirectChild(content, EmptyStateView.class);
+        CompletedTodayView completed = content.findViewById(R.id.dashboard_completed_today);
+        assertEquals(View.VISIBLE, empty.getVisibility());
+        assertEquals(View.VISIBLE, completed.getVisibility());
+        assertTrue(content.indexOfChild(completed) > content.indexOfChild(empty));
+    }
+
+    private static View findDirectChild(ViewGroup parent, Class<? extends View> type) {
+        for (int index = 0; index < parent.getChildCount(); index++)
+            if (type.isInstance(parent.getChildAt(index))) return parent.getChildAt(index);
+        return null;
     }
 
     private static void collectText(View view, List<String> result) {

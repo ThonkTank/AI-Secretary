@@ -33,6 +33,7 @@ public final class DashboardRenderer {
     private LinearLayout timeline;
     private TextView more;
     private EmptyStateView empty;
+    private CompletedTodayView completedToday;
     private AllTasksView allTasks;
     private OptionsView options;
     private final Map<String, View> timelineViews = new LinkedHashMap<>();
@@ -154,6 +155,10 @@ public final class DashboardRenderer {
         content.addView(more, moreParams);
         empty = new EmptyStateView(context, () -> events.emit(DashboardEvent.addTask()));
         content.addView(empty, new LinearLayout.LayoutParams(-1, -2));
+        completedToday = new CompletedTodayView(context, events);
+        LinearLayout.LayoutParams completedParams = new LinearLayout.LayoutParams(-1, -2);
+        completedParams.topMargin = style.dp(14);
+        content.addView(completedToday, completedParams);
     }
 
     private void bindToday(DashboardUiState state, FocusStepLimit focusStepLimit) {
@@ -166,6 +171,7 @@ public final class DashboardRenderer {
         timeline.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
         more.setVisibility(hasFocus && dashboard.timeline.size() > 3 ? View.VISIBLE : View.GONE);
         empty.setVisibility(hasFocus ? View.GONE : View.VISIBLE);
+        completedToday.bind(dashboard.completedToday, palette);
         if (!hasFocus) {
             content.setPadding(style.dimen(R.dimen.page_start), style.dp(120),
                     style.dimen(R.dimen.page_end), style.dp(26));

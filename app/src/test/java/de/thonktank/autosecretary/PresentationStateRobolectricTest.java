@@ -110,9 +110,12 @@ public final class PresentationStateRobolectricTest {
         TodayUiModel model = TodayUiModel.compose(
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
 
-        assertEquals(6, model.timeline.size());
+        assertEquals(5, model.timeline.size());
         assertEquals("Urlaub", model.timeline.get(0).event.title);
-        assertEquals("done", model.timeline.get(1).task.taskId);
+        assertTrue(model.timeline.stream().noneMatch(item ->
+                item.task != null && item.task.done));
+        assertEquals(1, model.completedToday.size());
+        assertEquals("done", model.completedToday.get(0).taskId);
         assertEquals("steps", model.firstOpen().taskId);
     }
 

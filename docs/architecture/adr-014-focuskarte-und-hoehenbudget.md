@@ -26,7 +26,9 @@ Höhenbudget, verbindet die Komponenten und erkennt einen Fokuswechsel.
   auf. Das `AT_MOST`-Höhenmaß ist ein hartes Budget für aktive Zeile, Folgeschritte und
   Resthinweis. `FocusStepLimit` ist lediglich eine Obergrenze. Die reine
   `FocusStepLayoutPolicy` entscheidet anhand gemessener Teilhöhen über die Zahl sichtbarer
-  Folgeschritte.
+  Folgeschritte. Nur während eines expliziten Drag-Sortiervorgangs werden alle offenen Zeilen
+  eingeblendet und das normale Kartenmaximum ausgesetzt; nach Drop oder Abbruch gilt wieder der
+  kanonische Snapshot mit Höhenbudget.
 - `FocusCardDecoration` besitzt Papierstapel, Oberfläche, Grain und Reward-Registrierung. Sie
   liest die endgültigen Bounds erst im Layoutdurchlauf; diese Geometrie beeinflusst weder
   Inhaltsbindung noch die Auswahl sichtbarer Schritte.
@@ -46,6 +48,7 @@ Kinder manuell oder wiederholt.
 
 Die Komponenten bleiben vorerst im historischen Root-Paket, weil der Refactor weiterhin ein
 einzelnes Android-Modul verwendet. Der bestehende öffentliche `FocusTaskView.bind`-Einstieg
-bleibt als Kompatibilitätsgrenze erhalten. Die drei Fokus-Goldens bleiben pixelidentisch; die
+bleibt als Kompatibilitätsgrenze erhalten. Die Fokus-Goldens werden bei bewusst geänderten
+Gefäß-, Ring- oder Interaktionsmaßen als reviewte Baselines aktualisiert; die
 Layout-/Accessibility-Matrix umfasst 320, 412 und 600 dp, Font Scale 1.0, 1.3 und 2.0 sowie die
 Morgen-, Abend- und Nachtpalette.

@@ -24,10 +24,18 @@ public final class HomescreenGoldenRobolectricTest {
     @Test
     @Config(sdk = 35, qualifiers = "w412dp-h892dp-xhdpi")
     public void renderPhoneReferenceStates() throws Exception {
+        AssertionError mismatch = null;
         for (String state : new String[]{"full", "step", "later", "complete", "evening", "empty",
                 "empty-vessel", "partial-vessel", "harvest-ready", "harvested",
-                "three-digit", "night"})
-            render(state, 824, 1784, true);
+                "three-digit", "night"}) {
+            try {
+                render(state, 824, 1784, true);
+            } catch (AssertionError error) {
+                if (mismatch == null) mismatch = error;
+                else mismatch.addSuppressed(error);
+            }
+        }
+        if (mismatch != null) throw mismatch;
     }
 
     @Test

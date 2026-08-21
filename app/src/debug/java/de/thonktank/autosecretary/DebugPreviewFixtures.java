@@ -118,10 +118,11 @@ public final class DebugPreviewFixtures {
         int collected = completed >= 1 ? 10 : 0;
         if (completed >= 2) collected += 15;
         if (completed >= 3) collected += 20;
+        int result = (int) Math.round(collected * 3.5d);
         return new TaskSnapshot("preview-vessel", "preview-vessel-occurrence",
                 "Morgenroutine", TaskSlot.MORNING, "", "erledigen", Recurrence.DAILY,
                 steps, 3 - completed, false, false, false, false, 5, 1_000L,
-                68, collected, 0, ready);
+                result, collected, 0, ready);
     }
 
     private static FocusStepUiModel previewStep(String id, String title, boolean done,

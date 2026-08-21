@@ -242,6 +242,13 @@ public class MainActivity extends ComponentActivity {
                     ? task.taskId : task.occurrenceId);
         } else if (event instanceof DashboardEvent.ToggleStep) {
             viewModel.toggleStep(((DashboardEvent.ToggleStep) event).stepId);
+        } else if (event instanceof DashboardEvent.AdvanceTodayStep) {
+            viewModel.advanceTodayStep(((DashboardEvent.AdvanceTodayStep) event).stepId);
+        } else if (event instanceof DashboardEvent.MoveTodayStep) {
+            DashboardEvent.MoveTodayStep move = (DashboardEvent.MoveTodayStep) event;
+            viewModel.moveTodayStep(move.stepId, move.beforeStepId);
+        } else if (event instanceof DashboardEvent.UndoCompleted) {
+            viewModel.undoOccurrence(((DashboardEvent.UndoCompleted) event).occurrenceId);
         } else if (event instanceof DashboardEvent.AdjustRepetition
                 || event instanceof DashboardEvent.EditRepetition
                 || event instanceof DashboardEvent.SubmitRepetition) {

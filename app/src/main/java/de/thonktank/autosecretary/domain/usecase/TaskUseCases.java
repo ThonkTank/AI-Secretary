@@ -16,6 +16,8 @@ public final class TaskUseCases {
     public final DeleteTask delete;
     public final DeferTask defer;
     public final ToggleStep toggleStep;
+    public final AdvanceTodayStep advanceTodayStep;
+    public final MoveTodayStep moveTodayStep;
     public final RecordRepetitionResult recordRepetitionResult;
     public final CorrectRepetitionResult correctRepetitionResult;
     public final CompleteOccurrence complete;
@@ -41,6 +43,8 @@ public final class TaskUseCases {
         delete = new DeleteTask(repository);
         defer = new DeferTask(repository, repository);
         toggleStep = new ToggleStep(repository, clock);
+        advanceTodayStep = new AdvanceTodayStep(repository, clock);
+        moveTodayStep = new MoveTodayStep(repository);
         recordRepetitionResult = new RecordRepetitionResult(repository, clock);
         correctRepetitionResult = new CorrectRepetitionResult(repository);
         complete = new CompleteOccurrence(repository, clock);

@@ -26,6 +26,12 @@ haben jeweils ein eigenes Punktekonto; eine Kombostufe wird nie als Zahl ausgege
 - Die Maserringe werden außerhalb des UI-Threads als immutable SDF-Konturen vorgebaut und in
   einem auf 4 MiB gewichteten Cache gehalten. `onDraw` zeichnet nur fertige Renderdaten. Der
   Renderer begrenzt nur die sichtbare Ringzahl; der fachliche Kombofaktor bleibt offen.
+- Kopfblatt-Ringe sind konzentrisch zum Mittelpunkt der oberen rechten Blattrundung und werden
+  exakt auf die vier asymmetrischen Blattecken begrenzt. Aufgaben- und Schrittringe verwenden
+  die finalen, zentrierten Bounds ihres Gefäßes beziehungsweise Taus; Menge, Wiederholung oder
+  Notiz ändern weder den Ring-Owner noch dessen Anker.
+- Wert-Tau zeigt stets den bereits mit der Schrittkombo multiplizierten Endwert. Das vergrößerte
+  Routinegefäß zeigt den aktuell erntbaren Endwert und darunter `gesammelter Grundwert × Faktor`.
 - Satzfortschritt ist ein editierbarer Zustand. Erst ein Wechsel zwischen offen und erledigt
   erzeugt beziehungsweise reversiert eine persistierte XP-/Kombo-Buchung.
 - Der Erledigtzustand eines Satzschritts ist explizit und wird nicht aus der Zahl erfasster

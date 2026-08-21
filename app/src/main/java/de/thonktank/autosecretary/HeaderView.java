@@ -34,7 +34,9 @@ public final class HeaderView extends FrameLayout {
         LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL);
         leaf = new FrameLayout(context); leaf.setRotation(1.1f); leaf.setClipChildren(true);
         leaf.setId(R.id.header_reward_anchor);
-        grain = new WoodGrainView(context); leaf.addView(grain, new LayoutParams(-1, -1));
+        grain = new WoodGrainView(context);
+        grain.setLeafClip(8, 56, 8, 56);
+        leaf.addView(grain, new LayoutParams(-1, -1));
         LinearLayout status = new LinearLayout(context); status.setGravity(Gravity.CENTER_VERTICAL);
         status.setPadding(style.dp(22), style.dp(10), style.dp(24), style.dp(13));
         greeting = style.serif("", 16, 0, true, 300);
@@ -74,6 +76,7 @@ public final class HeaderView extends FrameLayout {
         style.shadow(leaf, palette, 7, .7f);
         add.setTextColor(palette.lightText); add.setBackground(style.pill(palette.light, 24));
         grain.post(() -> grain.bindCorner(palette, value.ratio,
+                grain.getWidth() - style.dp(56), style.dp(56),
                 WoodGrainCoordinates.visibleBounds(grain,
                         Arrays.asList(greeting, level, progress))));
     }

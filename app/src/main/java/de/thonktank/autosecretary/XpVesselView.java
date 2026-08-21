@@ -8,11 +8,16 @@ import android.graphics.RectF;
 import android.view.View;
 import android.view.animation.PathInterpolator;
 
+import java.util.Locale;
+
 public final class XpVesselView extends View {
     private final UiStyle style;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private DayPalette palette;
-    private int collected;
+    private int result;
+    private int base;
+    private String multiplierLabel = "1";
+    private String breakdownLabel = "0 × 1";
     private float fill;
     private float displayedFill;
     private boolean ready;
@@ -24,15 +29,23 @@ public final class XpVesselView extends View {
 
     public XpVesselView(Context context) {
         super(context); style = new UiStyle(context);
-        setMinimumWidth(style.dp(52)); setMinimumHeight(style.dp(52)); setClickable(true);
+        setMinimumWidth(style.dp(68)); setMinimumHeight(style.dp(68)); setClickable(true);
         AccessibilityRoles.button(this);
         setLayerType(LAYER_TYPE_SOFTWARE, null);
     }
 
     public void bind(int collected, int done, int total, boolean ready, int comboStage,
                      DayPalette palette) {
-        this.collected = Math.max(0, collected);
-        float nextFill = total == 0 || collected == 0 ? 0f : done / (float) total;
+        bind(collected, collected, 1d, done, total, ready, comboStage, palette);
+    }
+
+    public void bind(int result, int base, double multiplier, int done, int total,
+                     boolean ready, int comboStage, DayPalette palette) {
+        this.result = Math.max(0, result);
+        this.base = Math.max(0, base);
+        multiplierLabel = formatMultiplier(Math.max(1d, multiplier));
+        breakdownLabel = this.base + " × " + multiplierLabel;
+        float nextFill = total == 0 || base == 0 ? 0f : done / (float) total;
         this.fill = nextFill;
         this.ready = ready; this.palette = palette; this.comboStage = Math.max(0, comboStage);
         setActivated(ready);
@@ -40,8 +53,11 @@ public final class XpVesselView extends View {
         setEnabled(ready);
         if (ready && android.animation.ValueAnimator.areAnimatorsEnabled()) startPulse();
         else stopPulse();
-        setContentDescription(ready ? getContext().getString(R.string.vessel_ready, collected)
-                : getContext().getString(R.string.vessel_progress, done, total, collected));
+        setContentDescription(ready
+                ? getContext().getString(R.string.vessel_ready_breakdown,
+                        this.result, this.base, multiplierLabel)
+                : getContext().getString(R.string.vessel_progress_breakdown,
+                        done, total, this.result, this.base, multiplierLabel));
         invalidate();
         bound = true;
     }
@@ -78,7 +94,8 @@ public final class XpVesselView extends View {
 
     @Override protected void onDraw(Canvas canvas) {
         if (palette == null) return;
-        float cx = getWidth() / 2f, cy = getHeight() / 2f, r = style.dp(26);
+        float cx = getWidth() / 2f, cy = getHeight() / 2f;
+        float r = Math.min(getWidth(), getHeight()) / 2f;
         paint.setStyle(Paint.Style.FILL); paint.setColor(palette.leaf1);
         if (comboStage >= 5) {
             float alpha = Math.min(.46f, .16f + .04f * comboStage);
@@ -104,13 +121,14 @@ public final class XpVesselView extends View {
         }
         paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(style.dp(1.5f));
         paint.setColor(UiStyle.alpha(palette.dot, .55f)); canvas.drawCircle(cx, cy, r - style.dp(.75f), paint);
-        if (collected > 0) {
-            paint.setStyle(Paint.Style.FILL); paint.setTypeface(style.sans); paint.setTextSize(style.dp(14));
-            paint.setTextAlign(Paint.Align.CENTER); paint.setColor(ready ? palette.light
-                    : displayedFill >= .55f ? palette.ink : palette.accent);
-            Paint.FontMetrics fm = paint.getFontMetrics();
-            canvas.drawText(String.valueOf(collected), cx, cy - (fm.ascent + fm.descent) / 2f, paint);
-        }
+        paint.setStyle(Paint.Style.FILL); paint.setTypeface(style.sansBold);
+        paint.setTextAlign(Paint.Align.CENTER); paint.setColor(ready ? palette.light
+                : displayedFill >= .55f ? palette.ink : palette.accent);
+        paint.setTextSize(style.dp(result >= 100 ? 13 : 15));
+        canvas.drawText(String.valueOf(result), cx, cy - style.dp(3), paint);
+        paint.setTypeface(style.sans); paint.setTextSize(style.dp(9));
+        canvas.drawText(breakdownLabel, cx,
+                cy + style.dp(12), paint);
     }
 
     @Override protected void onDetachedFromWindow() {
@@ -118,5 +136,11 @@ public final class XpVesselView extends View {
         if (fillAnimator != null) fillAnimator.cancel();
         fillAnimator = null;
         super.onDetachedFromWindow();
+    }
+
+    private static String formatMultiplier(double value) {
+        long whole = Math.round(value);
+        if (Math.abs(value - whole) < .001d) return String.valueOf(whole);
+        return String.format(Locale.GERMANY, "%.1f", value);
     }
 }

@@ -138,12 +138,23 @@ public final class FocusStepRowView extends LinearLayout {
             StringBuilder description = new StringBuilder(step.title);
             if (!step.amountLabel.isEmpty()) description.append(", ").append(step.amountLabel);
             if (!step.note.isEmpty()) description.append(", ").append(step.note);
-            description.append(", ").append(step.claimableXp).append(" XP");
+            if (progress != null) description.append(", ").append(getContext().getString(
+                    R.string.content_advance_planned_repetitions,
+                    progress.plannedRepetitions, step.claimableXp));
+            else description.append(", ").append(step.claimableXp).append(" XP, ")
+                    .append(getContext().getString(R.string.action_complete));
             reward.setContentDescription(description.toString());
-            reward.setOnClickListener(null);
-            reward.setActionEnabled(false);
+            reward.setOnClickListener(view ->
+                    events.emit(DashboardEvent.advanceTodayStep(step.id)));
+            reward.setActionEnabled(true);
         }
     }
+
+    void setOnStepLongClickListener(OnLongClickListener listener) {
+        body.setOnLongClickListener(listener);
+    }
+
+    View stepBody() { return body; }
 
     @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int width = MeasureSpec.getSize(widthMeasureSpec);

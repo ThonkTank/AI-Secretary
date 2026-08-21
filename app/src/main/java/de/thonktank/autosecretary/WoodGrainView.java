@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
@@ -34,6 +35,10 @@ public final class WoodGrainView extends View {
     private DayPalette palette;
     private boolean corner;
     private float cornerRatio;
+    private float cornerX;
+    private float cornerY;
+    private float[] clipRadii;
+    private final Path clipPath = new Path();
     private WoodGrainRenderData renderData;
     private String requestedKey;
     private int requestGeneration;
@@ -58,16 +63,32 @@ public final class WoodGrainView extends View {
     }
 
     public void bindCorner(DayPalette palette, float ratio) {
-        bindCorner(palette, ratio, Collections.emptyList());
+        bindCorner(palette, ratio, getWidth(), 0f, Collections.emptyList());
     }
 
     public void bindCorner(DayPalette palette, float ratio, List<RectF> fadedText) {
+        bindCorner(palette, ratio, getWidth(), 0f, fadedText);
+    }
+
+    public void bindCorner(DayPalette palette, float ratio, float centerX, float centerY,
+                           List<RectF> fadedText) {
         this.palette = palette;
         corner = true;
         cornerRatio = Math.max(0f, Math.min(1f, ratio));
+        cornerX = centerX;
+        cornerY = centerY;
         anchors = Collections.emptyList();
         this.fadedText = copyRects(fadedText);
         requestGeometry();
+    }
+
+    public void setLeafClip(float topLeftDp, float topRightDp,
+                            float bottomRightDp, float bottomLeftDp) {
+        clipRadii = new float[]{style.dp(topLeftDp), style.dp(topLeftDp),
+                style.dp(topRightDp), style.dp(topRightDp),
+                style.dp(bottomRightDp), style.dp(bottomRightDp),
+                style.dp(bottomLeftDp), style.dp(bottomLeftDp)};
+        invalidate();
     }
 
     /** Applies the narrow cartographic text halo required above grain contours. */
@@ -97,6 +118,14 @@ public final class WoodGrainView extends View {
         WoodGrainRenderData data = renderData;
         DayPalette colors = palette;
         if (colors == null || data == null || data.strokes.isEmpty()) return;
+        int clipSave = -1;
+        if (clipRadii != null) {
+            clipSave = canvas.save();
+            clipPath.reset();
+            clipPath.addRoundRect(0f, 0f, getWidth(), getHeight(),
+                    clipRadii, Path.Direction.CW);
+            canvas.clipPath(clipPath);
+        }
         int layer = fadedText.isEmpty() ? -1
                 : canvas.saveLayer(0f, 0f, getWidth(), getHeight(), null);
         paint.setStyle(Paint.Style.STROKE);
@@ -111,6 +140,7 @@ public final class WoodGrainView extends View {
             fadeAroundText(canvas);
             canvas.restoreToCount(layer);
         }
+        if (clipSave >= 0) canvas.restoreToCount(clipSave);
     }
 
     private void requestGeometry() {
@@ -119,7 +149,7 @@ public final class WoodGrainView extends View {
         WoodGrainRenderRequest request;
         if (corner) {
             request = WoodGrainRenderRequest.corner(getWidth(), getHeight(), density,
-                    cornerRatio);
+                    cornerRatio, cornerX, cornerY);
         } else {
             List<WoodGrainRenderRequest.Anchor> values = new ArrayList<>();
             for (Anchor anchor : anchors)

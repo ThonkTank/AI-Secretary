@@ -1,6 +1,6 @@
 # Today-/Fokus-Architektur
 
-Stand: 2026-08-20, Datenbankschema 8
+Stand: 2026-08-21, Datenbankschema 11
 
 ## Datenfluss und Zustandsbesitz
 
@@ -44,7 +44,9 @@ Modelle.
 - `FocusCardView` bindet einen vollständigen `FocusCardUiModel` und reserviert Kopf-, Aktions-
   und Schrittbereich.
 - `FocusStepListLayout` misst aktive Zeile, Folgereihen und Resthinweis innerhalb eines harten
-  Budgets.
+  Budgets. Ein langer Druck wechselt temporär in den Sortiermodus, zeigt alle offenen Zeilen
+  und persistiert die neue Reihenfolge ausschließlich für das aktuelle Vorkommen; semantische
+  Aktionen bieten dieselben Bewegungen ohne Drag-and-drop an.
 - `FocusStepLayoutPolicy` entscheidet als reine Funktion, wie viele Folgezeilen hineinpassen.
 - `FocusStepRowView` rendert genau einen Schritt und emittiert typisierte Events.
 - `FocusCardDecoration` besitzt Papierlagen, Grain und Reward-Anker; sie entscheidet nicht über
@@ -71,6 +73,11 @@ Eine Submission friert Step-ID, Wert und optionalen Korrekturindex atomar ein. E
 nicht mehr aktiven Schritt werden verworfen beziehungsweise mit dem aktuellen Fokus
 reconciled. Wiederöffnen eines vollständig erfassten Schritts entfernt den letzten Wert; ein
 explizit ohne vollständige Ergebnisse abgeschlossener Schritt behält seine Teilwerte.
+
+Ein Tau eines sichtbaren späteren Schritts ist ebenfalls ausführbar. Ein einfacher Schritt wird
+direkt abgeschlossen; ein Wiederholungsschritt übernimmt atomar den nächsten geplanten Wert.
+Bleibt er danach offen, wird er in den ersten offenen Slot verschoben und damit zum aktiven
+Schritt. Erledigte Slots behalten bei jeder heutigen Umsortierung ihren Platz.
 
 ## Persistenzschema 11
 

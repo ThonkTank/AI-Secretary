@@ -12,8 +12,9 @@ Alles-Tab bietet einen ruhigen Ort zum Organisieren, ohne zum Abarbeiten einzula
 - Nicht erledigte Aufgaben werden sanft weitergetragen. Überfälligkeit bleibt eine ruhige Information statt eines Alarms.
 - Jede Aufgabe und jeder Schritt hat eine eigene Kombo. Rechtzeitige Aktivität stärkt ihre Maserung, Inaktivität und verspätete Einzelaufgaben lassen sie langsam abklingen.
 - Schritte sammeln ihre kombomultiplizierten XP in einem Gefäß; eine Routine-Ernte multipliziert die Summe erneut. Gesamt-XP treiben die Stufe im Kopfblatt. Die Ernte ist möglich, sobald XP gesammelt wurden; unerledigte Schritte gelten danach als verpasst und werden am nächsten Tag nachgeplant.
-- „Rest erledigen“ füllt in der App zunächst nur das Gefäß. Die bewusste Ernte schließt das Vorkommen auch mit offenen Schritten; ungeerntete Gefäß-XP verfallen beim Tageswechsel. Das heute erledigte Blatt erlaubt ein exaktes Undo.
-- Mengen- und Satzschritte werden im Fokusblatt ausgeklappt und dort bearbeitet. Nur der Wechsel zwischen offen und erledigt verändert XP oder Kombo.
+- „Rest erledigen“ füllt in der App zunächst nur das Gefäß. Die bewusste Ernte schließt das Vorkommen auch mit offenen Schritten; ungeerntete Gefäß-XP verfallen beim Tageswechsel. Erledigte Aufgaben verschwinden aus Fokus und Tagesfolge und bleiben in einer standardmäßig eingeklappten Heute-Historie exakt rückgängig machbar.
+- Mengen- und Satzschritte werden im Fokusblatt ausgeklappt und dort bearbeitet. Sichtbare spätere Schritte können direkt mit ihrem Planwert fortgesetzt beziehungsweise abgeschlossen werden. Nur der Wechsel zwischen offen und erledigt verändert XP oder Kombo.
+- Offene Schritte lassen sich im Fokusblatt per langem Druck für das heutige Vorkommen umsortieren. Diese Ausführungsreihenfolge verändert weder die Schrittdefinition noch spätere Vorkommen.
 - Das Widget ist der Arbeitsbereich: abhaken, später setzen und Bedingungen erfüllen. Erstellen und Bearbeiten öffnen die App.
 - Im Alles-Tab lassen sich aktive und archivierte Aufgaben suchen und nach Status, Tageszeit
   oder Rhythmus filtern. Aufgaben können bearbeitet und ihre Schritte ergänzt, bearbeitet,

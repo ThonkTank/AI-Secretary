@@ -18,6 +18,7 @@ public final class TodayUiModel {
     public final List<TaskSnapshot> tasks;
     public final TaskSnapshot focus;
     public final List<TimelineItemUiModel> timeline;
+    public final List<TaskSnapshot> completedToday;
 
     public TodayUiModel(int xp, XpProgress xpProgress, List<TaskSnapshot> tasks,
                         TaskSnapshot focus) {
@@ -31,12 +32,16 @@ public final class TodayUiModel {
         this.tasks = Collections.unmodifiableList(new ArrayList<>(tasks));
         this.focus = focus;
         this.timeline = Collections.unmodifiableList(new ArrayList<>(timeline));
+        List<TaskSnapshot> completed = new ArrayList<>();
+        for (TaskSnapshot task : tasks) if (task.done) completed.add(task);
+        this.completedToday = Collections.unmodifiableList(completed);
     }
 
     public TodayUiModel withCalendar(List<CalendarEventSnapshot> events) {
         List<TimelineItemUiModel> values = new ArrayList<>();
         for (TaskSnapshot task : tasks)
-            if (task != focus) values.add(TimelineItemUiModel.task(timelineTask(task)));
+            if (task != focus && !task.done)
+                values.add(TimelineItemUiModel.task(timelineTask(task)));
         for (CalendarEventSnapshot event : events) values.add(TimelineItemUiModel.event(event));
         values.sort(Comparator.comparingInt((TimelineItemUiModel item) -> item.minute)
                 .thenComparingLong(item -> item.order));

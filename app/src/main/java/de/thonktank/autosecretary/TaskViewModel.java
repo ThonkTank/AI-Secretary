@@ -359,6 +359,14 @@ public final class TaskViewModel extends ViewModel {
         runReward(command(UiCommand.Kind.UNDO, occurrenceId), () -> tasks.undoOccurrence.execute(occurrenceId));
     }
     void toggleStep(String stepId) { runReward(command(UiCommand.Kind.TOGGLE_STEP, stepId), () -> tasks.toggleStep.execute(stepId)); }
+    void advanceTodayStep(String stepId) {
+        runReward(command(UiCommand.Kind.ADVANCE_TODAY_STEP, stepId),
+                () -> tasks.advanceTodayStep.execute(stepId));
+    }
+    void moveTodayStep(String stepId, @Nullable String beforeStepId) {
+        run(command(UiCommand.Kind.MOVE_TODAY_STEP, stepId),
+                () -> tasks.moveTodayStep.execute(stepId, beforeStepId));
+    }
     void recordRepetitionResult(String stepId, int repetitions) {
         runReward(command(UiCommand.Kind.RECORD_REPETITION_RESULT, stepId),
                 () -> tasks.recordRepetitionResult.execute(stepId, repetitions));
