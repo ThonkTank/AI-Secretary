@@ -21,7 +21,32 @@ public final class WoodGrainArchitectureTest {
         assertTrue(source.contains("List<RectF> fadedText"));
     }
 
+    @Test public void leafSurfaceOwnsLayoutGeometryWithoutExternalPostsOrLayerRotation()
+            throws Exception {
+        String leaf = new String(Files.readAllBytes(sourceIn("ui/leaf/LeafSurface.java")),
+                StandardCharsets.UTF_8);
+        String header = new String(Files.readAllBytes(source("HeaderView.java")),
+                StandardCharsets.UTF_8);
+        String task = new String(Files.readAllBytes(source("TaskLeafView.java")),
+                StandardCharsets.UTF_8);
+        String focus = new String(Files.readAllBytes(source("FocusCardDecoration.java")),
+                StandardCharsets.UTF_8);
+
+        assertTrue(leaf.contains("onLayout"));
+        assertTrue(leaf.contains("shape.cornerCenter"));
+        assertFalse(header.contains("grain.post"));
+        assertFalse(task.contains("grain.post"));
+        assertFalse(focus.contains("grain.setRotation"));
+        assertFalse(focus.contains("surface.setRotation(card"));
+    }
+
     private static Path source(String name) {
+        Path module = Path.of("src/main/java/de/thonktank/autosecretary", name);
+        if (Files.isRegularFile(module)) return module;
+        return Path.of("app/src/main/java/de/thonktank/autosecretary", name);
+    }
+
+    private static Path sourceIn(String name) {
         Path module = Path.of("src/main/java/de/thonktank/autosecretary", name);
         if (Files.isRegularFile(module)) return module;
         return Path.of("app/src/main/java/de/thonktank/autosecretary", name);

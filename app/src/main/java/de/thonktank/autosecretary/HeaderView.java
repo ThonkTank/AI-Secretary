@@ -15,12 +15,15 @@ import java.time.LocalTime;
 import java.util.Arrays;
 
 import de.thonktank.autosecretary.domain.model.XpProgress;
+import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.LeafShape;
+import de.thonktank.autosecretary.ui.leaf.LeafSurface;
 
 @SuppressLint("ViewConstructor")
 public final class HeaderView extends FrameLayout {
     private final UiStyle style;
-    private final FrameLayout leaf;
-    private final WoodGrainView grain;
+    private static final LeafShape SHAPE = new LeafShape(8, 56, 8, 56);
+    private final LeafSurface leaf;
     private final TextView greeting;
     private final TextView level;
     private final TextView progress;
@@ -32,11 +35,8 @@ public final class HeaderView extends FrameLayout {
         super(context); style = new UiStyle(context);
         setPadding(style.dp(60), style.dp(12), style.dp(22), 0);
         LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL);
-        leaf = new FrameLayout(context); leaf.setRotation(1.1f); leaf.setClipChildren(true);
+        leaf = new LeafSurface(context, SHAPE); leaf.setRotation(1.1f);
         leaf.setId(R.id.header_reward_anchor);
-        grain = new WoodGrainView(context);
-        grain.setLeafClip(8, 56, 8, 56);
-        leaf.addView(grain, new LayoutParams(-1, -1));
         LinearLayout status = new LinearLayout(context); status.setGravity(Gravity.CENTER_VERTICAL);
         status.setPadding(style.dp(22), style.dp(10), style.dp(24), style.dp(13));
         greeting = style.serif("", 16, 0, true, 300);
@@ -45,11 +45,11 @@ public final class HeaderView extends FrameLayout {
         values.setGravity(Gravity.END);
         level = style.serif("", 20, 0, false, 400); progress = style.sans("", 14, 0, false);
         values.addView(level); values.addView(progress); status.addView(values);
-        leaf.addView(status, new LayoutParams(-1, -1));
+        leaf.front().addView(status, new LayoutParams(-1, -1));
         glint = new View(context); glint.setVisibility(INVISIBLE);
-        leaf.addView(glint, new LayoutParams(style.dp(64), -1));
+        leaf.front().addView(glint, new LayoutParams(style.dp(64), -1));
         afterglow = new View(context); afterglow.setVisibility(INVISIBLE);
-        leaf.addView(afterglow, new LayoutParams(-1, -1));
+        leaf.front().addView(afterglow, new LayoutParams(-1, -1));
         row.addView(leaf, new LinearLayout.LayoutParams(0, style.dp(69), 1));
 
         FrameLayout addTarget = new FrameLayout(context);
@@ -72,13 +72,10 @@ public final class HeaderView extends FrameLayout {
         WoodGrainView.applyTextHalo(greeting, palette.leaf2);
         WoodGrainView.applyTextHalo(level, palette.leaf2);
         WoodGrainView.applyTextHalo(progress, palette.leaf2);
-        leaf.setBackground(style.leaf(palette.leaf2, palette.leaf2Edge, 8, 56, 8, 56));
-        style.shadow(leaf, palette, 7, .7f);
+        leaf.bindSurface(palette, palette.leaf2, palette.leaf2Edge, 7, .7f);
         add.setTextColor(palette.lightText); add.setBackground(style.pill(palette.light, 24));
-        grain.post(() -> grain.bindCorner(palette, value.ratio,
-                grain.getWidth() - style.dp(56), style.dp(56),
-                WoodGrainCoordinates.visibleBounds(grain,
-                        Arrays.asList(greeting, level, progress))));
+        leaf.setGrainSpec(GrainSpec.corner(LeafShape.Corner.TOP_RIGHT, value.ratio,
+                Arrays.asList(greeting, level, progress)));
     }
 
     public void playRewardGlint(DayPalette palette) {
@@ -90,8 +87,8 @@ public final class HeaderView extends FrameLayout {
                 .setDuration(palette.motion.glintDurationMs)
                 .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
                 .withEndAction(() -> glint.setVisibility(INVISIBLE));
-        GradientDrawable edge = style.leaf(Color.TRANSPARENT, palette.light,
-                8, 56, 8, 56);
+        GradientDrawable edge = SHAPE.drawable(getContext(), Color.TRANSPARENT,
+                palette.light, 2);
         edge.setStroke(style.dp(2), UiStyle.alpha(palette.light, .58f));
         afterglow.animate().cancel();
         afterglow.setBackground(edge); afterglow.setAlpha(1f); afterglow.setVisibility(VISIBLE);

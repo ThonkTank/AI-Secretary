@@ -14,7 +14,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
-public final class TaskLeafView extends FrameLayout {
+import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.LeafShape;
+import de.thonktank.autosecretary.ui.leaf.LeafSurface;
+
+public final class TaskLeafView extends LeafSurface {
+    private static final LeafShape SHAPE = new LeafShape(56, 8, 56, 8);
     private final UiStyle style;
     private final LinearLayout content;
     private final TextView marker;
@@ -25,16 +30,12 @@ public final class TaskLeafView extends FrameLayout {
     private final LinearLayout progress;
     private final List<View> bars = new ArrayList<>();
     private final TextView progressLabel;
-    private final WoodGrainView grain;
 
     public TaskLeafView(Context context) {
-        super(context); style = new UiStyle(context); setClipChildren(false);
-        grain = new WoodGrainView(context);
-        grain.setLeafClip(56, 8, 56, 8);
-        addView(grain, new LayoutParams(-1, -1));
+        super(context, SHAPE); style = new UiStyle(context);
         content = new LinearLayout(context); content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(style.dp(24), style.dp(18), style.dp(15), style.dp(18));
-        addView(content, new LayoutParams(-1, -2));
+        front().addView(content, new FrameLayout.LayoutParams(-1, -2));
 
         LinearLayout row = new LinearLayout(context); row.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout copy = new LinearLayout(context); copy.setOrientation(LinearLayout.VERTICAL);
@@ -60,9 +61,9 @@ public final class TaskLeafView extends FrameLayout {
     public void bind(TimelineTaskUiModel task, String markerText, boolean deep,
                      DayPalette palette, Consumer<TimelineTaskUiModel> complete,
                      Consumer<TimelineTaskUiModel> showMenu) {
-        setBackground(style.leaf(deep ? palette.leaf3 : palette.leaf2,
-                style.edge(palette, deep ? 3 : 2), 56, 8, 56, 8));
-        setRotation(deep ? 1.5f : 1.1f); style.shadow(this, palette, deep ? 5 : 7, deep ? .6f : .7f);
+        bindSurface(palette, deep ? palette.leaf3 : palette.leaf2,
+                style.edge(palette, deep ? 3 : 2), deep ? 5 : 7, deep ? .6f : .7f);
+        setRotation(deep ? 1.5f : 1.1f);
         title.setText(breakable(task.title));
         title.setTextColor(palette.ink);
         marker.setText(markerText); marker.setTextColor(task.overdue ? palette.bad : palette.muted);
@@ -81,18 +82,24 @@ public final class TaskLeafView extends FrameLayout {
         menu.setVisibility(VISIBLE); menu.setTextColor(palette.dot);
         menu.setOnClickListener(view -> showMenu.accept(task));
         bindProgress(task, palette);
-        post(() -> {
-            List<View> faded = new ArrayList<>();
-            faded.add(title); faded.add(marker); faded.add(softTime);
-            if (progress.getVisibility() == VISIBLE) faded.add(progressLabel);
-            grain.bind(palette, Collections.singletonList(new WoodGrainView.Anchor(
-                            WoodGrainCoordinates.centeredBounds(grain, dot,
-                                    dot.grainWidth(), dot.grainHeight()), task.comboStage)),
-                    WoodGrainCoordinates.visibleBounds(grain, faded));
-        });
+        List<View> faded = new ArrayList<>();
+        faded.add(title); faded.add(marker); faded.add(softTime);
+        if (progress.getVisibility() == VISIBLE) faded.add(progressLabel);
+        setGrainSpec(GrainSpec.anchors(Collections.singletonList(
+                GrainSpec.sizedAnchor(dot, dot.grainWidth(), dot.grainHeight(),
+                        task.comboStage)), faded));
     }
 
     View rewardAnchor() { return dot; }
+
+    @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.AT_MOST) {
+            super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(
+                    MeasureSpec.getSize(heightMeasureSpec), MeasureSpec.EXACTLY));
+        } else {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
+    }
 
     private void bindProgress(TimelineTaskUiModel task, DayPalette palette) {
         boolean visible = task.steps.size() > 1;

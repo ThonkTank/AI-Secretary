@@ -26,3 +26,36 @@ Der Phase-Gate-Lauf enthält 309 Hosttests, davon 308 erfolgreich und einen bewu
 übersprungenen Test. Rewardfälle decken 0, `15 × 1,5 = 23`, ganze Faktoren, dreistellige Werte
 und `.5`-Rundungsgrenzen ab. Fokus- und Homescreen-Goldens sind pixelidentisch; Schema und
 PNG-Baselines wurden nicht geändert.
+
+## Phase 2 – gemeinsame Blatt- und Grain-Geometrie
+
+Status: implementiert und gegen die Roadmap auditiert.
+
+- `ui.leaf.LeafShape` ist für Header, Timeline-Blätter und die Fokusvorderseite die einzige
+  Quelle der vier asymmetrischen Radien. Corner-Mittelpunkte werden daraus und aus den finalen
+  Surface-Bounds abgeleitet.
+- `LeafSurface` besitzt Hintergrund, Schatten, Grain-Ebene und Frontinhalt. Die sichtbare
+  Vorderseite wird nur noch am gemeinsamen Wrapper rotiert; die frühere Synchronisation von
+  Fokus-Surface, Grain und Karte ist entfernt.
+- `GrainSpec` beschreibt Corner- und Anchor-Grain immutable über semantische Zielviews. Erst
+  `LeafSurface.onLayout()` bildet diese Ziele in ihr lokales Koordinatensystem ab und übergibt
+  genau eine immutable Renderanfrage.
+- Header-`post()` und Timeline-`post()` sind entfernt. Das allgemeine
+  `WoodGrainCoordinates`-Hochlaufen, `setLeafClip(...)`, duplizierte Clipradien und
+  Geometrie-Testgetter existieren nicht mehr.
+- Der Clip wird rendernah in `WoodGrainView` ausgeführt, erhält aber ausschließlich dieselbe
+  `LeafShape`-Instanz vom Owner. Das erhält die Anti-Aliasing-Pixel der bestehenden Goldens,
+  ohne eine zweite Radiendefinition einzuführen.
+- Standalone-Grain-Renderer behalten ihren eigenen Größen-/Attach-Lifecycle für Benchmark und
+  Wiederanheften; Surface-gebundene Renderer werden ausschließlich vom finalen Wrapperlayout
+  getrieben. Asynchrone Pipeline und gewichteter 4-MiB-Cache blieben unverändert.
+
+Der Phase-Gate-Lauf enthält 312 Hosttests, davon 311 erfolgreich und einen bewusst
+übersprungenen Benchmark. Neue reine/Komponententests decken alle asymmetrischen Eckzentren,
+verschachtelte lokale Anchors mit Scrolloffset, Kartenrotation sowie die vorhandenen
+Notiz-, Wiederholungs- und Hidden-Row-Goldens ab. Lint, Android-Testkompilierung und Debug-APK
+sind grün. Fokus- und Homescreen-Goldens sind pixelidentisch; Schema und PNG-Baselines wurden
+nicht geändert. Der isolierte Benchmark bestätigt unverändert 16 Cacheeinträge, 762.128 Byte,
+16 Builds und eine Draw-Medianzeit von 0,007 ms. Ein direkt danach auf demselben Host aus
+Phase-0-Commit `29d949b2` gebauter Vergleich meldete ebenfalls 0,007 ms Median und mit 0,057 ms
+einen höheren p95 als Phase 2 mit 0,022 ms; die Pipeline selbst wurde nicht verändert.

@@ -6,15 +6,17 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import de.thonktank.autosecretary.ui.leaf.LeafSurface;
+
 /** Isolates focus-card transition effects from content binding and measurement. */
 final class FocusCardAnimationController {
     private final UiStyle style;
     private final FrameLayout root;
-    private final FocusCardView card;
+    private final LeafSurface card;
     private final View glint;
     private final View afterglow;
 
-    FocusCardAnimationController(Context context, FrameLayout root, FocusCardView card) {
+    FocusCardAnimationController(Context context, FrameLayout root, LeafSurface card) {
         style = new UiStyle(context);
         this.root = root;
         this.card = card;
@@ -69,8 +71,8 @@ final class FocusCardAnimationController {
         afterglow.animate().cancel();
         afterglow.layout(0, card.getTop(), root.getWidth(), card.getBottom());
         afterglow.setRotation(card.getRotation());
-        GradientDrawable outline = style.leaf(Color.TRANSPARENT, palette.light,
-                10, 64, 10, 64);
+        GradientDrawable outline = card.shape().drawable(card.getContext(),
+                Color.TRANSPARENT, palette.light, 2);
         outline.setStroke(style.dp(2), palette.light);
         afterglow.setBackground(outline);
         afterglow.setAlpha(1f);

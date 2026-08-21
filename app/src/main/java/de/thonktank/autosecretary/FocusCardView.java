@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.ui.leaf.GrainSpec;
 
 /** Content-only focus card. Decoration and transition effects live outside this view. */
 final class FocusCardView extends ViewGroup {
@@ -38,7 +39,6 @@ final class FocusCardView extends ViewGroup {
                 style.dimen(R.dimen.focus_card_padding_vertical),
                 style.dimen(R.dimen.focus_card_padding_end),
                 style.dimen(R.dimen.focus_card_padding_vertical));
-        setRotation(-.7f);
         setBackgroundColor(Color.TRANSPARENT);
 
         titleRow = new FrameLayout(context);
@@ -215,19 +215,16 @@ final class FocusCardView extends ViewGroup {
 
     View mainRewardAnchor() { return steps.getVisibility() == VISIBLE ? ring : taskDew; }
 
-    List<WoodGrainView.Anchor> grainAnchors(View grain, FocusTaskUiModel task) {
-        List<WoodGrainView.Anchor> anchors = new ArrayList<>();
-        anchors.add(new WoodGrainView.Anchor(grainBounds(grain, mainRewardAnchor()),
-                task.grainLevel));
+    GrainSpec grainSpec(FocusTaskUiModel task) {
+        List<GrainSpec.Anchor> anchors = new ArrayList<>();
+        anchors.add(grainAnchor(mainRewardAnchor(), task.grainLevel));
         List<FocusStepUiModel> models = steps.openSteps();
         List<FocusStepRowView> visibleRows = steps.visibleRows();
         for (int index = 0; index < visibleRows.size() && index < models.size(); index++) {
             FocusStepRowView row = visibleRows.get(index);
-            anchors.add(new WoodGrainView.Anchor(
-                    grainBounds(grain, row.rewardAnchor()),
-                    models.get(index).grainLevel));
+            anchors.add(grainAnchor(row.rewardAnchor(), models.get(index).grainLevel));
         }
-        return anchors;
+        return GrainSpec.anchors(anchors, grainTextViews());
     }
 
     List<View> grainTextViews() {
@@ -239,11 +236,11 @@ final class FocusCardView extends ViewGroup {
         return faded;
     }
 
-    private android.graphics.RectF grainBounds(View grain, View anchor) {
+    private GrainSpec.Anchor grainAnchor(View anchor, int level) {
         if (anchor instanceof DewDotView)
-            return WoodGrainCoordinates.centeredBounds(grain, anchor,
-                    ((DewDotView) anchor).grainWidth(), ((DewDotView) anchor).grainHeight());
-        return WoodGrainCoordinates.bounds(grain, anchor);
+            return GrainSpec.sizedAnchor(anchor, ((DewDotView) anchor).grainWidth(),
+                    ((DewDotView) anchor).grainHeight(), level);
+        return GrainSpec.anchor(anchor, level);
     }
 
     @Override protected LayoutParams generateDefaultLayoutParams() {

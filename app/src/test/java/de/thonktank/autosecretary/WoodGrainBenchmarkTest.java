@@ -122,12 +122,12 @@ public final class WoodGrainBenchmarkTest {
             resize(width, height);
             grain.bind(DayPalette.at(java.time.LocalTime.NOON, DayPalette.Mode.AUTO),
                     Arrays.asList(new WoodGrainView.Anchor(
-                                    WoodGrainCoordinates.bounds(grain, first), 12),
+                                    bounds(first), 12),
                             new WoodGrainView.Anchor(
-                                    WoodGrainCoordinates.bounds(grain, second), 10),
+                                    bounds(second), 10),
                             new WoodGrainView.Anchor(
-                                    WoodGrainCoordinates.bounds(grain, third), 8)),
-                    Collections.singletonList(WoodGrainCoordinates.bounds(grain, text)));
+                                    bounds(third), 8)),
+                    Collections.singletonList(bounds(text)));
         }
 
         void resize(int width, int height) {
@@ -167,6 +167,11 @@ public final class WoodGrainBenchmarkTest {
             params.topMargin = top;
             root.addView(view, params);
             return view;
+        }
+
+        private static android.graphics.RectF bounds(View view) {
+            return new android.graphics.RectF(view.getLeft(), view.getTop(),
+                    view.getRight(), view.getBottom());
         }
     }
 }

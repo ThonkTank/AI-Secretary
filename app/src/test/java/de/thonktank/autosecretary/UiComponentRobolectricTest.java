@@ -33,6 +33,8 @@ import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.calendar.CalendarResult;
+import de.thonktank.autosecretary.ui.leaf.LeafShape;
+import de.thonktank.autosecretary.ui.leaf.LeafSurface;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -241,16 +243,9 @@ public final class UiComponentRobolectricTest {
         header.bind(LocalTime.of(9, 40), palette,
                 new de.thonktank.autosecretary.domain.model.XpProgress(70));
         Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
-        WoodGrainView headerGrain = first(header, WoodGrainView.class);
-        assertNotNull(headerGrain);
-        assertEquals(headerGrain.getWidth() - style.dp(56),
-                headerGrain.cornerCenterX(), .001f);
-        assertEquals(style.dp(56), headerGrain.cornerCenterY(), .001f);
-        float[] headerClip = headerGrain.leafClipRadii();
-        assertEquals(style.dp(8), headerClip[0], .001f);
-        assertEquals(style.dp(56), headerClip[2], .001f);
-        assertEquals(style.dp(8), headerClip[4], .001f);
-        assertEquals(style.dp(56), headerClip[6], .001f);
+        LeafSurface headerLeaf = first(header, LeafSurface.class);
+        assertNotNull(headerLeaf);
+        assertEquals(new LeafShape(8, 56, 8, 56), headerLeaf.shape());
 
         FocusTaskView focus = new FocusTaskView(activity);
         focus.bind(DashboardFixtures.taskWithSteps(), false, palette, event -> { });
@@ -259,18 +254,16 @@ public final class UiComponentRobolectricTest {
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
         FocusCardView card = first(focus, FocusCardView.class);
         WoodGrainView focusGrain = first(focus, WoodGrainView.class);
-        View surface = focus.getChildAt(2);
+        LeafSurface surface = first(focus, LeafSurface.class);
         assertNotNull(card);
         assertNotNull(focusGrain);
-        for (View layer : Arrays.asList(surface, focusGrain)) {
-            assertEquals(card.getLeft(), layer.getLeft());
-            assertEquals(card.getTop(), layer.getTop());
-            assertEquals(card.getWidth(), layer.getWidth());
-            assertEquals(card.getHeight(), layer.getHeight());
-            assertEquals(card.getRotation(), layer.getRotation(), 0f);
-            assertEquals(card.getPivotX(), layer.getPivotX(), .001f);
-            assertEquals(card.getPivotY(), layer.getPivotY(), .001f);
-        }
+        assertNotNull(surface);
+        assertEquals(new LeafShape(10, 64, 10, 64), surface.shape());
+        assertSame(surface.front(), card.getParent());
+        assertSame(surface, surface.front().getParent());
+        assertEquals(0f, card.getRotation(), 0f);
+        assertEquals(0f, focusGrain.getRotation(), 0f);
+        assertEquals(-.7f, surface.getRotation(), 0f);
     }
 
     @Test public void reducedMotionDisablesPulseAndGlintWithoutChangingState() {

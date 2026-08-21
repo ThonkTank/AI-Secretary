@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import de.thonktank.autosecretary.ui.leaf.LeafShape;
+
 /** Draw-only wood-grain view backed by an asynchronous, memory-bounded geometry pipeline. */
 public final class WoodGrainView extends View {
     public static final class Anchor {
@@ -29,6 +31,7 @@ public final class WoodGrainView extends View {
     }
 
     private final UiStyle style;
+    private final LeafShape leafShape;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private List<Anchor> anchors = Collections.emptyList();
     private List<RectF> fadedText = Collections.emptyList();
@@ -37,15 +40,19 @@ public final class WoodGrainView extends View {
     private float cornerRatio;
     private float cornerX;
     private float cornerY;
-    private float[] clipRadii;
-    private final Path clipPath = new Path();
     private WoodGrainRenderData renderData;
     private String requestedKey;
     private int requestGeneration;
+    private final Path clipPath = new Path();
 
     public WoodGrainView(Context context) {
+        this(context, null);
+    }
+
+    public WoodGrainView(Context context, LeafShape leafShape) {
         super(context);
         style = new UiStyle(context);
+        this.leafShape = leafShape;
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         setLayerType(LAYER_TYPE_SOFTWARE, null);
     }
@@ -82,17 +89,8 @@ public final class WoodGrainView extends View {
         requestGeometry();
     }
 
-    public void setLeafClip(float topLeftDp, float topRightDp,
-                            float bottomRightDp, float bottomLeftDp) {
-        clipRadii = new float[]{style.dp(topLeftDp), style.dp(topLeftDp),
-                style.dp(topRightDp), style.dp(topRightDp),
-                style.dp(bottomRightDp), style.dp(bottomRightDp),
-                style.dp(bottomLeftDp), style.dp(bottomLeftDp)};
-        invalidate();
-    }
-
     /** Applies the narrow cartographic text halo required above grain contours. */
-    static void applyTextHalo(TextView text, int leafColor) {
+    public static void applyTextHalo(TextView text, int leafColor) {
         float width = Math.min(text.getTextSize() / 4f,
                 text.getResources().getDisplayMetrics().density * 3f);
         text.setShadowLayer(width, 0f, 0f, leafColor);
@@ -101,12 +99,9 @@ public final class WoodGrainView extends View {
 
     @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
         super.onSizeChanged(width, height, oldWidth, oldHeight);
-        requestGeometry();
-    }
-
-    @Override protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        requestGeometry();
+        // Standalone renderers own their size lifecycle. LeafSurface renderers are bound once
+        // from the wrapper's final onLayout geometry instead.
+        if (leafShape == null) requestGeometry();
     }
 
     @Override protected void onDetachedFromWindow() {
@@ -114,16 +109,22 @@ public final class WoodGrainView extends View {
         super.onDetachedFromWindow();
     }
 
+    @Override protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        requestGeometry();
+    }
+
     @Override protected void onDraw(Canvas canvas) {
         WoodGrainRenderData data = renderData;
         DayPalette colors = palette;
         if (colors == null || data == null || data.strokes.isEmpty()) return;
         int clipSave = -1;
-        if (clipRadii != null) {
+        if (leafShape != null) {
             clipSave = canvas.save();
             clipPath.reset();
             clipPath.addRoundRect(0f, 0f, getWidth(), getHeight(),
-                    clipRadii, Path.Direction.CW);
+                    leafShape.radii(getResources().getDisplayMetrics().density),
+                    Path.Direction.CW);
             canvas.clipPath(clipPath);
         }
         int layer = fadedText.isEmpty() ? -1
@@ -201,12 +202,6 @@ public final class WoodGrainView extends View {
         List<RectF> result = new ArrayList<>();
         for (RectF value : values) result.add(new RectF(value));
         return Collections.unmodifiableList(result);
-    }
-
-    float cornerCenterX() { return cornerX; }
-    float cornerCenterY() { return cornerY; }
-    float[] leafClipRadii() {
-        return clipRadii == null ? new float[0] : clipRadii.clone();
     }
 
 }

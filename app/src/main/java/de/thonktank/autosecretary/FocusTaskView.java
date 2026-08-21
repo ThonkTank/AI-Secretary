@@ -8,11 +8,13 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
+import de.thonktank.autosecretary.ui.leaf.LeafSurface;
 
 /** Composition shell for focus content, paper decoration and transition effects. */
 public final class FocusTaskView extends FrameLayout {
     private final UiStyle style;
     private final FocusCardView card;
+    private final LeafSurface surface;
     private final FocusCardDecoration decoration;
     private final FocusCardAnimationController animations;
     private final LayoutParams cardParams;
@@ -27,12 +29,13 @@ public final class FocusTaskView extends FrameLayout {
         super(context);
         style = new UiStyle(context);
         setClipChildren(false);
-        decoration = new FocusCardDecoration(context, this, rewardAnchors);
         card = new FocusCardView(context);
+        decoration = new FocusCardDecoration(context, this, rewardAnchors, card);
+        surface = decoration.surface();
         cardParams = new LayoutParams(-1, -2);
         cardParams.topMargin = style.dimen(R.dimen.focus_card_top);
-        addView(card, cardParams);
-        animations = new FocusCardAnimationController(context, this, card);
+        surface.setLayoutParams(cardParams);
+        animations = new FocusCardAnimationController(context, this, surface);
     }
 
     public void bind(FocusTaskUiModel task, boolean stacked,
@@ -50,9 +53,9 @@ public final class FocusTaskView extends FrameLayout {
         setMinimumHeight(compact ? style.dimen(R.dimen.focus_card_compact_min_height)
                 : task.steps.isEmpty() ? style.dimen(R.dimen.focus_card_empty_min_height) : 0);
         cardParams.topMargin = compact ? 0 : style.dimen(R.dimen.focus_card_top);
-        card.setLayoutParams(cardParams);
-        card.setTranslationY(0f);
-        card.setAlpha(1f);
+        surface.setLayoutParams(cardParams);
+        surface.setTranslationY(0f);
+        surface.setAlpha(1f);
         FocusCardUiModel model = new FocusCardUiModel(task, palette,
                 stepLimit, inputState);
         card.bind(model, events, () -> deferPending = true);
@@ -68,11 +71,6 @@ public final class FocusTaskView extends FrameLayout {
         int safeHeight = safeCardHeight(heightMeasureSpec);
         card.setMaximumContentHeight(Math.max(0, safeHeight - cardParams.topMargin));
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-    }
-
-    @Override protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-        super.onLayout(changed, left, top, right, bottom);
-        decoration.layoutTo(card);
     }
 
     private int safeCardHeight(int heightMeasureSpec) {
