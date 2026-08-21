@@ -42,8 +42,10 @@ import de.thonktank.autosecretary.data.preferences.UiThemeMode;
  */
 @RunWith(AndroidJUnit4.class)
 public final class UpgradePersistenceTest {
+    private static final int CURRENT_SCHEMA_VERSION = 12;
     private static final String DATABASE = "auto_secretary.db";
     private static final String TASK_ID = "upgrade-e2e-task";
+    private static final String SCHEDULE_ID = "upgrade-e2e-schedule";
     private static final String TEMPLATE_ID = "upgrade-e2e-template";
     private static final String OCCURRENCE_ID = "upgrade-e2e-occurrence";
     private static final String STEP_ID = "upgrade-e2e-step";
@@ -98,7 +100,7 @@ public final class UpgradePersistenceTest {
     }
 
     @Test public void seedContractSupportsEveryExportedRoomSchema() throws Exception {
-        for (int version = 1; version <= 8; version++) {
+        for (int version = 1; version <= CURRENT_SCHEMA_VERSION; version++) {
             try (SQLiteDatabase database = SQLiteDatabase.create(null)) {
                 createExportedSchema(database, version);
                 seedFixture(database);
@@ -112,6 +114,8 @@ public final class UpgradePersistenceTest {
                         count(database, "occurrence_steps", "id", STEP_ID));
                 if (version >= 7) assertEquals(1,
                         count(database, "reward_bookings", "id", BOOKING_ID));
+                if (version >= 12) assertEquals(1,
+                        count(database, "task_schedule_entries", "id", SCHEDULE_ID));
             }
         }
     }
@@ -128,7 +132,8 @@ public final class UpgradePersistenceTest {
 
         AutoSecretaryApplication application = AutoSecretaryApplication.from(context);
         AppDatabase database = application.container().database;
-        assertEquals(8, database.getOpenHelper().getReadableDatabase().getVersion());
+        assertEquals(CURRENT_SCHEMA_VERSION,
+                database.getOpenHelper().getReadableDatabase().getVersion());
 
         TaskEntity task = database.tasks().task(TASK_ID);
         assertNotNull(task);
@@ -137,6 +142,10 @@ public final class UpgradePersistenceTest {
         assertEquals(4_001_024L, task.displayOrder);
         assertEquals(0, task.timeOfDayMask);
         assertEquals("FOREVER", task.boundKind);
+
+        List<TaskScheduleEntity> schedule = database.tasks().scheduleEntries(TASK_ID);
+        assertEquals(1, schedule.size());
+        assertEquals("LATER", schedule.get(0).slot);
 
         List<TaskStepEntity> templates = database.tasks().templates(TASK_ID);
         assertEquals(1, templates.size());
@@ -242,6 +251,15 @@ public final class UpgradePersistenceTest {
         return values;
     }
 
+    private static ContentValues scheduleValues() {
+        ContentValues values = new ContentValues();
+        values.put("id", SCHEDULE_ID);
+        values.put("taskId", TASK_ID);
+        values.put("slot", "LATER");
+        values.put("displayOrder", 4_001_024L);
+        return values;
+    }
+
     private static ContentValues occurrenceValues() {
         ContentValues values = new ContentValues();
         values.put("id", OCCURRENCE_ID);
@@ -304,8 +322,12 @@ public final class UpgradePersistenceTest {
         deleteIfPresent(database, "occurrence_steps", "id", STEP_ID);
         deleteIfPresent(database, "occurrences", "id", OCCURRENCE_ID);
         deleteIfPresent(database, "task_steps", "id", TEMPLATE_ID);
+        deleteIfPresent(database, "task_schedule_entries", "id", SCHEDULE_ID);
         deleteIfPresent(database, "tasks", "id", TASK_ID);
         insertCompatible(database, "tasks", taskValues(), SQLiteDatabase.CONFLICT_ABORT);
+        if (tableExists(database, "task_schedule_entries"))
+            insertCompatible(database, "task_schedule_entries", scheduleValues(),
+                    SQLiteDatabase.CONFLICT_ABORT);
         insertCompatible(database, "task_steps", templateValues(), SQLiteDatabase.CONFLICT_ABORT);
         insertCompatible(database, "occurrences", occurrenceValues(), SQLiteDatabase.CONFLICT_ABORT);
         insertCompatible(database, "occurrence_steps", occurrenceStepValues(),
