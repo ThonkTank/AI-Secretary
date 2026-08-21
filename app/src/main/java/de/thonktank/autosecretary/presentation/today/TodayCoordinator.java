@@ -44,7 +44,7 @@ public final class TodayCoordinator implements TodayActionSink {
         this.state = TodayFeatureState.idle(initial);
     }
 
-    public TodayFeatureState state() { return state; }
+    public synchronized TodayFeatureState state() { return state; }
 
     @Override public synchronized void emit(TodayAction action) {
         if (action == null) throw new IllegalArgumentException("Today action is required");

@@ -115,7 +115,9 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
                 new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER)));
         assertTrue(dot.onKeyUp(KeyEvent.KEYCODE_ENTER,
                 new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER)));
-        assertEquals("set-step", events.last(DashboardEvent.SubmitRepetition.class).stepId);
+        assertEquals("set-step", events.lastToday(
+                de.thonktank.autosecretary.presentation.today.TodayAction.Kind
+                        .SUBMIT_REPETITION).id);
 
         AccessibilityNodeProvider setNodes = bars.getAccessibilityNodeProvider();
         assertNotNull(setNodes);
@@ -128,7 +130,9 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         assertTrue(setBounds.width() >= dp(context, 44));
         assertTrue(setBounds.height() >= dp(context, 44));
         assertTrue(setNodes.performAction(0, AccessibilityNodeInfo.ACTION_CLICK, null));
-        assertEquals(0, events.last(DashboardEvent.EditRepetition.class).index);
+        assertEquals(0, events.lastToday(
+                de.thonktank.autosecretary.presentation.today.TodayAction.Kind
+                        .EDIT_REPETITION).value);
         firstSet.recycle();
     }
 

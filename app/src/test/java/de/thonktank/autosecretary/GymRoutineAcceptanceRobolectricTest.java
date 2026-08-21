@@ -2,7 +2,7 @@ package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
-import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
@@ -90,14 +90,12 @@ public final class GymRoutineAcceptanceRobolectricTest {
         RecordRepetitionResult record = new RecordRepetitionResult(repository, clock);
         CompleteRemainingSteps completeRest = new CompleteRemainingSteps(repository, clock);
         DashboardEventSink actions = event -> {
-            if (event instanceof DashboardEvent.SubmitRepetition) {
-                String stepId = ((DashboardEvent.SubmitRepetition) event).stepId;
-                record.execute(stepId, 12);
-            } else if (event instanceof DashboardEvent.FocusAction
-                    && ((DashboardEvent.FocusAction) event).kind
-                    == DashboardEvent.FocusActionKind.COMPLETE_REMAINING) {
-                TaskActionTarget target = ((DashboardEvent.FocusAction) event).target;
-                completeRest.execute(target.occurrenceId);
+            if (!(event instanceof DashboardEvent.Today)) return;
+            TodayAction action = ((DashboardEvent.Today) event).action;
+            if (action.kind == TodayAction.Kind.SUBMIT_REPETITION) {
+                record.execute(action.id, 12);
+            } else if (action.kind == TodayAction.Kind.COMPLETE_REMAINING) {
+                completeRest.execute(action.id);
             }
         };
         view.bind(focus, false,

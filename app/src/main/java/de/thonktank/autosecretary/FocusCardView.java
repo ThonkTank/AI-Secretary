@@ -2,6 +2,8 @@ package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -32,7 +34,8 @@ final class FocusCardView extends ViewGroup {
     private int maximumContentHeight = Integer.MAX_VALUE;
     private boolean reorderingSteps;
 
-    FocusCardView(Context context) {
+    FocusCardView(Context context, TodayActionSink events,
+                  EdgeAutoScroller.ScrollHost scrollHost) {
         super(context);
         style = new UiStyle(context);
         setPadding(style.dimen(R.dimen.focus_card_padding_start),
@@ -62,7 +65,7 @@ final class FocusCardView extends ViewGroup {
                 Gravity.TOP | Gravity.END));
         addView(titleRow, new MarginLayoutParams(-1, -2));
 
-        steps = new FocusStepListLayout(context);
+        steps = new FocusStepListLayout(context, events, scrollHost);
         steps.setReorderModeListener(active -> {
             reorderingSteps = active;
             requestLayout();
@@ -92,7 +95,7 @@ final class FocusCardView extends ViewGroup {
         actions.addView(later, laterParams);
     }
 
-    void bind(FocusCardUiModel model, DashboardEventSink events, Runnable onDefer) {
+    void bind(FocusCardUiModel model, TodayActionSink events, Runnable onDefer) {
         FocusTaskUiModel task = model.task;
         boolean compact = task.ongoing && task.steps.isEmpty();
         setPadding(style.dimen(R.dimen.focus_card_padding_start),
@@ -114,30 +117,30 @@ final class FocusCardView extends ViewGroup {
             ring.setPalette(model.palette);
             ring.bind(task.vessel);
             ring.setOnClickListener(task.harvestReady
-                    ? view -> events.emit(DashboardEvent.focusAction(
-                            DashboardEvent.FocusActionKind.HARVEST, task.actionTarget)) : null);
+                    ? view -> events.emit(TodayAction.harvest(task.occurrenceId())) : null);
         } else {
             taskDew.bind(false, false, model.palette, task.reward.resultXp);
             taskDew.setContentDescription(getContext().getString(
                     R.string.content_complete_task, task.title(), task.reward.resultXp));
-            taskDew.setOnClickListener(view -> events.emit(DashboardEvent.focusAction(
-                    DashboardEvent.FocusActionKind.COMPLETE, task.actionTarget)));
+            taskDew.setOnClickListener(view -> events.emit(task.terminalCondition()
+                    ? TodayAction.requestClose(task.taskId(), task.title())
+                    : TodayAction.completeOccurrence(task.occurrenceId())));
         }
 
-        steps.bind(model, events);
+        steps.bind(model);
         primary.setText(R.string.action_complete_rest);
         primary.setTextColor(model.palette.accentText);
         primary.setBackground(style.pill(model.palette.accent, 26));
         style.shadow(primary, model.palette, 5, .7f);
-        primary.setOnClickListener(view -> events.emit(DashboardEvent.focusAction(
-                DashboardEvent.FocusActionKind.COMPLETE_REMAINING, task.actionTarget)));
+        primary.setOnClickListener(view -> events.emit(
+                TodayAction.completeRemaining(task.occurrenceId())));
         primary.setVisibility(vessel && task.remainingSteps > 0 ? VISIBLE : GONE);
         later.setVisibility(task.allowDefer ? VISIBLE : GONE);
         later.bind(model.palette.hint, model.palette.dot);
         later.setOnClickListener(view -> {
             onDefer.run();
-            events.emit(DashboardEvent.focusAction(DashboardEvent.FocusActionKind.DEFER,
-                    task.actionTarget));
+            events.emit(TodayAction.defer(task.occurrenceId().isEmpty()
+                    ? task.taskId() : task.occurrenceId()));
         });
         requestLayout();
     }
@@ -218,12 +221,7 @@ final class FocusCardView extends ViewGroup {
     GrainSpec grainSpec(FocusTaskUiModel task) {
         List<GrainSpec.Anchor> anchors = new ArrayList<>();
         anchors.add(grainAnchor(mainRewardAnchor(), task.grainLevel));
-        List<FocusStepUiModel> models = steps.openSteps();
-        List<FocusStepRowView> visibleRows = steps.visibleRows();
-        for (int index = 0; index < visibleRows.size() && index < models.size(); index++) {
-            FocusStepRowView row = visibleRows.get(index);
-            anchors.add(grainAnchor(row.rewardAnchor(), models.get(index).grainLevel));
-        }
+        anchors.addAll(steps.grainAnchors());
         return GrainSpec.anchors(anchors, grainTextViews());
     }
 

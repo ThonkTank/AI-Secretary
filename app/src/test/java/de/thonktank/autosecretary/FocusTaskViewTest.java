@@ -3,6 +3,10 @@ package de.thonktank.autosecretary;
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
+import de.thonktank.autosecretary.presentation.today.TodayReducer;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -22,7 +26,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
-import org.robolectric.util.ReflectionHelpers;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -68,8 +71,8 @@ public final class FocusTaskViewTest {
         row.bind(step, true, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
                 RepetitionInputState.idle(), events);
 
-        assertEquals("Beinpresse", row.renderedTitle().toString());
-        assertEquals("23 kg", row.renderedSubtitle().toString());
+        assertTrue(visibleTexts(row).contains("Beinpresse"));
+        assertTrue(visibleTexts(row).contains("23 kg"));
         assertFalse(firstText(row, "Beinpresse").hasOnClickListeners());
         assertFalse(firstText(row, "23 kg").hasOnClickListeners());
         assertTrue(row.rewardAnchor().getContentDescription().toString()
@@ -77,10 +80,9 @@ public final class FocusTaskViewTest {
         assertTrue(row.grainTextViews().size() >= 4);
         View plus = row.findViewById(R.id.rep_stepper_increment);
         assertTrue(plus.performClick());
-        DashboardEvent.AdjustRepetition adjustment =
-                events.last(DashboardEvent.AdjustRepetition.class);
-        assertEquals("step-1", adjustment.stepId);
-        assertEquals(1, adjustment.delta);
+        TodayAction adjustment = events.lastToday(TodayAction.Kind.ADJUST_REPETITION);
+        assertEquals("step-1", adjustment.id);
+        assertEquals(1, adjustment.value);
     }
 
     @Test public void singleRepetitionsConfirmOnceWhileDurationCompletesDirectly() {
@@ -95,19 +97,19 @@ public final class FocusTaskViewTest {
         row.bind(repetitions, true, palette,
                 RepetitionInputState.idle().adjust(repetitions, -3), events);
 
-        assertTrue(row.editorVisible());
+        assertEquals(View.VISIBLE, ((View) barsScrollParent(row)).getVisibility());
         View barsScroll = (View) row.findViewById(R.id.set_bars).getParent();
         assertEquals(View.GONE, barsScroll.getVisibility());
         row.rewardAnchor().performClick();
-        assertEquals("reps", events.last(DashboardEvent.SubmitRepetition.class).stepId);
+        assertEquals("reps", events.lastToday(TodayAction.Kind.SUBMIT_REPETITION).id);
 
         FocusStepUiModel duration = FocusTaskFixtures.step("duration", "Planke")
                 .amount("45 Sek.").note("ruhig atmen").build();
         row.bind(duration, true, palette, RepetitionInputState.idle(), events);
 
-        assertFalse(row.editorVisible());
+        assertEquals(View.GONE, ((View) barsScrollParent(row)).getVisibility());
         row.rewardAnchor().performClick();
-        assertEquals("duration", events.last(DashboardEvent.ToggleStep.class).stepId);
+        assertEquals("duration", events.lastToday(TodayAction.Kind.TOGGLE_STEP).id);
     }
 
     @Test public void reboundFutureRowAdvancesWithItsPlannedValueWithoutShowingEditor() {
@@ -138,7 +140,7 @@ public final class FocusTaskViewTest {
         assertTrue(row.rewardAnchor().performClick());
         View barsScroll = (View) row.findViewById(R.id.set_bars).getParent();
         assertEquals(View.GONE, ((View) barsScroll.getParent()).getVisibility());
-        assertEquals("future", events.last(DashboardEvent.AdvanceTodayStep.class).stepId);
+        assertEquals("future", events.lastToday(TodayAction.Kind.ADVANCE_STEP).id);
     }
 
     @Test public void configuredLimitCountsFollowingStepsAndReportsTheRest() {
@@ -191,31 +193,30 @@ public final class FocusTaskViewTest {
                 .occurrence("today").recurrence(Recurrence.DAILY).steps(models).build();
         DashboardEventRecorder events = new DashboardEventRecorder();
         FocusTaskView view = new FocusTaskView(context);
-        view.bind(task, false,
-                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), events);
+        TodayUiModel today = new TodayUiModel(
+                new de.thonktank.autosecretary.domain.model.XpProgress(0), task,
+                Collections.emptyList(), Collections.emptyList());
+        bindFeature(view, TodayFeatureState.idle(today), FocusStepLimit.AUTO, events);
 
-        FocusStepListLayout list = findFirst(view, FocusStepListLayout.class);
-        List<FocusStepRowView> rows = list.visibleRows();
-        AccessibilityNodeInfo secondInfo = rows.get(1).stepBody()
-                .createAccessibilityNodeInfo();
+        View second = stepBody(view, context, "Zwei");
+        AccessibilityNodeInfo secondInfo = second.createAccessibilityNodeInfo();
         assertTrue(hasAction(secondInfo, R.id.action_today_step_up));
         assertTrue(hasAction(secondInfo, R.id.action_today_step_down));
         assertTrue(hasAction(secondInfo, R.id.action_today_step_front));
         assertTrue(hasAction(secondInfo, R.id.action_today_step_back));
         secondInfo.recycle();
 
-        assertMove(rows.get(1).stepBody(), R.id.action_today_step_up,
+        assertMove(stepBody(view, context, "Zwei"), R.id.action_today_step_up,
                 events, "second", "first");
-        assertMove(rows.get(2).stepBody(), R.id.action_today_step_front,
+        assertMove(stepBody(view, context, "Drei"), R.id.action_today_step_front,
                 events, "third", "first");
-        assertMove(rows.get(0).stepBody(), R.id.action_today_step_down,
+        assertMove(stepBody(view, context, "Eins"), R.id.action_today_step_down,
                 events, "first", "third");
-        assertMove(rows.get(1).stepBody(), R.id.action_today_step_back,
+        assertMove(stepBody(view, context, "Zwei"), R.id.action_today_step_back,
                 events, "second", null);
     }
 
-    @Test public void dragPreviewShowsAllRowsCancelsCleanlyAndPersistsOneDrop() {
+    @Test public void longPressAndPublicActionsShowPreviewCancelAndPersistOneDrop() {
         Context context = ApplicationProvider.getApplicationContext();
         List<FocusStepUiModel> models = Arrays.asList(
                 FocusStepUiModel.of("first", "Eins", false),
@@ -225,43 +226,55 @@ public final class FocusTaskViewTest {
         FocusTaskUiModel task = FocusTaskFixtures.task("routine", "Routine")
                 .occurrence("today").recurrence(Recurrence.DAILY).steps(models).build();
         DashboardEventRecorder events = new DashboardEventRecorder();
+        TodayUiModel today = new TodayUiModel(new de.thonktank.autosecretary.domain.model.XpProgress(0),
+                task, Collections.emptyList(), Collections.emptyList());
+        TodayReducer reducer = new TodayReducer();
+        final TodayFeatureState[] state = {TodayFeatureState.idle(today)};
+        final int[] commands = {0};
+        de.thonktank.autosecretary.presentation.today.TodayActionSink sink = action -> {
+            events.emit(action);
+            TodayReducer.Result result;
+            if (action.kind == TodayAction.Kind.BEGIN_REORDER)
+                result = reducer.begin(state[0], action.id, action.order);
+            else if (action.kind == TodayAction.Kind.PREVIEW_REORDER)
+                result = reducer.preview(state[0], action.id, action.order);
+            else if (action.kind == TodayAction.Kind.CANCEL_REORDER)
+                result = reducer.cancel(state[0], action.id);
+            else if (action.kind == TodayAction.Kind.DROP_REORDER)
+                result = reducer.drop(state[0], action.id, action.relatedId, "command-1");
+            else return;
+            state[0] = result.state;
+            if (result.command != null) commands[0]++;
+        };
         FocusTaskView view = new FocusTaskView(context);
-        view.bind(task, false,
-                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.ONE,
-                RepetitionInputState.idle(), events);
-        FocusStepListLayout list = findFirst(view, FocusStepListLayout.class);
-        assertEquals(2, list.visibleRows().size());
+        bindFeature(view, state[0], FocusStepLimit.ONE, sink);
+        // Robolectric does not establish a platform drag session, but the public long-click
+        // still proves that the view emits Begin and compensating Cancel when start is refused.
+        assertFalse(stepBody(view, context, "Vier").performLongClick());
+        assertEquals(TodayAction.Kind.BEGIN_REORDER, events.todayActions().get(0).kind);
+        assertEquals(TodayAction.Kind.CANCEL_REORDER, events.todayActions().get(1).kind);
 
-        enterReorder(list, "fourth");
-        movePreview(list, 0);
-        assertEquals(4, list.visibleRows().size());
-        assertEquals(Arrays.asList("fourth", "first", "second", "third"), stepIds(list));
-        ReflectionHelpers.callInstanceMethod(list, "finishReorder");
-        assertEquals(Arrays.asList("first", "second", "third", "fourth"), stepIds(list));
-        assertEquals(2, list.visibleRows().size());
-        assertTrue(events.events().isEmpty());
+        sink.emit(TodayAction.beginReorder("fourth",
+                Arrays.asList("first", "second", "third", "fourth")));
 
-        enterReorder(list, "fourth");
-        movePreview(list, 0);
-        ReflectionHelpers.callInstanceMethod(list, "persistDrop");
-        ReflectionHelpers.callInstanceMethod(list, "persistDrop");
-        long moveCount = events.events().stream()
-                .filter(event -> event instanceof DashboardEvent.MoveTodayStep).count();
-        assertEquals(1L, moveCount);
-        DashboardEvent.MoveTodayStep move = events.last(DashboardEvent.MoveTodayStep.class);
-        assertEquals("fourth", move.stepId);
-        assertEquals("first", move.beforeStepId);
+        sink.emit(TodayAction.previewReorder("fourth",
+                Arrays.asList("fourth", "first", "second", "third")));
+        bindFeature(view, state[0], FocusStepLimit.ONE, sink);
+        assertEquals(Arrays.asList("Vier", "Eins", "Zwei", "Drei"),
+                visibleStepTitles(view));
 
-        ScrollView scroll = new ScrollView(context);
-        scroll.addView(view, new ScrollView.LayoutParams(-1, -2));
-        int width = Math.round(330 * context.getResources().getDisplayMetrics().density);
-        int height = Math.round(220 * context.getResources().getDisplayMetrics().density);
-        measureExactly(scroll, width, height);
-        enterReorder(list, "fourth");
-        measureExactly(scroll, width, height);
-        ReflectionHelpers.callInstanceMethod(list, "autoScroll",
-                ReflectionHelpers.ClassParameter.from(float.class, (float) list.getHeight()));
-        assertTrue(scroll.getScrollY() > 0);
+        sink.emit(TodayAction.cancelReorder("fourth"));
+        bindFeature(view, state[0], FocusStepLimit.ONE, sink);
+        assertTrue(visibleStepTitles(view).containsAll(Arrays.asList("Eins", "Zwei")));
+        assertFalse(visibleStepTitles(view).contains("Drei"));
+
+        sink.emit(TodayAction.beginReorder("fourth",
+                Arrays.asList("first", "second", "third", "fourth")));
+        sink.emit(TodayAction.previewReorder("fourth",
+                Arrays.asList("fourth", "first", "second", "third")));
+        sink.emit(TodayAction.dropReorder("fourth", "first"));
+        sink.emit(TodayAction.dropReorder("fourth", "first"));
+        assertEquals(1, commands[0]);
     }
 
     @Test public void viewportMeasurementSafelyReducesAutomaticAndNumericLimits() {
@@ -335,26 +348,56 @@ public final class FocusTaskViewTest {
 
     private static void assertMove(View body, int actionId, DashboardEventRecorder events,
                                    String stepId, String beforeStepId) {
+        int beforeCount = events.todayActions().size();
         assertTrue(body.performAccessibilityAction(actionId, null));
-        DashboardEvent.MoveTodayStep move = events.last(DashboardEvent.MoveTodayStep.class);
-        assertEquals(stepId, move.stepId);
-        if (beforeStepId == null) assertNull(move.beforeStepId);
-        else assertEquals(beforeStepId, move.beforeStepId);
+        assertEquals(beforeCount + 3, events.todayActions().size());
+        assertEquals(TodayAction.Kind.BEGIN_REORDER,
+                events.todayActions().get(beforeCount).kind);
+        assertEquals(TodayAction.Kind.PREVIEW_REORDER,
+                events.todayActions().get(beforeCount + 1).kind);
+        TodayAction move = events.todayActions().get(beforeCount + 2);
+        assertEquals(TodayAction.Kind.DROP_REORDER, move.kind);
+        assertEquals(stepId, move.id);
+        if (beforeStepId == null) assertNull(move.relatedId);
+        else assertEquals(beforeStepId, move.relatedId);
     }
 
-    private static void enterReorder(FocusStepListLayout list, String stepId) {
-        ReflectionHelpers.callInstanceMethod(list, "enterReorder",
-                ReflectionHelpers.ClassParameter.from(String.class, stepId));
+    private static Object barsScrollParent(FocusStepRowView row) {
+        return ((View) row.findViewById(R.id.set_bars).getParent()).getParent();
     }
 
-    private static void movePreview(FocusStepListLayout list, int target) {
-        ReflectionHelpers.callInstanceMethod(list, "moveDraggedRow",
-                ReflectionHelpers.ClassParameter.from(int.class, target));
+    private static View stepBody(View root, Context context, String title) {
+        CharSequence expected = context.getString(R.string.a11y_today_step_row, title);
+        View result = findByContentDescription(root, expected);
+        if (result == null) throw new AssertionError("Missing step body " + title);
+        return result;
     }
 
-    private static List<String> stepIds(FocusStepListLayout list) {
+    private static View findByContentDescription(View root, CharSequence expected) {
+        if (expected.equals(root.getContentDescription())) return root;
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                View result = findByContentDescription(group.getChildAt(index), expected);
+                if (result != null) return result;
+            }
+        }
+        return null;
+    }
+
+    private static void bindFeature(FocusTaskView view, TodayFeatureState state,
+                                    FocusStepLimit limit,
+                                    de.thonktank.autosecretary.presentation.today.TodayActionSink sink) {
+        view.bind(state.today.focus, false,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), limit,
+                RepetitionInputState.idle(), state.reorder, sink);
+    }
+
+    private static List<String> visibleStepTitles(View root) {
         List<String> result = new ArrayList<>();
-        for (FocusStepUiModel step : list.openSteps()) result.add(step.id);
+        for (String value : visibleTexts(root))
+            if (Arrays.asList("Eins", "Zwei", "Drei", "Vier").contains(value))
+                result.add(value);
         return result;
     }
 

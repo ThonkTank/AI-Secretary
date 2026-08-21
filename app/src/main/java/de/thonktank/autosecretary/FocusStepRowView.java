@@ -4,6 +4,7 @@ import android.content.Context;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -14,6 +15,9 @@ import java.util.List;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayActionSink;
+import de.thonktank.autosecretary.ui.leaf.GrainSpec;
 
 /** Modular focus-card row for the running step and compact following steps. */
 public final class FocusStepRowView extends LinearLayout {
@@ -31,6 +35,11 @@ public final class FocusStepRowView extends LinearLayout {
     private final HorizontalScrollView barsScroll;
     private final SetBarsView bars;
     private final LinearLayout.LayoutParams controlsParams;
+    private int grainLevel;
+
+    interface ReorderAction {
+        boolean perform(String stepId, int actionId);
+    }
 
     public FocusStepRowView(Context context) {
         super(context);
@@ -88,7 +97,7 @@ public final class FocusStepRowView extends LinearLayout {
     }
 
     public void bind(FocusStepUiModel step, boolean active, DayPalette palette,
-                     RepetitionInputState input, DashboardEventSink events) {
+                     RepetitionInputState input, TodayActionSink events) {
         topLine.setVisibility(active ? VISIBLE : GONE);
         bottomLine.setVisibility(active ? VISIBLE : GONE);
         int divider = UiStyle.alpha(palette.dot, .45f);
@@ -97,6 +106,7 @@ public final class FocusStepRowView extends LinearLayout {
         body.setPadding(0, active ? style.dp(11) : 0,
                 0, active ? style.dp(13) : 0);
         reward.bind(false, false, palette, step.reward.resultXp);
+        grainLevel = step.grainLevel;
         reward.setActiveOutline(active);
         title.setText(step.title);
         title.setTextColor(palette.ink);
@@ -118,11 +128,11 @@ public final class FocusStepRowView extends LinearLayout {
             int current = input.valueFor(step);
             int editingIndex = input.editingIndexFor(step);
             stepper.bind(current, palette,
-                    delta -> events.emit(DashboardEvent.adjustRepetition(step.id, delta)));
+                    delta -> events.emit(TodayAction.adjustRepetition(step.id, delta)));
             barsScroll.setVisibility(progress.showsBars() ? VISIBLE : GONE);
             if (progress.showsBars()) bars.bind(step.id, progress.slotCount,
                     progress.actualRepetitions, editingIndex, palette,
-                    index -> events.emit(DashboardEvent.editRepetition(step.id, index)));
+                    index -> events.emit(TodayAction.editRepetition(step.id, index)));
             reward.setContentDescription(progress.kind == RepetitionProgressUiModel.Kind.SINGLE
                     ? getContext().getString(R.string.content_confirm_repetitions, current)
                     : getContext().getString(editingIndex >= 0
@@ -148,20 +158,61 @@ public final class FocusStepRowView extends LinearLayout {
         reward.setActionEnabled(step.executionAction.kind != StepExecutionUiAction.Kind.NONE);
     }
 
-    private static void emitExecution(StepExecutionUiAction action, DashboardEventSink events) {
-        if (action.kind == StepExecutionUiAction.Kind.TOGGLE)
-            events.emit(DashboardEvent.toggleStep(action.stepId));
-        else if (action.kind == StepExecutionUiAction.Kind.SUBMIT_REPETITION)
-            events.emit(DashboardEvent.submitRepetition(action.stepId));
-        else if (action.kind == StepExecutionUiAction.Kind.ADVANCE_PLANNED_REPETITIONS)
-            events.emit(DashboardEvent.advanceTodayStep(action.stepId));
+    private static void emitExecution(StepExecutionUiAction action, TodayActionSink events) {
+        switch (action.kind) {
+            case TOGGLE:
+                events.emit(TodayAction.toggleStep(action.stepId));
+                return;
+            case SUBMIT_REPETITION:
+                events.emit(TodayAction.submitRepetition(action.stepId));
+                return;
+            case ADVANCE_PLANNED_REPETITIONS:
+                events.emit(TodayAction.advanceStep(action.stepId));
+                return;
+            case NONE:
+                return;
+        }
+        throw new AssertionError("Unhandled step action " + action.kind);
     }
 
     void setOnStepLongClickListener(OnLongClickListener listener) {
         body.setOnLongClickListener(listener);
     }
 
-    View stepBody() { return body; }
+    void configureReorderAccessibility(String stepId, String title, boolean canMoveUp,
+                                       boolean canMoveDown, ReorderAction action) {
+        body.setFocusable(true);
+        body.setContentDescription(getContext().getString(R.string.a11y_today_step_row, title));
+        body.setAccessibilityDelegate(new View.AccessibilityDelegate() {
+            @Override public void onInitializeAccessibilityNodeInfo(
+                    View host, AccessibilityNodeInfo info) {
+                super.onInitializeAccessibilityNodeInfo(host, info);
+                if (canMoveUp) {
+                    info.addAction(accessibilityAction(R.id.action_today_step_up,
+                            R.string.a11y_step_up));
+                    info.addAction(accessibilityAction(R.id.action_today_step_front,
+                            R.string.a11y_today_step_front));
+                }
+                if (canMoveDown) {
+                    info.addAction(accessibilityAction(R.id.action_today_step_down,
+                            R.string.a11y_step_down));
+                    info.addAction(accessibilityAction(R.id.action_today_step_back,
+                            R.string.a11y_today_step_back));
+                }
+            }
+
+            @Override public boolean performAccessibilityAction(View host, int actionId,
+                                                                android.os.Bundle arguments) {
+                return action.perform(stepId, actionId)
+                        || super.performAccessibilityAction(host, actionId, arguments);
+            }
+        });
+    }
+
+    private AccessibilityNodeInfo.AccessibilityAction accessibilityAction(int id, int label) {
+        return new AccessibilityNodeInfo.AccessibilityAction(id,
+                getContext().getString(label));
+    }
 
     @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int width = MeasureSpec.getSize(widthMeasureSpec);
@@ -184,8 +235,9 @@ public final class FocusStepRowView extends LinearLayout {
         return views;
     }
 
-    CharSequence renderedTitle() { return title.getText(); }
-    CharSequence renderedSubtitle() { return note.getText(); }
-    boolean editorVisible() { return controls.getVisibility() == VISIBLE; }
+    void appendGrainAnchor(List<GrainSpec.Anchor> anchors) {
+        anchors.add(GrainSpec.sizedAnchor(reward, reward.grainWidth(),
+                reward.grainHeight(), grainLevel));
+    }
 
 }

@@ -1,0 +1,84 @@
+package de.thonktank.autosecretary;
+
+import android.widget.ScrollView;
+
+/** Frame-driven edge scrolling whose speed does not depend on drag-event frequency. */
+final class EdgeAutoScroller implements Runnable {
+    interface ScrollHost {
+        void scrollBy(int dy);
+        void postOnAnimation(Runnable frame);
+        void removeCallbacks(Runnable frame);
+    }
+
+    interface TimeSource { long nowMillis(); }
+
+    static final class AndroidScrollHost implements ScrollHost {
+        private final ScrollView view;
+
+        AndroidScrollHost(ScrollView view) { this.view = view; }
+
+        @Override public void scrollBy(int dy) { view.scrollBy(0, dy); }
+        @Override public void postOnAnimation(Runnable frame) { view.postOnAnimation(frame); }
+        @Override public void removeCallbacks(Runnable frame) { view.removeCallbacks(frame); }
+    }
+
+    private final ScrollHost host;
+    private final TimeSource time;
+    private final int edgeSize;
+    private final float pixelsPerSecond;
+    private int direction;
+    private long lastFrame;
+    private float remainder;
+    private boolean scheduled;
+
+    EdgeAutoScroller(ScrollHost host, TimeSource time, int edgeSize, float pixelsPerSecond) {
+        if (host == null || time == null || edgeSize <= 0 || pixelsPerSecond <= 0)
+            throw new IllegalArgumentException("Complete edge-scroll dependencies are required");
+        this.host = host;
+        this.time = time;
+        this.edgeSize = edgeSize;
+        this.pixelsPerSecond = pixelsPerSecond;
+    }
+
+    void update(float pointerY, int viewportHeight) {
+        int next = pointerY < edgeSize ? -1
+                : pointerY > viewportHeight - edgeSize ? 1 : 0;
+        if (next == direction) return;
+        direction = next;
+        lastFrame = time.nowMillis();
+        remainder = 0f;
+        if (direction == 0) stopFrame();
+        else scheduleFrame();
+    }
+
+    void stop() {
+        direction = 0;
+        remainder = 0f;
+        stopFrame();
+    }
+
+    @Override public void run() {
+        scheduled = false;
+        if (direction == 0) return;
+        long now = time.nowMillis();
+        long elapsed = Math.max(0L, Math.min(100L, now - lastFrame));
+        lastFrame = now;
+        float distance = remainder + direction * pixelsPerSecond * elapsed / 1_000f;
+        int pixels = (int) distance;
+        remainder = distance - pixels;
+        if (pixels != 0) host.scrollBy(pixels);
+        scheduleFrame();
+    }
+
+    private void scheduleFrame() {
+        if (scheduled) return;
+        scheduled = true;
+        host.postOnAnimation(this);
+    }
+
+    private void stopFrame() {
+        if (!scheduled) return;
+        host.removeCallbacks(this);
+        scheduled = false;
+    }
+}

@@ -623,12 +623,14 @@ public final class TaskViewModel extends ViewModel {
     private void publishContent(UiCommand key, Content content, boolean commandPersisted) {
         TodayUiModel composed = content.dashboard.withCalendar(content.calendar.events());
         todayCoordinator.rebind(composed);
+        TodayFeatureState todayFeature = todayCoordinator.state();
         synchronized (stateLock) {
             Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
             actions.remove(key);
             CalendarUiState calendarState = CalendarUiState.from(content.calendar);
-            current = current.withContent(composed,
-                    calendarState).withRunningActions(actions);
+            current = current.withContent(composed, calendarState)
+                    .withTodayFeature(todayFeature)
+                    .withRunningActions(actions);
             loadedDate = content.date;
             state.postValue(current);
         }
@@ -656,7 +658,7 @@ public final class TaskViewModel extends ViewModel {
 
     private void publishTodayFeatureState(TodayFeatureState feature) {
         synchronized (stateLock) {
-            current = current.withToday(feature.today);
+            current = current.withTodayFeature(feature);
             state.postValue(current);
         }
     }

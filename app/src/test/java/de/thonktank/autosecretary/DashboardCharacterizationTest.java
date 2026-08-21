@@ -141,7 +141,9 @@ public final class DashboardCharacterizationTest {
         undoInfo.recycle();
         assertTrue(undo.performClick());
         assertEquals(DashboardFixtures.completedTodayTask().occurrenceId,
-                recorded.last(DashboardEvent.UndoCompleted.class).occurrenceId);
+                recorded.lastToday(
+                        de.thonktank.autosecretary.presentation.today.TodayAction.Kind
+                                .UNDO_OCCURRENCE).id);
     }
 
     @Test public void completedHistoryFollowsTheEmptyStateWhenNothingIsOpen() {

@@ -23,6 +23,10 @@ public abstract class DashboardEvent {
         private AddTask() { }
     }
 
+    public static final class TodayIntent extends Today {
+        private TodayIntent(TodayAction action) { super(action); }
+    }
+
     public static final class TimelinePrimary extends Today {
         public final TimelineTaskUiModel task;
         private TimelinePrimary(TimelineTaskUiModel task) {
@@ -134,6 +138,7 @@ public abstract class DashboardEvent {
     }
 
     public static DashboardEvent addTask() { return new AddTask(); }
+    public static DashboardEvent today(TodayAction action) { return new TodayIntent(action); }
     public static DashboardEvent timelinePrimary(TimelineTaskUiModel task) {
         return new TimelinePrimary(task);
     }

@@ -6,6 +6,8 @@ import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 
 import android.content.Context;
 import android.view.View;
@@ -26,6 +28,7 @@ public final class DashboardRenderer {
     private final LinearLayout content;
     private final UiStyle style;
     private final DashboardEventSink events;
+    private final TodayActionSink todayActions;
     private final String version;
     private final RewardAnchorRegistry rewardAnchors;
     private final AllTasksView.Listener allTasksListener;
@@ -47,6 +50,7 @@ public final class DashboardRenderer {
         this.scroll = scroll;
         this.content = content;
         this.events = events;
+        this.todayActions = action -> events.emit(DashboardEvent.today(action));
         this.version = version;
         this.rewardAnchors = rewardAnchors;
         this.allTasksListener = allTasksListener;
@@ -143,7 +147,8 @@ public final class DashboardRenderer {
     private void mountToday() {
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
-        focus = new FocusTaskView(context, rewardAnchors);
+        focus = new FocusTaskView(context, rewardAnchors,
+                new EdgeAutoScroller.AndroidScrollHost(scroll));
         focus.setId(R.id.dashboard_focus);
         content.addView(focus, new LinearLayout.LayoutParams(-1, -2));
         timeline = new LinearLayout(context);
@@ -156,7 +161,7 @@ public final class DashboardRenderer {
         content.addView(more, moreParams);
         empty = new EmptyStateView(context, () -> events.emit(DashboardEvent.addTask()));
         content.addView(empty, new LinearLayout.LayoutParams(-1, -2));
-        completedToday = new CompletedTodayView(context, events);
+        completedToday = new CompletedTodayView(context, todayActions);
         LinearLayout.LayoutParams completedParams = new LinearLayout.LayoutParams(-1, -2);
         completedParams.topMargin = style.dp(14);
         content.addView(completedToday, completedParams);
@@ -182,7 +187,7 @@ public final class DashboardRenderer {
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
         focus.bind(focusTask, dashboard.timeline.size() > 0, palette,
-                focusStepLimit, state.repetitionInput, events);
+                focusStepLimit, state.repetitionInput, state.todayFeature.reorder, todayActions);
         bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
         more.setText(context.getResources().getQuantityString(
@@ -222,7 +227,9 @@ public final class DashboardRenderer {
                         : firstOpenAfterFocus ? R.string.marker_after : R.string.marker_later);
                 ((TaskLeafView) view).bind(item.task, marker,
                         !firstOpenAfterFocus, palette,
-                        task -> events.emit(DashboardEvent.timelinePrimary(task)),
+                        task -> todayActions.emit(task.terminalCondition
+                                ? TodayAction.requestClose(task.taskId, task.title)
+                                : TodayAction.completeOccurrence(task.occurrenceId)),
                         task -> events.emit(DashboardEvent.timelineMenu(task.actionTarget)));
                 RewardAnchorKey.Kind kind = item.task.terminalCondition
                         ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE;

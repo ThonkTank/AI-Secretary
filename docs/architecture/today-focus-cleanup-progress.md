@@ -117,3 +117,33 @@ Reihenfolge sowie unveränderte Geschwisterzustände. Ein Architekturtest vergle
 davon 325 erfolgreich und einen bewusst übersprungenen Benchmark. Lint,
 Android-Testkompilierung und Debug-APK sind grün; Datenbankschema 14, Goldens und PNG-Baselines
 blieben unverändert.
+
+## Phase 5 – Fokus-Views mit reiner Renderingverantwortung
+
+Status: implementiert und gegen die Roadmap auditiert.
+
+- `FocusStepListLayout` besitzt keine kanonischen Step-Modelle, gebundenen Dashboardevents,
+  Drop-Flags oder Persistenzlogik mehr. Es verwaltet ausschließlich wiederverwendete Zeilen,
+  Höhenbudget, Messung/Layout und die Übersetzung von Gesten in `TodayAction`.
+- Der in Phase 4 eingeführte `TodayFeatureState.Reorder` wird bis in `FocusCardUiModel`
+  durchgereicht. Im Zustand `DRAGGING`/`PERSISTING` rendert die Liste die vollständige vom
+  Reducer gelieferte Preview; Cancel und bestätigte Reihenfolge kommen ausschließlich durch
+  einen neuen State-Bind zurück.
+- Long Press liegt auf dem vollständigen Schrittkörper. Drag und Accessibility emittieren
+  dieselben drei Intents `BEGIN_REORDER`, `PREVIEW_REORDER`, `DROP_REORDER`; die View berechnet
+  oder schreibt keine Persistenzcommands.
+- `EdgeAutoScroller` erhält einen injizierten `ScrollHost` und eine Zeitquelle. Er scrollt pro
+  Animationsframe anhand verstrichener Zeit; die Distanz ist damit unabhängig von der Anzahl
+  eingehender Drag-Events.
+- `FocusStepRowView` rendert und dispatcht nur noch `StepExecutionUiAction`/`TodayAction`.
+  `CompletedTodayView` bindet ausschließlich `CompletedTaskUiModel` und emittiert eine typisierte
+  Undo-Action. Die früheren Renderwert-/Reorder-Testgetter und ReflectionHelpers sind entfernt.
+- Beim Audit gefundene Grain-Abweichungen wurden ohne Golden-Update korrigiert: Step-Tau nutzt
+  weiterhin seinen expliziten sichtbaren Bounds-Anchor statt eines generischen View-Anchors.
+
+Öffentliche View-/Actiontests decken Long Press samt abgelehntem Plattform-Drag, vollständige
+Preview, Cancel, genau einen Drop, alle vier Accessibility-Moves, kleine Viewports, große Schrift
+und versteckte Folgezeilen ab. Reine Scrolltests beweisen eventratenunabhängige Geschwindigkeit
+und korrektes Stoppen. Der Phase-Gate-Lauf enthält 331 Hosttests, davon 330 erfolgreich und einen
+bewusst übersprungenen Benchmark. Lint, Android-Testkompilierung und Debug-APK sind grün;
+Datenbankschema 14 und sämtliche Fokus-/Homescreen-Goldens blieben unverändert.

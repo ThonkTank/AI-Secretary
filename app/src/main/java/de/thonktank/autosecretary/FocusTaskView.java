@@ -2,6 +2,9 @@ package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayActionSink;
+import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 
 import android.content.Context;
 import android.view.View;
@@ -20,16 +23,22 @@ public final class FocusTaskView extends FrameLayout {
     private final LayoutParams cardParams;
     private String boundTaskId;
     private boolean deferPending;
+    private TodayActionSink actions = action -> { };
 
     public FocusTaskView(Context context) {
         this(context, new RewardAnchorRegistry());
     }
 
     public FocusTaskView(Context context, RewardAnchorRegistry rewardAnchors) {
+        this(context, rewardAnchors, null);
+    }
+
+    FocusTaskView(Context context, RewardAnchorRegistry rewardAnchors,
+                  EdgeAutoScroller.ScrollHost scrollHost) {
         super(context);
         style = new UiStyle(context);
         setClipChildren(false);
-        card = new FocusCardView(context);
+        card = new FocusCardView(context, action -> actions.emit(action), scrollHost);
         decoration = new FocusCardDecoration(context, this, rewardAnchors, card);
         surface = decoration.surface();
         cardParams = new LayoutParams(-1, -2);
@@ -47,6 +56,15 @@ public final class FocusTaskView extends FrameLayout {
     public void bind(FocusTaskUiModel task, boolean stacked,
                      DayPalette palette, FocusStepLimit stepLimit,
                      RepetitionInputState inputState, DashboardEventSink events) {
+        bind(task, stacked, palette, stepLimit, inputState,
+                idleReorder(task), action -> events.emit(DashboardEvent.today(action)));
+    }
+
+    public void bind(FocusTaskUiModel task, boolean stacked,
+                     DayPalette palette, FocusStepLimit stepLimit,
+                     RepetitionInputState inputState, TodayFeatureState.Reorder reorder,
+                     TodayActionSink events) {
+        actions = events == null ? action -> { } : events;
         boolean focusChanged = boundTaskId != null && !boundTaskId.equals(task.taskId());
         boundTaskId = task.taskId();
         boolean compact = task.ongoing && task.steps.isEmpty();
@@ -57,14 +75,21 @@ public final class FocusTaskView extends FrameLayout {
         surface.setTranslationY(0f);
         surface.setAlpha(1f);
         FocusCardUiModel model = new FocusCardUiModel(task, palette,
-                stepLimit, inputState);
-        card.bind(model, events, () -> deferPending = true);
+                stepLimit, inputState, reorder);
+        card.bind(model, actions, () -> deferPending = true);
         decoration.bind(task, stacked, compact, palette, card);
         if (focusChanged) {
             boolean deferred = deferPending;
             deferPending = false;
             animations.focusChanged(palette, deferred);
         }
+    }
+
+    private static TodayFeatureState.Reorder idleReorder(FocusTaskUiModel task) {
+        TodayUiModel today = new TodayUiModel(
+                new de.thonktank.autosecretary.domain.model.XpProgress(0), task,
+                java.util.Collections.emptyList(), java.util.Collections.emptyList());
+        return TodayFeatureState.idle(today).reorder;
     }
 
     @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {

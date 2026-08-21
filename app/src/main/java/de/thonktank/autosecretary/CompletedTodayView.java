@@ -10,18 +10,20 @@ import android.widget.TextView;
 import java.util.List;
 
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 
 /** Collapsed-by-default access to today's completed occurrences and their exact undo. */
 @SuppressLint("ViewConstructor")
 final class CompletedTodayView extends LinearLayout {
     private final UiStyle style;
-    private final DashboardEventSink events;
+    private final TodayActionSink events;
     private final TextView header;
     private final LinearLayout rows;
     private boolean expanded;
     private DayPalette palette;
 
-    CompletedTodayView(Context context, DashboardEventSink events) {
+    CompletedTodayView(Context context, TodayActionSink events) {
         super(context);
         this.events = events;
         style = new UiStyle(context);
@@ -75,7 +77,7 @@ final class CompletedTodayView extends LinearLayout {
                 task.title, task.awardedXp));
         undo.setVisibility(task.undoAvailable ? VISIBLE : GONE);
         undo.setOnClickListener(view -> events.emit(
-                DashboardEvent.undoCompleted(task.occurrenceId)));
+                TodayAction.undoOccurrence(task.occurrenceId)));
         LayoutParams undoParams = new LayoutParams(-2, style.dp(48));
         undoParams.leftMargin = style.dp(14);
         row.addView(undo, undoParams);
