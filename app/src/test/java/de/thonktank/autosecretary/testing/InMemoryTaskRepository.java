@@ -30,6 +30,7 @@ public final class InMemoryTaskRepository implements TaskRepository {
     private Map<String, OccurrenceStep> occurrenceSteps = new LinkedHashMap<>();
     private Map<String, ComboProgress> combos = new LinkedHashMap<>();
     private Map<String, RewardBooking> bookings = new LinkedHashMap<>();
+    private Map<String, String> rewardAssignments = new LinkedHashMap<>();
     private int xp;
 
     @Override public synchronized <T> T inTransaction(Transaction<T> operation) {
@@ -63,6 +64,8 @@ public final class InMemoryTaskRepository implements TaskRepository {
         });
         occurrenceSteps.values().removeIf(value -> occurrenceIds.contains(value.occurrenceId));
         bookings.values().removeIf(value -> occurrenceIds.contains(value.occurrenceId));
+        rewardAssignments.entrySet().removeIf(value -> occurrenceIds.contains(value.getValue())
+                || !bookings.containsKey(value.getKey()));
         combos.values().removeIf(value -> value.taskId.equals(id));
     }
 
@@ -79,6 +82,9 @@ public final class InMemoryTaskRepository implements TaskRepository {
             if (value.taskId.equals(taskId)) result.add(value);
         result.sort(Comparator.comparingInt(value -> value.position));
         return result;
+    }
+    @Override public synchronized TaskStepTemplate findTemplate(String id) {
+        return templates.get(id);
     }
     @Override public synchronized List<TaskStepTemplate> templatesFor(List<TaskId> taskIds) {
         Set<TaskId> selected = new HashSet<>(taskIds);
@@ -137,6 +143,20 @@ public final class InMemoryTaskRepository implements TaskRepository {
             if (value.taskId.equals(taskId) && value.scheduledOn.equals(scheduledOn)
                     && value.state == OccurrenceState.OPEN) result.add(value);
         return result;
+    }
+    @Override public synchronized List<Occurrence> openOccurrences(TaskId taskId) {
+        List<Occurrence> result = new ArrayList<>();
+        for (Occurrence value : occurrences.values())
+            if (value.taskId.equals(taskId) && value.state == OccurrenceState.OPEN)
+                result.add(value);
+        result.sort(Comparator.comparing((Occurrence value) -> value.scheduledOn)
+                .thenComparingInt(value -> value.slot.rank));
+        return result;
+    }
+    @Override public synchronized Occurrence openOccurrence(TaskId taskId, TaskSlot slot) {
+        for (Occurrence value : openOccurrences(taskId))
+            if (value.slot == slot) return value;
+        return null;
     }
     @Override public synchronized Occurrence openOccurrence(TaskId taskId) {
         for (Occurrence value : occurrences.values())
@@ -198,16 +218,11 @@ public final class InMemoryTaskRepository implements TaskRepository {
     @Override public synchronized void updateOccurrenceStep(OccurrenceStep step) {
         occurrenceSteps.put(step.id, step);
     }
-    @Override public synchronized void moveRewardBookings(String occurrenceStepId,
-                                                           String occurrenceId) {
-        for (Map.Entry<String, RewardBooking> entry : new ArrayList<>(bookings.entrySet())) {
-            RewardBooking value = entry.getValue();
-            if (!occurrenceStepId.equals(value.occurrenceStepId)) continue;
-            bookings.put(entry.getKey(), new RewardBooking(value.id, value.transactionId,
-                    occurrenceId, value.occurrenceStepId, value.ownerId, value.kind,
-                    value.target, value.xpDelta, value.comboPointDelta, value.bookedOn,
-                    value.reversesBookingId));
-        }
+    @Override public synchronized void assignRewardBookings(String occurrenceStepId,
+                                                             String occurrenceId) {
+        for (RewardBooking value : bookings.values())
+            if (occurrenceStepId.equals(value.occurrenceStepId))
+                rewardAssignments.put(value.id, occurrenceId);
     }
 
     @Override public synchronized int xp() { return xp; }
@@ -232,7 +247,8 @@ public final class InMemoryTaskRepository implements TaskRepository {
     @Override public synchronized List<RewardBooking> rewardBookings(String occurrenceId) {
         List<RewardBooking> result = new ArrayList<>();
         for (RewardBooking value : bookings.values())
-            if (value.occurrenceId.equals(occurrenceId)) result.add(value);
+            if (effectiveOccurrence(value).equals(occurrenceId))
+                result.add(project(value, occurrenceId));
         result.sort(bookingOrder());
         return result;
     }
@@ -241,7 +257,8 @@ public final class InMemoryTaskRepository implements TaskRepository {
         Set<String> selected = new HashSet<>(occurrenceIds);
         List<RewardBooking> result = new ArrayList<>();
         for (RewardBooking value : bookings.values())
-            if (selected.contains(value.occurrenceId)) result.add(value);
+            if (selected.contains(effectiveOccurrence(value)))
+                result.add(project(value, effectiveOccurrence(value)));
         result.sort(bookingOrder());
         return result;
     }
@@ -257,6 +274,16 @@ public final class InMemoryTaskRepository implements TaskRepository {
                 .thenComparing(value -> value.id);
     }
 
+    private String effectiveOccurrence(RewardBooking booking) {
+        return rewardAssignments.getOrDefault(booking.id, booking.occurrenceId);
+    }
+
+    private static RewardBooking project(RewardBooking value, String occurrenceId) {
+        return new RewardBooking(value.id, value.transactionId, occurrenceId,
+                value.occurrenceStepId, value.ownerId, value.kind, value.target,
+                value.xpDelta, value.comboPointDelta, value.bookedOn, value.reversesBookingId);
+    }
+
     private static Comparator<TaskScheduleEntry> scheduleOrder() {
         return Comparator.comparingInt((TaskScheduleEntry value) -> value.slot.rank)
                 .thenComparingLong(value -> value.displayOrder).thenComparing(value -> value.id);
@@ -266,7 +293,8 @@ public final class InMemoryTaskRepository implements TaskRepository {
         return new Snapshot(new LinkedHashMap<>(tasks), new LinkedHashMap<>(templates),
                 new LinkedHashMap<>(schedule), new LinkedHashMap<>(occurrences),
                 new LinkedHashMap<>(occurrenceSteps),
-                new LinkedHashMap<>(combos), new LinkedHashMap<>(bookings), xp);
+                new LinkedHashMap<>(combos), new LinkedHashMap<>(bookings),
+                new LinkedHashMap<>(rewardAssignments), xp);
     }
 
     private void restore(Snapshot value) {
@@ -277,6 +305,7 @@ public final class InMemoryTaskRepository implements TaskRepository {
         occurrenceSteps = value.occurrenceSteps;
         combos = value.combos;
         bookings = value.bookings;
+        rewardAssignments = value.rewardAssignments;
         xp = value.xp;
     }
 
@@ -288,6 +317,7 @@ public final class InMemoryTaskRepository implements TaskRepository {
         final Map<String, OccurrenceStep> occurrenceSteps;
         final Map<String, ComboProgress> combos;
         final Map<String, RewardBooking> bookings;
+        final Map<String, String> rewardAssignments;
         final int xp;
 
         Snapshot(Map<TaskId, Task> tasks, Map<String, TaskStepTemplate> templates,
@@ -295,7 +325,7 @@ public final class InMemoryTaskRepository implements TaskRepository {
                  Map<String, Occurrence> occurrences,
                  Map<String, OccurrenceStep> occurrenceSteps,
                  Map<String, ComboProgress> combos, Map<String, RewardBooking> bookings,
-                 int xp) {
+                 Map<String, String> rewardAssignments, int xp) {
             this.tasks = tasks;
             this.templates = templates;
             this.schedule = schedule;
@@ -303,6 +333,7 @@ public final class InMemoryTaskRepository implements TaskRepository {
             this.occurrenceSteps = occurrenceSteps;
             this.combos = combos;
             this.bookings = bookings;
+            this.rewardAssignments = rewardAssignments;
             this.xp = xp;
         }
     }

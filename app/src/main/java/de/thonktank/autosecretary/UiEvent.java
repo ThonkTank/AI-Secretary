@@ -5,6 +5,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class UiEvent {
     public enum Type {
         ERROR,
+        INFO,
         CONFIRM_DELETE,
         CONFIRM_CLOSE,
         REQUEST_CALENDAR_PERMISSION,
@@ -26,6 +27,10 @@ public final class UiEvent {
 
     public static UiEvent error(String message) {
         return new UiEvent(Type.ERROR, message, null, null);
+    }
+
+    public static UiEvent info(String message) {
+        return new UiEvent(Type.INFO, message, null, null);
     }
 
     public static UiEvent action(Type type) {

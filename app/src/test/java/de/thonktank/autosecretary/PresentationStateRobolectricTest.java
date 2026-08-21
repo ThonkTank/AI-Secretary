@@ -251,7 +251,7 @@ public final class PresentationStateRobolectricTest {
     @Test public void managementViewModelOwnsCatalogAndRestoresOnlyThroughSavedStateAdapter() {
         SavedStateHandle handle = new SavedStateHandle();
         AllTasksViewModel management = new AllTasksViewModel(tasks.loadTaskCatalog,
-                tasks.moveScheduleEntry, tasks.organizeTaskStep, tasks.delete,
+                tasks.moveScheduleEntry, tasks.moveTaskStep, tasks.swapTaskSteps, tasks.delete,
                 new AndroidUiTextProvider(context), handle, new DirectExecutor());
 
         management.updateQuery("Gym");
@@ -273,7 +273,7 @@ public final class PresentationStateRobolectricTest {
         de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
         String entryId = repository.scheduleEntries(task.id).get(0).id;
         AllTasksViewModel management = new AllTasksViewModel(tasks.loadTaskCatalog,
-                tasks.moveScheduleEntry, tasks.organizeTaskStep, tasks.delete,
+                tasks.moveScheduleEntry, tasks.moveTaskStep, tasks.swapTaskSteps, tasks.delete,
                 new AndroidUiTextProvider(context), new SavedStateHandle(), new DirectExecutor());
 
         management.moveSchedule(new ScheduleMoveRequest(ScheduleEntryId.of(entryId),

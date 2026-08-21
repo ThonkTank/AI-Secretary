@@ -443,6 +443,20 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Keeps reward ledger rows immutable while allowing their current UI assignment to move. */
+    public static final Migration MIGRATION_13_14 = new Migration(13, 14) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE reward_assignments (bookingId TEXT NOT NULL, "
+                    + "occurrenceId TEXT NOT NULL, PRIMARY KEY(bookingId), "
+                    + "FOREIGN KEY(bookingId) REFERENCES reward_bookings(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE, "
+                    + "FOREIGN KEY(occurrenceId) REFERENCES occurrences(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_reward_assignments_occurrenceId "
+                    + "ON reward_assignments(occurrenceId)");
+        }
+    };
+
     private static List<Integer> parseLegacyRepetitions(String stepId, String stored) {
         List<Integer> values = new ArrayList<>();
         try {

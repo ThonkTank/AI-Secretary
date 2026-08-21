@@ -25,7 +25,8 @@ public final class TaskUseCases {
     public final LoadTaskDetails loadTaskDetails;
     public final TaskCatalogQuery loadTaskCatalog;
     public final MoveScheduleEntry moveScheduleEntry;
-    public final OrganizeTaskStep organizeTaskStep;
+    public final MoveTaskStep moveTaskStep;
+    public final SwapTaskSteps swapTaskSteps;
 
     public TaskUseCases(TaskRepository repository, Clock clock, IdGenerator ids) {
         TaskOrdering ordering = new TaskOrdering();
@@ -48,6 +49,7 @@ public final class TaskUseCases {
         loadTaskDetails = new LoadTaskDetails(repository);
         loadTaskCatalog = new LoadTaskCatalog(repository);
         moveScheduleEntry = new MoveScheduleEntry(repository, clock);
-        organizeTaskStep = new OrganizeTaskStep(repository);
+        moveTaskStep = new MoveTaskStep(repository);
+        swapTaskSteps = new SwapTaskSteps(repository);
     }
 }

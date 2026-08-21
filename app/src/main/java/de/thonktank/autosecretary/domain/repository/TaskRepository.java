@@ -19,6 +19,8 @@ public interface TaskRepository extends TaskDefinitionRepository {
     Occurrence findOccurrence(String id);
     Occurrence findOccurrence(TaskId taskId, LocalDate scheduledOn, TaskSlot slot);
     List<Occurrence> openOccurrences(TaskId taskId, LocalDate scheduledOn);
+    List<Occurrence> openOccurrences(TaskId taskId);
+    Occurrence openOccurrence(TaskId taskId, TaskSlot slot);
     Occurrence openOccurrence(TaskId taskId);
     List<Occurrence> openOccurrences();
     List<Occurrence> allOccurrences();
@@ -31,7 +33,7 @@ public interface TaskRepository extends TaskDefinitionRepository {
     List<OccurrenceStep> occurrenceStepsFor(List<String> occurrenceIds);
     OccurrenceStep findOccurrenceStep(String id);
     void updateOccurrenceStep(OccurrenceStep step);
-    void moveRewardBookings(String occurrenceStepId, String occurrenceId);
+    void assignRewardBookings(String occurrenceStepId, String occurrenceId);
 
     int xp();
     void setXp(int xp);

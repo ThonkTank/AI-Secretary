@@ -26,11 +26,13 @@ import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.MoveScheduleEntry;
-import de.thonktank.autosecretary.domain.usecase.OrganizeTaskStep;
+import de.thonktank.autosecretary.domain.usecase.MoveTaskStep;
 import de.thonktank.autosecretary.domain.usecase.ScheduleMoveResult;
 import de.thonktank.autosecretary.domain.usecase.ScheduleMoveRequest;
 import de.thonktank.autosecretary.domain.usecase.StepMoveRequest;
+import de.thonktank.autosecretary.domain.usecase.StepTransferResult;
 import de.thonktank.autosecretary.domain.usecase.StepSwapRequest;
+import de.thonktank.autosecretary.domain.usecase.SwapTaskSteps;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 
 import org.junit.After;
@@ -121,10 +123,15 @@ public final class AllTasksFeatureRobolectricTest {
         Occurrence targetOccurrence = occurrence(target.id);
         OccurrenceStep snapshot = repository.occurrenceSteps(sourceOccurrence.id).stream()
                 .filter(value -> moving.id.equals(value.sourceTemplateId)).findFirst().orElseThrow();
-        new ToggleStep(repository, clock).execute(snapshot.id);
+        de.thonktank.autosecretary.domain.model.RewardReceipt receipt =
+                new ToggleStep(repository, clock).execute(snapshot.id);
+        String bookingId = receipt.bookings.get(0).id;
+        int xpBefore = repository.xp();
+        int comboBefore = repository.combo("step:" + moving.id).points;
 
-        new OrganizeTaskStep(repository).move(new StepMoveRequest(
-                TaskStepId.of(moving.id), target.id, java.util.Optional.empty()));
+        assertEquals(StepTransferResult.DEFINITION_AND_TODAY_MOVED,
+                new MoveTaskStep(repository).execute(new StepMoveRequest(
+                        TaskStepId.of(moving.id), target.id, java.util.Optional.empty())));
 
         TaskStepTemplate moved = repository.templates(target.id).stream()
                 .filter(value -> value.id.equals(moving.id)).findFirst().orElseThrow();
@@ -135,6 +142,12 @@ public final class AllTasksFeatureRobolectricTest {
         assertTrue(movedSnapshot.done);
         assertTrue(repository.rewardBookings(targetOccurrence.id).stream()
                 .anyMatch(value -> snapshot.id.equals(value.occurrenceStepId)));
+        assertEquals("The immutable ledger row keeps its original occurrence",
+                sourceOccurrence.id, database.tasks().ledgerRewardBooking(bookingId).occurrenceId);
+        assertEquals(xpBefore, repository.xp());
+        assertEquals(comboBefore, repository.combo("step:" + moving.id).points);
+        assertEquals("step:" + moving.id,
+                repository.combo("step:" + moving.id).ownerId);
     }
 
     @Test public void swappingStepsInsideOneTaskKeepsIdsAndReordersTheOpenSnapshot() {
@@ -144,7 +157,7 @@ public final class AllTasksFeatureRobolectricTest {
         TaskStepTemplate first = repository.templates(task.id).get(0);
         TaskStepTemplate second = repository.templates(task.id).get(1);
 
-        new OrganizeTaskStep(repository).swap(new StepSwapRequest(
+        new SwapTaskSteps(repository).execute(new StepSwapRequest(
                 TaskStepId.of(first.id), TaskStepId.of(second.id)));
 
         assertEquals(second.id, repository.templates(task.id).get(0).id);
@@ -165,14 +178,116 @@ public final class AllTasksFeatureRobolectricTest {
         Occurrence sourceOccurrence = occurrence(source.id);
         String snapshotId = repository.occurrenceSteps(sourceOccurrence.id).get(0).id;
 
-        new OrganizeTaskStep(repository).move(new StepMoveRequest(
-                TaskStepId.of(moving.id), target.id, java.util.Optional.empty()));
+        assertEquals(StepTransferResult.DEFINITION_ONLY_FOR_FUTURE,
+                new MoveTaskStep(repository).execute(new StepMoveRequest(
+                        TaskStepId.of(moving.id), target.id, java.util.Optional.empty())));
 
         assertTrue(repository.templates(source.id).isEmpty());
         assertEquals(moving.id, repository.templates(target.id).stream()
                 .filter(value -> value.id.equals(moving.id)).findFirst().orElseThrow().id);
         assertEquals(sourceOccurrence.id,
                 repository.findOccurrenceStep(snapshotId).occurrenceId);
+    }
+
+    @Test public void crossTaskSwapMovesOpenSnapshotsButNeverRewritesTheirRewardLedger() {
+        create("Links", TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList("A"));
+        create("Rechts", TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList("B"));
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        Task left = repository.allTasks().stream().filter(value -> value.title.equals("Links"))
+                .findFirst().orElseThrow();
+        Task right = repository.allTasks().stream().filter(value -> value.title.equals("Rechts"))
+                .findFirst().orElseThrow();
+        TaskStepTemplate first = repository.templates(left.id).get(0);
+        TaskStepTemplate second = repository.templates(right.id).get(0);
+        Occurrence leftOccurrence = occurrence(left.id);
+        Occurrence rightOccurrence = occurrence(right.id);
+        OccurrenceStep firstSnapshot = repository.occurrenceSteps(leftOccurrence.id).get(0);
+        String bookingId = new ToggleStep(repository, clock).execute(firstSnapshot.id)
+                .bookings.get(0).id;
+
+        assertEquals(StepTransferResult.STEPS_SWAPPED,
+                new SwapTaskSteps(repository).execute(new StepSwapRequest(
+                        TaskStepId.of(first.id), TaskStepId.of(second.id))));
+
+        assertEquals(rightOccurrence.id,
+                repository.findOccurrenceStep(firstSnapshot.id).occurrenceId);
+        assertEquals(leftOccurrence.id,
+                database.tasks().ledgerRewardBooking(bookingId).occurrenceId);
+        assertTrue(repository.rewardBookings(rightOccurrence.id).stream()
+                .anyMatch(value -> value.id.equals(bookingId)));
+    }
+
+    @Test public void archivedTargetRejectsMoveWithoutChangingDefinitionsOrHistory() {
+        create("Quelle", TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList("A"));
+        create("Archiv", TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList("B"));
+        Task source = repository.allTasks().stream().filter(value -> value.title.equals("Quelle"))
+                .findFirst().orElseThrow();
+        Task target = repository.allTasks().stream().filter(value -> value.title.equals("Archiv"))
+                .findFirst().orElseThrow();
+        repository.updateTask(target.withOccurrenceState(true, target.nextDueOn,
+                target.lastScheduledOn, target.lastCompletedOn, target.hasCompletedOccurrence));
+        TaskStepTemplate moving = repository.templates(source.id).get(0);
+
+        assertEquals(StepTransferResult.REJECTED_ARCHIVED_TASK,
+                new MoveTaskStep(repository).execute(new StepMoveRequest(
+                        TaskStepId.of(moving.id), target.id, java.util.Optional.empty())));
+        assertEquals(source.id, repository.findTemplate(moving.id).taskId);
+    }
+
+    @Test public void completedSnapshotRemainsHistoricalWhenDefinitionMoves() {
+        create("Historie", TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList("Alt"));
+        create("Zukunft", TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList("Neu"));
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        Task source = repository.allTasks().stream().filter(value -> value.title.equals("Historie"))
+                .findFirst().orElseThrow();
+        Task target = repository.allTasks().stream().filter(value -> value.title.equals("Zukunft"))
+                .findFirst().orElseThrow();
+        Occurrence historical = occurrence(source.id);
+        OccurrenceStep snapshot = repository.occurrenceSteps(historical.id).get(0);
+        repository.updateOccurrence(historical.complete(TODAY));
+        TaskStepTemplate moving = repository.templates(source.id).get(0);
+        Occurrence harvested = new Occurrence("harvested-history", source.id,
+                TODAY.minusDays(1), TaskSlot.MORNING,
+                de.thonktank.autosecretary.domain.model.OccurrenceState.OPEN, 1, null)
+                .harvestedWithMissedSteps(TODAY.minusDays(1));
+        OccurrenceStep harvestedSnapshot = new OccurrenceStep("harvested-step", harvested.id,
+                0, moving.text, false, moving.amount, moving.note,
+                java.util.Collections.emptyList(), moving.id, "step:" + moving.id);
+        repository.insertOccurrence(harvested);
+        repository.insertOccurrenceSteps(java.util.Collections.singletonList(harvestedSnapshot));
+
+        assertEquals(StepTransferResult.DEFINITION_ONLY_FOR_FUTURE,
+                new MoveTaskStep(repository).execute(new StepMoveRequest(
+                        TaskStepId.of(moving.id), target.id, java.util.Optional.empty())));
+
+        assertEquals(historical.id, repository.findOccurrenceStep(snapshot.id).occurrenceId);
+        assertEquals(de.thonktank.autosecretary.domain.model.OccurrenceState.COMPLETED,
+                repository.findOccurrence(historical.id).state);
+        assertEquals(harvested.id,
+                repository.findOccurrenceStep(harvestedSnapshot.id).occurrenceId);
+        assertEquals(de.thonktank.autosecretary.domain.model.OccurrenceState
+                        .HARVESTED_WITH_MISSED_STEPS,
+                repository.findOccurrence(harvested.id).state);
+    }
+
+    @Test public void invalidTemplatePositionSequenceIsRejectedBeforeMutation() {
+        create("Quelle", TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList("A", "B"));
+        create("Ziel", TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList("C"));
+        Task source = repository.allTasks().stream().filter(value -> value.title.equals("Quelle"))
+                .findFirst().orElseThrow();
+        Task target = repository.allTasks().stream().filter(value -> value.title.equals("Ziel"))
+                .findFirst().orElseThrow();
+        TaskStepTemplate moving = repository.templates(source.id).get(0);
+        TaskStepTemplate invalid = repository.templates(source.id).get(1);
+        repository.insertTemplates(java.util.Collections.singletonList(new TaskStepTemplate(
+                invalid.id, source.id, 4, invalid.text, invalid.weekdayMask,
+                invalid.amount, invalid.note)));
+
+        assertEquals(StepTransferResult.REJECTED_INVALID_POSITION_SEQUENCE,
+                new MoveTaskStep(repository).execute(new StepMoveRequest(
+                        TaskStepId.of(moving.id), target.id, java.util.Optional.empty())));
+        assertEquals(source.id, repository.findTemplate(moving.id).taskId);
+        assertEquals(4, repository.findTemplate(invalid.id).position);
     }
 
     private Occurrence occurrence(TaskId id) {

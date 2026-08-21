@@ -162,6 +162,9 @@
     <string name="error_management_inactive">Nur aktive Aufgaben können organisiert werden.</string>
     <string name="error_schedule_duplicate">Die Aufgabe ist bereits in dieser Tageszeit eingeordnet.</string>
     <string name="error_schedule_today_occupied">Das heutige Aufgabenblatt belegt diese Tageszeit bereits.</string>
+    <string name="error_step_target_occupied">Der Zielplatz ist bereits durch diesen Schritt belegt.</string>
+    <string name="error_step_order_invalid">Die Schritt-Reihenfolge ist inkonsistent und wurde nicht verändert.</string>
+    <string name="step_effective_next_occurrence">Die Änderung gilt ab dem nächsten Vorkommen.</string>
     <string name="legacy_reset_title">Neuer, stabiler Start</string>
     <string name="legacy_reset_message">Die Testdaten der ersten Version wurden bewusst zurückgesetzt. Neue Aufgaben werden jetzt zuverlässig lokal gespeichert.</string>
     <string name="understood">Verstanden</string>

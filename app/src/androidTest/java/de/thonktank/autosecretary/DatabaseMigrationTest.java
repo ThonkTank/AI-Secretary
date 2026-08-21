@@ -327,6 +327,18 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test public void migration13To14AddsAnEmptyRewardAssignmentProjection() throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 13);
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 14, true, DatabaseMigrations.MIGRATION_13_14);
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM reward_assignments")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(0, cursor.getInt(0));
+        }
+        assertIndexExists(database, "index_reward_assignments_occurrenceId");
+        database.close();
+    }
+
     private static void assertColumnsMissing(SupportSQLiteDatabase database, String table,
                                              String... forbidden) {
         try (Cursor cursor = database.query("PRAGMA table_info(" + table + ")")) {

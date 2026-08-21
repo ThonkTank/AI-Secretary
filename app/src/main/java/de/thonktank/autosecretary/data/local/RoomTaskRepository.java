@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.OccurrenceStepEntity;
 import de.thonktank.autosecretary.StatsEntity;
 import de.thonktank.autosecretary.ComboEntity;
 import de.thonktank.autosecretary.RewardBookingEntity;
+import de.thonktank.autosecretary.RewardAssignmentEntity;
 import de.thonktank.autosecretary.RepetitionResultEntity;
 import de.thonktank.autosecretary.TaskDao;
 import de.thonktank.autosecretary.TaskEntity;
@@ -101,6 +102,11 @@ public final class RoomTaskRepository implements TaskRepository {
         return result;
     }
 
+    @Override public TaskStepTemplate findTemplate(String id) {
+        TaskStepEntity entity = dao.template(id);
+        return entity == null ? null : mapper.toDomain(entity);
+    }
+
     @Override public List<TaskStepTemplate> templatesFor(List<TaskId> taskIds) {
         if (taskIds.isEmpty()) return new ArrayList<>();
         List<String> values = new ArrayList<>();
@@ -156,6 +162,17 @@ public final class RoomTaskRepository implements TaskRepository {
     @Override public List<Occurrence> openOccurrences(TaskId taskId, LocalDate scheduledOn) {
         return mapOccurrences(dao.occurrences(taskId.value, scheduledOn.toString(),
                 OccurrenceState.OPEN.storageCode()));
+    }
+
+    @Override public List<Occurrence> openOccurrences(TaskId taskId) {
+        return mapOccurrences(dao.openOccurrencesForTask(taskId.value,
+                OccurrenceState.OPEN.storageCode()));
+    }
+
+    @Override public Occurrence openOccurrence(TaskId taskId, TaskSlot slot) {
+        OccurrenceEntity entity = dao.openForTaskSlot(taskId.value, slot.storageCode,
+                OccurrenceState.OPEN.storageCode());
+        return entity == null ? null : mapper.toDomain(entity);
     }
 
     @Override public Occurrence openOccurrence(TaskId taskId) {
@@ -236,8 +253,11 @@ public final class RoomTaskRepository implements TaskRepository {
         });
     }
 
-    @Override public void moveRewardBookings(String occurrenceStepId, String occurrenceId) {
-        dao.moveRewardBookings(occurrenceStepId, occurrenceId);
+    @Override public void assignRewardBookings(String occurrenceStepId, String occurrenceId) {
+        List<RewardAssignmentEntity> assignments = new ArrayList<>();
+        for (String bookingId : dao.rewardBookingIds(occurrenceStepId))
+            assignments.add(new RewardAssignmentEntity(bookingId, occurrenceId));
+        if (!assignments.isEmpty()) dao.putRewardAssignments(assignments);
     }
 
     @Override public int xp() {

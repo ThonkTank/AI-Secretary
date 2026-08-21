@@ -15,12 +15,13 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.TaskCatalogQuery;
 import de.thonktank.autosecretary.domain.usecase.DeleteTask;
 import de.thonktank.autosecretary.domain.usecase.MoveScheduleEntry;
-import de.thonktank.autosecretary.domain.usecase.OrganizeTaskStep;
+import de.thonktank.autosecretary.domain.usecase.MoveTaskStep;
 import de.thonktank.autosecretary.domain.usecase.ScheduleMoveRequest;
 import de.thonktank.autosecretary.domain.usecase.ScheduleMoveResult;
 import de.thonktank.autosecretary.domain.usecase.StepMoveRequest;
-import de.thonktank.autosecretary.domain.usecase.StepOrganizationResult;
+import de.thonktank.autosecretary.domain.usecase.StepTransferResult;
 import de.thonktank.autosecretary.domain.usecase.StepSwapRequest;
+import de.thonktank.autosecretary.domain.usecase.SwapTaskSteps;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
 
 import java.util.LinkedHashSet;
@@ -35,7 +36,8 @@ public final class AllTasksViewModel extends ViewModel {
 
     private final TaskCatalogQuery catalog;
     private final MoveScheduleEntry moveSchedule;
-    private final OrganizeTaskStep organizeStep;
+    private final MoveTaskStep moveStep;
+    private final SwapTaskSteps swapSteps;
     private final DeleteTask deleteTask;
     private final UiTextProvider texts;
     private final SavedStateHandle savedState;
@@ -50,12 +52,13 @@ public final class AllTasksViewModel extends ViewModel {
     private long changeVersion;
 
     AllTasksViewModel(TaskCatalogQuery catalog, MoveScheduleEntry moveSchedule,
-                      OrganizeTaskStep organizeStep, DeleteTask deleteTask,
+                      MoveTaskStep moveStep, SwapTaskSteps swapSteps, DeleteTask deleteTask,
                       UiTextProvider texts, SavedStateHandle savedState,
                       ExecutorService worker) {
         this.catalog = catalog;
         this.moveSchedule = moveSchedule;
-        this.organizeStep = organizeStep;
+        this.moveStep = moveStep;
+        this.swapSteps = swapSteps;
         this.deleteTask = deleteTask;
         this.texts = texts;
         this.savedState = savedState;
@@ -110,12 +113,12 @@ public final class AllTasksViewModel extends ViewModel {
 
     void moveStep(StepMoveRequest request) {
         UiCommand key = new UiCommand(UiCommand.Kind.ORGANIZE, "step:" + request.stepId.value);
-        run(key, () -> stepError(organizeStep.move(request)));
+        run(key, () -> stepError(moveStep.execute(request)));
     }
 
     void swapSteps(StepSwapRequest request) {
         UiCommand key = new UiCommand(UiCommand.Kind.ORGANIZE, "step:" + request.stepId.value);
-        run(key, () -> stepError(organizeStep.swap(request)));
+        run(key, () -> stepError(swapSteps.execute(request)));
     }
 
     void delete(TaskId taskId) {
@@ -157,10 +160,15 @@ public final class AllTasksViewModel extends ViewModel {
         }
     }
 
-    private int stepError(StepOrganizationResult result) {
+    private int stepError(StepTransferResult result) {
         switch (result) {
-            case MOVED: case SWAPPED: case UNCHANGED: return 0;
-            case REJECTED_INACTIVE_TASK: return R.string.error_management_inactive;
+            case DEFINITION_AND_TODAY_MOVED: case STEPS_SWAPPED: case UNCHANGED: return 0;
+            case DEFINITION_ONLY_FOR_FUTURE:
+                events.postValue(UiEvent.info(texts.text(R.string.step_effective_next_occurrence)));
+                return 0;
+            case REJECTED_ARCHIVED_TASK: return R.string.error_management_inactive;
+            case REJECTED_OCCUPIED_TARGET: return R.string.error_step_target_occupied;
+            case REJECTED_INVALID_POSITION_SEQUENCE: return R.string.error_step_order_invalid;
             default: return R.string.error_task_missing;
         }
     }
@@ -210,8 +218,8 @@ public final class AllTasksViewModel extends ViewModel {
             if (!modelClass.isAssignableFrom(AllTasksViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
             return (T) new AllTasksViewModel(container.tasks.loadTaskCatalog,
-                    container.tasks.moveScheduleEntry, container.tasks.organizeTaskStep,
-                    container.tasks.delete, container.texts,
+                    container.tasks.moveScheduleEntry, container.tasks.moveTaskStep,
+                    container.tasks.swapTaskSteps, container.tasks.delete, container.texts,
                     SavedStateHandleSupport.createSavedStateHandle(extras), workers.get());
         }
     }

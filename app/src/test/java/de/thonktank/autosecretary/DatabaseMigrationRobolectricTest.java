@@ -61,7 +61,7 @@ public final class DatabaseMigrationRobolectricTest {
                         DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8,
                         DatabaseMigrations.MIGRATION_8_9, DatabaseMigrations.MIGRATION_9_10,
                         DatabaseMigrations.MIGRATION_10_11, DatabaseMigrations.MIGRATION_11_12,
-                        DatabaseMigrations.MIGRATION_12_13)
+                        DatabaseMigrations.MIGRATION_12_13, DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -104,7 +104,8 @@ public final class DatabaseMigrationRobolectricTest {
                         DatabaseMigrations.MIGRATION_5_6, DatabaseMigrations.MIGRATION_6_7,
                         DatabaseMigrations.MIGRATION_7_8, DatabaseMigrations.MIGRATION_8_9,
                         DatabaseMigrations.MIGRATION_9_10, DatabaseMigrations.MIGRATION_10_11,
-                        DatabaseMigrations.MIGRATION_11_12, DatabaseMigrations.MIGRATION_12_13)
+                        DatabaseMigrations.MIGRATION_11_12, DatabaseMigrations.MIGRATION_12_13,
+                        DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries()
                 .build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
@@ -150,7 +151,7 @@ public final class DatabaseMigrationRobolectricTest {
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_11_12,
-                        DatabaseMigrations.MIGRATION_12_13)
+                        DatabaseMigrations.MIGRATION_12_13, DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries().build();
         database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT taskId,slot,displayOrder "
@@ -196,7 +197,8 @@ public final class DatabaseMigrationRobolectricTest {
         helper.close();
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.MIGRATION_12_13)
+                .addMigrations(DatabaseMigrations.MIGRATION_12_13,
+                        DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT title,catalogOrder,estimatedMinutes,note "
@@ -227,7 +229,51 @@ public final class DatabaseMigrationRobolectricTest {
         migrated.close();
     }
 
-    @Test public void supportedVersionEightUpgradeThroughThirteenIsLossless() {
+    @Test public void migrationThirteenToFourteenKeepsLedgerAndStartsEmptyAssignments() {
+        SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
+                .builder(context).name(DATABASE)
+                .callback(new SupportSQLiteOpenHelper.Callback(13) {
+                    @Override public void onCreate(SupportSQLiteDatabase database) {
+                        ExportedRoomSchemaFixture.create(database, 13);
+                    }
+                    @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                    int oldVersion, int newVersion) { }
+                }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
+                .create(configuration);
+        SupportSQLiteDatabase old = helper.getWritableDatabase();
+        old.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,weekdayMask,ongoing,"
+                + "conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,lastCompletedOn,"
+                + "catalogOrder,hasCompletedOccurrence,estimatedMinutes,boundKind,boundUntilOn,"
+                + "boundWeeks,remainingCount,deadlineOn,note) VALUES "
+                + "('task','Routine','DAILY',1,0,0,'',0,0,'2026-08-21',NULL,NULL,1,0,NULL,"
+                + "'FOREVER',NULL,NULL,NULL,NULL,'')");
+        old.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,sortOrder,completedOn,slot) "
+                + "VALUES ('occ','task','2026-08-21','OPEN',1,NULL,'MORNING')");
+        old.execSQL("INSERT INTO reward_bookings(id,transactionId,occurrenceId,occurrenceStepId,"
+                + "ownerId,kind,target,xpDelta,comboPointDelta,bookedOn,reversesBookingId) VALUES "
+                + "('booking','tx','occ',NULL,'task:task','SINGLE_COMPLETION','HEAD',10,0,"
+                + "'2026-08-21',NULL)");
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.MIGRATION_13_14)
+                .allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        try (Cursor cursor = database.query("SELECT occurrenceId,xpDelta FROM reward_bookings "
+                + "WHERE id='booking'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("occ", cursor.getString(0));
+            assertEquals(10, cursor.getInt(1));
+        }
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM reward_assignments")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(0, cursor.getInt(0));
+        }
+        migrated.close();
+    }
+
+    @Test public void supportedVersionEightUpgradeThroughFourteenIsLossless() {
         SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
                 .builder(context).name(DATABASE)
                 .callback(new SupportSQLiteOpenHelper.Callback(8) {
@@ -266,7 +312,8 @@ public final class DatabaseMigrationRobolectricTest {
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.MIGRATION_8_9,
                         DatabaseMigrations.MIGRATION_9_10, DatabaseMigrations.MIGRATION_10_11,
-                        DatabaseMigrations.MIGRATION_11_12, DatabaseMigrations.MIGRATION_12_13)
+                        DatabaseMigrations.MIGRATION_11_12, DatabaseMigrations.MIGRATION_12_13,
+                        DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT title,catalogOrder FROM tasks WHERE id='v8'")) {
@@ -331,7 +378,7 @@ public final class DatabaseMigrationRobolectricTest {
                         DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8,
                         DatabaseMigrations.MIGRATION_8_9, DatabaseMigrations.MIGRATION_9_10,
                         DatabaseMigrations.MIGRATION_10_11, DatabaseMigrations.MIGRATION_11_12,
-                        DatabaseMigrations.MIGRATION_12_13)
+                        DatabaseMigrations.MIGRATION_12_13, DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT recurrence,ongoing,note,archived FROM tasks "
@@ -385,7 +432,7 @@ public final class DatabaseMigrationRobolectricTest {
                         DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8,
                         DatabaseMigrations.MIGRATION_8_9, DatabaseMigrations.MIGRATION_9_10,
                         DatabaseMigrations.MIGRATION_10_11, DatabaseMigrations.MIGRATION_11_12,
-                        DatabaseMigrations.MIGRATION_12_13)
+                        DatabaseMigrations.MIGRATION_12_13, DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT sourceTemplateId,comboOwnerId "
@@ -435,7 +482,8 @@ public final class DatabaseMigrationRobolectricTest {
                         DatabaseMigrations.MIGRATION_5_6, DatabaseMigrations.MIGRATION_6_7,
                         DatabaseMigrations.MIGRATION_7_8, DatabaseMigrations.MIGRATION_8_9,
                         DatabaseMigrations.MIGRATION_9_10, DatabaseMigrations.MIGRATION_10_11,
-                        DatabaseMigrations.MIGRATION_11_12, DatabaseMigrations.MIGRATION_12_13)
+                        DatabaseMigrations.MIGRATION_11_12, DatabaseMigrations.MIGRATION_12_13,
+                        DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT xp FROM stats WHERE id=1")) {
@@ -518,7 +566,8 @@ public final class DatabaseMigrationRobolectricTest {
                 .addMigrations(DatabaseMigrations.MIGRATION_6_7,
                         DatabaseMigrations.MIGRATION_7_8, DatabaseMigrations.MIGRATION_8_9,
                         DatabaseMigrations.MIGRATION_9_10, DatabaseMigrations.MIGRATION_10_11,
-                        DatabaseMigrations.MIGRATION_11_12, DatabaseMigrations.MIGRATION_12_13)
+                        DatabaseMigrations.MIGRATION_11_12, DatabaseMigrations.MIGRATION_12_13,
+                        DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT target,xpDelta,comboPointDelta "
@@ -547,7 +596,7 @@ public final class DatabaseMigrationRobolectricTest {
                 .addMigrations(DatabaseMigrations.MIGRATION_7_8,
                         DatabaseMigrations.MIGRATION_8_9, DatabaseMigrations.MIGRATION_9_10,
                         DatabaseMigrations.MIGRATION_10_11, DatabaseMigrations.MIGRATION_11_12,
-                        DatabaseMigrations.MIGRATION_12_13)
+                        DatabaseMigrations.MIGRATION_12_13, DatabaseMigrations.MIGRATION_13_14)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         try (Cursor cursor = database.query("SELECT slotIndex,actualRepetitions "

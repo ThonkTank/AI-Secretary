@@ -16,6 +16,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.ComponentActivity;
 import androidx.activity.EdgeToEdge;
@@ -344,6 +345,8 @@ public class MainActivity extends ComponentActivity {
         if (event.type == UiEvent.Type.ERROR)
             new AlertDialog.Builder(this).setTitle(R.string.error_title).setMessage(event.message)
                     .setPositiveButton(R.string.okay, null).show();
+        else if (event.type == UiEvent.Type.INFO)
+            Toast.makeText(this, event.message, Toast.LENGTH_LONG).show();
         else if (event.type == UiEvent.Type.CONFIRM_DELETE) {
             TaskSnapshot task = findTask(event.taskId);
             if (task != null) confirmDelete(task);
