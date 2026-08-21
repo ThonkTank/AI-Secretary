@@ -13,7 +13,7 @@ final class ForestBackdropView extends View {
 
     ForestBackdropView(Context context) {
         super(context);
-        artwork = new ForestArtworkRenderer(getResources().getDisplayMetrics().density);
+        artwork = new ForestArtworkRenderer();
         setWillNotDraw(false);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
     }

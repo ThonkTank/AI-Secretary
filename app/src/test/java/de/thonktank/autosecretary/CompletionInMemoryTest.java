@@ -15,8 +15,11 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
+import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
+import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.usecase.CloseOngoingTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
@@ -26,7 +29,7 @@ import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.HarvestOccurrence;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
-import de.thonktank.autosecretary.testing.InMemoryTaskRepository;
+import de.thonktank.autosecretary.testing.InMemoryExecutionRepository;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -41,10 +44,10 @@ import java.util.List;
 public final class CompletionInMemoryTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 18);
     private final MutableClock clock = new MutableClock(TODAY);
-    private InMemoryTaskRepository repository;
+    private InMemoryExecutionRepository repository;
     private int id;
 
-    @Before public void setUp() { repository = new InMemoryTaskRepository(); }
+    @Before public void setUp() { repository = new InMemoryExecutionRepository(); }
 
     @Test public void completionUndoAndRecompletionUseExactImmutableBookingsAndSchedule() {
         Occurrence occurrence = dailyRoutine("Routine", "Eins", "Zwei");
@@ -184,9 +187,9 @@ public final class CompletionInMemoryTest {
         for (int taskIndex = 0; taskIndex < taskCount; taskIndex++) {
             TaskId taskId = TaskId.of("stress-task-" + taskIndex);
             TaskSlot slot = TaskSlot.values()[taskIndex % TaskSlot.values().length];
-            Task task = Task.create(taskId, "Aufgabe " + taskIndex, slot,
-                    Recurrence.DAILY, 1, 0,
-                    false, "", TODAY, taskIndex);
+            Task task = Task.restore(taskId, "Aufgabe " + taskIndex, Recurrence.DAILY,
+                    1, 0, false, "", false, false, TODAY, null, null, taskIndex,
+                    false, null, TaskBoundKind.FOREVER, null, null, null, null, "");
             repository.insertTask(task);
             repository.putScheduleEntries(Collections.singletonList(
                     new de.thonktank.autosecretary.domain.model.TaskScheduleEntry(
@@ -222,8 +225,17 @@ public final class CompletionInMemoryTest {
 
     private void create(String title, TaskSlot slot, Recurrence recurrence,
                         java.util.List<String> steps, boolean ongoing, String condition) {
-        new CreateTask(repository, clock, this::nextId, new TaskOrdering()).execute(title, slot,
-                recurrence, 1, 0, steps, ongoing, condition);
+        if (!ongoing) {
+            new CreateTask(repository, repository, clock, this::nextId).execute(
+                    TaskDefinition.basic(title, slot, recurrence, 1, 0, steps));
+            return;
+        }
+        TaskId id = TaskId.of(nextId());
+        repository.insertTask(Task.restore(id, title, recurrence, 1, 0, true, condition,
+                false, false, clock.today(), null, null, 1_024L, false, null,
+                TaskBoundKind.FOREVER, null, null, null, null, ""));
+        repository.putScheduleEntries(Collections.singletonList(
+                new TaskScheduleEntry(nextId(), id, slot, 1_024L)));
     }
 
     private String nextId() { return "memory-id-" + ++id; }

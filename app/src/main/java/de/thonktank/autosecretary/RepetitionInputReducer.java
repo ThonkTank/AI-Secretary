@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+
 import androidx.annotation.Nullable;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;

@@ -1,12 +1,13 @@
 package de.thonktank.autosecretary;
 
+
 import android.content.Context;
 
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.data.local.DatabaseFactory;
 import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
 import de.thonktank.autosecretary.domain.usecase.UuidGenerator;
@@ -34,7 +35,7 @@ public final class AppContainer {
     public final ZoneIdProvider zones;
     public final IdGenerator ids;
     public final AppLogger logger;
-    public final TaskRepository taskRepository;
+    public final ApplicationTaskRepository taskRepository;
     public final TaskUseCases tasks;
     public final CalendarDataSource calendar;
     public final UiPreferences uiPreferences;

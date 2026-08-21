@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
+
 import android.content.Context;
 import android.text.SpannableString;
 import android.text.Spanned;

@@ -1,11 +1,15 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.data.local.TaskEntity;
+import de.thonktank.autosecretary.data.local.TaskStepEntity;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 import de.thonktank.autosecretary.data.local.TaskEntityMapper;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
@@ -69,12 +73,14 @@ public final class DomainModelTest {
     }
 
     @Test public void invalidDomainCombinationsAreRejectedAtCreation() {
-        assertThrows(IllegalArgumentException.class, () -> Task.create(
-                TaskId.of("weekday"), "Routine", TaskSlot.MORNING, Recurrence.WEEKDAYS,
-                1, 0, false, "", LocalDate.of(2026, 8, 15), 1_001_000L));
-        assertThrows(IllegalArgumentException.class, () -> Task.create(
-                TaskId.of("ongoing"), "Praktikum", TaskSlot.LATER, Recurrence.ONCE,
-                1, 0, true, "", LocalDate.of(2026, 8, 15), 4_001_000L));
+        assertThrows(IllegalArgumentException.class, () -> Task.restore(
+                TaskId.of("weekday"), "Routine", Recurrence.WEEKDAYS, 1, 0, false, "",
+                false, false, LocalDate.of(2026, 8, 15), null, null, 1_001_000L, false,
+                null, TaskBoundKind.FOREVER, null, null, null, null, ""));
+        assertThrows(IllegalArgumentException.class, () -> Task.restore(
+                TaskId.of("ongoing"), "Praktikum", Recurrence.ONCE, 1, 0, true, "",
+                false, false, LocalDate.of(2026, 8, 15), null, null, 4_001_000L, false,
+                null, TaskBoundKind.FOREVER, null, null, null, null, ""));
     }
 
     @Test public void entityMapperKeepsRoomCodesOutOfTheDomainModel() {

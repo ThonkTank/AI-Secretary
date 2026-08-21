@@ -1,5 +1,17 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.data.local.ComboEntity;
+import de.thonktank.autosecretary.data.local.OccurrenceEntity;
+import de.thonktank.autosecretary.data.local.OccurrenceStepEntity;
+import de.thonktank.autosecretary.data.local.RepetitionResultEntity;
+import de.thonktank.autosecretary.data.local.RewardAssignmentEntity;
+import de.thonktank.autosecretary.data.local.RewardBookingEntity;
+import de.thonktank.autosecretary.data.local.StatsEntity;
+import de.thonktank.autosecretary.data.local.TaskDao;
+import de.thonktank.autosecretary.data.local.TaskEntity;
+import de.thonktank.autosecretary.data.local.TaskScheduleEntity;
+import de.thonktank.autosecretary.data.local.TaskStepEntity;
+
 import androidx.room.Database;
 import androidx.room.RoomDatabase;
 

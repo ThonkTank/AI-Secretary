@@ -37,7 +37,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CompleteRemainingSteps;
@@ -54,7 +54,7 @@ import de.thonktank.autosecretary.domain.usecase.UpdateTask;
 public final class TaskEditorFeatureRobolectricTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 17);
     private AppDatabase database;
-    private TaskRepository repository;
+    private ApplicationTaskRepository repository;
     private SequenceIds ids;
     private MutableClock clock;
 
@@ -85,7 +85,7 @@ public final class TaskEditorFeatureRobolectricTest {
         TaskDefinition definition = new TaskDefinition("Katze", 15, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit | TimeOfDay.EVENING.bit,
                 TaskBoundKind.N_TIMES, null, null, 3, null, "", Collections.emptyList());
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute(definition);
+        new CreateTask(repository, repository, clock, ids).execute(definition);
         MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, clock, ids);
         materialize.execute(); materialize.execute();
 
@@ -123,7 +123,7 @@ public final class TaskEditorFeatureRobolectricTest {
                 StepAmount.setsReps(3, 12), "23 kg");
         TaskDefinition definition = definition("Training", Recurrence.DAILY, 0,
                 TaskBoundKind.FOREVER, null, Collections.singletonList(original));
-        CreateTask create = new CreateTask(repository, clock, ids, new TaskOrdering());
+        CreateTask create = new CreateTask(repository, repository, clock, ids);
         create.execute(definition);
         Task task = repository.allTasks().get(0);
         String stableId = repository.templates(task.id).get(0).id;
@@ -132,7 +132,7 @@ public final class TaskEditorFeatureRobolectricTest {
 
         TaskStepDefinition edited = new TaskStepDefinition(stableId, 0, "Neu", 0,
                 StepAmount.setsReps(4, 10), "25 kg");
-        new UpdateTask(repository, new TaskOrdering(), ids, clock).execute(task.id,
+        new UpdateTask(repository, repository, ids, clock).execute(task.id,
                 definition("Training neu", Recurrence.DAILY, 0, TaskBoundKind.FOREVER,
                         null, Collections.singletonList(edited)));
 
@@ -150,7 +150,7 @@ public final class TaskEditorFeatureRobolectricTest {
         int monday = 1;
         TaskStepDefinition mondayStep = new TaskStepDefinition(null, 0, "Beinpresse", monday,
                 StepAmount.setsReps(3, 12), "23 kg, Sitz 5");
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute(new TaskDefinition(
+        new CreateTask(repository, repository, clock, ids).execute(new TaskDefinition(
                 "Training", 45, TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
                 TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER, null, null, null, null,
                 "", Collections.singletonList(mondayStep)));
@@ -194,7 +194,7 @@ public final class TaskEditorFeatureRobolectricTest {
     @Test public void completeRemainingExplicitlyClosesWithoutAllResultsAndNextStartsEmpty() {
         TaskStepDefinition exercise = new TaskStepDefinition(null, 0, "Kniebeugen", 0,
                 StepAmount.setsReps(3, 15), "");
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute(definition(
+        new CreateTask(repository, repository, clock, ids).execute(definition(
                 "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
                 Collections.singletonList(exercise)));
         new MaterializeDueOccurrences(repository, clock, ids).execute();
@@ -219,7 +219,7 @@ public final class TaskEditorFeatureRobolectricTest {
     @Test public void singleRepetitionValuePersistsAndCompletesWithOneReward() {
         TaskStepDefinition exercise = new TaskStepDefinition(null, 0, "Liegestütze", 0,
                 StepAmount.repetitions(12), "auf Fäusten");
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute(definition(
+        new CreateTask(repository, repository, clock, ids).execute(definition(
                 "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
                 Collections.singletonList(exercise)));
         new MaterializeDueOccurrences(repository, clock, ids).execute();

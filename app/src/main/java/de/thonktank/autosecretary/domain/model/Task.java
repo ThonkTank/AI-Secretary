@@ -37,6 +37,8 @@ public final class Task {
             throw new IllegalArgumentException("Task identity, recurrence and bound are required");
         if (title == null || title.trim().isEmpty() || title.trim().length() > 120)
             throw new IllegalArgumentException("Task title must contain 1 to 120 characters");
+        if (ongoing && (conditionText == null || conditionText.trim().isEmpty()))
+            throw new IllegalArgumentException("Ongoing task needs a completion condition");
         if (recurrence == Recurrence.WEEKDAYS && weekdayMask == 0)
             throw new IllegalArgumentException("Weekday recurrence needs at least one weekday");
         if (estimatedMinutes != null && estimatedMinutes < 1)
@@ -73,18 +75,6 @@ public final class Task {
                 definition.deadlineOn, definition.note);
     }
 
-    /** Compatibility factory for the old facade; the caller must create its schedule separately. */
-    public static Task create(TaskId id, String title, TaskSlot ignoredSlot,
-                              Recurrence recurrence, int intervalDays, int weekdayMask,
-                              boolean ongoing, String conditionText, LocalDate firstDueOn,
-                              long catalogOrder) {
-        if (ongoing && (conditionText == null || conditionText.trim().isEmpty()))
-            throw new IllegalArgumentException("Ongoing task needs a completion condition");
-        return restore(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
-                false, false, firstDueOn, null, null, catalogOrder, false, null,
-                TaskBoundKind.FOREVER, null, null, null, null, "");
-    }
-
     public static Task restore(TaskId id, String title, Recurrence recurrence, int intervalDays,
                                int weekdayMask, boolean ongoing, String conditionText,
                                boolean conditionDone, boolean archived, LocalDate nextDueOn,
@@ -99,44 +89,11 @@ public final class Task {
                 boundWeeks, remainingCount, deadlineOn, note);
     }
 
-    /** Transitional restore signature for tests and adapters migrated in later cleanup. */
-    public static Task restore(TaskId id, String title, TaskSlot ignoredSlot,
-                               Recurrence recurrence, int intervalDays, int weekdayMask,
-                               boolean ongoing, String conditionText, boolean conditionDone,
-                               boolean archived, LocalDate nextDueOn, LocalDate lastScheduledOn,
-                               LocalDate lastCompletedOn, long catalogOrder,
-                               boolean hasCompletedOccurrence) {
-        return restore(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
-                conditionDone, archived, nextDueOn, lastScheduledOn, lastCompletedOn,
-                catalogOrder, hasCompletedOccurrence, null, TaskBoundKind.FOREVER,
-                null, null, null, null, "");
-    }
-
-    /** Transitional restore signature; slot and mask are intentionally not retained. */
-    public static Task restore(TaskId id, String title, TaskSlot ignoredSlot,
-                               Recurrence recurrence, int intervalDays, int weekdayMask,
-                               boolean ongoing, String conditionText, boolean conditionDone,
-                               boolean archived, LocalDate nextDueOn, LocalDate lastScheduledOn,
-                               LocalDate lastCompletedOn, long catalogOrder,
-                               boolean hasCompletedOccurrence, Integer estimatedMinutes,
-                               int ignoredTimeOfDayMask, TaskBoundKind boundKind,
-                               LocalDate boundUntilOn, Integer boundWeeks,
-                               Integer remainingCount, LocalDate deadlineOn, String note) {
-        return restore(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
-                conditionDone, archived, nextDueOn, lastScheduledOn, lastCompletedOn,
-                catalogOrder, hasCompletedOccurrence, estimatedMinutes, boundKind, boundUntilOn,
-                boundWeeks, remainingCount, deadlineOn, note);
-    }
-
     public Task edit(String newTitle, long newCatalogOrder) {
         return copy(newTitle, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
                 conditionDone, archived, nextDueOn, lastScheduledOn, lastCompletedOn,
                 newCatalogOrder, hasCompletedOccurrence, estimatedMinutes, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note);
-    }
-
-    public Task edit(String newTitle, TaskSlot ignoredSlot, long newCatalogOrder) {
-        return edit(newTitle, newCatalogOrder);
     }
 
     public Task editDefinition(TaskDefinition definition, long newCatalogOrder) {
@@ -151,17 +108,6 @@ public final class Task {
                 definition.estimatedMinutes, definition.boundKind, definition.boundUntilOn,
                 definition.boundWeeks, definition.remainingCount, definition.deadlineOn,
                 definition.note);
-    }
-
-    public Task editDefinition(String newTitle, TaskSlot ignoredSlot, Recurrence newRecurrence,
-                               int newIntervalDays, int newWeekdayMask, boolean newOngoing,
-                               String newConditionText, long newCatalogOrder) {
-        if (newOngoing && (newConditionText == null || newConditionText.trim().isEmpty()))
-            throw new IllegalArgumentException("Ongoing task needs a completion condition");
-        return copy(newTitle, newRecurrence, newIntervalDays, newWeekdayMask, newOngoing,
-                newConditionText, conditionDone, archived, nextDueOn, lastScheduledOn,
-                lastCompletedOn, newCatalogOrder, hasCompletedOccurrence, estimatedMinutes,
-                TaskBoundKind.FOREVER, null, null, null, null, note);
     }
 
     public Task withCatalogOrder(long newCatalogOrder) { return edit(title, newCatalogOrder); }

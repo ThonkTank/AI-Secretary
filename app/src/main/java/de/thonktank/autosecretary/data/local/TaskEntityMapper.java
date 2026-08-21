@@ -1,10 +1,5 @@
 package de.thonktank.autosecretary.data.local;
 
-import de.thonktank.autosecretary.OccurrenceEntity;
-import de.thonktank.autosecretary.OccurrenceStepEntity;
-import de.thonktank.autosecretary.TaskEntity;
-import de.thonktank.autosecretary.TaskStepEntity;
-import de.thonktank.autosecretary.TaskScheduleEntity;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceKind;

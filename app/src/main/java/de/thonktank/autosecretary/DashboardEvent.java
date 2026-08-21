@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
+
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 

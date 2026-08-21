@@ -1,17 +1,7 @@
 package de.thonktank.autosecretary.data.local;
 
 import de.thonktank.autosecretary.AppDatabase;
-import de.thonktank.autosecretary.OccurrenceEntity;
-import de.thonktank.autosecretary.OccurrenceStepEntity;
-import de.thonktank.autosecretary.StatsEntity;
-import de.thonktank.autosecretary.ComboEntity;
-import de.thonktank.autosecretary.RewardBookingEntity;
-import de.thonktank.autosecretary.RewardAssignmentEntity;
-import de.thonktank.autosecretary.RepetitionResultEntity;
-import de.thonktank.autosecretary.TaskDao;
-import de.thonktank.autosecretary.TaskEntity;
-import de.thonktank.autosecretary.TaskStepEntity;
-import de.thonktank.autosecretary.TaskScheduleEntity;
+
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
@@ -20,7 +10,7 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
@@ -32,7 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-public final class RoomTaskRepository implements TaskRepository {
+public final class RoomTaskRepository implements ApplicationTaskRepository {
     private final AppDatabase database;
     private final TaskDao dao;
     private final TaskEntityMapper mapper;
@@ -132,6 +122,15 @@ public final class RoomTaskRepository implements TaskRepository {
         return mapScheduleEntries(dao.scheduleEntries(taskId.value));
     }
 
+    @Override public TaskScheduleEntry findScheduleEntry(String id) {
+        TaskScheduleEntity value = dao.scheduleEntry(id);
+        return value == null ? null : mapper.toDomain(value);
+    }
+
+    @Override public List<TaskScheduleEntry> scheduleEntries(TaskSlot slot) {
+        return mapScheduleEntries(dao.scheduleEntriesInSlot(slot.name()));
+    }
+
     @Override public List<TaskScheduleEntry> scheduleEntriesFor(List<TaskId> taskIds) {
         if (taskIds.isEmpty()) return new ArrayList<>();
         List<String> values = new ArrayList<>();
@@ -182,6 +181,11 @@ public final class RoomTaskRepository implements TaskRepository {
 
     @Override public List<Occurrence> openOccurrences() {
         return mapOccurrences(dao.occurrencesByState(OccurrenceState.OPEN.storageCode()));
+    }
+
+    @Override public List<Occurrence> openOccurrences(TaskSlot slot) {
+        return mapOccurrences(dao.occurrencesByStateAndSlot(
+                OccurrenceState.OPEN.storageCode(), slot.storageCode));
     }
 
     @Override public List<Occurrence> allOccurrences() {

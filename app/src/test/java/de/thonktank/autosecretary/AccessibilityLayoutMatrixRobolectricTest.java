@@ -1,5 +1,8 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
+
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 

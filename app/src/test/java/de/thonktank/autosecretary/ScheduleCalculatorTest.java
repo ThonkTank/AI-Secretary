@@ -15,9 +15,10 @@ import java.time.LocalDate;
 
 public class ScheduleCalculatorTest {
     private Task task(Recurrence recurrence, int interval, int mask, LocalDate due) {
-        return Task.restore(TaskId.of("id"), "Test", TaskSlot.MORNING, recurrence,
-                interval, mask, false, "", false, false, due, null, null,
-                1_001_000L, false);
+        return Task.restore(TaskId.of("id"), "Test", recurrence, interval, mask,
+                false, "", false, false, due, null, null, 1_001_000L, false,
+                null, de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
+                null, null, null, null, "");
     }
 
     @Test public void intervalIsAnchoredToPlannedDate() {

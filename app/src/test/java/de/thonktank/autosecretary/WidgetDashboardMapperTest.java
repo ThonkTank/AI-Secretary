@@ -25,6 +25,7 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
@@ -62,8 +63,9 @@ public final class WidgetDashboardMapperTest {
     }
 
     private static Task task(String id, String title, long order) {
-        return Task.create(TaskId.of(id), title, TaskSlot.MORNING, Recurrence.DAILY,
-                1, 0, false, "", TODAY, order);
+        return Task.restore(TaskId.of(id), title, Recurrence.DAILY, 1, 0,
+                false, "", false, false, TODAY, null, null, order, false,
+                null, TaskBoundKind.FOREVER, null, null, null, null, "");
     }
 
     private static Occurrence occurrence(Task task, String id) {

@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
@@ -20,7 +22,7 @@ import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
-import de.thonktank.autosecretary.domain.usecase.ScheduleMoveResult;
+import de.thonktank.autosecretary.domain.schedule.ScheduleMoveResult;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
@@ -345,14 +347,6 @@ public final class TaskViewModel extends ViewModel {
         events.setValue(UiEvent.confirmClose(taskId, title));
     }
 
-    void create(String title, TaskSlot slot, Recurrence recurrence, int interval, int weekdays,
-                List<String> steps, boolean ongoing, String condition) {
-        run(command(UiCommand.Kind.CREATE, "new"), () -> {
-            validate(title, recurrence, weekdays, ongoing, condition);
-            tasks.create.execute(title, slot, recurrence, interval, weekdays, steps, ongoing, condition);
-        });
-    }
-
     void complete(String occurrenceId) { runReward(command(UiCommand.Kind.COMPLETE, occurrenceId), () -> tasks.complete.execute(occurrenceId)); }
     void completeRemaining(String occurrenceId) {
         runReward(command(UiCommand.Kind.COMPLETE_REMAINING, occurrenceId),
@@ -378,20 +372,9 @@ public final class TaskViewModel extends ViewModel {
         runReward(command(UiCommand.Kind.CLOSE, taskId),
                 () -> tasks.closeOngoing.execute(TaskId.of(taskId)));
     }
-    void update(String taskId, String title, TaskSlot slot) {
-        run(command(UiCommand.Kind.UPDATE, taskId), () -> {
-            if (title == null || title.trim().isEmpty())
-                throw new IllegalArgumentException(texts.text(R.string.error_name));
-            tasks.update.execute(TaskId.of(taskId), title, slot);
-        });
-    }
-    void move(String taskId, TaskSlot slot) {
-        move(taskId, null, slot);
-    }
-
     void move(String taskId, @Nullable TaskSlot sourceSlot, TaskSlot targetSlot) {
         run(command(UiCommand.Kind.MOVE, taskId), () -> {
-            ScheduleMoveResult result = tasks.move.execute(
+            ScheduleMoveResult result = tasks.moveTaskPlacement.execute(
                     TaskId.of(taskId), sourceSlot, targetSlot);
             if (result != ScheduleMoveResult.MOVED)
                 throw new IllegalArgumentException(scheduleMoveMessage(result));
@@ -522,16 +505,6 @@ public final class TaskViewModel extends ViewModel {
     private void setEditor(EditorUiState editor) {
         savedState.set(EDITOR, editor.open ? editor.toBundle() : null);
         update(value -> value.withEditor(editor));
-    }
-
-    private void validate(String title, Recurrence recurrence, int weekdayMask,
-                          boolean ongoing, String condition) {
-        if (title == null || title.trim().isEmpty())
-            throw new IllegalArgumentException(texts.text(R.string.error_name));
-        if (recurrence == Recurrence.WEEKDAYS && !ScheduleCalculator.hasWeekday(weekdayMask))
-            throw new IllegalArgumentException(texts.text(R.string.error_weekdays));
-        if (ongoing && (condition == null || condition.trim().isEmpty()))
-            throw new IllegalArgumentException(texts.text(R.string.error_condition));
     }
 
     private String scheduleMoveMessage(ScheduleMoveResult result) {

@@ -1,5 +1,11 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksFilter;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksSavedStateAdapter;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -26,13 +32,15 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.ScheduleEntryId;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
+import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
-import de.thonktank.autosecretary.domain.usecase.ScheduleMoveRequest;
+import de.thonktank.autosecretary.domain.schedule.ScheduleMoveRequest;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
@@ -67,7 +75,7 @@ public final class PresentationStateRobolectricTest {
 
     private Context context;
     private AppDatabase database;
-    private TaskRepository repository;
+    private ApplicationTaskRepository repository;
     private TaskUseCases tasks;
     private DashboardPresenter presenter;
     private UiPreferences preferences;
@@ -130,8 +138,18 @@ public final class PresentationStateRobolectricTest {
         viewModel = newViewModel(handle);
         assertFalse(value().loading);
 
-        tasks.create.execute("Bearbeitbar", TaskSlot.EVENING, Recurrence.INTERVAL, 4, 0,
-                java.util.Arrays.asList("A", "B"), true, "Fertig");
+        TaskId migratedId = TaskId.of("migrated-ongoing");
+        repository.insertTask(Task.restore(migratedId, "Bearbeitbar", Recurrence.INTERVAL,
+                4, 0, true, "Fertig", false, false, clock.today(), null, null, 1_024L,
+                false, null, TaskBoundKind.FOREVER, null, null, null, null, ""));
+        repository.insertTemplates(java.util.Arrays.asList(
+                new de.thonktank.autosecretary.domain.model.TaskStepTemplate(
+                        "ongoing-a", migratedId, 0, "A"),
+                new de.thonktank.autosecretary.domain.model.TaskStepTemplate(
+                        "ongoing-b", migratedId, 1, "B")));
+        repository.putScheduleEntries(Collections.singletonList(
+                new de.thonktank.autosecretary.domain.model.TaskScheduleEntry(
+                        "ongoing-schedule", migratedId, TaskSlot.EVENING, 1_024L)));
         String taskId = repository.allTasks().get(0).id.value;
 
         viewModel.navigate(NavigationDestination.OPTIONS);
@@ -139,14 +157,13 @@ public final class PresentationStateRobolectricTest {
         assertTrue(value().editor.open && !value().editor.loading);
         assertEquals("Bearbeitbar", value().editor.title);
         assertEquals(4, value().editor.intervalDays);
-        assertEquals(2, value().editor.steps.size());
+        assertEquals(2, value().editor.stepStates.size());
         viewModel.onCleared();
 
         viewModel = newViewModel(handle);
         assertEquals(NavigationDestination.OPTIONS, value().navigation);
         assertTrue(value().editor.open);
         assertEquals(taskId, value().editor.taskId);
-        assertEquals("Fertig", value().editor.condition);
     }
 
     @Test public void duplicateCommandsAreIgnoredWhileTheFirstIsRunning() throws Exception {
@@ -155,29 +172,24 @@ public final class PresentationStateRobolectricTest {
         worker.runNext();
         assertFalse(value().loading);
 
-        viewModel.create("Einmal", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
-                Collections.emptyList(), false, "");
-        viewModel.create("Einmal", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
-                Collections.emptyList(), false, "");
+        EditorUiState draft = EditorUiState.create().withDraft("Einmal", TaskSlot.MORNING,
+                Recurrence.ONCE, 1, 0, Collections.emptyList());
+        viewModel.saveEditor(draft);
+        viewModel.saveEditor(draft);
 
         worker.runNext();
         assertFalse(value().isRunning(new UiCommand(UiCommand.Kind.CREATE, "new")));
         assertEquals(1, repository.allTasks().size());
     }
 
-    @Test public void errorsAreTypedOneShotEvents() throws Exception {
+    @Test public void editorValidationErrorsStayInTypedEditorState() throws Exception {
         viewModel = newViewModel(new SavedStateHandle());
         assertFalse(value().loading);
 
-        viewModel.create("", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
-                Collections.emptyList(), false, "");
+        viewModel.saveEditor(EditorUiState.create());
 
-        assertNotNull(viewModel.events().getValue());
-        UiEvent event = viewModel.events().getValue();
-        assertNotNull(event);
-        assertEquals(UiEvent.Type.ERROR, event.type);
-        assertTrue(event.consume());
-        assertFalse(event.consume());
+        assertFalse(value().editor.errors.isEmpty());
+        assertFalse(value().editor.saving);
     }
 
     @Test public void repetitionDraftsDoNotInvalidateWidgetsButSubmissionDoes() {
@@ -284,8 +296,8 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void managementCommandPublishesItsOwnCatalogAndTypedChangeResult() {
-        tasks.create.execute("Sortieren", TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
-                Collections.emptyList(), false, "");
+        tasks.create.execute(TaskDefinition.basic("Sortieren", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, Collections.emptyList()));
         de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
         String entryId = repository.scheduleEntries(task.id).get(0).id;
         AllTasksViewModel management = new AllTasksViewModel(tasks.loadTaskCatalog,

@@ -54,12 +54,17 @@ der [fachliche Wiederholungsfortschritt](today-focus-domain.md).
 Die App bleibt bewusst ein Android-Modul. Innerhalb dieses Moduls markieren Pakete die aktuell
 belastbaren Verantwortungsgrenzen:
 
-- `domain.model` und `domain.usecase`: fachliche Typen und Abläufe, einschließlich `StepAmount`;
-- `presentation`: präsentationsfertige Fokus-Schritte und lokalisierte Textformatierung;
+- `domain.model` und `domain.usecase`: fachliche Typen und Ausführungsabläufe;
+- `domain.schedule` und `domain.steps`: Zeitplatzierungs- und Schrittverwaltungs-Commands mit
+  eigenen Persistenzports;
+- `presentation.alltasks`: Katalogzustand, Filter, flaches Listenmodell und Verwaltungs-UI;
+- `presentation.today`: verbraucherspezifische Today-Projektionen;
+- `presentation`: gemeinsam genutzte Präsentationsadapter und lokalisierte Textformatierung;
 - `editor`: reine, Android-unabhängige Zustandsübergänge des Aufgabeneditors;
 - `widget`: direkte Domain-zu-Widget-Projektion und größenabhängige UI-Modelle;
-- `domain.repository`: fokussierte Ports wie `TaskDefinitionRepository` neben dem zunächst
-  kompatiblen `TaskRepository`-Aggregat;
+- `domain.repository`: Definition-, Ausführungs- und Composition-Root-Verträge; Management-
+  Commands hängen ausschließlich von den kleineren Slice-Ports ab;
+- `data.local`: Room-DAO, Entities, Mapper und konkrete Repository-Implementierung;
 - Root-Paket: Android-Views, Lifecycle-/Composition-Root und historisch noch nicht verschobene
   kleine Adapter.
 

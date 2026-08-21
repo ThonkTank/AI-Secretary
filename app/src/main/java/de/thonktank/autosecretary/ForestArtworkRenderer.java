@@ -28,7 +28,7 @@ final class ForestArtworkRenderer {
     private float sunBreathOffsetX;
     private float sunBreathOffsetY;
 
-    ForestArtworkRenderer(float ignoredDensity) {
+    ForestArtworkRenderer() {
         treePaint.setStyle(Paint.Style.FILL);
         maskPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
     }

@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary.presentation;
 
-import de.thonktank.autosecretary.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.TaskSnapshot;
 import de.thonktank.autosecretary.domain.model.Dashboard;

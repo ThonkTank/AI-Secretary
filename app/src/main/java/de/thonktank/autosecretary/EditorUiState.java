@@ -40,9 +40,6 @@ public final class EditorUiState {
     public final LocalDate deadlineOn;
     public final String note;
     public final List<EditorStepState> stepStates;
-    public final List<String> steps;
-    public boolean ongoing;
-    public String condition;
     public final String expandedStepId;
     public final Set<String> errors;
     public final Prompt prompt;
@@ -68,10 +65,6 @@ public final class EditorUiState {
         this.remainingCount = remainingCount; this.deadlineOn = deadlineOn;
         this.note = note == null ? "" : note;
         this.stepStates = Collections.unmodifiableList(new ArrayList<>(steps));
-        List<String> labels = new ArrayList<>();
-        for (EditorStepState step : steps) labels.add(step.text);
-        this.steps = Collections.unmodifiableList(labels);
-        this.ongoing = false; this.condition = "";
         this.expandedStepId = expandedStepId;
         this.errors = Collections.unmodifiableSet(new LinkedHashSet<>(errors));
         this.prompt = prompt; this.storageError = storageError == null ? "" : storageError;
@@ -112,20 +105,16 @@ public final class EditorUiState {
     public static EditorUiState edit(TaskDetails details) {
         List<EditorStepState> steps = new ArrayList<>();
         for (TaskStepTemplate value : details.stepTemplates) steps.add(EditorStepState.from(value));
-        EditorUiState result = new EditorUiState(true, false, false, details.id.value, details.title,
+        return new EditorUiState(true, false, false, details.id.value, details.title,
                 details.slot, details.estimatedMinutes, details.recurrence,
                 details.intervalDays, details.weekdayMask, details.timeOfDayMask,
                 details.boundKind, details.boundUntilOn, details.boundWeeks,
                 details.remainingCount, details.deadlineOn, details.note, steps, null,
                 Collections.emptySet(), Prompt.NONE, "", 1, null);
-        result.ongoing = details.ongoing;
-        result.condition = details.condition;
-        return result;
     }
 
     public EditorUiState withDraft(String title, TaskSlot slot, Recurrence recurrence,
-                                   int intervalDays, int weekdayMask, List<String> labels,
-                                   boolean ignoredOngoing, String ignoredCondition) {
+                                   int intervalDays, int weekdayMask, List<String> labels) {
         List<EditorStepState> values = new ArrayList<>();
         for (int i = 0; i < labels.size(); i++) {
             EditorStepState old = i < stepStates.size() ? stepStates.get(i)
@@ -133,12 +122,9 @@ public final class EditorUiState {
             values.add(old.withText(labels.get(i)));
         }
         int times = recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(slot).bit;
-        EditorUiState result = draft(title, slot, estimatedMinutes, recurrence, intervalDays, weekdayMask,
+        return draft(title, slot, estimatedMinutes, recurrence, intervalDays, weekdayMask,
                 times, TaskBoundKind.FOREVER, null, null, null, null, note, values,
                 expandedStepId, nextDraftIdentity + Math.max(0, labels.size() - stepStates.size()));
-        result.ongoing = ignoredOngoing;
-        result.condition = ignoredCondition == null ? "" : ignoredCondition;
-        return result;
     }
 
     public EditorUiState draft(String title, TaskSlot slot, Integer estimatedMinutes,
@@ -196,7 +182,6 @@ public final class EditorUiState {
                 new ArrayList<>(errors)); bundle.putString("prompt", prompt.name());
         bundle.putString("storage_error", storageError); bundle.putInt("next_id", nextDraftIdentity);
         bundle.putString("baseline", baseline);
-        bundle.putBoolean("ongoing", ongoing); bundle.putString("condition", condition);
         return bundle;
     }
 
@@ -206,7 +191,7 @@ public final class EditorUiState {
         ArrayList<Bundle> values = bundle.getParcelableArrayList("step_states");
         if (values != null) for (Bundle value : values) steps.add(EditorStepState.fromBundle(value));
         ArrayList<String> errors = bundle.getStringArrayList("errors");
-        EditorUiState result = new EditorUiState(true, bundle.getBoolean("loading"), bundle.getBoolean("saving"),
+        return new EditorUiState(true, bundle.getBoolean("loading"), bundle.getBoolean("saving"),
                 bundle.getString("task_id"), bundle.getString("title", ""),
                 enumValue(TaskSlot.class, bundle.getString("slot"), TaskSlot.MORNING),
                 integer(bundle, "estimated"), enumValue(Recurrence.class,
@@ -219,22 +204,6 @@ public final class EditorUiState {
                 : new LinkedHashSet<>(errors), enumValue(Prompt.class,
                 bundle.getString("prompt"), Prompt.NONE), bundle.getString("storage_error", ""),
                 bundle.getInt("next_id", 1), bundle.getString("baseline"));
-        result.ongoing = bundle.getBoolean("ongoing");
-        result.condition = bundle.getString("condition", "");
-        if (steps.isEmpty()) {
-            ArrayList<String> legacySteps = bundle.getStringArrayList("steps");
-            if (legacySteps != null && !legacySteps.isEmpty()) {
-                List<EditorStepState> restored = new ArrayList<>();
-                for (int i = 0; i < legacySteps.size(); i++)
-                    restored.add(EditorStepState.blank(i + 1).withText(legacySteps.get(i)));
-                result = result.draft(result.title, result.slot, result.estimatedMinutes,
-                        result.recurrence, result.intervalDays, result.weekdayMask,
-                        result.timeOfDayMask, result.boundKind, result.boundUntilOn,
-                        result.boundWeeks, result.remainingCount, result.deadlineOn,
-                        result.note, restored, result.expandedStepId, restored.size() + 1);
-            }
-        }
-        return result;
     }
 
     private static String signature(String title, TaskSlot slot, Integer estimated,

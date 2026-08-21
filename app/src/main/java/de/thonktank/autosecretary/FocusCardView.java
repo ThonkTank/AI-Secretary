@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
+
 import android.content.Context;
 import android.graphics.Color;
 import android.view.Gravity;

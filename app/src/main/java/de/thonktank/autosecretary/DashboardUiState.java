@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;

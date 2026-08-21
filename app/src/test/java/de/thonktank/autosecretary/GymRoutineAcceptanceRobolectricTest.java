@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
 import static org.junit.Assert.assertEquals;
@@ -40,7 +42,7 @@ import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
-import de.thonktank.autosecretary.testing.InMemoryTaskRepository;
+import de.thonktank.autosecretary.testing.InMemoryExecutionRepository;
 
 /** User-value acceptance test from an authored routine to the rendered focus card. */
 @RunWith(RobolectricTestRunner.class)
@@ -50,7 +52,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
 
     @Test public void authoredGymDetailsSurviveMaterializationAndReachTheFocusCard() {
         Context context = ApplicationProvider.getApplicationContext();
-        InMemoryTaskRepository repository = new InMemoryTaskRepository();
+        InMemoryExecutionRepository repository = new InMemoryExecutionRepository();
         FixedClock clock = new FixedClock();
         SequenceIds ids = new SequenceIds();
         List<TaskStepDefinition> steps = Arrays.asList(
@@ -66,7 +68,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", steps);
 
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute(gym);
+        new CreateTask(repository, repository, clock, ids).execute(gym);
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         TodayUiModel dashboard = new DashboardUiMapper(new AndroidUiTextProvider(context)).map(
                 new LoadDashboard(repository).execute(TODAY), TODAY);
@@ -134,7 +136,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
         assertTrue(!visibleTexts(view).contains("Rest erledigen"));
     }
 
-    private static TodayUiModel dashboard(InMemoryTaskRepository repository, Clock clock,
+    private static TodayUiModel dashboard(InMemoryExecutionRepository repository, Clock clock,
                                            Context context) {
         return new DashboardUiMapper(new AndroidUiTextProvider(context)).map(
                 new LoadDashboard(repository).execute(clock.today()), clock.today());

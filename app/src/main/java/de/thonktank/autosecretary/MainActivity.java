@@ -1,5 +1,11 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksCoordinator;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
+import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+
 import android.Manifest;
 import android.animation.LayoutTransition;
 import android.app.AlertDialog;
@@ -141,7 +147,6 @@ public class MainActivity extends ComponentActivity {
                 setEnabled(true);
             }
         });
-        showLegacyResetNotice();
         handleLaunchIntent();
         syncCalendarPermission();
         minuteHandler.post(minuteTick);
@@ -373,15 +378,6 @@ public class MainActivity extends ComponentActivity {
                 == PackageManager.PERMISSION_GRANTED;
         viewModel.updateCalendarPermission(granted,
                 shouldShowRequestPermissionRationale(Manifest.permission.READ_CALENDAR));
-    }
-
-    private void showLegacyResetNotice() {
-        if (!AutoSecretaryApplication.from(this).legacyStateCleaner().shouldShowResetNotice()) return;
-        new AlertDialog.Builder(this).setTitle(R.string.legacy_reset_title)
-                .setMessage(R.string.legacy_reset_message)
-                .setPositiveButton(R.string.understood, (dialog, which) ->
-                        AutoSecretaryApplication.from(this).legacyStateCleaner()
-                                .acknowledgeResetNotice()).show();
     }
 
     private void handleLaunchIntent() {

@@ -1,7 +1,7 @@
 # ADR-010: Unveränderliches Reward-Ledger und Gegenbuchungen
 
 - Status: angenommen
-- Datum: 2026-08-18
+- Datum: 2026-08-21
 
 ## Kontext
 
@@ -34,16 +34,24 @@ Anschließend entfernt sie die Rewardfelder aus den aktiven Tabellen und Domäne
 Dashboard und UI lesen eingesammelte beziehungsweise vergebene XP aus gebündelten
 Ledger-Projektionen.
 
+Schema 14 ergänzt `reward_assignments` als veränderliche Zuordnungsprojektion außerhalb des
+Ledgers. Sie ordnet eine bestehende Buchung optional einem aktuell anderen Vorkommen zu. Fehlt
+eine Zeile, bleibt `reward_bookings.occurrenceId` wirksam. Alle Reward-Abfragen projizieren die
+effektive Occurrence mit `COALESCE(reward_assignments.occurrenceId,
+reward_bookings.occurrenceId)`. Ein Schritttransfer ändert ausschließlich diese Zuordnung und
+niemals Buchungs-ID, Transaktions-ID, Deltas, Owner oder ursprüngliche Occurrence der Ledgerzeile.
+
 `RewardReceipt` enthält eine Transaktions-ID und die zugehörigen Buchungen. Seine XP- und
 Kombowerte sind vorzeichenbehaftet; Animation und Darstellung leiten die Richtung aus dem
 Vorzeichen ab. Ein separates Reverse-Flag existiert nicht mehr.
 
 ## Konsequenzen
 
-Historie, Undo, Re-Completion und Restart sind nachvollziehbar, ohne fachliche Belege zu
-überschreiben. Eine Widget-Komplettaktion kann mehrere Schrittbuchungen und die Kopf-Buchung mit
-derselben Transaktions-ID atomar ausführen. Das Dashboard benötigt dafür eine zusätzliche, aber
-gebündelte Ledger-Abfrage.
+Historie, Undo, Re-Completion, Schritttransfers und Restart sind nachvollziehbar, ohne fachliche
+Belege zu überschreiben. Eine Widget-Komplettaktion kann mehrere Schrittbuchungen und die
+Kopf-Buchung mit derselben Transaktions-ID atomar ausführen. Das Dashboard benötigt dafür eine
+zusätzliche, aber gebündelte Ledger-Abfrage. Tests prüfen sowohl den effektiven neuen Besitzer als
+auch die Byte-für-Byte unveränderten fachlichen Felder der ursprünglichen Ledgerbuchung.
 
 Das Ledger ist noch kein vollständiges Event-Sourcing: Occurrence-Zustand, Gesamt-XP und Kombos
 bleiben gespeicherte Projektionen. `CompletionService` koordiniert sie atomar und verwendet

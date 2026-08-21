@@ -1,5 +1,9 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
 import static org.junit.Assert.assertEquals;

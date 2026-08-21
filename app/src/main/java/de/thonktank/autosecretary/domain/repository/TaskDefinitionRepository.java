@@ -21,9 +21,6 @@ public interface TaskDefinitionRepository extends TransactionalRepository {
     List<TaskStepTemplate> templates(TaskId taskId);
     TaskStepTemplate findTemplate(String id);
     List<TaskStepTemplate> templatesFor(List<TaskId> taskIds);
-    void putScheduleEntries(List<TaskScheduleEntry> entries);
-    void deleteScheduleEntry(String id);
-    List<TaskScheduleEntry> scheduleEntries();
     List<TaskScheduleEntry> scheduleEntries(TaskId taskId);
     List<TaskScheduleEntry> scheduleEntriesFor(List<TaskId> taskIds);
 }

@@ -1,61 +1,35 @@
 package de.thonktank.autosecretary.domain.usecase;
 
+import de.thonktank.autosecretary.domain.schedule.TaskScheduleService;
+
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.ScheduleCalculator;
-import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
-import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskId;
-import de.thonktank.autosecretary.domain.model.TaskOrdering;
-import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.schedule.TaskScheduleRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public final class UpdateTask {
-    private final TaskRepository repository;
+    private final TaskDefinitionRepository repository;
+    private final TaskScheduleRepository schedules;
     private final IdGenerator ids;
     private final Clock clock;
 
-    public UpdateTask(TaskRepository repository, TaskOrdering ordering) {
-        this(repository, ordering, new UuidGenerator(), null);
-    }
-
-    public UpdateTask(TaskRepository repository, TaskOrdering ordering, IdGenerator ids) {
-        this(repository, ordering, ids, null);
-    }
-
-    public UpdateTask(TaskRepository repository, TaskOrdering ignoredOrdering, IdGenerator ids,
-                      Clock clock) {
+    public UpdateTask(TaskDefinitionRepository repository, TaskScheduleRepository schedules,
+                      IdGenerator ids, Clock clock) {
         this.repository = repository;
+        this.schedules = schedules;
         this.ids = ids;
         this.clock = clock;
-    }
-
-    public void execute(TaskId id, String title, TaskSlot slot) {
-        repository.inTransaction(() -> {
-            Task current = repository.findTask(id);
-            if (current == null) return null;
-            repository.updateTask(current.edit(title, current.catalogOrder));
-            TaskScheduleService schedules = new TaskScheduleService(repository, ids);
-            de.thonktank.autosecretary.domain.model.TaskSchedule currentSchedule = schedules.load();
-            de.thonktank.autosecretary.domain.model.TaskScheduleEntry primary =
-                    currentSchedule.primary(id);
-            if (primary.slot != slot)
-                schedules.move(ScheduleMoveRequest.toEnd(primary.id, slot));
-            return null;
-        });
     }
 
     public void execute(TaskId id, TaskDefinition definition) {
@@ -72,50 +46,10 @@ public final class UpdateTask {
             }
             repository.updateTask(current.editDefinition(definition, current.catalogOrder, nextDue));
             syncTemplates(id, definition.steps);
-            new TaskScheduleService(repository, ids).sync(
+            new TaskScheduleService(schedules, ids).sync(
                     repository.findTask(id), definition);
             return null;
         });
-    }
-
-    public void execute(TaskId id, String title, TaskSlot slot, Recurrence recurrence,
-                        int intervalDays, int weekdayMask, List<String> stepTexts,
-                        boolean ongoing, String condition) {
-        if (ongoing) {
-            repository.inTransaction(() -> {
-                legacyUpdate(id, title, slot, recurrence, intervalDays, weekdayMask,
-                        stepTexts, condition);
-                return null;
-            });
-            return;
-        }
-        Map<Integer, TaskStepTemplate> current = new HashMap<>();
-        for (TaskStepTemplate value : repository.templates(id)) current.put(value.position, value);
-        List<TaskStepDefinition> steps = new ArrayList<>();
-        for (String text : stepTexts) if (text != null && !text.trim().isEmpty()) {
-            TaskStepTemplate old = current.get(steps.size());
-            steps.add(new TaskStepDefinition(old == null ? null : old.id, steps.size(), text,
-                    0, StepAmount.none(), ""));
-        }
-        execute(id, new TaskDefinition(title, null, slot, recurrence, intervalDays,
-                weekdayMask, recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(slot).bit,
-                TaskBoundKind.FOREVER, null, null, null, null, "", steps));
-    }
-
-    private void legacyUpdate(TaskId id, String title, TaskSlot slot, Recurrence recurrence,
-                              int intervalDays, int weekdayMask, List<String> stepTexts,
-                              String condition) {
-        Task current = repository.findTask(id);
-        if (current == null) return;
-        repository.updateTask(current.editDefinition(title, slot, recurrence, intervalDays,
-                weekdayMask, true, condition, current.catalogOrder));
-        repository.deleteTemplates(id);
-        List<TaskStepTemplate> values = new ArrayList<>();
-        for (String text : stepTexts) if (text != null && !text.trim().isEmpty())
-            values.add(new TaskStepTemplate(ids.nextId(), id, values.size(), text));
-        repository.insertTemplates(values);
-        new TaskScheduleService(repository, ids).sync(repository.findTask(id),
-                java.util.Collections.singletonList(slot));
     }
 
     private void syncTemplates(TaskId taskId, List<TaskStepDefinition> definitions) {

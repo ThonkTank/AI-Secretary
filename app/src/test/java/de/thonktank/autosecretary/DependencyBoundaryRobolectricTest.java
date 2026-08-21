@@ -8,7 +8,6 @@ import android.content.Context;
 
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.data.legacy.LegacyStateCleaner;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
@@ -75,35 +74,6 @@ public final class DependencyBoundaryRobolectricTest {
         assertFalse(container.updateConfiguration.remoteChecksEnabled);
         assertFalse(container.updateConfiguration.automaticChecksEnabled);
         assertTrue(container.updates instanceof DisabledUpdateRepository);
-    }
-
-    @Test public void legacyCleanupRunsOnceAndKeepsNoticeIndependentFromDatabaseCreation() {
-        context.getSharedPreferences("jetzt_state", Context.MODE_PRIVATE).edit()
-                .putString("tasks", "[]").putString("unrelated", "prototype").commit();
-        LegacyStateCleaner cleaner = new LegacyStateCleaner(context, logger);
-
-        cleaner.cleanOnce();
-
-        assertTrue(context.getSharedPreferences("jetzt_state", Context.MODE_PRIVATE).getAll().isEmpty());
-        assertTrue(cleaner.shouldShowResetNotice());
-        assertEquals(1, logger.infos);
-
-        cleaner.cleanOnce();
-        assertEquals(1, logger.infos);
-
-        cleaner.acknowledgeResetNotice();
-        assertFalse(cleaner.shouldShowResetNotice());
-    }
-
-    @Test public void malformedLegacyStateIsLoggedAndDoesNotBlockCleanup() {
-        context.getSharedPreferences("jetzt_state", Context.MODE_PRIVATE).edit()
-                .putString("tasks", "not-json").commit();
-        LegacyStateCleaner cleaner = new LegacyStateCleaner(context, logger);
-
-        cleaner.cleanOnce();
-
-        assertEquals(1, logger.errors);
-        assertTrue(cleaner.shouldShowResetNotice());
     }
 
     private static final class RecordingLogger implements AppLogger {

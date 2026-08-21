@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary.domain.usecase;
 
+import de.thonktank.autosecretary.domain.schedule.ScheduleProjector;
+
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.Occurrence;

@@ -18,8 +18,6 @@ public final class TaskEditorValidator {
     public static final String STEP_PREFIX = "step:";
     public static final String AMOUNT_PREFIX = "amount:";
 
-    public enum Error { NONE, TITLE, WEEKDAYS, CONDITION }
-
     public Set<String> errors(EditorUiState draft, LocalDate today) {
         Set<String> errors = new LinkedHashSet<>();
         String title = draft.title == null ? "" : draft.title.trim();
@@ -50,12 +48,4 @@ public final class TaskEditorValidator {
         return Collections.unmodifiableSet(errors);
     }
 
-    public Error validate(EditorUiState draft) {
-        if (draft.title == null || draft.title.trim().isEmpty()) return Error.TITLE;
-        if (draft.recurrence == Recurrence.WEEKDAYS && draft.weekdayMask == 0)
-            return Error.WEEKDAYS;
-        if (draft.ongoing && (draft.condition == null || draft.condition.trim().isEmpty()))
-            return Error.CONDITION;
-        return Error.NONE;
-    }
 }

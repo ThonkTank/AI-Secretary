@@ -1,20 +1,19 @@
 package de.thonktank.autosecretary.data.local;
 
+import de.thonktank.autosecretary.AppDatabase;
+
 import android.content.Context;
 
 import androidx.room.Room;
 
-import de.thonktank.autosecretary.AppDatabase;
 
 public final class DatabaseFactory {
     public AppDatabase create(Context context) {
         return Room.databaseBuilder(context.getApplicationContext(), AppDatabase.class,
                         "auto_secretary.db")
-                .addMigrations(DatabaseMigrations.MIGRATION_1_2,
-                        DatabaseMigrations.MIGRATION_2_3, DatabaseMigrations.MIGRATION_3_4,
-                        DatabaseMigrations.MIGRATION_4_5, DatabaseMigrations.MIGRATION_5_6,
-                        DatabaseMigrations.MIGRATION_6_7, DatabaseMigrations.MIGRATION_7_8,
-                        DatabaseMigrations.MIGRATION_8_9, DatabaseMigrations.MIGRATION_9_10,
+                // 0.2.80 ships schema 8. Earlier migrations remain executable test fixtures,
+                // but are intentionally not part of the supported production graph.
+                .addMigrations(DatabaseMigrations.MIGRATION_8_9, DatabaseMigrations.MIGRATION_9_10,
                         DatabaseMigrations.MIGRATION_10_11, DatabaseMigrations.MIGRATION_11_12,
                         DatabaseMigrations.MIGRATION_12_13, DatabaseMigrations.MIGRATION_13_14)
                 .build();

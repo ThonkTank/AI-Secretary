@@ -35,7 +35,7 @@ final class WidgetForestCache {
         Path clip = new Path();
         clip.addRoundRect(new RectF(0, 0, width, height), px(22), px(22), Path.Direction.CW);
         canvas.clipPath(clip);
-        ForestArtworkRenderer renderer = new ForestArtworkRenderer(density);
+        ForestArtworkRenderer renderer = new ForestArtworkRenderer();
         renderer.setSize(width, height);
         renderer.setPalette(palette);
         renderer.draw(canvas);

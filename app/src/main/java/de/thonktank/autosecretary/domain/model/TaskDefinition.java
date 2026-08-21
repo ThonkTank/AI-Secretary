@@ -86,4 +86,18 @@ public final class TaskDefinition {
         return recurrence == Recurrence.ONCE ? fallbackSlot
                 : TimeOfDay.earliestSlot(timeOfDayMask, fallbackSlot);
     }
+
+    /** Concise canonical definition for callers that do not need advanced editor fields. */
+    public static TaskDefinition basic(String title, TaskSlot slot, Recurrence recurrence,
+                                       int intervalDays, int weekdayMask,
+                                       List<String> stepTitles) {
+        List<TaskStepDefinition> steps = new ArrayList<>();
+        for (String value : stepTitles)
+            if (value != null && !value.trim().isEmpty())
+                steps.add(new TaskStepDefinition(null, steps.size(), value, 0,
+                        StepAmount.none(), ""));
+        return new TaskDefinition(title, null, slot, recurrence, intervalDays, weekdayMask,
+                recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(slot).bit,
+                TaskBoundKind.FOREVER, null, null, null, null, "", steps);
+    }
 }

@@ -12,11 +12,12 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.usecase.CompletionStateMachine;
 import de.thonktank.autosecretary.domain.usecase.RewardCalculator;
-import de.thonktank.autosecretary.domain.usecase.ScheduleProjector;
+import de.thonktank.autosecretary.domain.schedule.ScheduleProjector;
 
 import org.junit.Test;
 
@@ -86,8 +87,9 @@ public final class CompletionArchitectureTest {
     }
 
     private static Task task(Recurrence recurrence) {
-        return Task.create(TaskId.of("task"), "Aufgabe", TaskSlot.MORNING, recurrence,
-                1, 0, false, "", TODAY, 1_024L);
+        return Task.restore(TaskId.of("task"), "Aufgabe", recurrence, 1, 0,
+                false, "", false, false, TODAY, null, null, 1_024L, false,
+                null, TaskBoundKind.FOREVER, null, null, null, null, "");
     }
 
     private static Occurrence occurrence(String id, OccurrenceState state, LocalDate completed,

@@ -1,5 +1,11 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.data.local.OccurrenceEntity;
+import de.thonktank.autosecretary.data.local.OccurrenceStepEntity;
+import de.thonktank.autosecretary.data.local.TaskEntity;
+import de.thonktank.autosecretary.data.local.TaskScheduleEntity;
+import de.thonktank.autosecretary.data.local.TaskStepEntity;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;

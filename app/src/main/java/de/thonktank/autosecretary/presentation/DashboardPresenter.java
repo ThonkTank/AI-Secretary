@@ -1,7 +1,7 @@
 package de.thonktank.autosecretary.presentation;
 
 import de.thonktank.autosecretary.Clock;
-import de.thonktank.autosecretary.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.ApplyComboDecay;

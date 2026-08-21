@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
@@ -21,18 +22,18 @@ import de.thonktank.autosecretary.domain.model.ScheduleEntryId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
-import de.thonktank.autosecretary.domain.usecase.MoveScheduleEntry;
-import de.thonktank.autosecretary.domain.usecase.MoveTaskStep;
-import de.thonktank.autosecretary.domain.usecase.ScheduleMoveResult;
-import de.thonktank.autosecretary.domain.usecase.ScheduleMoveRequest;
-import de.thonktank.autosecretary.domain.usecase.StepMoveRequest;
-import de.thonktank.autosecretary.domain.usecase.StepTransferResult;
-import de.thonktank.autosecretary.domain.usecase.StepSwapRequest;
-import de.thonktank.autosecretary.domain.usecase.SwapTaskSteps;
+import de.thonktank.autosecretary.domain.schedule.MoveScheduleEntry;
+import de.thonktank.autosecretary.domain.schedule.ScheduleMoveResult;
+import de.thonktank.autosecretary.domain.schedule.ScheduleMoveRequest;
+import de.thonktank.autosecretary.domain.steps.MoveTaskStep;
+import de.thonktank.autosecretary.domain.steps.StepMoveRequest;
+import de.thonktank.autosecretary.domain.steps.StepTransferResult;
+import de.thonktank.autosecretary.domain.steps.StepSwapRequest;
+import de.thonktank.autosecretary.domain.steps.SwapTaskSteps;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 
 import org.junit.After;
@@ -51,7 +52,7 @@ import java.util.Arrays;
 public final class AllTasksFeatureRobolectricTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 20);
     private AppDatabase database;
-    private TaskRepository repository;
+    private ApplicationTaskRepository repository;
     private SequenceIds ids;
     private Clock clock;
 
@@ -78,7 +79,7 @@ public final class AllTasksFeatureRobolectricTest {
         TaskScheduleEntry morning = repository.scheduleEntries(task.id).stream()
                 .filter(value -> value.slot == TaskSlot.MORNING).findFirst().orElseThrow();
 
-        new MoveScheduleEntry(repository, clock).execute(move(morning.id, TaskSlot.MIDDAY, null));
+        new MoveScheduleEntry(repository).execute(move(morning.id, TaskSlot.MIDDAY, null));
 
         assertTrue(repository.scheduleEntries(task.id).stream()
                 .anyMatch(value -> value.slot == TaskSlot.MIDDAY));
@@ -87,7 +88,7 @@ public final class AllTasksFeatureRobolectricTest {
         assertTrue(repository.openOccurrences().stream()
                 .anyMatch(value -> value.slot == TaskSlot.MIDDAY));
         assertEquals(ScheduleMoveResult.REJECTED_DUPLICATE_SLOT,
-                new MoveScheduleEntry(repository, clock).execute(
+                new MoveScheduleEntry(repository).execute(
                         move(morning.id, TaskSlot.EVENING, null)));
     }
 
@@ -102,7 +103,7 @@ public final class AllTasksFeatureRobolectricTest {
         TaskScheduleEntry firstEntry = repository.scheduleEntries(first.id).get(0);
         TaskScheduleEntry secondEntry = repository.scheduleEntries(second.id).get(0);
 
-        new MoveScheduleEntry(repository, clock).execute(
+        new MoveScheduleEntry(repository).execute(
                 move(secondEntry.id, TaskSlot.MORNING, firstEntry.id));
 
         assertTrue(repository.scheduleEntries(second.id).get(0).displayOrder
@@ -302,8 +303,8 @@ public final class AllTasksFeatureRobolectricTest {
 
     private void create(String title, TaskSlot slot, Recurrence recurrence,
                         java.util.List<String> steps) {
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute(title, slot,
-                recurrence, 1, 0, steps, false, "");
+        new CreateTask(repository, repository, clock, ids).execute(
+                TaskDefinition.basic(title, slot, recurrence, 1, 0, steps));
     }
 
     private static final class SequenceIds implements IdGenerator {

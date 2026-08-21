@@ -1,14 +1,18 @@
 package de.thonktank.autosecretary.domain.usecase;
 
+import de.thonktank.autosecretary.domain.schedule.MoveScheduleEntry;
+import de.thonktank.autosecretary.domain.schedule.MoveTaskPlacement;
+import de.thonktank.autosecretary.domain.steps.MoveTaskStep;
+import de.thonktank.autosecretary.domain.steps.SwapTaskSteps;
+
 import de.thonktank.autosecretary.Clock;
-import de.thonktank.autosecretary.domain.model.TaskOrdering;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.repository.TaskCatalogQuery;
 
 public final class TaskUseCases {
     public final CreateTask create;
     public final UpdateTask update;
-    public final MoveTask move;
+    public final MoveTaskPlacement moveTaskPlacement;
     public final DeleteTask delete;
     public final DeferTask defer;
     public final ToggleStep toggleStep;
@@ -28,15 +32,14 @@ public final class TaskUseCases {
     public final MoveTaskStep moveTaskStep;
     public final SwapTaskSteps swapTaskSteps;
 
-    public TaskUseCases(TaskRepository repository, Clock clock, IdGenerator ids) {
-        TaskOrdering ordering = new TaskOrdering();
+    public TaskUseCases(ApplicationTaskRepository repository, Clock clock, IdGenerator ids) {
         loadDashboard = new LoadDashboard(repository);
         materializeDue = new MaterializeDueOccurrences(repository, clock, ids);
-        create = new CreateTask(repository, clock, ids, ordering);
-        update = new UpdateTask(repository, ordering, ids, clock);
-        move = new MoveTask(repository, ordering);
+        create = new CreateTask(repository, repository, clock, ids);
+        update = new UpdateTask(repository, repository, ids, clock);
+        moveTaskPlacement = new MoveTaskPlacement(repository);
         delete = new DeleteTask(repository);
-        defer = new DeferTask(repository, loadDashboard, ordering, clock);
+        defer = new DeferTask(repository, repository);
         toggleStep = new ToggleStep(repository, clock);
         recordRepetitionResult = new RecordRepetitionResult(repository, clock);
         correctRepetitionResult = new CorrectRepetitionResult(repository);
@@ -48,7 +51,7 @@ public final class TaskUseCases {
         closeOngoing = new CloseOngoingTask(repository, clock);
         loadTaskDetails = new LoadTaskDetails(repository);
         loadTaskCatalog = new LoadTaskCatalog(repository);
-        moveScheduleEntry = new MoveScheduleEntry(repository, clock);
+        moveScheduleEntry = new MoveScheduleEntry(repository);
         moveTaskStep = new MoveTaskStep(repository);
         swapTaskSteps = new SwapTaskSteps(repository);
     }

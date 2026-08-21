@@ -1,5 +1,9 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 
@@ -40,6 +44,7 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowAlertDialog;
 import org.robolectric.shadows.ShadowValueAnimator;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collections;
 import java.util.Arrays;
@@ -57,7 +62,6 @@ public final class UiComponentRobolectricTest {
 
     @Test public void recreationDoesNotRepeatAConsumedConfirmationIntent() {
         Context context = ApplicationProvider.getApplicationContext();
-        AutoSecretaryApplication.from(context).legacyStateCleaner().acknowledgeResetNotice();
         Intent launch = new Intent(context, MainActivity.class)
                 .putExtra(MainActivity.CONFIRM_TASK, "ongoing")
                 .putExtra(MainActivity.CONFIRM_TASK_TITLE, "Praktikum");
@@ -83,16 +87,15 @@ public final class UiComponentRobolectricTest {
     @Test public void validatorCoversEveryEditorConstraint() {
         TaskEditorValidator validator = new TaskEditorValidator();
         EditorUiState base = EditorUiState.create();
-        assertEquals(TaskEditorValidator.Error.TITLE, validator.validate(base));
+        assertTrue(validator.errors(base, LocalDate.of(2026, 8, 21))
+                .contains(TaskEditorValidator.TITLE));
         EditorUiState weekdays = base.withDraft("Routine", TaskSlot.MORNING,
-                Recurrence.WEEKDAYS, 1, 0, Collections.emptyList(), false, "");
-        assertEquals(TaskEditorValidator.Error.WEEKDAYS, validator.validate(weekdays));
-        EditorUiState ongoing = base.withDraft("Vorhaben", TaskSlot.LATER,
-                Recurrence.ONCE, 1, 0, Collections.emptyList(), true, "");
-        assertEquals(TaskEditorValidator.Error.CONDITION, validator.validate(ongoing));
-        assertEquals(TaskEditorValidator.Error.NONE, validator.validate(
-                ongoing.withDraft("Vorhaben", TaskSlot.LATER, Recurrence.ONCE, 1, 0,
-                        Collections.emptyList(), true, "Vertrag unterschrieben")));
+                Recurrence.WEEKDAYS, 1, 0, Collections.emptyList());
+        assertTrue(validator.errors(weekdays, LocalDate.of(2026, 8, 21))
+                .contains(TaskEditorValidator.WEEKDAYS));
+        EditorUiState valid = base.withDraft("Vorhaben", TaskSlot.LATER,
+                Recurrence.ONCE, 1, 0, Collections.emptyList());
+        assertTrue(validator.errors(valid, LocalDate.of(2026, 8, 21)).isEmpty());
     }
 
     @Test public void rendererReusesTheMountedViewTreeForNormalUpdates() {

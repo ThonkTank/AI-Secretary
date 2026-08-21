@@ -20,8 +20,9 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
+import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CompleteRemainingSteps;
@@ -47,7 +48,7 @@ import java.util.Arrays;
 public final class XpComboRobolectricTest {
     private final LocalDate today = LocalDate.of(2026, 8, 18);
     private AppDatabase database;
-    private TaskRepository repository;
+    private ApplicationTaskRepository repository;
     private MutableClock clock;
     private int id;
 
@@ -63,9 +64,9 @@ public final class XpComboRobolectricTest {
 
     @Test public void stepAndRoutineUseTheirOwnFactorsAndTodayUndoIsExact() {
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute("Routine",
-                TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
-                Collections.singletonList("Schritt"), false, "");
+        new CreateTask(repository, repository, clock, ids).execute(
+                TaskDefinition.basic("Routine", TaskSlot.MORNING, Recurrence.DAILY,
+                        1, 0, Collections.singletonList("Schritt")));
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
         OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
@@ -123,9 +124,9 @@ public final class XpComboRobolectricTest {
 
     @Test public void restCompletionOnlyFillsBeforeSeparateHarvest() {
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute("Routine",
-                TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
-                Arrays.asList("Eins", "Zwei"), false, "");
+        new CreateTask(repository, repository, clock, ids).execute(
+                TaskDefinition.basic("Routine", TaskSlot.MORNING, Recurrence.DAILY,
+                        1, 0, Arrays.asList("Eins", "Zwei")));
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
 
@@ -143,9 +144,9 @@ public final class XpComboRobolectricTest {
 
     @Test public void widgetStyleCompletionFillsAndHarvestsAtomically() {
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute("Routine",
-                TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
-                Arrays.asList("Eins", "Zwei"), false, "");
+        new CreateTask(repository, repository, clock, ids).execute(
+                TaskDefinition.basic("Routine", TaskSlot.MORNING, Recurrence.DAILY,
+                        1, 0, Arrays.asList("Eins", "Zwei")));
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
 
@@ -161,9 +162,9 @@ public final class XpComboRobolectricTest {
     @Test public void lateStepAddsNoComboAndLateSingleUsesCapAndNegativeDelta() {
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
         clock.date = today.minusDays(6);
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute("Verspätet",
-                TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
-                Collections.emptyList(), false, "");
+        new CreateTask(repository, repository, clock, ids).execute(
+                TaskDefinition.basic("Verspätet", TaskSlot.MORNING, Recurrence.ONCE,
+                        1, 0, Collections.emptyList()));
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
         clock.date = today;
@@ -180,9 +181,9 @@ public final class XpComboRobolectricTest {
     @Test public void lateRoutineStepKeepsItsComboLevel() {
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
         clock.date = today.minusDays(1);
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute("Routine",
-                TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
-                Collections.singletonList("Schritt"), false, "");
+        new CreateTask(repository, repository, clock, ids).execute(
+                TaskDefinition.basic("Routine", TaskSlot.MORNING, Recurrence.DAILY,
+                        1, 0, Collections.singletonList("Schritt")));
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
         OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
@@ -197,9 +198,9 @@ public final class XpComboRobolectricTest {
 
     @Test public void onTimeSingleTaskUsesOneFactorAndAddsThreePoints() {
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
-        new CreateTask(repository, clock, ids, new TaskOrdering()).execute("Heute",
-                TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
-                Collections.emptyList(), false, "");
+        new CreateTask(repository, repository, clock, ids).execute(
+                TaskDefinition.basic("Heute", TaskSlot.MORNING, Recurrence.ONCE,
+                        1, 0, Collections.emptyList()));
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
 

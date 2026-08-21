@@ -1,5 +1,11 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
+import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
+import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+
 import android.content.Context;
 import android.view.View;
 import android.widget.LinearLayout;
