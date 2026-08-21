@@ -257,14 +257,30 @@ public final class PresentationStateRobolectricTest {
         management.updateQuery("Gym");
         management.updateStatus(AllTasksUiState.Status.ALL);
         management.updateSlots(java.util.EnumSet.of(TaskSlot.EVENING));
+        management.updateRecurrences(java.util.EnumSet.of(Recurrence.WEEKDAYS));
+        management.updateWeekday(4);
+        management.updateMode(AllTasksUiState.Mode.SORT);
+        management.toggleTask(de.thonktank.autosecretary.domain.model.TaskId.of("rotation-task"));
 
         android.os.Bundle stored = handle.get("all_tasks_filter");
         AllTasksFilter restored = new AllTasksSavedStateAdapter().decode(stored);
         assertEquals("Gym", restored.query);
         assertEquals(AllTasksUiState.Status.ALL, restored.status);
         assertEquals(java.util.EnumSet.of(TaskSlot.EVENING), restored.slots);
+        assertEquals(java.util.EnumSet.of(Recurrence.WEEKDAYS), restored.recurrences);
+        assertEquals(4, restored.weekday);
+        assertEquals(AllTasksUiState.Mode.SORT, restored.mode);
+        assertTrue(restored.expandedTaskIds.contains("rotation-task"));
         assertNotNull(management.state().getValue());
         management.onCleared();
+
+        AllTasksViewModel afterRotation = new AllTasksViewModel(tasks.loadTaskCatalog,
+                tasks.moveScheduleEntry, tasks.moveTaskStep, tasks.swapTaskSteps, tasks.delete,
+                new AndroidUiTextProvider(context), handle, new DirectExecutor());
+        assertEquals("Gym", afterRotation.state().getValue().query);
+        assertEquals(AllTasksUiState.Mode.SORT, afterRotation.state().getValue().mode);
+        assertTrue(afterRotation.state().getValue().expandedTaskIds.contains("rotation-task"));
+        afterRotation.onCleared();
     }
 
     @Test public void managementCommandPublishesItsOwnCatalogAndTypedChangeResult() {

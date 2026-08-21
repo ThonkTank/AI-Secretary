@@ -95,19 +95,41 @@ public final class DashboardRenderer {
     private void mount(NavigationDestination destination) {
         int scrollY = scroll.getScrollY();
         content.removeAllViews();
+        scroll.setVisibility(destination == NavigationDestination.ALL_TASKS
+                ? View.GONE : View.VISIBLE);
+        if (allTasks != null) allTasks.setVisibility(destination == NavigationDestination.ALL_TASKS
+                ? View.VISIBLE : View.GONE);
         mounted = destination;
         if (destination == NavigationDestination.TODAY) mountToday();
         else if (destination == NavigationDestination.ALL_TASKS) {
-            content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
-                    style.dimen(R.dimen.page_end), style.dp(26));
-            if (allTasks == null) allTasks = new AllTasksView(context, scroll, allTasksListener);
-            content.addView(allTasks, new LinearLayout.LayoutParams(-1, -2));
+            content.setPadding(0, 0, 0, 0);
+            if (allTasks == null) allTasks = new AllTasksView(context, allTasksListener);
+            ViewGroupParent.mountBesideScroll(scroll, content, allTasks);
         } else {
             content.setPadding(0, 0, 0, 0);
             if (options == null) options = new OptionsView(context, events);
             content.addView(options, new LinearLayout.LayoutParams(-1, -2));
         }
-        scroll.post(() -> scroll.scrollTo(0, scrollY));
+        if (destination != NavigationDestination.ALL_TASKS)
+            scroll.post(() -> scroll.scrollTo(0, scrollY));
+    }
+
+    private static final class ViewGroupParent {
+        private ViewGroupParent() { }
+
+        static void mountBesideScroll(ScrollView scroll, LinearLayout fallback,
+                                      AllTasksView allTasks) {
+            if (allTasks.getParent() != null) return;
+            if (scroll.getParent() instanceof LinearLayout) {
+                LinearLayout parent = (LinearLayout) scroll.getParent();
+                int index = parent.indexOfChild(scroll) + 1;
+                parent.addView(allTasks, index,
+                        new LinearLayout.LayoutParams(-1, 0, 1));
+            } else {
+                // Renderer unit tests mount only the scroll content, without the production shell.
+                fallback.addView(allTasks, new LinearLayout.LayoutParams(-1, -2));
+            }
+        }
     }
 
     private void mountToday() {

@@ -1,34 +1,50 @@
 package de.thonktank.autosecretary;
 
 import android.annotation.SuppressLint;
-import android.content.ClipData;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
-import android.view.DragEvent;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.core.view.ViewCompat;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.ListAdapter;
+import androidx.recyclerview.widget.RecyclerView;
+
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 
-/** Dense management surface. Completion actions deliberately do not live here. */
+/** Virtualized management surface. Completion actions deliberately do not live here. */
 @SuppressLint("ViewConstructor")
 public final class AllTasksView extends LinearLayout {
+    private static final long SEARCH_DEBOUNCE_MS = 180L;
+
     public interface Listener {
         default void onQuery(String query) { }
         default void onStatus(AllTasksUiState.Status status) { }
@@ -47,25 +63,30 @@ public final class AllTasksView extends LinearLayout {
     }
 
     private final UiStyle style;
-    private final ScrollView scroll;
     private final Listener listener;
     private final EditText search;
     private final LinearLayout controls;
-    private final LinearLayout body;
+    private final RecyclerView list;
+    private final RowAdapter adapter;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable publishSearch;
     private boolean bindingSearch;
     private AllTasksUiState state = AllTasksUiState.empty();
     private DayPalette palette;
+    private String controlsKey = "";
 
-    public AllTasksView(Context context, ScrollView scroll, Listener listener) {
+    public AllTasksView(Context context, Listener listener) {
         super(context);
-        this.scroll = scroll;
         this.listener = listener;
         style = new UiStyle(context);
         setOrientation(VERTICAL);
         setClipChildren(false);
         setClipToPadding(false);
-        TextView title = style.serif(context.getString(R.string.all_title), 30, 0,
-                true, 300);
+        setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
+                style.dimen(R.dimen.page_end), 0);
+
+        TextView title = style.serif(context.getString(R.string.all_title), 30, 0, true, 300);
+        title.setId(View.generateViewId());
         addView(title, params(-1, -2, 0, 0, 0, 14));
         search = new EditText(context);
         search.setSingleLine(true);
@@ -75,24 +96,41 @@ public final class AllTasksView extends LinearLayout {
         search.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         search.setPadding(style.dp(18), 0, style.dp(18), 0);
         search.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void beforeTextChanged(CharSequence s, int start, int count,
+                                                    int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (!bindingSearch) listener.onQuery(s.toString());
+                if (bindingSearch) return;
+                handler.removeCallbacks(publishSearch);
+                handler.postDelayed(publishSearch, SEARCH_DEBOUNCE_MS);
             }
             @Override public void afterTextChanged(Editable s) { }
         });
+        publishSearch = () -> listener.onQuery(search.getText().toString());
         addView(search, params(-1, style.dp(50), 0, 0, 0, 14));
         controls = new LinearLayout(context);
         controls.setOrientation(VERTICAL);
         addView(controls, new LayoutParams(-1, -2));
-        body = new LinearLayout(context);
-        body.setOrientation(VERTICAL);
-        body.setClipChildren(false);
-        addView(body, params(-1, -2, 0, 12, 0, 24));
+        list = new RecyclerView(context);
+        list.setId(R.id.all_tasks_list);
+        list.setLayoutManager(new LinearLayoutManager(context));
+        list.setClipToPadding(false);
+        list.setPadding(0, style.dp(8), 0, style.dp(26));
+        list.setItemAnimator(null);
+        adapter = new RowAdapter();
+        list.setAdapter(adapter);
+        new ItemTouchHelper(new DragCallback()).attachToRecyclerView(list);
+        addView(list, new LayoutParams(-1, 0, 1));
+    }
+
+    /** Transitional source-compatible constructor; the outer scroll is intentionally unused. */
+    public AllTasksView(Context context, ScrollView ignoredOuterScroll, Listener listener) {
+        this(context, listener);
     }
 
     public void bind(AllTasksUiState state, DayPalette palette) {
         this.state = state;
+        boolean paletteChanged = this.palette == null || this.palette.ink != palette.ink
+                || this.palette.leaf1 != palette.leaf1 || this.palette.accent != palette.accent;
         this.palette = palette;
         bindingSearch = true;
         if (!search.getText().toString().equals(state.query)) {
@@ -106,8 +144,21 @@ public final class AllTasksView extends LinearLayout {
         searchBackground.setStroke(style.dp(1), palette.leaf1Edge);
         search.setBackground(searchBackground);
         ((TextView) getChildAt(0)).setTextColor(palette.ink2);
-        renderControls();
-        renderBody();
+        String nextControlsKey = state.status + "|" + state.slots + "|" + state.recurrences
+                + "|" + state.weekday + "|" + state.mode + "|" + palette.accent + '|'
+                + palette.ink2;
+        if (!nextControlsKey.equals(controlsKey)) {
+            controlsKey = nextControlsKey;
+            renderControls();
+        }
+        adapter.submitList(AllTasksRow.project(state));
+        if (paletteChanged && adapter.getItemCount() > 0)
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount(), "palette");
+    }
+
+    @Override protected void onDetachedFromWindow() {
+        handler.removeCallbacks(publishSearch);
+        super.onDetachedFromWindow();
     }
 
     private void renderControls() {
@@ -177,196 +228,423 @@ public final class AllTasksView extends LinearLayout {
         }
     }
 
-    private void renderBody() {
-        body.removeAllViews();
-        if (state.mode == AllTasksUiState.Mode.SORT) renderSchedule();
-        else renderTasks();
-    }
+    private final class RowAdapter extends ListAdapter<AllTasksRow, RowHolder> {
+        private String selectedStepId;
 
-    private void renderTasks() {
-        if (state.tasks.isEmpty()) {
-            addEmpty(state.catalog.items.isEmpty());
-            return;
+        RowAdapter() {
+            super(new DiffUtil.ItemCallback<AllTasksRow>() {
+                @Override public boolean areItemsTheSame(@NonNull AllTasksRow oldItem,
+                                                         @NonNull AllTasksRow newItem) {
+                    return oldItem.key.equals(newItem.key);
+                }
+                @Override public boolean areContentsTheSame(@NonNull AllTasksRow oldItem,
+                                                            @NonNull AllTasksRow newItem) {
+                    return oldItem.content.equals(newItem.content);
+                }
+            });
+            setHasStableIds(true);
         }
-        for (AllTasksUiState.TaskItem item : state.tasks) addTask(item);
+
+        @Override public long getItemId(int position) { return getItem(position).stableId; }
+        @Override public int getItemViewType(int position) { return getItem(position).kind.ordinal(); }
+
+        @NonNull @Override public RowHolder onCreateViewHolder(@NonNull ViewGroup parent,
+                                                               int viewType) {
+            FrameLayout root = new FrameLayout(parent.getContext());
+            root.setLayoutParams(new RecyclerView.LayoutParams(-1, -2));
+            return new RowHolder(root);
+        }
+
+        @Override public void onBindViewHolder(@NonNull RowHolder holder, int position) {
+            holder.bind(getItem(position));
+        }
+
+        void selectForSwap(String id) {
+            selectedStepId = id;
+            notifyItemRangeChanged(0, getItemCount(), "actions");
+            list.announceForAccessibility(getContext().getString(R.string.a11y_step_selected));
+        }
     }
 
-    private void addTask(AllTasksUiState.TaskItem item) {
-        LinearLayout card = new LinearLayout(getContext());
-        card.setOrientation(VERTICAL);
-        card.setPadding(style.dp(18), style.dp(16), style.dp(14), style.dp(16));
+    private final class RowHolder extends RecyclerView.ViewHolder {
+        private AllTasksRow row;
+
+        RowHolder(@NonNull FrameLayout root) { super(root); }
+
+        void bind(AllTasksRow value) {
+            row = value;
+            FrameLayout root = (FrameLayout) itemView;
+            root.removeAllViews();
+            root.setAccessibilityDelegate(null);
+            root.setContentDescription(null);
+            root.setFocusable(false);
+            root.setClickable(false);
+            View child;
+            switch (value.kind) {
+                case TASK_HEADER: child = taskHeader(value); break;
+                case STEP: child = stepRow(value); break;
+                case STEP_TARGET: child = stepTarget(value); break;
+                case SLOT_HEADER: child = slotHeader(value.slot); break;
+                case SCHEDULE: child = scheduleRow(value); break;
+                case SCHEDULE_TARGET: child = scheduleTarget(value); break;
+                default: child = empty(value.emptyReason);
+            }
+            root.addView(child, new FrameLayout.LayoutParams(-1, -2));
+            installAccessibility(root, value);
+        }
+    }
+
+    private View taskHeader(AllTasksRow row) {
+        AllTasksUiState.TaskItem item = row.task;
+        LinearLayout card = column();
+        card.setPadding(style.dp(18), style.dp(14), style.dp(10), style.dp(12));
         card.setBackground(style.leaf(item.archived ? palette.leaf3 : palette.leaf2,
                 style.edge(palette, item.archived ? 3 : 2), 42, 8, 42, 8));
         style.shadow(card, palette, 5, .55f);
-        if (!item.archived)
-            card.setOnDragListener((view, event) -> stepDrop(view, event,
-                    item.task.id.value, null, false));
-
         LinearLayout header = row();
-        TextView title = style.serif(item.task.title, 22,
-                item.archived ? palette.done : palette.ink, false, 350);
-        LinearLayout copy = new LinearLayout(getContext()); copy.setOrientation(VERTICAL);
-        copy.addView(title);
-        String meta = taskMeta(item);
-        copy.addView(style.sans(meta, 14, palette.hint, false));
+        LinearLayout copy = column();
+        copy.addView(style.serif(item.task.title, 22,
+                item.archived ? palette.done : palette.ink, false, 350));
+        copy.addView(style.sans(taskMeta(item), 14, palette.hint, false));
         header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView expand = style.sans(item.expanded ? "⌃" : "⌄", 20, palette.dot, false);
-        expand.setGravity(Gravity.CENTER);
+        ImageButton expand = icon(item.expanded ? R.drawable.ic_expand_less
+                : R.drawable.ic_expand_more, item.expanded ? R.string.a11y_collapse_task
+                : R.string.a11y_expand_task);
+        expand.setOnClickListener(view -> listener.onToggleTask(item.task.id.value));
         header.addView(expand, new LinearLayout.LayoutParams(style.dp(48), style.dp(48)));
-        header.setOnClickListener(view -> listener.onToggleTask(item.task.id.value));
         card.addView(header);
-
         LinearLayout actions = row();
-        if (!item.archived) {
+        if (!item.archived)
             actions.addView(textAction(R.string.task_edit,
                     () -> listener.onEditTask(item.task.id.value)));
-        }
         actions.addView(textAction(R.string.task_delete,
                 () -> listener.onDeleteTask(item.task.id.value, item.task.title)));
-        card.addView(actions, params(-1, -2, 0, 8, 0, 0));
+        card.addView(actions);
+        card.setContentDescription(getContext().getString(R.string.a11y_task_row,
+                item.task.title, taskMeta(item)));
+        card.setLayoutParams(rowMargins(0, 0, 0, 12));
+        return card;
+    }
 
-        if (item.expanded) {
-            for (TaskStepTemplate step : item.steps) {
-                View gap = item.archived ? new View(getContext())
-                        : stepGap(item.task.id.value, step.id);
-                card.addView(gap, new LinearLayout.LayoutParams(-1, style.dp(14)));
-                card.addView(stepRow(item.task.id.value, step, !item.archived));
+    private View stepRow(AllTasksRow row) {
+        LinearLayout result = row();
+        result.setPadding(style.dp(8), style.dp(3), style.dp(8), style.dp(3));
+        if (!row.task.archived) result.addView(icon(R.drawable.ic_drag_handle,
+                R.string.all_drag_step), new LinearLayout.LayoutParams(style.dp(48), style.dp(48)));
+        TextView title = style.sans(row.step.text, 17,
+                row.task.archived ? palette.done : palette.ink, false);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        title.setMinHeight(style.dp(48));
+        result.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        result.setBackground(style.pill(UiStyle.alpha(palette.leaf1, .72f), 18));
+        if (!row.task.archived)
+            result.setOnClickListener(view -> listener.onEditStep(row.taskId, row.step.id));
+        result.setContentDescription(getContext().getString(row.task.archived
+                ? R.string.a11y_archived_step_row : R.string.a11y_step_row, row.step.text));
+        result.setLayoutParams(rowMargins(style.dp(8), 0, 0, style.dp(4)));
+        return result;
+    }
+
+    private View stepTarget(AllTasksRow row) {
+        TextView target = style.sans(getContext().getString(row.endTarget
+                ? R.string.all_add_step : R.string.all_step_insert_target), 14,
+                palette.muted, false);
+        target.setGravity(Gravity.CENTER_VERTICAL);
+        target.setMinHeight(style.dp(48));
+        target.setPadding(style.dp(56), 0, style.dp(8), 0);
+        if (row.endTarget)
+            target.setOnClickListener(view -> listener.onAddStep(row.taskId));
+        target.setContentDescription(getContext().getString(row.endTarget
+                ? R.string.a11y_add_step_target : R.string.a11y_step_drop_target));
+        return target;
+    }
+
+    private View slotHeader(TaskSlot slot) {
+        TextView marker = style.serif(slotLabel(slot), 17, palette.muted, true, 300);
+        marker.setPadding(style.dp(4), style.dp(12), 0, style.dp(6));
+        ViewCompat.setAccessibilityHeading(marker, true);
+        return marker;
+    }
+
+    private View scheduleRow(AllTasksRow row) {
+        AllTasksUiState.ScheduleItem item = row.schedule;
+        LinearLayout result = row();
+        result.setPadding(style.dp(8), style.dp(4), style.dp(10), style.dp(4));
+        result.setBackground(style.leaf(palette.leaf2, palette.leaf2Edge, 36, 8, 36, 8));
+        result.addView(icon(R.drawable.ic_drag_handle, R.string.all_drag_task),
+                new LinearLayout.LayoutParams(style.dp(48), style.dp(48)));
+        LinearLayout copy = column();
+        copy.addView(style.serif(item.title, 20, palette.ink, false, 350));
+        copy.addView(style.sans(recurrenceLabel(item.recurrence), 14, palette.hint, false));
+        result.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
+        result.setContentDescription(getContext().getString(R.string.a11y_schedule_row,
+                item.title, slotLabel(item.slot), recurrenceLabel(item.recurrence)));
+        return result;
+    }
+
+    private View scheduleTarget(AllTasksRow row) {
+        TextView target = style.sans(getContext().getString(R.string.all_schedule_insert_target),
+                14, palette.muted, false);
+        target.setGravity(Gravity.CENTER_VERTICAL);
+        target.setMinHeight(style.dp(48));
+        target.setPadding(style.dp(56), 0, style.dp(8), 0);
+        target.setContentDescription(getContext().getString(R.string.a11y_schedule_drop_target,
+                slotLabel(row.slot)));
+        return target;
+    }
+
+    private View empty(AllTasksRow.EmptyReason reason) {
+        LinearLayout empty = column();
+        empty.setPadding(style.dp(22), style.dp(28), style.dp(22), style.dp(28));
+        empty.setBackground(style.dashed(palette));
+        int title;
+        int subtitle;
+        if (reason == AllTasksRow.EmptyReason.NO_TASKS) {
+            title = R.string.all_no_tasks_title; subtitle = R.string.all_no_tasks_subtitle;
+        } else if (reason == AllTasksRow.EmptyReason.SEARCH) {
+            title = R.string.all_empty_search_title; subtitle = R.string.all_empty_search_subtitle;
+        } else if (reason == AllTasksRow.EmptyReason.FILTERS) {
+            title = R.string.all_empty_filter_title; subtitle = R.string.all_empty_filter_subtitle;
+        } else {
+            title = R.string.all_empty_status_title; subtitle = R.string.all_empty_status_subtitle;
+        }
+        empty.addView(style.serif(getContext().getString(title), 25, palette.ink, false, 250));
+        empty.addView(style.sans(getContext().getString(subtitle), 16, palette.hint, false),
+                params(-1, -2, 0, 12, 0, 0));
+        return empty;
+    }
+
+    private void installAccessibility(View view, AllTasksRow row) {
+        List<Action> actions = accessibilityActions(row);
+        if (actions.isEmpty()) return;
+        if (view instanceof ViewGroup && ((ViewGroup) view).getChildCount() > 0) {
+            View child = ((ViewGroup) view).getChildAt(0);
+            if (child.getContentDescription() != null) {
+                view.setContentDescription(child.getContentDescription());
+                child.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
             }
-            if (!item.archived) {
-                card.addView(stepGap(item.task.id.value, null),
-                        new LinearLayout.LayoutParams(-1, style.dp(18)));
-                TextView add = style.sans(getContext().getString(R.string.all_add_step), 15,
-                        palette.ink2, false);
-                add.setGravity(Gravity.CENTER_VERTICAL);
-                add.setMinHeight(style.dp(48));
-                add.setOnClickListener(view -> listener.onAddStep(item.task.id.value));
-                card.addView(add);
+        }
+        view.setFocusable(true);
+        view.setAccessibilityDelegate(new AccessibilityDelegate() {
+            @Override public void onInitializeAccessibilityNodeInfo(View host,
+                                                                    AccessibilityNodeInfo info) {
+                super.onInitializeAccessibilityNodeInfo(host, info);
+                for (Action action : actions)
+                    info.addAction(new AccessibilityNodeInfo.AccessibilityAction(
+                            action.id, getContext().getString(action.label)));
             }
-        }
-        body.addView(card, params(-1, -2, 0, 0, 0, 14));
+
+            @Override public boolean performAccessibilityAction(View host, int action,
+                                                                Bundle arguments) {
+                for (Action candidate : actions)
+                    if (candidate.id == action) return dispatchAccessibility(row, action);
+                return super.performAccessibilityAction(host, action, arguments);
+            }
+        });
     }
 
-    private View stepRow(String taskId, TaskStepTemplate step, boolean draggable) {
-        LinearLayout row = row();
-        row.setPadding(style.dp(8), style.dp(4), style.dp(4), style.dp(4));
-        TextView handle = style.sans("≡", 21, palette.dot, false);
-        handle.setGravity(Gravity.CENTER);
-        handle.setContentDescription(getContext().getString(R.string.all_drag_step));
-        row.addView(handle, new LinearLayout.LayoutParams(style.dp(48), style.dp(48)));
-        TextView title = style.sans(step.text, 17, palette.ink, false);
-        row.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        row.setBackground(style.pill(UiStyle.alpha(palette.leaf1, .72f), 18));
-        if (draggable) {
-            row.setOnClickListener(view -> listener.onEditStep(taskId, step.id));
-            handle.setOnLongClickListener(view -> startDrag(view,
-                    DragPayload.step(step.id, taskId)));
+    private List<Action> accessibilityActions(AllTasksRow row) {
+        List<Action> result = new ArrayList<>();
+        if (row.kind == AllTasksRow.Kind.STEP && !row.task.archived) {
+            if (stepIndex(row) > 0) result.add(new Action(R.id.action_step_up, R.string.a11y_step_up));
+            if (stepIndex(row) < row.task.steps.size() - 1)
+                result.add(new Action(R.id.action_step_down, R.string.a11y_step_down));
+            if (otherTask(row.taskId, -1) != null)
+                result.add(new Action(R.id.action_step_previous_task,
+                        R.string.a11y_step_previous_task));
+            if (otherTask(row.taskId, 1) != null)
+                result.add(new Action(R.id.action_step_next_task, R.string.a11y_step_next_task));
+            result.add(new Action(R.id.action_step_select_swap, R.string.a11y_step_select_swap));
+            if (adapter.selectedStepId != null && !adapter.selectedStepId.equals(row.step.id))
+                result.add(new Action(R.id.action_step_swap_selected,
+                        R.string.a11y_step_swap_selected));
+        } else if (row.kind == AllTasksRow.Kind.SCHEDULE) {
+            int index = scheduleIndex(row);
+            int count = scheduleInSlot(row.slot).size();
+            if (index > 0) result.add(new Action(R.id.action_schedule_up,
+                    R.string.a11y_schedule_up));
+            if (index < count - 1) result.add(new Action(R.id.action_schedule_down,
+                    R.string.a11y_schedule_down));
+            if (row.slot.rank > 0) result.add(new Action(R.id.action_schedule_previous_slot,
+                    R.string.a11y_schedule_previous_slot));
+            if (row.slot.rank < TaskSlot.values().length - 1)
+                result.add(new Action(R.id.action_schedule_next_slot,
+                        R.string.a11y_schedule_next_slot));
         }
-        if (draggable)
-            row.setOnDragListener((view, event) -> stepDrop(view, event,
-                    taskId, step.id, true));
-        return row;
+        return result;
     }
 
-    private View stepGap(String taskId, String beforeStepId) {
-        View gap = new View(getContext());
-        gap.setOnDragListener((view, event) -> stepDrop(view, event,
-                taskId, beforeStepId, false));
-        return gap;
+    private boolean dispatchAccessibility(AllTasksRow row, int action) {
+        if (row.kind == AllTasksRow.Kind.STEP && row.task.archived) return false;
+        if (action == R.id.action_step_up) return moveStepBy(row, -1);
+        if (action == R.id.action_step_down) return moveStepBy(row, 1);
+        if (action == R.id.action_step_previous_task) return moveStepToTask(row, -1);
+        if (action == R.id.action_step_next_task) return moveStepToTask(row, 1);
+        if (action == R.id.action_step_select_swap) {
+            adapter.selectForSwap(row.step.id); return true;
+        }
+        if (action == R.id.action_step_swap_selected && adapter.selectedStepId != null) {
+            listener.onSwapSteps(adapter.selectedStepId, row.step.id);
+            adapter.selectedStepId = null;
+            return true;
+        }
+        if (action == R.id.action_schedule_up) return moveScheduleBy(row, -1);
+        if (action == R.id.action_schedule_down) return moveScheduleBy(row, 1);
+        if (action == R.id.action_schedule_previous_slot)
+            return moveScheduleToSlot(row, TaskSlot.values()[row.slot.rank - 1]);
+        if (action == R.id.action_schedule_next_slot)
+            return moveScheduleToSlot(row, TaskSlot.values()[row.slot.rank + 1]);
+        return false;
     }
 
-    private boolean stepDrop(View target, DragEvent event, String taskId,
-                             String targetStepId, boolean swap) {
-        autoScroll(target, event);
-        DragPayload payload = payload(event);
-        if (payload == null || payload.kind != DragPayload.STEP) return false;
-        if (event.getAction() == DragEvent.ACTION_DRAG_ENTERED)
-            ((View) event.getLocalState()).setAlpha(.55f);
-        if (event.getAction() == DragEvent.ACTION_DRAG_EXITED
-                || event.getAction() == DragEvent.ACTION_DRAG_ENDED)
-            ((View) event.getLocalState()).setAlpha(1f);
-        if (event.getAction() == DragEvent.ACTION_DROP) {
-            ((View) event.getLocalState()).setAlpha(1f);
-            if (payload.id.equals(targetStepId)) return true;
-            if (swap && targetStepId != null) listener.onSwapSteps(payload.id, targetStepId);
-            else listener.onMoveStep(payload.id, taskId, targetStepId);
-        }
+    private boolean moveStepBy(AllTasksRow row, int delta) {
+        int index = stepIndex(row);
+        int target = index + delta;
+        if (target < 0 || target >= row.task.steps.size()) return false;
+        String before;
+        if (delta < 0) before = row.task.steps.get(target).id;
+        else before = index + 2 < row.task.steps.size()
+                ? row.task.steps.get(index + 2).id : null;
+        listener.onMoveStep(row.step.id, row.taskId, before);
         return true;
     }
 
-    private void renderSchedule() {
-        if (state.schedule.isEmpty()) {
-            addEmpty(false);
-            return;
+    private boolean moveStepToTask(AllTasksRow row, int direction) {
+        AllTasksUiState.TaskItem target = otherTask(row.taskId, direction);
+        if (target == null) return false;
+        listener.onMoveStep(row.step.id, target.task.id.value, null);
+        return true;
+    }
+
+    private AllTasksUiState.TaskItem otherTask(String taskId, int direction) {
+        int current = -1;
+        for (int index = 0; index < state.tasks.size(); index++)
+            if (state.tasks.get(index).task.id.value.equals(taskId)) current = index;
+        for (int index = current + direction; index >= 0 && index < state.tasks.size();
+             index += direction)
+            if (!state.tasks.get(index).archived) return state.tasks.get(index);
+        return null;
+    }
+
+    private int stepIndex(AllTasksRow row) {
+        for (int index = 0; index < row.task.steps.size(); index++)
+            if (row.task.steps.get(index).id.equals(row.step.id)) return index;
+        return -1;
+    }
+
+    private boolean moveScheduleBy(AllTasksRow row, int delta) {
+        List<AllTasksUiState.ScheduleItem> values = scheduleInSlot(row.slot);
+        int index = scheduleIndex(row);
+        int target = index + delta;
+        if (target < 0 || target >= values.size()) return false;
+        String before = delta < 0 ? values.get(target).id
+                : index + 2 < values.size() ? values.get(index + 2).id : null;
+        listener.onMoveSchedule(row.schedule.id, row.slot, before);
+        return true;
+    }
+
+    private boolean moveScheduleToSlot(AllTasksRow row, TaskSlot target) {
+        listener.onMoveSchedule(row.schedule.id, target, null);
+        return true;
+    }
+
+    private int scheduleIndex(AllTasksRow row) {
+        List<AllTasksUiState.ScheduleItem> values = scheduleInSlot(row.slot);
+        for (int index = 0; index < values.size(); index++)
+            if (values.get(index).id.equals(row.schedule.id)) return index;
+        return -1;
+    }
+
+    private List<AllTasksUiState.ScheduleItem> scheduleInSlot(TaskSlot slot) {
+        List<AllTasksUiState.ScheduleItem> result = new ArrayList<>();
+        for (AllTasksUiState.ScheduleItem item : state.schedule)
+            if (item.slot == slot) result.add(item);
+        return result;
+    }
+
+    private final class DragCallback extends ItemTouchHelper.Callback {
+        @Override public int getMovementFlags(@NonNull RecyclerView recyclerView,
+                                              @NonNull RecyclerView.ViewHolder viewHolder) {
+            int position = viewHolder.getBindingAdapterPosition();
+            if (position == RecyclerView.NO_POSITION) return 0;
+            AllTasksRow row = adapter.getCurrentList().get(position);
+            boolean movable = row.kind == AllTasksRow.Kind.SCHEDULE
+                    || row.kind == AllTasksRow.Kind.STEP && !row.task.archived;
+            return makeMovementFlags(movable ? ItemTouchHelper.UP | ItemTouchHelper.DOWN : 0, 0);
         }
-        for (TaskSlot slot : TaskSlot.values()) {
-            if (!state.slots.isEmpty() && !state.slots.contains(slot)) continue;
-            TextView marker = style.serif(slotLabel(slot).toLowerCase(), 17,
-                    palette.muted, true, 300);
-            body.addView(marker, params(-1, -2, 4, 12, 0, 6));
-            for (AllTasksUiState.ScheduleItem item : state.schedule) {
-                if (item.slot != slot) continue;
-                body.addView(scheduleGap(slot, item.id),
-                        new LinearLayout.LayoutParams(-1, style.dp(16)));
-                body.addView(scheduleRow(item));
+
+        @Override public boolean isLongPressDragEnabled() { return true; }
+
+        @Override public boolean onMove(@NonNull RecyclerView recyclerView,
+                                        @NonNull RecyclerView.ViewHolder viewHolder,
+                                        @NonNull RecyclerView.ViewHolder target) {
+            int from = viewHolder.getBindingAdapterPosition();
+            int to = target.getBindingAdapterPosition();
+            return dispatchDrag(from, to);
+        }
+
+        @Override public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder,
+                                       int direction) { }
+    }
+
+    private boolean dispatchDrag(int from, int to) {
+        if (from < 0 || to < 0 || from >= adapter.getItemCount() || to >= adapter.getItemCount())
+            return false;
+        AllTasksRow source = adapter.getCurrentList().get(from);
+        AllTasksRow target = adapter.getCurrentList().get(to);
+        if (source.kind == AllTasksRow.Kind.STEP) {
+            if (source.task.archived) return false;
+            if (target.kind == AllTasksRow.Kind.STEP && !target.task.archived) {
+                if (!source.step.id.equals(target.step.id))
+                    listener.onSwapSteps(source.step.id, target.step.id);
+                return true;
             }
-            body.addView(scheduleGap(slot, null),
-                    new LinearLayout.LayoutParams(-1, style.dp(28)));
+            if (target.kind == AllTasksRow.Kind.STEP_TARGET) {
+                listener.onMoveStep(source.step.id, target.taskId, target.beforeId);
+                return true;
+            }
+            if (target.kind == AllTasksRow.Kind.TASK_HEADER && !target.task.archived) {
+                listener.onMoveStep(source.step.id, target.taskId, null);
+                return true;
+            }
+        } else if (source.kind == AllTasksRow.Kind.SCHEDULE) {
+            if (target.kind == AllTasksRow.Kind.SCHEDULE_TARGET) {
+                listener.onMoveSchedule(source.schedule.id, target.slot, target.beforeId);
+                return true;
+            }
+            if (target.kind == AllTasksRow.Kind.SCHEDULE) {
+                listener.onMoveSchedule(source.schedule.id, target.slot, target.schedule.id);
+                return true;
+            }
         }
+        return false;
     }
 
-    private View scheduleRow(AllTasksUiState.ScheduleItem item) {
-        LinearLayout row = row();
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(style.dp(14), style.dp(8), style.dp(10), style.dp(8));
-        row.setBackground(style.leaf(palette.leaf2, palette.leaf2Edge, 36, 8, 36, 8));
-        TextView handle = style.sans("≡", 22, palette.dot, false);
-        handle.setGravity(Gravity.CENTER);
-        handle.setContentDescription(getContext().getString(R.string.all_drag_task));
-        row.addView(handle, new LinearLayout.LayoutParams(style.dp(48), style.dp(48)));
-        LinearLayout copy = new LinearLayout(getContext()); copy.setOrientation(VERTICAL);
-        copy.addView(style.serif(item.title, 20, palette.ink, false, 350));
-        copy.addView(style.sans(recurrenceLabel(item.recurrence), 14, palette.hint, false));
-        row.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
-        handle.setOnLongClickListener(view -> startDrag(view,
-                DragPayload.schedule(item.id, item.taskId)));
-        return row;
+    int rowCountForTest() { return adapter.getItemCount(); }
+    long rowIdForTest(int position) { return adapter.getItemId(position); }
+    boolean dragForTest(int from, int to) { return dispatchDrag(from, to); }
+    boolean accessibilityActionForTest(int position, int action) {
+        return dispatchAccessibility(adapter.getCurrentList().get(position), action);
     }
-
-    private View scheduleGap(TaskSlot slot, String beforeEntryId) {
-        View gap = new View(getContext());
-        gap.setOnDragListener((view, event) -> {
-            autoScroll(view, event);
-            DragPayload payload = payload(event);
-            if (payload == null || payload.kind != DragPayload.SCHEDULE) return false;
-            if (event.getAction() == DragEvent.ACTION_DROP && !payload.id.equals(beforeEntryId))
-                listener.onMoveSchedule(payload.id, slot, beforeEntryId);
-            return true;
-        });
-        return gap;
+    int positionForTest(AllTasksRow.Kind kind, String id) {
+        for (int index = 0; index < adapter.getItemCount(); index++) {
+            AllTasksRow row = adapter.getCurrentList().get(index);
+            if (row.kind != kind) continue;
+            if (id == null || row.key.endsWith(id) || row.key.equals(id)) return index;
+        }
+        return -1;
     }
+    RecyclerView recyclerForTest() { return list; }
+    EditText searchForTest() { return search; }
 
-    private boolean startDrag(View source, DragPayload payload) {
-        source.setTag(payload);
-        ClipData data = ClipData.newPlainText("auto-secretary", payload.id);
-        return source.startDragAndDrop(data, new View.DragShadowBuilder(source), source, 0);
-    }
-
-    private void autoScroll(View target, DragEvent event) {
-        if (scroll == null || event.getAction() != DragEvent.ACTION_DRAG_LOCATION) return;
-        int[] scrollLocation = new int[2];
-        int[] targetLocation = new int[2];
-        scroll.getLocationOnScreen(scrollLocation);
-        target.getLocationOnScreen(targetLocation);
-        float y = targetLocation[1] - scrollLocation[1] + event.getY();
-        if (y < style.dp(72)) scroll.smoothScrollBy(0, -style.dp(28));
-        else if (y > scroll.getHeight() - style.dp(72)) scroll.smoothScrollBy(0, style.dp(28));
-    }
-
-    private static DragPayload payload(DragEvent event) {
-        Object value = event.getLocalState();
-        if (!(value instanceof View)) return null;
-        Object tag = ((View) value).getTag();
-        return tag instanceof DragPayload ? (DragPayload) tag : null;
+    private ImageButton icon(int drawable, int description) {
+        ImageButton button = new ImageButton(getContext());
+        button.setImageResource(drawable);
+        button.setColorFilter(palette.dot);
+        button.setBackgroundColor(Color.TRANSPARENT);
+        button.setContentDescription(getContext().getString(description));
+        button.setPadding(style.dp(12), style.dp(12), style.dp(12), style.dp(12));
+        return button;
     }
 
     private TextView chip(int label, boolean selected, Runnable action) {
@@ -375,20 +653,24 @@ public final class AllTasksView extends LinearLayout {
         chip.setGravity(Gravity.CENTER);
         chip.setMinHeight(style.dp(44));
         chip.setPadding(style.dp(15), 0, style.dp(15), 0);
+        chip.setSelected(selected);
         GradientDrawable background = style.pill(selected ? palette.accent
                 : Color.TRANSPARENT, 22);
         if (!selected) background.setStroke(style.dp(1), palette.dot);
         chip.setBackground(background);
         chip.setOnClickListener(view -> action.run());
-        LayoutParams params = new LayoutParams(-2, style.dp(44)); params.rightMargin = style.dp(8);
+        LayoutParams params = new LayoutParams(-2, style.dp(44));
+        params.rightMargin = style.dp(8);
         chip.setLayoutParams(params);
         return chip;
     }
 
     private View labeled(int label, LinearLayout row) {
-        LinearLayout wrapper = new LinearLayout(getContext()); wrapper.setOrientation(VERTICAL);
-        wrapper.addView(style.serif(getContext().getString(label), 14,
-                palette.muted, true, 300));
+        LinearLayout wrapper = column();
+        TextView heading = style.serif(getContext().getString(label), 14,
+                palette.muted, true, 300);
+        ViewCompat.setAccessibilityHeading(heading, true);
+        wrapper.addView(heading);
         wrapper.addView(horizontal(row), params(-1, -2, 0, 5, 0, 0));
         wrapper.setLayoutParams(params(-1, -2, 0, 10, 0, 0));
         return wrapper;
@@ -396,46 +678,42 @@ public final class AllTasksView extends LinearLayout {
 
     private HorizontalScrollView horizontal(LinearLayout row) {
         HorizontalScrollView scroll = new HorizontalScrollView(getContext());
-        scroll.setHorizontalScrollBarEnabled(false); scroll.addView(row);
+        scroll.setHorizontalScrollBarEnabled(false);
+        scroll.addView(row);
         return scroll;
     }
 
     private LinearLayout row() {
         LinearLayout row = new LinearLayout(getContext());
-        row.setOrientation(HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL); return row;
+        row.setOrientation(HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        return row;
+    }
+
+    private LinearLayout column() {
+        LinearLayout column = new LinearLayout(getContext());
+        column.setOrientation(VERTICAL);
+        return column;
     }
 
     private TextView textAction(int label, Runnable action) {
         TextView view = style.sans(getContext().getString(label), 15, palette.ink2, false);
-        view.setGravity(Gravity.CENTER); view.setMinHeight(style.dp(48));
+        view.setGravity(Gravity.CENTER);
+        view.setMinHeight(style.dp(48));
         view.setPadding(style.dp(14), 0, style.dp(14), 0);
         view.setOnClickListener(ignored -> action.run());
         return view;
     }
 
-    private void addEmpty(boolean noTasks) {
-        LinearLayout empty = new LinearLayout(getContext()); empty.setOrientation(VERTICAL);
-        empty.setPadding(style.dp(22), style.dp(28), style.dp(22), style.dp(28));
-        empty.setBackground(style.dashed(palette));
-        empty.addView(style.serif(getContext().getString(noTasks
-                ? R.string.all_no_tasks_title : R.string.all_empty_title),
-                25, palette.ink, false, 250));
-        empty.addView(style.sans(getContext().getString(noTasks
-                ? R.string.all_no_tasks_subtitle : R.string.all_empty_subtitle),
-                16, palette.hint, false), params(-1, -2, 0, 12, 0, 0));
-        body.addView(empty);
-    }
-
     private String taskMeta(AllTasksUiState.TaskItem item) {
-        StringBuilder value = new StringBuilder(recurrenceLabel(item.task.recurrence));
-        if (item.archived) value.append(" · ").append(getContext().getString(R.string.all_archived));
-        else if (item.task.nextDueOn != null)
-            value.append(" · ").append(getContext().getString(R.string.all_next_due,
-                    item.task.nextDueOn.format(DateTimeFormatter.ofPattern("dd.MM."))));
-        value.append(" · ").append(item.steps.size() == 1
-                ? getContext().getString(R.string.all_step_count)
-                : getContext().getString(R.string.all_steps_count, item.steps.size()));
-        return value.toString();
+        String timing = item.archived ? getContext().getString(R.string.all_archived)
+                : item.task.nextDueOn == null ? getContext().getString(R.string.all_no_due)
+                : getContext().getString(R.string.all_next_due,
+                item.task.nextDueOn.format(DateTimeFormatter.ofPattern("dd.MM.")));
+        String steps = item.steps.size() == 1 ? getContext().getString(R.string.all_step_count)
+                : getContext().getString(R.string.all_steps_count, item.steps.size());
+        return getContext().getString(R.string.all_task_meta,
+                recurrenceLabel(item.task.recurrence), timing, steps);
     }
 
     private String recurrenceLabel(Recurrence value) {
@@ -455,20 +733,19 @@ public final class AllTasksView extends LinearLayout {
     private static LayoutParams params(int width, int height, int left, int top,
                                        int right, int bottom) {
         LayoutParams value = new LayoutParams(width, height);
-        value.setMargins(left, top, right, bottom); return value;
+        value.setMargins(left, top, right, bottom);
+        return value;
     }
 
-    private static final class DragPayload {
-        static final int SCHEDULE = 1, STEP = 2;
-        final int kind; final String id; final String taskId;
-        private DragPayload(int kind, String id, String taskId) {
-            this.kind = kind; this.id = id; this.taskId = taskId;
-        }
-        static DragPayload schedule(String id, String taskId) {
-            return new DragPayload(SCHEDULE, id, taskId);
-        }
-        static DragPayload step(String id, String taskId) {
-            return new DragPayload(STEP, id, taskId);
-        }
+    private static LinearLayout.LayoutParams rowMargins(int left, int top, int right, int bottom) {
+        LinearLayout.LayoutParams value = new LinearLayout.LayoutParams(-1, -2);
+        value.setMargins(left, top, right, bottom);
+        return value;
+    }
+
+    private static final class Action {
+        final int id;
+        final int label;
+        Action(int id, int label) { this.id = id; this.label = label; }
     }
 }

@@ -3,6 +3,7 @@ package de.thonktank.autosecretary;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.view.View;
@@ -44,9 +45,12 @@ public final class AllTasksViewTest {
 
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
 
-        assertNotNull(find(view, "Morgenroutine"));
-        assertNotNull(find(view, "Duschen"));
-        assertNotNull(find(view, context.getString(R.string.all_add_step)));
+        java.util.List<AllTasksRow> rows = AllTasksRow.project(state);
+        assertTrue(rows.stream().anyMatch(value -> value.kind == AllTasksRow.Kind.TASK_HEADER));
+        assertTrue(rows.stream().anyMatch(value -> value.kind == AllTasksRow.Kind.STEP
+                && value.step.text.equals("Duschen")));
+        assertTrue(rows.stream().anyMatch(value -> value.kind == AllTasksRow.Kind.STEP_TARGET
+                && value.endTarget));
         assertEquals(null, find(view, context.getString(R.string.action_complete)));
         find(view, context.getString(R.string.all_status_archived)).performClick();
         assertEquals(AllTasksUiState.Status.ARCHIVED, recorder.status);
@@ -60,9 +64,13 @@ public final class AllTasksViewTest {
 
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
 
-        assertEquals(2, count(view, "Morgenroutine"));
-        assertNotNull(find(view, context.getString(R.string.slot_morning).toLowerCase()));
-        assertNotNull(find(view, context.getString(R.string.slot_evening).toLowerCase()));
+        java.util.List<AllTasksRow> rows = AllTasksRow.project(state);
+        assertEquals(2, rows.stream()
+                .filter(value -> value.kind == AllTasksRow.Kind.SCHEDULE).count());
+        assertTrue(rows.stream().anyMatch(value -> value.kind == AllTasksRow.Kind.SLOT_HEADER
+                && value.slot == TaskSlot.MORNING));
+        assertTrue(rows.stream().anyMatch(value -> value.kind == AllTasksRow.Kind.SLOT_HEADER
+                && value.slot == TaskSlot.EVENING));
     }
 
     private static TaskCatalog catalog() {
