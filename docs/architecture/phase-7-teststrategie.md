@@ -3,7 +3,7 @@
 Stand: 2026-08-20, Phase 8 abgeschlossen
 
 Der Dateiname bleibt für bestehende Links erhalten. Der Inhalt beschreibt den aktuellen Stand
-nach Datenbankschema 11 und der Testbereinigung in Phase 8.
+nach Datenbankschema 14 und der anschließenden Today-/Fokus-Baseline.
 
 ## Testschichten
 
@@ -33,14 +33,15 @@ ohne Robolectric geprüft. Androidtests prüfen repräsentativ reale Messung, Te
 horizontale Bounds, TalkBack-Reihenfolge, Rollen, Zustände, virtuelle Satzaktionen,
 Tastatursteuerung und Mindestziele.
 
-Produktivcode stellt dafür keine `*ForTest`-Methoden bereit. Viewtests beobachten öffentliche
-Events oder sichtbaren Viewzustand über die Test-Fixtures `DashboardEventRecorder` und
-`ViewTestQueries`.
+Viewtests beobachten überwiegend öffentliche Events oder sichtbaren Viewzustand über die
+Test-Fixtures `DashboardEventRecorder` und `ViewTestQueries`. Verbliebene package-private
+Geometrie-/Renderzugriffe sowie `ReflectionHelpers` sind als technische Schuld dieser Baseline
+explizit erfasst; die Leaf-Migration und Phase 5 entfernen sie wieder aus dem Produktivcode.
 
 ## Migrationsmatrix
 
-`DatabaseMigrationRobolectricTest` deckt auf API 26 und 35 alle Ausgangsversionen 1 bis 7 bis
-Schema 11 ab. `ExportedRoomSchemaFixture` baut historische Tabellen, Indizes, Views und Room-
+`DatabaseMigrationRobolectricTest` deckt die historische Kette ab Schema 1 sowie den produktiv
+unterstützten Upgradepfad von Schema 8 bis Schema 14 ab. `ExportedRoomSchemaFixture` baut historische Tabellen, Indizes, Views und Room-
 Metadaten direkt aus `app/schemas/de.thonktank.autosecretary.AppDatabase/<version>.json` auf.
 
 Die Migration 7→8 besitzt zusätzliche Fälle für 0, 12, 999, 1200, fehlerhaften Legacytext,
@@ -52,7 +53,9 @@ erfolgreich; eine erneute lokale Ausführung benötigt weiterhin Emulator oder G
 Die Migration 8→9 prüft Carry-forward-Spalten, Defaultwerte und den Datenbanktrigger gegen
 doppelte offene Occurrences. Die Migration 9→10 prüft die nullable Abschlussdatumsspalte und
 rekonstruiert die Invarianten-Trigger. Die Migration 10→11 prüft außerdem, dass optionale
-Task-Datumswerte aus historischen leeren Strings als SQL-`NULL` ankommen. Domaintests decken außerdem explizite Teilernte und
+Task-Datumswerte aus historischen leeren Strings als SQL-`NULL` ankommen. Die Migrationen
+11→12 und 12→13 sichern normalisierte Zeitplatzierungen und den verlustfreien Tabellenumbau;
+13→14 ergänzt die zunächst leere Reward-Zuordnungsprojektion. Domaintests decken außerdem explizite Teilernte und
 Refresh-Ursachen ab; ein echter Prozessneustart- und DST-Lauf bleibt ein Geräte-/Instrumentation-Gate.
 
 ## Golden-Vertrag
@@ -118,6 +121,7 @@ Phase-0-Referenz desselben Gradle-Gates lag bei 84,50 s und 1.167.380 KiB. Damit
 Gesamtgate trotz der zwischenzeitlich ergänzten Fach-, Room-, Migration- und
 Golden-Vertragstests rund 25 % schneller und die gemessene Spitzenbelegung rund 3 % niedriger.
 
-Der Abschlusslauf enthielt 246 Hosttests, davon 245 erfolgreich und einen bewusst übersprungenen
-Test. Alle Fokus-Goldens waren byteidentisch; keine Fokus-, Homescreen-, Widget- oder
-Editor-Baseline wurde in Phase 8 geändert.
+Die Baseline der anschließenden Today-/Fokus-Bereinigung enthält 307 Hosttests, davon 306
+erfolgreich und einen bewusst übersprungenen Test. Der reproduzierbare Lauf mit
+`--rerun-tasks --max-workers=1` benötigte 84,00 Sekunden und maximal 1.133.556 KiB RSS. Alle
+Fokus-, Homescreen-, Widget- und Editor-Goldens waren byteidentisch.

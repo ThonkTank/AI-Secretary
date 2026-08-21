@@ -1,6 +1,6 @@
 # Today-/Fokus-Architektur
 
-Stand: 2026-08-21, Datenbankschema 11
+Stand: 2026-08-21, Datenbankschema 14
 
 ## Datenfluss und Zustandsbesitz
 
@@ -79,7 +79,7 @@ direkt abgeschlossen; ein Wiederholungsschritt übernimmt atomar den nächsten g
 Bleibt er danach offen, wird er in den ersten offenen Slot verschoben und damit zum aktiven
 Schritt. Erledigte Slots behalten bei jeder heutigen Umsortierung ihren Platz.
 
-## Persistenzschema 11
+## Persistenzschema 14
 
 `repetition_results(stepId, slotIndex, actualRepetitions)` normalisiert die früher im
 Komma-Text gespeicherten Ergebnisse. `(stepId, slotIndex)` ist der Primärschlüssel; `stepId`
@@ -98,6 +98,15 @@ für die Ein-Offene-Occurrence-Invariante. Schema 10 ersetzt den leeren `complet
 durch eine nullable Datumsspalte und rekonstruiert die Trigger nach dem sicheren Tabellenumbau.
 Schema 11 überführt zusätzlich optionale Task-Datumswerte aus historischen leeren Strings in
 echte nullable Spalten; der erforderliche Planungscursor `nextDueOn` bleibt nicht-null.
+
+Schema 12 führt normalisierte `task_schedule_entries` für unabhängige Zeitplatzierungen ein.
+Schema 13 entfernt Slot, Zeitmaske und die alte Definitionsreihenfolge aus `tasks`; `catalogOrder`
+bleibt ausschließlich die Katalogreihenfolge. Schema 14 ergänzt `reward_assignments` als
+veränderliche Zuordnungsprojektion, ohne das unveränderliche Reward-Ledger umzuschreiben.
+
+Der produktiv registrierte Upgradepfad beginnt beim mit Version 0.2.80 ausgelieferten Schema 8.
+Die Migrationen 1 bis 7 bleiben ausführbare historische Fixtures, gehören aber nicht mehr zum
+Produktionsgraphen.
 
 ## Widgetaktualisierung
 

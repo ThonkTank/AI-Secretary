@@ -88,6 +88,19 @@ Instrumentation-Verhalten.
 - Upgrade-, Zeitzonen-, Prozessneustart- und parallele Materialisierungstests sind nicht vollständig
   durch lokale Instrumentation abgesichert.
 
+## Geplante Grenzen der Today-/Fokus-Bereinigung
+
+Die Bereinigung stabilisiert zunächst Pakete, bevor daraus Module entstehen:
+
+- `ui.leaf`: gemeinsame Blattform, Vorderseite, Clip und Grain-Koordinaten;
+- `ui.today`: Android-Views für Fokus, Timeline und Tageshistorie;
+- `presentation.today`: getrennte Today-Modelle, Actions, Reducer und Coordinator;
+- `domain.today`: reine Schritt-Reihenfolge, typisierte Ergebnisse und fokussierte Ports.
+
+Nach Entfernung der Root- und Repository-Rückkopplungen werden `domain` und der Android-freie
+Today-Kern in die JVM-Module `:core-domain` beziehungsweise `:today-core` verschoben. Bis dahin
+bleibt das vorhandene App-Modul die Composition- und Laufzeitgrenze.
+
 Phase 3 hat die fachliche Carry-forward-Provenienz im Domainmodell eingeführt und Teilernte in
 `HARVESTED_WITH_MISSED_STEPS` gegenüber vollständiger `COMPLETED`-Ernte unterschieden. Die
 Room-Spalten, Trigger und die entsprechende Migrationsprüfung sind in Phase 4 ergänzt.

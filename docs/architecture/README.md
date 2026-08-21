@@ -24,6 +24,8 @@ Migrationen und aktualisierte Tests.
 - [ADR-015: Virtuelle Accessibility-Knoten für Satzkorrekturen](adr-015-virtuelle-satzaktionen.md)
 - [ADR-016: Normalisierte Persistenz von Wiederholungsergebnissen](adr-016-normalisierte-wiederholungsergebnisse.md)
 - [ADR-017: Aufgabenverwaltung, Zeitplatzierungen und Schritttransfers](adr-017-aufgabenverwaltung.md)
+- [ADR-018: Gemeinsame Blattoberfläche und lokale Grain-Geometrie](adr-018-leaf-surface-und-grain-geometrie.md)
+- [ADR-019: Eindeutige Today-Projektion, Rewards und Interaktionszustände](adr-019-today-zustand-rewards-und-aktionen.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -34,6 +36,8 @@ Folgeschritte.
 
 Die phasenweise Refactor-Baseline mit Zustandsbesitzern, Abhängigkeiten und überprüfbaren Gates
 steht in der [Architekturkarte](architecture-map.md).
+Die unveränderlichen UX-Verträge und Messwerte der anschließenden Today-/Fokus-Bereinigung stehen
+in deren [Phase-0-Baseline](today-focus-cleanup-baseline.md).
 Der requirementweise Abschlussabgleich der Roadmap steht im
 [Roadmap-Abschlussaudit](roadmap-audit.md).
 
