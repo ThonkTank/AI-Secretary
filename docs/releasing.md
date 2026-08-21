@@ -1,10 +1,11 @@
 # Auto Secretary – Builds und Updates veröffentlichen
 
-Jeder Push auf `main` durchläuft Unit-Tests, Lint, Instrumentierungstests und einen echten
-Produktions-Upgrade-Test auf API 26 und API 35. Nur wenn die unabhängigen Qualitätsprüfungen
+Jeder Push auf `main` durchläuft den schnellen Quality-Job. Enthält der Push App-, Build- oder
+Releasecode, folgen Instrumentierungstests und ein echter Produktions-Upgrade-Test auf API 26 und
+API 35. Reine Änderungen unter `docs/` sowie an Repository-Markdown werden geprüft, erzeugen aber
+keinen APK-Kandidaten und kein GitHub Release. Nur wenn die unabhängigen Qualitätsprüfungen
 erfolgreich sind, baut GitHub genau einmal einen signierten Produktionskandidaten. Derselbe
-Kandidat wird auf beiden API-Stufen getestet und anschließend bytegleich als stabiles GitHub
-Release veröffentlicht.
+Kandidat wird auf beiden API-Stufen getestet und anschließend bytegleich veröffentlicht.
 
 ## Dauerhafter Signaturschlüssel
 
@@ -29,14 +30,16 @@ Signing-Lineage-Strategie beschreibt das
 
 1. Eine abgeschlossene Änderung wird auf `main` gepusht.
 2. `.github/workflows/verify.yml` führt das vollständige Quality-Gate aus.
-3. `scripts/release/release_tool.py` vergibt einen eindeutigen, gegenüber allen vorhandenen
-   Kanal-Tags höheren `versionCode` und einen sichtbaren Namen wie `0.2.20`.
+3. `scripts/release/release_tool.py` schreibt die letzte veröffentlichte Produktversion um genau
+   eins fort. Workflownummern beeinflussen die sichtbare Version nicht; ein fehlgeschlagener Lauf
+   kann deshalb keine Versionsnummer überspringen.
 4. Die Produktions-APK wird einmal signiert und auf Paketname, Version, Größe, Hash und
    Zertifikat geprüft. APK, Metadaten, Releaseplan und signiertes Test-APK werden als kurzlebiges
    internes Workflow-Artefakt weitergereicht.
-5. Die vorige Produktions-APK wird installiert und mit Aufgaben-, Schritt-, Statistik- und
-   Einstellungsdaten befüllt. `adb install -r` aktualisiert sie auf den Kandidaten; anschließend
-   müssen App-Start, höherer Versionscode, Room-Schema und alle Testdaten erhalten sein.
+5. Die explizit unterstützte Produktions-APK 0.2.80 wird installiert und mit dem versionierten
+   Fixture `release/upgrade-fixtures/v0.2.80.json` befüllt. `adb install -r` aktualisiert sie auf
+   den Kandidaten; anschließend müssen App-Start, höherer Versionscode, Room-Schema und alle
+   erwarteten Testdaten erhalten sein.
 6. Ein neuer oder nach einem Fehler wiederaufgenommener Draft erhält genau
    `AutoSecretary.apk` und `release-metadata.json`; vorhandene Assets werden kontrolliert ersetzt.
 7. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter, vergleicht die APK byteweise mit
@@ -48,8 +51,11 @@ vorhandenen Draft, Tag und Assets desselben Commits weiter. Ein bereits veröffe
 erzeugt kein Duplikat. Das interne Artefakt trägt zusätzlich die Workflow-Versuchsnummer, damit
 auch ein GitHub-Rerun nicht mit einem unveränderlichen Artefakt des vorigen Versuchs kollidiert.
 
-Der Upgrade-Test wählt dynamisch den höchsten bereits veröffentlichten `forest-android-`-Build
-unterhalb des Kandidaten. Das Test-APK wird mit demselben Produktionsschlüssel signiert, damit es
+Der Upgrade-Test lädt ausschließlich den in `release/release.properties` festgelegten
+0.2.80-Tag. Historische Schemaexporte und ihre Migrationen bleiben durch schnelle
+Robolectric-Tests abgedeckt, sind aber kein versprochener Rolling-Installationspfad. Der normale
+Unit-Test prüft außerdem alle Fixture-Spalten gegen das exportierte Ausgangs- und Zielschema sowie
+die zentrale `DatabaseContract.VERSION`. Das Test-APK wird mit demselben Produktionsschlüssel signiert, damit es
 den nicht-debugbaren Releaseprozess vor und nach dem Android-Upgrade prüfen kann. API 26, API 35
 und der Veröffentlichungsschritt laden dasselbe interne Produktionsartefakt herunter; der
 Veröffentlichungsschritt beweist die Bytegleichheit zusätzlich mit `cmp`.

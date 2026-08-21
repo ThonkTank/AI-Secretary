@@ -1,0 +1,132 @@
+{
+  "contractVersion": 1,
+  "source": {
+    "versionName": "0.2.80",
+    "versionCode": 1008001,
+    "databaseVersion": 8
+  },
+  "targetDatabaseVersion": 12,
+  "tables": {
+    "tasks": {
+      "id": "upgrade-e2e-task",
+      "title": "Upgrade-Daten bleiben erhalten",
+      "slot": "LATER",
+      "recurrence": "ONCE",
+      "intervalDays": 1,
+      "weekdayMask": 0,
+      "ongoing": 0,
+      "conditionText": "",
+      "conditionDone": 0,
+      "archived": 0,
+      "nextDueOn": "2999-12-31",
+      "lastScheduledOn": "",
+      "lastCompletedOn": "",
+      "displayOrder": 4001024,
+      "hasCompletedOccurrence": 1,
+      "estimatedMinutes": null,
+      "timeOfDayMask": 0,
+      "boundKind": "FOREVER",
+      "boundUntilOn": "",
+      "boundWeeks": null,
+      "remainingCount": null,
+      "deadlineOn": "",
+      "note": ""
+    },
+    "task_steps": {
+      "id": "upgrade-e2e-template",
+      "taskId": "upgrade-e2e-task",
+      "position": 0,
+      "text": "Persistierten Schritt lesen",
+      "weekdayMask": 0,
+      "amountKind": "NONE",
+      "plannedSets": null,
+      "plannedReps": null,
+      "plannedDurationSeconds": null,
+      "note": ""
+    },
+    "occurrences": {
+      "id": "upgrade-e2e-occurrence",
+      "taskId": "upgrade-e2e-task",
+      "scheduledOn": "2999-12-31",
+      "state": "OPEN",
+      "sortOrder": 42,
+      "completedOn": "",
+      "slot": "LATER"
+    },
+    "occurrence_steps": {
+      "id": "upgrade-e2e-step",
+      "occurrenceId": "upgrade-e2e-occurrence",
+      "position": 0,
+      "text": "Persistierten Schritt lesen",
+      "done": 1,
+      "amountKind": "NONE",
+      "plannedSets": null,
+      "plannedReps": null,
+      "plannedDurationSeconds": null,
+      "note": "",
+      "actualRepetitions": "",
+      "sourceTemplateId": "upgrade-e2e-template",
+      "comboOwnerId": "step:upgrade-e2e-template"
+    },
+    "stats": {
+      "id": 1,
+      "xp": 73
+    },
+    "reward_bookings": {
+      "id": "upgrade-e2e-booking",
+      "transactionId": "upgrade-e2e-transaction",
+      "occurrenceId": "upgrade-e2e-occurrence",
+      "occurrenceStepId": "upgrade-e2e-step",
+      "ownerId": "step:upgrade-e2e-template",
+      "kind": "LEGACY_STEP",
+      "target": "VESSEL",
+      "xpDelta": 10,
+      "comboPointDelta": 0,
+      "bookedOn": "2999-12-31",
+      "reversesBookingId": null
+    }
+  },
+  "expectedTarget": {
+    "tasks": {
+      "id": "upgrade-e2e-task",
+      "title": "Upgrade-Daten bleiben erhalten",
+      "slot": "LATER",
+      "displayOrder": 4001024,
+      "timeOfDayMask": 0,
+      "boundKind": "FOREVER"
+    },
+    "task_schedule_entries": {
+      "taskId": "upgrade-e2e-task",
+      "slot": "LATER",
+      "displayOrder": 4001024
+    },
+    "task_steps": {
+      "id": "upgrade-e2e-template",
+      "text": "Persistierten Schritt lesen",
+      "amountKind": "NONE"
+    },
+    "occurrences": {
+      "id": "upgrade-e2e-occurrence",
+      "taskId": "upgrade-e2e-task",
+      "state": "OPEN",
+      "slot": "LATER"
+    },
+    "occurrence_steps": {
+      "id": "upgrade-e2e-step",
+      "text": "Persistierten Schritt lesen",
+      "done": 1,
+      "amountKind": "NONE",
+      "actualRepetitions": "",
+      "sourceTemplateId": "upgrade-e2e-template",
+      "carryForwardReason": "NONE"
+    },
+    "reward_bookings": {
+      "id": "upgrade-e2e-booking",
+      "xpDelta": 10
+    },
+    "stats": {
+      "id": 1,
+      "xp": 73
+    }
+  }
+}

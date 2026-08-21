@@ -7,6 +7,20 @@ WORKFLOW = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="u
 
 
 class WorkflowContractTest(unittest.TestCase):
+    def test_docs_only_changes_pass_quality_without_publishing_an_apk(self):
+        release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
+            "\n  quality:", 1
+        )[0]
+        instrumentation = WORKFLOW.split("\n  instrumentation:", 1)[1].split(
+            "\n  pr-gate:", 1
+        )[0]
+        package = WORKFLOW.split("\n  package:", 1)[1].split("\n  upgrade:", 1)[0]
+
+        self.assertIn("app_changed=false", release_scope)
+        self.assertIn("$0 !~ /^docs\\//", release_scope)
+        self.assertIn("needs.release_scope.outputs.app_changed == 'true'", instrumentation)
+        self.assertIn("needs.release_scope.outputs.app_changed == 'true'", package)
+
     def test_signing_alias_and_passwords_are_independent_inputs(self):
         self.assertIn("SIGNING_KEY_ALIAS: ${{ secrets.KEYSTORE_ALIAS || 'release' }}", WORKFLOW)
         self.assertIn(
@@ -34,7 +48,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("needs: [quality]", pull_request_gate)
         self.assertIn('test "$QUALITY_RESULT" = success', pull_request_gate)
         self.assertNotIn("INSTRUMENTATION_RESULT", pull_request_gate)
-        self.assertIn("needs: [quality, instrumentation]", package)
+        self.assertIn("needs: [quality, instrumentation, release_scope]", package)
 
 
 if __name__ == "__main__":

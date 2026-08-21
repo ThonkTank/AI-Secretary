@@ -14,6 +14,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release_scope:
+    runs-on: ubuntu-latest
+    outputs:
+      app_changed: ${{ steps.scope.outputs.app_changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Decide whether this revision may publish an app
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            printf 'app_changed=true\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$EVENT_NAME" = pull_request ]; then
+            FROM_SHA="$BASE_SHA"
+          else
+            FROM_SHA="$BEFORE_SHA"
+          fi
+          CHANGED=$(git diff --name-only "$FROM_SHA" "$GITHUB_SHA")
+          if printf '%s\n' "$CHANGED" | awk '
+            NF && $0 !~ /^docs\// && $0 !~ /^[^/]+\.md$/ { found=1 }
+            END { exit found ? 0 : 1 }
+          '; then
+            printf 'app_changed=true\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'app_changed=false\n' >> "$GITHUB_OUTPUT"
+          fi
+
   quality:
     runs-on: ubuntu-latest
     steps:
@@ -42,8 +77,8 @@ jobs:
             app/build/outputs/apk/release/app-release-unsigned.apk
 
   instrumentation:
-    if: github.event_name != 'pull_request'
-    needs: quality
+    if: github.event_name != 'pull_request' && needs.release_scope.outputs.app_changed == 'true'
+    needs: [quality, release_scope]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -93,8 +128,8 @@ jobs:
           test "$QUALITY_RESULT" = success
 
   package:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [quality, instrumentation]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.release_scope.outputs.app_changed == 'true'
+    needs: [quality, instrumentation, release_scope]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -118,7 +153,6 @@ jobs:
           gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -s 'add' > "$RELEASES"
           python3 scripts/release/release_tool.py plan \
             --properties release/release.properties \
-            --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --commit "$GITHUB_SHA" --releases "$RELEASES" --output "$PLAN"
           ACTION=$(jq -r .action "$PLAN")
           if [ "$ACTION" = already_published ]; then
@@ -298,7 +332,6 @@ jobs:
           gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -s 'add' > "$RELEASES"
           python3 scripts/release/release_tool.py plan \
             --properties release/release.properties \
-            --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT" \
             --commit "$GITHUB_SHA" --releases "$RELEASES" --output "$CURRENT_PLAN"
           ACTION=$(jq -r .action "$CURRENT_PLAN")
           if [ "$ACTION" = already_published ]; then

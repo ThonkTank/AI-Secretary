@@ -22,6 +22,7 @@ REQUIRED_PROPERTIES = {
     "versionCodeFloor",
     "expectedSignerSha256",
     "androidBuildTools",
+    "supportedUpgradeTag",
 }
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
@@ -72,6 +73,9 @@ def read_properties(path: Path) -> dict[str, str]:
     for key in ("apkAsset", "metadataAsset"):
         if Path(values[key]).name != values[key]:
             raise ReleaseContractError(f"{key} must be a plain asset name")
+    upgrade_code = version_from_tag(values["supportedUpgradeTag"], values["tagPrefix"])
+    if upgrade_code is None:
+        raise ReleaseContractError("supportedUpgradeTag must follow the production tag contract")
     return values
 
 
@@ -104,18 +108,33 @@ def version_name_for_code(series: str, floor: int, version_code: int) -> str:
     return name if run_attempt == 1 else f"{name}-r{run_attempt}"
 
 
-def allocate_version(contract: dict[str, str], run_number: int, run_attempt: int) -> tuple[int, str]:
-    if run_number <= 0 or not 1 <= run_attempt < 100:
-        raise ReleaseContractError("GitHub run number/attempt is outside the supported range")
+def allocate_version(contract: dict[str, str], releases: list[dict]) -> tuple[int, str]:
+    """Allocate the next product version, independent of CI run numbers.
+
+    A failed workflow may leave a draft in the next product-version window. In that case the
+    next free retry code is used without advancing the user-visible product version again.
+    """
     floor = integer(contract["versionCodeFloor"], "versionCodeFloor")
-    version_code = floor + run_number * 100 + run_attempt
-    if version_code > MAX_VERSION_CODE:
+    stable_codes = [
+        code for release in releases
+        if not release.get("draft") and not release.get("prerelease")
+        and (code := version_from_tag(release.get("tag_name"), contract["tagPrefix"])) is not None
+    ]
+    last_product = max(((code - floor) // 100 for code in stable_codes), default=0)
+    next_product = last_product + 1
+    window_start = floor + next_product * 100
+    occupied = {
+        code for release in releases
+        if (code := version_from_tag(release.get("tag_name"), contract["tagPrefix"])) is not None
+    }
+    version_code = next((window_start + retry for retry in range(1, 100)
+                         if window_start + retry not in occupied), None)
+    if version_code is None or version_code > MAX_VERSION_CODE:
         raise ReleaseContractError("Allocated version code exceeds the Android limit")
     return version_code, version_name_for_code(contract["versionSeries"], floor, version_code)
 
 
-def release_plan(contract: dict[str, str], run_number: int, run_attempt: int,
-                 commit: str, releases: list[dict]) -> dict:
+def release_plan(contract: dict[str, str], commit: str, releases: list[dict]) -> dict:
     if not COMMIT.fullmatch(commit):
         raise ReleaseContractError("commit must be a full lowercase Git SHA")
     prefix = contract["tagPrefix"]
@@ -139,15 +158,7 @@ def release_plan(contract: dict[str, str], run_number: int, run_attempt: int,
             version_name_for_code(contract["versionSeries"], floor, code)
             action = "resume_draft"
         else:
-            code, name = allocate_version(contract, run_number, run_attempt)
-            existing_codes = [
-                parsed for release in releases
-                if (parsed := version_from_tag(release.get("tag_name"), prefix)) is not None
-            ]
-            if existing_codes and code <= max(existing_codes):
-                raise ReleaseContractError(
-                    "Allocated version code is not newer than every existing release"
-                )
+            code, name = allocate_version(contract, releases)
             release = {"tag_name": f"{prefix}{code}", "id": None, "assets": []}
             action = "create_draft"
 
@@ -167,6 +178,7 @@ def release_plan(contract: dict[str, str], run_number: int, run_attempt: int,
         "versionName": name,
         "signerSha256": contract["expectedSignerSha256"],
         "androidBuildTools": contract["androidBuildTools"],
+        "upgradeFromTag": contract["supportedUpgradeTag"],
         "commitSha": commit,
     }
 
@@ -224,17 +236,15 @@ def validate_metadata(metadata: dict, apk: Path, plan: dict | None = None) -> No
 
 
 def previous_release(plan: dict, releases: list[dict]) -> str:
+    expected = plan["upgradeFromTag"]
     prefix = plan["tagPrefix"]
     candidate = integer(plan["versionCode"], "versionCode")
-    available = []
     for release in releases:
         code = version_from_tag(release.get("tag_name"), prefix)
-        if (code is not None and code < candidate and not release.get("draft")
-                and not release.get("prerelease")):
-            available.append((code, release["tag_name"]))
-    if not available:
-        raise ReleaseContractError("No previous stable production release exists")
-    return max(available)[1]
+        if (release.get("tag_name") == expected and code is not None and code < candidate
+                and not release.get("draft") and not release.get("prerelease")):
+            return expected
+    raise ReleaseContractError(f"Supported upgrade release {expected} is unavailable")
 
 
 def validate_tag_ref(plan: dict, tag_ref: dict) -> None:
@@ -249,7 +259,7 @@ def validate_tag_ref(plan: dict, tag_ref: dict) -> None:
 def command_plan(args) -> None:
     contract = read_properties(args.properties)
     releases = load_json(args.releases) if args.releases else []
-    plan = release_plan(contract, args.run_number, args.run_attempt, args.commit, releases)
+    plan = release_plan(contract, args.commit, releases)
     write_json(args.output, plan)
 
 
@@ -276,8 +286,6 @@ def parser() -> argparse.ArgumentParser:
 
     plan = commands.add_parser("plan")
     plan.add_argument("--properties", type=Path, required=True)
-    plan.add_argument("--run-number", type=int, required=True)
-    plan.add_argument("--run-attempt", type=int, required=True)
     plan.add_argument("--commit", required=True)
     plan.add_argument("--releases", type=Path)
     plan.add_argument("--output", type=Path, required=True)

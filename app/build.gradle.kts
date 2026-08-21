@@ -83,6 +83,8 @@ android {
 
     sourceSets {
         getByName("androidTest").assets.srcDir("$projectDir/schemas")
+        getByName("androidTest").assets.srcDir(rootProject.file("release/upgrade-fixtures"))
+        getByName("test").resources.srcDir(rootProject.file("release/upgrade-fixtures"))
     }
 }
 
