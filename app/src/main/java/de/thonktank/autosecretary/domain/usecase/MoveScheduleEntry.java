@@ -1,7 +1,6 @@
 package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.Clock;
-import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 /** Thin command facade over the canonical schedule service. */
@@ -16,7 +15,7 @@ public final class MoveScheduleEntry {
         schedules = new TaskScheduleService(repository, ids);
     }
 
-    public void execute(String entryId, TaskSlot targetSlot, String beforeEntryId) {
-        schedules.move(entryId, targetSlot, beforeEntryId);
+    public ScheduleMoveResult execute(ScheduleMoveRequest request) {
+        return schedules.move(request);
     }
 }

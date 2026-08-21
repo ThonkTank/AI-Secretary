@@ -36,6 +36,6 @@ public final class DeferTask {
         TaskScheduleEntry primary;
         try { primary = schedules.load().primary(id); }
         catch (IllegalStateException missingSchedule) { return; }
-        schedules.move(primary.id, primary.slot, null);
+        schedules.move(ScheduleMoveRequest.toEnd(primary.id, primary.slot));
     }
 }

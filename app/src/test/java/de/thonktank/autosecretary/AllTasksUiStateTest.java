@@ -22,6 +22,16 @@ import java.util.EnumSet;
 public final class AllTasksUiStateTest {
     private static final LocalDate MONDAY = LocalDate.of(2026, 8, 17);
 
+    @Test public void filterModelIsAndroidFreeAndImmutable() {
+        AllTasksFilter filter = AllTasksFilter.defaults()
+                .withQuery("  Gym  ").withSlots(EnumSet.of(TaskSlot.MORNING));
+
+        assertEquals("  Gym  ", filter.query);
+        assertEquals(EnumSet.of(TaskSlot.MORNING), filter.slots);
+        assertTrue(Arrays.stream(AllTasksFilter.class.getDeclaredFields())
+                .noneMatch(field -> field.getType().getName().startsWith("android.")));
+    }
+
     @Test public void searchAndFiltersInspectTaskAndNestedStepText() {
         TaskCatalog catalog = catalog();
         AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog)

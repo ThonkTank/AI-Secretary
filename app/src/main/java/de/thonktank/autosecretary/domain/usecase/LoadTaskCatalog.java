@@ -7,6 +7,7 @@ import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.TaskCatalogQuery;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -14,14 +15,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class LoadTaskCatalog {
+public final class LoadTaskCatalog implements TaskCatalogQuery {
     private final TaskDefinitionRepository repository;
 
     public LoadTaskCatalog(TaskDefinitionRepository repository) {
         this.repository = repository;
     }
 
-    public TaskCatalog execute() {
+    @Override public TaskCatalog execute() {
         List<Task> tasks = repository.allTasks();
         tasks.sort(Comparator.comparingLong(value -> value.catalogOrder));
         List<TaskId> ids = new ArrayList<>();

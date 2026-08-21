@@ -30,20 +30,20 @@ import java.util.Set;
 @SuppressLint("ViewConstructor")
 public final class AllTasksView extends LinearLayout {
     public interface Listener {
-        void onQuery(String query);
-        void onStatus(AllTasksUiState.Status status);
-        void onSlots(Set<TaskSlot> slots);
-        void onRecurrences(Set<Recurrence> recurrences);
-        void onWeekday(int weekday);
-        void onMode(AllTasksUiState.Mode mode);
-        void onToggleTask(String taskId);
-        void onEditTask(String taskId);
-        void onEditStep(String taskId, String stepId);
-        void onAddStep(String taskId);
-        void onDeleteTask(String taskId, String title);
-        void onMoveSchedule(String entryId, TaskSlot slot, String beforeEntryId);
-        void onMoveStep(String stepId, String taskId, String beforeStepId);
-        void onSwapSteps(String stepId, String targetStepId);
+        default void onQuery(String query) { }
+        default void onStatus(AllTasksUiState.Status status) { }
+        default void onSlots(Set<TaskSlot> slots) { }
+        default void onRecurrences(Set<Recurrence> recurrences) { }
+        default void onWeekday(int weekday) { }
+        default void onMode(AllTasksUiState.Mode mode) { }
+        default void onToggleTask(String taskId) { }
+        default void onEditTask(String taskId) { }
+        default void onEditStep(String taskId, String stepId) { }
+        default void onAddStep(String taskId) { }
+        default void onDeleteTask(String taskId, String title) { }
+        default void onMoveSchedule(String entryId, TaskSlot slot, String beforeEntryId) { }
+        default void onMoveStep(String stepId, String taskId, String beforeStepId) { }
+        default void onSwapSteps(String stepId, String targetStepId) { }
     }
 
     private final UiStyle style;

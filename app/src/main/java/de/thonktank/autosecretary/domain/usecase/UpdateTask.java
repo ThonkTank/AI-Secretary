@@ -52,7 +52,8 @@ public final class UpdateTask {
             de.thonktank.autosecretary.domain.model.TaskSchedule currentSchedule = schedules.load();
             de.thonktank.autosecretary.domain.model.TaskScheduleEntry primary =
                     currentSchedule.primary(id);
-            if (primary.slot != slot) schedules.move(primary.id, slot, null);
+            if (primary.slot != slot)
+                schedules.move(ScheduleMoveRequest.toEnd(primary.id, slot));
             return null;
         });
     }

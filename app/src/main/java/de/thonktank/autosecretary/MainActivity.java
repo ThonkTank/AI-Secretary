@@ -29,6 +29,8 @@ import androidx.lifecycle.ViewModelProvider;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.update.presentation.UpdateUiController;
 import de.thonktank.autosecretary.update.presentation.UpdateViewModel;
@@ -41,6 +43,7 @@ public class MainActivity extends ComponentActivity {
     private final Handler minuteHandler = new Handler(Looper.getMainLooper());
     private AppContainer container;
     private TaskViewModel viewModel;
+    private AllTasksViewModel allTasksViewModel;
     private UpdateUiController updates;
     private DashboardUiState uiState;
     private ForestBackdropView forest;
@@ -50,6 +53,8 @@ public class MainActivity extends ComponentActivity {
     private DashboardRenderer renderer;
     private FrameLayout root;
     private LinearLayout dashboardScreen;
+    private LinearLayout dashboardContent;
+    private AllTasksUiState allTasksState = AllTasksUiState.empty();
     private TaskEditorCoordinator editorCoordinator;
     private int systemTopInset;
     private final RewardAnchorRegistry rewardAnchors = new RewardAnchorRegistry();
@@ -73,6 +78,22 @@ public class MainActivity extends ComponentActivity {
         buildShell();
         viewModel = new ViewModelProvider(this,
                 new TaskViewModel.Factory(container)).get(TaskViewModel.class);
+        allTasksViewModel = new ViewModelProvider(this,
+                new AllTasksViewModel.Factory(container)).get(AllTasksViewModel.class);
+        AllTasksCoordinator allTasks = new AllTasksCoordinator(allTasksViewModel,
+                new AllTasksCoordinator.Host() {
+                    @Override public void openEditor(TaskId taskId,
+                                                     java.util.Optional<TaskStepId> stepId,
+                                                     boolean addStep) {
+                        viewModel.openEditorForStep(taskId.value,
+                                stepId.map(value -> value.value).orElse(null), addStep);
+                    }
+                    @Override public void confirmDelete(TaskId taskId, String title) {
+                        confirmManagementDelete(taskId, title);
+                    }
+                });
+        renderer = new DashboardRenderer(this, scroll, dashboardContent,
+                this::handleDashboardEvent, versionName(), rewardAnchors, allTasks);
         editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
                 new TaskEditorView.Listener() {
                     @Override public void onDraftChanged(EditorUiState draft) {
@@ -98,6 +119,16 @@ public class MainActivity extends ComponentActivity {
                 container.texts, container.updateConfiguration.automaticChecksEnabled);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
+        viewModel.catalogChanges().observe(this, ignored -> allTasksViewModel.reload());
+        allTasksViewModel.state().observe(this, value -> {
+            allTasksState = value;
+            if (uiState != null) render(uiState);
+        });
+        allTasksViewModel.events().observe(this, this::handleEvent);
+        allTasksViewModel.contentChanges().observe(this, ignored -> {
+            viewModel.load();
+            container.widgetUpdates.updateAll();
+        });
         viewModel.rewardEffects().observe(this, this::handleRewardEffects);
         updates.state().observe(this, this::renderUpdate);
         updates.effects().observe(this, updates::handleEffect);
@@ -155,6 +186,7 @@ public class MainActivity extends ComponentActivity {
         scroll.setFillViewport(true);
         scroll.setClipToPadding(false);
         LinearLayout content = new LinearLayout(this);
+        dashboardContent = content;
         content.setId(R.id.dashboard_content);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setLayoutTransition(new LayoutTransition());
@@ -164,9 +196,6 @@ public class MainActivity extends ComponentActivity {
         footer = new FooterNavigationView(this, destination -> viewModel.navigate(destination));
         screen.addView(footer, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
-        renderer = new DashboardRenderer(this, scroll, content, this::handleDashboardEvent,
-                versionName(),
-                rewardAnchors, allTasksListener());
         rewardAnimator = new RewardAnimator(root, header, rewardAnchors);
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -225,11 +254,15 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void render(DashboardUiState state) {
+        boolean enteringAll = uiState == null || uiState.navigation
+                != NavigationDestination.ALL_TASKS;
         uiState = state;
+        if (state.navigation == NavigationDestination.ALL_TASKS && enteringAll)
+            allTasksViewModel.reload();
         forest.setPalette(state.palette);
         header.bind(container.clock.time(), state.palette, state.dashboard.xpProgress);
         footer.bind(state.navigation, state.palette);
-        renderer.render(state);
+        renderer.render(state, allTasksState);
         boolean light = luminance(state.palette.background) > .55;
         WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(),
                 getWindow().getDecorView());
@@ -291,6 +324,13 @@ public class MainActivity extends ComponentActivity {
                         (dialog, which) -> viewModel.delete(taskId)).show();
     }
 
+    private void confirmManagementDelete(TaskId taskId, String title) {
+        new AlertDialog.Builder(this).setTitle(getString(R.string.delete_task_title, title))
+                .setMessage(R.string.delete_task_loss).setNegativeButton(R.string.keep, null)
+                .setPositiveButton(R.string.delete,
+                        (dialog, which) -> allTasksViewModel.delete(taskId)).show();
+    }
+
     private void confirmClose(String taskId, String title) {
         new AlertDialog.Builder(this).setTitle(R.string.close_task_title)
                 .setMessage(getString(R.string.close_task_message, title))
@@ -315,50 +355,6 @@ public class MainActivity extends ComponentActivity {
         else if (event.type == UiEvent.Type.OPEN_APP_SETTINGS)
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName())));
-    }
-
-    private AllTasksView.Listener allTasksListener() {
-        return new AllTasksView.Listener() {
-            @Override public void onQuery(String query) { viewModel.updateAllQuery(query); }
-            @Override public void onStatus(AllTasksUiState.Status status) {
-                viewModel.updateAllStatus(status);
-            }
-            @Override public void onSlots(java.util.Set<TaskSlot> slots) {
-                viewModel.updateAllSlots(slots);
-            }
-            @Override public void onRecurrences(java.util.Set<
-                    de.thonktank.autosecretary.domain.model.Recurrence> recurrences) {
-                viewModel.updateAllRecurrences(recurrences);
-            }
-            @Override public void onWeekday(int weekday) { viewModel.updateAllWeekday(weekday); }
-            @Override public void onMode(AllTasksUiState.Mode mode) {
-                viewModel.updateAllMode(mode);
-            }
-            @Override public void onToggleTask(String taskId) {
-                viewModel.toggleAllTask(taskId);
-            }
-            @Override public void onEditTask(String taskId) { viewModel.openEditor(taskId); }
-            @Override public void onEditStep(String taskId, String stepId) {
-                viewModel.openEditorForStep(taskId, stepId, false);
-            }
-            @Override public void onAddStep(String taskId) {
-                viewModel.openEditorForStep(taskId, null, true);
-            }
-            @Override public void onDeleteTask(String taskId, String title) {
-                viewModel.requestDelete(taskId, title);
-            }
-            @Override public void onMoveSchedule(String entryId, TaskSlot slot,
-                                                 String beforeEntryId) {
-                viewModel.moveScheduleEntry(entryId, slot, beforeEntryId);
-            }
-            @Override public void onMoveStep(String stepId, String taskId,
-                                             String beforeStepId) {
-                viewModel.moveStep(stepId, taskId, beforeStepId);
-            }
-            @Override public void onSwapSteps(String stepId, String targetStepId) {
-                viewModel.swapSteps(stepId, targetStepId);
-            }
-        };
     }
 
     private void handleRewardEffects(RewardEffectQueue.Snapshot snapshot) {

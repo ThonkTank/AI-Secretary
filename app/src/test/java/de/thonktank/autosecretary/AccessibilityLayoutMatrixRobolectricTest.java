@@ -135,11 +135,11 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, "test");
+                event -> { }, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         DashboardFixtures.fullDashboard(), CalendarUiState.empty(), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
-                        EditorUiState.closed()));
+                        EditorUiState.closed()), AllTasksUiState.empty());
         measure(scroll, dp(context, widthDp), dp(context, 8_000));
         View focus = content.findViewById(R.id.dashboard_focus);
         assertNotNull(label(widthDp, fontScale), focus);

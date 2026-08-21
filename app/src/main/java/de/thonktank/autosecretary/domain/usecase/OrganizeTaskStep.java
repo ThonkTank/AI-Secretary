@@ -7,6 +7,7 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 import java.util.ArrayList;
@@ -20,27 +21,29 @@ public final class OrganizeTaskStep {
 
     public OrganizeTaskStep(TaskRepository repository) { this.repository = repository; }
 
-    public void move(String stepId, TaskId targetTaskId, String beforeStepId) {
-        execute(stepId, targetTaskId, beforeStepId, false);
+    public StepOrganizationResult move(StepMoveRequest request) {
+        return execute(request.stepId.value, request.targetTaskId,
+                request.beforeStepId.map(value -> value.value).orElse(null), false);
     }
 
-    public void swap(String stepId, String targetStepId) {
-        TaskStepTemplate target = find(targetStepId);
-        if (target == null) return;
-        execute(stepId, target.taskId, targetStepId, true);
+    public StepOrganizationResult swap(StepSwapRequest request) {
+        TaskStepTemplate target = find(request.targetStepId.value);
+        if (target == null) return StepOrganizationResult.NOT_FOUND;
+        return execute(request.stepId.value, target.taskId, request.targetStepId.value, true);
     }
 
-    private void execute(String stepId, TaskId targetTaskId, String targetStepId,
-                         boolean swap) {
-        repository.inTransaction(() -> {
+    private StepOrganizationResult execute(String stepId, TaskId targetTaskId,
+                                           String targetStepId, boolean swap) {
+        return repository.inTransaction(() -> {
             TaskStepTemplate moving = find(stepId);
             TaskStepTemplate targetStep = swap ? find(targetStepId) : null;
-            if (moving == null || swap && targetStep == null || moving.id.equals(targetStepId))
-                return null;
+            if (moving == null || swap && targetStep == null)
+                return StepOrganizationResult.NOT_FOUND;
+            if (moving.id.equals(targetStepId)) return StepOrganizationResult.UNCHANGED;
             Task sourceTask = active(moving.taskId);
             Task targetTask = active(targetTaskId);
             if (sourceTask == null || targetTask == null)
-                throw new IllegalArgumentException("Schritte können nur zwischen aktiven Aufgaben verschoben werden.");
+                return StepOrganizationResult.REJECTED_INACTIVE_TASK;
 
             List<TaskStepTemplate> source = new ArrayList<>(repository.templates(moving.taskId));
             List<TaskStepTemplate> target = moving.taskId.equals(targetTaskId)
@@ -55,7 +58,7 @@ public final class OrganizeTaskStep {
                     repository.insertTemplates(resequence(source, sourceTask));
                     resequenceOpen(sourceTask.id);
                 }
-                return null;
+                return StepOrganizationResult.SWAPPED;
             }
             remove(source, moving.id);
             if (swap) {
@@ -76,7 +79,7 @@ public final class OrganizeTaskStep {
             reparentCombo(moving.id, targetTaskId);
             if (swap) reparentCombo(targetStep.id, moving.taskId);
             syncOpenSnapshots(moving, targetStep, targetTaskId, swap);
-            return null;
+            return swap ? StepOrganizationResult.SWAPPED : StepOrganizationResult.MOVED;
         });
     }
 

@@ -64,13 +64,14 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         screen.addView(footer, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
         DashboardRenderer renderer = new DashboardRenderer(this, scroll, content,
-                event -> { }, "preview");
+                event -> { }, "preview", new RewardAnchorRegistry(),
+                new AllTasksView.Listener() { });
         java.util.List<CalendarEventSnapshot> events = DebugPreviewFixtures.referenceCalendar(preview);
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         TodayUiModel.compose(dashboard, events),
                         CalendarUiState.from(new CalendarResult.Success(events)), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
-                        EditorUiState.closed()));
+                        EditorUiState.closed()), AllTasksUiState.empty());
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             screen.setPadding(0, bars.top, 0, 0);

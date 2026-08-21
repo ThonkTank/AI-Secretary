@@ -23,6 +23,7 @@ import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.ScheduleEntryId;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
@@ -31,6 +32,7 @@ import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
+import de.thonktank.autosecretary.domain.usecase.ScheduleMoveRequest;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
@@ -54,6 +56,7 @@ import java.util.List;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
@@ -72,12 +75,15 @@ public final class PresentationStateRobolectricTest {
     private final RecordingLogger logger = new RecordingLogger();
     private final AtomicInteger ids = new AtomicInteger();
     private TaskViewModel viewModel;
+    private final List<String> databaseQueries = new CopyOnWriteArrayList<>();
 
     @Before public void setUp() {
         context = ApplicationProvider.getApplicationContext();
         context.deleteSharedPreferences("forest_ui");
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
-                .allowMainThreadQueries().build();
+                .allowMainThreadQueries()
+                .setQueryCallback((sql, arguments) -> databaseQueries.add(sql), Runnable::run)
+                .build();
         repository = new RoomTaskRepository(database);
         IdGenerator idGenerator = () -> "presentation-" + ids.incrementAndGet();
         tasks = new TaskUseCases(repository, clock, idGenerator);
@@ -226,6 +232,57 @@ public final class PresentationStateRobolectricTest {
         viewModel.updateUpdateState(UpdateUiState.checking());
         assertEquals(UpdateUiState.Status.CHECKING, value().update.status);
         assertSame(dashboardBefore, value().dashboard);
+    }
+
+    @Test public void todayRefreshDoesNotExecuteTheManagementCatalogQuery() {
+        viewModel = newViewModel(new SavedStateHandle());
+        databaseQueries.clear();
+
+        viewModel.load();
+
+        long unfilteredTaskInventoryReads = databaseQueries.stream()
+                .map(value -> value.trim().toLowerCase(java.util.Locale.ROOT))
+                .filter(value -> value.equals("select * from tasks"))
+                .count();
+        assertEquals("Today may load tasks once for its dashboard, but not again for Alles",
+                1L, unfilteredTaskInventoryReads);
+    }
+
+    @Test public void managementViewModelOwnsCatalogAndRestoresOnlyThroughSavedStateAdapter() {
+        SavedStateHandle handle = new SavedStateHandle();
+        AllTasksViewModel management = new AllTasksViewModel(tasks.loadTaskCatalog,
+                tasks.moveScheduleEntry, tasks.organizeTaskStep, tasks.delete,
+                new AndroidUiTextProvider(context), handle, new DirectExecutor());
+
+        management.updateQuery("Gym");
+        management.updateStatus(AllTasksUiState.Status.ALL);
+        management.updateSlots(java.util.EnumSet.of(TaskSlot.EVENING));
+
+        android.os.Bundle stored = handle.get("all_tasks_filter");
+        AllTasksFilter restored = new AllTasksSavedStateAdapter().decode(stored);
+        assertEquals("Gym", restored.query);
+        assertEquals(AllTasksUiState.Status.ALL, restored.status);
+        assertEquals(java.util.EnumSet.of(TaskSlot.EVENING), restored.slots);
+        assertNotNull(management.state().getValue());
+        management.onCleared();
+    }
+
+    @Test public void managementCommandPublishesItsOwnCatalogAndTypedChangeResult() {
+        tasks.create.execute("Sortieren", TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
+                Collections.emptyList(), false, "");
+        de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
+        String entryId = repository.scheduleEntries(task.id).get(0).id;
+        AllTasksViewModel management = new AllTasksViewModel(tasks.loadTaskCatalog,
+                tasks.moveScheduleEntry, tasks.organizeTaskStep, tasks.delete,
+                new AndroidUiTextProvider(context), new SavedStateHandle(), new DirectExecutor());
+
+        management.moveSchedule(new ScheduleMoveRequest(ScheduleEntryId.of(entryId),
+                TaskSlot.EVENING, java.util.Optional.empty()));
+
+        assertEquals(TaskSlot.EVENING, repository.scheduleEntries(task.id).get(0).slot);
+        assertEquals(Long.valueOf(1L), management.contentChanges().getValue());
+        assertEquals(TaskSlot.EVENING, management.state().getValue().schedule.get(0).slot);
+        management.onCleared();
     }
 
     private TaskViewModel newViewModel(SavedStateHandle handle) {

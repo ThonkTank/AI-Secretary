@@ -2,7 +2,6 @@ package de.thonktank.autosecretary;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -18,7 +17,9 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
+import de.thonktank.autosecretary.domain.model.ScheduleEntryId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
@@ -26,6 +27,10 @@ import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.MoveScheduleEntry;
 import de.thonktank.autosecretary.domain.usecase.OrganizeTaskStep;
+import de.thonktank.autosecretary.domain.usecase.ScheduleMoveResult;
+import de.thonktank.autosecretary.domain.usecase.ScheduleMoveRequest;
+import de.thonktank.autosecretary.domain.usecase.StepMoveRequest;
+import de.thonktank.autosecretary.domain.usecase.StepSwapRequest;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 
 import org.junit.After;
@@ -71,7 +76,7 @@ public final class AllTasksFeatureRobolectricTest {
         TaskScheduleEntry morning = repository.scheduleEntries(task.id).stream()
                 .filter(value -> value.slot == TaskSlot.MORNING).findFirst().orElseThrow();
 
-        new MoveScheduleEntry(repository, clock).execute(morning.id, TaskSlot.MIDDAY, null);
+        new MoveScheduleEntry(repository, clock).execute(move(morning.id, TaskSlot.MIDDAY, null));
 
         assertTrue(repository.scheduleEntries(task.id).stream()
                 .anyMatch(value -> value.slot == TaskSlot.MIDDAY));
@@ -79,9 +84,9 @@ public final class AllTasksFeatureRobolectricTest {
                 .anyMatch(value -> value.slot == TaskSlot.EVENING));
         assertTrue(repository.openOccurrences().stream()
                 .anyMatch(value -> value.slot == TaskSlot.MIDDAY));
-        assertThrows(IllegalArgumentException.class, () ->
-                new MoveScheduleEntry(repository, clock).execute(morning.id,
-                        TaskSlot.EVENING, null));
+        assertEquals(ScheduleMoveResult.REJECTED_DUPLICATE_SLOT,
+                new MoveScheduleEntry(repository, clock).execute(
+                        move(morning.id, TaskSlot.EVENING, null)));
     }
 
     @Test public void reorderingOneSlotAlsoReordersItsOpenTodayRows() {
@@ -95,8 +100,8 @@ public final class AllTasksFeatureRobolectricTest {
         TaskScheduleEntry firstEntry = repository.scheduleEntries(first.id).get(0);
         TaskScheduleEntry secondEntry = repository.scheduleEntries(second.id).get(0);
 
-        new MoveScheduleEntry(repository, clock).execute(secondEntry.id,
-                TaskSlot.MORNING, firstEntry.id);
+        new MoveScheduleEntry(repository, clock).execute(
+                move(secondEntry.id, TaskSlot.MORNING, firstEntry.id));
 
         assertTrue(repository.scheduleEntries(second.id).get(0).displayOrder
                 < repository.scheduleEntries(first.id).get(0).displayOrder);
@@ -118,7 +123,8 @@ public final class AllTasksFeatureRobolectricTest {
                 .filter(value -> moving.id.equals(value.sourceTemplateId)).findFirst().orElseThrow();
         new ToggleStep(repository, clock).execute(snapshot.id);
 
-        new OrganizeTaskStep(repository).move(moving.id, target.id, null);
+        new OrganizeTaskStep(repository).move(new StepMoveRequest(
+                TaskStepId.of(moving.id), target.id, java.util.Optional.empty()));
 
         TaskStepTemplate moved = repository.templates(target.id).stream()
                 .filter(value -> value.id.equals(moving.id)).findFirst().orElseThrow();
@@ -138,7 +144,8 @@ public final class AllTasksFeatureRobolectricTest {
         TaskStepTemplate first = repository.templates(task.id).get(0);
         TaskStepTemplate second = repository.templates(task.id).get(1);
 
-        new OrganizeTaskStep(repository).swap(first.id, second.id);
+        new OrganizeTaskStep(repository).swap(new StepSwapRequest(
+                TaskStepId.of(first.id), TaskStepId.of(second.id)));
 
         assertEquals(second.id, repository.templates(task.id).get(0).id);
         assertEquals(first.id, repository.templates(task.id).get(1).id);
@@ -158,7 +165,8 @@ public final class AllTasksFeatureRobolectricTest {
         Occurrence sourceOccurrence = occurrence(source.id);
         String snapshotId = repository.occurrenceSteps(sourceOccurrence.id).get(0).id;
 
-        new OrganizeTaskStep(repository).move(moving.id, target.id, null);
+        new OrganizeTaskStep(repository).move(new StepMoveRequest(
+                TaskStepId.of(moving.id), target.id, java.util.Optional.empty()));
 
         assertTrue(repository.templates(source.id).isEmpty());
         assertEquals(moving.id, repository.templates(target.id).stream()
@@ -170,6 +178,11 @@ public final class AllTasksFeatureRobolectricTest {
     private Occurrence occurrence(TaskId id) {
         return repository.openOccurrences().stream().filter(value -> value.taskId.equals(id))
                 .findFirst().orElseThrow();
+    }
+
+    private static ScheduleMoveRequest move(String id, TaskSlot slot, String before) {
+        return new ScheduleMoveRequest(ScheduleEntryId.of(id), slot,
+                java.util.Optional.ofNullable(before).map(ScheduleEntryId::of));
     }
 
     private void create(String title, TaskSlot slot, Recurrence recurrence,

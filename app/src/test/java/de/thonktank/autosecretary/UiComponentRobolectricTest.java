@@ -102,16 +102,17 @@ public final class UiComponentRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, "1.0");
+                event -> { }, "1.0", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
         DayPalette morning = DayPalette.at(LocalTime.of(8, 0), DayPalette.Mode.AUTO);
         DashboardUiState first = state(morning);
 
-        renderer.render(first);
+        renderer.render(first, AllTasksUiState.empty());
         View focus = content.findViewById(R.id.dashboard_focus);
         focus.setFocusableInTouchMode(true);
         focus.requestFocus();
 
-        renderer.render(state(DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)));
+        renderer.render(state(DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)),
+                AllTasksUiState.empty());
 
         assertSame(focus, content.findViewById(R.id.dashboard_focus));
         assertSame(focus, content.findFocus());

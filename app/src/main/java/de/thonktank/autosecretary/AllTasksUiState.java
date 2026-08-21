@@ -1,7 +1,5 @@
 package de.thonktank.autosecretary;
 
-import android.os.Bundle;
-
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskCatalog;
@@ -13,7 +11,6 @@ import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -25,6 +22,7 @@ public final class AllTasksUiState {
     public enum Status { ACTIVE, ARCHIVED, ALL }
 
     public final TaskCatalog catalog;
+    public final AllTasksFilter filter;
     public final String query;
     public final Status status;
     public final Set<TaskSlot> slots;
@@ -36,85 +34,51 @@ public final class AllTasksUiState {
     public final List<TaskItem> tasks;
     public final List<ScheduleItem> schedule;
 
-    private AllTasksUiState(TaskCatalog catalog, String query, Status status,
-                            Set<TaskSlot> slots, Set<Recurrence> recurrences, int weekday,
-                            Mode mode, Set<String> expandedTaskIds) {
+    private AllTasksUiState(TaskCatalog catalog, AllTasksFilter filter) {
         this.catalog = catalog == null ? new TaskCatalog(Collections.emptyList()) : catalog;
-        this.query = query == null ? "" : query;
-        this.status = status == null ? Status.ACTIVE : status;
-        this.slots = Collections.unmodifiableSet(copySlots(slots));
-        this.recurrences = Collections.unmodifiableSet(copyRecurrences(recurrences));
-        this.weekday = weekday < 0 || weekday > 7 ? 0 : weekday;
-        this.mode = mode == null ? Mode.LIST : mode;
-        this.expandedTaskIds = Collections.unmodifiableSet(new LinkedHashSet<>(
-                expandedTaskIds == null ? Collections.emptySet() : expandedTaskIds));
+        this.filter = filter == null ? AllTasksFilter.defaults() : filter;
+        this.query = this.filter.query;
+        this.status = this.filter.status;
+        this.slots = this.filter.slots;
+        this.recurrences = this.filter.recurrences;
+        this.weekday = this.filter.weekday;
+        this.mode = this.filter.mode;
+        this.expandedTaskIds = this.filter.expandedTaskIds;
         this.tasks = Collections.unmodifiableList(projectTasks());
         this.schedule = Collections.unmodifiableList(projectSchedule());
     }
 
     public static AllTasksUiState empty() {
-        return new AllTasksUiState(null, "", Status.ACTIVE, Collections.emptySet(),
-                Collections.emptySet(), 0, Mode.LIST, Collections.emptySet());
+        return new AllTasksUiState(null, AllTasksFilter.defaults());
+    }
+
+    public static AllTasksUiState from(TaskCatalog catalog, AllTasksFilter filter) {
+        return new AllTasksUiState(catalog, filter);
     }
 
     public AllTasksUiState withCatalog(TaskCatalog value) {
-        return copy(value, query, status, slots, recurrences, weekday, mode, expandedTaskIds);
+        return new AllTasksUiState(value, filter);
     }
     public AllTasksUiState withQuery(String value) {
-        return copy(catalog, value, status, slots, recurrences, weekday, mode, expandedTaskIds);
+        return new AllTasksUiState(catalog, filter.withQuery(value));
     }
     public AllTasksUiState withStatus(Status value) {
-        return copy(catalog, query, value, slots, recurrences, weekday, mode, expandedTaskIds);
+        return new AllTasksUiState(catalog, filter.withStatus(value));
     }
     public AllTasksUiState withSlots(Set<TaskSlot> value) {
-        return copy(catalog, query, status, value, recurrences, weekday, mode, expandedTaskIds);
+        return new AllTasksUiState(catalog, filter.withSlots(value));
     }
     public AllTasksUiState withRecurrences(Set<Recurrence> value) {
-        return copy(catalog, query, status, slots, value, weekday, mode, expandedTaskIds);
+        return new AllTasksUiState(catalog, filter.withRecurrences(value));
     }
     public AllTasksUiState withWeekday(int value) {
-        return copy(catalog, query, status, slots, recurrences, value, mode, expandedTaskIds);
+        return new AllTasksUiState(catalog, filter.withWeekday(value));
     }
     public AllTasksUiState withMode(Mode value) {
-        return copy(catalog, query, status, slots, recurrences, weekday, value, expandedTaskIds);
+        return new AllTasksUiState(catalog, filter.withMode(value));
     }
     public AllTasksUiState toggleExpanded(String taskId) {
-        Set<String> values = new LinkedHashSet<>(expandedTaskIds);
-        if (!values.add(taskId)) values.remove(taskId);
-        return copy(catalog, query, status, slots, recurrences, weekday, mode, values);
-    }
-
-    public Bundle controlsBundle() {
-        Bundle value = new Bundle();
-        value.putString("query", query); value.putString("status", status.name());
-        value.putString("mode", mode.name()); value.putInt("weekday", weekday);
-        ArrayList<String> slotValues = new ArrayList<>();
-        for (TaskSlot slot : slots) slotValues.add(slot.name());
-        value.putStringArrayList("slots", slotValues);
-        ArrayList<String> rhythms = new ArrayList<>();
-        for (Recurrence recurrence : recurrences) rhythms.add(recurrence.name());
-        value.putStringArrayList("recurrences", rhythms);
-        value.putStringArrayList("expanded", new ArrayList<>(expandedTaskIds));
-        return value;
-    }
-
-    public static AllTasksUiState controlsFrom(Bundle value) {
-        if (value == null) return empty();
-        Set<TaskSlot> slots = EnumSet.noneOf(TaskSlot.class);
-        ArrayList<String> slotValues = value.getStringArrayList("slots");
-        if (slotValues != null) for (String stored : slotValues)
-            try { slots.add(TaskSlot.valueOf(stored)); } catch (IllegalArgumentException ignored) { }
-        Set<Recurrence> recurrences = EnumSet.noneOf(Recurrence.class);
-        ArrayList<String> rhythms = value.getStringArrayList("recurrences");
-        if (rhythms != null) for (String stored : rhythms)
-            try { recurrences.add(Recurrence.valueOf(stored)); }
-            catch (IllegalArgumentException ignored) { }
-        ArrayList<String> expanded = value.getStringArrayList("expanded");
-        return new AllTasksUiState(null, value.getString("query", ""),
-                enumValue(Status.class, value.getString("status"), Status.ACTIVE),
-                slots, recurrences, value.getInt("weekday"),
-                enumValue(Mode.class, value.getString("mode"), Mode.LIST),
-                expanded == null ? Collections.emptySet() : new LinkedHashSet<>(expanded));
+        return new AllTasksUiState(catalog, filter.toggleExpanded(taskId));
     }
 
     private List<TaskItem> projectTasks() {
@@ -175,26 +139,6 @@ public final class AllTasksUiState {
             return (task.weekdayMask & 1 << (weekday - 1)) != 0;
         return task.nextDueOn != null
                 && task.nextDueOn.getDayOfWeek() == DayOfWeek.of(weekday);
-    }
-
-    private AllTasksUiState copy(TaskCatalog catalog, String query, Status status,
-                                 Set<TaskSlot> slots, Set<Recurrence> recurrences, int weekday,
-                                 Mode mode, Set<String> expanded) {
-        return new AllTasksUiState(catalog, query, status, slots, recurrences,
-                weekday, mode, expanded);
-    }
-
-    private static EnumSet<TaskSlot> copySlots(Set<TaskSlot> values) {
-        return values == null || values.isEmpty() ? EnumSet.noneOf(TaskSlot.class)
-                : EnumSet.copyOf(values);
-    }
-    private static EnumSet<Recurrence> copyRecurrences(Set<Recurrence> values) {
-        return values == null || values.isEmpty() ? EnumSet.noneOf(Recurrence.class)
-                : EnumSet.copyOf(values);
-    }
-    private static <T extends Enum<T>> T enumValue(Class<T> type, String value, T fallback) {
-        if (value == null) return fallback;
-        try { return Enum.valueOf(type, value); } catch (IllegalArgumentException error) { return fallback; }
     }
 
     public static final class TaskItem {

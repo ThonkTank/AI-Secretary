@@ -86,7 +86,7 @@ public final class DashboardCharacterizationTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, "test");
+                event -> { }, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
         TodayUiModel dashboardState = DashboardFixtures.today(10, java.util.Arrays.asList(
@@ -97,7 +97,7 @@ public final class DashboardCharacterizationTest {
                         TodayUiModel.compose(dashboardState, events),
                         CalendarUiState.from(new CalendarResult.Success(events)), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
-                        EditorUiState.closed()));
+                        EditorUiState.closed()), AllTasksUiState.empty());
 
         LinearLayout timeline = content.findViewById(R.id.dashboard_timeline);
         List<String> text = new ArrayList<>();

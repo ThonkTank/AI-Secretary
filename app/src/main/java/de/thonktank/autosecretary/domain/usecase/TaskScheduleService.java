@@ -58,30 +58,34 @@ public final class TaskScheduleService {
         repository.putScheduleEntries(writes);
     }
 
-    public void move(String entryId, TaskSlot targetSlot, String beforeEntryId) {
-        repository.inTransaction(() -> {
+    public ScheduleMoveResult move(ScheduleMoveRequest request) {
+        return repository.inTransaction(() -> {
             TaskSchedule schedule = new TaskSchedule(repository.scheduleEntries());
             TaskScheduleEntry moving = null;
             for (TaskScheduleEntry entry : schedule.entries())
-                if (entry.id.equals(entryId)) moving = entry;
-            if (moving == null) return null;
+                if (entry.id.equals(request.entryId.value)) moving = entry;
+            if (moving == null) return ScheduleMoveResult.NOT_FOUND;
             Task task = repository.findTask(moving.taskId);
             if (task == null || task.archived || task.conditionDone)
-                throw new IllegalArgumentException("Nur aktive Aufgaben können sortiert werden.");
+                return ScheduleMoveResult.REJECTED_INACTIVE_TASK;
+            if (moving.slot != request.targetSlot && schedule.contains(
+                    moving.taskId, request.targetSlot))
+                return ScheduleMoveResult.REJECTED_DUPLICATE_SLOT;
 
             Occurrence open = openOccurrence(moving.taskId, moving.slot);
-            if (open != null && moving.slot != targetSlot
-                    && repository.findOccurrence(moving.taskId, open.scheduledOn, targetSlot) != null)
-                throw new IllegalArgumentException(
-                        "Das heutige Aufgabenblatt belegt diese Tageszeit bereits.");
+            if (open != null && moving.slot != request.targetSlot
+                    && repository.findOccurrence(moving.taskId, open.scheduledOn,
+                    request.targetSlot) != null)
+                return ScheduleMoveResult.REJECTED_TODAY_SLOT_OCCUPIED;
 
-            TaskSchedule.Mutation mutation = schedule.move(entryId, targetSlot, beforeEntryId);
-            if (!mutation.changed) return null;
+            TaskSchedule.Mutation mutation = schedule.move(request.entryId.value,
+                    request.targetSlot, request.beforeEntryId.map(value -> value.value).orElse(null));
+            if (!mutation.changed) return ScheduleMoveResult.NOT_FOUND;
             repository.putScheduleEntries(mutation.writes);
             if (open != null && mutation.sourceSlot != mutation.targetSlot)
                 repository.updateOccurrence(open.moveTo(mutation.targetSlot, open.sortOrder));
             reconcileOpenOrders(mutation.schedule, mutation.sourceSlot, mutation.targetSlot);
-            return null;
+            return ScheduleMoveResult.MOVED;
         });
     }
 

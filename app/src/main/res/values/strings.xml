@@ -158,6 +158,10 @@
     <string name="error_change_save">Die Änderung konnte nicht gespeichert werden. Bitte versuche es erneut.</string>
     <string name="error_task_missing">Die Aufgabe wurde nicht gefunden.</string>
     <string name="error_editor_load">Die Aufgabe konnte nicht zum Bearbeiten geladen werden.</string>
+    <string name="error_catalog_load">Die Aufgabenverwaltung konnte nicht geladen werden.</string>
+    <string name="error_management_inactive">Nur aktive Aufgaben können organisiert werden.</string>
+    <string name="error_schedule_duplicate">Die Aufgabe ist bereits in dieser Tageszeit eingeordnet.</string>
+    <string name="error_schedule_today_occupied">Das heutige Aufgabenblatt belegt diese Tageszeit bereits.</string>
     <string name="legacy_reset_title">Neuer, stabiler Start</string>
     <string name="legacy_reset_message">Die Testdaten der ersten Version wurden bewusst zurückgesetzt. Neue Aufgaben werden jetzt zuverlässig lokal gespeichert.</string>
     <string name="understood">Verstanden</string>

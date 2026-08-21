@@ -15,9 +15,22 @@ public final class MoveTask {
     }
 
     public void execute(TaskId id, TaskSlot slot) {
+        execute(id, null, slot);
+    }
+
+    public ScheduleMoveResult execute(TaskId id, TaskSlot sourceSlot, TaskSlot slot) {
         TaskScheduleEntry primary;
-        try { primary = schedules.load().primary(id); }
-        catch (IllegalStateException missingSchedule) { return; }
-        schedules.move(primary.id, slot, null);
+        try {
+            if (sourceSlot == null) primary = schedules.load().primary(id);
+            else {
+                primary = null;
+                for (TaskScheduleEntry entry : schedules.load().placements(id))
+                    if (entry.slot == sourceSlot) { primary = entry; break; }
+                if (primary == null) return ScheduleMoveResult.NOT_FOUND;
+            }
+        } catch (IllegalStateException missingSchedule) {
+            return ScheduleMoveResult.NOT_FOUND;
+        }
+        return schedules.move(ScheduleMoveRequest.toEnd(primary.id, slot));
     }
 }

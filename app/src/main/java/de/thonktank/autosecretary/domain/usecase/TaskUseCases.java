@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.TaskCatalogQuery;
 
 public final class TaskUseCases {
     public final CreateTask create;
@@ -22,7 +23,7 @@ public final class TaskUseCases {
     public final MaterializeDueOccurrences materializeDue;
     public final LoadDashboard loadDashboard;
     public final LoadTaskDetails loadTaskDetails;
-    public final LoadTaskCatalog loadTaskCatalog;
+    public final TaskCatalogQuery loadTaskCatalog;
     public final MoveScheduleEntry moveScheduleEntry;
     public final OrganizeTaskStep organizeTaskStep;
 

@@ -17,11 +17,10 @@ import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
-import de.thonktank.autosecretary.domain.model.TaskCatalog;
 import de.thonktank.autosecretary.domain.model.TaskId;
-import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
+import de.thonktank.autosecretary.domain.usecase.ScheduleMoveResult;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
@@ -42,7 +41,6 @@ import java.util.function.Supplier;
 public final class TaskViewModel extends ViewModel {
     private static final String NAVIGATION = "navigation";
     private static final String EDITOR = "editor";
-    private static final String ALL_TASKS = "all_tasks";
     private static final UiCommand REFRESH = new UiCommand(UiCommand.Kind.REFRESH, "today");
 
     private final TaskUseCases tasks;
@@ -59,6 +57,7 @@ public final class TaskViewModel extends ViewModel {
     private final ExecutorService worker;
     private final MutableLiveData<DashboardUiState> state = new MutableLiveData<>();
     private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
+    private final MutableLiveData<Long> catalogChanges = new MutableLiveData<>();
     private final RewardEffectQueue rewardQueue = new RewardEffectQueue();
     private final RepetitionInputReducer repetitionInputReducer = new RepetitionInputReducer();
     private final MutableLiveData<RewardEffectQueue.Snapshot> rewardEffects =
@@ -67,6 +66,7 @@ public final class TaskViewModel extends ViewModel {
     private final DashboardRefreshPolicy refreshPolicy = new DashboardRefreshPolicy();
     private DashboardUiState current;
     private LocalDate loadedDate;
+    private long catalogChangeVersion;
 
     TaskViewModel(AppContainer container, SavedStateHandle savedState, ExecutorService worker) {
         this(container.tasks, container.dashboardPresenter, container.calendar,
@@ -97,13 +97,12 @@ public final class TaskViewModel extends ViewModel {
         this.worker = worker;
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
         EditorUiState editor = EditorUiState.fromBundle(savedState.get(EDITOR));
-        AllTasksUiState allTasks = AllTasksUiState.controlsFrom(savedState.get(ALL_TASKS));
         DisplayPreferences display = preferences.displayPreferences();
         current = new DashboardUiState(navigation, TodayUiModel.empty(),
                 CalendarUiState.empty(), palette(display.themeMode),
                 CalendarPermissionStatus.UNKNOWN, false, Collections.emptySet(), editor,
                 RepetitionInputState.idle(), display.themeMode, display.focusStepLimit,
-                UpdateUiState.idle(), allTasks);
+                UpdateUiState.idle());
         state.setValue(current);
         displayPreferencesSubscription = preferences.observeDisplayPreferences(
                 this::onDisplayPreferences);
@@ -114,6 +113,7 @@ public final class TaskViewModel extends ViewModel {
 
     LiveData<DashboardUiState> state() { return state; }
     LiveData<UiEvent> events() { return events; }
+    LiveData<Long> catalogChanges() { return catalogChanges; }
     LiveData<RewardEffectQueue.Snapshot> rewardEffects() { return rewardEffects; }
 
     void acknowledgeRewardEffect(String id) {
@@ -246,6 +246,7 @@ public final class TaskViewModel extends ViewModel {
             try {
                 if (draft.taskId == null) tasks.create.execute(draft.definition());
                 else tasks.update.execute(TaskId.of(draft.taskId), draft.definition());
+                catalogChanges.postValue(++catalogChangeVersion);
                 Content content = loadContent();
                 savedState.set(EDITOR, null);
                 synchronized (stateLock) {
@@ -253,7 +254,6 @@ public final class TaskViewModel extends ViewModel {
                     actions.remove(key);
                     current = current.withContent(content.dashboard.withCalendar(
                                     content.calendar.events()), CalendarUiState.from(content.calendar))
-                            .withAllTasks(current.allTasks.withCatalog(content.catalog))
                             .withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
                 }
@@ -284,6 +284,7 @@ public final class TaskViewModel extends ViewModel {
         worker.execute(() -> {
             try {
                 tasks.delete.execute(TaskId.of(taskId));
+                catalogChanges.postValue(++catalogChangeVersion);
                 Content content = loadContent();
                 savedState.set(EDITOR, null);
                 synchronized (stateLock) {
@@ -291,7 +292,6 @@ public final class TaskViewModel extends ViewModel {
                     actions.remove(key);
                     current = current.withContent(content.dashboard.withCalendar(
                                     content.calendar.events()), CalendarUiState.from(content.calendar))
-                            .withAllTasks(current.allTasks.withCatalog(content.catalog))
                             .withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
                 }
@@ -391,70 +391,13 @@ public final class TaskViewModel extends ViewModel {
 
     void move(String taskId, @Nullable TaskSlot sourceSlot, TaskSlot targetSlot) {
         run(command(UiCommand.Kind.MOVE, taskId), () -> {
-            TaskCatalog.Item item = null;
-            for (TaskCatalog.Item candidate : tasks.loadTaskCatalog.execute().items)
-                if (candidate.task.id.equals(TaskId.of(taskId))) {
-                    item = candidate;
-                    break;
-                }
-            if (item == null) return;
-            TaskScheduleEntry selected = null;
-            for (TaskScheduleEntry entry : item.schedule)
-                if (sourceSlot == null || entry.slot == sourceSlot) {
-                    selected = entry;
-                    break;
-                }
-            if (selected == null) {
-                tasks.move.execute(TaskId.of(taskId), targetSlot);
-                return;
-            }
-            tasks.moveScheduleEntry.execute(selected.id, targetSlot, null);
+            ScheduleMoveResult result = tasks.move.execute(
+                    TaskId.of(taskId), sourceSlot, targetSlot);
+            if (result != ScheduleMoveResult.MOVED)
+                throw new IllegalArgumentException(scheduleMoveMessage(result));
         });
     }
     void delete(String taskId) { run(command(UiCommand.Kind.DELETE, taskId), () -> tasks.delete.execute(TaskId.of(taskId))); }
-
-    void updateAllQuery(String query) {
-        updateAll(value -> value.withQuery(query));
-    }
-
-    void updateAllStatus(AllTasksUiState.Status status) {
-        updateAll(value -> value.withStatus(status));
-    }
-
-    void updateAllSlots(Set<TaskSlot> slots) {
-        updateAll(value -> value.withSlots(slots));
-    }
-
-    void updateAllRecurrences(Set<Recurrence> recurrences) {
-        updateAll(value -> value.withRecurrences(recurrences));
-    }
-
-    void updateAllWeekday(int weekday) {
-        updateAll(value -> value.withWeekday(weekday));
-    }
-
-    void updateAllMode(AllTasksUiState.Mode mode) {
-        updateAll(value -> value.withMode(mode));
-    }
-
-    void toggleAllTask(String taskId) {
-        updateAll(value -> value.toggleExpanded(taskId));
-    }
-
-    void moveScheduleEntry(String entryId, TaskSlot slot, @Nullable String beforeEntryId) {
-        run(command(UiCommand.Kind.ORGANIZE, "schedule:" + entryId),
-                () -> tasks.moveScheduleEntry.execute(entryId, slot, beforeEntryId));
-    }
-
-    void moveStep(String stepId, String targetTaskId, @Nullable String beforeStepId) {
-        run(command(UiCommand.Kind.ORGANIZE, "step:" + stepId),
-                () -> tasks.organizeTaskStep.move(stepId, TaskId.of(targetTaskId), beforeStepId));
-    }
-
-    void swapSteps(String stepId, String targetStepId) {
-        run(command(UiCommand.Kind.ORGANIZE, "step:" + stepId),
-                () -> tasks.organizeTaskStep.swap(stepId, targetStepId));
-    }
 
     static UiCommand command(UiCommand.Kind kind, String id) {
         return new UiCommand(kind, id);
@@ -493,8 +436,7 @@ public final class TaskViewModel extends ViewModel {
     private Content loadContent() {
         LocalDate today = clock.today();
         DashboardPresenter.Refresh refresh = dashboard.refreshWithChanges();
-        return new Content(refresh.dashboard, calendar.loadToday(), refresh.persistedChanges, today,
-                tasks.loadTaskCatalog.execute());
+        return new Content(refresh.dashboard, calendar.loadToday(), refresh.persistedChanges, today);
     }
 
     private boolean begin(UiCommand key, boolean loading) {
@@ -515,8 +457,7 @@ public final class TaskViewModel extends ViewModel {
             actions.remove(key);
             CalendarUiState calendarState = CalendarUiState.from(content.calendar);
             current = current.withContent(content.dashboard.withCalendar(content.calendar.events()),
-                    calendarState).withAllTasks(current.allTasks.withCatalog(content.catalog))
-                    .withRunningActions(actions);
+                    calendarState).withRunningActions(actions);
             loadedDate = content.date;
             state.postValue(current);
         }
@@ -583,15 +524,6 @@ public final class TaskViewModel extends ViewModel {
         update(value -> value.withEditor(editor));
     }
 
-    private void updateAll(AllChange change) {
-        synchronized (stateLock) {
-            AllTasksUiState next = change.apply(current.allTasks);
-            savedState.set(ALL_TASKS, next.controlsBundle());
-            current = current.withAllTasks(next);
-            state.postValue(current);
-        }
-    }
-
     private void validate(String title, Recurrence recurrence, int weekdayMask,
                           boolean ongoing, String condition) {
         if (title == null || title.trim().isEmpty())
@@ -600,6 +532,16 @@ public final class TaskViewModel extends ViewModel {
             throw new IllegalArgumentException(texts.text(R.string.error_weekdays));
         if (ongoing && (condition == null || condition.trim().isEmpty()))
             throw new IllegalArgumentException(texts.text(R.string.error_condition));
+    }
+
+    private String scheduleMoveMessage(ScheduleMoveResult result) {
+        switch (result) {
+            case REJECTED_INACTIVE_TASK: return texts.text(R.string.error_management_inactive);
+            case REJECTED_DUPLICATE_SLOT: return texts.text(R.string.error_schedule_duplicate);
+            case REJECTED_TODAY_SLOT_OCCUPIED:
+                return texts.text(R.string.error_schedule_today_occupied);
+            default: return texts.text(R.string.error_task_missing);
+        }
     }
 
     @Override protected void onCleared() {
@@ -611,21 +553,18 @@ public final class TaskViewModel extends ViewModel {
     interface Action { void run(); }
     interface RewardAction { RewardReceipt run(); }
     interface StateChange { DashboardUiState apply(DashboardUiState state); }
-    interface AllChange { AllTasksUiState apply(AllTasksUiState state); }
 
     private static final class Content {
         final TodayUiModel dashboard;
         final CalendarResult calendar;
         final boolean persistedChanges;
         final LocalDate date;
-        final TaskCatalog catalog;
         Content(TodayUiModel dashboard, CalendarResult calendar, boolean persistedChanges,
-                LocalDate date, TaskCatalog catalog) {
+                LocalDate date) {
             this.dashboard = dashboard;
             this.calendar = calendar;
             this.persistedChanges = persistedChanges;
             this.date = date;
-            this.catalog = catalog;
         }
     }
 
