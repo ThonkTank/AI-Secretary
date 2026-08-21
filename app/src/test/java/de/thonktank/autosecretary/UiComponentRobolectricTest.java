@@ -177,7 +177,7 @@ public final class UiComponentRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(DashboardFixtures.taskWithSteps(), true, true,
+        focus.bind(DashboardFixtures.taskWithSteps(), true,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), event -> { });
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(500), View.MeasureSpec.AT_MOST));
@@ -200,18 +200,28 @@ public final class UiComponentRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         XpVesselView vessel = new XpVesselView(context);
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        de.thonktank.autosecretary.presentation.RewardTextFormatter formatter =
+                new de.thonktank.autosecretary.presentation.RewardTextFormatter(
+                        java.util.Locale.GERMANY);
+        vessel.setPalette(palette);
 
-        vessel.bind(23, 15, 1.5d, 1, 3, false, 1, palette);
+        vessel.bind(de.thonktank.autosecretary.presentation.today.XpVesselUiModel.of(
+                de.thonktank.autosecretary.domain.model.RewardBreakdown.fromStage(15, 1),
+                1, 3, false, formatter));
         assertEquals(23, vessel.renderedResult());
         assertEquals("15 × 1,5", vessel.renderedBreakdown());
         assertTrue(vessel.getContentDescription().toString().contains("23 XP erntbar"));
         assertTrue(vessel.getContentDescription().toString().contains("15 XP mal Faktor 1,5"));
 
-        vessel.bind(0, 0, 3.5d, 0, 3, false, 5, palette);
+        vessel.bind(de.thonktank.autosecretary.presentation.today.XpVesselUiModel.of(
+                de.thonktank.autosecretary.domain.model.RewardBreakdown.fromStage(0, 5),
+                0, 3, false, formatter));
         assertEquals(0, vessel.renderedResult());
         assertEquals("0 × 3,5", vessel.renderedBreakdown());
 
-        vessel.bind(125, 25, 5d, 3, 3, true, 8, palette);
+        vessel.bind(de.thonktank.autosecretary.presentation.today.XpVesselUiModel.of(
+                de.thonktank.autosecretary.domain.model.RewardBreakdown.fromStage(25, 8),
+                3, 3, true, formatter));
         assertEquals(125, vessel.renderedResult());
         assertEquals("25 × 5", vessel.renderedBreakdown());
         assertTrue(vessel.getContentDescription().toString().contains("125 XP erntbar"));
@@ -243,7 +253,7 @@ public final class UiComponentRobolectricTest {
         assertEquals(style.dp(56), headerClip[6], .001f);
 
         FocusTaskView focus = new FocusTaskView(activity);
-        focus.bind(DashboardFixtures.taskWithSteps(), false, true, palette, event -> { });
+        focus.bind(DashboardFixtures.taskWithSteps(), false, palette, event -> { });
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(800), View.MeasureSpec.EXACTLY));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -272,7 +282,12 @@ public final class UiComponentRobolectricTest {
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
         XpVesselView vessel = new XpVesselView(activity);
         root.addView(vessel, new FrameLayout.LayoutParams(104, 104));
-        vessel.bind(30, 3, 3, true, 5, palette);
+        vessel.setPalette(palette);
+        vessel.bind(de.thonktank.autosecretary.presentation.today.XpVesselUiModel.of(
+                de.thonktank.autosecretary.domain.model.RewardBreakdown.fromStage(30, 5),
+                3, 3, true,
+                new de.thonktank.autosecretary.presentation.RewardTextFormatter(
+                        java.util.Locale.GERMANY)));
         HeaderView header = new HeaderView(activity, () -> { });
         root.addView(header, new FrameLayout.LayoutParams(600, 164));
         header.bind(LocalTime.NOON, palette,
@@ -292,20 +307,21 @@ public final class UiComponentRobolectricTest {
     @Test public void repetitionStepperRoundTripsThroughReducerBeforeRendering() {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
-        FocusStepUiModel set = FocusStepUiModel.of("set-step", "Beinpresse",
-                "3 × 12", "23 kg", false,
-                RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(10)),
-                2, 15, 0);
-        TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
-                TaskSlot.MORNING, "", "Beinpresse", Recurrence.DAILY,
-                Collections.singletonList(set), 1, false, false, false, false,
-                2, 1_000L, 15, 0, 0, false);
+        FocusStepUiModel set = FocusTaskFixtures.step("set-step", "Beinpresse")
+                .amount("3 × 12").note("23 kg")
+                .repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.singletonList(10))).combo(1).build();
+        de.thonktank.autosecretary.presentation.today.FocusTaskUiModel task =
+                FocusTaskFixtures.task("training", "Training")
+                        .occurrence("training-today").slot(TaskSlot.MORNING)
+                        .recurrence(Recurrence.DAILY).combo(2).rewardBase(5)
+                        .steps(Collections.singletonList(set)).build();
         AtomicReference<RepetitionInputState> input =
                 new AtomicReference<>(RepetitionInputState.idle());
         AtomicReference<RepetitionInputReducer.Submission> submitted = new AtomicReference<>();
-        TodayUiModel dashboard = new TodayUiModel(0,
+        TodayUiModel dashboard = new TodayUiModel(
                 new de.thonktank.autosecretary.domain.model.XpProgress(0),
-                Collections.singletonList(task), task);
+                task, Collections.emptyList(), Collections.emptyList());
         RepetitionInputReducer reducer = new RepetitionInputReducer();
         FocusTaskView focus = new FocusTaskView(context);
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
@@ -314,7 +330,7 @@ public final class UiComponentRobolectricTest {
             input.set(result.state);
             if (result.submission != null) submitted.set(result.submission);
         };
-        focus.bind(task, false, false, palette, FocusStepLimit.AUTO,
+        focus.bind(task, false, palette, FocusStepLimit.AUTO,
                 input.get(), events);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
@@ -325,7 +341,7 @@ public final class UiComponentRobolectricTest {
         assertEquals(13, input.get().valueFor(set));
         assertEquals("12", ((TextView) focus.findViewById(R.id.rep_stepper_value))
                 .getText().toString());
-        focus.bind(task, false, false, palette, FocusStepLimit.AUTO, input.get(), events);
+        focus.bind(task, false, palette, FocusStepLimit.AUTO, input.get(), events);
         assertEquals("13", ((TextView) focus.findViewById(R.id.rep_stepper_value))
                 .getText().toString());
         DewDotView dew = firstDew(focus);
@@ -335,7 +351,7 @@ public final class UiComponentRobolectricTest {
         assertFalse(submitted.get().correction());
         assertNull(input.get().stepId);
 
-        focus.bind(task, false, false, palette, FocusStepLimit.AUTO,
+        focus.bind(task, false, palette, FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), events);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
@@ -354,16 +370,18 @@ public final class UiComponentRobolectricTest {
     @Test public void completedStepsCollapseIntoTheDoneStatus() {
         Context context = ApplicationProvider.getApplicationContext();
         java.util.List<Integer> full = Arrays.asList(10, 11, 12);
-        FocusStepUiModel set = FocusStepUiModel.of("set-step", "Beinpresse",
-                "3 × 12", "23 kg", true,
-                RepetitionProgressUiModel.sets(3, 12, full), 2, 15, 15);
+        FocusStepUiModel set = FocusTaskFixtures.step("set-step", "Beinpresse")
+                .amount("3 × 12").note("23 kg").done(true)
+                .repetition(RepetitionProgressUiModel.sets(3, 12, full))
+                .combo(1).earnedXp(15).build();
         FocusStepUiModel next = FocusStepUiModel.of("next", "Duschen", false);
-        TaskSnapshot task = new TaskSnapshot("training", "training-today", "Training",
-                TaskSlot.MORNING, "", "", Recurrence.DAILY,
-                Arrays.asList(set, next), 1, false, false, false, false,
-                2, 1_000L, 15, 15, 0, true);
+        de.thonktank.autosecretary.presentation.today.FocusTaskUiModel task =
+                FocusTaskFixtures.task("training", "Training")
+                        .occurrence("training-today").slot(TaskSlot.MORNING)
+                        .recurrence(Recurrence.DAILY).combo(2).rewardBase(5)
+                        .harvestReady(true).steps(Arrays.asList(set, next)).build();
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+        focus.bind(task, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
                 event -> { });
         java.util.List<String> texts = new java.util.ArrayList<>();
         for (View view : descendants(focus))

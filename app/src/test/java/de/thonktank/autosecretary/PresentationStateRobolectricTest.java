@@ -112,21 +112,22 @@ public final class PresentationStateRobolectricTest {
 
         assertEquals(5, model.timeline.size());
         assertEquals("Urlaub", model.timeline.get(0).event.title);
-        assertTrue(model.timeline.stream().noneMatch(item ->
-                item.task != null && item.task.done));
+        assertTrue(model.timeline.stream().filter(item -> item.task != null)
+                .noneMatch(item -> model.completedToday.stream().anyMatch(done ->
+                        done.occurrenceId.equals(item.task.occurrenceId))));
         assertEquals(1, model.completedToday.size());
-        assertEquals("done", model.completedToday.get(0).taskId);
-        assertEquals("steps", model.firstOpen().taskId);
+        assertEquals("occurrence-done", model.completedToday.get(0).occurrenceId);
+        assertEquals("steps", model.focus.taskId());
     }
 
     @Test public void presentationCollectionsCannotBeMutated() {
         TodayUiModel model = TodayUiModel.compose(
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
         try {
-            model.tasks.clear();
-            fail("tasks must be immutable");
+            model.completedToday.clear();
+            fail("completed history must be immutable");
         } catch (UnsupportedOperationException expected) {
-            assertFalse(model.tasks.isEmpty());
+            assertFalse(model.completedToday.isEmpty());
         }
         try {
             model.timeline.clear();

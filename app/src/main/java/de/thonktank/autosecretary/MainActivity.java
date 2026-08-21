@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
 
 import android.Manifest;
 import android.animation.LayoutTransition;
@@ -223,23 +224,20 @@ public class MainActivity extends ComponentActivity {
             openEditorWithFlight();
         } else if (event instanceof DashboardEvent.TimelinePrimary) {
             TimelineTaskUiModel task = ((DashboardEvent.TimelinePrimary) event).task;
-            if (task.undoAvailable) viewModel.undoOccurrence(task.occurrenceId);
-            else if (task.terminalCondition) viewModel.requestClose(task.taskId, task.title);
+            if (task.terminalCondition) viewModel.requestClose(task.taskId, task.title);
             else viewModel.complete(task.occurrenceId);
         } else if (event instanceof DashboardEvent.TimelineMenu) {
-            TimelineTaskUiModel task = ((DashboardEvent.TimelineMenu) event).task;
-            TaskSnapshot source = findTask(task.taskId);
-            if (source != null) showTaskMenu(source);
+            showTaskMenu(((DashboardEvent.TimelineMenu) event).target);
         } else if (event instanceof DashboardEvent.FocusAction) {
             DashboardEvent.FocusAction action = (DashboardEvent.FocusAction) event;
-            TaskSnapshot task = action.task;
-            if (action.kind == DashboardEvent.FocusActionKind.COMPLETE) completeOrConfirm(task);
+            TaskActionTarget target = action.target;
+            if (action.kind == DashboardEvent.FocusActionKind.COMPLETE) completeOrConfirm(target);
             else if (action.kind == DashboardEvent.FocusActionKind.COMPLETE_REMAINING)
-                viewModel.completeRemaining(task.occurrenceId);
+                viewModel.completeRemaining(target.occurrenceId);
             else if (action.kind == DashboardEvent.FocusActionKind.HARVEST)
-                viewModel.harvest(task.occurrenceId);
-            else viewModel.defer(task.occurrenceId.isEmpty()
-                    ? task.taskId : task.occurrenceId);
+                viewModel.harvest(target.occurrenceId);
+            else viewModel.defer(target.occurrenceId.isEmpty()
+                    ? target.taskId : target.occurrenceId);
         } else if (event instanceof DashboardEvent.ToggleStep) {
             viewModel.toggleStep(((DashboardEvent.ToggleStep) event).stepId);
         } else if (event instanceof DashboardEvent.AdvanceTodayStep) {
@@ -299,33 +297,29 @@ public class MainActivity extends ComponentActivity {
             viewModel.updateUpdateState(state == null ? UpdateUiState.idle() : state);
     }
 
-    private void completeOrConfirm(TaskSnapshot task) {
-        if (task.terminalCondition)
-            viewModel.requestClose(task.taskId, task.title);
-        else viewModel.complete(task.occurrenceId);
+    private void completeOrConfirm(TaskActionTarget target) {
+        if (target.terminalCondition)
+            viewModel.requestClose(target.taskId, target.title);
+        else viewModel.complete(target.occurrenceId);
     }
 
-    private void showTaskMenu(TaskSnapshot task) {
-        new AlertDialog.Builder(this).setTitle(task.title)
+    private void showTaskMenu(TaskActionTarget target) {
+        new AlertDialog.Builder(this).setTitle(target.title)
                 .setItems(new String[]{getString(R.string.task_edit), getString(R.string.task_move),
                         getString(R.string.task_delete)}, (dialog, which) -> {
-                    if (which == 0) viewModel.openEditor(task.taskId);
-                    else if (which == 1) showMoveDialog(task);
-                    else viewModel.requestDelete(task);
+                    if (which == 0) viewModel.openEditor(target.taskId);
+                    else if (which == 1) showMoveDialog(target);
+                    else confirmDelete(target.taskId, target.title, target.routine);
                 }).show();
     }
 
-    private void showMoveDialog(TaskSnapshot task) {
+    private void showMoveDialog(TaskActionTarget task) {
         TaskSlot[] slots = TaskSlot.values();
         new AlertDialog.Builder(this).setTitle(R.string.task_move)
                 .setSingleChoiceItems(slotLabels(), task.slot.ordinal(), (dialog, which) -> {
                     viewModel.move(task.taskId, task.slot, slots[which]);
                     dialog.dismiss();
                 }).setNegativeButton(R.string.cancel, null).show();
-    }
-
-    private void confirmDelete(TaskSnapshot task) {
-        confirmDelete(task.taskId, task.title, task.routine());
     }
 
     private void confirmDelete(String taskId, String title, boolean routine) {
@@ -360,9 +354,7 @@ public class MainActivity extends ComponentActivity {
         else if (event.type == UiEvent.Type.INFO)
             Toast.makeText(this, event.message, Toast.LENGTH_LONG).show();
         else if (event.type == UiEvent.Type.CONFIRM_DELETE) {
-            TaskSnapshot task = findTask(event.taskId);
-            if (task != null) confirmDelete(task);
-            else confirmDelete(event.taskId, event.taskTitle, false);
+            confirmDelete(event.taskId, event.taskTitle, false);
         } else if (event.type == UiEvent.Type.CONFIRM_CLOSE)
             confirmClose(event.taskId, event.taskTitle);
         else if (event.type == UiEvent.Type.REQUEST_CALENDAR_PERMISSION)
@@ -398,13 +390,6 @@ public class MainActivity extends ComponentActivity {
         boolean openEditor = getIntent().getBooleanExtra(OPEN_EDITOR, false);
         getIntent().removeExtra(OPEN_EDITOR);
         if (openEditor) viewModel.openEditor(null);
-    }
-
-    private TaskSnapshot findTask(String taskId) {
-        if (uiState == null) return null;
-        for (TaskSnapshot task : uiState.dashboard.tasks)
-            if (task.taskId.equals(taskId)) return task;
-        return null;
     }
 
     private String versionName() {

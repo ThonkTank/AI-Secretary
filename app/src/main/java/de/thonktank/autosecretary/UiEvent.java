@@ -37,10 +37,6 @@ public final class UiEvent {
         return new UiEvent(type, null, null, null);
     }
 
-    public static UiEvent confirmDelete(TaskSnapshot task) {
-        return new UiEvent(Type.CONFIRM_DELETE, null, task.taskId, task.title);
-    }
-
     public static UiEvent confirmDelete(String taskId, String title) {
         return new UiEvent(Type.CONFIRM_DELETE, null, taskId, title);
     }

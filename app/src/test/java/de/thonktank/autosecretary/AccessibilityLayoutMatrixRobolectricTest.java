@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -74,8 +75,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         Context context = configuredContext(412, 1f);
         DashboardEventRecorder events = new DashboardEventRecorder();
         FocusTaskView focus = new FocusTaskView(context);
-        TaskSnapshot task = setTask(false);
-        focus.bind(task, false, true, palette(), FocusStepLimit.AUTO,
+        FocusTaskUiModel task = setTask(false);
+        focus.bind(task, false, palette(), FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), events);
         measure(focus, dp(context, 360), dp(context, 2_400));
 
@@ -154,7 +155,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     private static void renderRepetitionControls(Context context, int widthDp, float fontScale,
                                                  DayPalette palette) {
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(setTask(false), false, true, palette, FocusStepLimit.AUTO,
+        focus.bind(setTask(false), false, palette, FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), event -> { });
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
@@ -180,7 +181,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     private static void renderDynamicLimit(Context context, int widthDp, float fontScale,
                                            DayPalette palette) {
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(longTask(), false, true, palette, FocusStepLimit.FIVE,
+        focus.bind(longTask(), false, palette, FocusStepLimit.FIVE,
                 RepetitionInputState.idle(), event -> { });
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
@@ -217,32 +218,36 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         }
     }
 
-    private static TaskSnapshot setTask(boolean done) {
-        FocusStepUiModel step = FocusStepUiModel.of("set-step", "Beinpresse",
-                "3 × 12", "23 kg", done,
-                RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(10)),
-                2, 15, done ? 15 : 0);
-        return new TaskSnapshot("training", "training-today", "Training mit langem Titel",
-                TaskSlot.MORNING, "", "Beinpresse", Recurrence.DAILY,
-                Collections.singletonList(step), done ? 0 : 1, false, false, false, false,
-                2, 1_000L, 15, done ? 15 : 0, 0, done);
+    private static FocusTaskUiModel setTask(boolean done) {
+        FocusStepUiModel step = FocusTaskFixtures.step("set-step", "Beinpresse")
+                .amount("3 × 12").note("23 kg").done(done)
+                .repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.singletonList(10)))
+                .combo(1).earnedXp(done ? 15 : 0).build();
+        return FocusTaskFixtures.task("training", "Training mit langem Titel")
+                .occurrence("training-today").slot(TaskSlot.MORNING)
+                .recurrence(Recurrence.DAILY).allowDefer(true).combo(2)
+                .rewardBase(done ? 15 : 5).harvestReady(done)
+                .steps(Collections.singletonList(step)).build();
     }
 
-    private static TaskSnapshot longTask() {
+    private static FocusTaskUiModel longTask() {
         List<FocusStepUiModel> steps = new ArrayList<>();
-        steps.add(FocusStepUiModel.of("active", "Kniebeugen", "3 × 12",
-                "Hantel 10 kg, langsam runter", false,
-                RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(12)),
-                1, 10, 0));
+        steps.add(FocusTaskFixtures.step("active", "Kniebeugen")
+                .amount("3 × 12").note("Hantel 10 kg, langsam runter")
+                .repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.singletonList(12))).build());
         for (int index = 1; index <= 5; index++)
-            steps.add(FocusStepUiModel.of("future-" + index,
-                    "Ein ausgesprochen langer Folgeschritt " + index,
-                    "12 Wdh.", "Lange Notiz, die bei großer Schrift zwei Zeilen benötigt",
-                    false, RepetitionProgressUiModel.single(12, Collections.emptyList()),
-                    0, 10, 0));
-        return new TaskSnapshot("long", "long-today", "Routine mit langem Titel",
-                TaskSlot.MORNING, "", "Kniebeugen", Recurrence.DAILY, steps, steps.size(),
-                false, false, false, false, 1, 1_000L);
+            steps.add(FocusTaskFixtures.step("future-" + index,
+                            "Ein ausgesprochen langer Folgeschritt " + index)
+                    .amount("12 Wdh.")
+                    .note("Lange Notiz, die bei großer Schrift zwei Zeilen benötigt")
+                    .repetition(RepetitionProgressUiModel.single(
+                            12, Collections.emptyList())).build());
+        return FocusTaskFixtures.task("long", "Routine mit langem Titel")
+                .occurrence("long-today").slot(TaskSlot.MORNING)
+                .recurrence(Recurrence.DAILY).allowDefer(true).combo(1)
+                .steps(steps).build();
     }
 
     private static Context configuredContext(int widthDp, float fontScale) {
@@ -273,7 +278,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
 
     private static int visibleFollowingRows(Context context) {
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(longTask(), false, true, palette(), FocusStepLimit.AUTO,
+        focus.bind(longTask(), false, palette(), FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), event -> { });
         measureExactly(focus, dp(context, 330), dp(context, 540));
         return ViewTestQueries.visibleFollowingStepRows(focus);

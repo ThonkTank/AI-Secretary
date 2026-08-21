@@ -38,6 +38,8 @@ Die phasenweise Refactor-Baseline mit Zustandsbesitzern, Abhängigkeiten und üb
 steht in der [Architekturkarte](architecture-map.md).
 Die unveränderlichen UX-Verträge und Messwerte der anschließenden Today-/Fokus-Bereinigung stehen
 in deren [Phase-0-Baseline](today-focus-cleanup-baseline.md).
+Die phasenweisen Implementierungs- und Auditresultate stehen im
+[Fortschrittsprotokoll](today-focus-cleanup-progress.md).
 Der requirementweise Abschlussabgleich der Roadmap steht im
 [Roadmap-Abschlussaudit](roadmap-audit.md).
 

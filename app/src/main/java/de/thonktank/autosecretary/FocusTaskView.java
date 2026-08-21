@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 import android.content.Context;
 import android.view.View;
@@ -34,17 +35,17 @@ public final class FocusTaskView extends FrameLayout {
         animations = new FocusCardAnimationController(context, this, card);
     }
 
-    public void bind(TaskSnapshot task, boolean stacked, boolean allowDefer,
+    public void bind(FocusTaskUiModel task, boolean stacked,
                      DayPalette palette, DashboardEventSink events) {
-        bind(task, stacked, allowDefer, palette, FocusStepLimit.AUTO,
+        bind(task, stacked, palette, FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), events);
     }
 
-    public void bind(TaskSnapshot task, boolean stacked, boolean allowDefer,
+    public void bind(FocusTaskUiModel task, boolean stacked,
                      DayPalette palette, FocusStepLimit stepLimit,
                      RepetitionInputState inputState, DashboardEventSink events) {
-        boolean focusChanged = boundTaskId != null && !boundTaskId.equals(task.taskId);
-        boundTaskId = task.taskId;
+        boolean focusChanged = boundTaskId != null && !boundTaskId.equals(task.taskId());
+        boundTaskId = task.taskId();
         boolean compact = task.ongoing && task.steps.isEmpty();
         setMinimumHeight(compact ? style.dimen(R.dimen.focus_card_compact_min_height)
                 : task.steps.isEmpty() ? style.dimen(R.dimen.focus_card_empty_min_height) : 0);
@@ -52,7 +53,7 @@ public final class FocusTaskView extends FrameLayout {
         card.setLayoutParams(cardParams);
         card.setTranslationY(0f);
         card.setAlpha(1f);
-        FocusCardUiModel model = new FocusCardUiModel(task, allowDefer, palette,
+        FocusCardUiModel model = new FocusCardUiModel(task, palette,
                 stepLimit, inputState);
         card.bind(model, events, () -> deferPending = true);
         decoration.bind(task, stacked, compact, palette, card);

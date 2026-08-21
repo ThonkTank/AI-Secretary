@@ -1,98 +1,200 @@
 package de.thonktank.autosecretary.presentation;
 
-import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Set;
+
 import de.thonktank.autosecretary.R;
-import de.thonktank.autosecretary.TaskSnapshot;
+import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.Dashboard;
 import de.thonktank.autosecretary.domain.model.DashboardTask;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.RewardBreakdown;
 import de.thonktank.autosecretary.domain.model.RewardPolicy;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.XpProgress;
-import de.thonktank.autosecretary.domain.model.StepAmount;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
+import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
+import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
+import de.thonktank.autosecretary.presentation.today.TimelineStepUiModel;
+import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 
 public final class DashboardUiMapper {
     private final UiTextProvider texts;
     private final StepTextFormatter stepTexts;
+    private final RewardTextFormatter rewardTexts;
 
     public DashboardUiMapper(UiTextProvider texts) {
+        this(texts, new RewardTextFormatter(Locale.GERMANY));
+    }
+
+    public DashboardUiMapper(UiTextProvider texts, RewardTextFormatter rewardTexts) {
+        if (texts == null || rewardTexts == null)
+            throw new IllegalArgumentException("Dashboard formatters are required");
         this.texts = texts;
         this.stepTexts = new StepTextFormatter(texts);
+        this.rewardTexts = rewardTexts;
     }
 
     public TodayUiModel map(Dashboard dashboard, LocalDate today) {
-        List<TaskSnapshot> snapshots = new ArrayList<>();
-        for (DashboardTask item : dashboard.tasks) snapshots.add(snapshot(item, today, dashboard));
-        TaskSnapshot focus = null;
-        for (TaskSnapshot task : snapshots) if (!task.done) { focus = task; break; }
-        return new TodayUiModel(dashboard.xp, new XpProgress(dashboard.xp), snapshots, focus);
+        DashboardTask focusSource = null;
+        Set<String> openIds = new LinkedHashSet<>();
+        for (DashboardTask item : dashboard.tasks) {
+            if (!item.done) {
+                openIds.add(stableId(item));
+                if (focusSource == null) focusSource = item;
+            }
+        }
+
+        FocusTaskUiModel focus = focusSource == null ? null
+                : focus(focusSource, today, dashboard, openIds.size() > 1);
+        String focusId = focusSource == null ? null : stableId(focusSource);
+        List<TimelineItemUiModel> timeline = new ArrayList<>();
+        List<CompletedTaskUiModel> completed = new ArrayList<>();
+        for (DashboardTask item : dashboard.tasks) {
+            if (item.done) {
+                if (item.occurrence != null)
+                    completed.add(CompletedTaskUiModel.of(item.occurrence.id, item.task.title,
+                            item.awardedXp, true));
+            } else if (!stableId(item).equals(focusId)) {
+                timeline.add(TimelineItemUiModel.task(timeline(item, today, dashboard)));
+            }
+        }
+        return new TodayUiModel(new XpProgress(dashboard.xp), focus,
+                timeline, completed);
     }
 
-    private TaskSnapshot snapshot(DashboardTask item, LocalDate today, Dashboard dashboard) {
+    private FocusTaskUiModel focus(DashboardTask item, LocalDate today, Dashboard dashboard,
+                                   boolean allowDefer) {
         Task task = item.task;
-        List<FocusStepUiModel> steps = new ArrayList<>();
+        List<FocusStepUiModel> steps = focusSteps(item, dashboard);
         int remaining = 0;
         String next = task.conditionText;
-        for (OccurrenceStep step : item.steps) {
-            // A partial harvest closes the occurrence while leaving unfinished
-            // steps as historical missed work. They are carried into the next
-            // active occurrence and must not be rendered as falsely completed.
-            if (item.done && !step.done) continue;
-            boolean done = item.done || step.done;
-            ComboProgress stepCombo = dashboard.combos.get(step.comboOwnerId);
-            int stepStage = stepCombo == null ? 0 : stepCombo.level();
-            int claimable = RewardPolicy.stepXp(stepCombo);
-            RepetitionProgressUiModel repetitionProgress = null;
-            if (step.amount instanceof StepAmount.SetsReps) {
-                StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
-                repetitionProgress = RepetitionProgressUiModel.sets(amount.sets,
-                        amount.repetitions, step.repetitionProgress.actualRepetitions);
-            } else if (step.amount instanceof StepAmount.Repetitions) {
-                repetitionProgress = RepetitionProgressUiModel.single(
-                        ((StepAmount.Repetitions) step.amount).repetitions,
-                        step.repetitionProgress.actualRepetitions);
-            }
-            steps.add(FocusStepUiModel.of(step.id, step.text,
-                    stepTexts.compactAmount(step.amount), step.note,
-                    done, repetitionProgress, stepStage, claimable,
-                    item.earnedXp(step.id)));
-            if (!done) {
+        for (FocusStepUiModel step : steps) {
+            if (!step.isDone()) {
                 remaining++;
-                if (remaining == 1) next = step.text;
+                if (remaining == 1) next = step.title;
             }
         }
         if (next == null || next.isEmpty())
             next = texts.text(steps.isEmpty() ? R.string.next_mark_done : R.string.next_all_done);
-        LocalDate due = task.deadlineOn == null || item.occurrence == null
-                ? item.occurrence == null ? null : item.occurrence.scheduledOn : task.deadlineOn;
-        boolean overdue = !item.done && due != null && due.isBefore(today);
         ComboProgress taskCombo = dashboard.combos.get(ComboProgress.taskOwner(task.id));
-        int taskStage = taskCombo == null ? 0 : taskCombo.level();
-        int collected = 0;
-        for (FocusStepUiModel step : steps) {
-            collected += step.earnedXp;
+        int collected = collectedXp(steps);
+        RewardBreakdown reward = taskReward(item, today, taskCombo, steps, collected);
+        int done = steps.size() - remaining;
+        TaskActionTarget target = actionTarget(item);
+        return FocusTaskUiModel.builder(target)
+                .nextAction(next)
+                .steps(steps, remaining)
+                .ongoing(task.ongoing)
+                .overdue(overdue(item, today))
+                .allowDefer(allowDefer)
+                .harvestReady(!steps.isEmpty() && collected > 0)
+                .reward(reward, XpVesselUiModel.of(reward, done, steps.size(),
+                        !steps.isEmpty() && collected > 0, rewardTexts))
+                .build();
+    }
+
+    private TimelineTaskUiModel timeline(DashboardTask item, LocalDate today,
+                                         Dashboard dashboard) {
+        List<FocusStepUiModel> focusSteps = focusSteps(item, dashboard);
+        List<TimelineStepUiModel> steps = new ArrayList<>();
+        for (FocusStepUiModel step : focusSteps)
+            steps.add(TimelineStepUiModel.completion(step.isDone()));
+        ComboProgress taskCombo = dashboard.combos.get(ComboProgress.taskOwner(item.task.id));
+        RewardBreakdown reward = taskReward(item, today, taskCombo, focusSteps,
+                collectedXp(focusSteps));
+        TaskSlot slot = item.displaySlot;
+        return TimelineTaskUiModel.of(actionTarget(item), item.task.id.value,
+                item.occurrence == null ? "" : item.occurrence.id, item.task.title, slot,
+                softTime(slot, item.task.ongoing), steps, !item.task.conditionText.isEmpty(),
+                overdue(item, today), item.task.catalogOrder, reward);
+    }
+
+    private List<FocusStepUiModel> focusSteps(DashboardTask item, Dashboard dashboard) {
+        List<FocusStepUiModel> steps = new ArrayList<>();
+        boolean activeAssigned = false;
+        for (OccurrenceStep step : item.steps) {
+            if (item.done && !step.done) continue;
+            boolean done = item.done || step.done;
+            ComboProgress combo = dashboard.combos.get(step.comboOwnerId);
+            RewardBreakdown reward = RewardPolicy.step(combo);
+            RepetitionProgressUiModel repetition = repetition(step);
+            FocusStepStatus status = done ? FocusStepStatus.COMPLETED
+                    : activeAssigned ? FocusStepStatus.AVAILABLE : FocusStepStatus.ACTIVE;
+            StepExecutionUiAction action;
+            if (done) action = StepExecutionUiAction.none();
+            else if (activeAssigned)
+                action = StepExecutionUiAction.advancePlannedRepetitions(step.id);
+            else if (repetition != null)
+                action = StepExecutionUiAction.submitRepetition(step.id);
+            else action = StepExecutionUiAction.toggle(step.id);
+            steps.add(FocusStepUiModel.executable(step.id, step.text,
+                    stepTexts.compactAmount(step.amount), step.note, status, action, repetition,
+                    reward, item.earnedXp(step.id)));
+            if (!done) activeAssigned = true;
         }
-        int claimable;
+        return steps;
+    }
+
+    private static RepetitionProgressUiModel repetition(OccurrenceStep step) {
+        if (step.amount instanceof StepAmount.SetsReps) {
+            StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
+            return RepetitionProgressUiModel.sets(amount.sets, amount.repetitions,
+                    step.repetitionProgress.actualRepetitions);
+        }
+        if (step.amount instanceof StepAmount.Repetitions)
+            return RepetitionProgressUiModel.single(
+                    ((StepAmount.Repetitions) step.amount).repetitions,
+                    step.repetitionProgress.actualRepetitions);
+        return null;
+    }
+
+    private RewardBreakdown taskReward(DashboardTask item, LocalDate today,
+                                       ComboProgress taskCombo, List<FocusStepUiModel> steps,
+                                       int collected) {
         if (steps.isEmpty()) {
             long late = item.occurrence == null ? 0
-                    : RewardPolicy.lateDays(task, item.occurrence, today);
-            claimable = RewardPolicy.singleTaskXp(late, taskCombo);
-        } else claimable = RewardPolicy.routineXp(collected, taskCombo);
-        TaskSlot displaySlot = item.displaySlot;
-        return new TaskSnapshot(task.id.value, item.occurrence == null ? "" : item.occurrence.id,
-                task.title, displaySlot, softTime(displaySlot, task.ongoing), next, task.recurrence,
-                steps, remaining, !task.conditionText.isEmpty(), task.ongoing, item.done, overdue,
-                taskStage, task.catalogOrder, claimable, item.done ? 0 : collected,
-                item.awardedXp,
-                !item.done && !steps.isEmpty() && collected > 0,
-                item.done && item.occurrence != null);
+                    : RewardPolicy.lateDays(item.task, item.occurrence, today);
+            return RewardPolicy.singleTask(late, taskCombo);
+        }
+        return RewardPolicy.routine(collected, taskCombo);
+    }
+
+    private static int collectedXp(List<FocusStepUiModel> steps) {
+        int collected = 0;
+        for (FocusStepUiModel step : steps) collected += step.earnedXp;
+        return collected;
+    }
+
+    private static String stableId(DashboardTask item) {
+        return item.occurrence == null ? "task:" + item.task.id.value
+                : "occurrence:" + item.occurrence.id;
+    }
+
+    private static TaskActionTarget actionTarget(DashboardTask item) {
+        return TaskActionTarget.of(item.task.id.value,
+                item.occurrence == null ? "" : item.occurrence.id, item.task.title,
+                item.displaySlot, item.task.recurrence != Recurrence.ONCE,
+                !item.task.conditionText.isEmpty());
+    }
+
+    private static boolean overdue(DashboardTask item, LocalDate today) {
+        LocalDate due = item.task.deadlineOn == null || item.occurrence == null
+                ? item.occurrence == null ? null : item.occurrence.scheduledOn
+                : item.task.deadlineOn;
+        return !item.done && due != null && due.isBefore(today);
     }
 
     public String softTime(TaskSlot slot, boolean ongoing) {

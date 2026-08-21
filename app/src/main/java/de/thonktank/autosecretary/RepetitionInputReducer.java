@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import androidx.annotation.Nullable;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 /** Pure reducer for repetition drafts and submissions. */
 public final class RepetitionInputReducer {
@@ -66,10 +67,10 @@ public final class RepetitionInputReducer {
     }
 
     @Nullable private static FocusStepUiModel activeRepetitionStep(TodayUiModel dashboard) {
-        TaskSnapshot focus = dashboard.focus;
+        FocusTaskUiModel focus = dashboard.focus;
         if (focus == null) return null;
         for (FocusStepUiModel step : focus.steps)
-            if (!step.done) return step.repetitionProgress == null ? null : step;
+            if (!step.isDone()) return step.repetitionProgress == null ? null : step;
         return null;
     }
 }

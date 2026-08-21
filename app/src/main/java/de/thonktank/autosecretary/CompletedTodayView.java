@@ -9,6 +9,8 @@ import android.widget.TextView;
 
 import java.util.List;
 
+import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
+
 /** Collapsed-by-default access to today's completed occurrences and their exact undo. */
 @SuppressLint("ViewConstructor")
 final class CompletedTodayView extends LinearLayout {
@@ -41,7 +43,7 @@ final class CompletedTodayView extends LinearLayout {
         addView(rows, new LayoutParams(-1, -2));
     }
 
-    void bind(List<TaskSnapshot> completed, DayPalette palette) {
+    void bind(List<CompletedTaskUiModel> completed, DayPalette palette) {
         this.palette = palette;
         setVisibility(completed.isEmpty() ? GONE : VISIBLE);
         if (completed.isEmpty()) return;
@@ -49,12 +51,12 @@ final class CompletedTodayView extends LinearLayout {
                 R.plurals.completed_today, completed.size(), completed.size()));
         header.setTextColor(palette.muted);
         rows.removeAllViews();
-        for (TaskSnapshot task : completed) rows.addView(row(task, palette),
+        for (CompletedTaskUiModel task : completed) rows.addView(row(task, palette),
                 new LayoutParams(-1, style.dp(48)));
         applyExpanded();
     }
 
-    private View row(TaskSnapshot task, DayPalette palette) {
+    private View row(CompletedTaskUiModel task, DayPalette palette) {
         LinearLayout row = new LinearLayout(getContext());
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(style.dp(12), 0, style.dp(8), 0);

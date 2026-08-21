@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -75,18 +76,18 @@ public final class RepetitionInputReducerTest {
 
     private static FocusStepUiModel repetition(String id, boolean done,
                                                 java.util.List<Integer> actual) {
-        return FocusStepUiModel.of(id, "Kniebeugen", "3 × 12", "", done,
-                RepetitionProgressUiModel.sets(3, 12, actual), 0, 10, 0);
+        return FocusTaskFixtures.step(id, "Kniebeugen").amount("3 × 12").done(done)
+                .repetition(RepetitionProgressUiModel.sets(3, 12, actual)).build();
     }
 
-    private static TaskSnapshot task(String id, FocusStepUiModel... steps) {
-        return new TaskSnapshot(id, id + "-today", "Routine", TaskSlot.MORNING, "", "",
-                Recurrence.DAILY, Arrays.asList(steps), steps.length,
-                false, false, false, false, 0, 1L);
+    private static FocusTaskUiModel task(String id, FocusStepUiModel... steps) {
+        return FocusTaskFixtures.task(id, "Routine").occurrence(id + "-today")
+                .slot(TaskSlot.MORNING).recurrence(Recurrence.DAILY)
+                .steps(Arrays.asList(steps)).build();
     }
 
-    private static TodayUiModel today(TaskSnapshot focus) {
-        return new TodayUiModel(0, new XpProgress(0),
-                Collections.singletonList(focus), focus);
+    private static TodayUiModel today(FocusTaskUiModel focus) {
+        return new TodayUiModel(new XpProgress(0), focus,
+                Collections.emptyList(), Collections.emptyList());
     }
 }

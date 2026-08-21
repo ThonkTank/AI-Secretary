@@ -12,15 +12,27 @@ public final class RewardPolicy {
     private RewardPolicy() { }
 
     public static int stepXp(ComboProgress combo) {
-        return multiplied(BASE_XP, combo);
+        return step(combo).resultXp;
     }
 
     public static int routineXp(int collectedStepXp, ComboProgress combo) {
-        return multiplied(Math.max(0, collectedStepXp), combo);
+        return routine(collectedStepXp, combo).resultXp;
     }
 
     public static int singleTaskXp(long lateDays, ComboProgress combo) {
-        return multiplied(singleTaskBase(lateDays), combo);
+        return singleTask(lateDays, combo).resultXp;
+    }
+
+    public static RewardBreakdown step(ComboProgress combo) {
+        return RewardBreakdown.from(BASE_XP, combo);
+    }
+
+    public static RewardBreakdown routine(int collectedStepXp, ComboProgress combo) {
+        return RewardBreakdown.from(Math.max(0, collectedStepXp), combo);
+    }
+
+    public static RewardBreakdown singleTask(long lateDays, ComboProgress combo) {
+        return RewardBreakdown.from(singleTaskBase(lateDays), combo);
     }
 
     public static int singleTaskBase(long lateDays) {
@@ -40,8 +52,4 @@ public final class RewardPolicy {
                 : Math.max(0L, ChronoUnit.DAYS.between(due, today));
     }
 
-    private static int multiplied(int base, ComboProgress combo) {
-        double factor = combo == null ? 1d : combo.multiplier();
-        return (int) Math.round(Math.max(0, base) * factor);
-    }
 }

@@ -18,13 +18,14 @@ public final class FocusStepUiModelTest {
         RepetitionProgressUiModel open = RepetitionProgressUiModel.sets(
                 2, 12, Collections.singletonList(12));
 
-        assertThrows(IllegalArgumentException.class, () -> FocusStepUiModel.of(
-                "step", "Kniebeugen", "2 × 12", "", false, complete, 0, 10, 0));
-        assertThrows(IllegalArgumentException.class, () -> FocusStepUiModel.of(
-                "step", "Kniebeugen", "", "", false, open, 0, 10, 0));
+        assertThrows(IllegalArgumentException.class, () -> FocusTaskFixtures
+                .step("step", "Kniebeugen").amount("2 × 12")
+                .repetition(complete).build());
+        assertThrows(IllegalArgumentException.class, () -> FocusTaskFixtures
+                .step("step", "Kniebeugen").repetition(open).build());
 
-        FocusStepUiModel explicitlyCompleted = FocusStepUiModel.of(
-                "step", "Kniebeugen", "2 × 12", "", true, open, 0, 10, 10);
+        FocusStepUiModel explicitlyCompleted = FocusTaskFixtures.step("step", "Kniebeugen")
+                .amount("2 × 12").done(true).repetition(open).earnedXp(10).build();
         assertEquals(Collections.singletonList(12),
                 explicitlyCompleted.repetitionProgress.actualRepetitions);
     }

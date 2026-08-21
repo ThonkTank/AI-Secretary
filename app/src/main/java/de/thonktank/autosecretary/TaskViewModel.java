@@ -335,10 +335,6 @@ public final class TaskViewModel extends ViewModel {
         }
     }
 
-    void requestDelete(TaskSnapshot task) {
-        events.setValue(UiEvent.confirmDelete(task));
-    }
-
     void requestDelete(String taskId, String title) {
         events.setValue(UiEvent.confirmDelete(taskId, title));
     }

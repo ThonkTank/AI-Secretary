@@ -2,6 +2,7 @@ package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -46,7 +47,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 824, 900, 1);
     }
 
-    private static void render(String name, TaskSnapshot task, FocusStepLimit limit,
+    private static void render(String name, FocusTaskUiModel task, FocusStepLimit limit,
                                boolean allowDefer,
                                int width, int height, int following) throws Exception {
         DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.LIGHT);
@@ -54,7 +55,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
         FrameLayout root = new FrameLayout(activity);
         root.setBackgroundColor(palette.background);
         FocusTaskView view = new FocusTaskView(activity);
-        view.bind(task, false, allowDefer, palette, limit,
+        view.bind(task, false, palette, limit,
                 RepetitionInputState.idle(), event -> { });
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
         activity.setContentView(root);
@@ -78,25 +79,22 @@ public final class FocusTaskViewGoldenRobolectricTest {
         actual.recycle();
     }
 
-    private static TaskSnapshot gymTask() {
-        FocusStepUiModel press = FocusStepUiModel.of("press", "Beinpresse",
-                "3 × 12", "23 kg, Sitz 5", false,
-                RepetitionProgressUiModel.sets(3, 12, Arrays.asList(12, 11)),
-                0, 10, 0);
-        FocusStepUiModel pushups = FocusStepUiModel.of("pushups", "Liegestütze",
-                "20 Wdh.", "", false,
-                RepetitionProgressUiModel.single(20, java.util.Collections.emptyList()),
-                0, 10, 0);
-        FocusStepUiModel plank = FocusStepUiModel.of("plank", "Planke",
-                "2 Min.", "Bauch fest", false,
-                null, 0, 10, 0);
-        return new TaskSnapshot("gym", "gym-today", "Gym", TaskSlot.MORNING,
-                "heute am Morgen", "Beinpresse", Recurrence.DAILY,
-                Arrays.asList(press, pushups, plank), 3, false, false, false,
-                false, 0, 1L);
+    private static FocusTaskUiModel gymTask() {
+        FocusStepUiModel press = FocusTaskFixtures.step("press", "Beinpresse")
+                .amount("3 × 12").note("23 kg, Sitz 5")
+                .repetition(RepetitionProgressUiModel.sets(3, 12,
+                        Arrays.asList(12, 11))).build();
+        FocusStepUiModel pushups = FocusTaskFixtures.step("pushups", "Liegestütze")
+                .amount("20 Wdh.").repetition(RepetitionProgressUiModel.single(
+                        20, java.util.Collections.emptyList())).build();
+        FocusStepUiModel plank = FocusTaskFixtures.step("plank", "Planke")
+                .amount("2 Min.").note("Bauch fest").build();
+        return FocusTaskFixtures.task("gym", "Gym").occurrence("gym-today")
+                .slot(TaskSlot.MORNING).recurrence(Recurrence.DAILY)
+                .steps(Arrays.asList(press, pushups, plank)).build();
     }
 
-    private static TaskSnapshot allAmountKindsTask() {
+    private static FocusTaskUiModel allAmountKindsTask() {
         FocusStepUiModel warmup = step("warmup", "Aufwärmen", "", "", true, null);
         FocusStepUiModel squats = step("squats", "Kniebeugen", "3 × 12",
                 "Hantel 10 kg, langsam runter", false,
@@ -108,17 +106,17 @@ public final class FocusTaskViewGoldenRobolectricTest {
         FocusStepUiModel stretch = step("stretch", "Dehnen", "",
                 "Waden und Hüfte, ohne Eile", false, null);
         FocusStepUiModel shower = step("shower", "Duschen", "", "", false, null);
-        return new TaskSnapshot("morning", "morning-today", "Morgenroutine",
-                TaskSlot.MORNING, "", "Kniebeugen", Recurrence.DAILY,
-                Arrays.asList(warmup, squats, pushups, plank, stretch, shower),
-                5, false, false, false, false, 1, 1L);
+        return FocusTaskFixtures.task("morning", "Morgenroutine")
+                .occurrence("morning-today").slot(TaskSlot.MORNING)
+                .recurrence(Recurrence.DAILY).allowDefer(true).combo(1)
+                .steps(Arrays.asList(warmup, squats, pushups, plank, stretch, shower)).build();
     }
 
-    private static TaskSnapshot activeWithoutAmountTask() {
+    private static FocusTaskUiModel activeWithoutAmountTask() {
         FocusStepUiModel shower = step("shower", "Duschen", "", "", false, null);
-        return new TaskSnapshot("morning-late", "morning-late-today", "Morgenroutine",
-                TaskSlot.MORNING, "", "Dehnen", Recurrence.DAILY,
-                Arrays.asList(
+        return FocusTaskFixtures.task("morning-late", "Morgenroutine")
+                .occurrence("morning-late-today").slot(TaskSlot.MORNING)
+                .recurrence(Recurrence.DAILY).allowDefer(true).combo(4).steps(Arrays.asList(
                         step("warmup", "Aufwärmen", "", "", true, null),
                         step("squats", "Kniebeugen", "3 × 12", "", true,
                                 RepetitionProgressUiModel.sets(3, 12,
@@ -129,14 +127,14 @@ public final class FocusTaskViewGoldenRobolectricTest {
                         step("plank", "Plank", "45 Sek.", "", true, null),
                         step("stretch", "Dehnen", "",
                                 "Waden und Hüfte, ohne Eile", false, null),
-                        shower), 2, false, false, false, false, 4, 1L);
+                        shower)).build();
     }
 
     private static FocusStepUiModel step(String id, String title, String amount, String note,
                                         boolean done,
                                         RepetitionProgressUiModel progress) {
-        return FocusStepUiModel.of(id, title, amount, note, done, progress,
-                2, 20, done ? 20 : 0);
+        return FocusTaskFixtures.step(id, title).amount(amount).note(note).done(done)
+                .repetition(progress).combo(2).earnedXp(done ? 20 : 0).build();
     }
 
 }

@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -92,7 +93,7 @@ final class FocusCardView extends ViewGroup {
     }
 
     void bind(FocusCardUiModel model, DashboardEventSink events, Runnable onDefer) {
-        TaskSnapshot task = model.task;
+        FocusTaskUiModel task = model.task;
         boolean compact = task.ongoing && task.steps.isEmpty();
         setPadding(style.dimen(R.dimen.focus_card_padding_start),
                 style.dimen(R.dimen.focus_card_padding_vertical),
@@ -103,26 +104,24 @@ final class FocusCardView extends ViewGroup {
         actionParams.topMargin = style.dimen(compact
                 ? R.dimen.focus_card_compact_actions_gap : R.dimen.focus_card_actions_gap);
 
-        title.setText(task.title);
+        title.setText(task.title());
         title.setTextColor(model.palette.ink);
         WoodGrainView.applyTextHalo(title, model.palette.leaf1);
         boolean vessel = !task.steps.isEmpty();
         ring.setVisibility(vessel ? VISIBLE : GONE);
         taskDew.setVisibility(vessel ? GONE : VISIBLE);
-        int doneCount = task.steps.size() - task.remainingSteps;
         if (vessel) {
-            ring.bind(task.claimableXp, task.collectedXp, task.rewardMultiplier,
-                    doneCount, task.steps.size(), task.harvestReady,
-                    task.comboStage, model.palette);
+            ring.setPalette(model.palette);
+            ring.bind(task.vessel);
             ring.setOnClickListener(task.harvestReady
                     ? view -> events.emit(DashboardEvent.focusAction(
-                            DashboardEvent.FocusActionKind.HARVEST, task)) : null);
+                            DashboardEvent.FocusActionKind.HARVEST, task.actionTarget)) : null);
         } else {
-            taskDew.bind(false, false, model.palette, task.claimableXp);
+            taskDew.bind(false, false, model.palette, task.reward.resultXp);
             taskDew.setContentDescription(getContext().getString(
-                    R.string.content_complete_task, task.title, task.claimableXp));
+                    R.string.content_complete_task, task.title(), task.reward.resultXp));
             taskDew.setOnClickListener(view -> events.emit(DashboardEvent.focusAction(
-                    DashboardEvent.FocusActionKind.COMPLETE, task)));
+                    DashboardEvent.FocusActionKind.COMPLETE, task.actionTarget)));
         }
 
         steps.bind(model, events);
@@ -131,13 +130,14 @@ final class FocusCardView extends ViewGroup {
         primary.setBackground(style.pill(model.palette.accent, 26));
         style.shadow(primary, model.palette, 5, .7f);
         primary.setOnClickListener(view -> events.emit(DashboardEvent.focusAction(
-                DashboardEvent.FocusActionKind.COMPLETE_REMAINING, task)));
+                DashboardEvent.FocusActionKind.COMPLETE_REMAINING, task.actionTarget)));
         primary.setVisibility(vessel && task.remainingSteps > 0 ? VISIBLE : GONE);
-        later.setVisibility(model.allowDefer ? VISIBLE : GONE);
+        later.setVisibility(task.allowDefer ? VISIBLE : GONE);
         later.bind(model.palette.hint, model.palette.dot);
         later.setOnClickListener(view -> {
             onDefer.run();
-            events.emit(DashboardEvent.focusAction(DashboardEvent.FocusActionKind.DEFER, task));
+            events.emit(DashboardEvent.focusAction(DashboardEvent.FocusActionKind.DEFER,
+                    task.actionTarget));
         });
         requestLayout();
     }
@@ -201,30 +201,31 @@ final class FocusCardView extends ViewGroup {
         return ((MarginLayoutParams) child.getLayoutParams()).topMargin;
     }
 
-    void registerRewardAnchors(RewardAnchorRegistry registry, TaskSnapshot task) {
+    void registerRewardAnchors(RewardAnchorRegistry registry, FocusTaskUiModel task) {
         if (!task.steps.isEmpty())
             registry.register(new RewardAnchorKey(RewardAnchorKey.Kind.VESSEL,
-                    task.occurrenceId), ring);
-        else registry.register(new RewardAnchorKey(task.terminalCondition
+                    task.occurrenceId()), ring);
+        else registry.register(new RewardAnchorKey(task.terminalCondition()
                         ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE,
-                task.terminalCondition ? task.taskId : task.occurrenceId), taskDew);
+                task.terminalCondition() ? task.taskId() : task.occurrenceId()), taskDew);
         steps.registerRewardAnchors(registry);
         registry.register(new RewardAnchorKey(RewardAnchorKey.Kind.REST,
-                task.occurrenceId), primary);
+                task.occurrenceId()), primary);
     }
 
     View mainRewardAnchor() { return steps.getVisibility() == VISIBLE ? ring : taskDew; }
 
-    List<WoodGrainView.Anchor> grainAnchors(View grain, TaskSnapshot task) {
+    List<WoodGrainView.Anchor> grainAnchors(View grain, FocusTaskUiModel task) {
         List<WoodGrainView.Anchor> anchors = new ArrayList<>();
         anchors.add(new WoodGrainView.Anchor(grainBounds(grain, mainRewardAnchor()),
-                task.comboStage));
+                task.grainLevel));
         List<FocusStepUiModel> models = steps.openSteps();
         List<FocusStepRowView> visibleRows = steps.visibleRows();
         for (int index = 0; index < visibleRows.size() && index < models.size(); index++) {
             FocusStepRowView row = visibleRows.get(index);
             anchors.add(new WoodGrainView.Anchor(
-                    grainBounds(grain, row.rewardAnchor()), models.get(index).comboStage));
+                    grainBounds(grain, row.rewardAnchor()),
+                    models.get(index).grainLevel));
         }
         return anchors;
     }

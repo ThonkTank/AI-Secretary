@@ -3,6 +3,7 @@ package de.thonktank.autosecretary;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 
@@ -165,7 +166,7 @@ public final class DashboardRenderer {
         TodayUiModel dashboard = state.dashboard;
         DayPalette palette = state.palette;
         rewardAnchors.clearDynamic();
-        TaskSnapshot focusTask = dashboard.firstOpen();
+        FocusTaskUiModel focusTask = dashboard.focus;
         boolean hasFocus = focusTask != null;
         focus.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
         timeline.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
@@ -180,9 +181,7 @@ public final class DashboardRenderer {
         }
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
-        int open = 0;
-        for (TaskSnapshot task : dashboard.tasks) if (!task.done) open++;
-        focus.bind(focusTask, dashboard.timeline.size() > 0, open > 1, palette,
+        focus.bind(focusTask, dashboard.timeline.size() > 0, palette,
                 focusStepLimit, state.repetitionInput, events);
         bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
@@ -215,17 +214,16 @@ public final class DashboardRenderer {
                     view = new TaskLeafView(context);
                     timelineViews.put(key, view);
                 }
-                boolean firstOpenAfterFocus = !item.task.done && !afterAssigned;
-                if (!item.task.done) afterAssigned = true;
+                boolean firstOpenAfterFocus = !afterAssigned;
+                afterAssigned = true;
                 boolean bad = item.task.overdue && !overdueShown;
                 overdueShown |= bad;
-                String marker = context.getString(item.task.done ? R.string.marker_done
-                        : bad ? R.string.marker_overdue
+                String marker = context.getString(bad ? R.string.marker_overdue
                         : firstOpenAfterFocus ? R.string.marker_after : R.string.marker_later);
                 ((TaskLeafView) view).bind(item.task, marker,
-                        !item.task.done && !firstOpenAfterFocus, palette,
+                        !firstOpenAfterFocus, palette,
                         task -> events.emit(DashboardEvent.timelinePrimary(task)),
-                        task -> events.emit(DashboardEvent.timelineMenu(task)));
+                        task -> events.emit(DashboardEvent.timelineMenu(task.actionTarget)));
                 RewardAnchorKey.Kind kind = item.task.terminalCondition
                         ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE;
                 rewardAnchors.register(new RewardAnchorKey(kind, item.task.terminalCondition

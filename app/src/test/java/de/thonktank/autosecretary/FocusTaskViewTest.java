@@ -2,6 +2,7 @@ package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -38,17 +39,17 @@ import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 public final class FocusTaskViewTest {
     @Test public void plannedRepetitionsAndNoteStayVisibleBelowTheExercise() {
         Context context = ApplicationProvider.getApplicationContext();
-        FocusStepUiModel step = FocusStepUiModel.of("step-1", "Beinpresse",
-                "3 × 12", "23 kg, Sitz 5", false,
-                RepetitionProgressUiModel.sets(3, 12, Collections.emptyList()),
-                0, 10, 0);
-        TaskSnapshot task = new TaskSnapshot("gym", "occurrence-gym", "Gym",
-                TaskSlot.MORNING, "heute am Morgen", "Beinpresse", Recurrence.DAILY,
-                Collections.singletonList(step), 1, false, false, false, false, 0, 1L);
+        FocusStepUiModel step = FocusTaskFixtures.step("step-1", "Beinpresse")
+                .amount("3 × 12").note("23 kg, Sitz 5")
+                .repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.emptyList())).build();
+        FocusTaskUiModel task = FocusTaskFixtures.task("gym", "Gym")
+                .occurrence("occurrence-gym").slot(TaskSlot.MORNING)
+                .recurrence(Recurrence.DAILY).steps(Collections.singletonList(step)).build();
 
         FocusTaskView view = new FocusTaskView(context);
         DashboardEventSink actions = event -> { };
-        view.bind(task, false, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+        view.bind(task, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
                 actions);
 
         assertTrue(visibleTexts(view).contains("23 kg, Sitz 5"));
@@ -57,10 +58,10 @@ public final class FocusTaskViewTest {
 
     @Test public void stepRowOwnsRenderingAnchorAndIdBasedActions() {
         Context context = ApplicationProvider.getApplicationContext();
-        FocusStepUiModel step = FocusStepUiModel.of("step-1", "Beinpresse",
-                "3 × 12", "23 kg", false,
-                RepetitionProgressUiModel.sets(3, 12, Collections.emptyList()),
-                2, 15, 0);
+        FocusStepUiModel step = FocusTaskFixtures.step("step-1", "Beinpresse")
+                .amount("3 × 12").note("23 kg")
+                .repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.emptyList())).combo(1).build();
         DashboardEventRecorder events = new DashboardEventRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
@@ -85,10 +86,9 @@ public final class FocusTaskViewTest {
     @Test public void singleRepetitionsConfirmOnceWhileDurationCompletesDirectly() {
         Context context = ApplicationProvider.getApplicationContext();
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
-        FocusStepUiModel repetitions = FocusStepUiModel.of("reps", "Liegestütze",
-                "20 Wdh.", "", false,
-                RepetitionProgressUiModel.single(20, Collections.emptyList()),
-                0, 10, 0);
+        FocusStepUiModel repetitions = FocusTaskFixtures.step("reps", "Liegestütze")
+                .amount("20 Wdh.").repetition(RepetitionProgressUiModel.single(
+                        20, Collections.emptyList())).build();
         DashboardEventRecorder events = new DashboardEventRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
@@ -101,9 +101,8 @@ public final class FocusTaskViewTest {
         row.rewardAnchor().performClick();
         assertEquals("reps", events.last(DashboardEvent.SubmitRepetition.class).stepId);
 
-        FocusStepUiModel duration = FocusStepUiModel.of("duration", "Planke",
-                "45 Sek.", "ruhig atmen", false,
-                null, 0, 10, 0);
+        FocusStepUiModel duration = FocusTaskFixtures.step("duration", "Planke")
+                .amount("45 Sek.").note("ruhig atmen").build();
         row.bind(duration, true, palette, RepetitionInputState.idle(), events);
 
         assertFalse(row.editorVisible());
@@ -114,12 +113,12 @@ public final class FocusTaskViewTest {
     @Test public void reboundFutureRowAdvancesWithItsPlannedValueWithoutShowingEditor() {
         Context context = ApplicationProvider.getApplicationContext();
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
-        FocusStepUiModel active = FocusStepUiModel.of("active", "Aktiv", "3 × 12", "",
-                false, RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(10)),
-                0, 10, 0);
-        FocusStepUiModel future = FocusStepUiModel.of("future", "Später", "3 × 12", "",
-                false, RepetitionProgressUiModel.sets(3, 12, Collections.emptyList()),
-                0, 10, 0);
+        FocusStepUiModel active = FocusTaskFixtures.step("active", "Aktiv")
+                .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.singletonList(10))).build();
+        FocusStepUiModel future = FocusTaskFixtures.step("future", "Später")
+                .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.emptyList())).available().build();
         DashboardEventRecorder events = new DashboardEventRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
@@ -150,13 +149,12 @@ public final class FocusTaskViewTest {
                 FocusStepUiModel.of("3", "Drei", false),
                 FocusStepUiModel.of("4", "Vier", false),
                 FocusStepUiModel.of("5", "Fünf", false));
-        TaskSnapshot task = new TaskSnapshot("routine", "today", "Routine",
-                TaskSlot.MORNING, "", "Eins", Recurrence.DAILY, models, 5,
-                false, false, false, false, 0, 1L);
+        FocusTaskUiModel task = FocusTaskFixtures.task("routine", "Routine")
+                .occurrence("today").recurrence(Recurrence.DAILY).steps(models).build();
         FocusTaskView view = new FocusTaskView(context);
         DashboardEventSink actions = event -> { };
 
-        view.bind(task, false, false,
+        view.bind(task, false,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.ONE,
                 RepetitionInputState.idle(), actions);
 
@@ -172,7 +170,7 @@ public final class FocusTaskViewTest {
         assertTrue(dews.get(1).getContentDescription() + " / " + dews.size(),
                 dews.get(1).isClickable());
 
-        view.bind(task, false, false,
+        view.bind(task, false,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.THREE,
                 RepetitionInputState.idle(), actions);
 
@@ -189,12 +187,11 @@ public final class FocusTaskViewTest {
                 FocusStepUiModel.of("second", "Zwei", false),
                 FocusStepUiModel.of("third", "Drei", false),
                 FocusStepUiModel.of("fourth", "Vier", false));
-        TaskSnapshot task = new TaskSnapshot("routine", "today", "Routine",
-                TaskSlot.MORNING, "", "Eins", Recurrence.DAILY, models, 4,
-                false, false, false, false, 0, 1L);
+        FocusTaskUiModel task = FocusTaskFixtures.task("routine", "Routine")
+                .occurrence("today").recurrence(Recurrence.DAILY).steps(models).build();
         DashboardEventRecorder events = new DashboardEventRecorder();
         FocusTaskView view = new FocusTaskView(context);
-        view.bind(task, false, false,
+        view.bind(task, false,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), events);
 
@@ -225,12 +222,11 @@ public final class FocusTaskViewTest {
                 FocusStepUiModel.of("second", "Zwei", false),
                 FocusStepUiModel.of("third", "Drei", false),
                 FocusStepUiModel.of("fourth", "Vier", false));
-        TaskSnapshot task = new TaskSnapshot("routine", "today", "Routine",
-                TaskSlot.MORNING, "", "Eins", Recurrence.DAILY, models, 4,
-                false, false, false, false, 0, 1L);
+        FocusTaskUiModel task = FocusTaskFixtures.task("routine", "Routine")
+                .occurrence("today").recurrence(Recurrence.DAILY).steps(models).build();
         DashboardEventRecorder events = new DashboardEventRecorder();
         FocusTaskView view = new FocusTaskView(context);
-        view.bind(task, false, false,
+        view.bind(task, false,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.ONE,
                 RepetitionInputState.idle(), events);
         FocusStepListLayout list = findFirst(view, FocusStepListLayout.class);
@@ -270,7 +266,7 @@ public final class FocusTaskViewTest {
 
     @Test public void viewportMeasurementSafelyReducesAutomaticAndNumericLimits() {
         Context context = ApplicationProvider.getApplicationContext();
-        TaskSnapshot task = longRoutine();
+        FocusTaskUiModel task = longRoutine();
         FocusTaskView view = new FocusTaskView(context);
         DashboardEventSink actions = event -> { };
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
@@ -278,38 +274,39 @@ public final class FocusTaskViewTest {
         int shortHeight = Math.round(430 * context.getResources().getDisplayMetrics().density);
         int tallHeight = Math.round(720 * context.getResources().getDisplayMetrics().density);
 
-        view.bind(task, false, false, palette, FocusStepLimit.FIVE,
+        view.bind(task, false, palette, FocusStepLimit.FIVE,
                 RepetitionInputState.idle(), actions);
         measureExactly(view, width, shortHeight);
         int shortManual = ViewTestQueries.visibleFollowingStepRows(view);
         assertTrue(shortManual < 5);
 
-        view.bind(task, false, false, palette, FocusStepLimit.AUTO,
+        view.bind(task, false, palette, FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), actions);
         measureExactly(view, width, tallHeight);
         int tallAutomatic = ViewTestQueries.visibleFollowingStepRows(view);
         assertTrue(tallAutomatic > shortManual);
 
-        view.bind(task, false, false, palette, FocusStepLimit.ONE,
+        view.bind(task, false, palette, FocusStepLimit.ONE,
                 RepetitionInputState.idle(), actions);
         measureExactly(view, width, tallHeight);
         assertEquals(1, ViewTestQueries.visibleFollowingStepRows(view));
     }
 
-    private static TaskSnapshot longRoutine() {
+    private static FocusTaskUiModel longRoutine() {
         List<FocusStepUiModel> models = new ArrayList<>();
-        models.add(FocusStepUiModel.of("active", "Kniebeugen", "3 × 12",
-                "Hantel 10 kg, langsam runter", false,
-                RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(12)),
-                0, 10, 0));
+        models.add(FocusTaskFixtures.step("active", "Kniebeugen")
+                .amount("3 × 12").note("Hantel 10 kg, langsam runter")
+                .repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.singletonList(12))).build());
         for (int index = 1; index <= 5; index++)
-            models.add(FocusStepUiModel.of("future-" + index, "Folgeschritt " + index,
-                    "12 Wdh.", "Eine lange unveränderte Notiz für zwei Zeilen", false,
-                    RepetitionProgressUiModel.single(12, Collections.emptyList()),
-                    0, 10, 0));
-        return new TaskSnapshot("routine-long", "today-long", "Lange Routine",
-                TaskSlot.MORNING, "", "Kniebeugen", Recurrence.DAILY, models, models.size(),
-                false, false, false, false, 0, 1L);
+            models.add(FocusTaskFixtures.step("future-" + index,
+                            "Folgeschritt " + index).amount("12 Wdh.")
+                    .note("Eine lange unveränderte Notiz für zwei Zeilen")
+                    .repetition(RepetitionProgressUiModel.single(
+                            12, Collections.emptyList())).build());
+        return FocusTaskFixtures.task("routine-long", "Lange Routine")
+                .occurrence("today-long").recurrence(Recurrence.DAILY)
+                .steps(models).build();
     }
 
     private static void measureExactly(View view, int width, int height) {

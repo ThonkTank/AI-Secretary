@@ -4,6 +4,8 @@ import android.content.Context;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+
 /** Owns the paper stack, surface and grain layers around focus-card content. */
 final class FocusCardDecoration {
     private final UiStyle style;
@@ -12,7 +14,7 @@ final class FocusCardDecoration {
     private final View middle;
     private final View surface;
     private final WoodGrainView grain;
-    private TaskSnapshot task;
+    private FocusTaskUiModel task;
     private DayPalette palette;
 
     FocusCardDecoration(Context context, FrameLayout root,
@@ -36,7 +38,7 @@ final class FocusCardDecoration {
         root.addView(grain, new FrameLayout.LayoutParams(0, 0));
     }
 
-    void bind(TaskSnapshot task, boolean stacked, boolean compact, DayPalette palette,
+    void bind(FocusTaskUiModel task, boolean stacked, boolean compact, DayPalette palette,
               FocusCardView card) {
         this.task = task;
         this.palette = palette;

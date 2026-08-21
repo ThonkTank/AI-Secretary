@@ -13,6 +13,7 @@ import java.util.List;
 
 import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 
 /** Modular focus-card row for the running step and compact following steps. */
 public final class FocusStepRowView extends LinearLayout {
@@ -95,7 +96,7 @@ public final class FocusStepRowView extends LinearLayout {
         bottomLine.setBackgroundColor(divider);
         body.setPadding(0, active ? style.dp(11) : 0,
                 0, active ? style.dp(13) : 0);
-        reward.bind(false, false, palette, step.claimableXp);
+        reward.bind(false, false, palette, step.reward.resultXp);
         reward.setActiveOutline(active);
         title.setText(step.title);
         title.setTextColor(palette.ink);
@@ -110,8 +111,10 @@ public final class FocusStepRowView extends LinearLayout {
         WoodGrainView.applyTextHalo(note, palette.leaf1);
 
         RepetitionProgressUiModel progress = step.repetitionProgress;
-        controls.setVisibility(active && progress != null ? VISIBLE : GONE);
-        if (active && progress != null) {
+        boolean editsRepetitions = step.executionAction.kind
+                == StepExecutionUiAction.Kind.SUBMIT_REPETITION;
+        controls.setVisibility(editsRepetitions ? VISIBLE : GONE);
+        if (editsRepetitions) {
             int current = input.valueFor(step);
             int editingIndex = input.editingIndexFor(step);
             stepper.bind(current, palette,
@@ -125,29 +128,33 @@ public final class FocusStepRowView extends LinearLayout {
                     : getContext().getString(editingIndex >= 0
                             ? R.string.content_update_set : R.string.content_confirm_set,
                     editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber(), current));
-            reward.setOnClickListener(view ->
-                    events.emit(DashboardEvent.submitRepetition(step.id)));
-            reward.setActionEnabled(true);
-        } else if (active) {
+        } else if (step.executionAction.kind == StepExecutionUiAction.Kind.TOGGLE) {
             reward.setContentDescription(getContext().getString(
-                    R.string.content_complete_step, step.title, step.claimableXp));
-            reward.setOnClickListener(view ->
-                    events.emit(DashboardEvent.toggleStep(step.id)));
-            reward.setActionEnabled(true);
-        } else {
+                    R.string.content_complete_step, step.title, step.reward.resultXp));
+        } else if (step.executionAction.kind
+                == StepExecutionUiAction.Kind.ADVANCE_PLANNED_REPETITIONS) {
             StringBuilder description = new StringBuilder(step.title);
             if (!step.amountLabel.isEmpty()) description.append(", ").append(step.amountLabel);
             if (!step.note.isEmpty()) description.append(", ").append(step.note);
             if (progress != null) description.append(", ").append(getContext().getString(
                     R.string.content_advance_planned_repetitions,
-                    progress.plannedRepetitions, step.claimableXp));
-            else description.append(", ").append(step.claimableXp).append(" XP, ")
+                    progress.plannedRepetitions, step.reward.resultXp));
+            else description.append(", ").append(step.reward.resultXp).append(" XP, ")
                     .append(getContext().getString(R.string.action_complete));
             reward.setContentDescription(description.toString());
-            reward.setOnClickListener(view ->
-                    events.emit(DashboardEvent.advanceTodayStep(step.id)));
-            reward.setActionEnabled(true);
         }
+        reward.setOnClickListener(step.executionAction.kind == StepExecutionUiAction.Kind.NONE
+                ? null : view -> emitExecution(step.executionAction, events));
+        reward.setActionEnabled(step.executionAction.kind != StepExecutionUiAction.Kind.NONE);
+    }
+
+    private static void emitExecution(StepExecutionUiAction action, DashboardEventSink events) {
+        if (action.kind == StepExecutionUiAction.Kind.TOGGLE)
+            events.emit(DashboardEvent.toggleStep(action.stepId));
+        else if (action.kind == StepExecutionUiAction.Kind.SUBMIT_REPETITION)
+            events.emit(DashboardEvent.submitRepetition(action.stepId));
+        else if (action.kind == StepExecutionUiAction.Kind.ADVANCE_PLANNED_REPETITIONS)
+            events.emit(DashboardEvent.advanceTodayStep(action.stepId));
     }
 
     void setOnStepLongClickListener(OnLongClickListener listener) {

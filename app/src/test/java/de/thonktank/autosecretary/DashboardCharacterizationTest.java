@@ -3,6 +3,10 @@ package de.thonktank.autosecretary;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
+import de.thonktank.autosecretary.domain.model.XpProgress;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
@@ -38,34 +42,36 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 @Config(sdk = 35)
 public final class DashboardCharacterizationTest {
     @Test public void emptyDashboardHasNoFocus() {
-        assertNull(DashboardFixtures.emptyDashboard().firstOpen());
+        assertNull(DashboardFixtures.emptyDashboard().focus);
     }
 
-    @Test public void completedTaskKeepsItsPositionButIsSkippedAsFocus() {
-        TaskSnapshot done = DashboardFixtures.completedTodayTask();
-        TaskSnapshot open = DashboardFixtures.overdueTask();
-        TodayUiModel state = DashboardFixtures.today(10, java.util.Arrays.asList(done, open));
+    @Test public void completedTaskIsPartitionedAwayFromFocusAndTimeline() {
+        CompletedTaskUiModel done = DashboardFixtures.completedTodayTask();
+        FocusTaskUiModel open = DashboardFixtures.overdueTask();
+        TodayUiModel state = new TodayUiModel(new XpProgress(10), open,
+                Collections.emptyList(), Collections.singletonList(done));
 
-        assertSame(open, state.firstOpen());
-        assertTrue(state.tasks.get(0).done);
+        assertSame(open, state.focus);
+        assertSame(done, state.completedToday.get(0));
+        assertTrue(state.timeline.isEmpty());
     }
 
     @Test public void fullFixtureCoversTheDashboardStatesFromTheHandoff() {
         TodayUiModel state = DashboardFixtures.fullDashboard();
 
-        assertEquals(120, state.xp);
-        assertEquals(5, state.tasks.size());
-        assertTrue(state.tasks.stream().anyMatch(task -> task.overdue));
-        assertTrue(state.tasks.stream().anyMatch(TaskSnapshot::routine));
-        assertTrue(state.tasks.stream().anyMatch(task -> task.ongoing));
-        assertTrue(state.tasks.stream().anyMatch(task -> task.done));
+        assertEquals(120, state.xpProgress.total);
+        assertEquals(1, state.completedToday.size());
+        assertEquals(3, state.timeline.size());
+        assertTrue(state.timeline.stream().anyMatch(item -> item.task.overdue));
+        assertTrue(state.timeline.stream().anyMatch(item -> item.task.actionTarget.routine));
+        assertTrue(state.timeline.stream().anyMatch(item ->
+                item.task.actionTarget.taskId.equals("ongoing")));
     }
 
-    @Test public void taskActionsAreDerivedFromTheCurrentReadModel() {
-        android.content.Context context = ApplicationProvider.getApplicationContext();
-        assertEquals("erledigen", DashboardFixtures.simpleTask().actionLabel(context));
-        assertEquals("Rest erledigen", DashboardFixtures.taskWithSteps().actionLabel(context));
-        assertEquals("Bedingung erfüllt", DashboardFixtures.ongoingTask().actionLabel(context));
+    @Test public void taskActionsUseExplicitTargetMetadata() {
+        assertFalse(DashboardFixtures.simpleTask().terminalCondition());
+        assertFalse(DashboardFixtures.taskWithSteps().steps.isEmpty());
+        assertTrue(DashboardFixtures.ongoingTask().terminalCondition());
     }
 
     @Test public void slotsHaveTheEstablishedDayOrder() {
@@ -95,9 +101,14 @@ public final class DashboardCharacterizationTest {
                 recorded, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
-        TodayUiModel dashboardState = DashboardFixtures.today(10, java.util.Arrays.asList(
-                DashboardFixtures.simpleTask(), DashboardFixtures.completedTodayTask(),
-                DashboardFixtures.recurringTask(), DashboardFixtures.ongoingTask()));
+        FocusTaskUiModel simple = DashboardFixtures.simpleTask();
+        TodayUiModel dashboardState = new TodayUiModel(new XpProgress(10), simple,
+                java.util.Arrays.asList(
+                        TimelineItemUiModel.task(FocusTaskFixtures.timeline(
+                                DashboardFixtures.recurringTask(), "", 2)),
+                        TimelineItemUiModel.task(FocusTaskFixtures.timeline(
+                                DashboardFixtures.ongoingTask(), "", 3))),
+                Collections.singletonList(DashboardFixtures.completedTodayTask()));
         DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.AUTO);
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         TodayUiModel.compose(dashboardState, events),
@@ -141,7 +152,8 @@ public final class DashboardCharacterizationTest {
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
                 event -> { }, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
-        TodayUiModel today = DashboardFixtures.today(10,
+        TodayUiModel today = new TodayUiModel(new XpProgress(10), null,
+                Collections.emptyList(),
                 Collections.singletonList(DashboardFixtures.completedTodayTask()));
         DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.AUTO);
 

@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
 
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
@@ -21,16 +22,16 @@ public abstract class DashboardEvent {
     }
 
     public static final class TimelineMenu extends DashboardEvent {
-        public final TimelineTaskUiModel task;
-        private TimelineMenu(TimelineTaskUiModel task) { this.task = required(task); }
+        public final TaskActionTarget target;
+        private TimelineMenu(TaskActionTarget target) { this.target = required(target); }
     }
 
     public static final class FocusAction extends DashboardEvent {
         public final FocusActionKind kind;
-        public final TaskSnapshot task;
-        private FocusAction(FocusActionKind kind, TaskSnapshot task) {
+        public final TaskActionTarget target;
+        private FocusAction(FocusActionKind kind, TaskActionTarget target) {
             this.kind = required(kind);
-            this.task = required(task);
+            this.target = required(target);
         }
     }
 
@@ -110,11 +111,11 @@ public abstract class DashboardEvent {
     public static DashboardEvent timelinePrimary(TimelineTaskUiModel task) {
         return new TimelinePrimary(task);
     }
-    public static DashboardEvent timelineMenu(TimelineTaskUiModel task) {
-        return new TimelineMenu(task);
+    public static DashboardEvent timelineMenu(TaskActionTarget target) {
+        return new TimelineMenu(target);
     }
-    public static DashboardEvent focusAction(FocusActionKind kind, TaskSnapshot task) {
-        return new FocusAction(kind, task);
+    public static DashboardEvent focusAction(FocusActionKind kind, TaskActionTarget target) {
+        return new FocusAction(kind, target);
     }
     public static DashboardEvent toggleStep(String stepId) { return new ToggleStep(stepId); }
     public static DashboardEvent advanceTodayStep(String stepId) {

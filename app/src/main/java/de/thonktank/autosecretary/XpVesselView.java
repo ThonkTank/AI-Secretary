@@ -8,7 +8,7 @@ import android.graphics.RectF;
 import android.view.View;
 import android.view.animation.PathInterpolator;
 
-import java.util.Locale;
+import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 
 public final class XpVesselView extends View {
     private final UiStyle style;
@@ -34,30 +34,33 @@ public final class XpVesselView extends View {
         setLayerType(LAYER_TYPE_SOFTWARE, null);
     }
 
-    public void bind(int collected, int done, int total, boolean ready, int comboStage,
-                     DayPalette palette) {
-        bind(collected, collected, 1d, done, total, ready, comboStage, palette);
+    public void setPalette(DayPalette palette) {
+        if (palette == null) throw new IllegalArgumentException("Vessel palette is required");
+        this.palette = palette;
     }
 
-    public void bind(int result, int base, double multiplier, int done, int total,
-                     boolean ready, int comboStage, DayPalette palette) {
-        this.result = Math.max(0, result);
-        this.base = Math.max(0, base);
-        multiplierLabel = formatMultiplier(Math.max(1d, multiplier));
-        breakdownLabel = this.base + " × " + multiplierLabel;
-        float nextFill = total == 0 || base == 0 ? 0f : done / (float) total;
+    public void bind(XpVesselUiModel model) {
+        if (model == null || palette == null)
+            throw new IllegalStateException("Vessel model and palette are required");
+        this.result = model.reward.resultXp;
+        this.base = model.reward.baseXp;
+        multiplierLabel = model.multiplierLabel;
+        breakdownLabel = model.breakdownLabel;
+        float nextFill = model.total == 0 || base == 0 ? 0f
+                : model.done / (float) model.total;
         this.fill = nextFill;
-        this.ready = ready; this.palette = palette; this.comboStage = Math.max(0, comboStage);
-        setActivated(ready);
+        this.ready = model.ready;
+        this.comboStage = model.reward.comboStage;
+        setActivated(model.ready);
         animateFill(nextFill);
-        setEnabled(ready);
-        if (ready && android.animation.ValueAnimator.areAnimatorsEnabled()) startPulse();
+        setEnabled(model.ready);
+        if (model.ready && android.animation.ValueAnimator.areAnimatorsEnabled()) startPulse();
         else stopPulse();
-        setContentDescription(ready
+        setContentDescription(model.ready
                 ? getContext().getString(R.string.vessel_ready_breakdown,
                         this.result, this.base, multiplierLabel)
                 : getContext().getString(R.string.vessel_progress_breakdown,
-                        done, total, this.result, this.base, multiplierLabel));
+                        model.done, model.total, this.result, this.base, multiplierLabel));
         invalidate();
         bound = true;
     }
@@ -138,11 +141,5 @@ public final class XpVesselView extends View {
         if (fillAnimator != null) fillAnimator.cancel();
         fillAnimator = null;
         super.onDetachedFromWindow();
-    }
-
-    private static String formatMultiplier(double value) {
-        long whole = Math.round(value);
-        if (Math.abs(value - whole) < .001d) return String.valueOf(whole);
-        return String.format(Locale.GERMANY, "%.1f", value);
     }
 }

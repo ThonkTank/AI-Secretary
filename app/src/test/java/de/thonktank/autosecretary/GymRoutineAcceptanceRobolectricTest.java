@@ -1,6 +1,8 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 
@@ -72,7 +74,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         TodayUiModel dashboard = new DashboardUiMapper(new AndroidUiTextProvider(context)).map(
                 new LoadDashboard(repository).execute(TODAY), TODAY);
-        TaskSnapshot focus = dashboard.firstOpen();
+        FocusTaskUiModel focus = dashboard.focus;
         assertTrue("The materialized gym routine must become today's focus", focus != null);
         assertEquals(4, focus.steps.size());
         assertEquals("3 × 12", focus.steps.get(0).amountLabel);
@@ -94,11 +96,11 @@ public final class GymRoutineAcceptanceRobolectricTest {
             } else if (event instanceof DashboardEvent.FocusAction
                     && ((DashboardEvent.FocusAction) event).kind
                     == DashboardEvent.FocusActionKind.COMPLETE_REMAINING) {
-                TaskSnapshot task = ((DashboardEvent.FocusAction) event).task;
-                completeRest.execute(task.occurrenceId);
+                TaskActionTarget target = ((DashboardEvent.FocusAction) event).target;
+                completeRest.execute(target.occurrenceId);
             }
         };
-        view.bind(focus, false, false,
+        view.bind(focus, false,
                 DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
 
         List<String> texts = visibleTexts(view);
@@ -108,16 +110,16 @@ public final class GymRoutineAcceptanceRobolectricTest {
                 .anyMatch(value -> value.contains("Satz 1 mit 12 Wiederholungen")));
 
         for (int set = 0; set < 3; set++) {
-            TaskSnapshot current = dashboard(repository, clock, context).firstOpen();
-            view.bind(current, false, false,
+            FocusTaskUiModel current = dashboard(repository, clock, context).focus;
+            view.bind(current, false,
                     DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
             assertTrue(firstDew(view).performClick());
         }
 
-        TaskSnapshot advanced = dashboard(repository, clock, context).firstOpen();
-        assertTrue(advanced.steps.get(0).done);
+        FocusTaskUiModel advanced = dashboard(repository, clock, context).focus;
+        assertTrue(advanced.steps.get(0).isDone());
         assertEquals("Liegestütze", advanced.nextAction);
-        view.bind(advanced, false, false,
+        view.bind(advanced, false,
                 DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
         texts = visibleTexts(view);
         assertTrue(!texts.contains("Beinpresse"));
@@ -127,10 +129,10 @@ public final class GymRoutineAcceptanceRobolectricTest {
 
         TextView rest = firstText(view, "Rest erledigen");
         assertTrue(rest.performClick());
-        TaskSnapshot completed = dashboard(repository, clock, context).firstOpen();
+        FocusTaskUiModel completed = dashboard(repository, clock, context).focus;
         assertEquals(0, completed.remainingSteps);
-        assertTrue(completed.steps.stream().allMatch(step -> step.done));
-        view.bind(completed, false, false,
+        assertTrue(completed.steps.stream().allMatch(FocusStepUiModel::isDone));
+        view.bind(completed, false,
                 DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
         assertTrue(visibleTexts(view).contains("4 fertig"));
         assertTrue(!visibleTexts(view).contains("Rest erledigen"));

@@ -3,6 +3,7 @@ package de.thonktank.autosecretary;
 import androidx.annotation.Nullable;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.domain.model.RepetitionProgress;
 
 /** Immutable draft for the repetition stepper and an optional saved-slot correction. */
@@ -43,11 +44,11 @@ public final class RepetitionInputState {
                 step.repetitionProgress.actualRepetitions.get(index), index);
     }
 
-    public RepetitionInputState reconcile(@Nullable TaskSnapshot focus) {
+    public RepetitionInputState reconcile(@Nullable FocusTaskUiModel focus) {
         if (stepId == null) return this;
         if (focus != null) {
             for (FocusStepUiModel step : focus.steps) {
-                if (step.done) continue;
+                if (step.isDone()) continue;
                 return stepId.equals(step.id) && step.repetitionProgress != null
                         ? this : idle();
             }

@@ -1,37 +1,47 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.today.TodayUiModel;
-
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
-
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.RewardBreakdown;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
+import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.RewardTextFormatter;
+import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
+import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
+import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
+import de.thonktank.autosecretary.presentation.today.TimelineStepUiModel;
+import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 import de.thonktank.autosecretary.widget.WidgetDashboardUiModel;
 import de.thonktank.autosecretary.widget.WidgetStepUiModel;
 import de.thonktank.autosecretary.widget.WidgetTaskUiModel;
 
 /** Deterministic debug-only states for the reference preview gallery and layout inspectors. */
 public final class DebugPreviewFixtures {
+    private static final RewardTextFormatter REWARDS = new RewardTextFormatter(Locale.GERMANY);
+
     private DebugPreviewFixtures() { }
 
     public static TodayUiModel busyDay() {
-        TaskSnapshot focus = new TaskSnapshot("preview-morning", "preview-occurrence",
-                "Morgenroutine", TaskSlot.MORNING, "heute am Morgen", "Anziehen",
-                Recurrence.DAILY, Arrays.asList(
-                        FocusStepUiModel.of("preview-step-1", "Duschen", true),
-                        FocusStepUiModel.of("preview-step-2", "Anziehen", false),
-                        FocusStepUiModel.of("preview-step-3", "Frühstück", false)),
-                2, false, false, false, false, 6, 1_001_000L);
-        TaskSnapshot after = new TaskSnapshot("preview-letter", "preview-letter-occurrence",
-                "Brief beantworten", TaskSlot.MIDDAY, "um die Mittagszeit", "Erledigen",
-                Recurrence.ONCE, Collections.emptyList(), 0, false, false, false,
-                false, 0, 2_001_000L);
-        return today(120, Arrays.asList(focus, after));
+        PreviewTask focus = PreviewTask.named("preview-morning", "Morgenroutine")
+                .recurrence(Recurrence.DAILY).steps(Arrays.asList(
+                        step("preview-step-1", "Duschen", true),
+                        step("preview-step-2", "Anziehen", false),
+                        step("preview-step-3", "Frühstück", false)))
+                .combo(6).order(1_001_000L);
+        PreviewTask after = PreviewTask.named("preview-letter", "Brief beantworten")
+                .slot(TaskSlot.MIDDAY).softTime("um die Mittagszeit").order(2_001_000L);
+        return today(120, focus, after);
     }
 
     public static WidgetDashboardUiModel widgetReference() {
@@ -47,9 +57,7 @@ public final class DebugPreviewFixtures {
         return WidgetDashboardUiModel.of(gym, "Brief beantworten");
     }
 
-    public static TodayUiModel emptyDay() {
-        return today(0, Collections.emptyList());
-    }
+    public static TodayUiModel emptyDay() { return TodayUiModel.empty(); }
 
     public static List<CalendarEventSnapshot> calendar() {
         return Arrays.asList(new CalendarEventSnapshot("ganztägig", "Urlaub", 0),
@@ -57,36 +65,31 @@ public final class DebugPreviewFixtures {
     }
 
     public static TodayUiModel reference(String state) {
-        if ("empty-vessel".equals(state)) return today(70,
-                Collections.singletonList(vesselTask(0, false)));
-        if ("partial-vessel".equals(state)) return today(70,
-                Collections.singletonList(vesselTask(1, false)));
-        if ("harvest-ready".equals(state)) return today(70,
-                Collections.singletonList(vesselTask(3, true)));
-        if ("three-digit".equals(state)) return today(70,
-                Collections.singletonList(threeDigitTask()));
-        TaskSnapshot morning = morning(false, "step".equals(state));
-        TaskSnapshot after = task("preview-after", "Abgabe Statistik-Übung", TaskSlot.MORNING,
-                "voraussichtlich ab 10:15", false, false, 2_000L);
-        TaskSnapshot laundry = task("preview-laundry", "Wäsche aufhängen", TaskSlot.LATER,
-                "", false, false, 3_000L);
-        TaskSnapshot hiddenOne = task("preview-hidden-1", "Einkauf planen", TaskSlot.LATER,
-                "", false, false, 4_000L);
-        TaskSnapshot hiddenTwo = task("preview-hidden-2", "Pflanzen gießen", TaskSlot.LATER,
-                "", false, false, 5_000L);
-        if ("empty".equals(state)) return today(0, Collections.emptyList());
-        if ("later".equals(state)) return today(120,
-                Arrays.asList(after, morning, laundry, hiddenOne, hiddenTwo));
-        if ("complete".equals(state) || "harvested".equals(state)) return today(120,
-                Arrays.asList(morning(true, true), after, laundry, hiddenOne, hiddenTwo));
+        if ("empty-vessel".equals(state)) return today(70, vesselTask(0, false));
+        if ("partial-vessel".equals(state)) return today(70, vesselTask(1, false));
+        if ("harvest-ready".equals(state)) return today(70, vesselTask(3, true));
+        if ("three-digit".equals(state)) return today(70, threeDigitTask());
+        PreviewTask morning = morning(false, "step".equals(state));
+        PreviewTask after = PreviewTask.named("preview-after", "Abgabe Statistik-Übung")
+                .softTime("voraussichtlich ab 10:15").order(2_000L);
+        PreviewTask laundry = PreviewTask.named("preview-laundry", "Wäsche aufhängen")
+                .slot(TaskSlot.LATER).order(3_000L);
+        PreviewTask hiddenOne = PreviewTask.named("preview-hidden-1", "Einkauf planen")
+                .slot(TaskSlot.LATER).order(4_000L);
+        PreviewTask hiddenTwo = PreviewTask.named("preview-hidden-2", "Pflanzen gießen")
+                .slot(TaskSlot.LATER).order(5_000L);
+        if ("empty".equals(state)) return TodayUiModel.empty();
+        if ("later".equals(state)) return today(120, after, morning, laundry, hiddenOne, hiddenTwo);
+        if ("complete".equals(state) || "harvested".equals(state))
+            return today(120, morning(true, true), after, laundry, hiddenOne, hiddenTwo);
         if ("evening".equals(state)) {
-            TaskSnapshot ongoing = new TaskSnapshot("preview-ongoing", "preview-ongoing-occurrence",
-                    "Praktikum", TaskSlot.LATER, "fortlaufend, bis es angenommen ist", "angenommen",
-                    Recurrence.ONCE, Collections.emptyList(), 0, true, true, false, false, 6, 900L);
-            return today(150, Arrays.asList(ongoing, morning(true, true), laundry));
+            PreviewTask ongoing = PreviewTask.named("preview-ongoing", "Praktikum")
+                    .slot(TaskSlot.LATER).softTime("fortlaufend, bis es angenommen ist")
+                    .terminal(true).ongoing(true).combo(6)
+                    .reward(RewardBreakdown.fromStage(10, 0)).order(900L);
+            return today(150, ongoing, morning(true, true), laundry);
         }
-        return today(120, Arrays.asList(
-                morning, after, laundry, hiddenOne, hiddenTwo));
+        return today(120, morning, after, laundry, hiddenOne, hiddenTwo);
     }
 
     public static List<CalendarEventSnapshot> referenceCalendar(String state) {
@@ -94,53 +97,150 @@ public final class DebugPreviewFixtures {
         return Collections.singletonList(new CalendarEventSnapshot("11:00", "Zahnarzt", 11 * 60));
     }
 
-    private static TaskSnapshot morning(boolean done, boolean secondStepDone) {
-        return new TaskSnapshot("preview-morning", "preview-morning-occurrence", "Morgenroutine",
-                TaskSlot.MORNING, "etwa eine halbe Stunde", "Haare waschen", Recurrence.DAILY,
-                Arrays.asList(FocusStepUiModel.of("preview-step-1", "Duschen", true),
-                        FocusStepUiModel.of("preview-step-2", "Haare waschen", secondStepDone || done),
-                        FocusStepUiModel.of("preview-step-3", "Anziehen", done),
-                        FocusStepUiModel.of("preview-step-4", "Tabletten nehmen", done)),
-                done ? 0 : secondStepDone ? 2 : 3, false, false, done, false, 6, 1_000L);
+    private static PreviewTask morning(boolean done, boolean secondStepDone) {
+        return PreviewTask.named("preview-morning", "Morgenroutine")
+                .softTime("etwa eine halbe Stunde")
+                .recurrence(Recurrence.DAILY).done(done).combo(6).order(1_000L)
+                .steps(Arrays.asList(step("preview-step-1", "Duschen", true),
+                        step("preview-step-2", "Haare waschen", secondStepDone || done),
+                        step("preview-step-3", "Anziehen", done),
+                        step("preview-step-4", "Tabletten nehmen", done)));
     }
 
-    private static TaskSnapshot task(String id, String title, TaskSlot slot, String softTime,
-                                     boolean done, boolean overdue, long order) {
-        return new TaskSnapshot(id, id + "-occurrence", title, slot, softTime, "erledigen",
-                Recurrence.ONCE, Collections.emptyList(), 0, false, false, done, overdue, 0, order);
+    private static PreviewTask vesselTask(int completed, boolean ready) {
+        return PreviewTask.named("preview-vessel", "Morgenroutine")
+                .recurrence(Recurrence.DAILY).combo(5).harvestReady(ready).order(1_000L)
+                .steps(Arrays.asList(step("vessel-1", "Duschen", completed >= 1,
+                                RewardBreakdown.fromStage(10, 0), 2),
+                        step("vessel-2", "Haare waschen", completed >= 2,
+                                RewardBreakdown.fromStage(10, 1), 3),
+                        step("vessel-3", "Anziehen", completed >= 3,
+                                RewardBreakdown.fromStage(10, 2), 5)));
     }
 
-    private static TaskSnapshot vesselTask(int completed, boolean ready) {
-        List<FocusStepUiModel> steps = Arrays.asList(
-                previewStep("vessel-1", "Duschen", completed >= 1, 10, 2),
-                previewStep("vessel-2", "Haare waschen", completed >= 2, 15, 3),
-                previewStep("vessel-3", "Anziehen", completed >= 3, 20, 5));
-        int collected = completed >= 1 ? 10 : 0;
-        if (completed >= 2) collected += 15;
-        if (completed >= 3) collected += 20;
-        int result = (int) Math.round(collected * 3.5d);
-        return new TaskSnapshot("preview-vessel", "preview-vessel-occurrence",
-                "Morgenroutine", TaskSlot.MORNING, "", "erledigen", Recurrence.DAILY,
-                steps, 3 - completed, false, false, false, false, 5, 1_000L,
-                result, collected, 0, ready);
+    private static PreviewTask threeDigitTask() {
+        return PreviewTask.named("preview-three-digit", "Steuerunterlagen abgeben")
+                .overdue(true).combo(12).reward(RewardBreakdown.fromStage(25, 8))
+                .order(1_000L);
     }
 
-    private static FocusStepUiModel previewStep(String id, String title, boolean done,
-                                                int value, int combo) {
-        return FocusStepUiModel.of(id, title, "", "", done, null, combo, value,
-                done ? value : 0);
+    private static FocusStepUiModel step(String id, String title, boolean done) {
+        return step(id, title, done, RewardBreakdown.fromStage(10, 0));
     }
 
-    private static TaskSnapshot threeDigitTask() {
-        return new TaskSnapshot("preview-three-digit", "preview-three-digit-occurrence",
-                "Steuerunterlagen abgeben", TaskSlot.MORNING, "", "erledigen",
-                Recurrence.ONCE, Collections.emptyList(), 0, false, false, false,
-                true, 12, 1_000L, 125, 0, 0, false);
+    private static FocusStepUiModel step(String id, String title, boolean done,
+                                         RewardBreakdown reward) {
+        return step(id, title, done, reward, reward.comboStage);
     }
 
-    private static TodayUiModel today(int xp, List<TaskSnapshot> tasks) {
-        TaskSnapshot focus = null;
-        for (TaskSnapshot task : tasks) if (!task.done) { focus = task; break; }
-        return new TodayUiModel(xp, new XpProgress(xp), tasks, focus);
+    private static FocusStepUiModel step(String id, String title, boolean done,
+                                         RewardBreakdown reward, int grainLevel) {
+        return FocusStepUiModel.executableWithGrainLevel(id, title, "", "",
+                done ? FocusStepStatus.COMPLETED : FocusStepStatus.AVAILABLE,
+                done ? StepExecutionUiAction.none()
+                        : StepExecutionUiAction.advancePlannedRepetitions(id),
+                null, reward, grainLevel, done ? reward.resultXp : 0);
+    }
+
+    private static TodayUiModel today(int xp, PreviewTask... examples) {
+        PreviewTask focusSource = null;
+        int open = 0;
+        for (PreviewTask example : examples) if (!example.done) {
+            if (focusSource == null) focusSource = example;
+            open++;
+        }
+        FocusTaskUiModel focus = focusSource == null ? null : focusSource.focus(open > 1);
+        List<TimelineItemUiModel> timeline = new ArrayList<>();
+        List<CompletedTaskUiModel> completed = new ArrayList<>();
+        for (PreviewTask example : examples) {
+            if (example.done) completed.add(example.completed());
+            else if (example != focusSource) timeline.add(TimelineItemUiModel.task(example.timeline()));
+        }
+        return new TodayUiModel(new XpProgress(xp), focus, timeline, completed);
+    }
+
+    private static final class PreviewTask {
+        final String id;
+        final String title;
+        TaskSlot slot = TaskSlot.MORNING;
+        String softTime = "";
+        Recurrence recurrence = Recurrence.ONCE;
+        List<FocusStepUiModel> steps = Collections.emptyList();
+        boolean done;
+        boolean overdue;
+        boolean ongoing;
+        boolean terminal;
+        boolean harvestReady;
+        int comboStage;
+        RewardBreakdown explicitReward;
+        long order;
+
+        private PreviewTask(String id, String title) { this.id = id; this.title = title; }
+        static PreviewTask named(String id, String title) { return new PreviewTask(id, title); }
+        PreviewTask slot(TaskSlot value) { slot = value; return this; }
+        PreviewTask softTime(String value) { softTime = value; return this; }
+        PreviewTask recurrence(Recurrence value) { recurrence = value; return this; }
+        PreviewTask steps(List<FocusStepUiModel> value) { steps = value; return this; }
+        PreviewTask done(boolean value) { done = value; return this; }
+        PreviewTask overdue(boolean value) { overdue = value; return this; }
+        PreviewTask ongoing(boolean value) { ongoing = value; return this; }
+        PreviewTask terminal(boolean value) { terminal = value; return this; }
+        PreviewTask harvestReady(boolean value) { harvestReady = value; return this; }
+        PreviewTask combo(int value) { comboStage = value; return this; }
+        PreviewTask reward(RewardBreakdown value) { explicitReward = value; return this; }
+        PreviewTask order(long value) { order = value; return this; }
+
+        TaskActionTarget target() {
+            return TaskActionTarget.of(id, id + "-occurrence", title, slot,
+                    recurrence != Recurrence.ONCE, terminal);
+        }
+
+        RewardBreakdown reward() {
+            if (explicitReward != null) return explicitReward;
+            int base = 0;
+            for (FocusStepUiModel step : steps) base += step.earnedXp;
+            if (steps.isEmpty()) base = 10;
+            return RewardBreakdown.fromStage(base, comboStage);
+        }
+
+        FocusTaskUiModel focus(boolean allowDefer) {
+            List<FocusStepUiModel> explicit = new ArrayList<>();
+            boolean activeAssigned = false;
+            int remaining = 0;
+            for (FocusStepUiModel step : steps) {
+                if (step.isDone()) explicit.add(step);
+                else {
+                    FocusStepStatus status = activeAssigned ? FocusStepStatus.AVAILABLE
+                            : FocusStepStatus.ACTIVE;
+                    explicit.add(FocusStepUiModel.executableWithGrainLevel(step.id, step.title,
+                            step.amountLabel, step.note, status,
+                            activeAssigned ? StepExecutionUiAction.advancePlannedRepetitions(step.id)
+                                    : StepExecutionUiAction.toggle(step.id),
+                            step.repetitionProgress, step.reward, step.grainLevel,
+                            step.earnedXp));
+                    activeAssigned = true;
+                    remaining++;
+                }
+            }
+            RewardBreakdown reward = reward();
+            return FocusTaskUiModel.builder(target()).nextAction("erledigen")
+                    .steps(explicit, remaining).ongoing(ongoing).overdue(overdue)
+                    .allowDefer(allowDefer).harvestReady(harvestReady)
+                    .grainLevel(comboStage)
+                    .reward(reward, XpVesselUiModel.of(reward, explicit.size() - remaining,
+                            explicit.size(), harvestReady, REWARDS)).build();
+        }
+
+        TimelineTaskUiModel timeline() {
+            List<TimelineStepUiModel> values = new ArrayList<>();
+            for (FocusStepUiModel step : steps)
+                values.add(TimelineStepUiModel.completion(step.isDone()));
+            return TimelineTaskUiModel.of(target(), id, id + "-occurrence", title, slot,
+                    softTime, values, terminal, overdue, order, reward());
+        }
+
+        CompletedTaskUiModel completed() {
+            return CompletedTaskUiModel.of(id + "-occurrence", title, reward().resultXp, true);
+        }
     }
 }

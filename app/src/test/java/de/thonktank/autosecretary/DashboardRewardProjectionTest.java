@@ -16,6 +16,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 import org.junit.Test;
 
@@ -50,15 +51,26 @@ public final class DashboardRewardProjectionTest {
                 ComboProgress.Kind.STEP, 1, TODAY));
         combos.put(ComboProgress.taskOwner(taskId), new ComboProgress(
                 ComboProgress.taskOwner(taskId), taskId, ComboProgress.Kind.TASK, 1, TODAY));
+        Occurrence completedOccurrence = new Occurrence("completed", taskId, TODAY,
+                TaskSlot.MORNING, OccurrenceState.COMPLETED, 0, TODAY);
+        DashboardTask completed = new DashboardTask(task, completedOccurrence,
+                Collections.emptyList(), true, Collections.emptyMap(), 23, TaskSlot.MORNING);
+        DashboardTask sameOccurrenceDifferentObject = new DashboardTask(task, occurrence,
+                java.util.Arrays.asList(done, open), false, earned, 0, TaskSlot.MORNING);
 
         TodayUiModel model = new DashboardUiMapper(new ResourceNames()).map(
-                new Dashboard(0, Collections.singletonList(item), combos), TODAY);
+                new Dashboard(0, java.util.Arrays.asList(
+                        completed, item, sameOccurrenceDifferentObject), combos), TODAY);
 
-        TaskSnapshot focus = model.focus;
-        assertEquals(15, focus.collectedXp);
-        assertEquals(23, focus.claimableXp);
-        assertEquals(1.5d, focus.rewardMultiplier, 0d);
-        assertEquals(15, focus.steps.get(1).claimableXp);
+        FocusTaskUiModel focus = model.focus;
+        assertEquals(15, focus.reward.baseXp);
+        assertEquals(23, focus.reward.resultXp);
+        assertEquals(1.5d, focus.reward.multiplier, 0d);
+        assertEquals(15, focus.steps.get(1).reward.resultXp);
+        assertEquals("today", focus.occurrenceId());
+        assertEquals(1, model.completedToday.size());
+        assertEquals("completed", model.completedToday.get(0).occurrenceId);
+        assertEquals(0, model.timeline.size());
     }
 
     private static final class ResourceNames implements UiTextProvider {

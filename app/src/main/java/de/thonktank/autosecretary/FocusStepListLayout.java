@@ -68,7 +68,7 @@ final class FocusStepListLayout extends ViewGroup {
         openSteps.clear();
         int doneCount = 0;
         for (FocusStepUiModel step : model.task.steps) {
-            if (step.done) doneCount++;
+            if (step.isDone()) doneCount++;
             else openSteps.add(step);
         }
         doneStatus.setText(doneCount == 0 ? "" : getResources().getQuantityString(
@@ -89,7 +89,9 @@ final class FocusStepListLayout extends ViewGroup {
                 continue;
             }
             FocusStepUiModel step = openSteps.get(index);
-            row.bind(step, index == 0, model.palette, model.repetitionInput, events);
+            row.bind(step, step.status
+                    == de.thonktank.autosecretary.presentation.today.FocusStepStatus.ACTIVE,
+                    model.palette, model.repetitionInput, events);
             row.setOnStepLongClickListener(view -> beginReorder(row, step.id));
             configureAccessibility(row, step, index);
         }

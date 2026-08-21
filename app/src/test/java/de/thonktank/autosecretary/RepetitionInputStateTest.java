@@ -11,9 +11,9 @@ import org.junit.Test;
 
 public final class RepetitionInputStateTest {
     @Test public void draftClampsAndKeepsTheSelectedSavedSet() {
-        FocusStepUiModel step = FocusStepUiModel.of("step", "Kniebeugen", "3 × 12", "",
-                false, RepetitionProgressUiModel.sets(3, 12, Arrays.asList(10, 11)),
-                0, 10, 0);
+        FocusStepUiModel step = FocusTaskFixtures.step("step", "Kniebeugen")
+                .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Arrays.asList(10, 11))).build();
 
         RepetitionInputState state = RepetitionInputState.idle().edit(step, 0)
                 .adjust(step, -20);

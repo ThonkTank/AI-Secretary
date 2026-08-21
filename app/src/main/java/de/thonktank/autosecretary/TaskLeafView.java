@@ -3,9 +3,6 @@ package de.thonktank.autosecretary;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 
 import android.content.Context;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.StrikethroughSpan;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -66,23 +63,22 @@ public final class TaskLeafView extends FrameLayout {
         setBackground(style.leaf(deep ? palette.leaf3 : palette.leaf2,
                 style.edge(palette, deep ? 3 : 2), 56, 8, 56, 8));
         setRotation(deep ? 1.5f : 1.1f); style.shadow(this, palette, deep ? 5 : 7, deep ? .6f : .7f);
-        title.setText(task.done ? strike(task.title) : breakable(task.title));
-        title.setTextColor(task.done ? palette.done : palette.ink);
-        marker.setText(markerText); marker.setTextColor(task.overdue && !task.done ? palette.bad : palette.muted);
+        title.setText(breakable(task.title));
+        title.setTextColor(palette.ink);
+        marker.setText(markerText); marker.setTextColor(task.overdue ? palette.bad : palette.muted);
         marker.setVisibility(markerText.isEmpty() ? GONE : VISIBLE);
         softTime.setText(task.softTime); softTime.setTextColor(palette.hint);
-        softTime.setVisibility(task.softTime.isEmpty() || task.done || task.overdue ? GONE : VISIBLE);
+        softTime.setVisibility(task.softTime.isEmpty() || task.overdue ? GONE : VISIBLE);
         int leafColor = deep ? palette.leaf3 : palette.leaf2;
         WoodGrainView.applyTextHalo(title, leafColor);
         WoodGrainView.applyTextHalo(marker, leafColor);
         WoodGrainView.applyTextHalo(softTime, leafColor);
-        int value = task.done ? task.awardedXp : task.claimableXp;
-        dot.bind(task.done, false, palette, value);
-        dot.setEnabled(task.done ? task.undoAvailable : !task.occurrenceId.isEmpty());
-        dot.setContentDescription((task.done ? getContext().getString(R.string.marker_done) + ": " : "")
-                + task.title + ", " + value + " XP");
+        int value = task.reward.resultXp;
+        dot.bind(false, false, palette, value);
+        dot.setEnabled(!task.occurrenceId.isEmpty());
+        dot.setContentDescription(task.title + ", " + value + " XP");
         dot.setOnClickListener(view -> complete.accept(task));
-        menu.setVisibility(task.done ? GONE : VISIBLE); menu.setTextColor(palette.dot);
+        menu.setVisibility(VISIBLE); menu.setTextColor(palette.dot);
         menu.setOnClickListener(view -> showMenu.accept(task));
         bindProgress(task, palette);
         post(() -> {
@@ -99,7 +95,7 @@ public final class TaskLeafView extends FrameLayout {
     View rewardAnchor() { return dot; }
 
     private void bindProgress(TimelineTaskUiModel task, DayPalette palette) {
-        boolean visible = task.steps.size() > 1 && !task.done;
+        boolean visible = task.steps.size() > 1;
         progress.setVisibility(visible ? VISIBLE : GONE); if (!visible) return;
         while (bars.size() < task.steps.size()) {
             View bar = new View(getContext());
@@ -117,10 +113,5 @@ public final class TaskLeafView extends FrameLayout {
                 task.steps.size(), complete, task.steps.size())); progressLabel.setTextColor(palette.muted);
     }
 
-    private static CharSequence strike(String text) {
-        SpannableString value = new SpannableString(text);
-        value.setSpan(new StrikethroughSpan(), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        return value;
-    }
     private static String breakable(String text) { return text.replace("-", "-\u200b"); }
 }
