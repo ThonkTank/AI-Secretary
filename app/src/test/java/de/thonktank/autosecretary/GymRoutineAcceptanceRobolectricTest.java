@@ -1,10 +1,13 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.today.*;
+
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -89,9 +92,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
         FocusTaskView view = new FocusTaskView(context);
         RecordRepetitionResult record = new RecordRepetitionResult(repository, clock);
         CompleteRemainingSteps completeRest = new CompleteRemainingSteps(repository, clock);
-        DashboardEventSink actions = event -> {
-            if (!(event instanceof DashboardEvent.Today)) return;
-            TodayAction action = ((DashboardEvent.Today) event).action;
+        TodayActionSink actions = action -> {
             if (action.kind == TodayAction.Kind.SUBMIT_REPETITION) {
                 record.execute(action.id, 12);
             } else if (action.kind == TodayAction.Kind.COMPLETE_REMAINING) {

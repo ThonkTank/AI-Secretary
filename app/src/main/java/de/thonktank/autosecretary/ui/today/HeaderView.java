@@ -1,4 +1,8 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
+
+import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -96,6 +100,6 @@ public final class HeaderView extends FrameLayout {
                 .withEndAction(() -> afterglow.setVisibility(INVISIBLE));
     }
 
-    boolean isGlintVisible() { return glint.getVisibility() == VISIBLE; }
-    View rewardAnchor() { return leaf; }
+    public boolean isGlintVisible() { return glint.getVisibility() == VISIBLE; }
+    public View rewardAnchor() { return leaf; }
 }

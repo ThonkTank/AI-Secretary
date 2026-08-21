@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
 
 import android.animation.ValueAnimator;
 import android.content.Context;

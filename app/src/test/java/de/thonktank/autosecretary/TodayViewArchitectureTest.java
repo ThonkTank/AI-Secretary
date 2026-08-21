@@ -11,7 +11,7 @@ import org.junit.Test;
 
 public final class TodayViewArchitectureTest {
     @Test public void focusListDoesNotOwnCanonicalModelsOrPersistence() throws Exception {
-        String source = source("FocusStepListLayout.java");
+        String source = source("ui/today/FocusStepListLayout.java");
 
         assertFalse(source.contains("boundModel"));
         assertFalse(source.contains("boundEvents"));
@@ -25,8 +25,8 @@ public final class TodayViewArchitectureTest {
     }
 
     @Test public void todayRowsAndHistoryEmitOnlyTypedTodayActions() throws Exception {
-        String row = source("FocusStepRowView.java");
-        String history = source("CompletedTodayView.java");
+        String row = source("ui/today/FocusStepRowView.java");
+        String history = source("ui/today/CompletedTodayView.java");
 
         assertFalse(row.contains("DashboardEvent"));
         assertFalse(history.contains("DashboardEvent"));

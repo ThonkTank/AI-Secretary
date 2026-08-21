@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.RewardBreakdown;
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 
 /** Task projection containing exactly the state rendered by the Today focus card. */
 public final class FocusTaskUiModel {

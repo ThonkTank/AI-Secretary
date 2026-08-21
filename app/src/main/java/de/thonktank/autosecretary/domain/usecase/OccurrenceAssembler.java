@@ -8,7 +8,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.MaterializationRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -21,10 +21,10 @@ import java.util.Set;
 
 /** Creates one active occurrence per target slot from carry-forward and fresh templates. */
 final class OccurrenceAssembler {
-    private final TaskRepository repository;
+    private final MaterializationRepository repository;
     private final IdGenerator ids;
 
-    OccurrenceAssembler(TaskRepository repository, IdGenerator ids) {
+    OccurrenceAssembler(MaterializationRepository repository, IdGenerator ids) {
         this.repository = repository;
         this.ids = ids;
     }

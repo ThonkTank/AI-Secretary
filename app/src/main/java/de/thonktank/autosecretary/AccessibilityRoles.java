@@ -7,12 +7,12 @@ import android.widget.Button;
 import java.util.function.BooleanSupplier;
 
 /** Small accessibility contract for custom-drawn and text-backed controls. */
-final class AccessibilityRoles {
+public final class AccessibilityRoles {
     private AccessibilityRoles() { }
 
-    static void button(View view) { toggleButton(view, null); }
+    public static void button(View view) { toggleButton(view, null); }
 
-    static void toggleButton(View view, BooleanSupplier checked) {
+    public static void toggleButton(View view, BooleanSupplier checked) {
         view.setFocusable(true);
         view.setAccessibilityDelegate(new View.AccessibilityDelegate() {
             @Override public void onInitializeAccessibilityNodeInfo(

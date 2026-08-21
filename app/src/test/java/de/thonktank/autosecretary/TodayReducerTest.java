@@ -96,7 +96,7 @@ public final class TodayReducerTest {
     }
 
     private static TodayUiModel today(String... ids) {
-        java.util.ArrayList<de.thonktank.autosecretary.presentation.FocusStepUiModel> steps =
+        java.util.ArrayList<de.thonktank.autosecretary.presentation.today.FocusStepUiModel> steps =
                 new java.util.ArrayList<>();
         for (String id : ids) steps.add(FocusTaskFixtures.simpleStep(id, id, false));
         FocusTaskUiModel focus = FocusTaskFixtures.task("task", "Task")

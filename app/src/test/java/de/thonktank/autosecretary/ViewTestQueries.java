@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.today.FocusStepRowView;
+
 import android.view.View;
 import android.view.ViewGroup;
 

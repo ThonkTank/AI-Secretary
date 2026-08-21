@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.today.HeaderView;
+
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksCoordinator;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
@@ -101,7 +103,8 @@ public class MainActivity extends ComponentActivity {
                     }
                 });
         renderer = new DashboardRenderer(this, scroll, dashboardContent,
-                this::handleDashboardEvent, versionName(), rewardAnchors, allTasks);
+                this::handleDashboardEvent, viewModel::dispatchToday, versionName(),
+                rewardAnchors, allTasks);
         editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
                 new TaskEditorView.Listener() {
                     @Override public void onDraftChanged(EditorUiState draft) {
@@ -220,9 +223,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void handleDashboardEvent(DashboardEvent event) {
-        if (event instanceof DashboardEvent.Today) {
-            viewModel.dispatchToday(((DashboardEvent.Today) event).action);
-        } else if (event instanceof DashboardEvent.AddTask) {
+        if (event instanceof DashboardEvent.AddTask) {
             openEditorWithFlight();
         } else if (event instanceof DashboardEvent.TimelineMenu) {
             showTaskMenu(((DashboardEvent.TimelineMenu) event).target);

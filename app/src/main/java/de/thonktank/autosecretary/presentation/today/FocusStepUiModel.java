@@ -1,11 +1,9 @@
-package de.thonktank.autosecretary.presentation;
+package de.thonktank.autosecretary.presentation.today;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import de.thonktank.autosecretary.domain.model.RewardBreakdown;
-import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
-import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 
 /** Presentation-ready step used exclusively by the Today focus card. */
 public final class FocusStepUiModel {

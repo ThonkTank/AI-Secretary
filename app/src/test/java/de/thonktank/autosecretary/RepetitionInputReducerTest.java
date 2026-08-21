@@ -2,6 +2,7 @@ package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -16,8 +17,8 @@ import java.util.Collections;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 
 public final class RepetitionInputReducerTest {
     private final RepetitionInputReducer reducer = new RepetitionInputReducer();
@@ -28,11 +29,11 @@ public final class RepetitionInputReducerTest {
         RepetitionInputState state = RepetitionInputState.idle();
 
         state = reducer.reduce(state, dashboard,
-                DashboardEvent.adjustRepetition(step.id, 1)).state;
+                TodayAction.adjustRepetition(step.id, 1)).state;
         state = reducer.reduce(state, dashboard,
-                DashboardEvent.adjustRepetition(step.id, 1)).state;
+                TodayAction.adjustRepetition(step.id, 1)).state;
         RepetitionInputReducer.Result submitted = reducer.reduce(state, dashboard,
-                DashboardEvent.submitRepetition(step.id));
+                TodayAction.submitRepetition(step.id));
 
         assertEquals(14, submitted.submission.value);
         assertFalse(submitted.submission.correction());
@@ -43,15 +44,15 @@ public final class RepetitionInputReducerTest {
         FocusStepUiModel oldStep = repetition("old-step", false, Collections.emptyList());
         RepetitionInputState draft = reducer.reduce(RepetitionInputState.idle(),
                 today(task("old-task", oldStep)),
-                DashboardEvent.adjustRepetition(oldStep.id, 3)).state;
+                TodayAction.adjustRepetition(oldStep.id, 3)).state;
         FocusStepUiModel nextStep = repetition("next-step", false, Collections.emptyList());
         TodayUiModel switched = today(task("new-task", nextStep));
 
         RepetitionInputReducer.Result staleAdjustment = reducer.reduce(draft, switched,
-                DashboardEvent.adjustRepetition(oldStep.id, 1));
+                TodayAction.adjustRepetition(oldStep.id, 1));
         RepetitionInputReducer.Result staleSubmission = reducer.reduce(
                 staleAdjustment.state, switched,
-                DashboardEvent.submitRepetition(oldStep.id));
+                TodayAction.submitRepetition(oldStep.id));
 
         assertNull(staleAdjustment.state.stepId);
         assertNull(staleSubmission.submission);
@@ -64,11 +65,11 @@ public final class RepetitionInputReducerTest {
         TodayUiModel dashboard = today(task("task", step));
 
         RepetitionInputState editing = reducer.reduce(RepetitionInputState.idle(), dashboard,
-                DashboardEvent.editRepetition(step.id, 0)).state;
+                TodayAction.editRepetition(step.id, 0)).state;
         editing = reducer.reduce(editing, dashboard,
-                DashboardEvent.adjustRepetition(step.id, 1)).state;
+                TodayAction.adjustRepetition(step.id, 1)).state;
         RepetitionInputReducer.Submission submitted = reducer.reduce(editing, dashboard,
-                DashboardEvent.submitRepetition(step.id)).submission;
+                TodayAction.submitRepetition(step.id)).submission;
 
         assertEquals(0, submitted.editingIndex);
         assertEquals(11, submitted.value);

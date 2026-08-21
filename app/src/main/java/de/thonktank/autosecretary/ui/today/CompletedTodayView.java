@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -15,7 +17,7 @@ import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 
 /** Collapsed-by-default access to today's completed occurrences and their exact undo. */
 @SuppressLint("ViewConstructor")
-final class CompletedTodayView extends LinearLayout {
+public final class CompletedTodayView extends LinearLayout {
     private final UiStyle style;
     private final TodayActionSink events;
     private final TextView header;
@@ -23,7 +25,7 @@ final class CompletedTodayView extends LinearLayout {
     private boolean expanded;
     private DayPalette palette;
 
-    CompletedTodayView(Context context, TodayActionSink events) {
+    public CompletedTodayView(Context context, TodayActionSink events) {
         super(context);
         this.events = events;
         style = new UiStyle(context);
@@ -45,7 +47,7 @@ final class CompletedTodayView extends LinearLayout {
         addView(rows, new LayoutParams(-1, -2));
     }
 
-    void bind(List<CompletedTaskUiModel> completed, DayPalette palette) {
+    public void bind(List<CompletedTaskUiModel> completed, DayPalette palette) {
         this.palette = palette;
         setVisibility(completed.isEmpty() ? GONE : VISIBLE);
         if (completed.isEmpty()) return;

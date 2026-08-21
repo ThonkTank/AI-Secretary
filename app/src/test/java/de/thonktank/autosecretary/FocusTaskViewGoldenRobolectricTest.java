@@ -1,7 +1,10 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.ui.today.FocusTaskView;
+import de.thonktank.autosecretary.ui.leaf.WoodGrainRenderPipeline;
+
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 import android.app.Activity;

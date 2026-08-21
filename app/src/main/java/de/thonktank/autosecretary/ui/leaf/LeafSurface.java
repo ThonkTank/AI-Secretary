@@ -13,7 +13,6 @@ import java.util.List;
 
 import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.UiStyle;
-import de.thonktank.autosecretary.WoodGrainView;
 
 /** Owns a leaf's outline, clipping, shadow, grain and front content coordinate space. */
 public class LeafSurface extends FrameLayout {

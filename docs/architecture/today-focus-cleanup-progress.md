@@ -147,3 +147,29 @@ und versteckte Folgezeilen ab. Reine Scrolltests beweisen eventratenunabhängige
 und korrektes Stoppen. Der Phase-Gate-Lauf enthält 331 Hosttests, davon 330 erfolgreich und einen
 bewusst übersprungenen Benchmark. Lint, Android-Testkompilierung und Debug-APK sind grün;
 Datenbankschema 14 und sämtliche Fokus-/Homescreen-Goldens blieben unverändert.
+
+## Phase 6 – Capability-Ports, Services und Paketgrenzen
+
+Status: implementiert und gegen die Roadmap auditiert.
+
+- Der frühere breite `TaskRepository` ist entfernt. Dashboard-Lesen, Occurrence-Ausführung,
+  Reward-Ledger, Materialisierung und Today-Reihenfolge besitzen getrennte Capability-Ports;
+  `ApplicationTaskRepository` bündelt sie nur noch am Composition Root der Room-Implementierung.
+- Sämtliche Use Cases deklarieren nur die Ports, die sie tatsächlich benötigen. Die
+  Ausführungslogik ist in `StepExecutionService` und `OccurrenceCompletionService` getrennt;
+  Schrittfortschritt und Occurrence-Abschluss teilen keinen Sammelservice mehr.
+- Blatt- und Grain-Rendering liegen unter `ui.leaf`; Fokus, Timeline, Header und Tageshistorie
+  unter `ui.today`. Today-Actions, Reducer, Coordinator sowie sämtliche fachlichen Today-
+  UI-Modelle liegen unter `presentation.today`.
+- `DashboardEvent` enthält nur noch Navigation, Einstellungen, Berechtigungen und
+  Systemaktionen. Today-Views emittieren ausschließlich `TodayAction`; ein Wrapper oder
+  paralleler Kompatibilitätspfad existiert nicht mehr.
+- `MainActivity` verdrahtet den Today-Sink, kennt jedoch keine fachlichen Today-Actions oder
+  Use Cases. `TaskViewModel` delegiert den geschlossenen Command-Dispatch an
+  `TodayCommandDispatcher` und implementiert nur fokussierte Ausführungshandler.
+- Architekturtests sichern Paketorte, Portabhängigkeiten, das Fehlen des entfernten
+  Repositories und der alten Completion-Klasse sowie die Activity-/ViewModel-Grenzen ab.
+
+Der Phase-Gate-Lauf enthält 334 Hosttests, davon 333 erfolgreich und einen bewusst
+übersprungenen Benchmark. Die Fokus- und Homescreen-Goldens bleiben Teil derselben Suite;
+Schema 14 und die PNG-Baselines wurden nicht geändert.

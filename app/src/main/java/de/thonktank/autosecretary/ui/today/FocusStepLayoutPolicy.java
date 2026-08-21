@@ -1,10 +1,10 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
 
 /** Pure height-budget decision used by {@link FocusStepListLayout}. */
-final class FocusStepLayoutPolicy {
+public final class FocusStepLayoutPolicy {
     private FocusStepLayoutPolicy() { }
 
-    static int visibleFollowing(int availableHeight, int requiredHeight,
+    public static int visibleFollowing(int availableHeight, int requiredHeight,
                                 int[] followingHeights, int moreStatusHeight,
                                 int maximumFollowing) {
         int upperBound = Math.min(Math.max(0, maximumFollowing), followingHeights.length);

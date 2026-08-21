@@ -1,21 +1,21 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
 
 import android.widget.ScrollView;
 
 /** Frame-driven edge scrolling whose speed does not depend on drag-event frequency. */
-final class EdgeAutoScroller implements Runnable {
-    interface ScrollHost {
+public final class EdgeAutoScroller implements Runnable {
+    public interface ScrollHost {
         void scrollBy(int dy);
         void postOnAnimation(Runnable frame);
         void removeCallbacks(Runnable frame);
     }
 
-    interface TimeSource { long nowMillis(); }
+    public interface TimeSource { long nowMillis(); }
 
-    static final class AndroidScrollHost implements ScrollHost {
+    public static final class AndroidScrollHost implements ScrollHost {
         private final ScrollView view;
 
-        AndroidScrollHost(ScrollView view) { this.view = view; }
+        public AndroidScrollHost(ScrollView view) { this.view = view; }
 
         @Override public void scrollBy(int dy) { view.scrollBy(0, dy); }
         @Override public void postOnAnimation(Runnable frame) { view.postOnAnimation(frame); }
@@ -31,7 +31,8 @@ final class EdgeAutoScroller implements Runnable {
     private float remainder;
     private boolean scheduled;
 
-    EdgeAutoScroller(ScrollHost host, TimeSource time, int edgeSize, float pixelsPerSecond) {
+    public EdgeAutoScroller(ScrollHost host, TimeSource time, int edgeSize,
+                            float pixelsPerSecond) {
         if (host == null || time == null || edgeSize <= 0 || pixelsPerSecond <= 0)
             throw new IllegalArgumentException("Complete edge-scroll dependencies are required");
         this.host = host;
@@ -40,7 +41,7 @@ final class EdgeAutoScroller implements Runnable {
         this.pixelsPerSecond = pixelsPerSecond;
     }
 
-    void update(float pointerY, int viewportHeight) {
+    public void update(float pointerY, int viewportHeight) {
         int next = pointerY < edgeSize ? -1
                 : pointerY > viewportHeight - edgeSize ? 1 : 0;
         if (next == direction) return;
@@ -51,7 +52,7 @@ final class EdgeAutoScroller implements Runnable {
         else scheduleFrame();
     }
 
-    void stop() {
+    public void stop() {
         direction = 0;
         remainder = 0f;
         stopFrame();

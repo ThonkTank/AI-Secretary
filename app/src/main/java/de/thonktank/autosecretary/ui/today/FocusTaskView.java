@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
 
 import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
@@ -33,8 +35,8 @@ public final class FocusTaskView extends FrameLayout {
         this(context, rewardAnchors, null);
     }
 
-    FocusTaskView(Context context, RewardAnchorRegistry rewardAnchors,
-                  EdgeAutoScroller.ScrollHost scrollHost) {
+    public FocusTaskView(Context context, RewardAnchorRegistry rewardAnchors,
+                         EdgeAutoScroller.ScrollHost scrollHost) {
         super(context);
         style = new UiStyle(context);
         setClipChildren(false);
@@ -48,16 +50,16 @@ public final class FocusTaskView extends FrameLayout {
     }
 
     public void bind(FocusTaskUiModel task, boolean stacked,
-                     DayPalette palette, DashboardEventSink events) {
+                     DayPalette palette, TodayActionSink events) {
         bind(task, stacked, palette, FocusStepLimit.AUTO,
                 RepetitionInputState.idle(), events);
     }
 
     public void bind(FocusTaskUiModel task, boolean stacked,
                      DayPalette palette, FocusStepLimit stepLimit,
-                     RepetitionInputState inputState, DashboardEventSink events) {
+                     RepetitionInputState inputState, TodayActionSink events) {
         bind(task, stacked, palette, stepLimit, inputState,
-                idleReorder(task), action -> events.emit(DashboardEvent.today(action)));
+                idleReorder(task), events);
     }
 
     public void bind(FocusTaskUiModel task, boolean stacked,

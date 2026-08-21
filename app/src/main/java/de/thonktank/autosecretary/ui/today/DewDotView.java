@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -9,14 +11,14 @@ import android.view.View;
 import android.animation.ValueAnimator;
 import android.view.animation.PathInterpolator;
 
-final class DewDotView extends View {
-    static final float START_SCALE = .2f;
-    static final float OVERSHOOT_SCALE = 1.14f;
-    static final float OVERSHOOT_FRACTION = .58f;
-    static final float CURVE_X1 = .34f;
-    static final float CURVE_Y1 = 1.56f;
-    static final float CURVE_X2 = .64f;
-    static final float CURVE_Y2 = 1f;
+public final class DewDotView extends View {
+    public static final float START_SCALE = .2f;
+    public static final float OVERSHOOT_SCALE = 1.14f;
+    public static final float OVERSHOOT_FRACTION = .58f;
+    public static final float CURVE_X1 = .34f;
+    public static final float CURVE_Y1 = 1.56f;
+    public static final float CURVE_X2 = .64f;
+    public static final float CURVE_Y2 = 1f;
     private final UiStyle style;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path dropPath = new Path();

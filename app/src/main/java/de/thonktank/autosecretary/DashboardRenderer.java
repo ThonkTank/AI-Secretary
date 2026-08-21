@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
+import de.thonktank.autosecretary.ui.today.*;
 
 import android.content.Context;
 import android.view.View;
@@ -43,14 +44,15 @@ public final class DashboardRenderer {
     private final Map<String, View> timelineViews = new LinkedHashMap<>();
 
     public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
-                             DashboardEventSink events, String version,
+                             DashboardEventSink events, TodayActionSink todayActions,
+                             String version,
                              RewardAnchorRegistry rewardAnchors,
                              AllTasksView.Listener allTasksListener) {
         this.context = context;
         this.scroll = scroll;
         this.content = content;
         this.events = events;
-        this.todayActions = action -> events.emit(DashboardEvent.today(action));
+        this.todayActions = todayActions;
         this.version = version;
         this.rewardAnchors = rewardAnchors;
         this.allTasksListener = allTasksListener;

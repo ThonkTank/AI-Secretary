@@ -8,7 +8,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.DashboardReadRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -22,9 +22,9 @@ import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 
 public final class LoadDashboard {
-    private final TaskRepository repository;
+    private final DashboardReadRepository repository;
 
-    public LoadDashboard(TaskRepository repository) {
+    public LoadDashboard(DashboardReadRepository repository) {
         this.repository = repository;
     }
 

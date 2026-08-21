@@ -8,7 +8,7 @@ import java.util.Locale;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RewardBreakdown;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RewardTextFormatter;
 import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
@@ -119,7 +119,7 @@ final class FocusTaskFixtures {
         private String amount = "";
         private String note = "";
         private boolean done;
-        private de.thonktank.autosecretary.presentation.RepetitionProgressUiModel repetition;
+        private de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel repetition;
         private int comboStage;
         private int baseXp = 10;
         private Integer earnedXp;
@@ -129,7 +129,7 @@ final class FocusTaskFixtures {
         StepBuilder amount(String value) { amount = value; return this; }
         StepBuilder note(String value) { note = value; return this; }
         StepBuilder done(boolean value) { done = value; return this; }
-        StepBuilder repetition(de.thonktank.autosecretary.presentation.RepetitionProgressUiModel value) {
+        StepBuilder repetition(de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel value) {
             repetition = value; return this;
         }
         StepBuilder combo(int value) { comboStage = value; return this; }

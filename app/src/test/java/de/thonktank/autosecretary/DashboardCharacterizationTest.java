@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.today.CompletedTodayView;
+
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
@@ -8,7 +10,7 @@ import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
 import de.thonktank.autosecretary.domain.model.XpProgress;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -98,7 +100,8 @@ public final class DashboardCharacterizationTest {
         scroll.addView(content);
         DashboardEventRecorder recorded = new DashboardEventRecorder();
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                recorded, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
+                recorded, recorded, "test", new RewardAnchorRegistry(),
+                new AllTasksView.Listener() { });
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
         FocusTaskUiModel simple = DashboardFixtures.simpleTask();
@@ -153,7 +156,8 @@ public final class DashboardCharacterizationTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
+                event -> { }, action -> { }, "test", new RewardAnchorRegistry(),
+                new AllTasksView.Listener() { });
         TodayUiModel today = new TodayUiModel(new XpProgress(10), null,
                 Collections.emptyList(),
                 Collections.singletonList(DashboardFixtures.completedTodayTask()));

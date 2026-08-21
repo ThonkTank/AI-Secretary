@@ -1,4 +1,4 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.leaf;
 
 import java.util.ArrayList;
 import java.util.Comparator;

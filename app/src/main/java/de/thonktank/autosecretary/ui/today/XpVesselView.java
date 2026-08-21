@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
@@ -91,11 +93,11 @@ public final class XpVesselView extends View {
     }
     private void stopPulse() { if (pulse != null) pulse.cancel(); pulse = null; pulseAlpha = 0f; }
 
-    boolean isPulsing() { return pulse != null; }
-    float fillFraction() { return fill; }
+    public boolean isPulsing() { return pulse != null; }
+    public float fillFraction() { return fill; }
     boolean isFillAnimating() { return fillAnimator != null && fillAnimator.isRunning(); }
-    int renderedResult() { return result; }
-    String renderedBreakdown() { return breakdownLabel; }
+    public int renderedResult() { return result; }
+    public String renderedBreakdown() { return breakdownLabel; }
 
     @Override protected void onDraw(Canvas canvas) {
         if (palette == null) return;

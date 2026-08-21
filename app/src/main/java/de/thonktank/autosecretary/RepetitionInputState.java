@@ -2,7 +2,7 @@ package de.thonktank.autosecretary;
 
 import androidx.annotation.Nullable;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.domain.model.RepetitionProgress;
 

@@ -1,4 +1,8 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
+
+import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 import android.content.Context;
 import android.graphics.Color;

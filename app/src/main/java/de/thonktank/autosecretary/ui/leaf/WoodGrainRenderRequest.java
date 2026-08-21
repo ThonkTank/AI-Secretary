@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.leaf;
+
+import de.thonktank.autosecretary.DayPalette;
 
 import android.graphics.RectF;
 

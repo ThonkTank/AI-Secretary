@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
 
 import android.content.ClipData;
 import android.content.Context;
@@ -11,19 +13,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 /**
  * Rendering-only vertical step list. The coordinator owns canonical, preview and persistence
  * state; this view only lays out rows and translates gestures into {@link TodayAction}s.
  */
-final class FocusStepListLayout extends ViewGroup {
+public final class FocusStepListLayout extends ViewGroup {
     private final UiStyle style;
     private final TextView doneStatus;
     private final TextView moreStatus;

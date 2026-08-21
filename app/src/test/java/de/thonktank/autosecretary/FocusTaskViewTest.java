@@ -1,9 +1,12 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.ui.today.*;
+
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
 import de.thonktank.autosecretary.presentation.today.TodayReducer;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
@@ -51,7 +54,7 @@ public final class FocusTaskViewTest {
                 .recurrence(Recurrence.DAILY).steps(Collections.singletonList(step)).build();
 
         FocusTaskView view = new FocusTaskView(context);
-        DashboardEventSink actions = event -> { };
+        TodayActionSink actions = event -> { };
         view.bind(task, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
                 actions);
 
@@ -154,7 +157,7 @@ public final class FocusTaskViewTest {
         FocusTaskUiModel task = FocusTaskFixtures.task("routine", "Routine")
                 .occurrence("today").recurrence(Recurrence.DAILY).steps(models).build();
         FocusTaskView view = new FocusTaskView(context);
-        DashboardEventSink actions = event -> { };
+        TodayActionSink actions = event -> { };
 
         view.bind(task, false,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.ONE,
@@ -281,7 +284,7 @@ public final class FocusTaskViewTest {
         Context context = ApplicationProvider.getApplicationContext();
         FocusTaskUiModel task = longRoutine();
         FocusTaskView view = new FocusTaskView(context);
-        DashboardEventSink actions = event -> { };
+        TodayActionSink actions = event -> { };
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
         int width = Math.round(330 * context.getResources().getDisplayMetrics().density);
         int shortHeight = Math.round(430 * context.getResources().getDisplayMetrics().density);

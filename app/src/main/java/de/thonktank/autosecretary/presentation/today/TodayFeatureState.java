@@ -30,7 +30,7 @@ public final class TodayFeatureState {
     public static List<String> openStepIds(TodayUiModel today) {
         if (today.focus == null) return Collections.emptyList();
         List<String> ids = new ArrayList<>();
-        for (de.thonktank.autosecretary.presentation.FocusStepUiModel step
+        for (de.thonktank.autosecretary.presentation.today.FocusStepUiModel step
                 : today.focus.steps) if (!step.isDone()) ids.add(step.id);
         return Collections.unmodifiableList(ids);
     }

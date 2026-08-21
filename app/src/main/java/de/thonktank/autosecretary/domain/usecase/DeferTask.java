@@ -6,14 +6,15 @@ import de.thonktank.autosecretary.domain.schedule.TaskScheduleService;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.schedule.TaskScheduleRepository;
 
 public final class DeferTask {
-    private final TaskRepository repository;
+    private final OccurrenceExecutionRepository repository;
     private final TaskScheduleRepository schedules;
 
-    public DeferTask(TaskRepository repository, TaskScheduleRepository schedules) {
+    public DeferTask(OccurrenceExecutionRepository repository,
+                     TaskScheduleRepository schedules) {
         this.repository = repository;
         this.schedules = schedules;
     }

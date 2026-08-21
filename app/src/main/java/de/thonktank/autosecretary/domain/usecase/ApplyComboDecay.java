@@ -2,14 +2,14 @@ package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
 
 import java.util.Objects;
 
 public final class ApplyComboDecay {
-    private final TaskRepository repository;
+    private final RewardLedgerRepository repository;
     private final Clock clock;
-    public ApplyComboDecay(TaskRepository repository, Clock clock) {
+    public ApplyComboDecay(RewardLedgerRepository repository, Clock clock) {
         this.repository = repository; this.clock = clock;
     }
     public boolean execute() {

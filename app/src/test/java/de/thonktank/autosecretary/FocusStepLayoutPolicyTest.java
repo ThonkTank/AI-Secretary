@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.today.FocusStepLayoutPolicy;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 

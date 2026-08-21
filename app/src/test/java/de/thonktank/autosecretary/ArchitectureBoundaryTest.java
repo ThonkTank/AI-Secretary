@@ -32,6 +32,35 @@ public final class ArchitectureBoundaryTest {
         });
     }
 
+    @Test public void todayAndLeafViewsLiveBehindFeaturePackageBoundaries() {
+        assertTrue(Files.isDirectory(main("ui/today")));
+        assertTrue(Files.isDirectory(main("ui/leaf")));
+        for (String view : new String[]{
+                "HeaderView.java", "TaskLeafView.java", "CalendarLeafView.java",
+                "FocusTaskView.java", "FocusCardView.java", "FocusStepRowView.java",
+                "CompletedTodayView.java", "WoodGrainView.java"})
+            assertFalse("feature view remains in application root: " + view,
+                    Files.exists(main(view)));
+    }
+
+    @Test public void activityOwnsNavigationButNotTodayUseCaseDispatch() throws Exception {
+        String activity = read(main("MainActivity.java"));
+        assertFalse(activity.contains("domain.usecase"));
+        assertFalse(activity.contains("TodayAction"));
+        assertFalse(activity.contains("completeRemainingSteps.execute"));
+        assertFalse(activity.contains("moveTodayStep.execute"));
+        assertTrue(activity.contains("viewModel::dispatchToday"));
+    }
+
+    @Test public void viewModelDelegatesClosedTodayCommandRouting() throws Exception {
+        String viewModel = read(main("TaskViewModel.java"));
+        String dispatcher = read(main("presentation/today/TodayCommandDispatcher.java"));
+        assertTrue(viewModel.contains("new TodayCommandDispatcher(this)"));
+        assertFalse(viewModel.contains("switch (value.kind)"));
+        assertFalse(viewModel.contains("switch (command.kind)"));
+        assertTrue(dispatcher.contains("switch (command.kind)"));
+    }
+
     @Test public void slicesAndFocusedPortsAreConcretePackageBoundaries() {
         assertTrue(Files.isDirectory(main("presentation/alltasks")));
         assertTrue(Files.isDirectory(main("presentation/today")));
@@ -42,17 +71,23 @@ public final class ArchitectureBoundaryTest {
         assertTrue(Files.exists(main("domain/schedule/TaskScheduleRepository.java")));
         assertTrue(Files.exists(main("domain/steps/StepOrganizationRepository.java")));
         assertTrue(Files.exists(main("domain/repository/TodayStepOrderRepository.java")));
+        assertTrue(Files.exists(main("domain/repository/DashboardReadRepository.java")));
+        assertTrue(Files.exists(main("domain/repository/OccurrenceExecutionRepository.java")));
+        assertTrue(Files.exists(main("domain/repository/RewardLedgerRepository.java")));
+        assertTrue(Files.exists(main("domain/repository/MaterializationRepository.java")));
     }
 
     @Test public void todayOrderIsPureAndStepExecutionHasItsOwnService() throws Exception {
         String order = read(main("domain/today/TodayStepOrder.java"));
         assertFalse(order.contains("domain.repository"));
         assertFalse(order.contains("Repository repository"));
-        String completion = read(main("domain/usecase/CompletionService.java"));
+        String completion = read(main("domain/usecase/OccurrenceCompletionService.java"));
         assertFalse(completion.contains("toggleStep("));
         assertFalse(completion.contains("recordRepetitionResult("));
         assertFalse(completion.contains("advanceStepWithPlannedResult("));
         assertTrue(Files.exists(main("domain/usecase/StepExecutionService.java")));
+        assertTrue(Files.exists(main("domain/usecase/OccurrenceCompletionService.java")));
+        assertFalse(Files.exists(main("domain/usecase/CompletionService.java")));
     }
 
     @Test public void managementCommandsDoNotDependOnExecutionOrCompositionPorts()
@@ -70,9 +105,10 @@ public final class ArchitectureBoundaryTest {
             assertFalse(relative + " imports execution repository", source.contains(executionPort));
             assertFalse(relative + " imports composition repository", source.contains(compositionPort));
         }
-        String execution = read(main("domain/repository/TaskRepository.java"));
-        assertFalse(execution.contains("extends TaskScheduleRepository"));
-        assertFalse(execution.contains("StepOrganizationRepository"));
+        assertFalse(Files.exists(main("domain/repository/TaskRepository.java")));
+        forEachJava(main("domain/usecase"), source -> assertFalse(source
+                + " imports removed broad repository", read(source).contains(
+                "domain.repository.TaskRepository")));
     }
 
     @Test public void managementPortTestsUseFocusedDoubles() throws Exception {

@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
 
 import android.content.Context;
 import android.text.TextUtils;
@@ -12,12 +14,13 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 /** Modular focus-card row for the running step and compact following steps. */
 public final class FocusStepRowView extends LinearLayout {

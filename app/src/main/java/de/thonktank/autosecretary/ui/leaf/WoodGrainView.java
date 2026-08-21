@@ -1,4 +1,7 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.leaf;
+
+import de.thonktank.autosecretary.DayPalette;
+import de.thonktank.autosecretary.UiStyle;
 
 import android.content.Context;
 import android.graphics.Canvas;

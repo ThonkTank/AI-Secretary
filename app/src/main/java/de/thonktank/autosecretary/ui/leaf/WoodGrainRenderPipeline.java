@@ -1,4 +1,4 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.leaf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Coalesces geometry builds and publishes immutable render data from worker threads. */
-final class WoodGrainRenderPipeline {
+public final class WoodGrainRenderPipeline {
     static final int MAXIMUM_CACHE_BYTES = 4 * 1024 * 1024;
     private static final WoodGrainRenderCache CACHE =
             new WoodGrainRenderCache(MAXIMUM_CACHE_BYTES);
@@ -44,7 +44,7 @@ final class WoodGrainRenderPipeline {
         return future;
     }
 
-    static void awaitIdleForTest() {
+    public static void awaitIdleForTest() {
         while (true) {
             List<CompletableFuture<WoodGrainRenderData>> futures =
                     new ArrayList<>(IN_FLIGHT.values());

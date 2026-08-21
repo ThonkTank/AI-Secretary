@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
 
 import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
@@ -17,11 +19,12 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 /** Content-only focus card. Decoration and transition effects live outside this view. */
-final class FocusCardView extends ViewGroup {
+public final class FocusCardView extends ViewGroup {
     private final UiStyle style;
     private final FrameLayout titleRow;
     private final TextView title;

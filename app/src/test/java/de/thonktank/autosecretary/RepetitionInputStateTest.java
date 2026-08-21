@@ -4,8 +4,8 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
 
-import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 
 import org.junit.Test;
 

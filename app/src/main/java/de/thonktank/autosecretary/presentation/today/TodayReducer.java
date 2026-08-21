@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 
 /** Pure state machine for the Today reorder lifecycle. */
 public final class TodayReducer {

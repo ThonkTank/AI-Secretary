@@ -2,7 +2,7 @@ package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
-import de.thonktank.autosecretary.presentation.today.TodayCommand;
+import de.thonktank.autosecretary.presentation.today.TodayCommandDispatcher;
 import de.thonktank.autosecretary.presentation.today.TodayCoordinator;
 import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
 
@@ -47,7 +47,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
-public final class TaskViewModel extends ViewModel {
+public final class TaskViewModel extends ViewModel implements TodayCommandDispatcher.Handlers {
     private static final String NAVIGATION = "navigation";
     private static final String EDITOR = "editor";
     private static final UiCommand REFRESH = new UiCommand(UiCommand.Kind.REFRESH, "today");
@@ -114,7 +114,7 @@ public final class TaskViewModel extends ViewModel {
                 RepetitionInputState.idle(), display.themeMode, display.focusStepLimit,
                 UpdateUiState.idle());
         todayCoordinator = new TodayCoordinator(current.dashboard,
-                this::executeTodayCommand, this::publishTodayFeatureState);
+                new TodayCommandDispatcher(this), this::publishTodayFeatureState);
         state.setValue(current);
         displayPreferencesSubscription = preferences.observeDisplayPreferences(
                 this::onDisplayPreferences);
@@ -158,11 +158,6 @@ public final class TaskViewModel extends ViewModel {
 
     void updateUpdateState(UpdateUiState updateState) {
         update(value -> value.withUpdate(updateState));
-    }
-
-    void reduceRepetitionInput(DashboardEvent event) {
-        if (event instanceof DashboardEvent.Today)
-            reduceRepetitionInput(((DashboardEvent.Today) event).action);
     }
 
     private void reduceRepetitionInput(TodayAction action) {
@@ -402,53 +397,59 @@ public final class TaskViewModel extends ViewModel {
     }
     void delete(String taskId) { run(command(UiCommand.Kind.DELETE, taskId), () -> tasks.delete.execute(TaskId.of(taskId))); }
 
-    /** Exhaustive side-effect dispatcher behind the closed TodayAction boundary. */
-    private void executeTodayCommand(TodayCommand value) {
-        switch (value.kind) {
-            case COMPLETE_OCCURRENCE:
-                runTodayReward(command(UiCommand.Kind.COMPLETE, value.id),
-                        () -> tasks.complete.execute(value.id));
-                return;
-            case REQUEST_CLOSE:
-                requestClose(value.id, value.text == null ? "" : value.text);
-                return;
-            case COMPLETE_REMAINING:
-                runTodayReward(command(UiCommand.Kind.COMPLETE_REMAINING, value.id),
-                        () -> tasks.completeRemainingSteps.execute(value.id));
-                return;
-            case HARVEST:
-                runTodayReward(command(UiCommand.Kind.HARVEST, value.id),
-                        () -> tasks.harvest.execute(value.id));
-                return;
-            case DEFER:
-                runToday(command(UiCommand.Kind.DEFER, value.id),
-                        () -> tasks.defer.execute(value.id));
-                return;
-            case TOGGLE_STEP:
-                runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, value.id),
-                        () -> tasks.toggleStep.execute(value.id));
-                return;
-            case ADVANCE_STEP:
-                runTodayAdvance(command(UiCommand.Kind.ADVANCE_TODAY_STEP, value.id), value.id);
-                return;
-            case UNDO_OCCURRENCE:
-                runTodayReward(command(UiCommand.Kind.UNDO, value.id),
-                        () -> tasks.undoOccurrence.execute(value.id));
-                return;
-            case ADJUST_REPETITION:
-                reduceRepetitionInput(TodayAction.adjustRepetition(value.id, value.value));
-                return;
-            case EDIT_REPETITION:
-                reduceRepetitionInput(TodayAction.editRepetition(value.id, value.value));
-                return;
-            case SUBMIT_REPETITION:
-                reduceRepetitionInput(TodayAction.submitRepetition(value.id));
-                return;
-            case PERSIST_REORDER:
-                persistTodayReorder(value);
-                return;
-        }
-        throw new AssertionError("Unhandled Today command " + value.kind);
+    @Override public void handleCompleteOccurrence(String occurrenceId) {
+        runTodayReward(command(UiCommand.Kind.COMPLETE, occurrenceId),
+                () -> tasks.complete.execute(occurrenceId));
+    }
+
+    @Override public void handleRequestClose(String taskId, String title) {
+        requestClose(taskId, title);
+    }
+
+    @Override public void handleCompleteRemaining(String occurrenceId) {
+        runTodayReward(command(UiCommand.Kind.COMPLETE_REMAINING, occurrenceId),
+                () -> tasks.completeRemainingSteps.execute(occurrenceId));
+    }
+
+    @Override public void handleHarvest(String occurrenceId) {
+        runTodayReward(command(UiCommand.Kind.HARVEST, occurrenceId),
+                () -> tasks.harvest.execute(occurrenceId));
+    }
+
+    @Override public void handleDefer(String occurrenceId) {
+        runToday(command(UiCommand.Kind.DEFER, occurrenceId),
+                () -> tasks.defer.execute(occurrenceId));
+    }
+
+    @Override public void handleToggleStep(String stepId) {
+        runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, stepId),
+                () -> tasks.toggleStep.execute(stepId));
+    }
+
+    @Override public void handleAdvanceStep(String stepId) {
+        runTodayAdvance(command(UiCommand.Kind.ADVANCE_TODAY_STEP, stepId), stepId);
+    }
+
+    @Override public void handleUndoOccurrence(String occurrenceId) {
+        runTodayReward(command(UiCommand.Kind.UNDO, occurrenceId),
+                () -> tasks.undoOccurrence.execute(occurrenceId));
+    }
+
+    @Override public void handleAdjustRepetition(String stepId, int delta) {
+        reduceRepetitionInput(TodayAction.adjustRepetition(stepId, delta));
+    }
+
+    @Override public void handleEditRepetition(String stepId, int index) {
+        reduceRepetitionInput(TodayAction.editRepetition(stepId, index));
+    }
+
+    @Override public void handleSubmitRepetition(String stepId) {
+        reduceRepetitionInput(TodayAction.submitRepetition(stepId));
+    }
+
+    @Override public void handlePersistReorder(String commandId, String stepId,
+                                         @Nullable String beforeStepId) {
+        persistTodayReorder(commandId, stepId, beforeStepId);
     }
 
     static UiCommand command(UiCommand.Kind kind, String id) {
@@ -544,27 +545,27 @@ public final class TaskViewModel extends ViewModel {
         });
     }
 
-    private void persistTodayReorder(TodayCommand value) {
-        UiCommand key = command(UiCommand.Kind.MOVE_TODAY_STEP,
-                value.commandId == null ? value.id : value.commandId);
+    private void persistTodayReorder(String commandId, String stepId,
+                                     @Nullable String beforeStepId) {
+        UiCommand key = command(UiCommand.Kind.MOVE_TODAY_STEP, commandId);
         if (!begin(key, false)) return;
         worker.execute(() -> {
             try {
                 TodayStepMoveResult result = tasks.moveTodayStep.execute(
-                        value.id, value.relatedId);
+                        stepId, beforeStepId);
                 if (result.status == TodayStepMoveResult.Status.MOVED
                         || result.status == TodayStepMoveResult.Status.NO_CHANGE) {
-                    todayCoordinator.reorderSucceeded(value.commandId, result);
+                    todayCoordinator.reorderSucceeded(commandId, result);
                     finishTodayCommand(key);
                     if (result.moved()) invalidateWidgets();
                 } else {
-                    todayCoordinator.reorderFailed(value.commandId);
+                    todayCoordinator.reorderFailed(commandId);
                     fail(key, texts.text(R.string.error_change_save),
                             new IllegalArgumentException("Today reorder rejected: "
                                     + result.status));
                 }
             } catch (RuntimeException error) {
-                todayCoordinator.reorderFailed(value.commandId);
+                todayCoordinator.reorderFailed(commandId);
                 fail(key, texts.text(R.string.error_change_save), error);
             }
         });

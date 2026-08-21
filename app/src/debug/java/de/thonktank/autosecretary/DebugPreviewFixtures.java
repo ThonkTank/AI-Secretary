@@ -10,7 +10,7 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RewardBreakdown;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.RewardTextFormatter;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepStatus;

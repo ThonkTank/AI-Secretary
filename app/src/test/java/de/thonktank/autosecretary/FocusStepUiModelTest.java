@@ -8,8 +8,8 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 
 public final class FocusStepUiModelTest {
     @Test public void factoriesRejectContradictoryRepetitionPresentations() {

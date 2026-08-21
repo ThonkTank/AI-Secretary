@@ -199,7 +199,7 @@ public final class AllTasksVirtualizationTest {
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         shell.addView(new View(context), new LinearLayout.LayoutParams(-1, 80));
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, "test", new RewardAnchorRegistry(), new Recorder());
+                event -> { }, action -> { }, "test", new RewardAnchorRegistry(), new Recorder());
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT);
 
         renderer.render(new DashboardUiState(NavigationDestination.ALL_TASKS,

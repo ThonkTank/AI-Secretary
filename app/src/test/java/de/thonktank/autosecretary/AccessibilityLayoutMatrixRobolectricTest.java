@@ -1,10 +1,12 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.today.*;
+
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 
 import static org.junit.Assert.assertEquals;
@@ -143,7 +145,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, "test", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
+                event -> { }, action -> { }, "test", new RewardAnchorRegistry(),
+                new AllTasksView.Listener() { });
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         DashboardFixtures.fullDashboard(), CalendarUiState.empty(), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),

@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.leaf.WoodGrainRenderPipeline;
+
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;

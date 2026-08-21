@@ -31,13 +31,7 @@ final class DashboardEventRecorder implements DashboardEventSink,
     }
 
     List<de.thonktank.autosecretary.presentation.today.TodayAction> todayActions() {
-        if (!todayActions.isEmpty()) return Collections.unmodifiableList(todayActions);
-        List<de.thonktank.autosecretary.presentation.today.TodayAction> wrapped =
-                new ArrayList<>();
-        for (DashboardEvent event : events)
-            if (event instanceof DashboardEvent.Today)
-                wrapped.add(((DashboardEvent.Today) event).action);
-        return Collections.unmodifiableList(wrapped);
+        return Collections.unmodifiableList(todayActions);
     }
 
     de.thonktank.autosecretary.presentation.today.TodayAction lastToday(

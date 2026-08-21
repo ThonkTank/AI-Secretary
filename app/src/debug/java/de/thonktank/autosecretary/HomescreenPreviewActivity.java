@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.today.HeaderView;
+
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
@@ -68,7 +70,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         screen.addView(footer, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
         DashboardRenderer renderer = new DashboardRenderer(this, scroll, content,
-                event -> { }, "preview", new RewardAnchorRegistry(),
+                event -> { }, action -> { }, "preview", new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         java.util.List<CalendarEventSnapshot> events = DebugPreviewFixtures.referenceCalendar(preview);
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,

@@ -1,4 +1,6 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.leaf;
+
+import de.thonktank.autosecretary.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

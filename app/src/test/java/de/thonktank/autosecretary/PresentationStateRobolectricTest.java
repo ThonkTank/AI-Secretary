@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksSavedStateAdapte
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -212,13 +213,13 @@ public final class PresentationStateRobolectricTest {
         assertEquals(0, invalidations.get());
         String stepId = value().dashboard.focus.steps.get(0).id;
 
-        viewModel.reduceRepetitionInput(DashboardEvent.adjustRepetition(stepId, 1));
-        viewModel.reduceRepetitionInput(DashboardEvent.adjustRepetition(stepId, 1));
+        viewModel.dispatchToday(TodayAction.adjustRepetition(stepId, 1));
+        viewModel.dispatchToday(TodayAction.adjustRepetition(stepId, 1));
 
         assertEquals(14, value().repetitionInput.value);
         assertEquals(0, invalidations.get());
 
-        viewModel.reduceRepetitionInput(DashboardEvent.submitRepetition(stepId));
+        viewModel.dispatchToday(TodayAction.submitRepetition(stepId));
 
         assertEquals(1, invalidations.get());
         assertNull(value().repetitionInput.stepId);
@@ -276,7 +277,7 @@ public final class PresentationStateRobolectricTest {
                 new TaskStepDefinition(null, 1, "B", 0, StepAmount.none(), ""),
                 new TaskStepDefinition(null, 2, "C", 0, StepAmount.none(), ""))));
         viewModel.load();
-        List<de.thonktank.autosecretary.presentation.FocusStepUiModel> steps =
+        List<de.thonktank.autosecretary.presentation.today.FocusStepUiModel> steps =
                 value().dashboard.focus.steps;
         String first = steps.get(0).id;
         databaseQueries.clear();

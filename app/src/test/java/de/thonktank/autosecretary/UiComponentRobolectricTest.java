@@ -1,11 +1,15 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.today.*;
+import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
+
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -107,7 +111,8 @@ public final class UiComponentRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, "1.0", new RewardAnchorRegistry(), new AllTasksView.Listener() { });
+                event -> { }, action -> { }, "1.0", new RewardAnchorRegistry(),
+                new AllTasksView.Listener() { });
         DayPalette morning = DayPalette.at(LocalTime.of(8, 0), DayPalette.Mode.AUTO);
         DashboardUiState first = state(morning);
 
@@ -318,7 +323,7 @@ public final class UiComponentRobolectricTest {
         RepetitionInputReducer reducer = new RepetitionInputReducer();
         FocusTaskView focus = new FocusTaskView(context);
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
-        DashboardEventSink events = event -> {
+        TodayActionSink events = event -> {
             RepetitionInputReducer.Result result = reducer.reduce(input.get(), dashboard, event);
             input.set(result.state);
             if (result.submission != null) submitted.set(result.submission);

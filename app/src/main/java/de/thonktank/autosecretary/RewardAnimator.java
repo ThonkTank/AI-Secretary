@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.ui.today.HeaderView;
+
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;

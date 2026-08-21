@@ -13,7 +13,8 @@ import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskId;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
+import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,37 +24,42 @@ import java.util.Set;
 import java.util.UUID;
 
 /** Transactional orchestrator for completion, reward projection, undo and scheduling. */
-public final class CompletionService {
-    private final TaskRepository repository;
+public final class OccurrenceCompletionService {
+    private final OccurrenceExecutionRepository occurrences;
+    private final RewardLedgerRepository ledger;
     private final Clock clock;
     private final RewardCalculator rewards;
     private final CompletionStateMachine states;
     private final ScheduleProjector schedules;
     private final StepExecutionService stepExecution;
 
-    public CompletionService(TaskRepository repository, Clock clock) {
-        this(repository, clock, new RewardCalculator(), new CompletionStateMachine(),
-                new ScheduleProjector());
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    OccurrenceCompletionService(T repository, Clock clock) {
+        this(repository, repository, clock, new RewardCalculator(),
+                new CompletionStateMachine(), new ScheduleProjector());
     }
 
-    CompletionService(TaskRepository repository, Clock clock, RewardCalculator rewards,
+    OccurrenceCompletionService(OccurrenceExecutionRepository occurrences,
+                      RewardLedgerRepository ledger, Clock clock, RewardCalculator rewards,
                       CompletionStateMachine states, ScheduleProjector schedules) {
-        this.repository = repository;
+        this.occurrences = occurrences;
+        this.ledger = ledger;
         this.clock = clock;
         this.rewards = rewards;
         this.states = states;
         this.schedules = schedules;
-        this.stepExecution = new StepExecutionService(repository, clock, rewards, states);
+        this.stepExecution = new StepExecutionService(occurrences, ledger, clock,
+                rewards, states);
     }
 
     public RewardReceipt completeRemainingSteps(String occurrenceId) {
-        return repository.inTransaction(() -> {
+        return occurrences.inTransaction(() -> {
             String transactionId = newId();
             List<RewardBooking> bookings = new ArrayList<>();
-            Occurrence occurrence = repository.findOccurrence(occurrenceId);
+            Occurrence occurrence = occurrences.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
-            for (OccurrenceStep step : repository.occurrenceSteps(occurrenceId))
+            for (OccurrenceStep step : occurrences.occurrenceSteps(occurrenceId))
                 if (!step.done) bookings.addAll(stepExecution.completeStep(occurrence, step,
                         transactionId).bookings);
             return RewardReceipt.of(transactionId, bookings, RewardReceipt.Target.VESSEL);
@@ -62,59 +68,59 @@ public final class CompletionService {
 
     public RewardReceipt completeOccurrence(String occurrenceId) {
         if (occurrenceId == null || occurrenceId.isEmpty()) return RewardReceipt.none();
-        return repository.inTransaction(() -> {
-            Occurrence occurrence = repository.findOccurrence(occurrenceId);
+        return occurrences.inTransaction(() -> {
+            Occurrence occurrence = occurrences.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
-            Task task = repository.findTask(occurrence.taskId);
+            Task task = occurrences.findTask(occurrence.taskId);
             if (task == null) return RewardReceipt.none();
             String transactionId = newId();
             List<RewardBooking> bookings = new ArrayList<>();
-            for (OccurrenceStep step : repository.occurrenceSteps(occurrenceId))
+            for (OccurrenceStep step : occurrences.occurrenceSteps(occurrenceId))
                 if (!step.done) bookings.addAll(stepExecution.completeStep(occurrence, step,
                         transactionId).bookings);
-            bookings.addAll(harvest(repository.findOccurrence(occurrenceId), task,
+            bookings.addAll(harvest(occurrences.findOccurrence(occurrenceId), task,
                     transactionId).bookings);
             return RewardReceipt.of(transactionId, bookings, RewardReceipt.Target.HEAD);
         });
     }
 
     public RewardReceipt harvestOccurrence(String occurrenceId) {
-        return repository.inTransaction(() -> {
-            Occurrence occurrence = repository.findOccurrence(occurrenceId);
-            Task task = occurrence == null ? null : repository.findTask(occurrence.taskId);
+        return occurrences.inTransaction(() -> {
+            Occurrence occurrence = occurrences.findOccurrence(occurrenceId);
+            Task task = occurrence == null ? null : occurrences.findTask(occurrence.taskId);
             return harvest(occurrence, task, newId());
         });
     }
 
     public RewardReceipt undoOccurrence(String occurrenceId) {
-        return repository.inTransaction(() -> {
-            Occurrence occurrence = repository.findOccurrence(occurrenceId);
-            Task task = occurrence == null ? null : repository.findTask(occurrence.taskId);
+        return occurrences.inTransaction(() -> {
+            Occurrence occurrence = occurrences.findOccurrence(occurrenceId);
+            Task task = occurrence == null ? null : occurrences.findTask(occurrence.taskId);
             return undoHarvest(occurrence, task);
         });
     }
 
     public RewardReceipt closeCondition(TaskId taskId) {
-        return repository.inTransaction(() -> {
-            Task task = repository.findTask(taskId);
+        return occurrences.inTransaction(() -> {
+            Task task = occurrences.findTask(taskId);
             if (task == null || !task.ongoing || task.conditionText.isEmpty()
                     || task.conditionDone) return RewardReceipt.none();
-            Occurrence open = repository.openOccurrence(task.id);
+            Occurrence open = occurrences.openOccurrence(task.id);
             if (open == null) {
                 de.thonktank.autosecretary.domain.model.TaskSlot slot = new TaskSchedule(
-                        repository.scheduleEntries(task.id)).primary(task.id).slot;
+                        occurrences.scheduleEntries(task.id)).primary(task.id).slot;
                 open = new Occurrence("condition:" + task.id.value + ":" + clock.today(),
                         task.id, clock.today(), slot, OccurrenceState.OPEN,
                         Integer.MAX_VALUE, null, OccurrenceKind.CONDITION);
-                repository.insertOccurrence(open);
+                occurrences.insertOccurrence(open);
             } else if (open.kind != OccurrenceKind.CONDITION) {
                 open = new Occurrence(open.id, open.taskId, open.scheduledOn, open.slot,
                         open.state, open.sortOrder, open.completedOn, OccurrenceKind.CONDITION);
             }
             RewardReceipt receipt = harvest(open, task, newId());
-            Task projected = repository.findTask(task.id);
-            repository.updateTask(projected.closeCondition(clock.today()));
+            Task projected = occurrences.findTask(task.id);
+            occurrences.updateTask(projected.closeCondition(clock.today()));
             return receipt;
         });
     }
@@ -123,8 +129,8 @@ public final class CompletionService {
         if (occurrence == null || task == null || occurrence.state != OccurrenceState.OPEN
                 || activeOriginal(occurrence.id, null, RewardBooking.Target.HEAD) != null)
             return RewardReceipt.none();
-        List<OccurrenceStep> steps = repository.occurrenceSteps(occurrence.id);
-        int collected = netXp(repository.rewardBookings(occurrence.id), RewardBooking.Target.VESSEL);
+        List<OccurrenceStep> steps = occurrences.occurrenceSteps(occurrence.id);
+        int collected = netXp(ledger.rewardBookings(occurrence.id), RewardBooking.Target.VESSEL);
         boolean routine = !steps.isEmpty();
         if (routine && collected <= 0) return RewardReceipt.none();
         boolean hasMissedSteps = false;
@@ -140,10 +146,10 @@ public final class CompletionService {
         RewardBooking booking = new RewardBooking(newId(), transactionId, occurrence.id, null,
                 ComboProgress.taskOwner(task.id), calculated.kind, RewardBooking.Target.HEAD,
                 calculated.xp, change.appliedDelta, clock.today(), null);
-        repository.putCombo(change.progress);
-        repository.setXp(repository.xp() + booking.xpDelta);
-        repository.insertRewardBooking(booking);
-        repository.updateOccurrence(hasMissedSteps
+        ledger.putCombo(change.progress);
+        ledger.setXp(ledger.xp() + booking.xpDelta);
+        ledger.insertRewardBooking(booking);
+        occurrences.updateOccurrence(hasMissedSteps
                 ? states.harvestWithMissedSteps(occurrence, clock.today())
                 : states.completeOccurrence(occurrence, clock.today()));
         projectSchedule(task.id);
@@ -154,34 +160,34 @@ public final class CompletionService {
     private RewardReceipt undoHarvest(Occurrence occurrence, Task task) {
         if (occurrence == null || task == null || !occurrence.state.isHarvested()
                 || !clock.today().equals(occurrence.completedOn)) return RewardReceipt.none();
-        Occurrence otherOpen = repository.earliestOpenOccurrence(task.id);
+        Occurrence otherOpen = occurrences.earliestOpenOccurrence(task.id);
         if (otherOpen != null && !otherOpen.id.equals(occurrence.id)) return RewardReceipt.none();
         RewardBooking original = activeOriginal(occurrence.id, null, RewardBooking.Target.HEAD);
         if (original == null) return RewardReceipt.none();
         String transactionId = newId();
         RewardBooking reversal = original.reverse(newId(), transactionId, clock.today());
         ComboProgress current = combo(original.ownerId, task.id, ComboProgress.Kind.TASK);
-        repository.putCombo(current.undo(original.comboPointDelta, clock.today()));
-        repository.setXp(repository.xp() + reversal.xpDelta);
-        repository.insertRewardBooking(reversal);
-        repository.updateOccurrence(states.reopenOccurrence(occurrence));
-        if (task.ongoing && task.conditionDone) repository.updateTask(task.reopenCondition());
+        ledger.putCombo(current.undo(original.comboPointDelta, clock.today()));
+        ledger.setXp(ledger.xp() + reversal.xpDelta);
+        ledger.insertRewardBooking(reversal);
+        occurrences.updateOccurrence(states.reopenOccurrence(occurrence));
+        if (task.ongoing && task.conditionDone) occurrences.updateTask(task.reopenCondition());
         projectSchedule(task.id);
         return RewardReceipt.of(transactionId, Collections.singletonList(reversal),
                 RewardReceipt.Target.HEAD);
     }
 
     private void projectSchedule(TaskId taskId) {
-        Task task = repository.findTask(taskId);
+        Task task = occurrences.findTask(taskId);
         if (task == null) return;
-        repository.updateTask(schedules.project(task, new ScheduleProjector.Input(
-                repository.earliestOpenOccurrence(taskId),
-                repository.latestCompletedOccurrence(taskId))));
+        occurrences.updateTask(schedules.project(task, new ScheduleProjector.Input(
+                occurrences.earliestOpenOccurrence(taskId),
+                occurrences.latestCompletedOccurrence(taskId))));
     }
 
     private RewardBooking activeOriginal(String occurrenceId, String stepId,
                                          RewardBooking.Target target) {
-        List<RewardBooking> bookings = repository.rewardBookings(occurrenceId);
+        List<RewardBooking> bookings = ledger.rewardBookings(occurrenceId);
         Set<String> reversed = new HashSet<>();
         for (RewardBooking booking : bookings)
             if (booking.reversesBookingId != null) reversed.add(booking.reversesBookingId);
@@ -205,10 +211,10 @@ public final class CompletionService {
     }
 
     private ComboProgress combo(String owner, TaskId taskId, ComboProgress.Kind kind) {
-        ComboProgress combo = repository.combo(owner);
+        ComboProgress combo = ledger.combo(owner);
         if (combo != null) return combo;
         combo = ComboProgress.fresh(owner, taskId, kind);
-        repository.putCombo(combo);
+        ledger.putCombo(combo);
         return combo;
     }
 

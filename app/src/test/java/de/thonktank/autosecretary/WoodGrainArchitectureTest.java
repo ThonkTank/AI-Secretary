@@ -11,7 +11,7 @@ import java.nio.file.Path;
 
 public final class WoodGrainArchitectureTest {
     @Test public void drawViewHasNoGeometryOrHierarchyReconstruction() throws Exception {
-        String source = new String(Files.readAllBytes(source("WoodGrainView.java")),
+        String source = new String(Files.readAllBytes(source("ui/leaf/WoodGrainView.java")),
                 StandardCharsets.UTF_8);
 
         assertFalse(source.contains("WoodGrainGeometry"));
@@ -25,11 +25,11 @@ public final class WoodGrainArchitectureTest {
             throws Exception {
         String leaf = new String(Files.readAllBytes(sourceIn("ui/leaf/LeafSurface.java")),
                 StandardCharsets.UTF_8);
-        String header = new String(Files.readAllBytes(source("HeaderView.java")),
+        String header = new String(Files.readAllBytes(source("ui/today/HeaderView.java")),
                 StandardCharsets.UTF_8);
-        String task = new String(Files.readAllBytes(source("TaskLeafView.java")),
+        String task = new String(Files.readAllBytes(source("ui/today/TaskLeafView.java")),
                 StandardCharsets.UTF_8);
-        String focus = new String(Files.readAllBytes(source("FocusCardDecoration.java")),
+        String focus = new String(Files.readAllBytes(source("ui/today/FocusCardDecoration.java")),
                 StandardCharsets.UTF_8);
 
         assertTrue(leaf.contains("onLayout"));

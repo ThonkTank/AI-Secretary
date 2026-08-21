@@ -1,4 +1,8 @@
-package de.thonktank.autosecretary;
+package de.thonktank.autosecretary.ui.today;
+
+import de.thonktank.autosecretary.*;
+
+import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 
@@ -90,7 +94,7 @@ public final class TaskLeafView extends LeafSurface {
                         task.comboStage)), faded));
     }
 
-    View rewardAnchor() { return dot; }
+    public View rewardAnchor() { return dot; }
 
     @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.AT_MOST) {

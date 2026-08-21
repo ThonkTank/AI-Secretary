@@ -4,7 +4,7 @@ import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 
 import androidx.annotation.Nullable;
 
-import de.thonktank.autosecretary.presentation.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 
@@ -32,13 +32,6 @@ public final class RepetitionInputReducer {
             this.state = state;
             this.submission = submission;
         }
-    }
-
-    public Result reduce(RepetitionInputState current, TodayUiModel dashboard,
-                         DashboardEvent event) {
-        if (!(event instanceof DashboardEvent.Today))
-            return new Result(current.reconcile(dashboard.focus), null);
-        return reduce(current, dashboard, ((DashboardEvent.Today) event).action);
     }
 
     public Result reduce(RepetitionInputState current, TodayUiModel dashboard,

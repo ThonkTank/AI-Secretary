@@ -10,7 +10,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
-import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.repository.MaterializationRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -26,12 +26,13 @@ import java.util.Map;
  * to separate components. This class owns only the transaction boundary and task-level order.
  */
 public final class MaterializeDueOccurrences {
-    private final TaskRepository repository;
+    private final MaterializationRepository repository;
     private final Clock clock;
     private final IdGenerator ids;
     private final DueDatePlanner planner = new DueDatePlanner();
 
-    public MaterializeDueOccurrences(TaskRepository repository, Clock clock, IdGenerator ids) {
+    public MaterializeDueOccurrences(MaterializationRepository repository, Clock clock,
+                                     IdGenerator ids) {
         this.repository = repository;
         this.clock = clock;
         this.ids = ids;
