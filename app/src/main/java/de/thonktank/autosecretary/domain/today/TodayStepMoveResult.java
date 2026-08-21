@@ -22,9 +22,9 @@ public final class TodayStepMoveResult {
     public final List<String> openStepIds;
     public final List<TodayStepPositionUpdate> positionUpdates;
 
-    TodayStepMoveResult(Status status, List<OccurrenceStep> orderedSteps,
-                        List<String> openStepIds,
-                        List<TodayStepPositionUpdate> positionUpdates) {
+    public TodayStepMoveResult(Status status, List<OccurrenceStep> orderedSteps,
+                               List<String> openStepIds,
+                               List<TodayStepPositionUpdate> positionUpdates) {
         this.status = status;
         this.orderedSteps = Collections.unmodifiableList(new ArrayList<>(orderedSteps));
         this.openStepIds = Collections.unmodifiableList(new ArrayList<>(openStepIds));

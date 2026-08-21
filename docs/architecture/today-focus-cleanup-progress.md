@@ -86,3 +86,34 @@ notwendige Positionswrites, null Templatewrites, null Wiederholungswrites und be
 No-op keine weiteren Writes. Der Phase-Gate-Lauf enthält 318 Hosttests, davon 317 erfolgreich
 und einen bewusst übersprungenen Benchmark. Lint, Android-Testkompilierung, Debug-APK sowie alle
 Fokus-/Homescreen-Goldens sind grün; Datenbankschema 14 und PNG-Baselines blieben unverändert.
+
+## Phase 4 – Today-Zustandsautomat und Action Boundary
+
+Status: implementiert und gegen die Roadmap auditiert.
+
+- `presentation.today` besitzt mit `TodayAction`, `TodayActionSink`, `TodayFeatureState`,
+  `TodayReducer` und `TodayCoordinator` eine geschlossene, snapshotfreie Aktionsgrenze. Actions
+  tragen nur IDs, konkrete Zahlen-/Textwerte und ID-Reihenfolgen.
+- Reorder ist explizit `IDLE`, `DRAGGING` oder `PERSISTING`. Kanonische und Preview-Reihenfolge,
+  bewegte Step-ID und eindeutige Command-ID sind Teil des Zustands. Cancel erzeugt keinen
+  Command, Drop genau einen; weitere Drops während desselben Persistenzvorgangs werden
+  ignoriert.
+- Ein bestätigter Move übernimmt ausschließlich die vom Use Case gelieferte offene Reihenfolge
+  in die vorhandene Today-Projektion. Fehler stellen die kanonische Reihenfolge wieder her;
+  ein externer Rebind verwirft eine laufende Preview und publiziert typisiertes Feedback.
+- Reorder liest weder Dashboard noch Kalender erneut und invalidiert Widgets nur bei
+  `TodayStepMoveResult.MOVED`. Completion, Step-Ausführung, Advance, Wiederholung, Undo, Harvest,
+  Defer und Condition-Close laden ausschließlich die Today-Projektion; Kalender-, Editor-,
+  Navigations-, Options- und Updatezustand bleiben referenziell erhalten.
+- `MainActivity` besitzt nur noch einen generischen `DashboardEvent.Today`-Delegationszweig.
+  Der einzige exhaustive Today-Dispatcher liegt im Coordinator/ViewModel-Rand; die früheren
+  Step-, Repetition-, Reorder-, Harvest- und Undo-Zweige sind aus der Activity entfernt.
+
+Reducer-Tests decken Begin, Preview, Cancel, Drop, Duplicate Drop, Erfolg, Fehler, Rebind und
+konkurrierenden externen Refresh ab. Coordinator- und Room-nahe Presentationtests beweisen genau
+einen Persistenzcommand, keinen Dashboard-/Kalenderreload, direkte Übernahme der bestätigten
+Reihenfolge sowie unveränderte Geschwisterzustände. Ein Architekturtest vergleicht sämtliche
+`TodayAction.Kind`-Werte mit dem zentralen Dispatcher. Der Phase-Gate-Lauf enthält 326 Hosttests,
+davon 325 erfolgreich und einen bewusst übersprungenen Benchmark. Lint,
+Android-Testkompilierung und Debug-APK sind grün; Datenbankschema 14, Goldens und PNG-Baselines
+blieben unverändert.

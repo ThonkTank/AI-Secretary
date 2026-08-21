@@ -2,6 +2,7 @@ package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
 
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
@@ -12,13 +13,24 @@ public abstract class DashboardEvent {
 
     public enum FocusActionKind { COMPLETE, COMPLETE_REMAINING, HARVEST, DEFER }
 
+    /** Temporary root-view transport; all Today semantics live in {@link TodayAction}. */
+    public abstract static class Today extends DashboardEvent {
+        public final TodayAction action;
+        private Today(TodayAction action) { this.action = required(action); }
+    }
+
     public static final class AddTask extends DashboardEvent {
         private AddTask() { }
     }
 
-    public static final class TimelinePrimary extends DashboardEvent {
+    public static final class TimelinePrimary extends Today {
         public final TimelineTaskUiModel task;
-        private TimelinePrimary(TimelineTaskUiModel task) { this.task = required(task); }
+        private TimelinePrimary(TimelineTaskUiModel task) {
+            super(task.terminalCondition
+                    ? TodayAction.requestClose(task.taskId, task.title)
+                    : TodayAction.completeOccurrence(task.occurrenceId));
+            this.task = required(task);
+        }
     }
 
     public static final class TimelineMenu extends DashboardEvent {
@@ -26,65 +38,79 @@ public abstract class DashboardEvent {
         private TimelineMenu(TaskActionTarget target) { this.target = required(target); }
     }
 
-    public static final class FocusAction extends DashboardEvent {
+    public static final class FocusAction extends Today {
         public final FocusActionKind kind;
         public final TaskActionTarget target;
         private FocusAction(FocusActionKind kind, TaskActionTarget target) {
+            super(focusActionValue(kind, target));
             this.kind = required(kind);
             this.target = required(target);
         }
     }
 
-    public static final class ToggleStep extends DashboardEvent {
+    public static final class ToggleStep extends Today {
         public final String stepId;
-        private ToggleStep(String stepId) { this.stepId = requiredId(stepId); }
+        private ToggleStep(String stepId) {
+            super(TodayAction.toggleStep(stepId));
+            this.stepId = requiredId(stepId);
+        }
     }
 
-    public static final class AdvanceTodayStep extends DashboardEvent {
+    public static final class AdvanceTodayStep extends Today {
         public final String stepId;
-        private AdvanceTodayStep(String stepId) { this.stepId = requiredId(stepId); }
+        private AdvanceTodayStep(String stepId) {
+            super(TodayAction.advanceStep(stepId));
+            this.stepId = requiredId(stepId);
+        }
     }
 
-    public static final class MoveTodayStep extends DashboardEvent {
+    public static final class MoveTodayStep extends Today {
         public final String stepId;
         public final String beforeStepId;
         private MoveTodayStep(String stepId, String beforeStepId) {
+            super(TodayAction.moveStep(stepId, beforeStepId));
             this.stepId = requiredId(stepId);
             this.beforeStepId = beforeStepId == null || beforeStepId.isEmpty()
                     ? null : beforeStepId;
         }
     }
 
-    public static final class UndoCompleted extends DashboardEvent {
+    public static final class UndoCompleted extends Today {
         public final String occurrenceId;
         private UndoCompleted(String occurrenceId) {
+            super(TodayAction.undoOccurrence(occurrenceId));
             this.occurrenceId = requiredId(occurrenceId);
         }
     }
 
-    public static final class AdjustRepetition extends DashboardEvent {
+    public static final class AdjustRepetition extends Today {
         public final String stepId;
         public final int delta;
         private AdjustRepetition(String stepId, int delta) {
+            super(TodayAction.adjustRepetition(stepId, delta));
             if (delta == 0) throw new IllegalArgumentException("Adjustment must not be zero");
             this.stepId = requiredId(stepId);
             this.delta = delta;
         }
     }
 
-    public static final class EditRepetition extends DashboardEvent {
+    public static final class EditRepetition extends Today {
         public final String stepId;
         public final int index;
         private EditRepetition(String stepId, int index) {
+            super(TodayAction.editRepetition(stepId, index));
             if (index < 0) throw new IllegalArgumentException("Saved result index is required");
             this.stepId = requiredId(stepId);
             this.index = index;
         }
     }
 
-    public static final class SubmitRepetition extends DashboardEvent {
+    public static final class SubmitRepetition extends Today {
         public final String stepId;
-        private SubmitRepetition(String stepId) { this.stepId = requiredId(stepId); }
+        private SubmitRepetition(String stepId) {
+            super(TodayAction.submitRepetition(stepId));
+            this.stepId = requiredId(stepId);
+        }
     }
 
     public static final class ThemeSelected extends DashboardEvent {
@@ -154,5 +180,25 @@ public abstract class DashboardEvent {
     private static <T> T required(T value) {
         if (value == null) throw new IllegalArgumentException("Event value is required");
         return value;
+    }
+
+    private static TodayAction focusActionValue(FocusActionKind kind,
+                                                TaskActionTarget target) {
+        required(kind);
+        required(target);
+        switch (kind) {
+            case COMPLETE:
+                return target.terminalCondition
+                        ? TodayAction.requestClose(target.taskId, target.title)
+                        : TodayAction.completeOccurrence(target.occurrenceId);
+            case COMPLETE_REMAINING:
+                return TodayAction.completeRemaining(target.occurrenceId);
+            case HARVEST:
+                return TodayAction.harvest(target.occurrenceId);
+            case DEFER:
+                return TodayAction.defer(target.occurrenceId.isEmpty()
+                        ? target.taskId : target.occurrenceId);
+        }
+        throw new AssertionError("Unhandled focus action " + kind);
     }
 }

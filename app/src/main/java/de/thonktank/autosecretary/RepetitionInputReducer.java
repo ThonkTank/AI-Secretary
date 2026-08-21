@@ -6,6 +6,7 @@ import androidx.annotation.Nullable;
 
 import de.thonktank.autosecretary.presentation.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
 
 /** Pure reducer for repetition drafts and submissions. */
 public final class RepetitionInputReducer {
@@ -35,35 +36,41 @@ public final class RepetitionInputReducer {
 
     public Result reduce(RepetitionInputState current, TodayUiModel dashboard,
                          DashboardEvent event) {
-        if (current == null || dashboard == null || event == null)
+        if (!(event instanceof DashboardEvent.Today))
+            return new Result(current.reconcile(dashboard.focus), null);
+        return reduce(current, dashboard, ((DashboardEvent.Today) event).action);
+    }
+
+    public Result reduce(RepetitionInputState current, TodayUiModel dashboard,
+                         TodayAction action) {
+        if (current == null || dashboard == null || action == null)
             throw new IllegalArgumentException("Reducer state, dashboard and event are required");
-        String stepId = stepId(event);
+        String stepId = stepId(action);
         FocusStepUiModel active = activeRepetitionStep(dashboard);
         if (stepId == null || active == null || !active.id.equals(stepId))
             return new Result(current.reconcile(dashboard.focus), null);
-        if (event instanceof DashboardEvent.AdjustRepetition) {
-            int delta = ((DashboardEvent.AdjustRepetition) event).delta;
-            return new Result(current.adjust(active, delta), null);
+        if (action.kind == TodayAction.Kind.ADJUST_REPETITION) {
+            return new Result(current.adjust(active, action.value), null);
         }
-        if (event instanceof DashboardEvent.EditRepetition) {
-            int index = ((DashboardEvent.EditRepetition) event).index;
-            return new Result(current.edit(active, index), null);
+        if (action.kind == TodayAction.Kind.EDIT_REPETITION) {
+            return new Result(current.edit(active, action.value), null);
         }
-        if (event instanceof DashboardEvent.SubmitRepetition) {
+        if (action.kind == TodayAction.Kind.SUBMIT_REPETITION) {
             return new Result(RepetitionInputState.idle(), new Submission(active.id,
                     current.valueFor(active), current.editingIndexFor(active)));
         }
         return new Result(current, null);
     }
 
-    @Nullable private static String stepId(DashboardEvent event) {
-        if (event instanceof DashboardEvent.AdjustRepetition)
-            return ((DashboardEvent.AdjustRepetition) event).stepId;
-        if (event instanceof DashboardEvent.EditRepetition)
-            return ((DashboardEvent.EditRepetition) event).stepId;
-        if (event instanceof DashboardEvent.SubmitRepetition)
-            return ((DashboardEvent.SubmitRepetition) event).stepId;
-        return null;
+    @Nullable private static String stepId(TodayAction action) {
+        switch (action.kind) {
+            case ADJUST_REPETITION:
+            case EDIT_REPETITION:
+            case SUBMIT_REPETITION:
+                return action.id;
+            default:
+                return null;
+        }
     }
 
     @Nullable private static FocusStepUiModel activeRepetitionStep(TodayUiModel dashboard) {

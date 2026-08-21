@@ -220,37 +220,12 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void handleDashboardEvent(DashboardEvent event) {
-        if (event instanceof DashboardEvent.AddTask) {
+        if (event instanceof DashboardEvent.Today) {
+            viewModel.dispatchToday(((DashboardEvent.Today) event).action);
+        } else if (event instanceof DashboardEvent.AddTask) {
             openEditorWithFlight();
-        } else if (event instanceof DashboardEvent.TimelinePrimary) {
-            TimelineTaskUiModel task = ((DashboardEvent.TimelinePrimary) event).task;
-            if (task.terminalCondition) viewModel.requestClose(task.taskId, task.title);
-            else viewModel.complete(task.occurrenceId);
         } else if (event instanceof DashboardEvent.TimelineMenu) {
             showTaskMenu(((DashboardEvent.TimelineMenu) event).target);
-        } else if (event instanceof DashboardEvent.FocusAction) {
-            DashboardEvent.FocusAction action = (DashboardEvent.FocusAction) event;
-            TaskActionTarget target = action.target;
-            if (action.kind == DashboardEvent.FocusActionKind.COMPLETE) completeOrConfirm(target);
-            else if (action.kind == DashboardEvent.FocusActionKind.COMPLETE_REMAINING)
-                viewModel.completeRemaining(target.occurrenceId);
-            else if (action.kind == DashboardEvent.FocusActionKind.HARVEST)
-                viewModel.harvest(target.occurrenceId);
-            else viewModel.defer(target.occurrenceId.isEmpty()
-                    ? target.taskId : target.occurrenceId);
-        } else if (event instanceof DashboardEvent.ToggleStep) {
-            viewModel.toggleStep(((DashboardEvent.ToggleStep) event).stepId);
-        } else if (event instanceof DashboardEvent.AdvanceTodayStep) {
-            viewModel.advanceTodayStep(((DashboardEvent.AdvanceTodayStep) event).stepId);
-        } else if (event instanceof DashboardEvent.MoveTodayStep) {
-            DashboardEvent.MoveTodayStep move = (DashboardEvent.MoveTodayStep) event;
-            viewModel.moveTodayStep(move.stepId, move.beforeStepId);
-        } else if (event instanceof DashboardEvent.UndoCompleted) {
-            viewModel.undoOccurrence(((DashboardEvent.UndoCompleted) event).occurrenceId);
-        } else if (event instanceof DashboardEvent.AdjustRepetition
-                || event instanceof DashboardEvent.EditRepetition
-                || event instanceof DashboardEvent.SubmitRepetition) {
-            viewModel.reduceRepetitionInput(event);
         } else if (event instanceof DashboardEvent.ThemeSelected) {
             UiThemeMode mode = ((DashboardEvent.ThemeSelected) event).mode;
             container.uiPreferences.setThemeMode(mode);

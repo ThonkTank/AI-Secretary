@@ -264,6 +264,60 @@ public final class PresentationStateRobolectricTest {
                 1L, unfilteredTaskInventoryReads);
     }
 
+    @Test public void todayReorderDoesNotReloadDashboardOrCalendarAndInvalidatesOnce() {
+        AtomicInteger calendarLoads = new AtomicInteger();
+        AtomicInteger invalidations = new AtomicInteger();
+        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(),
+                invalidations::incrementAndGet, calendarLoads);
+        tasks.create.execute(new TaskDefinition("Reihenfolge", null, TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
+                null, null, null, null, "", java.util.Arrays.asList(
+                new TaskStepDefinition(null, 0, "A", 0, StepAmount.none(), ""),
+                new TaskStepDefinition(null, 1, "B", 0, StepAmount.none(), ""),
+                new TaskStepDefinition(null, 2, "C", 0, StepAmount.none(), ""))));
+        viewModel.load();
+        List<de.thonktank.autosecretary.presentation.FocusStepUiModel> steps =
+                value().dashboard.focus.steps;
+        String first = steps.get(0).id;
+        databaseQueries.clear();
+        calendarLoads.set(0);
+        invalidations.set(0);
+
+        viewModel.moveTodayStep(first, null);
+
+        assertEquals(0, calendarLoads.get());
+        assertEquals(1, invalidations.get());
+        assertEquals(first, value().dashboard.focus.steps.get(2).id);
+        assertTrue(databaseQueries.stream().noneMatch(sql -> sql.toLowerCase(
+                java.util.Locale.ROOT).contains(" from tasks")));
+        assertTrue(databaseQueries.stream().noneMatch(sql -> sql.toLowerCase(
+                java.util.Locale.ROOT).contains(" from task_schedule")));
+    }
+
+    @Test public void completionReloadsOnlyTodayAndPreservesSiblingPresentationState() {
+        AtomicInteger calendarLoads = new AtomicInteger();
+        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(), () -> { },
+                calendarLoads);
+        tasks.create.execute(TaskDefinition.basic("Abschließen", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, Collections.emptyList()));
+        viewModel.load();
+        viewModel.openEditor(null);
+        preferences.setFocusStepLimit(FocusStepLimit.THREE);
+        CalendarUiState calendarBefore = value().calendar;
+        EditorUiState editorBefore = value().editor;
+        String occurrenceId = value().dashboard.focus.occurrenceId();
+        calendarLoads.set(0);
+
+        viewModel.complete(occurrenceId);
+
+        assertEquals(0, calendarLoads.get());
+        assertSame(calendarBefore, value().calendar);
+        assertSame(editorBefore, value().editor);
+        assertEquals(FocusStepLimit.THREE, value().focusStepLimit);
+        assertTrue(value().dashboard.completedToday.stream()
+                .anyMatch(done -> done.occurrenceId.equals(occurrenceId)));
+    }
+
     @Test public void managementViewModelOwnsCatalogAndRestoresOnlyThroughSavedStateAdapter() {
         SavedStateHandle handle = new SavedStateHandle();
         AllTasksViewModel management = new AllTasksViewModel(tasks.loadTaskCatalog,
@@ -329,8 +383,16 @@ public final class PresentationStateRobolectricTest {
     private TaskViewModel newViewModel(SavedStateHandle handle,
                                        AbstractExecutorService worker,
                                        WidgetInvalidator widgets) {
+        return newViewModel(handle, worker, widgets, new AtomicInteger());
+    }
+
+    private TaskViewModel newViewModel(SavedStateHandle handle,
+                                       AbstractExecutorService worker,
+                                       WidgetInvalidator widgets,
+                                       AtomicInteger calendarLoads) {
         CalendarDataSource calendar = new CalendarDataSource() {
             @Override public CalendarResult loadToday() {
+                calendarLoads.incrementAndGet();
                 return new CalendarResult.Success(DashboardFixtures.calendarEvents());
             }
 

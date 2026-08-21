@@ -99,6 +99,12 @@ public final class DashboardUiState {
                 repetitionInput.reconcile(dashboardValue.focus));
     }
 
+    /** Replaces only the Today feature projection and preserves every sibling state. */
+    public DashboardUiState withToday(TodayUiModel value) {
+        return copy(navigation, value, calendar, palette, calendarPermission, loading,
+                runningActions, editor, repetitionInput.reconcile(value.focus));
+    }
+
     public DashboardUiState withRunningActions(Set<UiCommand> value) {
         return copy(navigation, dashboard, calendar, palette, calendarPermission, loading,
                 value, editor, repetitionInput);

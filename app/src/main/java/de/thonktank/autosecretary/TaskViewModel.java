@@ -1,6 +1,10 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayCommand;
+import de.thonktank.autosecretary.presentation.today.TodayCoordinator;
+import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,6 +25,9 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
+import de.thonktank.autosecretary.domain.today.StepExecutionResult;
+import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
 import de.thonktank.autosecretary.domain.schedule.ScheduleMoveResult;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
@@ -66,6 +73,7 @@ public final class TaskViewModel extends ViewModel {
             new MutableLiveData<>(rewardQueue.snapshot());
     private final Object stateLock = new Object();
     private final DashboardRefreshPolicy refreshPolicy = new DashboardRefreshPolicy();
+    private final TodayCoordinator todayCoordinator;
     private DashboardUiState current;
     private LocalDate loadedDate;
     private long catalogChangeVersion;
@@ -105,6 +113,8 @@ public final class TaskViewModel extends ViewModel {
                 CalendarPermissionStatus.UNKNOWN, false, Collections.emptySet(), editor,
                 RepetitionInputState.idle(), display.themeMode, display.focusStepLimit,
                 UpdateUiState.idle());
+        todayCoordinator = new TodayCoordinator(current.dashboard,
+                this::executeTodayCommand, this::publishTodayFeatureState);
         state.setValue(current);
         displayPreferencesSubscription = preferences.observeDisplayPreferences(
                 this::onDisplayPreferences);
@@ -151,10 +161,15 @@ public final class TaskViewModel extends ViewModel {
     }
 
     void reduceRepetitionInput(DashboardEvent event) {
+        if (event instanceof DashboardEvent.Today)
+            reduceRepetitionInput(((DashboardEvent.Today) event).action);
+    }
+
+    private void reduceRepetitionInput(TodayAction action) {
         RepetitionInputReducer.Submission submission;
         synchronized (stateLock) {
             RepetitionInputReducer.Result result = repetitionInputReducer.reduce(
-                    current.repetitionInput, current.dashboard, event);
+                    current.repetitionInput, current.dashboard, action);
             submission = result.submission;
             if (result.state != current.repetitionInput) {
                 current = current.withRepetitionInput(result.state);
@@ -343,38 +358,38 @@ public final class TaskViewModel extends ViewModel {
         events.setValue(UiEvent.confirmClose(taskId, title));
     }
 
-    void complete(String occurrenceId) { runReward(command(UiCommand.Kind.COMPLETE, occurrenceId), () -> tasks.complete.execute(occurrenceId)); }
+    void dispatchToday(TodayAction action) { todayCoordinator.emit(action); }
+
+    void complete(String occurrenceId) {
+        dispatchToday(TodayAction.completeOccurrence(occurrenceId));
+    }
     void completeRemaining(String occurrenceId) {
-        runReward(command(UiCommand.Kind.COMPLETE_REMAINING, occurrenceId),
-                () -> tasks.completeRemainingSteps.execute(occurrenceId));
+        dispatchToday(TodayAction.completeRemaining(occurrenceId));
     }
     void harvest(String occurrenceId) {
-        runReward(command(UiCommand.Kind.HARVEST, occurrenceId), () -> tasks.harvest.execute(occurrenceId));
+        dispatchToday(TodayAction.harvest(occurrenceId));
     }
     void undoOccurrence(String occurrenceId) {
-        runReward(command(UiCommand.Kind.UNDO, occurrenceId), () -> tasks.undoOccurrence.execute(occurrenceId));
+        dispatchToday(TodayAction.undoOccurrence(occurrenceId));
     }
-    void toggleStep(String stepId) { runReward(command(UiCommand.Kind.TOGGLE_STEP, stepId), () -> tasks.toggleStep.execute(stepId)); }
+    void toggleStep(String stepId) { dispatchToday(TodayAction.toggleStep(stepId)); }
     void advanceTodayStep(String stepId) {
-        runReward(command(UiCommand.Kind.ADVANCE_TODAY_STEP, stepId),
-                () -> tasks.advanceTodayStep.execute(stepId).rewardReceipt);
+        dispatchToday(TodayAction.advanceStep(stepId));
     }
     void moveTodayStep(String stepId, @Nullable String beforeStepId) {
-        run(command(UiCommand.Kind.MOVE_TODAY_STEP, stepId),
-                () -> tasks.moveTodayStep.execute(stepId, beforeStepId));
+        dispatchToday(TodayAction.moveStep(stepId, beforeStepId));
     }
     void recordRepetitionResult(String stepId, int repetitions) {
-        runReward(command(UiCommand.Kind.RECORD_REPETITION_RESULT, stepId),
-                () -> tasks.recordRepetitionResult.execute(stepId, repetitions).rewardReceipt);
+        runTodayStepResult(command(UiCommand.Kind.RECORD_REPETITION_RESULT, stepId),
+                () -> tasks.recordRepetitionResult.execute(stepId, repetitions));
     }
     void correctRepetitionResult(String stepId, int index, int repetitions) {
-        runReward(command(UiCommand.Kind.CORRECT_REPETITION_RESULT, stepId),
-                () -> tasks.correctRepetitionResult.execute(stepId, index, repetitions)
-                        .rewardReceipt);
+        runTodayStepResult(command(UiCommand.Kind.CORRECT_REPETITION_RESULT, stepId),
+                () -> tasks.correctRepetitionResult.execute(stepId, index, repetitions));
     }
-    void defer(String occurrenceId) { run(command(UiCommand.Kind.DEFER, occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
+    void defer(String occurrenceId) { dispatchToday(TodayAction.defer(occurrenceId)); }
     void close(String taskId) {
-        runReward(command(UiCommand.Kind.CLOSE, taskId),
+        runTodayReward(command(UiCommand.Kind.CLOSE, taskId),
                 () -> tasks.closeOngoing.execute(TaskId.of(taskId)));
     }
     void move(String taskId, @Nullable TaskSlot sourceSlot, TaskSlot targetSlot) {
@@ -386,6 +401,55 @@ public final class TaskViewModel extends ViewModel {
         });
     }
     void delete(String taskId) { run(command(UiCommand.Kind.DELETE, taskId), () -> tasks.delete.execute(TaskId.of(taskId))); }
+
+    /** Exhaustive side-effect dispatcher behind the closed TodayAction boundary. */
+    private void executeTodayCommand(TodayCommand value) {
+        switch (value.kind) {
+            case COMPLETE_OCCURRENCE:
+                runTodayReward(command(UiCommand.Kind.COMPLETE, value.id),
+                        () -> tasks.complete.execute(value.id));
+                return;
+            case REQUEST_CLOSE:
+                requestClose(value.id, value.text == null ? "" : value.text);
+                return;
+            case COMPLETE_REMAINING:
+                runTodayReward(command(UiCommand.Kind.COMPLETE_REMAINING, value.id),
+                        () -> tasks.completeRemainingSteps.execute(value.id));
+                return;
+            case HARVEST:
+                runTodayReward(command(UiCommand.Kind.HARVEST, value.id),
+                        () -> tasks.harvest.execute(value.id));
+                return;
+            case DEFER:
+                runToday(command(UiCommand.Kind.DEFER, value.id),
+                        () -> tasks.defer.execute(value.id));
+                return;
+            case TOGGLE_STEP:
+                runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, value.id),
+                        () -> tasks.toggleStep.execute(value.id));
+                return;
+            case ADVANCE_STEP:
+                runTodayAdvance(command(UiCommand.Kind.ADVANCE_TODAY_STEP, value.id), value.id);
+                return;
+            case UNDO_OCCURRENCE:
+                runTodayReward(command(UiCommand.Kind.UNDO, value.id),
+                        () -> tasks.undoOccurrence.execute(value.id));
+                return;
+            case ADJUST_REPETITION:
+                reduceRepetitionInput(TodayAction.adjustRepetition(value.id, value.value));
+                return;
+            case EDIT_REPETITION:
+                reduceRepetitionInput(TodayAction.editRepetition(value.id, value.value));
+                return;
+            case SUBMIT_REPETITION:
+                reduceRepetitionInput(TodayAction.submitRepetition(value.id));
+                return;
+            case PERSIST_REORDER:
+                persistTodayReorder(value);
+                return;
+        }
+        throw new AssertionError("Unhandled Today command " + value.kind);
+    }
 
     static UiCommand command(UiCommand.Kind kind, String id) {
         return new UiCommand(kind, id);
@@ -421,6 +485,123 @@ public final class TaskViewModel extends ViewModel {
         });
     }
 
+    private void runToday(UiCommand key, Action action) {
+        if (!begin(key, false)) return;
+        worker.execute(() -> {
+            try {
+                action.run();
+                publishToday(key, loadTodayProjection(), true);
+            } catch (IllegalArgumentException error) {
+                fail(key, error.getMessage(), error);
+            } catch (RuntimeException error) {
+                fail(key, texts.text(R.string.error_change_save), error);
+            }
+        });
+    }
+
+    private void runTodayReward(UiCommand key, RewardAction action) {
+        if (!begin(key, false)) return;
+        worker.execute(() -> {
+            try {
+                RewardReceipt receipt = action.run();
+                publishToday(key, loadTodayProjection(), true);
+                enqueueReward(receipt, key);
+            } catch (IllegalArgumentException error) {
+                fail(key, error.getMessage(), error);
+            } catch (RuntimeException error) {
+                fail(key, texts.text(R.string.error_change_save), error);
+            }
+        });
+    }
+
+    private void runTodayAdvance(UiCommand key, String stepId) {
+        if (!begin(key, false)) return;
+        worker.execute(() -> {
+            try {
+                AdvanceTodayStepResult result = tasks.advanceTodayStep.execute(stepId);
+                boolean changed = result.status == AdvanceTodayStepResult.Status.PROGRESS_RECORDED
+                        || result.status == AdvanceTodayStepResult.Status.STEP_COMPLETED;
+                publishToday(key, loadTodayProjection(), changed);
+                enqueueReward(result.rewardReceipt, key);
+            } catch (RuntimeException error) {
+                fail(key, texts.text(R.string.error_change_save), error);
+            }
+        });
+    }
+
+    private void runTodayStepResult(UiCommand key, StepResultAction action) {
+        if (!begin(key, false)) return;
+        worker.execute(() -> {
+            try {
+                StepExecutionResult result = action.run();
+                publishToday(key, loadTodayProjection(), result.changed());
+                enqueueReward(result.rewardReceipt, key);
+            } catch (IllegalArgumentException error) {
+                fail(key, error.getMessage(), error);
+            } catch (RuntimeException error) {
+                fail(key, texts.text(R.string.error_change_save), error);
+            }
+        });
+    }
+
+    private void persistTodayReorder(TodayCommand value) {
+        UiCommand key = command(UiCommand.Kind.MOVE_TODAY_STEP,
+                value.commandId == null ? value.id : value.commandId);
+        if (!begin(key, false)) return;
+        worker.execute(() -> {
+            try {
+                TodayStepMoveResult result = tasks.moveTodayStep.execute(
+                        value.id, value.relatedId);
+                if (result.status == TodayStepMoveResult.Status.MOVED
+                        || result.status == TodayStepMoveResult.Status.NO_CHANGE) {
+                    todayCoordinator.reorderSucceeded(value.commandId, result);
+                    finishTodayCommand(key);
+                    if (result.moved()) invalidateWidgets();
+                } else {
+                    todayCoordinator.reorderFailed(value.commandId);
+                    fail(key, texts.text(R.string.error_change_save),
+                            new IllegalArgumentException("Today reorder rejected: "
+                                    + result.status));
+                }
+            } catch (RuntimeException error) {
+                todayCoordinator.reorderFailed(value.commandId);
+                fail(key, texts.text(R.string.error_change_save), error);
+            }
+        });
+    }
+
+    private TodayProjection loadTodayProjection() {
+        DashboardPresenter.Refresh refresh = dashboard.refreshWithChanges();
+        List<CalendarEventSnapshot> eventsSnapshot;
+        synchronized (stateLock) {
+            eventsSnapshot = current.calendar.events;
+        }
+        return new TodayProjection(refresh.dashboard.withCalendar(eventsSnapshot),
+                refresh.persistedChanges, clock.today());
+    }
+
+    private void publishToday(UiCommand key, TodayProjection projection,
+                              boolean commandPersisted) {
+        todayCoordinator.rebind(projection.today);
+        finishTodayCommand(key);
+        loadedDate = projection.date;
+        if (commandPersisted || projection.persistedChanges) invalidateWidgets();
+    }
+
+    private void finishTodayCommand(UiCommand key) {
+        synchronized (stateLock) {
+            Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
+            actions.remove(key);
+            current = current.withRunningActions(actions).withLoading(false);
+            state.postValue(current);
+        }
+    }
+
+    private void enqueueReward(RewardReceipt receipt, UiCommand key) {
+        RewardEffect effect = RewardEffect.from(receipt, key);
+        if (effect != null) rewardEffects.postValue(rewardQueue.enqueue(effect));
+    }
+
     private Content loadContent() {
         LocalDate today = clock.today();
         DashboardPresenter.Refresh refresh = dashboard.refreshWithChanges();
@@ -440,11 +621,13 @@ public final class TaskViewModel extends ViewModel {
     }
 
     private void publishContent(UiCommand key, Content content, boolean commandPersisted) {
+        TodayUiModel composed = content.dashboard.withCalendar(content.calendar.events());
+        todayCoordinator.rebind(composed);
         synchronized (stateLock) {
             Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
             actions.remove(key);
             CalendarUiState calendarState = CalendarUiState.from(content.calendar);
-            current = current.withContent(content.dashboard.withCalendar(content.calendar.events()),
+            current = current.withContent(composed,
                     calendarState).withRunningActions(actions);
             loadedDate = content.date;
             state.postValue(current);
@@ -467,6 +650,13 @@ public final class TaskViewModel extends ViewModel {
     private void update(StateChange change) {
         synchronized (stateLock) {
             current = change.apply(current);
+            state.postValue(current);
+        }
+    }
+
+    private void publishTodayFeatureState(TodayFeatureState feature) {
+        synchronized (stateLock) {
+            current = current.withToday(feature.today);
             state.postValue(current);
         }
     }
@@ -530,6 +720,7 @@ public final class TaskViewModel extends ViewModel {
 
     interface Action { void run(); }
     interface RewardAction { RewardReceipt run(); }
+    interface StepResultAction { StepExecutionResult run(); }
     interface StateChange { DashboardUiState apply(DashboardUiState state); }
 
     private static final class Content {
@@ -541,6 +732,18 @@ public final class TaskViewModel extends ViewModel {
                 LocalDate date) {
             this.dashboard = dashboard;
             this.calendar = calendar;
+            this.persistedChanges = persistedChanges;
+            this.date = date;
+        }
+    }
+
+    private static final class TodayProjection {
+        final TodayUiModel today;
+        final boolean persistedChanges;
+        final LocalDate date;
+
+        TodayProjection(TodayUiModel today, boolean persistedChanges, LocalDate date) {
+            this.today = today;
             this.persistedChanges = persistedChanges;
             this.date = date;
         }
