@@ -13,23 +13,25 @@ import java.util.stream.Stream;
 
 /** Executable package rules for the management and execution slices. */
 public final class ArchitectureBoundaryTest {
-    @Test public void domainHasNoAndroidOrPresentationDependencies() throws Exception {
-        forEachJava(main("domain"), source -> {
-            String text = read(source);
-            assertFalse(source + " imports Android", text.contains("import android."));
-            assertFalse(source + " imports AndroidX", text.contains("import androidx."));
-            assertFalse(source + " imports presentation", text.contains(
-                    "de.thonktank.autosecretary.presentation."));
-            assertFalse(source + " reads UI resources", text.matches("(?s).*\\bR\\.[a-z]+\\..*"));
-        });
+    @Test public void domainIsOwnedByThePureJavaCompilerModule() throws Exception {
+        assertTrue(Files.isDirectory(Path.of("../core-domain/src/main/java")));
+        assertFalse(hasJava(Path.of(
+                "src/main/java/de/thonktank/autosecretary/domain")));
+        String build = read(Path.of("../core-domain/build.gradle.kts"));
+        assertTrue(build.contains("`java-library`"));
+        assertFalse(build.contains("com.android"));
+        assertFalse(build.contains("dependencies"));
     }
 
-    @Test public void todayDoesNotDependOnManagementState() throws Exception {
-        forEachJava(main("presentation/today"), source -> {
-            String text = read(source);
-            assertFalse(source + " imports management", text.contains("presentation.alltasks"));
-            assertFalse(source + " names management state", text.contains("AllTasks"));
-        });
+    @Test public void todayCoreHasOnlyTheDomainCompilerDependency() throws Exception {
+        assertTrue(Files.isDirectory(Path.of("../today-core/src/main/java")));
+        assertFalse(hasJava(Path.of(
+                "src/main/java/de/thonktank/autosecretary/presentation/today")));
+        String build = read(Path.of("../today-core/build.gradle.kts"));
+        assertTrue(build.contains("`java-library`"));
+        assertTrue(build.contains("api(project(\":core-domain\"))"));
+        assertFalse(build.contains("com.android"));
+        assertFalse(build.contains("androidx"));
     }
 
     @Test public void todayAndLeafViewsLiveBehindFeaturePackageBoundaries() {
@@ -147,15 +149,25 @@ public final class ArchitectureBoundaryTest {
     }
 
     private static Path main(String relative) {
-        Path module = Path.of("src/main/java/de/thonktank/autosecretary", relative);
-        return Files.exists(module) ? module
-                : Path.of("app/src/main/java/de/thonktank/autosecretary", relative);
+        for (String module : new String[]{"../core-domain", "../today-core", "."}) {
+            Path source = Path.of(module, "src/main/java/de/thonktank/autosecretary",
+                    relative);
+            if (Files.exists(source)) return source;
+        }
+        return Path.of("app/src/main/java/de/thonktank/autosecretary", relative);
     }
 
     private static void forEachJava(Path directory, CheckedConsumer consumer) throws Exception {
         try (Stream<Path> files = Files.walk(directory)) {
             for (Path source : (Iterable<Path>) files.filter(value -> value.toString()
                     .endsWith(".java"))::iterator) consumer.accept(source);
+        }
+    }
+
+    private static boolean hasJava(Path directory) throws IOException {
+        if (!Files.isDirectory(directory)) return false;
+        try (Stream<Path> files = Files.walk(directory)) {
+            return files.anyMatch(value -> value.toString().endsWith(".java"));
         }
     }
 

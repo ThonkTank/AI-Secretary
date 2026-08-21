@@ -1,7 +1,6 @@
 package de.thonktank.autosecretary.presentation.today;
 
 import de.thonktank.autosecretary.domain.model.RewardBreakdown;
-import de.thonktank.autosecretary.presentation.RewardTextFormatter;
 
 /** Complete presentation input for one XP vessel. */
 public final class XpVesselUiModel {

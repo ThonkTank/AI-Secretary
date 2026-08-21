@@ -1,6 +1,6 @@
 # Abschlussaudit: Härtung des Alles-Tabs und Releasepfads
 
-Stand: 2026-08-21, nach Phase 5
+Stand: 2026-08-21, ergänzt nach der Today-/Fokus-Roadmap
 
 ## Phasenstatus
 
@@ -21,7 +21,7 @@ Stand: 2026-08-21, nach Phase 5
   `presentation.today`. Today lädt keinen vollständigen Aufgabenkatalog.
 - Zeitplanung und Schritttransfers liegen in `domain.schedule` und `domain.steps` und verwenden
   `TaskScheduleRepository` beziehungsweise `StepOrganizationRepository`. Das Today-orientierte
-  `TaskRepository` erbt diese Ports nicht mehr. Nur die Verdrahtung bündelt sie im
+  Der frühere `TaskRepository` ist entfernt. Nur die Verdrahtung bündelt fokussierte Ports im
   `ApplicationTaskRepository`.
 - Schedule-Mutationen lesen und normalisieren nur Quell- und Zielslot. Die fokussierten
   Porttests schlagen bei einem globalen Read fehl. Der große In-Memory-Store bleibt nur für
@@ -50,10 +50,10 @@ Stand: 2026-08-21, nach Phase 5
 
 ## Bewusst verbleibende Grenzen
 
-- Die Grenzen sind in einem Android-Modul über Pakete und Architekturtests erzwungen, nicht über
-  separate Gradle-Module.
-- `TaskRepository` bleibt ein breiter, aber ausschließlich auf Today/Ausführung begrenzter Port;
-  seine weitere Zerlegung wäre ein eigener Refactor ohne direkten Nutzen für den Alles-Slice.
+- Domain und Android-freier Today-Kern besitzen inzwischen die Java-Module `core-domain` und
+  `today-core`; Android-Presentation, Room und Views bleiben gemeinsam im App-Modul.
+- `ApplicationTaskRepository` bleibt als breiter Composition-Root-Vertrag der konkreten
+  Room-Implementierung bestehen. Einzelne Use Cases importieren ausschließlich Capability-Ports.
 - Der sliceübergreifende `InMemoryExecutionRepository` ist absichtlich ein Abnahmespeicher und
   kein wiederverwendetes Testdouble für einzelne Management-Ports.
 - Historische Migrationen 1–7 und Schemaexports bleiben testbarer Quellcode beziehungsweise

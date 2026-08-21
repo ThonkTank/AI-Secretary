@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.presentation.today;
 
-import androidx.annotation.Nullable;
 
 /** Exhaustive adapter from closed Today commands to focused application handlers. */
 public final class TodayCommandDispatcher implements TodayCoordinator.CommandSink {
@@ -17,7 +16,7 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
         void handleEditRepetition(String stepId, int index);
         void handleSubmitRepetition(String stepId);
         void handlePersistReorder(String commandId, String stepId,
-                            @Nullable String beforeStepId);
+                            String beforeStepId);
     }
 
     private final Handlers handlers;
@@ -72,7 +71,7 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
         throw new AssertionError("Unhandled Today command " + command.kind);
     }
 
-    private static String required(@Nullable String value) {
+    private static String required(String value) {
         if (value == null || value.isEmpty())
             throw new IllegalArgumentException("Reorder command id is required");
         return value;

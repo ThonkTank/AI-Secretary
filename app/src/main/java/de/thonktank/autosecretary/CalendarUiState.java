@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.today.CalendarEventSnapshot;
+
 import de.thonktank.autosecretary.calendar.CalendarResult;
 
 import java.util.ArrayList;

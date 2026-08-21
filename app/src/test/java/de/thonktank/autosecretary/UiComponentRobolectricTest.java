@@ -207,8 +207,8 @@ public final class UiComponentRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         XpVesselView vessel = new XpVesselView(context);
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
-        de.thonktank.autosecretary.presentation.RewardTextFormatter formatter =
-                new de.thonktank.autosecretary.presentation.RewardTextFormatter(
+        de.thonktank.autosecretary.presentation.today.RewardTextFormatter formatter =
+                new de.thonktank.autosecretary.presentation.today.RewardTextFormatter(
                         java.util.Locale.GERMANY);
         vessel.setPalette(palette);
 
@@ -284,7 +284,7 @@ public final class UiComponentRobolectricTest {
         vessel.bind(de.thonktank.autosecretary.presentation.today.XpVesselUiModel.of(
                 de.thonktank.autosecretary.domain.model.RewardBreakdown.fromStage(30, 5),
                 3, 3, true,
-                new de.thonktank.autosecretary.presentation.RewardTextFormatter(
+                new de.thonktank.autosecretary.presentation.today.RewardTextFormatter(
                         java.util.Locale.GERMANY)));
         HeaderView header = new HeaderView(activity, () -> { });
         root.addView(header, new FrameLayout.LayoutParams(600, 164));

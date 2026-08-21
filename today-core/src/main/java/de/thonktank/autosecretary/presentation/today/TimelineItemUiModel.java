@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.presentation.today;
 
-import de.thonktank.autosecretary.CalendarEventSnapshot;
 
 public final class TimelineItemUiModel {
     public final TimelineTaskUiModel task;

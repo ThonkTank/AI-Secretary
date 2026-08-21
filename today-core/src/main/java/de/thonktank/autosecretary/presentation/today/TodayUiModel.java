@@ -1,23 +1,21 @@
 package de.thonktank.autosecretary.presentation.today;
 
-import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import de.thonktank.autosecretary.CalendarEventSnapshot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
 
 /** Disjoint Today projection: focus, open timeline and completed history never overlap. */
 public final class TodayUiModel {
     public final XpProgress xpProgress;
-    @Nullable public final FocusTaskUiModel focus;
+    public final FocusTaskUiModel focus;
     public final List<TimelineItemUiModel> timeline;
     public final List<CompletedTaskUiModel> completedToday;
 
-    public TodayUiModel(XpProgress xpProgress, @Nullable FocusTaskUiModel focus,
+    public TodayUiModel(XpProgress xpProgress, FocusTaskUiModel focus,
                         List<TimelineItemUiModel> timeline,
                         List<CompletedTaskUiModel> completedToday) {
         if (xpProgress == null || timeline == null || completedToday == null)

@@ -1,153 +1,136 @@
-# Architekturkritik der bearbeiteten Today-/Fokus-Bereiche
+# Architekturkritik der Today-/Fokus-Bereiche
 
-Stand: 2026-08-20, nach den Phasen 0 bis 8
+Stand: 2026-08-21, nach Abschluss der Bereinigungsroadmap
 
 ## Gesamturteil
 
-Der Refactor hat die riskantesten Mehrfachwahrheiten entfernt: Wiederholungsdrafts haben nur
-noch einen Zustandsweg, Theme und Fokuslimit sind Bestandteil eines atomaren Renderzustands,
-Fokus/Timeline/Widget besitzen eigene Projektionen, die Fokuskarte ist zerlegt und
-Wiederholungsergebnisse sind adressierbare Room-Zeilen. Das macht den aktuellen Pfad wesentlich
-verständlicher und testbarer.
+Die acht UX-Fehler waren keine voneinander unabhängigen Viewdefekte. Sie entstanden aus vier
+strukturellen Mehrfachwahrheiten: Geometrie wurde in mehreren Ebenen rekonstruiert, Rewards
+wurden an mehreren Stellen berechnet, Today-Inhalte überlappten in generischen Snapshots und
+Reorder besaß gleichzeitig View-, ViewModel- und Repositoryzustand. Das machte kleine sichtbare
+Korrekturen riskant und erklärte, warum lokale Patches zuvor neue Randfälle erzeugten.
 
-Die Grenzen werden jedoch überwiegend durch Konvention, package-private Klassen, ADRs und Tests
-geschützt. Es gibt weiterhin nur ein Android-Modul und ein sehr großes Root-Paket. Der Compiler
-verhindert weder Domain-zu-UI-Abhängigkeiten noch das Umgehen der vorgesehenen Mapper. Das
-Ergebnis ist eine gute lokale Architektur innerhalb einer weiterhin schwachen globalen
-Struktur.
+Nach dem Refactor sind die wichtigsten Grenzen compiler- oder typgesichert. Das Ergebnis ist
+wesentlich besser, aber die Android-App bleibt ein großer Composition Root. Vor allem
+`TaskViewModel`, programmatische Views, Room-Integration und manuelle Widgetinvalidierung
+begrenzen weiterhin, wie lokal zukünftige Änderungen bleiben.
 
-## Was Planung und Implementierung negativ beeinflusst hat
+## Was Planung und Implementierung erschwert hat
 
-### Mehrere Zustandswege waren gleichzeitig plausibel
+### Geometrie hatte keinen eindeutigen Owner
 
-Vor dem Umbau änderte `FocusTaskView` den Wiederholungsdraft lokal und löste parallel den
-ViewModel-Renderpfad aus. Präferenzen wurden zusätzlich während des Renderns imperativ gelesen.
-Damit konnte man beim Lesen einer einzelnen Klasse nicht feststellen, welcher Zustand im
-nächsten Frame autoritativ sein würde. Charakterisierungstests mussten zunächst Verhalten
-einfrieren, bevor eine sichere Änderung möglich war.
+Header, Fokuskarte, Timelineblatt und Grain-Layer kannten jeweils eigene Radien, Offsets,
+Pivots oder `post()`-Korrekturen. Ein Ring konnte mathematisch richtig für eine Ebene und
+sichtbar falsch für die transformierte Vorderseite sein. Tests mussten zunächst klären, welche
+Pixel tatsächlich Vertragsbestandteil waren. Gewünscht gewesen wäre von Anfang an ein
+Leaf-Primitive, das Form, Clip, lokale Koordinaten und Transformation gemeinsam besitzt.
 
-Gewünscht wäre von Anfang an ein dokumentierter Owner je Zustand gewesen: Domainzustand im
-Repository, flüchtiger Eingabedraft im ViewModel, vollständiger Renderzustand in genau einem
-Snapshot und reine Views als Ausgabe. Diese Festlegung hätte mehrere Refactor-Schritte und
-Fehlersuchen verkürzt.
+`LeafShape`, `LeafSurface` und `GrainSpec` lösen das. Negativ bleibt, dass die imperative
+Viewhierarchie Layoutbounds erst spät kennt; asynchrones Grain-Rendering benötigt deshalb
+weiterhin spezielle Synchronisationspunkte und einen Cachevertrag.
 
-### Präsentationsmodelle waren zugleich universell und unpräzise
+### Rewarddaten waren scheinbar redundant, aber semantisch verschieden
 
-Fokuskarte, Timeline und Widget teilten Modelle, obwohl sie andere Texte, Aktionen und
-Fortschrittsdetails benötigen. Gleichzeitig ist `TaskSnapshot` ein langer, primitiver
-Datencontainer mit vielen booleschen und numerischen Konstruktorparametern. Änderungen erzeugten
-breite mechanische Diffs, während vertauschte Argumente kaum lesbar waren.
+Grundwert, Kombostufe, Faktor, gerundeter Endwert und bereits eingesammelte XP wurden als
+unabhängige primitive Zahlen weitergereicht. Dadurch war nicht erkennbar, ob ein Tau gerade den
+Grund- oder Endwert zeigte. Die Einführung von `RewardBreakdown` war klein, verlangte aber eine
+breite Call-Site-Prüfung, weil bestehende Tests teils visuelle Grain-Stufen mit fachlichen
+Kombostufen vermischten.
 
-Die verbraucherspezifischen Modelle lösen die erste Hälfte. Offen bleibt die zweite: benannte
-Value Objects oder Builder für Fokusidentität, Completion, Reward und Zeitdarstellung würden
-Fixtures und Mapping robuster machen. Noch besser wäre eine klare Trennung zwischen
-persistenznaher Domainprojektion und vollständig renderfertigem Fokusmodell.
+Gewünscht wäre ein fachlicher Rewardwert seit dem ersten Ledgerentwurf gewesen. Die heutige
+Trennung ist belastbar; historische Debugfixtures behalten bewusst einen separaten visuellen
+Grain-Level und bleiben damit eine kleine Ausnahme.
 
-### Das Root-Paket verschleiert Verantwortungsgrenzen
+### Today-Modelle waren überladen und überlappend
 
-Domain und Teile der Datenhaltung besitzen Pakete; viele Controller, Zustände, Mapper,
-Android-Views und Renderhilfen liegen dagegen nebeneinander im Root-Paket. Während der Arbeit
-musste die tatsächliche Richtung über Imports, Konstruktoren und Call Sites rekonstruiert
-werden. Ähnliche Namen wie Dashboard, Today, Snapshot, State und UiModel verstärkten das.
+`TaskSnapshot`, allgemeine Tasklisten, Fokus, Timeline und History konnten dieselbe Aufgabe
+mehrfach repräsentieren. Referenzidentität wurde stellenweise wie fachliche Identität behandelt.
+Das erschwerte insbesondere den Filter „erledigt gehört nur in die Tageshistorie“. Lange
+Konstruktoren machten Fixtureänderungen mechanisch groß und vertauschte Werte schwer sichtbar.
 
-Gewünscht wären mindestens Pakete für `presentation.today`, `presentation.focus`,
-`presentation.dashboard` und Android-spezifische `ui`-Komponenten sowie automatisierte
-Abhängigkeitsregeln. Separate Gradle-Module wären erst der nächste Schritt; schon Paketregeln
-mit Architekturtests würden versehentliche Rückkopplungen sichtbar machen.
+Verbraucherspezifische Modelle und Builder beseitigen diese Mehrdeutigkeit. Einige Mapper im
+App-Modul bleiben dennoch breit, weil sie Domain, Texte, Kalender und mehrere Consumer in einem
+Refresh zusammensetzen. Ein eigener App-Presentation-Adapter pro Consumer wäre noch lokaler,
+würde aktuell aber zusätzliche Verdrahtung ohne neuen Nutzervertrag erzeugen.
 
-### Imperative Android-Views machten Layoutlogik unnötig teuer
+### Reorder war ein verteilter, impliziter Zustandsautomat
 
-Die alte Fokuskarte entschied Sichtbarkeit in `onMeasure`, maß mehrfach und synchronisierte
-Dekoration über `post()`-Ketten. Fachlich einfache Fragen wie „Wie viele Folgezeilen passen?“
-benötigten deshalb Robolectric. Das vollständige Breiten-/Schrift-/Palettenkreuzprodukt machte
-eine einzelne Testklasse zur mit Abstand langsamsten der Suite.
+Die View hielt kanonische und temporäre Reihenfolge, entschied Dropsemantik und konnte direkt
+Persistenz auslösen. Accessibility und Drag verwendeten ähnliche, aber getrennte Wege. Fehler,
+Duplicate Drop und Refresh während einer Vorschau waren dadurch schwer beweisbar.
 
-Die reine `FocusStepLayoutPolicy` und sechs repräsentative Androidfälle sind deutlich besser.
-Dennoch hängt die Eingabe der Policy weiterhin von real gemessenen programmgesteuerten Views ab.
-Declarative XML-/Compose-Strukturen oder zumindest klarere Layoutparameterobjekte könnten
-Messung und Rendering weiter entkoppeln. Eine native Designreferenz mit Zustandsmatrix,
-Schriftgrößen und kleinen Viewports hätte weniger Trial-and-Error erfordert.
+Der explizite `TodayCoordinator` mit `IDLE`, `DRAGGING` und `PERSISTING` war die wichtigste
+strukturelle Korrektur. Seine Einführung wurde durch alte Dashboardevent-Wrapper und
+ViewModel-Switches verlangsamt. Gewünscht wäre ein geschlossener Action-/Commandvertrag bereits
+vor der ersten Drag-Implementierung gewesen.
 
-### Testseams waren in Produktionsklassen eingebaut
+### Der breite Repositoryvertrag verteuerte jede Use-Case-Änderung
 
-Methoden wie `visibleFollowingStepsForTest`, `cardExtentForTest`,
-`animationDurationForTest` und `selectedIndexForTest` spiegelten interne Implementierung statt
-Benutzerverträge. Schon kleine interne Umbauten brachen dadurch Tests, obwohl die sichtbare
-Semantik unverändert blieb. Zusätzlich erzeugte `FocusTestActions` mit vielen überschreibbaren
-No-op-Callbacks eine zweite, nur in Tests existierende Event-API.
+Ein Repository bündelte Definitionen, Zeitplan, Occurrences, Schritte, Statistik, Combo,
+Ledger und Materialisierung. Kleine Use Cases konnten dadurch unbeabsichtigt alles lesen oder
+schreiben; Testdoubles mussten fachfremde Methoden implementieren. Erst die Zerlegung zeigte
+klar, dass Reorder nur Snapshot und Positionswrites, Completion dagegen Execution und Ledger
+benötigt.
 
-Phase 8 entfernt diese Seams. Tests lesen sichtbaren Viewzustand oder zeichnen echte
-`DashboardEvent`s auf. Verbleibende `*ForTest`-Hooks des Wood-Grain-Renderers sind eine bewusste
-Ausnahme für asynchrone Pipeline-, Cache- und Benchmarkinvarianten; sie sollten nicht als
-Vorbild für normale UI-Tests dienen. Das Abschlussaudit entfernte auch dort die vermeidbaren
-Durchreichmethoden und die direkte `renderData`-Abfrage aus `WoodGrainView`; übrig bleiben nur
-package-private Synchronisations- und Messpunkte an der tatsächlich asynchronen globalen
-Pipeline. Der View-Lifecycle-Test beobachtet stattdessen den öffentlichen Invalidierungsvertrag.
+Capability-Ports und die Trennung von `StepExecutionService` und
+`OccurrenceCompletionService` verbessern Testbarkeit und Transaktionssicht. Der konkrete
+`RoomTaskRepository` bleibt absichtlich breit, weil er mehrere Ports am Composition Root
+implementiert. Eine Aufteilung der Room-Klasse wäre kosmetisch, solange DAO und Transaktionen
+gemeinsam bleiben.
 
-Beim Abschlussaudit fiel außerdem auf, dass der komponentenbezogene Golden-Schalter die
-Baseline unmittelbar schreiben konnte. Die Dokumentation verlangte zwar eine vorherige
-Diffprüfung, der Helper erzwang sie aber nicht. Der Updatepfad akzeptiert deshalb jetzt nur noch
-ein bereits in einem fehlgeschlagenen normalen Lauf erzeugtes, pixelgenau zum aktuellen Render
-passendes Expected-/Actual-/Diff-Triplet. So ist die Prüfung weiterhin eine bewusste menschliche
-Entscheidung, ein versehentlich übersprungener Erzeugungsschritt aber technisch ausgeschlossen.
+### Paketregeln waren vor der Modultrennung nur nachträgliche Warnungen
 
-### Die alte Satzliste war technische Schuld im Schema
+Importscans konnten unerlaubte Abhängigkeiten melden, aber nicht verhindern. Das Root-Paket
+verschleierte zusätzlich, ob eine Klasse Android-UI, Presentation oder Fachlogik war. Die
+physische Extraktion nach `:core-domain` und `:today-core` war deshalb wertvoll, deckte aber auch
+auf, dass harmlose AndroidX-Nullability-Annotationen und UI-nahe Formatter echte
+Compilergrenzen blockierten.
 
-Kommagetrennter Text machte Slotidentität implizit, erforderte bei jeder Korrektur einen
-Vollrewrite und verlagerte Datenvalidierung in Mapper. Migration, Domain und UI mussten dasselbe
-Format verstehen. Das verlangsamte jede Änderung an Wiederholungen und machte historische
-Sonderwerte riskant.
+Gewünscht wäre eine Modulstruktur vor dem Wachstum des Features gewesen. Positiv ist, dass die
+Extraktion nach stabilisierten Paketgrenzen ohne Produkt- oder Schemaänderung möglich war.
 
-Schema 8 normalisiert die Ergebnisse und schützt Identität per Primär-/Fremdschlüssel. Die
-Legacyspalte bleibt allerdings vorhanden, und `OccurrenceStep.done` bleibt eine redundante
-Projektion des fachlichen Fortschritts. Beides erhöht weiterhin den Migrations- und
-Invariantenaufwand.
+### Tests waren stark, aber teilweise an Implementierungsdetails gekoppelt
 
-### Widgetinvalidierung ist korrekt, aber manuell
+Reflection, Rendergetter und lokale Eventfassaden beschleunigten frühe Tests, machten spätere
+Refactors jedoch teurer. Goldens waren unverzichtbar, um Geometrieänderungen zu erkennen, aber
+bei reinen Paketmoves lieferten sie wenig zusätzliche Diagnose. Der neue öffentliche
+Action-/Gesture-Pfad und komponentenbezogene Goldens sind besser austariert.
 
-Das Entfernen von `updateAll()` aus jedem Render war wichtig: ein lokaler Stepperdraft darf
-keine Datenbank-/RemoteViews-Arbeit verursachen. Der neue Invalidierungsport ist testbar, beruht
-aber darauf, dass jeder zukünftige persistierende Pfad ihn korrekt aufruft. Es gibt keine
-transaktionale Outbox oder beobachtbare Datenquelle, die Auslassungen strukturell verhindert.
-
-Für die lokale App ist der Port angemessen. Mit Background-Sync oder weiteren Schreibern wäre
-ein datengetriebener Invalidierungsmechanismus beziehungsweise eine Outbox verlässlicher.
+Echte Instrumentierung bleibt lokal von einem Emulator oder Gerät abhängig. Die Test-APK
+kompiliert, und CI besitzt API-26-/API-35-Jobs; ohne verbundenes Ziel darf der lokale Status
+nicht als ausgeführter Gerätetest bezeichnet werden.
 
 ## Verbleibende technische Schuld, priorisiert
 
-1. `TaskViewModel` und `MainActivity` sind weiterhin breite Orchestratoren. Ein eigener
-   Today-Controller/Store würde Commands, Editor, Kalender, Updates und Systemdialoge klarer
-   trennen.
-2. `DashboardEvent` ist eine manuell per `instanceof` ausgewertete Summe. Exhaustive Dispatch
-   ist in Java nicht erzwungen; ein neuer Eventtyp kann in einem Consumer still übersehen werden.
-3. `TaskSnapshot` hat eine fehleranfällige Konstruktorfläche und enthält Fokus-, Domain- und
-   Aktionsdaten zugleich.
-4. `TaskRepository` bündelt Tasks, Templates, Occurrences, Schritte, Stats, Combo und Ledger.
-   Kleine Port-Interfaces würden Use-Case-Abhängigkeiten und Testdoubles reduzieren.
-5. `legacyActualRepetitions` sollte nach einem definierten Kompatibilitätsfenster per Migration
-   entfernt werden. Dazu fehlen Releasekriterium und Reparaturwerkzeug für geloggte Altfehler.
-6. Persistiertes `done` und `RepetitionProgress` können nur durch Mapper-/Write-Disziplin
-   konsistent bleiben; stärkere Datenbankconstraints oder eine einzige kanonische Speicherung
-   wären robuster.
-7. Das einmodulige Root-Paket besitzt keine automatisierten Architekturgrenzen.
-8. Robolectric deckt Accessibilitysemantik gut ab, ersetzt aber weder Accessibility Scanner
-   noch eine manuelle TalkBack-Prüfung. Instrumentation und echter Upgrade-Probe liefen für den
-   Phase-7-Commit im CI auf API 26 und 35; lokal wurde mangels Zielsystem nur das Test-APK gebaut.
-9. Native-Graphics-Goldens sind wertvoll, aber werkzeug- und Renderingversionssensitiv. Der
-   komponentenbezogene Updatevertrag begrenzt Schäden, beseitigt diese Empfindlichkeit nicht.
-10. Widgetinvalidierung ist explizite Aufrufdisziplin; neue persistierende Commands benötigen
-    weiterhin einen passenden Test.
+1. `TaskViewModel` ist weiterhin ein breiter Android-Orchestrator für Today, Editor, Kalender,
+   Updates und Widgeteffekte. Die fachliche Dispatchkette ist entfernt, die Lebenszyklus- und
+   Fehlerbehandlung aber noch zentralisiert.
+2. `DashboardPresenter`/`DashboardUiMapper` bilden weiterhin einen großen Projektionsrand. Mehr
+   unabhängige Read Models könnten Refreshes weiter verkleinern.
+3. Widgetinvalidierung bleibt explizite Aufrufdisziplin. Weitere Schreiber würden eine
+   datengetriebene Invalidierung oder Outbox rechtfertigen.
+4. `OccurrenceStep.done` und normalisierte Wiederholungsergebnisse sind redundante
+   Zustandsanteile, deren Konsistenz durch Use Cases und Mapper statt durch eine vollständige
+   Datenbankinvariante geschützt wird.
+5. Die historische Legacyspalte für Wiederholungstext bleibt bis zu einem separat definierten
+   Kompatibilitätsfenster bestehen.
+6. Programmatische Views erzeugen viel manuelle Mess-, Fokus- und Accessibilitylogik. Eine
+   deklarative UI wäre langfristig günstiger, ist aber bewusst außerhalb dieser Roadmap.
+7. Native-Graphics-Goldens und Mikrobenchmarks reagieren auf Host-, JDK- und Renderervarianz.
+   Absolute Budgets und Pixelverträge sind aussagekräftiger als winzige relative Zeitdifferenzen.
+8. Instrumentation kann lokal ohne stabiles ADB-Ziel nicht ausgeführt werden; CI bleibt für die
+   beiden API-Stufen die verbindliche Geräteinstanz.
 
-## Was ich mir für weitere Arbeiten wünschen würde
+## Was für zukünftige Arbeit besser vorbereitet sein sollte
 
-- eine kleine, aktuelle Architekturkarte mit erlaubten Abhängigkeitsrichtungen;
-- einen Fixture-Builder statt langer Snapshot-Konstruktoren;
-- ein festes Geräte-/Emulator-Gate für Room-Migration und Accessibility;
-- messbare Budgets für Hosttest-Laufzeit, Testworker-Speicher und UI-Rendering;
-- einen dokumentierten Zeitraum zum Entfernen von Legacyspalten;
-- komponentenbezogene visuelle Spezifikationen für 320/412/600 dp und große Schrift;
-- Architekturtests, die Consumer-Modelle und Widgetgrenzen automatisch schützen.
+- ein kleiner eigener Today-Application-Adapter statt weiterer Handler im `TaskViewModel`;
+- getrennte, inkrementell beobachtbare Read Models für Today, Kalender und Widget;
+- ein dokumentiertes Removal-Gate für Legacy-Wiederholungsdaten;
+- ein fest verfügbarer Emulator- oder Gerätepool für lokale Accessibility-/Recreationtests;
+- visuelle Spezifikationen mit semantischen Anchors statt ausschließlich PNG-Vergleich;
+- Performancebudgets mit absoluter Untergrenze, damit Mikrosekundenrauschen nicht als
+  prozentuale Regression fehlinterpretiert wird.
 
-Diese Punkte sind keine Voraussetzung für den jetzigen Funktionsumfang. Sie bestimmen aber,
-ob der nächste ähnlich breite Umbau lokal bleibt oder wieder quer durch Domain, Persistenz,
-Activity, Views, Widget und Tests schneiden muss.
+Der entscheidende Gewinn ist nicht weniger Code, sondern weniger plausible Orte für dieselbe
+Wahrheit. Neue Today-Funktionalität muss nun durch Action, Reducer, Command, fokussierten Use
+Case und Capability-Port laufen; Geometrie und Rewardwerte haben jeweils genau einen Owner.

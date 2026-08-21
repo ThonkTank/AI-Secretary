@@ -36,7 +36,7 @@ public final class TodayCoordinatorTest {
 
     @Test public void centralDispatcherContainsEveryActionKind() throws Exception {
         String source = new String(Files.readAllBytes(Path.of(
-                "src/main/java/de/thonktank/autosecretary/presentation/today/TodayCoordinator.java")),
+                "../today-core/src/main/java/de/thonktank/autosecretary/presentation/today/TodayCoordinator.java")),
                 StandardCharsets.UTF_8);
         EnumSet<TodayAction.Kind> handled = EnumSet.noneOf(TodayAction.Kind.class);
         for (TodayAction.Kind kind : TodayAction.Kind.values())

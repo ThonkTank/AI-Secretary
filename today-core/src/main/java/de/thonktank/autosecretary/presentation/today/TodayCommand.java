@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.presentation.today;
 
-import androidx.annotation.Nullable;
 
 /** One side-effect request emitted by {@link TodayCoordinator}. */
 public final class TodayCommand {
@@ -21,13 +20,13 @@ public final class TodayCommand {
 
     public final Kind kind;
     public final String id;
-    @Nullable public final String relatedId;
-    @Nullable public final String text;
-    @Nullable public final String commandId;
+    public final String relatedId;
+    public final String text;
+    public final String commandId;
     public final int value;
 
-    TodayCommand(Kind kind, String id, @Nullable String relatedId, @Nullable String text,
-                 @Nullable String commandId, int value) {
+    TodayCommand(Kind kind, String id, String relatedId, String text,
+                 String commandId, int value) {
         this.kind = kind;
         this.id = id;
         this.relatedId = relatedId;
@@ -42,7 +41,7 @@ public final class TodayCommand {
     }
 
     static TodayCommand reorder(String commandId, String stepId,
-                                @Nullable String beforeStepId) {
+                                String beforeStepId) {
         return new TodayCommand(Kind.PERSIST_REORDER, stepId, beforeStepId, null,
                 commandId, 0);
     }

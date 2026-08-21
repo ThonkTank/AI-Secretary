@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.presentation.today;
 
-import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,14 +9,14 @@ import java.util.List;
 public final class RepetitionProgressUiModel {
     public enum Kind { SETS, SINGLE }
 
-    @NonNull public final Kind kind;
+    public final Kind kind;
     public final int slotCount;
     public final int plannedRepetitions;
-    @NonNull public final List<Integer> actualRepetitions;
+    public final List<Integer> actualRepetitions;
 
-    private RepetitionProgressUiModel(@NonNull Kind kind, int slotCount,
+    private RepetitionProgressUiModel(Kind kind, int slotCount,
                                       int plannedRepetitions,
-                                      @NonNull List<Integer> actualRepetitions) {
+                                      List<Integer> actualRepetitions) {
         if (slotCount <= 0 || plannedRepetitions <= 0)
             throw new IllegalArgumentException("Repetition progress needs positive targets");
         if (kind == Kind.SINGLE && slotCount != 1)
@@ -35,12 +34,12 @@ public final class RepetitionProgressUiModel {
     }
 
     public static RepetitionProgressUiModel sets(int sets, int repetitions,
-                                                  @NonNull List<Integer> actual) {
+                                                  List<Integer> actual) {
         return new RepetitionProgressUiModel(Kind.SETS, sets, repetitions, actual);
     }
 
     public static RepetitionProgressUiModel single(int repetitions,
-                                                    @NonNull List<Integer> actual) {
+                                                    List<Integer> actual) {
         return new RepetitionProgressUiModel(Kind.SINGLE, 1, repetitions, actual);
     }
 

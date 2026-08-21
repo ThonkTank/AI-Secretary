@@ -173,3 +173,30 @@ Status: implementiert und gegen die Roadmap auditiert.
 Der Phase-Gate-Lauf enthält 334 Hosttests, davon 333 erfolgreich und einen bewusst
 übersprungenen Benchmark. Die Fokus- und Homescreen-Goldens bleiben Teil derselben Suite;
 Schema 14 und die PNG-Baselines wurden nicht geändert.
+
+## Phase 7 – Compilergrenzen, Gerätepfad und Abschlussaudit
+
+Status: implementiert; lokale Geräteausführung mangels ADB-Ziel an die bestehende CI-Matrix
+delegiert.
+
+- `core-domain` besitzt Domainmodelle, Capability-Ports, Use Cases sowie Clock- und
+  Schedulingtypen als reines `java-library`-Modul ohne Abhängigkeiten.
+- `today-core` besitzt alle Android-freien Today-Projektionen, Actions, Commands, Reducer und
+  Coordinator. Seine einzige Modulabhängigkeit ist `core-domain`; das App-Modul hängt von
+  beiden Kernen ab.
+- Importscans für die extrahierten Bereiche wurden durch physische Gradle-/Compilergrenzen
+  ersetzt. Android-nahe Renderinputs, Room, Lifecycle, Ressourcen und Views verbleiben in App.
+- Der neue Instrumentationstestpfad verwendet echte Pointerereignisse für Long Press und Drag,
+  prüft Drop, framebasiertes Randscrollen, Accessibilityaktionen und Recreation während einer
+  nicht persistierten Vorschau. Die Test-APK kompiliert lokal; CI führt sie auf API 26 und 35
+  aus. Lokal ist kein Gerät oder Emulator über ADB verbunden.
+- Fokus-Komponentengoldens und Homescreen-Integrationsgoldens schützen unterschiedliche
+  Semantik und bleiben daher beide erhalten. Keine PNG-Baseline wurde geändert.
+- Architekturkarte, ADR-020, Teststrategie, Architekturkritik, Benchmarkbudget und ein
+  punktweiser Abschlussaudit dokumentieren den erreichten sowie bewusst verbleibenden Zustand.
+
+Der reproduzierbare Hostlauf mit `--rerun-tasks --max-workers=1` enthält 334 Tests, davon 333
+erfolgreich und einen bewusst übersprungenen Benchmark. Er benötigt 1:20,70 min und maximal
+1.126.912 KiB RSS gegenüber 1:24,00 min und 1.133.556 KiB in Phase 0. Der separate
+Grain-Benchmark hält das dokumentierte absolute Budget mit 0,006 ms Draw-Median, 0,015 ms p95,
+762.128 Byte Cachegewicht, 16 Builds und 7.065.656 Byte beobachtetem Heapdelta ein.

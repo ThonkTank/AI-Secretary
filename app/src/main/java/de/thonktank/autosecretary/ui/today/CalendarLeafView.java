@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary.ui.today;
 
+import de.thonktank.autosecretary.presentation.today.CalendarEventSnapshot;
+
 import de.thonktank.autosecretary.*;
 
 import android.content.Context;

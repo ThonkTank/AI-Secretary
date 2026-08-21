@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.CalendarEventSnapshot;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayCommandDispatcher;
 import de.thonktank.autosecretary.presentation.today.TodayCoordinator;

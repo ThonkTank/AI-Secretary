@@ -1,21 +1,22 @@
-package de.thonktank.autosecretary.presentation.today;
+package de.thonktank.autosecretary.ui.today;
 
-import androidx.annotation.NonNull;
 
 import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.RepetitionInputState;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
+import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
 
 /** Complete, immutable input for one focus-card render. */
 public final class FocusCardUiModel {
-    @NonNull public final FocusTaskUiModel task;
-    @NonNull public final DayPalette palette;
-    @NonNull public final FocusStepLimit stepLimit;
-    @NonNull public final RepetitionInputState repetitionInput;
-    @NonNull public final TodayFeatureState.Reorder reorder;
+    public final FocusTaskUiModel task;
+    public final DayPalette palette;
+    public final FocusStepLimit stepLimit;
+    public final RepetitionInputState repetitionInput;
+    public final TodayFeatureState.Reorder reorder;
 
-    public FocusCardUiModel(@NonNull FocusTaskUiModel task,
-                     @NonNull DayPalette palette, FocusStepLimit stepLimit,
+    public FocusCardUiModel(FocusTaskUiModel task,
+                     DayPalette palette, FocusStepLimit stepLimit,
                      RepetitionInputState repetitionInput,
                      TodayFeatureState.Reorder reorder) {
         this.task = task;

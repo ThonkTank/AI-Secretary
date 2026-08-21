@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.presentation.today;
 
-import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,10 +11,10 @@ public final class TodayFeatureState {
 
     public final TodayUiModel today;
     public final Reorder reorder;
-    @Nullable public final Feedback feedback;
+    public final Feedback feedback;
 
     public TodayFeatureState(TodayUiModel today, Reorder reorder,
-                             @Nullable Feedback feedback) {
+                             Feedback feedback) {
         if (today == null || reorder == null)
             throw new IllegalArgumentException("Today feature state is required");
         this.today = today;
@@ -41,12 +40,12 @@ public final class TodayFeatureState {
         public final Phase phase;
         public final List<String> canonicalOrder;
         public final List<String> previewOrder;
-        @Nullable public final String movingStepId;
-        @Nullable public final String commandId;
+        public final String movingStepId;
+        public final String commandId;
 
         private Reorder(Phase phase, List<String> canonicalOrder,
-                        List<String> previewOrder, @Nullable String movingStepId,
-                        @Nullable String commandId) {
+                        List<String> previewOrder, String movingStepId,
+                        String commandId) {
             this.phase = phase;
             this.canonicalOrder = immutable(canonicalOrder);
             this.previewOrder = immutable(previewOrder);

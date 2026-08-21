@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "AutoSecretary"
-include(":app")
+include(":app", ":core-domain", ":today-core")

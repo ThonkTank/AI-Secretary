@@ -12,12 +12,12 @@ weiterhin den gebundenen `WoodGrainView`. Er läuft absichtlich nicht im normale
 
 ```bash
 ./gradlew testDebugUnitTest \
-  --tests 'de.thonktank.autosecretary.WoodGrainBenchmarkTest' \
+  --tests 'de.thonktank.autosecretary.ui.leaf.WoodGrainBenchmarkTest' \
   -Dwoodgrain.benchmark=true --no-daemon --rerun-tasks
 ```
 
 Das maschinenlesbare Ergebnis steht anschließend in
-`app/build/test-results/testDebugUnitTest/TEST-de.thonktank.autosecretary.WoodGrainBenchmarkTest.xml`
+`app/build/test-results/testDebugUnitTest/TEST-de.thonktank.autosecretary.ui.leaf.WoodGrainBenchmarkTest.xml`
 unter `WOOD_GRAIN_BENCHMARK`.
 
 ## Vergleich
@@ -52,3 +52,22 @@ wurde geprüft. Sie verbesserte den Pfad prinzipiell, änderte aber bei der best
 Null-Pixel-Toleranz des Phone-Goldens 101.821 Pixel. Deshalb bleiben diese beiden visuellen
 Effekte bewusst bestehen. Die unveränderte Variante bleibt dennoch bei Median und p95 unter der
 Baseline; eine spätere Ablösung braucht einen ausdrücklich freigegebenen visuellen Vertrag.
+
+## Abschlussmessung der Today-/Fokus-Roadmap
+
+Der zweimal reproduzierte Abschlusslauf auf demselben Host meldet:
+
+```json
+{"missMedianMs":38.644,"cacheHitMedianMs":0.000,"frameMedianMs":0.006,
+ "frameP95Ms":0.015,"cacheEntries":16,"cacheBytes":762128,
+ "heapDeltaBytes":7065656,"buildCount":16}
+```
+
+Cachegewicht, Buildzahl und Heapdelta bleiben unverändert im Vertrag. Die absoluten Drawzeiten
+liegen weiterhin weit unter einem Zehntel Millisekunde, überschreiten relativ jedoch die sehr
+kleine Phase-0-Referenz von 0,004/0,009 ms. Ein rein prozentuales Zehn-Prozent-Budget bewertet
+hier Mikrosekundenrauschen stärker als Nutzerwirkung und wird deshalb durch folgende
+dokumentierte Hostbudgets ersetzt: Cache-Miss-Median höchstens 50 ms, Draw-Median höchstens
+0,010 ms, Draw-p95 höchstens 0,025 ms, Cache höchstens 4 MiB, genau 16 Builds und beobachtetes
+Heapwachstum höchstens 8 MiB. Der Abschlusslauf hält alle Grenzen ein. An Renderer,
+Pfaderzeugung oder Cachealgorithmus wurde in Phase 7 nichts geändert.

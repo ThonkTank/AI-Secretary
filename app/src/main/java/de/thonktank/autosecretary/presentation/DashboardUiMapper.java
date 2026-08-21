@@ -24,6 +24,7 @@ import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
+import de.thonktank.autosecretary.presentation.today.RewardTextFormatter;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
 import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;

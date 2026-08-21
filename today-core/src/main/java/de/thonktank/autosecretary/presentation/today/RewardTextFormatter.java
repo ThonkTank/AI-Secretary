@@ -1,4 +1,4 @@
-package de.thonktank.autosecretary.presentation;
+package de.thonktank.autosecretary.presentation.today;
 
 import java.text.NumberFormat;
 import java.util.Locale;

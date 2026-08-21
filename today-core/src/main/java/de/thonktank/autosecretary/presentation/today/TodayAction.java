@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.presentation.today;
 
-import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,13 +28,13 @@ public final class TodayAction {
 
     public final Kind kind;
     public final String id;
-    @Nullable public final String relatedId;
-    @Nullable public final String text;
+    public final String relatedId;
+    public final String text;
     public final int value;
     public final List<String> order;
 
-    private TodayAction(Kind kind, String id, @Nullable String relatedId,
-                        @Nullable String text, int value, List<String> order) {
+    private TodayAction(Kind kind, String id, String relatedId,
+                        String text, int value, List<String> order) {
         if (kind == null) throw new IllegalArgumentException("Today action kind is required");
         this.kind = kind;
         this.id = id == null ? "" : id;
@@ -106,12 +105,12 @@ public final class TodayAction {
         return identified(Kind.CANCEL_REORDER, stepId);
     }
 
-    public static TodayAction dropReorder(String stepId, @Nullable String beforeStepId) {
+    public static TodayAction dropReorder(String stepId, String beforeStepId) {
         return new TodayAction(Kind.DROP_REORDER, requiredId(stepId), beforeStepId,
                 null, 0, Collections.emptyList());
     }
 
-    public static TodayAction moveStep(String stepId, @Nullable String beforeStepId) {
+    public static TodayAction moveStep(String stepId, String beforeStepId) {
         return new TodayAction(Kind.MOVE_STEP, requiredId(stepId), beforeStepId,
                 null, 0, Collections.emptyList());
     }
@@ -121,7 +120,7 @@ public final class TodayAction {
                 Collections.emptyList());
     }
 
-    private static TodayAction ordered(Kind kind, String id, @Nullable String relatedId,
+    private static TodayAction ordered(Kind kind, String id, String relatedId,
                                        List<String> order) {
         if (order == null) throw new IllegalArgumentException("Step order is required");
         List<String> copy = new ArrayList<>();
@@ -135,7 +134,7 @@ public final class TodayAction {
         return value;
     }
 
-    @Nullable private static String emptyToNull(@Nullable String value) {
+    private static String emptyToNull(String value) {
         return value == null || value.isEmpty() ? null : value;
     }
 }

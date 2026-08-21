@@ -9,7 +9,7 @@ import java.util.List;
 
 import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.AppContainer;
-import de.thonktank.autosecretary.CalendarEventSnapshot;
+import de.thonktank.autosecretary.presentation.today.CalendarEventSnapshot;
 import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.WidgetSizeClassifier;

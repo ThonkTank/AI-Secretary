@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.presentation.today;
 
-import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,9 +15,9 @@ import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 public final class TodayReducer {
     public static final class Result {
         public final TodayFeatureState state;
-        @Nullable public final TodayCommand command;
+        public final TodayCommand command;
 
-        private Result(TodayFeatureState state, @Nullable TodayCommand command) {
+        private Result(TodayFeatureState state, TodayCommand command) {
             this.state = state;
             this.command = command;
         }
@@ -55,7 +54,7 @@ public final class TodayReducer {
     }
 
     public Result drop(TodayFeatureState current, String movingStepId,
-                       @Nullable String beforeStepId, String commandId) {
+                       String beforeStepId, String commandId) {
         TodayFeatureState.Reorder reorder = current.reorder;
         if (reorder.phase == TodayFeatureState.Reorder.Phase.PERSISTING)
             return unchanged(current);
@@ -96,8 +95,8 @@ public final class TodayReducer {
 
     private static Result changed(TodayFeatureState old, TodayUiModel today,
                                   TodayFeatureState.Reorder reorder,
-                                  @Nullable TodayFeatureState.Feedback feedback,
-                                  @Nullable TodayCommand command) {
+                                  TodayFeatureState.Feedback feedback,
+                                  TodayCommand command) {
         return new Result(new TodayFeatureState(today, reorder, feedback), command);
     }
 

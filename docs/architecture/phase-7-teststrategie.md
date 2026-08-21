@@ -9,7 +9,7 @@ nach Datenbankschema 14 und der anschließenden Today-/Fokus-Baseline.
 
 - Reines JUnit prüft Fachregeln, Reducer und Layoutpolitik. `RepetitionProgress`,
   `RepetitionInputReducer` und `FocusStepLayoutPolicy` benötigen weder Android noch Room.
-- Tests mit `InMemoryTaskRepository` prüfen Use Cases, Reward, Completion, Undo, Schedule,
+- Tests mit `InMemoryExecutionRepository` prüfen Use Cases, Reward, Completion, Undo, Schedule,
   Transaktionsrollback und Dauerlast ohne SQLite-Setup.
 - Room/Robolectric prüft Entity-Mapping, Fremdschlüssel, Unique Constraints, SQL-Querybudgets,
   Prozessneustart und die reale Migrationskette.
@@ -104,7 +104,8 @@ Betroffene Fokusoberfläche einschließlich Golden und Accessibility:
 Verbindliches Abschluss-Gate:
 
 ```bash
-./gradlew testDebugUnitTest --no-parallel --max-workers=1
+./gradlew :core-domain:compileJava :today-core:compileJava \
+  testDebugUnitTest --no-parallel --max-workers=1
 ./gradlew assembleDebug assembleDebugAndroidTest --no-parallel --max-workers=1
 ```
 
@@ -125,3 +126,27 @@ Die Baseline der anschließenden Today-/Fokus-Bereinigung enthält 307 Hosttests
 erfolgreich und einen bewusst übersprungenen Test. Der reproduzierbare Lauf mit
 `--rerun-tasks --max-workers=1` benötigte 84,00 Sekunden und maximal 1.133.556 KiB RSS. Alle
 Fokus-, Homescreen-, Widget- und Editor-Goldens waren byteidentisch.
+
+## Ergänzung: Today-/Fokus-Abschlussphase
+
+`core-domain` und `today-core` sind reine Java-Module. Ihre Compilergrenzen ersetzen die
+früheren Quelltextscans auf Android-/Managementimporte; Pakettests bleiben für Android-Views im
+App-Modul bestehen. Die App-Unit-Suite testet die Kernklassen weiterhin zusammen mit den realen
+Mappern, Room-Adaptern und Views.
+
+`TodayInteractionInstrumentationTest` ergänzt den Gerätepfad für Pointer-Long-Press mit
+Drag/Drop, framebasiertes Randscrollen, reale Accessibilityaktionen und Recreation während
+einer nicht persistierten Vorschau. Lokal ist kein ADB-Ziel verbunden. Deshalb ist nur die
+erfolgreiche Kompilierung der Android-Test-APK ein lokaler Nachweis; die vorhandene
+CI-Instrumentierungsmatrix führt `connectedDebugAndroidTest` auf API 26 und API 35 aus.
+
+Die Golden-Suite wurde auf Redundanz geprüft. Die Fokus-Komponentengoldens schützen
+Notiz-/Wiederholungs-/Hidden-Row-Geometrie, während die Homescreen-Goldens die gemeinsame
+Header-, Timeline-, Fokus- und History-Komposition schützen. Keine Vollbildbaseline wurde
+entfernt, weil diese Integrationssemantik nicht vollständig durch eine einzelne Komponente
+ersetzt wird; sämtliche PNGs blieben unverändert.
+
+Der abschließende serielle Lauf mit Modulkompilierung und `--rerun-tasks` benötigte 1:20,70 min
+bei 1.126.912 KiB maximaler RSS. Gegenüber der Today-/Fokus-Phase-0-Baseline von 1:24,00 min und
+1.133.556 KiB ist das Gate trotz 27 zusätzlicher Hosttests rund vier Prozent schneller und
+benötigt geringfügig weniger Spitzenspeicher.

@@ -102,6 +102,8 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 dependencies {
+    implementation(project(":core-domain"))
+    implementation(project(":today-core"))
     //noinspection GradleDependency -- newer Core releases require a newer compile SDK.
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.customview:customview:1.1.0")

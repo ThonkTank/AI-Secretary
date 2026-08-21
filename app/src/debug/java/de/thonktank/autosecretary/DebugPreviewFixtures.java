@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.today.CalendarEventSnapshot;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -11,7 +13,7 @@ import de.thonktank.autosecretary.domain.model.RewardBreakdown;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.RewardTextFormatter;
+import de.thonktank.autosecretary.presentation.today.RewardTextFormatter;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;

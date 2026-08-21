@@ -14,7 +14,6 @@ import java.util.Collections;
 import java.util.List;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;

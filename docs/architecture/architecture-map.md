@@ -1,118 +1,94 @@
-# Architekturkarte und Refactor-Baseline
+# Architekturkarte nach der Today-/Fokus-Bereinigung
 
-Stand: 2026-08-20, Ausgangspunkt `f6b9cc4a`
+Stand: 2026-08-21, Datenbankschema 14
 
-Dieses Dokument ist die Baseline für den phasenweisen Architektur-Refactor. Es beschreibt
-die tatsächlich belastbaren Abhängigkeiten und nicht ein gewünschtes Zielbild.
-
-## Abhängigkeiten
+## Compilergrenzen
 
 ```text
-Android Views / Widget / Broadcasts
-            |
-            v
-DashboardEvent, Widget-Aktion, Lifecycle-Callback
-            |
-            v
-MainActivity / TaskViewModel / WidgetUpdateCoordinator
-            |
-            v
-DashboardPresenter, CompletionService, MaterializeDueOccurrences,
-Task- und Editor-Use-Cases
-            |
-            v
-TaskRepository
-            |
-            v
-RoomTaskRepository -> TaskDao -> Room Entities / DatabaseMigrations
+:app (Android application)
+  ├── depends on :today-core
+  └── depends on :core-domain
+
+:today-core (plain Java)
+  └── depends on :core-domain
+
+:core-domain (plain Java)
+  └── no project or Android dependency
 ```
 
-Die Domain kennt `TaskRepository`, `Clock`, Occurrence-, Reward- und Completiontypen. Die
-Room-Entities werden über `TaskEntityMapper` in Domainmodelle übersetzt. Das Root-Paket enthält
-weiterhin zahlreiche Android-Views, Lifecycle-Klassen und Adapter; harte Modulgrenzen existieren
-nicht.
+`core-domain` besitzt Domainmodelle, Capability-Ports, Scheduling-/Schrittregeln und Use Cases.
+`today-core` besitzt die getrennten Fokus-, Timeline- und Historyprojektionen sowie
+`TodayAction`, `TodayCommand`, Reducer und Coordinator. Android-Ressourcen, Room, Lifecycle,
+Kalenderzugriff, Widgetcode und Views verbleiben in `app`.
 
-## Zustandsbesitzer
+## Today-Datenfluss
 
-| Zustand | Aktueller Besitzer | Persistenz | Autoritativer Schreibpfad |
-|---|---|---:|---|
-| Task-Definition | `Task`/Repository | ja | Task-Use-Cases |
-| Planungscursor | `Task.nextDueOn` | ja | Materialisierung, derzeit auch Scheduling-Projektion |
-| Occurrence-Status | `Occurrence`/Repository | ja | Materialisierung und `CompletionService` |
-| Schrittfortschritt | `OccurrenceStep`/Repository | ja | `CompletionService`/Repetition-Use-Cases |
-| Reward-Historie | Reward-Ledger | ja | `CompletionService` |
-| Eingabeentwurf | `TaskViewModel`/Editor-State | nein | Reducer und ViewModel |
-| Renderzustand | `DashboardUiState` | nein | `TaskViewModel` |
-| Widget-Projektion | Widget-Mapper | nein | `WidgetUpdateCoordinator` |
+```text
+ui.today View
+  → TodayActionSink
+  → TodayCoordinator / TodayReducer                 (:today-core)
+  → TodayCommandDispatcher
+  → fokussierter Handler im TaskViewModel           (:app)
+  → Use Case → Capability-Port                      (:core-domain)
+  → RoomTaskRepository / DAO                        (:app)
+  → DashboardPresenter / DashboardUiMapper          (:app)
+  → TodayUiModel + TodayFeatureState                (:today-core)
+  → DashboardRenderer → ui.today View               (:app)
+```
 
-Bekannte Mehrfachbedeutungen sind der Planungscursor `nextDueOn`, die Kombination aus
-`OccurrenceState.COMPLETED` und offenen Schritten sowie die manuelle Kopplung zwischen
-Persistenz-Commands und Widgetinvalidierung.
+`MainActivity` verdrahtet den Sink, verarbeitet aber keine Step-, Repetition-, Reorder-,
+Harvest- oder Undo-Fachverzweigung. `DashboardEvent` ist auf Navigation, Einstellungen,
+Berechtigungen und Systemaktionen begrenzt.
 
-## Baseline-Gates
+## UI-Pakete
 
-Vor und nach jeder Phase müssen mindestens folgende Eigenschaften geprüft werden:
+| Paket | Verantwortung |
+|---|---|
+| `app/ui/leaf` | `LeafShape`, `LeafSurface`, `GrainSpec`, Clip und asynchrone Grain-Pipeline |
+| `app/ui/today` | Header, Fokuskarte, Timelineblätter, Tageshistorie, Gesten und Accessibility |
+| `app/presentation/alltasks` | Verwaltungszustand, virtuelle Liste und Managementaktionen |
+| `today-core/presentation/today` | Android-freie Today-Modelle, Actions und Zustandsautomat |
 
-1. `./gradlew --no-daemon --max-workers=1 testDebugUnitTest` bleibt erfolgreich.
-2. `./gradlew --no-daemon --max-workers=1 compileDebugAndroidTestJavaWithJavac` bleibt erfolgreich.
-3. Materialisierung ist innerhalb einer Transaktion idempotent.
-4. Pro Task und Slot existiert höchstens eine offene Occurrence.
-5. Tägliche, Intervall- und Wochentagsplanung bleibt am geplanten Datum verankert.
-6. Teilernte, Undo, Carry-forward, Widget-Projektion und Reward-Ledger behalten ihren Vertrag.
-7. Room-Migrationen bleiben vorwärtskompatibel; keine Migration löscht Nutzdaten ohne expliziten
-   Kompatibilitätsvertrag.
+`LeafSurface` ist der Owner von Form, Clip, Transformation und lokaler Anchor-Geometrie. Views
+erzeugen keine zweite Blattform und persistieren keinen Reorderzustand.
 
-Connected-Tests werden ausgeführt, wenn ein Gerät verfügbar ist. Ohne Gerät wird ausschließlich
-der APK-/Quellkompilierungsstatus berichtet; ein lokaler Build gilt dann nicht als Beweis für
-Instrumentation-Verhalten.
+## Persistenzports
 
-## Bekannte technische Schuld
+`ApplicationTaskRepository` ist ausschließlich der Composition-Root-Vertrag der konkreten
+Room-Implementierung. Fachcode hängt von kleinen Fähigkeiten ab:
 
-- `MaterializeDueOccurrences` bleibt der transaktionale Orchestrator, delegiert Planung, Rollover
-  und Assembly aber inzwischen an getrennte Komponenten.
-- `Task.nextDueOn` ist fachlich als Planungscursor geklärt, trägt im Storage aber weiterhin den
-  historischen Feldnamen.
-- Das Open-Occurrence-Limit wird durch SQLite-Trigger geschützt; Room exportiert diese Trigger
-  nicht vollständig, deshalb müssen sie in jeder betroffenen Migration manuell rekonstruiert
-  und getestet werden.
-- Carry-forward-Provenienz ist seit Phase 3 fachlich modelliert und seit Schema 9 persistent.
-- `Occurrence.completedOn` ist seit Schema 10 nullable statt über einen leeren String codiert.
-- Optionale Task-Daten (`lastScheduledOn`, `lastCompletedOn`, `boundUntilOn`, `deadlineOn`) sind
-  seit Schema 11 ebenfalls nullable; `nextDueOn` bleibt als fachlich erforderlicher Cursor
-  nicht-null.
-- Teilernte schließt eine Occurrence trotz offener Schritte; die UI filtert diese Sonderlage.
-- Room nutzt in älteren historischen Schemas weiterhin leere Strings; Schema 11 migriert diese
-  Werte beim Öffnen des aktuellen Datenbestands zu SQL-`NULL`.
-- `TaskRepository`, `TaskViewModel` und `MainActivity` bleiben breite Orchestratoren.
-- Das Android-Modul besitzt keine compiler-erzwungenen Architekturgrenzen.
-- Upgrade-, Zeitzonen-, Prozessneustart- und parallele Materialisierungstests sind nicht vollständig
-  durch lokale Instrumentation abgesichert.
+- `DashboardReadRepository`
+- `OccurrenceExecutionRepository`
+- `RewardLedgerRepository`
+- `MaterializationRepository`
+- `TodayStepOrderRepository`
+- `TaskDefinitionRepository`
+- `TaskScheduleRepository`
+- `StepOrganizationRepository`
 
-## Geplante Grenzen der Today-/Fokus-Bereinigung
+Schrittausführung liegt in `StepExecutionService`, Occurrence-Abschluss, Ernte und Undo in
+`OccurrenceCompletionService`. Reorder schreibt nur geänderte Positionsspalten innerhalb einer
+Transaktion; Schema 14 bleibt unverändert.
 
-Die Bereinigung stabilisiert zunächst Pakete, bevor daraus Module entstehen:
+## Autoritative Zustände
 
-- `ui.leaf`: gemeinsame Blattform, Vorderseite, Clip und Grain-Koordinaten;
-- `ui.today`: Android-Views für Fokus, Timeline und Tageshistorie;
-- `presentation.today`: getrennte Today-Modelle, Actions, Reducer und Coordinator;
-- `domain.today`: reine Schritt-Reihenfolge, typisierte Ergebnisse und fokussierte Ports.
+| Zustand | Owner | Persistenz |
+|---|---|---:|
+| Taskdefinition und Zeitplan | Domain + Capability-Port | ja |
+| Occurrence-/Schrittfortschritt | Domain-Use-Case | ja |
+| Rewardbuchungen | unveränderliches Ledger | ja |
+| Today-Fokus/Timeline/History | `TodayUiModel` | nein, Projektion |
+| Reorder `IDLE/DRAGGING/PERSISTING` | `TodayCoordinator` | nur Commandresultat |
+| Wiederholungsdraft | `RepetitionInputState` im ViewModel | nein |
+| Blatt-/Grain-Geometrie | `LeafSurface` | nein |
 
-Nach Entfernung der Root- und Repository-Rückkopplungen werden `domain` und der Android-freie
-Today-Kern in die JVM-Module `:core-domain` beziehungsweise `:today-core` verschoben. Bis dahin
-bleibt das vorhandene App-Modul die Composition- und Laufzeitgrenze.
+## Dauerhafte Gates
 
-Phase 3 hat die fachliche Carry-forward-Provenienz im Domainmodell eingeführt und Teilernte in
-`HARVESTED_WITH_MISSED_STEPS` gegenüber vollständiger `COMPLETED`-Ernte unterschieden. Die
-Room-Spalten, Trigger und die entsprechende Migrationsprüfung sind in Phase 4 ergänzt.
-
-Diese Liste wird in späteren Phasen aktualisiert und nicht stillschweigend als erledigt betrachtet.
-
-Phase 5 führt mit `TaskDefinitionRepository` und `TransactionalRepository` einen ersten
-verbindlichen Fachport ein. Task-Erstellung, Bearbeitung, Löschung, Verschiebung und Detail-Lesen
-hängen nicht mehr vom gesamten Reward-/Occurrence-Vertrag ab. `TaskRepository` bleibt als
-Composition-Root-Kompatibilitätsaggregat erhalten, damit die Migration schrittweise bleibt.
-
-Phase 6 führt `DashboardRefreshReason` und `DashboardRefreshPolicy` ein. Initialer Start,
-Foreground-Rückkehr, externe Datenänderung, persistierende Commands und ein echter Datumswechsel
-sind dadurch getrennte Refresh-Ursachen; ein Minuten-Tick bei unverändertem Datum lädt nicht
-erneut aus der Datenbank.
+- Java-Module verhindern Android- und App-Rückimporte in Domain und Today-Kern.
+- Hosttests prüfen Fachregeln, Reducer, Room, Migrationen, Views, Accessibility und Goldens.
+- Die Android-Test-APK enthält Today-Long-Press/Drag/Drop, Randscrollen,
+  Accessibilityaktionen und Recreation eines nicht persistierten Reorders.
+- CI führt Instrumentation auf API 26 und API 35 aus; lokal wird ohne verbundenes Ziel nur der
+  Buildstatus berichtet.
+- Golden-Baselines und Datenbankschema dürfen durch reine Architekturrefactors nicht geändert
+  werden.

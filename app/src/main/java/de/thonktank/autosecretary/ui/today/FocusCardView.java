@@ -2,7 +2,6 @@ package de.thonktank.autosecretary.ui.today;
 
 import de.thonktank.autosecretary.*;
 
-import de.thonktank.autosecretary.presentation.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
