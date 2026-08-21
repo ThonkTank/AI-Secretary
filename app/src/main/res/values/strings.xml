@@ -34,7 +34,7 @@
     <string name="action_complete">erledigen</string>
     <string name="action_complete_all">Alle erledigen</string>
     <string name="action_complete_rest">Rest erledigen</string>
-    <string name="action_undo">rückgängig</string>
+    <string name="action_undo">Rückgängig</string>
     <string name="content_undo_task">%1$s rückgängig machen, %2$d XP zurücknehmen</string>
     <string name="completed_today_expand">Heute erledigte Aufgaben anzeigen</string>
     <string name="completed_today_collapse">Heute erledigte Aufgaben ausblenden</string>
@@ -324,8 +324,8 @@
         <item quantity="other">%1$d fertig</item>
     </plurals>
     <plurals name="completed_today">
-        <item quantity="one">Heute erledigt · %1$d</item>
-        <item quantity="other">Heute erledigt · %1$d</item>
+        <item quantity="one">Heute erledigt (%1$d)</item>
+        <item quantity="other">Heute erledigt (%1$d)</item>
     </plurals>
     <plurals name="focus_steps_more">
         <item quantity="one">%1$d weitere</item>

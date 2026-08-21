@@ -91,6 +91,8 @@ public final class XpVesselView extends View {
     boolean isPulsing() { return pulse != null; }
     float fillFraction() { return fill; }
     boolean isFillAnimating() { return fillAnimator != null && fillAnimator.isRunning(); }
+    int renderedResult() { return result; }
+    String renderedBreakdown() { return breakdownLabel; }
 
     @Override protected void onDraw(Canvas canvas) {
         if (palette == null) return;

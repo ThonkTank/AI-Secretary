@@ -203,4 +203,10 @@ public final class WoodGrainView extends View {
         return Collections.unmodifiableList(result);
     }
 
+    float cornerCenterX() { return cornerX; }
+    float cornerCenterY() { return cornerY; }
+    float[] leafClipRadii() {
+        return clipRadii == null ? new float[0] : clipRadii.clone();
+    }
+
 }

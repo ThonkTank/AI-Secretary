@@ -20,6 +20,7 @@ import androidx.test.core.app.ApplicationProvider;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -113,11 +114,21 @@ public final class DashboardCharacterizationTest {
         CompletedTodayView completed = content.findViewById(R.id.dashboard_completed_today);
         assertEquals(View.VISIBLE, completed.getVisibility());
         assertEquals(View.GONE, completed.getChildAt(1).getVisibility());
+        assertEquals("Heute erledigt (1)",
+                ((TextView) completed.getChildAt(0)).getText().toString());
         assertTrue(completed.getChildAt(0).performClick());
         LinearLayout completedRows = (LinearLayout) completed.getChildAt(1);
         assertEquals(View.VISIBLE, completedRows.getVisibility());
         LinearLayout completedRow = (LinearLayout) completedRows.getChildAt(0);
-        assertTrue(completedRow.getChildAt(2).performClick());
+        View undo = completedRow.getChildAt(2);
+        assertEquals("Rückgängig", ((TextView) undo).getText().toString());
+        AccessibilityNodeInfo undoInfo = undo.createAccessibilityNodeInfo();
+        assertEquals(android.widget.Button.class.getName(), undoInfo.getClassName());
+        assertTrue(undo.getContentDescription().toString()
+                .contains(DashboardFixtures.completedTodayTask().title));
+        assertTrue(undo.getContentDescription().toString().contains("10 XP"));
+        undoInfo.recycle();
+        assertTrue(undo.performClick());
         assertEquals(DashboardFixtures.completedTodayTask().occurrenceId,
                 recorded.last(DashboardEvent.UndoCompleted.class).occurrenceId);
     }

@@ -196,16 +196,20 @@ final class FocusStepListLayout extends ViewGroup {
 
     private boolean beginReorder(FocusStepRowView row, String stepId) {
         if (openSteps.size() < 2) return false;
+        enterReorder(stepId);
+        ClipData data = ClipData.newPlainText("today-step", stepId);
+        boolean started = row.startDragAndDrop(data, new View.DragShadowBuilder(row), row, 0);
+        if (!started) finishReorder();
+        return started;
+    }
+
+    private void enterReorder(String stepId) {
         reordering = true;
         dropped = false;
         draggingStepId = stepId;
         applyVisibleFollowing(Math.max(0, openSteps.size() - 1));
         reorderModeListener.onReorderModeChanged(true);
         requestLayout();
-        ClipData data = ClipData.newPlainText("today-step", stepId);
-        boolean started = row.startDragAndDrop(data, new View.DragShadowBuilder(row), row, 0);
-        if (!started) finishReorder();
-        return started;
     }
 
     private boolean onStepDrag(View view, DragEvent event) {
@@ -216,11 +220,7 @@ final class FocusStepListLayout extends ViewGroup {
             return true;
         }
         if (event.getAction() == DragEvent.ACTION_DROP) {
-            dropped = true;
-            int index = indexOfStep(draggingStepId);
-            String before = index >= 0 && index + 1 < openSteps.size()
-                    ? openSteps.get(index + 1).id : null;
-            boundEvents.emit(DashboardEvent.moveTodayStep(draggingStepId, before));
+            persistDrop();
             return true;
         }
         if (event.getAction() == DragEvent.ACTION_DRAG_ENDED) {
@@ -228,6 +228,16 @@ final class FocusStepListLayout extends ViewGroup {
             return true;
         }
         return true;
+    }
+
+    private void persistDrop() {
+        if (dropped) return;
+        dropped = true;
+        int index = indexOfStep(draggingStepId);
+        if (index < 0 || boundEvents == null) return;
+        String before = index + 1 < openSteps.size()
+                ? openSteps.get(index + 1).id : null;
+        boundEvents.emit(DashboardEvent.moveTodayStep(draggingStepId, before));
     }
 
     private int targetIndex(float y) {

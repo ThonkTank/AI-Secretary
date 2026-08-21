@@ -196,6 +196,73 @@ public final class UiComponentRobolectricTest {
         assertEquals(2, dewCount);
     }
 
+    @Test public void vesselRendersMultipliedResultAndLocalizedBreakdownForAllRanges() {
+        Context context = ApplicationProvider.getApplicationContext();
+        XpVesselView vessel = new XpVesselView(context);
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+
+        vessel.bind(23, 15, 1.5d, 1, 3, false, 1, palette);
+        assertEquals(23, vessel.renderedResult());
+        assertEquals("15 × 1,5", vessel.renderedBreakdown());
+        assertTrue(vessel.getContentDescription().toString().contains("23 XP erntbar"));
+        assertTrue(vessel.getContentDescription().toString().contains("15 XP mal Faktor 1,5"));
+
+        vessel.bind(0, 0, 3.5d, 0, 3, false, 5, palette);
+        assertEquals(0, vessel.renderedResult());
+        assertEquals("0 × 3,5", vessel.renderedBreakdown());
+
+        vessel.bind(125, 25, 5d, 3, 3, true, 8, palette);
+        assertEquals(125, vessel.renderedResult());
+        assertEquals("25 × 5", vessel.renderedBreakdown());
+        assertTrue(vessel.getContentDescription().toString().contains("125 XP erntbar"));
+    }
+
+    @Test public void headerCornerAndFocusDecorationShareTheirExactLeafGeometry() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        UiStyle style = new UiStyle(activity);
+        DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.LIGHT);
+        FrameLayout root = new FrameLayout(activity);
+        activity.setContentView(root);
+        HeaderView header = new HeaderView(activity, () -> { });
+        root.addView(header, new FrameLayout.LayoutParams(style.dp(412), style.dp(82)));
+        root.measure(View.MeasureSpec.makeMeasureSpec(style.dp(412), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(style.dp(82), View.MeasureSpec.EXACTLY));
+        root.layout(0, 0, root.getMeasuredWidth(), root.getMeasuredHeight());
+        header.bind(LocalTime.of(9, 40), palette,
+                new de.thonktank.autosecretary.domain.model.XpProgress(70));
+        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+        WoodGrainView headerGrain = first(header, WoodGrainView.class);
+        assertNotNull(headerGrain);
+        assertEquals(headerGrain.getWidth() - style.dp(56),
+                headerGrain.cornerCenterX(), .001f);
+        assertEquals(style.dp(56), headerGrain.cornerCenterY(), .001f);
+        float[] headerClip = headerGrain.leafClipRadii();
+        assertEquals(style.dp(8), headerClip[0], .001f);
+        assertEquals(style.dp(56), headerClip[2], .001f);
+        assertEquals(style.dp(8), headerClip[4], .001f);
+        assertEquals(style.dp(56), headerClip[6], .001f);
+
+        FocusTaskView focus = new FocusTaskView(activity);
+        focus.bind(DashboardFixtures.taskWithSteps(), false, true, palette, event -> { });
+        focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(style.dp(800), View.MeasureSpec.EXACTLY));
+        focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
+        FocusCardView card = first(focus, FocusCardView.class);
+        WoodGrainView focusGrain = first(focus, WoodGrainView.class);
+        View surface = focus.getChildAt(2);
+        assertNotNull(card);
+        assertNotNull(focusGrain);
+        for (View layer : Arrays.asList(surface, focusGrain)) {
+            assertEquals(card.getLeft(), layer.getLeft());
+            assertEquals(card.getTop(), layer.getTop());
+            assertEquals(card.getWidth(), layer.getWidth());
+            assertEquals(card.getHeight(), layer.getHeight());
+            assertEquals(card.getRotation(), layer.getRotation(), 0f);
+            assertEquals(card.getPivotX(), layer.getPivotX(), .001f);
+            assertEquals(card.getPivotY(), layer.getPivotY(), .001f);
+        }
+    }
+
     @Test public void reducedMotionDisablesPulseAndGlintWithoutChangingState() {
         Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
         Settings.Global.putFloat(activity.getContentResolver(),
@@ -311,6 +378,18 @@ public final class UiComponentRobolectricTest {
         for (View view : descendants(root))
             if (view instanceof DewDotView && view.getVisibility() == View.VISIBLE)
                 return (DewDotView) view;
+        return null;
+    }
+
+    private static <T extends View> T first(View root, Class<T> type) {
+        if (type.isInstance(root)) return type.cast(root);
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                T match = first(group.getChildAt(index), type);
+                if (match != null) return match;
+            }
+        }
         return null;
     }
 

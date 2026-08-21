@@ -10,6 +10,8 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
+import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.usecase.AdvanceTodayStep;
 import de.thonktank.autosecretary.domain.usecase.MoveTodayStep;
 import de.thonktank.autosecretary.testing.InMemoryExecutionRepository;
@@ -40,6 +42,11 @@ public final class TodayStepExecutionTest {
                 step("sets", 2, "Sätze", false, StepAmount.setsReps(3, 12),
                         Collections.emptyList()),
                 step("last", 3, "Letzter", false, StepAmount.none(), Collections.emptyList())));
+        repository.insertTemplates(Arrays.asList(
+                template(task, "template-first", 0, "Erster"),
+                template(task, "template-done", 1, "Fertig"),
+                template(task, "template-sets", 2, "Sätze"),
+                template(task, "template-last", 3, "Letzter")));
     }
 
     @Test public void plannedSetIsRecordedAndIncompleteFutureStepMovesToFirstOpenSlot() {
@@ -63,12 +70,39 @@ public final class TodayStepExecutionTest {
 
     @Test public void todayMoveReordersOnlyOpenSlotsAndPreservesCompletedSlot() {
         MoveTodayStep move = new MoveTodayStep(repository);
+        List<TaskStepDefinition> templatesBefore = templateDefinitions();
 
         assertTrue(move.execute("last", "first"));
 
         assertEquals(Arrays.asList("last", "done", "first", "sets"), ids());
         assertEquals(1, repository.findOccurrenceStep("done").position);
+        assertEquals(templatesBefore, templateDefinitions());
         assertFalse(move.execute("done", null));
+    }
+
+    @Test public void todayMovePreservesEveryCompletedSlotAndAnotherOccurrence() {
+        TaskId task = TaskId.of("routine");
+        repository.insertOccurrence(new Occurrence("future", task, TODAY.plusDays(1),
+                TaskSlot.MORNING, OccurrenceState.OPEN, 2, null));
+        repository.insertOccurrenceSteps(Arrays.asList(
+                stepIn("future-a", "future", 0, "A", false),
+                stepIn("future-b", "future", 1, "B", false)));
+        repository.insertOccurrence(new Occurrence("mixed", task, TODAY, TaskSlot.MIDDAY,
+                OccurrenceState.OPEN, 3, null));
+        repository.insertOccurrenceSteps(Arrays.asList(
+                stepIn("open-a", "mixed", 0, "A", false),
+                stepIn("done-a", "mixed", 1, "B", true),
+                stepIn("open-b", "mixed", 2, "C", false),
+                stepIn("done-b", "mixed", 3, "D", true),
+                stepIn("open-c", "mixed", 4, "E", false)));
+
+        assertTrue(new MoveTodayStep(repository).execute("open-c", "open-a"));
+
+        assertEquals(Arrays.asList("open-c", "done-a", "open-a", "done-b", "open-b"),
+                ids("mixed"));
+        assertEquals(1, repository.findOccurrenceStep("done-a").position);
+        assertEquals(3, repository.findOccurrenceStep("done-b").position);
+        assertEquals(Arrays.asList("future-a", "future-b"), ids("future"));
     }
 
     @Test public void plainFutureStepCompletesImmediately() {
@@ -82,9 +116,31 @@ public final class TodayStepExecutionTest {
                 "template-" + id, "step:template-" + id);
     }
 
+    private OccurrenceStep stepIn(String id, String occurrenceId, int position,
+                                  String text, boolean done) {
+        return new OccurrenceStep(id, occurrenceId, position, text, done,
+                StepAmount.none(), "", Collections.emptyList(), "template-" + id,
+                "step:template-" + id);
+    }
+
+    private TaskStepTemplate template(TaskId taskId, String id, int position, String text) {
+        return new TaskStepTemplate(id, taskId, position, text);
+    }
+
+    private List<TaskStepDefinition> templateDefinitions() {
+        List<TaskStepDefinition> result = new java.util.ArrayList<>();
+        for (TaskStepTemplate template : repository.templates(TaskId.of("routine")))
+            result.add(template.definition());
+        return result;
+    }
+
     private List<String> ids() {
+        return ids("today");
+    }
+
+    private List<String> ids(String occurrenceId) {
         List<String> result = new java.util.ArrayList<>();
-        for (OccurrenceStep step : repository.occurrenceSteps("today")) result.add(step.id);
+        for (OccurrenceStep step : repository.occurrenceSteps(occurrenceId)) result.add(step.id);
         return result;
     }
 
