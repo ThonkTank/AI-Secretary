@@ -289,6 +289,7 @@ public final class UpgradePersistenceTest {
         values.put("actualRepetitions", "");
         values.put("sourceTemplateId", TEMPLATE_ID);
         values.put("comboOwnerId", "step:" + TEMPLATE_ID);
+        values.put("carryForwardReason", "NONE");
         values.put("earnedXp", 10);
         values.put("comboPointDelta", 0);
         return values;
