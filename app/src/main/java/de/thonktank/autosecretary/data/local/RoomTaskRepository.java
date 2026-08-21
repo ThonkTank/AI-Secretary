@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
+import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -255,6 +256,11 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
             dao.updateOccurrenceStep(mapper.toEntity(step));
             syncRepetitionResults(step);
         });
+    }
+
+    @Override public void updateOccurrenceStepPositions(List<TodayStepPositionUpdate> updates) {
+        for (TodayStepPositionUpdate update : updates)
+            dao.updateOccurrenceStepPosition(update.stepId, update.position);
     }
 
     @Override public void assignRewardBookings(String occurrenceStepId, String occurrenceId) {

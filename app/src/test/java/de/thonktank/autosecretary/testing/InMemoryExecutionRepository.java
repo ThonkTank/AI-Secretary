@@ -11,6 +11,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
+import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -238,6 +239,14 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
     }
     @Override public synchronized void updateOccurrenceStep(OccurrenceStep step) {
         occurrenceSteps.put(step.id, step);
+    }
+    @Override public synchronized void updateOccurrenceStepPositions(
+            List<TodayStepPositionUpdate> updates) {
+        for (TodayStepPositionUpdate update : updates) {
+            OccurrenceStep step = occurrenceSteps.get(update.stepId);
+            if (step != null)
+                occurrenceSteps.put(step.id, step.relocate(step.occurrenceId, update.position));
+        }
     }
     @Override public synchronized void assignRewardBookings(String occurrenceStepId,
                                                              String occurrenceId) {

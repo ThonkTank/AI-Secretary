@@ -357,7 +357,7 @@ public final class TaskViewModel extends ViewModel {
     void toggleStep(String stepId) { runReward(command(UiCommand.Kind.TOGGLE_STEP, stepId), () -> tasks.toggleStep.execute(stepId)); }
     void advanceTodayStep(String stepId) {
         runReward(command(UiCommand.Kind.ADVANCE_TODAY_STEP, stepId),
-                () -> tasks.advanceTodayStep.execute(stepId));
+                () -> tasks.advanceTodayStep.execute(stepId).rewardReceipt);
     }
     void moveTodayStep(String stepId, @Nullable String beforeStepId) {
         run(command(UiCommand.Kind.MOVE_TODAY_STEP, stepId),
@@ -365,11 +365,12 @@ public final class TaskViewModel extends ViewModel {
     }
     void recordRepetitionResult(String stepId, int repetitions) {
         runReward(command(UiCommand.Kind.RECORD_REPETITION_RESULT, stepId),
-                () -> tasks.recordRepetitionResult.execute(stepId, repetitions));
+                () -> tasks.recordRepetitionResult.execute(stepId, repetitions).rewardReceipt);
     }
     void correctRepetitionResult(String stepId, int index, int repetitions) {
         runReward(command(UiCommand.Kind.CORRECT_REPETITION_RESULT, stepId),
-                () -> tasks.correctRepetitionResult.execute(stepId, index, repetitions));
+                () -> tasks.correctRepetitionResult.execute(stepId, index, repetitions)
+                        .rewardReceipt);
     }
     void defer(String occurrenceId) { run(command(UiCommand.Kind.DEFER, occurrenceId), () -> tasks.defer.execute(occurrenceId)); }
     void close(String taskId) {

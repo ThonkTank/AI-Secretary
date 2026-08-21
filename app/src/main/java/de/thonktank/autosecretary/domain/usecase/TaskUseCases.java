@@ -46,7 +46,7 @@ public final class TaskUseCases {
         advanceTodayStep = new AdvanceTodayStep(repository, clock);
         moveTodayStep = new MoveTodayStep(repository);
         recordRepetitionResult = new RecordRepetitionResult(repository, clock);
-        correctRepetitionResult = new CorrectRepetitionResult(repository);
+        correctRepetitionResult = new CorrectRepetitionResult(repository, clock);
         complete = new CompleteOccurrence(repository, clock);
         completeRemainingSteps = new CompleteRemainingSteps(repository, clock);
         harvest = new HarvestOccurrence(repository, clock);

@@ -14,6 +14,9 @@ import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.usecase.AdvanceTodayStep;
 import de.thonktank.autosecretary.domain.usecase.MoveTodayStep;
+import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
+import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
+import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.testing.InMemoryExecutionRepository;
 
 import org.junit.Before;
@@ -52,7 +55,11 @@ public final class TodayStepExecutionTest {
     @Test public void plannedSetIsRecordedAndIncompleteFutureStepMovesToFirstOpenSlot() {
         AdvanceTodayStep advance = new AdvanceTodayStep(repository, clock);
 
-        assertEquals(0, advance.execute("sets").xp);
+        AdvanceTodayStepResult firstAdvance = advance.execute("sets");
+        assertEquals(AdvanceTodayStepResult.Status.PROGRESS_RECORDED, firstAdvance.status);
+        assertEquals(Integer.valueOf(12), firstAdvance.recordedPlanValue);
+        assertEquals(Arrays.asList("sets", "first", "last"), firstAdvance.openStepIds);
+        assertEquals(0, firstAdvance.xp);
 
         OccurrenceStep changed = repository.findOccurrenceStep("sets");
         assertFalse(changed.done);
@@ -62,7 +69,11 @@ public final class TodayStepExecutionTest {
         advance.execute("sets");
         assertEquals(Arrays.asList(12, 12), repository.findOccurrenceStep("sets")
                 .repetitionProgress.actualRepetitions);
-        assertEquals(10, advance.execute("sets").xp);
+        AdvanceTodayStepResult completed = advance.execute("sets");
+        assertEquals(AdvanceTodayStepResult.Status.STEP_COMPLETED, completed.status);
+        assertEquals(Integer.valueOf(12), completed.recordedPlanValue);
+        assertEquals(Arrays.asList("first", "last"), completed.openStepIds);
+        assertEquals(10, completed.xp);
         assertTrue(repository.findOccurrenceStep("sets").done);
         assertEquals(Arrays.asList(12, 12, 12), repository.findOccurrenceStep("sets")
                 .repetitionProgress.actualRepetitions);
@@ -72,12 +83,15 @@ public final class TodayStepExecutionTest {
         MoveTodayStep move = new MoveTodayStep(repository);
         List<TaskStepDefinition> templatesBefore = templateDefinitions();
 
-        assertTrue(move.execute("last", "first"));
+        assertEquals(de.thonktank.autosecretary.domain.today.TodayStepMoveResult.Status.MOVED,
+                move.execute("last", "first").status);
 
         assertEquals(Arrays.asList("last", "done", "first", "sets"), ids());
         assertEquals(1, repository.findOccurrenceStep("done").position);
         assertEquals(templatesBefore, templateDefinitions());
-        assertFalse(move.execute("done", null));
+        assertEquals(de.thonktank.autosecretary.domain.today.TodayStepMoveResult.Status
+                        .STEP_ALREADY_DONE,
+                move.execute("done", null).status);
     }
 
     @Test public void todayMovePreservesEveryCompletedSlotAndAnotherOccurrence() {
@@ -96,7 +110,8 @@ public final class TodayStepExecutionTest {
                 stepIn("done-b", "mixed", 3, "D", true),
                 stepIn("open-c", "mixed", 4, "E", false)));
 
-        assertTrue(new MoveTodayStep(repository).execute("open-c", "open-a"));
+        assertEquals(de.thonktank.autosecretary.domain.today.TodayStepMoveResult.Status.MOVED,
+                new MoveTodayStep(repository).execute("open-c", "open-a").status);
 
         assertEquals(Arrays.asList("open-c", "done-a", "open-a", "done-b", "open-b"),
                 ids("mixed"));
@@ -106,8 +121,23 @@ public final class TodayStepExecutionTest {
     }
 
     @Test public void plainFutureStepCompletesImmediately() {
-        assertEquals(10, new AdvanceTodayStep(repository, clock).execute("last").xp);
+        AdvanceTodayStepResult result = new AdvanceTodayStep(repository, clock).execute("last");
+        assertEquals(AdvanceTodayStepResult.Status.STEP_COMPLETED, result.status);
+        assertEquals(null, result.recordedPlanValue);
+        assertEquals(10, result.xp);
         assertTrue(repository.findOccurrenceStep("last").done);
+    }
+
+    @Test public void incompleteRepetitionWriteHasAnExplicitChangedResultWithoutFakeReward() {
+        StepExecutionResult result = new RecordRepetitionResult(repository, clock)
+                .execute("sets", 11);
+
+        assertEquals(StepExecutionResult.Status.RECORDED, result.status);
+        assertTrue(result.changed());
+        assertEquals(Collections.singletonList(11),
+                result.step.repetitionProgress.actualRepetitions);
+        assertEquals(0, result.rewardReceipt.xp);
+        assertTrue(result.rewardReceipt.transactionId.isEmpty());
     }
 
     private OccurrenceStep step(String id, int position, String text, boolean done,

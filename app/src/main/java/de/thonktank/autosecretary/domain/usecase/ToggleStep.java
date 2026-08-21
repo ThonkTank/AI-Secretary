@@ -7,12 +7,12 @@ import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 public final class ToggleStep {
-    private final CompletionService completion;
+    private final StepExecutionService completion;
     public ToggleStep(TaskRepository repository) {
         this(repository, new SystemClock(new SystemZoneIdProvider()));
     }
     public ToggleStep(TaskRepository repository, Clock clock) {
-        completion = new CompletionService(repository, clock);
+        completion = new StepExecutionService(repository, clock);
     }
     public RewardReceipt execute(String stepId) { return completion.toggleStep(stepId); }
 }

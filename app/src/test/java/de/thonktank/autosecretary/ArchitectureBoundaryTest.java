@@ -37,9 +37,22 @@ public final class ArchitectureBoundaryTest {
         assertTrue(Files.isDirectory(main("presentation/today")));
         assertTrue(Files.isDirectory(main("domain/schedule")));
         assertTrue(Files.isDirectory(main("domain/steps")));
+        assertTrue(Files.isDirectory(main("domain/today")));
         assertTrue(Files.isDirectory(main("data/local")));
         assertTrue(Files.exists(main("domain/schedule/TaskScheduleRepository.java")));
         assertTrue(Files.exists(main("domain/steps/StepOrganizationRepository.java")));
+        assertTrue(Files.exists(main("domain/repository/TodayStepOrderRepository.java")));
+    }
+
+    @Test public void todayOrderIsPureAndStepExecutionHasItsOwnService() throws Exception {
+        String order = read(main("domain/today/TodayStepOrder.java"));
+        assertFalse(order.contains("domain.repository"));
+        assertFalse(order.contains("Repository repository"));
+        String completion = read(main("domain/usecase/CompletionService.java"));
+        assertFalse(completion.contains("toggleStep("));
+        assertFalse(completion.contains("recordRepetitionResult("));
+        assertFalse(completion.contains("advanceStepWithPlannedResult("));
+        assertTrue(Files.exists(main("domain/usecase/StepExecutionService.java")));
     }
 
     @Test public void managementCommandsDoNotDependOnExecutionOrCompositionPorts()

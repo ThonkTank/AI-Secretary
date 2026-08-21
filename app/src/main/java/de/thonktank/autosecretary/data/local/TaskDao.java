@@ -71,6 +71,8 @@ public interface TaskDao {
     @Query("SELECT * FROM occurrence_steps WHERE occurrenceId IN (:occurrenceIds) ORDER BY occurrenceId, position") List<OccurrenceStepEntity> occurrenceStepsFor(List<String> occurrenceIds);
     @Query("SELECT * FROM occurrence_steps WHERE id = :id LIMIT 1") OccurrenceStepEntity occurrenceStep(String id);
     @Update void updateOccurrenceStep(OccurrenceStepEntity step);
+    @Query("UPDATE occurrence_steps SET position = :position WHERE id = :stepId")
+    int updateOccurrenceStepPosition(String stepId, int position);
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void putRepetitionResult(RepetitionResultEntity result);
     @Insert(onConflict = OnConflictStrategy.REPLACE)

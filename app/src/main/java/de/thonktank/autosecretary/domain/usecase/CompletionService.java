@@ -10,7 +10,6 @@ import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
-import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskId;
@@ -30,6 +29,7 @@ public final class CompletionService {
     private final RewardCalculator rewards;
     private final CompletionStateMachine states;
     private final ScheduleProjector schedules;
+    private final StepExecutionService stepExecution;
 
     public CompletionService(TaskRepository repository, Clock clock) {
         this(repository, clock, new RewardCalculator(), new CompletionStateMachine(),
@@ -43,55 +43,7 @@ public final class CompletionService {
         this.rewards = rewards;
         this.states = states;
         this.schedules = schedules;
-    }
-
-    public RewardReceipt toggleStep(String stepId) {
-        return repository.inTransaction(() -> {
-            OccurrenceStep step = repository.findOccurrenceStep(stepId);
-            if (step == null || step.amount instanceof StepAmount.SetsReps)
-                return RewardReceipt.none();
-            Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
-            return step.done ? undoStep(occurrence, step) : completeStep(occurrence, step,
-                    newId());
-        });
-    }
-
-    public RewardReceipt recordRepetitionResult(String stepId, int repetitions) {
-        return repository.inTransaction(() -> {
-            OccurrenceStep step = repository.findOccurrenceStep(stepId);
-            if (step == null) return RewardReceipt.none();
-            Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
-            if (step.done || occurrence == null || occurrence.state != OccurrenceState.OPEN)
-                return RewardReceipt.none();
-            OccurrenceStep changed = step.recordRepetitionResult(repetitions);
-            repository.updateOccurrenceStep(changed);
-            return !step.done && changed.done
-                    ? completeStep(occurrence, changed, newId()) : RewardReceipt.none();
-        });
-    }
-
-    public RewardReceipt advanceStepWithPlannedResult(String stepId) {
-        return repository.inTransaction(() -> {
-            OccurrenceStep step = repository.findOccurrenceStep(stepId);
-            if (step == null || step.done) return RewardReceipt.none();
-            Occurrence occurrence = repository.findOccurrence(step.occurrenceId);
-            if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
-                return RewardReceipt.none();
-            if (step.repetitionProgress == null)
-                return completeStep(occurrence, step, newId());
-
-            int planned;
-            if (step.amount instanceof StepAmount.SetsReps)
-                planned = ((StepAmount.SetsReps) step.amount).repetitions;
-            else if (step.amount instanceof StepAmount.Repetitions)
-                planned = ((StepAmount.Repetitions) step.amount).repetitions;
-            else return RewardReceipt.none();
-            OccurrenceStep changed = step.recordRepetitionResult(planned);
-            repository.updateOccurrenceStep(changed);
-            if (changed.done) return completeStep(occurrence, changed, newId());
-            TodayStepOrder.moveToFirstOpen(repository, changed.id);
-            return RewardReceipt.none();
-        });
+        this.stepExecution = new StepExecutionService(repository, clock, rewards, states);
     }
 
     public RewardReceipt completeRemainingSteps(String occurrenceId) {
@@ -102,7 +54,7 @@ public final class CompletionService {
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
             for (OccurrenceStep step : repository.occurrenceSteps(occurrenceId))
-                if (!step.done) bookings.addAll(completeStep(occurrence, step,
+                if (!step.done) bookings.addAll(stepExecution.completeStep(occurrence, step,
                         transactionId).bookings);
             return RewardReceipt.of(transactionId, bookings, RewardReceipt.Target.VESSEL);
         });
@@ -119,7 +71,7 @@ public final class CompletionService {
             String transactionId = newId();
             List<RewardBooking> bookings = new ArrayList<>();
             for (OccurrenceStep step : repository.occurrenceSteps(occurrenceId))
-                if (!step.done) bookings.addAll(completeStep(occurrence, step,
+                if (!step.done) bookings.addAll(stepExecution.completeStep(occurrence, step,
                         transactionId).bookings);
             bookings.addAll(harvest(repository.findOccurrence(occurrenceId), task,
                     transactionId).bookings);
@@ -165,42 +117,6 @@ public final class CompletionService {
             repository.updateTask(projected.closeCondition(clock.today()));
             return receipt;
         });
-    }
-
-    private RewardReceipt completeStep(Occurrence occurrence, OccurrenceStep step,
-                                       String transactionId) {
-        if (occurrence == null || occurrence.state != OccurrenceState.OPEN || step == null
-                || activeOriginal(occurrence.id, step.id, RewardBooking.Target.VESSEL) != null)
-            return RewardReceipt.none();
-        ComboProgress settled = combo(step.comboOwnerId, occurrence.taskId,
-                ComboProgress.Kind.STEP).settle(clock.today());
-        RewardCalculator.StepReward calculated = rewards.step(settled,
-                occurrence.scheduledOn.equals(clock.today()));
-        ComboProgress.Change change = settled.change(calculated.requestedComboDelta, clock.today());
-        RewardBooking booking = new RewardBooking(newId(), transactionId, occurrence.id, step.id,
-                step.comboOwnerId, RewardBooking.Kind.STEP_EARNED, RewardBooking.Target.VESSEL,
-                calculated.xp, change.appliedDelta, clock.today(), null);
-        repository.putCombo(change.progress);
-        repository.insertRewardBooking(booking);
-        repository.updateOccurrenceStep(states.completeStep(occurrence, step));
-        return RewardReceipt.of(transactionId, Collections.singletonList(booking),
-                RewardReceipt.Target.VESSEL);
-    }
-
-    private RewardReceipt undoStep(Occurrence occurrence, OccurrenceStep step) {
-        if (occurrence == null || occurrence.state != OccurrenceState.OPEN || step == null
-                || !step.done) return RewardReceipt.none();
-        RewardBooking original = activeOriginal(occurrence.id, step.id,
-                RewardBooking.Target.VESSEL);
-        if (original == null) return RewardReceipt.none();
-        String transactionId = newId();
-        RewardBooking reversal = original.reverse(newId(), transactionId, clock.today());
-        ComboProgress current = combo(original.ownerId, occurrence.taskId, ComboProgress.Kind.STEP);
-        repository.putCombo(current.undo(original.comboPointDelta, clock.today()));
-        repository.insertRewardBooking(reversal);
-        repository.updateOccurrenceStep(states.reopenStep(occurrence, step));
-        return RewardReceipt.of(transactionId, Collections.singletonList(reversal),
-                RewardReceipt.Target.VESSEL);
     }
 
     private RewardReceipt harvest(Occurrence occurrence, Task task, String transactionId) {

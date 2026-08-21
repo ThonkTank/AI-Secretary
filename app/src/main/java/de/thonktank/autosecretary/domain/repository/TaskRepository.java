@@ -15,10 +15,9 @@ import java.util.List;
  * Persistence port for Today/execution use cases. Management use cases depend on their
  * focused schedule or step ports instead.
  */
-public interface TaskRepository extends TaskDefinitionRepository {
+public interface TaskRepository extends TaskDefinitionRepository, TodayStepOrderRepository {
 
     void insertOccurrence(Occurrence occurrence);
-    Occurrence findOccurrence(String id);
     Occurrence findOccurrence(TaskId taskId, LocalDate scheduledOn, TaskSlot slot);
     List<Occurrence> openOccurrences(TaskId taskId, LocalDate scheduledOn);
     Occurrence openOccurrence(TaskId taskId);
@@ -32,9 +31,7 @@ public interface TaskRepository extends TaskDefinitionRepository {
     List<Occurrence> openOccurrences(TaskId taskId);
     List<Occurrence> openOccurrences(TaskSlot slot);
     void insertOccurrenceSteps(List<OccurrenceStep> steps);
-    List<OccurrenceStep> occurrenceSteps(String occurrenceId);
     List<OccurrenceStep> occurrenceStepsFor(List<String> occurrenceIds);
-    OccurrenceStep findOccurrenceStep(String id);
     void updateOccurrenceStep(OccurrenceStep step);
 
     int xp();

@@ -59,3 +59,30 @@ nicht geändert. Der isolierte Benchmark bestätigt unverändert 16 Cacheeinträ
 16 Builds und eine Draw-Medianzeit von 0,007 ms. Ein direkt danach auf demselben Host aus
 Phase-0-Commit `29d949b2` gebauter Vergleich meldete ebenfalls 0,007 ms Median und mit 0,057 ms
 einen höheren p95 als Phase 2 mit 0,022 ms; die Pipeline selbst wurde nicht verändert.
+
+## Phase 3 – reine Schrittreihenfolge und fokussierte Persistenz
+
+Status: implementiert und gegen die Roadmap auditiert.
+
+- `domain.today.TodayStepOrder` ist eine repositoryfreie Permutationsfunktion. Sie erhält den
+  aktuellen Occurrence-/Step-Snapshot, bewegte ID und Ziel-ID und liefert einen
+  `TodayStepMoveResult` mit `MOVED`, `NO_CHANGE`, `STEP_ALREADY_DONE`, `OCCURRENCE_CLOSED`,
+  `INVALID_TARGET` oder `TARGET_IN_OTHER_OCCURRENCE`.
+- Das Ergebnis enthält die kanonische vollständige Reihenfolge, die endgültige offene
+  ID-Reihenfolge und ausschließlich tatsächlich geänderte `TodayStepPositionUpdate`s.
+- `MoveTodayStep` hängt nur vom neuen `TodayStepOrderRepository` ab. Room führt pro Änderung ein
+  gezieltes `UPDATE occurrence_steps SET position` innerhalb der Use-Case-Transaktion aus;
+  vollständige Entity-Updates und die damit verbundene Wiederholungssynchronisation entfallen.
+- `StepExecutionService` besitzt Toggle, Wiederholungserfassung/-korrektur, Advance und
+  Schritt-Reward. Occurrence-Abschluss, Harvest und Undo verbleiben in `CompletionService`.
+- `AdvanceTodayStepResult` liefert Status, tatsächlich erfassten Planwert, bestätigte offene
+  Reihenfolge und Reward-Receipt. Erfolgreiche Wiederholungs- und Korrekturwrites liefern einen
+  `StepExecutionResult` statt eines bedeutungslosen `RewardReceipt.none()`.
+
+Reine Tests decken mehrere erledigte Slots, Anfang, Ende, No-op, erledigten Schritt,
+geschlossene Occurrence, ungültiges Ziel und fremde Occurrence ab. Ein Room-Test instrumentiert
+die realen Tabellen per temporären SQLite-Triggern: Beim geprüften Move entstehen exakt drei
+notwendige Positionswrites, null Templatewrites, null Wiederholungswrites und beim anschließenden
+No-op keine weiteren Writes. Der Phase-Gate-Lauf enthält 318 Hosttests, davon 317 erfolgreich
+und einen bewusst übersprungenen Benchmark. Lint, Android-Testkompilierung, Debug-APK sowie alle
+Fokus-/Homescreen-Goldens sind grün; Datenbankschema 14 und PNG-Baselines blieben unverändert.

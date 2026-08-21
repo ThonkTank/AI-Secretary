@@ -1,30 +1,24 @@
 package de.thonktank.autosecretary.domain.usecase;
 
-import de.thonktank.autosecretary.domain.model.Occurrence;
-import de.thonktank.autosecretary.domain.model.OccurrenceState;
-import de.thonktank.autosecretary.domain.model.OccurrenceStep;
-import de.thonktank.autosecretary.domain.model.RewardReceipt;
+import de.thonktank.autosecretary.Clock;
+import de.thonktank.autosecretary.SystemClock;
+import de.thonktank.autosecretary.SystemZoneIdProvider;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
+import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 
 /** Corrects one persisted result without changing completion rewards. */
 public final class CorrectRepetitionResult {
-    private final TaskRepository repository;
+    private final StepExecutionService execution;
 
     public CorrectRepetitionResult(TaskRepository repository) {
-        this.repository = repository;
+        this(repository, new SystemClock(new SystemZoneIdProvider()));
     }
 
-    public RewardReceipt execute(String stepId, int index, int repetitions) {
-        return repository.inTransaction(() -> {
-            OccurrenceStep current = repository.findOccurrenceStep(stepId);
-            if (current == null || current.repetitionProgress == null)
-                return RewardReceipt.none();
-            Occurrence occurrence = repository.findOccurrence(current.occurrenceId);
-            if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
-                return RewardReceipt.none();
-            repository.updateOccurrenceStep(
-                    current.correctRepetitionResult(index, repetitions));
-            return RewardReceipt.none();
-        });
+    public CorrectRepetitionResult(TaskRepository repository, Clock clock) {
+        execution = new StepExecutionService(repository, clock);
+    }
+
+    public StepExecutionResult execute(String stepId, int index, int repetitions) {
+        return execution.correctRepetitionResult(stepId, index, repetitions);
     }
 }
