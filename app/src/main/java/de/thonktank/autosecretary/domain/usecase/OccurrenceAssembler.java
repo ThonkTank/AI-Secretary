@@ -7,7 +7,7 @@ import de.thonktank.autosecretary.domain.model.CarryForwardReason;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 import java.time.LocalDate;
@@ -32,10 +32,10 @@ final class OccurrenceAssembler {
     boolean assemble(Task task, LocalDate today, List<Occurrence> history,
                      Map<TaskSlot, Integer> globalNextOrders,
                      OccurrenceCarryForward.Result carry,
-                     DueDatePlanner.Plan planned, Map<String, Integer> scheduleRanks) {
+                     DueDatePlanner.Plan planned, TaskSchedule schedule,
+                     Map<String, Integer> scheduleRanks) {
         Set<TaskSlot> targetSlots = new LinkedHashSet<>();
-        List<TaskSlot> configuredSlots = task.recurrence == de.thonktank.autosecretary.domain.model.Recurrence.ONCE
-                ? Collections.singletonList(task.slot) : TimeOfDay.slots(task.timeOfDayMask);
+        List<TaskSlot> configuredSlots = schedule.slots(task.id);
         for (TaskSlot slot : configuredSlots)
             if (carry.carry.containsKey(slot) || planned.stepsBySlot.containsKey(slot))
                 targetSlots.add(slot);

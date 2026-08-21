@@ -112,9 +112,7 @@ public final class UpgradePersistenceTest {
         TaskEntity task = database.tasks().task(TASK_ID);
         assertNotNull(task);
         assertEquals(TITLE, task.title);
-        assertEquals("LATER", task.slot);
-        assertEquals(4_001_024L, task.displayOrder);
-        assertEquals(0, task.timeOfDayMask);
+        assertEquals(4_001_024L, task.catalogOrder);
         assertEquals("FOREVER", task.boundKind);
 
         List<TaskScheduleEntity> schedule = database.tasks().scheduleEntries(TASK_ID);

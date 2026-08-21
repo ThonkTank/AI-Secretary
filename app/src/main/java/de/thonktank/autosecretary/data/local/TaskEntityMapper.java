@@ -25,26 +25,22 @@ import java.util.List;
 
 public final class TaskEntityMapper {
     public Task toDomain(TaskEntity entity) {
-        TaskSlot slot = TaskSlot.fromStorage(entity.slot);
-        int times = entity.timeOfDayMask;
-        if (times == 0 && !"ONCE".equalsIgnoreCase(entity.recurrence))
-            times = de.thonktank.autosecretary.domain.model.TimeOfDay.fromSlot(slot).bit;
-        return Task.restore(TaskId.of(entity.id), entity.title, slot,
+        return Task.restore(TaskId.of(entity.id), entity.title,
                 Recurrence.fromStorage(entity.recurrence), entity.intervalDays, entity.weekdayMask,
                 entity.ongoing, entity.conditionText, entity.conditionDone, entity.archived,
                 date(entity.nextDueOn), date(entity.lastScheduledOn), date(entity.lastCompletedOn),
-                entity.displayOrder, entity.hasCompletedOccurrence, entity.estimatedMinutes,
-                times, TaskBoundKind.fromStorage(entity.boundKind),
+                entity.catalogOrder, entity.hasCompletedOccurrence, entity.estimatedMinutes,
+                TaskBoundKind.fromStorage(entity.boundKind),
                 date(entity.boundUntilOn), entity.boundWeeks, entity.remainingCount,
                 date(entity.deadlineOn), entity.note);
     }
 
     public TaskEntity toEntity(Task task) {
-        return new TaskEntity(task.id.value, task.title, task.slot.storageCode,
-                task.recurrence.storageCode(), task.intervalDays, task.weekdayMask, task.ongoing,
+        return new TaskEntity(task.id.value, task.title, task.recurrence.storageCode(),
+                task.intervalDays, task.weekdayMask, task.ongoing,
                 task.conditionText, task.conditionDone, task.archived, text(task.nextDueOn),
-                nullableText(task.lastScheduledOn), nullableText(task.lastCompletedOn), task.displayOrder,
-                task.hasCompletedOccurrence, task.estimatedMinutes, task.timeOfDayMask,
+                nullableText(task.lastScheduledOn), nullableText(task.lastCompletedOn),
+                task.catalogOrder, task.hasCompletedOccurrence, task.estimatedMinutes,
                 task.boundKind.storageCode(), nullableText(task.boundUntilOn), task.boundWeeks,
                 task.remainingCount, nullableText(task.deadlineOn), task.note);
     }

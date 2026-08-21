@@ -5,7 +5,7 @@
     "versionCode": 1008001,
     "databaseVersion": 8
   },
-  "targetDatabaseVersion": 12,
+  "targetDatabaseVersion": 13,
   "tables": {
     "tasks": {
       "id": "upgrade-e2e-task",
@@ -90,9 +90,7 @@
     "tasks": {
       "id": "upgrade-e2e-task",
       "title": "Upgrade-Daten bleiben erhalten",
-      "slot": "LATER",
-      "displayOrder": 4001024,
-      "timeOfDayMask": 0,
+      "catalogOrder": 4001024,
       "boundKind": "FOREVER"
     },
     "task_schedule_entries": {

@@ -67,7 +67,7 @@ public final class WidgetDashboardMapperTest {
     }
 
     private static Occurrence occurrence(Task task, String id) {
-        return new Occurrence(id, task.id, TODAY, task.slot, OccurrenceState.OPEN,
+        return new Occurrence(id, task.id, TODAY, TaskSlot.MORNING, OccurrenceState.OPEN,
                 0, null);
     }
 }

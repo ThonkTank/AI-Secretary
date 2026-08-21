@@ -396,6 +396,53 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Makes normalized schedule placements the only persisted time-of-day truth. */
+    public static final Migration MIGRATION_12_13 = new Migration(12, 13) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_schedule_entries "
+                    + "RENAME TO _m_task_schedule_entries");
+            database.execSQL("DROP INDEX index_task_schedule_entries_taskId");
+            database.execSQL("DROP INDEX index_task_schedule_entries_taskId_slot");
+            database.execSQL("DROP INDEX index_task_schedule_entries_slot_displayOrder");
+            database.execSQL("ALTER TABLE tasks RENAME TO _m_tasks_schedule_projection");
+            database.execSQL("CREATE TABLE tasks (id TEXT NOT NULL, title TEXT NOT NULL, "
+                    + "recurrence TEXT NOT NULL, intervalDays INTEGER NOT NULL, "
+                    + "weekdayMask INTEGER NOT NULL, ongoing INTEGER NOT NULL, "
+                    + "conditionText TEXT NOT NULL, conditionDone INTEGER NOT NULL, "
+                    + "archived INTEGER NOT NULL, nextDueOn TEXT NOT NULL, "
+                    + "lastScheduledOn TEXT, lastCompletedOn TEXT, catalogOrder INTEGER NOT NULL, "
+                    + "hasCompletedOccurrence INTEGER NOT NULL, estimatedMinutes INTEGER, "
+                    + "boundKind TEXT NOT NULL, boundUntilOn TEXT, boundWeeks INTEGER, "
+                    + "remainingCount INTEGER, deadlineOn TEXT, note TEXT NOT NULL, "
+                    + "PRIMARY KEY(id))");
+            database.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,weekdayMask,"
+                    + "ongoing,conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,"
+                    + "lastCompletedOn,catalogOrder,hasCompletedOccurrence,estimatedMinutes,"
+                    + "boundKind,boundUntilOn,boundWeeks,remainingCount,deadlineOn,note) "
+                    + "SELECT id,title,recurrence,intervalDays,weekdayMask,ongoing,conditionText,"
+                    + "conditionDone,archived,nextDueOn,lastScheduledOn,lastCompletedOn,"
+                    + "displayOrder,hasCompletedOccurrence,estimatedMinutes,boundKind,"
+                    + "boundUntilOn,boundWeeks,remainingCount,deadlineOn,note "
+                    + "FROM _m_tasks_schedule_projection");
+            database.execSQL("CREATE INDEX index_tasks_archived_conditionDone_catalogOrder "
+                    + "ON tasks(archived,conditionDone,catalogOrder)");
+            database.execSQL("CREATE TABLE task_schedule_entries (id TEXT NOT NULL, "
+                    + "taskId TEXT NOT NULL, slot TEXT NOT NULL, displayOrder INTEGER NOT NULL, "
+                    + "PRIMARY KEY(id), FOREIGN KEY(taskId) REFERENCES tasks(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO task_schedule_entries(id,taskId,slot,displayOrder) "
+                    + "SELECT id,taskId,slot,displayOrder FROM _m_task_schedule_entries");
+            database.execSQL("CREATE INDEX index_task_schedule_entries_taskId "
+                    + "ON task_schedule_entries(taskId)");
+            database.execSQL("CREATE UNIQUE INDEX index_task_schedule_entries_taskId_slot "
+                    + "ON task_schedule_entries(taskId,slot)");
+            database.execSQL("CREATE INDEX index_task_schedule_entries_slot_displayOrder "
+                    + "ON task_schedule_entries(slot,displayOrder)");
+            database.execSQL("DROP TABLE _m_task_schedule_entries");
+            database.execSQL("DROP TABLE _m_tasks_schedule_projection");
+        }
+    };
+
     private static List<Integer> parseLegacyRepetitions(String stepId, String stored) {
         List<Integer> values = new ArrayList<>();
         try {

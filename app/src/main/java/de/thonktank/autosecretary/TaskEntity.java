@@ -6,11 +6,10 @@ import androidx.room.Entity;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
-@Entity(tableName = "tasks", indices = @Index(value = {"archived", "conditionDone", "displayOrder"}))
+@Entity(tableName = "tasks", indices = @Index(value = {"archived", "conditionDone", "catalogOrder"}))
 public class TaskEntity {
     @PrimaryKey @NonNull public String id;
     @NonNull public String title;
-    @NonNull public String slot;
     @NonNull public String recurrence;
     public int intervalDays;
     public int weekdayMask;
@@ -21,10 +20,9 @@ public class TaskEntity {
     @NonNull public String nextDueOn;
     @Nullable public String lastScheduledOn;
     @Nullable public String lastCompletedOn;
-    public long displayOrder;
+    public long catalogOrder;
     public boolean hasCompletedOccurrence;
     public Integer estimatedMinutes;
-    public int timeOfDayMask;
     @NonNull public String boundKind;
     @Nullable public String boundUntilOn;
     public Integer boundWeeks;
@@ -32,19 +30,18 @@ public class TaskEntity {
     @Nullable public String deadlineOn;
     @NonNull public String note;
 
-    public TaskEntity(@NonNull String id, @NonNull String title, @NonNull String slot,
+    public TaskEntity(@NonNull String id, @NonNull String title,
                       @NonNull String recurrence, int intervalDays, int weekdayMask,
                       boolean ongoing, @NonNull String conditionText, boolean conditionDone,
                       boolean archived, @NonNull String nextDueOn,
                       @Nullable String lastScheduledOn, @Nullable String lastCompletedOn,
-                      long displayOrder, boolean hasCompletedOccurrence,
-                      Integer estimatedMinutes, int timeOfDayMask,
+                      long catalogOrder, boolean hasCompletedOccurrence,
+                      Integer estimatedMinutes,
                       @NonNull String boundKind, @Nullable String boundUntilOn,
                       Integer boundWeeks, Integer remainingCount,
                       @Nullable String deadlineOn, @NonNull String note) {
         this.id = id;
         this.title = title;
-        this.slot = slot;
         this.recurrence = recurrence;
         this.intervalDays = intervalDays;
         this.weekdayMask = weekdayMask;
@@ -55,10 +52,9 @@ public class TaskEntity {
         this.nextDueOn = nextDueOn;
         this.lastScheduledOn = lastScheduledOn;
         this.lastCompletedOn = lastCompletedOn;
-        this.displayOrder = displayOrder;
+        this.catalogOrder = catalogOrder;
         this.hasCompletedOccurrence = hasCompletedOccurrence;
         this.estimatedMinutes = estimatedMinutes;
-        this.timeOfDayMask = timeOfDayMask;
         this.boundKind = boundKind;
         this.boundUntilOn = boundUntilOn;
         this.boundWeeks = boundWeeks;

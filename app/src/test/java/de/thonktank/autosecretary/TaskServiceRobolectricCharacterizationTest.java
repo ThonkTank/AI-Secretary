@@ -50,7 +50,6 @@ public final class TaskServiceRobolectricCharacterizationTest {
 
     @Test public void dashboardIsPureAndExplicitMaterializationCreatesAtMostOneOccurrence() {
         TaskEntity task = task("routine", "Morgenroutine", TaskSlot.MORNING.storageCode, "DAILY", 1_001_000L);
-        dao.insertTask(task);
         dao.insertTemplates(Arrays.asList(
                 new TaskStepEntity("one", task.id, 0, "Duschen"),
                 new TaskStepEntity("two", task.id, 1, "Anziehen")));
@@ -69,7 +68,6 @@ public final class TaskServiceRobolectricCharacterizationTest {
 
     @Test public void completionKeepsTheTaskVisibleTodayAndAwardsXpOnce() {
         TaskEntity task = task("once", "Brief beantworten", TaskSlot.MORNING.storageCode, "ONCE", 1_001_000L);
-        dao.insertTask(task);
         dao.insertOccurrence(new OccurrenceEntity("occurrence", task.id, TODAY.toString(), "OPEN", 1000, ""));
 
         service.complete("occurrence");
@@ -86,16 +84,14 @@ public final class TaskServiceRobolectricCharacterizationTest {
     @Test public void deferSwapsWithTheNextOpenTask() {
         TaskEntity first = task("first", "Erste Aufgabe", TaskSlot.MORNING.storageCode, "ONCE", 1_001_000L);
         TaskEntity second = task("second", "Zweite Aufgabe", TaskSlot.MORNING.storageCode, "ONCE", 1_002_000L);
-        dao.insertTask(first);
-        dao.insertTask(second);
         dao.insertOccurrence(new OccurrenceEntity("first-occurrence", first.id, TODAY.toString(), "OPEN", 1000, ""));
         dao.insertOccurrence(new OccurrenceEntity("second-occurrence", second.id, TODAY.toString(), "OPEN", 2000, ""));
 
         service.defer("first-occurrence");
 
         assertEquals("second", service.dashboard().firstOpen().taskId);
-        assertEquals(1_001_000L, dao.task("first").displayOrder);
-        assertEquals(1_002_000L, dao.task("second").displayOrder);
+        assertEquals(1_001_000L, dao.task("first").catalogOrder);
+        assertEquals(1_002_000L, dao.task("second").catalogOrder);
         assertTrue(dao.occurrence("first-occurrence").sortOrder
                 > dao.occurrence("second-occurrence").sortOrder);
     }
@@ -105,7 +101,7 @@ public final class TaskServiceRobolectricCharacterizationTest {
         task.ongoing = true;
         task.conditionText = "Vertrag unterschrieben";
         task.nextDueOn = "";
-        dao.insertTask(task);
+        dao.updateTask(task);
 
         assertNotNull(service.dashboard().firstOpen());
         service.closeOngoingTask(task.id);
@@ -117,10 +113,14 @@ public final class TaskServiceRobolectricCharacterizationTest {
         assertEquals(10, state.xp);
     }
 
-    private static TaskEntity task(String id, String title, String slot, String recurrence, long order) {
-        return new TaskEntity(id, title, slot, recurrence, 1, 0, false, "", false, false,
+    private TaskEntity task(String id, String title, String slot, String recurrence, long order) {
+        TaskEntity task = new TaskEntity(id, title, recurrence, 1, 0, false, "", false, false,
                 TODAY.toString(), "", "", order, false, null,
-                "ONCE".equals(recurrence) ? 0 : 1, "FOREVER", "", null, null, "", "");
+                "FOREVER", "", null, null, "", "");
+        dao.insertTask(task);
+        dao.putScheduleEntries(java.util.Collections.singletonList(new TaskScheduleEntity(
+                "schedule:" + id, id, slot, order)));
+        return task;
     }
 
     private static Clock clock(LocalDate day) {

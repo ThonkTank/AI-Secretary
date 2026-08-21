@@ -13,23 +13,22 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public final class CreateTask {
-    private final TaskDefinitionRepository repository;
+    private static final long CATALOG_ORDER_STEP = 1_024L;
+    private final TaskRepository repository;
     private final Clock clock;
     private final IdGenerator ids;
-    private final TaskOrdering ordering;
 
-    public CreateTask(TaskDefinitionRepository repository, Clock clock, IdGenerator ids,
-                      TaskOrdering ordering) {
+    public CreateTask(TaskRepository repository, Clock clock, IdGenerator ids,
+                      TaskOrdering ignoredOrdering) {
         this.repository = repository;
         this.clock = clock;
         this.ids = ids;
-        this.ordering = ordering;
     }
 
     public void execute(TaskDefinition definition) {
@@ -37,14 +36,10 @@ public final class CreateTask {
             TaskId taskId = TaskId.of(ids.nextId());
             Task task = Task.create(taskId, definition,
                     ScheduleCalculator.firstDue(definition.recurrence,
-                            definition.weekdayMask, clock.today()), 0);
-            List<Task> ordered = ordering.insertAtEndOfSlot(repository.allTasks(), task);
-            for (Task item : ordered) {
-                if (item.id.equals(task.id)) repository.insertTask(item);
-                else repository.updateTask(item);
-            }
+                            definition.weekdayMask, clock.today()), nextCatalogOrder());
+            repository.insertTask(task);
             repository.insertTemplates(templates(task.id, definition.steps));
-            new TaskScheduleService(repository, ids).create(task);
+            new TaskScheduleService(repository, ids).create(task, definition);
             return null;
         });
     }
@@ -55,18 +50,16 @@ public final class CreateTask {
         if (ongoing) {
             repository.inTransaction(() -> {
                 Task task = Task.create(TaskId.of(ids.nextId()), title, slot, recurrence,
-                        intervalDays, weekdayMask, true, condition, clock.today(), 0);
-                List<Task> ordered = ordering.insertAtEndOfSlot(repository.allTasks(), task);
-                for (Task item : ordered) {
-                    if (item.id.equals(task.id)) repository.insertTask(item);
-                    else repository.updateTask(item);
-                }
+                        intervalDays, weekdayMask, true, condition, clock.today(),
+                        nextCatalogOrder());
+                repository.insertTask(task);
                 List<TaskStepTemplate> values = new ArrayList<>();
                 for (int i = 0; i < stepTexts.size(); i++)
                     if (stepTexts.get(i) != null && !stepTexts.get(i).trim().isEmpty())
                         values.add(new TaskStepTemplate(ids.nextId(), task.id, i, stepTexts.get(i)));
                 repository.insertTemplates(values);
-                new TaskScheduleService(repository, ids).create(task);
+                new TaskScheduleService(repository, ids).create(task,
+                        java.util.Collections.singletonList(slot));
                 return null;
             });
             return;
@@ -79,6 +72,12 @@ public final class CreateTask {
         execute(new TaskDefinition(title, null, slot, recurrence, intervalDays, weekdayMask,
                 recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(slot).bit,
                 TaskBoundKind.FOREVER, null, null, null, null, "", steps));
+    }
+
+    private long nextCatalogOrder() {
+        long last = 0;
+        for (Task task : repository.allTasks()) last = Math.max(last, task.catalogOrder);
+        return last + CATALOG_ORDER_STEP;
     }
 
     private List<TaskStepTemplate> templates(TaskId taskId,

@@ -13,7 +13,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,23 +24,21 @@ import java.util.Map;
 import java.util.Set;
 
 public final class UpdateTask {
-    private final TaskDefinitionRepository repository;
-    private final TaskOrdering ordering;
+    private final TaskRepository repository;
     private final IdGenerator ids;
     private final Clock clock;
 
-    public UpdateTask(TaskDefinitionRepository repository, TaskOrdering ordering) {
+    public UpdateTask(TaskRepository repository, TaskOrdering ordering) {
         this(repository, ordering, new UuidGenerator(), null);
     }
 
-    public UpdateTask(TaskDefinitionRepository repository, TaskOrdering ordering, IdGenerator ids) {
+    public UpdateTask(TaskRepository repository, TaskOrdering ordering, IdGenerator ids) {
         this(repository, ordering, ids, null);
     }
 
-    public UpdateTask(TaskDefinitionRepository repository, TaskOrdering ordering, IdGenerator ids,
+    public UpdateTask(TaskRepository repository, TaskOrdering ignoredOrdering, IdGenerator ids,
                       Clock clock) {
         this.repository = repository;
-        this.ordering = ordering;
         this.ids = ids;
         this.clock = clock;
     }
@@ -49,12 +47,12 @@ public final class UpdateTask {
         repository.inTransaction(() -> {
             Task current = repository.findTask(id);
             if (current == null) return null;
-            if (current.slot == slot) {
-                repository.updateTask(current.edit(title, slot, current.displayOrder));
-                return null;
-            }
-            List<Task> reordered = ordering.moveToEndOfSlot(repository.allTasks(), id, slot, title);
-            for (Task task : reordered) repository.updateTask(task);
+            repository.updateTask(current.edit(title, current.catalogOrder));
+            TaskScheduleService schedules = new TaskScheduleService(repository, ids);
+            de.thonktank.autosecretary.domain.model.TaskSchedule currentSchedule = schedules.load();
+            de.thonktank.autosecretary.domain.model.TaskScheduleEntry primary =
+                    currentSchedule.primary(id);
+            if (primary.slot != slot) schedules.move(primary.id, slot, null);
             return null;
         });
     }
@@ -63,16 +61,6 @@ public final class UpdateTask {
         repository.inTransaction(() -> {
             Task current = repository.findTask(id);
             if (current == null) return null;
-            long displayOrder = current.displayOrder;
-            TaskSlot slot = definition.primarySlot();
-            if (current.slot != slot) {
-                List<Task> reordered = ordering.moveToEndOfSlot(repository.allTasks(), id,
-                        slot, definition.title);
-                for (Task task : reordered) {
-                    if (task.id.equals(id)) displayOrder = task.displayOrder;
-                    else repository.updateTask(task);
-                }
-            }
             LocalDate nextDue = current.nextDueOn;
             if (current.recurrence != definition.recurrence
                     || current.weekdayMask != definition.weekdayMask) {
@@ -81,7 +69,7 @@ public final class UpdateTask {
                     nextDue = ScheduleCalculator.firstDue(definition.recurrence,
                             definition.weekdayMask, today);
             }
-            repository.updateTask(current.editDefinition(definition, displayOrder, nextDue));
+            repository.updateTask(current.editDefinition(definition, current.catalogOrder, nextDue));
             syncTemplates(id, definition.steps);
             new TaskScheduleService(repository, ids).sync(
                     repository.findTask(id), definition);
@@ -119,12 +107,14 @@ public final class UpdateTask {
         Task current = repository.findTask(id);
         if (current == null) return;
         repository.updateTask(current.editDefinition(title, slot, recurrence, intervalDays,
-                weekdayMask, true, condition, current.displayOrder));
+                weekdayMask, true, condition, current.catalogOrder));
         repository.deleteTemplates(id);
         List<TaskStepTemplate> values = new ArrayList<>();
         for (String text : stepTexts) if (text != null && !text.trim().isEmpty())
             values.add(new TaskStepTemplate(ids.nextId(), id, values.size(), text));
         repository.insertTemplates(values);
+        new TaskScheduleService(repository, ids).sync(repository.findTask(id),
+                java.util.Collections.singletonList(slot));
     }
 
     private void syncTemplates(TaskId taskId, List<TaskStepDefinition> definitions) {

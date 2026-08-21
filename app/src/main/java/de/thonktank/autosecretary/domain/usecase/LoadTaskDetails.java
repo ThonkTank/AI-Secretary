@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskDetails;
 import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
 
 public final class LoadTaskDetails {
@@ -14,6 +15,7 @@ public final class LoadTaskDetails {
 
     public TaskDetails execute(TaskId id) {
         Task task = repository.findTask(id);
-        return task == null ? null : new TaskDetails(task, repository.templates(id));
+        return task == null ? null : new TaskDetails(task, repository.templates(id),
+                new TaskSchedule(repository.scheduleEntries(id)));
     }
 }

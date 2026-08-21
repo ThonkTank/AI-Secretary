@@ -183,16 +183,20 @@ public final class CompletionInMemoryTest {
         final int historyPerTask = 20;
         for (int taskIndex = 0; taskIndex < taskCount; taskIndex++) {
             TaskId taskId = TaskId.of("stress-task-" + taskIndex);
-            Task task = Task.create(taskId, "Aufgabe " + taskIndex, TaskSlot.values()[
-                            taskIndex % TaskSlot.values().length], Recurrence.DAILY, 1, 0,
+            TaskSlot slot = TaskSlot.values()[taskIndex % TaskSlot.values().length];
+            Task task = Task.create(taskId, "Aufgabe " + taskIndex, slot,
+                    Recurrence.DAILY, 1, 0,
                     false, "", TODAY, taskIndex);
             repository.insertTask(task);
+            repository.putScheduleEntries(Collections.singletonList(
+                    new de.thonktank.autosecretary.domain.model.TaskScheduleEntry(
+                            "stress-schedule-" + taskIndex, taskId, slot, taskIndex + 1L)));
             for (int history = 0; history < historyPerTask; history++) {
                 LocalDate date = TODAY.minusDays(history + 1L);
                 repository.insertOccurrence(new Occurrence(taskId.value + "-history-" + history,
-                        taskId, date, task.slot, OccurrenceState.COMPLETED, history, date));
+                        taskId, date, slot, OccurrenceState.COMPLETED, history, date));
             }
-            Occurrence open = new Occurrence(taskId.value + "-open", taskId, TODAY, task.slot,
+            Occurrence open = new Occurrence(taskId.value + "-open", taskId, TODAY, slot,
                     OccurrenceState.OPEN, taskIndex, null);
             repository.insertOccurrence(open);
             for (int step = 0; step < 12; step++)

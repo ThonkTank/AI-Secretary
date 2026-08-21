@@ -86,11 +86,11 @@ public final class DashboardUiMapper {
                     : RewardPolicy.lateDays(task, item.occurrence, today);
             claimable = RewardPolicy.singleTaskXp(late, taskCombo);
         } else claimable = RewardPolicy.routineXp(projected, taskCombo);
-        TaskSlot displaySlot = item.occurrence == null ? task.slot : item.occurrence.slot;
+        TaskSlot displaySlot = item.displaySlot;
         return new TaskSnapshot(task.id.value, item.occurrence == null ? "" : item.occurrence.id,
                 task.title, displaySlot, softTime(displaySlot, task.ongoing), next, task.recurrence,
                 steps, remaining, !task.conditionText.isEmpty(), task.ongoing, item.done, overdue,
-                taskStage, task.displayOrder, claimable, item.done ? 0 : collected,
+                taskStage, task.catalogOrder, claimable, item.done ? 0 : collected,
                 item.awardedXp,
                 !item.done && !steps.isEmpty() && collected > 0,
                 item.done && item.occurrence != null);

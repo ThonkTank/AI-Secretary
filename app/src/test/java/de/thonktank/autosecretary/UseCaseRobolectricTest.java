@@ -20,9 +20,14 @@ import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
+import de.thonktank.autosecretary.domain.model.TaskCatalog;
+import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
+import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 import de.thonktank.autosecretary.domain.usecase.CloseOngoingTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
@@ -31,6 +36,8 @@ import de.thonktank.autosecretary.domain.usecase.DeferTask;
 import de.thonktank.autosecretary.domain.usecase.DeleteTask;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
+import de.thonktank.autosecretary.domain.usecase.LoadTaskCatalog;
+import de.thonktank.autosecretary.domain.usecase.LoadTaskDetails;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.MoveTask;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
@@ -103,7 +110,31 @@ public final class UseCaseRobolectricTest {
         assertEquals(1, repository.openOccurrences().size());
         assertEquals(1, dashboard.tasks.size());
         assertEquals(2, dashboard.tasks.get(0).steps.size());
-        assertEquals(1_024L, dashboard.tasks.get(0).task.displayOrder);
+        assertEquals(1_024L, dashboard.tasks.get(0).task.catalogOrder);
+    }
+
+    @Test public void editorCatalogAndTodayReadTheSameCanonicalSchedule() {
+        TaskDefinition definition = new TaskDefinition("Mehrfach", 20, TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0,
+                TimeOfDay.MORNING.bit | TimeOfDay.EVENING.bit,
+                TaskBoundKind.FOREVER, null, null, null, null, "", Collections.emptyList());
+        new CreateTask(repository, clock, ids, ordering).execute(definition);
+        Task task = repository.allTasks().get(0);
+
+        assertEquals(Arrays.asList(TaskSlot.MORNING, TaskSlot.EVENING),
+                new TaskSchedule(repository.scheduleEntries(task.id)).slots(task.id).stream()
+                        .collect(java.util.stream.Collectors.toList()));
+        assertEquals(TimeOfDay.MORNING.bit | TimeOfDay.EVENING.bit,
+                new LoadTaskDetails(repository).execute(task.id).timeOfDayMask);
+        TaskCatalog.Item catalog = new LoadTaskCatalog(repository).execute().items.get(0);
+        assertEquals(Arrays.asList(TaskSlot.MORNING, TaskSlot.EVENING), catalog.schedule.stream()
+                .map(value -> value.slot).collect(java.util.stream.Collectors.toList()));
+
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        assertEquals(Arrays.asList(TaskSlot.MORNING, TaskSlot.EVENING),
+                new LoadDashboard(repository).execute(TODAY).tasks.stream()
+                        .map(value -> value.displaySlot)
+                        .collect(java.util.stream.Collectors.toList()));
     }
 
     @Test public void transactionPortReturnsItsResult() {
@@ -122,7 +153,7 @@ public final class UseCaseRobolectricTest {
         Dashboard dashboard = load.execute(TODAY);
 
         assertEquals(6, dashboard.tasks.size());
-        assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 8);
+        assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 9);
         assertEquals(1, queries.stream().filter(sql -> sql.contains("occurrence_steps")).count());
         assertEquals(1, queries.stream().filter(sql -> sql.contains("repetition_results")).count());
     }
@@ -161,7 +192,7 @@ public final class UseCaseRobolectricTest {
 
         assertEquals(1, repository.allTasks().size());
         assertEquals("Umbenannt", repository.findTask(first).title);
-        assertEquals(TaskSlot.EVENING, repository.findTask(first).slot);
+        assertEquals(TaskSlot.EVENING, repository.scheduleEntries(first).get(0).slot);
         assertNull(repository.findTask(second));
     }
 
@@ -177,7 +208,7 @@ public final class UseCaseRobolectricTest {
 
         Task updated = repository.findTask(task.id);
         assertEquals("Neu", updated.title);
-        assertEquals(TaskSlot.EVENING, updated.slot);
+        assertEquals(TaskSlot.EVENING, repository.scheduleEntries(task.id).get(0).slot);
         assertEquals(Recurrence.WEEKDAYS, updated.recurrence);
         assertEquals(3, updated.intervalDays);
         assertEquals(17, updated.weekdayMask);
@@ -231,6 +262,9 @@ public final class UseCaseRobolectricTest {
         Task ongoing = Task.create(TaskId.of("ongoing"), "Praktikum", TaskSlot.LATER,
                 Recurrence.ONCE, 1, 0, true, "Vertrag unterschrieben", null, 1_024L);
         repository.insertTask(ongoing);
+        repository.putScheduleEntries(Collections.singletonList(
+                new de.thonktank.autosecretary.domain.model.TaskScheduleEntry(
+                        "ongoing-schedule", ongoing.id, TaskSlot.LATER, 1_024L)));
         CloseOngoingTask close = new CloseOngoingTask(repository, clock);
 
         close.execute(ongoing.id);

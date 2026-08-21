@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
+import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
@@ -123,8 +124,10 @@ public final class CompletionService {
                     || task.conditionDone) return RewardReceipt.none();
             Occurrence open = repository.openOccurrence(task.id);
             if (open == null) {
+                de.thonktank.autosecretary.domain.model.TaskSlot slot = new TaskSchedule(
+                        repository.scheduleEntries(task.id)).primary(task.id).slot;
                 open = new Occurrence("condition:" + task.id.value + ":" + clock.today(),
-                        task.id, clock.today(), task.slot, OccurrenceState.OPEN,
+                        task.id, clock.today(), slot, OccurrenceState.OPEN,
                         Integer.MAX_VALUE, null, OccurrenceKind.CONDITION);
                 repository.insertOccurrence(open);
             } else if (open.kind != OccurrenceKind.CONDITION) {

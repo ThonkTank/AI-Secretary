@@ -7,7 +7,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.model.TaskSchedule;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -20,7 +20,7 @@ import java.util.Set;
 
 /** Pure calendar planning. It does not inspect or mutate open occurrence state. */
 final class DueDatePlanner {
-    Plan throughToday(Task task, LocalDate today, List<Occurrence> history,
+    Plan throughToday(Task task, TaskSchedule schedule, LocalDate today, List<Occurrence> history,
                       List<TaskStepTemplate> templates) {
         Map<TaskSlot, List<TaskStepTemplate>> result = new LinkedHashMap<>();
         LocalDate cursor = task.planningCursor();
@@ -31,8 +31,9 @@ final class DueDatePlanner {
         Set<String> existingDates = new HashSet<>();
         for (Occurrence occurrence : history)
             existingDates.add(key(occurrence.taskId, occurrence.scheduledOn, occurrence.slot));
-        List<TaskSlot> slots = task.recurrence == Recurrence.ONCE
-                ? Collections.singletonList(task.slot) : TimeOfDay.slots(task.timeOfDayMask);
+        List<TaskSlot> slots = schedule.slots(task.id);
+        if (slots.isEmpty())
+            throw new IllegalStateException("Active task has no schedule: " + task.id.value);
         while (cursor != null && !cursor.isAfter(today) && canPlan(task, cursor)
                 && (task.boundKind != TaskBoundKind.N_TIMES
                 || materialized < (task.remainingCount == null ? 0 : task.remainingCount))) {

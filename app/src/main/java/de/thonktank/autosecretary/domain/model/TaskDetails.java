@@ -24,17 +24,20 @@ public final class TaskDetails {
     public final java.time.LocalDate deadlineOn;
     public final String note;
 
-    public TaskDetails(Task task, List<TaskStepTemplate> templates) {
+    public TaskDetails(Task task, List<TaskStepTemplate> templates, TaskSchedule schedule) {
         id = task.id;
         title = task.title;
-        slot = task.slot;
+        slot = schedule.primary(task.id).slot;
         recurrence = task.recurrence;
         intervalDays = task.intervalDays;
         weekdayMask = task.weekdayMask;
         ongoing = task.ongoing;
         condition = task.conditionText;
         estimatedMinutes = task.estimatedMinutes;
-        timeOfDayMask = task.timeOfDayMask;
+        int times = 0;
+        for (TaskSlot placement : schedule.slots(task.id))
+            times |= TimeOfDay.fromSlot(placement).bit;
+        timeOfDayMask = task.recurrence == Recurrence.ONCE ? 0 : times;
         boundKind = task.boundKind;
         boundUntilOn = task.boundUntilOn;
         boundWeeks = task.boundWeeks;

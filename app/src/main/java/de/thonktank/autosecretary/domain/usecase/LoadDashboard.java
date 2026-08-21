@@ -6,6 +6,8 @@ import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TaskSchedule;
+import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.TaskRepository;
 
 import java.time.LocalDate;
@@ -29,6 +31,7 @@ public final class LoadDashboard {
     public Dashboard execute(LocalDate today) {
         Map<TaskId, Task> tasks = new HashMap<>();
         for (Task task : repository.allTasks()) tasks.put(task.id, task);
+        TaskSchedule schedule = new TaskSchedule(repository.scheduleEntries());
         List<Occurrence> open = repository.openOccurrences();
         List<Occurrence> completed = repository.completedOccurrences(today);
         List<String> occurrenceIds = new ArrayList<>();
@@ -50,7 +53,8 @@ public final class LoadDashboard {
         for (Task task : tasks.values())
             if (task.ongoing && !task.conditionText.isEmpty() && !task.archived
                     && !task.conditionDone && !included.contains(task.id)) {
-                result.add(new DashboardTask(task, null, new ArrayList<>(), false));
+                result.add(new DashboardTask(task, null, new ArrayList<>(), false,
+                        java.util.Collections.emptyMap(), 0, schedule.primary(task.id).slot));
                 included.add(task.id);
             }
         for (Occurrence occurrence : completed) {
@@ -61,15 +65,16 @@ public final class LoadDashboard {
         }
         for (Task task : tasks.values())
             if (task.archived && today.equals(task.lastCompletedOn) && !included.contains(task.id))
-                result.add(new DashboardTask(task, null, new ArrayList<>(), true));
+                result.add(new DashboardTask(task, null, new ArrayList<>(), true,
+                        java.util.Collections.emptyMap(), 0, schedule.primary(task.id).slot));
         result.sort(Comparator.comparingInt((DashboardTask item) -> item.done ? 1 : 0)
                 .thenComparing(item -> item.occurrence == null
                         ? LocalDate.MAX : item.occurrence.scheduledOn)
                 .thenComparingInt(item -> item.occurrence == null
-                        ? item.task.slot.rank : item.occurrence.slot.rank)
+                        ? item.displaySlot.rank : item.occurrence.slot.rank)
                 .thenComparingInt(item -> item.occurrence == null
                         ? Integer.MAX_VALUE : item.occurrence.sortOrder)
-                .thenComparingLong(item -> item.task.displayOrder));
+                .thenComparingLong(item -> item.task.catalogOrder));
         Map<String, ComboProgress> combos = new HashMap<>();
         for (ComboProgress combo : repository.combos()) combos.put(combo.ownerId, combo);
         return new Dashboard(repository.xp(), result, combos);
@@ -88,7 +93,7 @@ public final class LoadDashboard {
                     stepXp.getOrDefault(booking.occurrenceStepId, 0) + booking.xpDelta);
         }
         return new DashboardTask(task, occurrence, values == null ? new ArrayList<>() : values,
-                done, stepXp, awardedXp);
+                done, stepXp, awardedXp, occurrence.slot);
     }
 
     private static Map<String, List<OccurrenceStep>> groupSteps(List<OccurrenceStep> values) {

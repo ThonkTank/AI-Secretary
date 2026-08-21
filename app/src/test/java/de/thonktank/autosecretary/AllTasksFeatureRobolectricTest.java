@@ -67,7 +67,6 @@ public final class AllTasksFeatureRobolectricTest {
         Task task = repository.allTasks().get(0);
         repository.putScheduleEntries(Arrays.asList(
                 new TaskScheduleEntry(ids.nextId(), task.id, TaskSlot.EVENING, 2_048)));
-        repository.updateTask(task.withSchedule(TaskSlot.MORNING, 1 | 4, task.displayOrder));
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         TaskScheduleEntry morning = repository.scheduleEntries(task.id).stream()
                 .filter(value -> value.slot == TaskSlot.MORNING).findFirst().orElseThrow();

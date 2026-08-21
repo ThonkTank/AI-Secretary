@@ -10,15 +10,7 @@ public final class TaskOrdering {
 
     public List<Task> insertAtEndOfSlot(List<Task> current, Task inserted) {
         List<Task> ordered = sorted(current);
-        int insertion = -1;
-        for (int i = 0; i < ordered.size(); i++)
-            if (ordered.get(i).slot == inserted.slot) insertion = i + 1;
-        if (insertion < 0) {
-            insertion = 0;
-            while (insertion < ordered.size() && ordered.get(insertion).slot.rank < inserted.slot.rank)
-                insertion++;
-        }
-        ordered.add(insertion, inserted);
+        ordered.add(inserted);
         return resequence(ordered);
     }
 
@@ -26,7 +18,7 @@ public final class TaskOrdering {
         List<Task> remaining = new ArrayList<>();
         Task moving = null;
         for (Task task : current) {
-            if (task.id.equals(taskId)) moving = task.edit(title, slot, 0);
+            if (task.id.equals(taskId)) moving = task.edit(title, 0);
             else remaining.add(task);
         }
         return moving == null ? sorted(current) : insertAtEndOfSlot(remaining, moving);
@@ -45,14 +37,14 @@ public final class TaskOrdering {
 
     public List<Task> sorted(List<Task> tasks) {
         List<Task> result = new ArrayList<>(tasks);
-        result.sort(Comparator.comparingLong(task -> task.displayOrder));
+        result.sort(Comparator.comparingLong(task -> task.catalogOrder));
         return result;
     }
 
     private List<Task> resequence(List<Task> ordered) {
         List<Task> result = new ArrayList<>();
         for (int i = 0; i < ordered.size(); i++)
-            result.add(ordered.get(i).withDisplayOrder((i + 1L) * STEP));
+            result.add(ordered.get(i).withCatalogOrder((i + 1L) * STEP));
         return result;
     }
 

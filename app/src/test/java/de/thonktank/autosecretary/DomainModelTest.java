@@ -7,6 +7,8 @@ import de.thonktank.autosecretary.data.local.TaskEntityMapper;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TaskSchedule;
+import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
@@ -19,6 +21,46 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class DomainModelTest {
+    @Test public void taskScheduleRejectsDuplicateIdsAndTaskSlotPlacements() {
+        TaskId first = TaskId.of("first");
+        TaskId second = TaskId.of("second");
+        TaskScheduleEntry morning = new TaskScheduleEntry(
+                "placement", first, TaskSlot.MORNING, 1_024L);
+
+        assertThrows(IllegalArgumentException.class, () -> new TaskSchedule(Arrays.asList(
+                morning,
+                new TaskScheduleEntry("placement", second, TaskSlot.MIDDAY, 1_024L))));
+        assertThrows(IllegalArgumentException.class, () -> new TaskSchedule(Arrays.asList(
+                morning,
+                new TaskScheduleEntry("other", first, TaskSlot.MORNING, 2_048L))));
+    }
+
+    @Test public void taskScheduleOwnsPrimaryPlacementAndDeterministicMoveOrdering() {
+        TaskId first = TaskId.of("first");
+        TaskId second = TaskId.of("second");
+        TaskSchedule schedule = new TaskSchedule(Arrays.asList(
+                new TaskScheduleEntry("first-evening", first, TaskSlot.EVENING, 9_999L),
+                new TaskScheduleEntry("second-morning", second, TaskSlot.MORNING, 9_999L),
+                new TaskScheduleEntry("first-morning", first, TaskSlot.MORNING, 8_888L)));
+
+        assertEquals("first-morning", schedule.primary(first).id);
+        TaskSchedule.Mutation moved = schedule.move(
+                "first-evening", TaskSlot.EVENING, null);
+        assertEquals(Arrays.asList(1_024L), moved.schedule.placements(first).stream()
+                .filter(value -> value.slot == TaskSlot.EVENING)
+                .map(value -> value.displayOrder).collect(java.util.stream.Collectors.toList()));
+
+        TaskSchedule.Mutation reordered = schedule.move(
+                "second-morning", TaskSlot.MORNING, "first-morning");
+        List<TaskScheduleEntry> morning = new java.util.ArrayList<>();
+        for (TaskScheduleEntry entry : reordered.schedule.entries())
+            if (entry.slot == TaskSlot.MORNING) morning.add(entry);
+        assertEquals(Arrays.asList("second-morning", "first-morning"), morning.stream()
+                .map(value -> value.id).collect(java.util.stream.Collectors.toList()));
+        assertEquals(Arrays.asList(1_024L, 2_048L), morning.stream()
+                .map(value -> value.displayOrder).collect(java.util.stream.Collectors.toList()));
+    }
+
     @Test public void taskSlotsUseOnlyStableStorageCodes() {
         assertEquals(TaskSlot.MORNING, TaskSlot.fromStorage("MORNING"));
         assertThrows(IllegalArgumentException.class, () -> TaskSlot.fromStorage("Morgen"));
@@ -36,19 +78,17 @@ public final class DomainModelTest {
     }
 
     @Test public void entityMapperKeepsRoomCodesOutOfTheDomainModel() {
-        TaskEntity entity = new TaskEntity("id", "Aufgabe", "MORNING", "DAILY", 1, 0,
+        TaskEntity entity = new TaskEntity("id", "Aufgabe", "DAILY", 1, 0,
                 false, "", false, false, "2026-08-15", "", "", 1_001_000L,
-                true, null, 1, "FOREVER", "", null, null, "", "");
+                true, null, "FOREVER", "", null, null, "", "");
         TaskEntityMapper mapper = new TaskEntityMapper();
 
         Task task = mapper.toDomain(entity);
         TaskEntity roundTrip = mapper.toEntity(task);
 
-        assertEquals(TaskSlot.MORNING, task.slot);
         assertEquals(Recurrence.DAILY, task.recurrence);
-        assertEquals("MORNING", roundTrip.slot);
         assertEquals("DAILY", roundTrip.recurrence);
-        assertEquals(1_001_000L, roundTrip.displayOrder);
+        assertEquals(1_001_000L, roundTrip.catalogOrder);
     }
 
     @Test public void everyTypedStepAmountRoundTripsThroughTheUnchangedRoomColumns() {
