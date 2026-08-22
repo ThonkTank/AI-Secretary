@@ -57,6 +57,7 @@ public final class TodayInteractionInstrumentationTest {
     private static final long UI_POLL_MILLIS = 16L;
     private static final int DRAG_MOVE_STEPS = 12;
     private static final long DRAG_MOVE_DELAY_MILLIS = 24L;
+    private static final int EDGE_HOLD_STEPS = 8;
 
     private TodayInteractionHarnessActivity activity;
 
@@ -76,7 +77,7 @@ public final class TodayInteractionInstrumentationTest {
         Rect listBounds = awaitInteractiveBounds(instrumentation, harness.list);
         Rect sourceBounds = awaitInteractiveBounds(instrumentation, firstBody.get());
         int[] start = new int[]{sourceBounds.centerX(), sourceBounds.centerY()};
-        int edgeInset = Math.max(2, Math.round(32f
+        int edgeInset = Math.max(2, Math.round(8f
                 * activity.getResources().getDisplayMetrics().density));
         int[] end = new int[]{start[0], listBounds.bottom - edgeInset};
         assertTrue(listBounds.contains(start[0], start[1]));
@@ -96,6 +97,7 @@ public final class TodayInteractionInstrumentationTest {
         awaitCondition(instrumentation, "Drag did not preview the reordered steps",
                 () -> harness.has(TodayAction.Kind.PREVIEW_REORDER),
                 UI_TIMEOUT_MILLIS);
+        holdPointerAtEdge(instrumentation, down, end, touchDeviceId);
         awaitCondition(instrumentation, "Drag did not edge-scroll",
                 () -> harness.scrollHost.distance != 0,
                 UI_TIMEOUT_MILLIS);
@@ -229,6 +231,16 @@ public final class TodayInteractionInstrumentationTest {
                 return deviceId;
         }
         return -1;
+    }
+
+    private static void holdPointerAtEdge(Instrumentation instrumentation, long downTime,
+                                          int[] edge, int touchDeviceId) {
+        for (int step = 0; step < EDGE_HOLD_STEPS; step++) {
+            int[] location = new int[]{edge[0], edge[1] - step % 2};
+            sendPointer(instrumentation, downTime, SystemClock.uptimeMillis(),
+                    MotionEvent.ACTION_MOVE, location, touchDeviceId);
+            SystemClock.sleep(DRAG_MOVE_DELAY_MILLIS);
+        }
     }
 
     private static void awaitCondition(Instrumentation instrumentation, String message,
