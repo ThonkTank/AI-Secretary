@@ -39,8 +39,10 @@ public final class AllTasksInteractionTest {
         AtomicReference<AllTasksView> mounted = new AtomicReference<>();
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             AllTasksView view = new AllTasksView(context, recorder);
-            AllTasksUiState state = AllTasksUiState.from(catalog(), AllTasksFilter.defaults())
-                    .toggleExpanded("first").toggleExpanded("second");
+            AllTasksUiState state = AllTasksUiState.from(catalog(),
+                    AllTasksPresentationState.defaults())
+                    .toggleExpanded(AllTasksUiState.cardKey("first", TaskSlot.MORNING))
+                    .toggleExpanded(AllTasksUiState.cardKey("second", TaskSlot.MORNING));
             view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
             int width = Math.round(412 * context.getResources().getDisplayMetrics().density);
             int height = Math.round(1_000 * context.getResources().getDisplayMetrics().density);
@@ -75,7 +77,7 @@ public final class AllTasksInteractionTest {
         AtomicReference<AllTasksView> mounted = new AtomicReference<>();
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             AllTasksView view = new AllTasksView(context, recorder);
-            view.bind(AllTasksUiState.from(catalog(), AllTasksFilter.defaults())
+            view.bind(AllTasksUiState.from(catalog(), AllTasksPresentationState.defaults())
                             .withMode(AllTasksUiState.Mode.SORT),
                     DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
             int width = Math.round(412 * context.getResources().getDisplayMetrics().density);

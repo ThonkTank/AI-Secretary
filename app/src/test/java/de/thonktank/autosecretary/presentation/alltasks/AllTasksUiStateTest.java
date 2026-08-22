@@ -3,6 +3,8 @@ package de.thonktank.autosecretary.presentation.alltasks;
 import de.thonktank.autosecretary.*;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -32,6 +34,44 @@ public final class AllTasksUiStateTest {
         assertEquals(EnumSet.of(TaskSlot.MORNING), filter.slots);
         assertTrue(Arrays.stream(AllTasksFilter.class.getDeclaredFields())
                 .noneMatch(field -> field.getType().getName().startsWith("android.")));
+        assertEquals(EnumSet.of(FilterField.QUERY, FilterField.STATUS, FilterField.SLOTS,
+                        FilterField.RECURRENCES, FilterField.WEEKDAY),
+                Arrays.stream(AllTasksFilter.class.getDeclaredFields())
+                        .map(field -> FilterField.valueOf(field.getName().toUpperCase()))
+                        .collect(java.util.stream.Collectors.toCollection(
+                                () -> EnumSet.noneOf(FilterField.class))));
+    }
+
+    @Test public void presentationOwnsModeExpansionAndFilterVisibilityByValue() {
+        String cardKey = AllTasksUiState.cardKey("gym", TaskSlot.MORNING);
+        AllTasksPresentationState first = AllTasksPresentationState.defaults()
+                .withFilter(AllTasksFilter.defaults().withQuery("Gym"))
+                .toggleExpanded(cardKey).withFiltersExpanded(false);
+        AllTasksPresentationState same = new AllTasksPresentationState(
+                AllTasksFilter.defaults().withQuery("Gym"), AllTasksUiState.Mode.LIST,
+                Collections.singleton(cardKey), false);
+
+        assertEquals(first, same);
+        assertEquals(first.hashCode(), same.hashCode());
+        assertNotEquals(first, same.withFiltersExpanded(true));
+        assertFalse(first.expandedCardKeys.isEmpty());
+    }
+
+    @Test public void rowContentsUseTypedValueEquality() {
+        AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog());
+        AllTasksRow first = AllTasksRow.project(state).get(0);
+        AllTasksRow same = AllTasksRow.project(
+                AllTasksUiState.empty().withCatalog(catalog())).get(0);
+        AllTasksRow expanded = AllTasksRow.project(state.toggleExpanded(first.cardKey)).get(0);
+
+        assertFalse(String.class.isInstance(first.content));
+        assertEquals(first.content, same.content);
+        assertEquals(first.content.hashCode(), same.content.hashCode());
+        assertNotEquals(first.content, expanded.content);
+        assertNotEquals(new AllTasksRowContent.Schedule("Gym", TaskSlot.MORNING,
+                        1_024, Recurrence.DAILY),
+                new AllTasksRowContent.Schedule("Gym", TaskSlot.MORNING,
+                        1_024, Recurrence.ONCE));
     }
 
     @Test public void searchAndFiltersInspectTaskAndNestedStepText() {
@@ -147,4 +187,6 @@ public final class AllTasksUiStateTest {
                 new TaskCatalog.Item(archived, Collections.emptyList(), Collections.singletonList(
                         new TaskScheduleEntry("al", archived.id, TaskSlot.LATER, 1_024)))));
     }
+
+    private enum FilterField { QUERY, STATUS, SLOTS, RECURRENCES, WEEKDAY }
 }

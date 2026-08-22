@@ -37,7 +37,8 @@ import java.util.function.Supplier;
 
 /** Independent state owner and command boundary for the management tab. */
 public final class AllTasksViewModel extends ViewModel {
-    private static final String SAVED_FILTER = "all_tasks_filter";
+    /** Keep the registry key stable; the stored value is now the complete presentation state. */
+    private static final String SAVED_PRESENTATION = "all_tasks_filter";
 
     private final TaskCatalogQuery catalog;
     private final MoveScheduleEntry moveSchedule;
@@ -68,8 +69,9 @@ public final class AllTasksViewModel extends ViewModel {
         this.texts = texts;
         this.savedState = savedState;
         this.worker = worker;
-        AllTasksFilter filter = savedStateAdapter.decode(savedState.get(SAVED_FILTER));
-        current = AllTasksUiState.from(null, filter);
+        AllTasksPresentationState presentation = savedStateAdapter.decode(
+                savedState.get(SAVED_PRESENTATION));
+        current = AllTasksUiState.from(null, presentation);
         state.setValue(current);
         reload();
     }
@@ -94,7 +96,9 @@ public final class AllTasksViewModel extends ViewModel {
         });
     }
 
-    public void updateQuery(String value) { updateFilter(filter -> filter.withQuery(value)); }
+    public void updateQuery(String value) {
+        updateFilter(filter -> filter.withQuery(value));
+    }
     public void updateStatus(AllTasksUiState.Status value) {
         updateFilter(filter -> filter.withStatus(value));
     }
@@ -104,16 +108,17 @@ public final class AllTasksViewModel extends ViewModel {
     }
     public void updateWeekday(int value) { updateFilter(filter -> filter.withWeekday(value)); }
     public void updateMode(AllTasksUiState.Mode value) {
-        updateFilter(filter -> filter.withMode(value));
+        updatePresentation(presentation -> presentation.withMode(value));
     }
     public void resetVisibleFilters() {
         updateFilter(AllTasksFilter::resetVisibleFilters);
     }
     public void toggleCard(String cardKey) {
-        updateFilter(filter -> filter.toggleExpanded(cardKey));
+        updatePresentation(presentation -> presentation.toggleExpanded(cardKey));
     }
-    /** Compatibility entrypoint for restored pre-placement expansion state. */
-    public void toggleTask(TaskId value) { toggleCard(value.value); }
+    public void updateFiltersExpanded(boolean value) {
+        updatePresentation(presentation -> presentation.withFiltersExpanded(value));
+    }
 
     public void moveSchedule(ScheduleMoveRequest request) {
         UiCommand key = new UiCommand(UiCommand.Kind.ORGANIZE,
@@ -196,10 +201,15 @@ public final class AllTasksViewModel extends ViewModel {
     }
 
     private void updateFilter(FilterChange change) {
+        updatePresentation(presentation -> presentation.withFilter(
+                change.apply(presentation.filter)));
+    }
+
+    private void updatePresentation(PresentationChange change) {
         synchronized (lock) {
-            AllTasksFilter filter = change.apply(current.filter);
-            current = AllTasksUiState.from(current.catalog, filter);
-            savedState.set(SAVED_FILTER, savedStateAdapter.encode(filter));
+            AllTasksPresentationState presentation = change.apply(current.presentation);
+            current = AllTasksUiState.from(current.catalog, presentation);
+            savedState.set(SAVED_PRESENTATION, savedStateAdapter.encode(presentation));
             state.setValue(current);
         }
     }
@@ -207,6 +217,9 @@ public final class AllTasksViewModel extends ViewModel {
     @Override public void onCleared() { worker.shutdownNow(); }
 
     private interface FilterChange { AllTasksFilter apply(AllTasksFilter filter); }
+    private interface PresentationChange {
+        AllTasksPresentationState apply(AllTasksPresentationState presentation);
+    }
     private interface Command { int execute(); }
 
     public static final class Factory implements ViewModelProvider.Factory {

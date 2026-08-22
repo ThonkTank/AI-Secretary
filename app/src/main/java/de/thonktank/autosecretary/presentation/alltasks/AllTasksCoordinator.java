@@ -37,6 +37,9 @@ public final class AllTasksCoordinator implements AllTasksView.Listener {
     }
     @Override public void onWeekday(int weekday) { viewModel.updateWeekday(weekday); }
     @Override public void onMode(AllTasksUiState.Mode mode) { viewModel.updateMode(mode); }
+    @Override public void onFiltersExpanded(boolean expanded) {
+        viewModel.updateFiltersExpanded(expanded);
+    }
     @Override public void onResetFilters() { viewModel.resetVisibleFilters(); }
     @Override public void onToggleTask(String cardKey) {
         viewModel.toggleCard(cardKey);

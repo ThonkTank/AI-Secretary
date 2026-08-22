@@ -49,7 +49,8 @@ public final class AllTasksVirtualizationTest {
     @Test public void longCatalogAttachesOnlyVisibleRecyclerRowsAndKeepsStableIds() {
         Context context = ApplicationProvider.getApplicationContext();
         AllTasksView view = new AllTasksView(context, new Recorder());
-        AllTasksUiState state = AllTasksUiState.from(catalog(120), AllTasksFilter.defaults());
+        AllTasksUiState state = AllTasksUiState.from(catalog(120),
+                AllTasksPresentationState.defaults());
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
         layout(view, 412, 900);
         shadowOf(Looper.getMainLooper()).idle();
@@ -75,8 +76,10 @@ public final class AllTasksVirtualizationTest {
         Context context = ApplicationProvider.getApplicationContext();
         Recorder recorder = new Recorder();
         AllTasksView view = new AllTasksView(context, recorder);
-        AllTasksUiState state = AllTasksUiState.from(catalog(2), AllTasksFilter.defaults())
-                .toggleExpanded("task-0").toggleExpanded("task-1");
+        AllTasksUiState state = AllTasksUiState.from(catalog(2),
+                AllTasksPresentationState.defaults())
+                .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING))
+                .toggleExpanded(AllTasksUiState.cardKey("task-1", TaskSlot.MORNING));
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
         shadowOf(Looper.getMainLooper()).idle();
 
@@ -107,8 +110,10 @@ public final class AllTasksVirtualizationTest {
         TaskCatalog archivedCatalog = new TaskCatalog(Collections.singletonList(
                 new TaskCatalog.Item(archived, item.steps, item.schedule)));
         AllTasksUiState state = AllTasksUiState.from(archivedCatalog,
-                AllTasksFilter.defaults().withStatus(AllTasksUiState.Status.ARCHIVED))
-                .toggleExpanded(archived.id.value);
+                        AllTasksPresentationState.defaults())
+                .withStatus(AllTasksUiState.Status.ARCHIVED)
+                .toggleExpanded(AllTasksUiState.cardKey(archived.id.value,
+                        item.schedule.get(0).slot));
         AllTasksView view = new AllTasksView(context, new Recorder());
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
         shadowOf(Looper.getMainLooper()).idle();
@@ -123,8 +128,9 @@ public final class AllTasksVirtualizationTest {
     @Test public void stepInsertionTargetsOccupySpaceOnlyDuringDrag() {
         Context context = ApplicationProvider.getApplicationContext();
         AllTasksView view = new AllTasksView(context, new Recorder());
-        AllTasksUiState state = AllTasksUiState.from(catalog(1), AllTasksFilter.defaults())
-                .toggleExpanded("task-0");
+        AllTasksUiState state = AllTasksUiState.from(catalog(1),
+                AllTasksPresentationState.defaults())
+                .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING));
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
         layout(view, 412, 1_000);
         shadowOf(Looper.getMainLooper()).idle();
@@ -144,7 +150,8 @@ public final class AllTasksVirtualizationTest {
     }
 
     @Test public void emptyProjectionExplainsSearchFilterAndStatusSeparately() {
-        AllTasksUiState base = AllTasksUiState.from(catalog(1), AllTasksFilter.defaults());
+        AllTasksUiState base = AllTasksUiState.from(catalog(1),
+                AllTasksPresentationState.defaults());
         assertEquals(AllTasksRow.EmptyReason.SEARCH,
                 AllTasksRow.project(base.withQuery("unauffindbar")).get(0).emptyReason);
         assertEquals(AllTasksRow.EmptyReason.FILTERS,
@@ -159,7 +166,7 @@ public final class AllTasksVirtualizationTest {
         Context context = ApplicationProvider.getApplicationContext();
         Recorder recorder = new Recorder();
         AllTasksView view = new AllTasksView(context, recorder);
-        view.bind(AllTasksUiState.from(catalog(2), AllTasksFilter.defaults()),
+        view.bind(AllTasksUiState.from(catalog(2), AllTasksPresentationState.defaults()),
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
 
         view.searchForTest().setText("A");
@@ -178,8 +185,9 @@ public final class AllTasksVirtualizationTest {
             configuration.screenWidthDp = width;
             Context context = base.createConfigurationContext(configuration);
             AllTasksView view = new AllTasksView(context, new Recorder());
-            AllTasksUiState state = AllTasksUiState.from(catalog(4), AllTasksFilter.defaults())
-                    .toggleExpanded("task-0");
+            AllTasksUiState state = AllTasksUiState.from(catalog(4),
+                    AllTasksPresentationState.defaults())
+                    .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING));
             view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
             shadowOf(Looper.getMainLooper()).idle();
             layout(view, width, 1_000);
@@ -202,8 +210,9 @@ public final class AllTasksVirtualizationTest {
     @Test public void keyboardFocusRunsFromSearchAndFiltersIntoVisibleListRows() {
         Context context = ApplicationProvider.getApplicationContext();
         AllTasksView view = new AllTasksView(context, new Recorder());
-        AllTasksUiState state = AllTasksUiState.from(catalog(2), AllTasksFilter.defaults())
-                .toggleExpanded("task-0");
+        AllTasksUiState state = AllTasksUiState.from(catalog(2),
+                AllTasksPresentationState.defaults())
+                .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING));
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
         shadowOf(Looper.getMainLooper()).idle();
         layout(view, 412, 1_000);
@@ -219,8 +228,9 @@ public final class AllTasksVirtualizationTest {
     @Test public void interactiveRowsMeetMinimumHeightAndIconTargetsAreSquare() {
         Context context = ApplicationProvider.getApplicationContext();
         AllTasksView view = new AllTasksView(context, new Recorder());
-        AllTasksUiState state = AllTasksUiState.from(catalog(2), AllTasksFilter.defaults())
-                .toggleExpanded("task-0");
+        AllTasksUiState state = AllTasksUiState.from(catalog(2),
+                AllTasksPresentationState.defaults())
+                .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING));
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
         shadowOf(Looper.getMainLooper()).idle();
         layout(view, 412, 1_000);
@@ -266,7 +276,7 @@ public final class AllTasksVirtualizationTest {
                         TodayUiModel.empty(), CalendarUiState.empty(), palette,
                         CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
                         EditorUiState.closed()),
-                AllTasksUiState.from(catalog(120), AllTasksFilter.defaults()));
+                AllTasksUiState.from(catalog(120), AllTasksPresentationState.defaults()));
 
         assertEquals(View.GONE, scroll.getVisibility());
         AllTasksView management = null;

@@ -15,7 +15,7 @@ import android.widget.TextView;
 
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksFilter;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksPresentationState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -55,7 +55,8 @@ public final class AllTasksRenderRobolectricTest {
 
     @Test public void openFiltersAndDropdownRemainVisuallyStable() throws Exception {
         assertGolden("filters-dropdown", AllTasksUiState.from(catalog(true),
-                        AllTasksFilter.defaults()), 412, 1f, DAY, DayPalette.Mode.LIGHT,
+                        AllTasksPresentationState.defaults()), 412, 1f, DAY,
+                DayPalette.Mode.LIGHT,
                 view -> {
                     TextView slots = find(view, "Tageszeit ⌄");
                     assertNotNull(slots);
@@ -65,18 +66,19 @@ public final class AllTasksRenderRobolectricTest {
 
     @Test public void titleSearchMatchRemainsVisuallyStable() throws Exception {
         assertGolden("search-title", AllTasksUiState.from(catalog(true),
-                        AllTasksFilter.defaults()).withQuery("Statistik"),
+                        AllTasksPresentationState.defaults()).withQuery("Statistik"),
                 412, 1f, DAY, DayPalette.Mode.LIGHT, view -> { });
     }
 
     @Test public void stepSearchMatchRemainsVisuallyStable() throws Exception {
         assertGolden("search-step", AllTasksUiState.from(catalog(true),
-                        AllTasksFilter.defaults()).withQuery("Aufgabenblatt"),
+                        AllTasksPresentationState.defaults()).withQuery("Aufgabenblatt"),
                 412, 1f, DAY, DayPalette.Mode.LIGHT, view -> { });
     }
 
     @Test public void archivedCardRemainsVisuallyStable() throws Exception {
-        AllTasksUiState state = AllTasksUiState.from(catalog(true), AllTasksFilter.defaults())
+        AllTasksUiState state = AllTasksUiState.from(catalog(true),
+                AllTasksPresentationState.defaults())
                 .withStatus(AllTasksUiState.Status.ARCHIVED)
                 .toggleExpanded(AllTasksUiState.cardKey("archive", TaskSlot.LATER));
         assertGolden("archived", state, 412, 1f, DAY,
@@ -84,28 +86,32 @@ public final class AllTasksRenderRobolectricTest {
     }
 
     @Test public void sortModeWithVisibleDropTargetsRemainsVisuallyStable() throws Exception {
-        AllTasksUiState state = AllTasksUiState.from(catalog(true), AllTasksFilter.defaults())
+        AllTasksUiState state = AllTasksUiState.from(catalog(true),
+                AllTasksPresentationState.defaults())
                 .withMode(AllTasksUiState.Mode.SORT);
         assertGolden("sort-drag-targets", state, 412, 1f, DAY,
                 DayPalette.Mode.LIGHT, AllTasksRenderRobolectricTest::showDragTargets);
     }
 
     @Test public void emptySearchRemainsVisuallyStable() throws Exception {
-        AllTasksUiState state = AllTasksUiState.from(catalog(true), AllTasksFilter.defaults())
+        AllTasksUiState state = AllTasksUiState.from(catalog(true),
+                AllTasksPresentationState.defaults())
                 .withQuery("nicht vorhanden");
         assertGolden("empty-search", state, 412, 1f, DAY,
                 DayPalette.Mode.LIGHT, view -> { });
     }
 
     @Test public void emptyFilterRemainsVisuallyStable() throws Exception {
-        AllTasksUiState state = AllTasksUiState.from(catalog(true), AllTasksFilter.defaults())
+        AllTasksUiState state = AllTasksUiState.from(catalog(true),
+                AllTasksPresentationState.defaults())
                 .withSlots(Collections.singleton(TaskSlot.LATER));
         assertGolden("empty-filter", state, 412, 1f, DAY,
                 DayPalette.Mode.LIGHT, view -> { });
     }
 
     @Test public void emptyStatusRemainsVisuallyStable() throws Exception {
-        AllTasksUiState state = AllTasksUiState.from(catalog(false), AllTasksFilter.defaults())
+        AllTasksUiState state = AllTasksUiState.from(catalog(false),
+                AllTasksPresentationState.defaults())
                 .withStatus(AllTasksUiState.Status.ARCHIVED);
         assertGolden("empty-status", state, 412, 1f, DAY,
                 DayPalette.Mode.LIGHT, view -> { });
@@ -132,7 +138,7 @@ public final class AllTasksRenderRobolectricTest {
     }
 
     private static AllTasksUiState standardState() {
-        return AllTasksUiState.from(catalog(true), AllTasksFilter.defaults())
+        return AllTasksUiState.from(catalog(true), AllTasksPresentationState.defaults())
                 .toggleExpanded(AllTasksUiState.cardKey("morning", TaskSlot.MORNING));
     }
 

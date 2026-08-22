@@ -79,6 +79,8 @@ Transaktion; Schema 14 bleibt unverändert.
 | Rewardbuchungen | unveränderliches Ledger | ja |
 | Today-Fokus/Timeline/History | `TodayUiModel` | nein, Projektion |
 | Reorder `IDLE/DRAGGING/PERSISTING` | `TodayCoordinator` | nur Commandresultat |
+| Alles-Filter, Modus, Karten- und Filterbereich | `AllTasksPresentationState` im `AllTasksViewModel` | ja, `SavedStateHandle` |
+| Alles-Dropdown und aktiver Drag | `AllTasksView` | nein, bei Abbruch/Detach/Recreation geschlossen |
 | Wiederholungsdraft | `RepetitionInputState` im ViewModel | nein |
 | Blatt-/Grain-Geometrie | `LeafSurface` | nein |
 
