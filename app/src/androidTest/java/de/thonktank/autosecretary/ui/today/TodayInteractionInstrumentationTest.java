@@ -9,6 +9,7 @@ import android.app.Instrumentation;
 import android.app.UiAutomation;
 import android.content.Intent;
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.SystemClock;
 import android.view.InputDevice;
 import android.view.MotionEvent;
@@ -80,22 +81,27 @@ public final class TodayInteractionInstrumentationTest {
         int[] end = new int[]{start[0], listBounds.bottom - edgeInset};
         assertTrue(listBounds.contains(start[0], start[1]));
         assertTrue(listBounds.contains(end[0], end[1]));
+        int touchDeviceId = touchscreenDeviceId();
+        assertTrue("A touchscreen input device is required", touchDeviceId >= 0);
 
         long down = SystemClock.uptimeMillis();
-        sendPointer(instrumentation, down, down, MotionEvent.ACTION_DOWN, start);
+        sendPointer(instrumentation, down, down, MotionEvent.ACTION_DOWN, start,
+                touchDeviceId);
         SystemClock.sleep(ViewConfiguration.getLongPressTimeout() + 100L);
         awaitCondition(instrumentation, "Long press did not start step reordering",
                 () -> harness.has(TodayAction.Kind.BEGIN_REORDER),
                 UI_TIMEOUT_MILLIS);
 
-        movePointer(instrumentation, down, start, end);
-        awaitCondition(instrumentation, "Drag did not preview and edge-scroll",
-                () -> harness.has(TodayAction.Kind.PREVIEW_REORDER)
-                        && harness.scrollHost.distance != 0,
+        movePointer(instrumentation, down, start, end, touchDeviceId);
+        awaitCondition(instrumentation, "Drag did not preview the reordered steps",
+                () -> harness.has(TodayAction.Kind.PREVIEW_REORDER),
+                UI_TIMEOUT_MILLIS);
+        awaitCondition(instrumentation, "Drag did not edge-scroll",
+                () -> harness.scrollHost.distance != 0,
                 UI_TIMEOUT_MILLIS);
 
         long up = SystemClock.uptimeMillis();
-        sendPointer(instrumentation, down, up, MotionEvent.ACTION_UP, end);
+        sendPointer(instrumentation, down, up, MotionEvent.ACTION_UP, end, touchDeviceId);
         awaitCondition(instrumentation, "Drop did not persist the reordered steps",
                 () -> harness.has(TodayAction.Kind.DROP_REORDER)
                         && !harness.commands.isEmpty(), UI_TIMEOUT_MILLIS);
@@ -170,7 +176,8 @@ public final class TodayInteractionInstrumentationTest {
     }
 
     private static void sendPointer(Instrumentation instrumentation, long downTime,
-                                    long eventTime, int action, int[] location) {
+                                    long eventTime, int action, int[] location,
+                                    int touchDeviceId) {
         MotionEvent.PointerProperties properties = new MotionEvent.PointerProperties();
         properties.id = 0;
         properties.toolType = MotionEvent.TOOL_TYPE_FINGER;
@@ -179,10 +186,18 @@ public final class TodayInteractionInstrumentationTest {
         coordinates.y = location[1];
         coordinates.pressure = 1f;
         coordinates.size = 1f;
-        MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, 1,
-                new MotionEvent.PointerProperties[]{properties},
-                new MotionEvent.PointerCoords[]{coordinates}, 0, 0, 1f, 1f,
-                0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
+        MotionEvent.PointerProperties[] pointerProperties =
+                new MotionEvent.PointerProperties[]{properties};
+        MotionEvent.PointerCoords[] pointerCoordinates =
+                new MotionEvent.PointerCoords[]{coordinates};
+        MotionEvent event = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                ? MotionEvent.obtain(downTime, eventTime, action, 1, pointerProperties,
+                        pointerCoordinates, 0, 0, 1f, 1f, touchDeviceId, 0,
+                        InputDevice.SOURCE_TOUCHSCREEN, 0, 0,
+                        MotionEvent.CLASSIFICATION_NONE)
+                : MotionEvent.obtain(downTime, eventTime, action, 1, pointerProperties,
+                        pointerCoordinates, 0, 0, 1f, 1f, touchDeviceId, 0,
+                        InputDevice.SOURCE_TOUCHSCREEN, 0);
         try {
             UiAutomation automation = instrumentation.getUiAutomation();
             assertNotNull("UI automation is required for system drag injection", automation);
@@ -194,7 +209,7 @@ public final class TodayInteractionInstrumentationTest {
     }
 
     private static void movePointer(Instrumentation instrumentation, long downTime,
-                                    int[] start, int[] end) {
+                                    int[] start, int[] end, int touchDeviceId) {
         for (int step = 1; step <= DRAG_MOVE_STEPS; step++) {
             float progress = step / (float) DRAG_MOVE_STEPS;
             int[] location = new int[]{
@@ -202,9 +217,18 @@ public final class TodayInteractionInstrumentationTest {
                     Math.round(start[1] + (end[1] - start[1]) * progress)
             };
             sendPointer(instrumentation, downTime, SystemClock.uptimeMillis(),
-                    MotionEvent.ACTION_MOVE, location);
+                    MotionEvent.ACTION_MOVE, location, touchDeviceId);
             SystemClock.sleep(DRAG_MOVE_DELAY_MILLIS);
         }
+    }
+
+    private static int touchscreenDeviceId() {
+        for (int deviceId : InputDevice.getDeviceIds()) {
+            InputDevice device = InputDevice.getDevice(deviceId);
+            if (device != null && device.supportsSource(InputDevice.SOURCE_TOUCHSCREEN))
+                return deviceId;
+        }
+        return -1;
     }
 
     private static void awaitCondition(Instrumentation instrumentation, String message,
