@@ -11,15 +11,21 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 
 /** Golden comparison with CI-safe baseline updates and failure triplets. */
-final class GoldenAssertions {
+public final class GoldenAssertions {
     private GoldenAssertions() { }
 
-    static void compare(Class<?> owner, String resource, File baseline, File reportStem,
-                        Bitmap actual, int channelTolerance, double maximumChangedRatio,
-                        String updateEnvironment) throws Exception {
+    public static void compare(Class<?> owner, String resource, File baseline, File reportStem,
+                               Bitmap actual, int channelTolerance,
+                               double maximumChangedRatio,
+                               String updateEnvironment) throws Exception {
         boolean update = "1".equals(System.getenv(updateEnvironment));
-        try (InputStream stream = owner.getResourceAsStream(resource)) {
-            assertNotNull("Missing golden " + resource, stream);
+        InputStream resourceStream = owner.getResourceAsStream(resource);
+        if (resourceStream == null) {
+            reviewNewBaseline(resource, baseline, reportStem, actual, update,
+                    updateEnvironment);
+            return;
+        }
+        try (InputStream stream = resourceStream) {
             Bitmap expected = BitmapFactory.decodeStream(stream);
             assertNotNull("Unreadable golden " + resource, expected);
             int expectedWidth = expected.getWidth();
@@ -82,6 +88,27 @@ final class GoldenAssertions {
             }
             expected.recycle();
         }
+    }
+
+    private static void reviewNewBaseline(String resource, File baseline, File reportStem,
+                                          Bitmap actual, boolean update,
+                                          String updateEnvironment) throws Exception {
+        if (!update) {
+            write(artifact(reportStem, "actual"), actual);
+            throw new AssertionError("Missing golden " + resource
+                    + "; inspect the generated actual file before updating");
+        }
+        if (!baselineUpdatesAllowed(true, isCi()))
+            throw new AssertionError("CI may not update golden baselines");
+        if (!reviewedNewArtifactAvailable(reportStem, actual))
+            throw new AssertionError("Run without " + updateEnvironment
+                    + " first, inspect the generated actual file, then rerun with the "
+                    + "component update enabled");
+        write(baseline, actual);
+    }
+
+    static boolean reviewedNewArtifactAvailable(File reportStem, Bitmap actual) {
+        return sameBitmap(artifact(reportStem, "actual"), actual);
     }
 
     static boolean reviewedArtifactsAvailable(File reportStem, Bitmap expected,

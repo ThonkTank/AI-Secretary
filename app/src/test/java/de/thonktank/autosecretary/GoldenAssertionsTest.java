@@ -49,6 +49,20 @@ public final class GoldenAssertionsTest {
         difference.recycle();
     }
 
+    @Test public void newBaselineRequiresAnExactPreviouslyGeneratedActual() throws Exception {
+        File folder = temporary.newFolder("new-goldens");
+        File stem = new File(folder, "all-tasks");
+        Bitmap actual = bitmap(0xff405060);
+
+        assertFalse(GoldenAssertions.reviewedNewArtifactAvailable(stem, actual));
+        write(new File(folder, "all-tasks-actual.png"), actual);
+        assertTrue(GoldenAssertions.reviewedNewArtifactAvailable(stem, actual));
+        actual.eraseColor(0xff708090);
+        assertFalse(GoldenAssertions.reviewedNewArtifactAvailable(stem, actual));
+
+        actual.recycle();
+    }
+
     private static Bitmap bitmap(int color) {
         Bitmap bitmap = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888);
         bitmap.eraseColor(color);

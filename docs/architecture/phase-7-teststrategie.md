@@ -76,13 +76,17 @@ UPDATE_HOMESCREEN_GOLDENS=1 ./gradlew testDebugUnitTest \
   --tests de.thonktank.autosecretary.HomescreenGoldenRobolectricTest
 UPDATE_TASK_EDITOR_GOLDENS=1 ./gradlew testDebugUnitTest \
   --tests de.thonktank.autosecretary.TaskEditorGoldenRobolectricTest
+UPDATE_ALL_TASKS_GOLDENS=1 ./gradlew testDebugUnitTest \
+  --tests '*AllTasksRenderRobolectricTest'
 ```
 
 Es gibt bewusst keinen globalen Update-Schalter. Ein Fokusupdate kann dadurch Widget- oder
 Editor-Baselines nicht mitschreiben. `GoldenAssertions` übernimmt eine Baseline nur, wenn das
 vorher erzeugte Triplet pixelgenau zum aktuellen Expected und Actual passt; ein fehlendes oder
-veraltetes Triplet bricht den Updateversuch ab. Unter `CI` oder `GITHUB_ACTIONS` sind Updates
-gesperrt.
+veraltetes Triplet bricht den Updateversuch ab. Für eine neue Baseline gilt derselbe Ablauf mit
+dem zuerst erzeugten Actual; ein Update ohne exakt passendes vorheriges Actual bricht ab. Unter
+`CI` oder `GITHUB_ACTIONS` sind Updates gesperrt. Die vollständige Alles-Tab-Matrix ist in der
+[Charakterisierung des Alles-Tabs](all-tasks-characterization.md) katalogisiert.
 
 ## Lokale Befehle und vollständiges Gate
 
