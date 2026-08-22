@@ -22,6 +22,7 @@ public final class AllTasksUiState {
     public enum Status { ACTIVE, ARCHIVED, ALL }
 
     public final TaskCatalog catalog;
+    public final AllTasksPresentationState presentation;
     public final AllTasksFilter filter;
     public final String query;
     public final Status status;
@@ -31,8 +32,7 @@ public final class AllTasksUiState {
     public final int weekday;
     public final Mode mode;
     public final Set<String> expandedCardKeys;
-    /** Compatibility alias for older presentation tests. */
-    public final Set<String> expandedTaskIds;
+    public final boolean filtersExpanded;
     public final List<TaskItem> tasks;
     public final List<ScheduleItem> schedule;
     /** Placement-card count after status, before time/rhythm/search filters. */
@@ -40,17 +40,19 @@ public final class AllTasksUiState {
     /** Active schedule-placement count before time/rhythm/weekday/search filters. */
     public final int schedulePoolSize;
 
-    private AllTasksUiState(TaskCatalog catalog, AllTasksFilter filter) {
+    private AllTasksUiState(TaskCatalog catalog, AllTasksPresentationState presentation) {
         this.catalog = catalog == null ? new TaskCatalog(Collections.emptyList()) : catalog;
-        this.filter = filter == null ? AllTasksFilter.defaults() : filter;
+        this.presentation = presentation == null
+                ? AllTasksPresentationState.defaults() : presentation;
+        this.filter = this.presentation.filter;
         this.query = this.filter.query;
         this.status = this.filter.status;
         this.slots = this.filter.slots;
         this.recurrences = this.filter.recurrences;
         this.weekday = this.filter.weekday;
-        this.mode = this.filter.mode;
-        this.expandedCardKeys = this.filter.expandedCardKeys;
-        this.expandedTaskIds = this.expandedCardKeys;
+        this.mode = this.presentation.mode;
+        this.expandedCardKeys = this.presentation.expandedCardKeys;
+        this.filtersExpanded = this.presentation.filtersExpanded;
         this.taskPoolSize = countTaskPool();
         this.schedulePoolSize = countSchedulePool();
         this.tasks = Collections.unmodifiableList(projectTasks());
@@ -58,39 +60,47 @@ public final class AllTasksUiState {
     }
 
     public static AllTasksUiState empty() {
-        return new AllTasksUiState(null, AllTasksFilter.defaults());
+        return new AllTasksUiState(null, AllTasksPresentationState.defaults());
     }
 
-    public static AllTasksUiState from(TaskCatalog catalog, AllTasksFilter filter) {
-        return new AllTasksUiState(catalog, filter);
+    public static AllTasksUiState from(TaskCatalog catalog,
+                                       AllTasksPresentationState presentation) {
+        return new AllTasksUiState(catalog, presentation);
     }
 
     public AllTasksUiState withCatalog(TaskCatalog value) {
-        return new AllTasksUiState(value, filter);
+        return new AllTasksUiState(value, presentation);
     }
     public AllTasksUiState withQuery(String value) {
-        return new AllTasksUiState(catalog, filter.withQuery(value));
+        return withFilter(filter.withQuery(value));
     }
     public AllTasksUiState withStatus(Status value) {
-        return new AllTasksUiState(catalog, filter.withStatus(value));
+        return withFilter(filter.withStatus(value));
     }
     public AllTasksUiState withSlots(Set<TaskSlot> value) {
-        return new AllTasksUiState(catalog, filter.withSlots(value));
+        return withFilter(filter.withSlots(value));
     }
     public AllTasksUiState withRecurrences(Set<Recurrence> value) {
-        return new AllTasksUiState(catalog, filter.withRecurrences(value));
+        return withFilter(filter.withRecurrences(value));
     }
     public AllTasksUiState withWeekday(int value) {
-        return new AllTasksUiState(catalog, filter.withWeekday(value));
+        return withFilter(filter.withWeekday(value));
     }
     public AllTasksUiState withMode(Mode value) {
-        return new AllTasksUiState(catalog, filter.withMode(value));
+        return new AllTasksUiState(catalog, presentation.withMode(value));
     }
     public AllTasksUiState resetVisibleFilters() {
-        return new AllTasksUiState(catalog, filter.resetVisibleFilters());
+        return withFilter(filter.resetVisibleFilters());
     }
     public AllTasksUiState toggleExpanded(String cardKey) {
-        return new AllTasksUiState(catalog, filter.toggleExpanded(cardKey));
+        return new AllTasksUiState(catalog, presentation.toggleExpanded(cardKey));
+    }
+    public AllTasksUiState withFiltersExpanded(boolean value) {
+        return new AllTasksUiState(catalog, presentation.withFiltersExpanded(value));
+    }
+
+    private AllTasksUiState withFilter(AllTasksFilter value) {
+        return new AllTasksUiState(catalog, presentation.withFilter(value));
     }
 
     private List<TaskItem> projectTasks() {
@@ -106,8 +116,7 @@ public final class AllTasksUiState {
             for (TaskScheduleEntry placement : item.schedule) {
                 if (!slots.isEmpty() && !slots.contains(placement.slot)) continue;
                 String cardKey = cardKey(item.task.id.value, placement.slot);
-                boolean manual = expandedCardKeys.contains(cardKey)
-                        || expandedCardKeys.contains(item.task.id.value);
+                boolean manual = expandedCardKeys.contains(cardKey);
                 result.add(new TaskItem(item, placement, archived, manual,
                         titleMatch, matchingSteps, needle));
             }

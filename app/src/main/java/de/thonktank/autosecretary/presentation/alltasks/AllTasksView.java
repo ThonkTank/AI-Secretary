@@ -72,6 +72,7 @@ public final class AllTasksView extends LinearLayout {
         default void onRecurrences(Set<Recurrence> recurrences) { }
         default void onWeekday(int weekday) { }
         default void onMode(AllTasksUiState.Mode mode) { }
+        default void onFiltersExpanded(boolean expanded) { }
         default void onResetFilters() { }
         default void onToggleTask(String cardKey) { }
         default void onEditTask(String taskId) { }
@@ -97,7 +98,6 @@ public final class AllTasksView extends LinearLayout {
     private final View dismissLayer;
     private final LinearLayout dropdown;
     private boolean bindingSearch;
-    private boolean filtersOpen = true;
     private boolean dragActive;
     private FilterMenu openMenu;
     private AllTasksUiState state = AllTasksUiState.empty();
@@ -191,6 +191,7 @@ public final class AllTasksView extends LinearLayout {
 
     public void bind(AllTasksUiState state, DayPalette palette) {
         this.state = state;
+        if (!state.filtersExpanded) openMenu = null;
         boolean paletteChanged = this.palette == null || this.palette.ink != palette.ink
                 || this.palette.leaf1 != palette.leaf1 || this.palette.accent != palette.accent;
         this.palette = palette;
@@ -208,7 +209,7 @@ public final class AllTasksView extends LinearLayout {
         search.setBackground(searchBackground);
 
         String nextControlsKey = state.status + "|" + state.slots + "|" + state.recurrences
-                + "|" + state.weekday + "|" + state.mode + "|" + filtersOpen + "|"
+                + "|" + state.weekday + "|" + state.mode + "|" + state.filtersExpanded + "|"
                 + openMenu + "|" + palette.accent + '|' + palette.ink2;
         if (!nextControlsKey.equals(controlsKey)) {
             controlsKey = nextControlsKey;
@@ -250,7 +251,7 @@ public final class AllTasksView extends LinearLayout {
             filterFlow.addView(filterChip(weekdayChipLabel(), state.weekday != 0,
                     FilterMenu.WEEKDAY));
         if (activeFilterCount() > 0) filterFlow.addView(resetAction());
-        filtersHost.setVisibility(filtersOpen ? VISIBLE : GONE);
+        filtersHost.setVisibility(state.filtersExpanded ? VISIBLE : GONE);
 
         resultActions.removeAllViews();
         int modeLabel = state.mode == AllTasksUiState.Mode.LIST
@@ -261,9 +262,9 @@ public final class AllTasksView extends LinearLayout {
                     ? AllTasksUiState.Mode.SORT : AllTasksUiState.Mode.LIST);
         }));
         String filterText = getContext().getString(R.string.all_filter_toggle);
-        if (!filtersOpen && activeFilterCount() > 0)
+        if (!state.filtersExpanded && activeFilterCount() > 0)
             filterText += " · " + activeFilterCount();
-        filterText += filtersOpen ? " ⌃" : " ⌄";
+        filterText += state.filtersExpanded ? " ⌃" : " ⌄";
         resultActions.addView(resultAction(filterText, this::toggleFilters));
         renderCount();
         renderDropdown();
@@ -343,7 +344,7 @@ public final class AllTasksView extends LinearLayout {
 
     private void renderDropdown() {
         dropdown.removeAllViews();
-        if (openMenu == null || !filtersOpen) {
+        if (openMenu == null || !state.filtersExpanded) {
             dropdown.setVisibility(GONE);
             dismissLayer.setVisibility(GONE);
             return;
@@ -424,7 +425,7 @@ public final class AllTasksView extends LinearLayout {
     }
 
     private void positionMenuLayers() {
-        if (openMenu == null || !filtersOpen) return;
+        if (openMenu == null || !state.filtersExpanded) return;
         int top = filtersHost.getBottom() + style.dp(8);
         FrameLayout.LayoutParams menuParams = (FrameLayout.LayoutParams) dropdown.getLayoutParams();
         menuParams.topMargin = top;
@@ -438,17 +439,16 @@ public final class AllTasksView extends LinearLayout {
 
     private void toggleFilters() {
         closeMenu();
-        filtersOpen = !filtersOpen;
         controlsKey = "";
         if (!ValueAnimator.areAnimatorsEnabled()) {
-            renderControls();
+            listener.onFiltersExpanded(!state.filtersExpanded);
             return;
         }
         LayoutTransition transition = new LayoutTransition();
         transition.setDuration(palette.motion.stateChangeDurationMs);
         transition.setInterpolator(LayoutTransition.CHANGING, STATE_EASING);
         content.setLayoutTransition(transition);
-        renderControls();
+        listener.onFiltersExpanded(!state.filtersExpanded);
         content.postDelayed(() -> content.setLayoutTransition(null),
                 palette.motion.stateChangeDurationMs);
     }
@@ -520,6 +520,7 @@ public final class AllTasksView extends LinearLayout {
 
     @Override protected void onDetachedFromWindow() {
         closeMenu();
+        setDragActive(false);
         super.onDetachedFromWindow();
     }
 
@@ -1024,7 +1025,9 @@ public final class AllTasksView extends LinearLayout {
     RecyclerView recyclerForTest() { return list; }
     EditText searchForTest() { return search; }
     void setDragActiveForTest(boolean active) { setDragActive(active); }
-    boolean filtersOpenForTest() { return filtersOpen; }
+    boolean filtersExpandedForTest() { return state.filtersExpanded; }
+    boolean dropdownOpenForTest() { return openMenu != null; }
+    boolean dragActiveForTest() { return dragActive; }
 
     private ImageButton icon(int drawable, int description) {
         ImageButton button = new ImageButton(getContext());

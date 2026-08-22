@@ -44,7 +44,7 @@ public final class AllTasksViewTest {
         Recorder recorder = new Recorder();
         AllTasksView view = new AllTasksView(context, recorder);
         AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog())
-                .toggleExpanded("task");
+                .toggleExpanded(AllTasksUiState.cardKey("task", TaskSlot.MORNING));
 
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
 
@@ -81,7 +81,8 @@ public final class AllTasksViewTest {
 
     @Test public void compactHeaderRemovesTitleAndCollapsesFiltersWithoutResettingState() {
         Context context = ApplicationProvider.getApplicationContext();
-        AllTasksView view = new AllTasksView(context, new Recorder());
+        Recorder recorder = new Recorder();
+        AllTasksView view = new AllTasksView(context, recorder);
         AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog())
                 .withSlots(Collections.singleton(TaskSlot.EVENING));
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
@@ -91,8 +92,51 @@ public final class AllTasksViewTest {
         assertNotNull(toggle);
         toggle.performClick();
 
-        assertFalse(view.filtersOpenForTest());
+        assertEquals(Boolean.FALSE, recorder.filtersExpanded);
+        view.bind(state.withFiltersExpanded(false),
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+        assertFalse(view.filtersExpandedForTest());
         assertNotNull(find(view, context.getString(R.string.all_filter_toggle) + " · 1 ⌄"));
+    }
+
+    @Test public void detachClosesTransientDropdownAndDragWithoutChangingPresentation() {
+        Context context = ApplicationProvider.getApplicationContext();
+        AllTasksView view = new AllTasksView(context, new Recorder());
+        String cardKey = AllTasksUiState.cardKey("task", TaskSlot.MORNING);
+        AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog())
+                .toggleExpanded(cardKey).withFiltersExpanded(true);
+        view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+        find(view, context.getString(R.string.all_filter_value,
+                context.getString(R.string.all_filter_status),
+                context.getString(R.string.all_status_active)) + " ⌄").performClick();
+        view.setDragActiveForTest(true);
+
+        assertTrue(view.dropdownOpenForTest());
+        assertTrue(view.dragActiveForTest());
+        view.onDetachedFromWindow();
+
+        assertFalse(view.dropdownOpenForTest());
+        assertFalse(view.dragActiveForTest());
+        assertTrue(state.filtersExpanded);
+        assertTrue(state.expandedCardKeys.contains(cardKey));
+    }
+
+    @Test public void recreationStartsWithClosedTransientLayers() {
+        Context context = ApplicationProvider.getApplicationContext();
+        AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog());
+        AllTasksView before = new AllTasksView(context, new Recorder());
+        before.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+        find(before, context.getString(R.string.all_filter_value,
+                context.getString(R.string.all_filter_status),
+                context.getString(R.string.all_status_active)) + " ⌄").performClick();
+        before.setDragActiveForTest(true);
+
+        AllTasksView recreated = new AllTasksView(context, new Recorder());
+        recreated.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+
+        assertFalse(recreated.dropdownOpenForTest());
+        assertFalse(recreated.dragActiveForTest());
+        assertTrue(recreated.filtersExpandedForTest());
     }
 
     @Test public void sortHeaderFixesStatusAndOffersWeekdayDropdown() {
@@ -148,12 +192,14 @@ public final class AllTasksViewTest {
 
     private static final class Recorder implements AllTasksView.Listener {
         AllTasksUiState.Status status;
+        Boolean filtersExpanded;
         @Override public void onQuery(String query) { }
         @Override public void onStatus(AllTasksUiState.Status value) { status = value; }
         @Override public void onSlots(Set<TaskSlot> slots) { }
         @Override public void onRecurrences(Set<Recurrence> recurrences) { }
         @Override public void onWeekday(int weekday) { }
         @Override public void onMode(AllTasksUiState.Mode mode) { }
+        @Override public void onFiltersExpanded(boolean value) { filtersExpanded = value; }
         @Override public void onToggleTask(String taskId) { }
         @Override public void onEditTask(String taskId) { }
         @Override public void onEditStep(String taskId, String stepId) { }

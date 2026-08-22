@@ -1,6 +1,6 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksFilter;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksPresentationState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksSavedStateAdapter;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
@@ -331,17 +331,20 @@ public final class PresentationStateRobolectricTest {
         management.updateRecurrences(java.util.EnumSet.of(Recurrence.WEEKDAYS));
         management.updateWeekday(4);
         management.updateMode(AllTasksUiState.Mode.SORT);
-        management.toggleTask(de.thonktank.autosecretary.domain.model.TaskId.of("rotation-task"));
+        String cardKey = AllTasksUiState.cardKey("rotation-task", TaskSlot.MORNING);
+        management.toggleCard(cardKey);
+        management.updateFiltersExpanded(false);
 
         android.os.Bundle stored = handle.get("all_tasks_filter");
-        AllTasksFilter restored = new AllTasksSavedStateAdapter().decode(stored);
-        assertEquals("Gym", restored.query);
-        assertEquals(AllTasksUiState.Status.ACTIVE, restored.status);
-        assertEquals(java.util.EnumSet.of(TaskSlot.EVENING), restored.slots);
-        assertEquals(java.util.EnumSet.of(Recurrence.WEEKDAYS), restored.recurrences);
-        assertEquals(4, restored.weekday);
+        AllTasksPresentationState restored = new AllTasksSavedStateAdapter().decode(stored);
+        assertEquals("Gym", restored.filter.query);
+        assertEquals(AllTasksUiState.Status.ACTIVE, restored.filter.status);
+        assertEquals(java.util.EnumSet.of(TaskSlot.EVENING), restored.filter.slots);
+        assertEquals(java.util.EnumSet.of(Recurrence.WEEKDAYS), restored.filter.recurrences);
+        assertEquals(4, restored.filter.weekday);
         assertEquals(AllTasksUiState.Mode.SORT, restored.mode);
-        assertTrue(restored.expandedTaskIds.contains("rotation-task"));
+        assertTrue(restored.expandedCardKeys.contains(cardKey));
+        assertFalse(restored.filtersExpanded);
         assertNotNull(management.state().getValue());
         management.onCleared();
 
@@ -350,7 +353,8 @@ public final class PresentationStateRobolectricTest {
                 new AndroidUiTextProvider(context), handle, new DirectExecutor());
         assertEquals("Gym", afterRotation.state().getValue().query);
         assertEquals(AllTasksUiState.Mode.SORT, afterRotation.state().getValue().mode);
-        assertTrue(afterRotation.state().getValue().expandedTaskIds.contains("rotation-task"));
+        assertTrue(afterRotation.state().getValue().expandedCardKeys.contains(cardKey));
+        assertFalse(afterRotation.state().getValue().filtersExpanded);
         afterRotation.onCleared();
     }
 
