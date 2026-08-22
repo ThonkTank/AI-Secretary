@@ -29,6 +29,15 @@ vollständig und verlustfrei im bestehenden Editor geladen werden können.
 - Suche berücksichtigt Aufgaben- und Schritttitel, nicht Notizen. Ein Schritttreffer öffnet die
   betroffene Karte abgeleitet und zeigt nur passende Schritte, ohne den manuellen Aufklappzustand
   zu überschreiben.
+- Die Umschaltung zwischen Listen- und Sortiermodus bleibt als Aktion in der Ergebniszeile. Der
+  Wochentagsfilter wird ausschließlich im Sortiermodus angeboten, weil er dort die sichtbaren
+  Zeitplatzierungen einschränkt.
+- Einfügeziele für Schritte und Zeitplatzierungen sind ausschließlich während eines aktiven
+  Drag-Vorgangs sichtbar und belegen nur währenddessen Layoutplatz. Außerhalb eines Drags bleibt
+  die kompakte Leseliste ohne leere Zielzeilen erhalten.
+- Der geöffnete oder geschlossene Filterbereich ist wiederherstellbarer Präsentationszustand und
+  überlebt Activity- sowie Prozess-Neuerstellung. Ein geöffnetes Dropdown und ein aktiver Drag
+  sind dagegen flüchtig; beide werden bei Abbruch, Detach oder Neuerstellung geschlossen.
 
 ## Konsequenzen
 

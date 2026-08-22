@@ -26,9 +26,30 @@ Update installieren. Backup, Restore, Kompromittierung und die noch nicht aktivi
 Signing-Lineage-Strategie beschreibt das
 [Signing- und Recovery-Runbook](signing-and-recovery.md).
 
+## Abschlusszustände einer Änderung
+
+Die drei Zustände werden bewusst getrennt gemeldet:
+
+- **Implementiert:** Der beabsichtigte Code- und Dokumentationsstand ist committed, der Pull
+  Request hat alle vorgeschriebenen Prüfungen bestanden und wurde nach `main` übernommen. Dieser
+  Zustand allein beweist noch keine veröffentlichte oder installierte App-Version.
+- **Veröffentlicht:** Der Workflow für den exakten `main`-Commit ist vollständig grün. Tag,
+  Release-Metadaten und `AutoSecretary.apk` sind stabil veröffentlicht und zeigen nachweislich auf
+  diesen Commit.
+- **Auf Gerät abgenommen:** Bei einer UI-relevanten Änderung wurde die veröffentlichte APK über
+  den In-App-Updater auf einem physischen Gerät installiert. Installierte Version, Datenerhalt und
+  die betroffenen Interaktionen wurden dort geprüft.
+
+Eine UI-relevante Phase gilt erst mit dem dritten Zustand als vollständig abgeschlossen. Ist kein
+autorisiertes Gerät verfügbar, darf der sichere Releaseprozess weiterlaufen; der Status muss dann
+ausdrücklich **Geräteabnahme ausstehend** lauten und darf nicht als vollständiger Abschluss
+bezeichnet werden.
+
 ## Automatischer Ablauf
 
-1. Eine abgeschlossene Änderung wird auf `main` gepusht.
+1. Eine Änderung wird auf einem Themenbranch committed, als Pull Request geprüft und nach grünen
+   Pflichtchecks per Squash-Merge nach `main` übernommen. Bis Phase 2 der Härtungsroadmap die
+   Repositoryregeln technisch erzwingt, ist dieser Ablauf organisatorisch verbindlich.
 2. `.github/workflows/verify.yml` führt das vollständige Quality-Gate aus.
 3. `scripts/release/release_tool.py` schreibt die letzte veröffentlichte Produktversion um genau
    eins fort. Workflownummern beeinflussen die sichtbare Version nicht; ein fehlgeschlagener Lauf

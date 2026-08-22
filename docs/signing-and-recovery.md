@@ -28,8 +28,9 @@ Secrets oder Repositoryregeln werden nicht aus dem Repository heraus verändert.
 
 ## Normalen Release nachvollziehen
 
-1. Vor dem Push müssen lokales Quality-Gate, sauberer Arbeitsbaum und der beabsichtigte Commit
-   feststehen. Ein Push auf `main` ist nach der aktuellen `AGENTS.md`-Regel der Release-Trigger.
+1. Vor dem Pull Request müssen lokales Quality-Gate, sauberer Arbeitsbaum und der beabsichtigte
+   Commit feststehen. Nach grünen Pflichtchecks wird der Themenbranch gemäß `AGENTS.md` per
+   Squash-Merge nach `main` übernommen; dieser `main`-Commit ist der Release-Trigger.
 2. `Verify and publish Android app` muss Quality, Instrumentierung API 26/35, Packaging,
    signierte Upgrades API 26/35 und Publish vollständig bestehen.
 3. Der veröffentlichte Tag muss auf denselben vollständigen Commit zeigen. Das Release muss
