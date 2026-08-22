@@ -25,7 +25,7 @@ public final class AllTasksSavedStateAdapter {
         ArrayList<String> recurrences = new ArrayList<>();
         for (Recurrence recurrence : filter.recurrences) recurrences.add(recurrence.name());
         value.putStringArrayList("recurrences", recurrences);
-        value.putStringArrayList("expanded", new ArrayList<>(filter.expandedTaskIds));
+        value.putStringArrayList("expanded_cards", new ArrayList<>(filter.expandedCardKeys));
         return value;
     }
 
@@ -34,7 +34,8 @@ public final class AllTasksSavedStateAdapter {
         Set<TaskSlot> slots = decodeEnums(TaskSlot.class, value.getStringArrayList("slots"));
         Set<Recurrence> recurrences = decodeEnums(
                 Recurrence.class, value.getStringArrayList("recurrences"));
-        ArrayList<String> expanded = value.getStringArrayList("expanded");
+        ArrayList<String> expanded = value.getStringArrayList("expanded_cards");
+        if (expanded == null) expanded = value.getStringArrayList("expanded");
         return new AllTasksFilter(value.getString("query", ""),
                 enumValue(AllTasksUiState.Status.class, value.getString("status"),
                         AllTasksUiState.Status.ACTIVE), slots, recurrences,

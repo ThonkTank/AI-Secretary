@@ -1,53 +1,69 @@
 package de.thonktank.autosecretary.presentation.alltasks;
 
+import android.animation.LayoutTransition;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PixelFormat;
+import android.graphics.RectF;
+import android.graphics.ColorFilter;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.Editable;
 import android.text.InputType;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.TextPaint;
 import android.text.TextWatcher;
+import android.text.style.ReplacementSpan;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.animation.PathInterpolator;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import de.thonktank.autosecretary.DayPalette;
+import de.thonktank.autosecretary.EditorFlowLayout;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.UiStyle;
-
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /** Virtualized management surface. Completion actions deliberately do not live here. */
 @SuppressLint("ViewConstructor")
 public final class AllTasksView extends LinearLayout {
-    private static final long SEARCH_DEBOUNCE_MS = 180L;
+    private static final PathInterpolator STATE_EASING =
+            new PathInterpolator(.2f, .7f, .3f, 1f);
+    private enum FilterMenu { STATUS, SLOTS, RHYTHMS, WEEKDAY }
 
     public interface Listener {
         default void onQuery(String query) { }
@@ -56,7 +72,8 @@ public final class AllTasksView extends LinearLayout {
         default void onRecurrences(Set<Recurrence> recurrences) { }
         default void onWeekday(int weekday) { }
         default void onMode(AllTasksUiState.Mode mode) { }
-        default void onToggleTask(String taskId) { }
+        default void onResetFilters() { }
+        default void onToggleTask(String cardKey) { }
         default void onEditTask(String taskId) { }
         default void onEditStep(String taskId, String stepId) { }
         default void onAddStep(String taskId) { }
@@ -68,13 +85,21 @@ public final class AllTasksView extends LinearLayout {
 
     private final UiStyle style;
     private final Listener listener;
+    private final FrameLayout stage;
+    private final LinearLayout content;
     private final EditText search;
-    private final LinearLayout controls;
+    private final FrameLayout filtersHost;
+    private final EditorFlowLayout filterFlow;
+    private final TextView count;
+    private final LinearLayout resultActions;
     private final RecyclerView list;
     private final RowAdapter adapter;
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable publishSearch;
+    private final View dismissLayer;
+    private final LinearLayout dropdown;
     private boolean bindingSearch;
+    private boolean filtersOpen = true;
+    private boolean dragActive;
+    private FilterMenu openMenu;
     private AllTasksUiState state = AllTasksUiState.empty();
     private DayPalette palette;
     private String controlsKey = "";
@@ -86,12 +111,18 @@ public final class AllTasksView extends LinearLayout {
         setOrientation(VERTICAL);
         setClipChildren(false);
         setClipToPadding(false);
-        setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
+        setPadding(style.dimen(R.dimen.page_start), style.dp(16),
                 style.dimen(R.dimen.page_end), 0);
 
-        TextView title = style.serif(context.getString(R.string.all_title), 30, 0, true, 300);
-        title.setId(View.generateViewId());
-        addView(title, params(-1, -2, 0, 0, 0, 14));
+        stage = new FrameLayout(context);
+        stage.setClipChildren(false);
+        stage.setClipToPadding(false);
+        addView(stage, new LayoutParams(-1, 0, 1));
+
+        content = column();
+        content.setClipChildren(false);
+        stage.addView(content, new FrameLayout.LayoutParams(-1, -1));
+
         search = new EditText(context);
         search.setSingleLine(true);
         search.setHint(R.string.all_search_hint);
@@ -99,31 +130,63 @@ public final class AllTasksView extends LinearLayout {
         search.setTypeface(style.sans);
         search.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         search.setPadding(style.dp(18), 0, style.dp(18), 0);
+        search.setElevation(style.dp(6));
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count,
                                                     int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (bindingSearch) return;
-                handler.removeCallbacks(publishSearch);
-                handler.postDelayed(publishSearch, SEARCH_DEBOUNCE_MS);
+                if (!bindingSearch) listener.onQuery(s.toString());
             }
             @Override public void afterTextChanged(Editable s) { }
         });
-        publishSearch = () -> listener.onQuery(search.getText().toString());
-        addView(search, params(-1, style.dp(50), 0, 0, 0, 14));
-        controls = new LinearLayout(context);
-        controls.setOrientation(VERTICAL);
-        addView(controls, new LayoutParams(-1, -2));
+        content.addView(search, new LinearLayout.LayoutParams(-1, style.dp(50)));
+
+        filtersHost = new FrameLayout(context);
+        filtersHost.setClipChildren(false);
+        filtersHost.setElevation(style.dp(6));
+        LinearLayout.LayoutParams filterParams = new LinearLayout.LayoutParams(-1, -2);
+        filterParams.topMargin = style.dp(12);
+        content.addView(filtersHost, filterParams);
+        filterFlow = new EditorFlowLayout(context);
+        filtersHost.addView(filterFlow, new FrameLayout.LayoutParams(-1, -2));
+
+        LinearLayout result = row();
+        result.setPadding(style.dp(2), 0, 0, 0);
+        LinearLayout.LayoutParams resultParams = new LinearLayout.LayoutParams(-1, -2);
+        resultParams.topMargin = style.dp(12);
+        content.addView(result, resultParams);
+        count = style.sans("", 14, Color.TRANSPARENT, false);
+        count.setMaxLines(2);
+        count.setGravity(Gravity.CENTER_VERTICAL);
+        result.addView(count, new LinearLayout.LayoutParams(0, style.dp(44), 1));
+        resultActions = row();
+        result.addView(resultActions, new LinearLayout.LayoutParams(-2, -2));
+
         list = new RecyclerView(context);
         list.setId(R.id.all_tasks_list);
         list.setLayoutManager(new LinearLayoutManager(context));
         list.setClipToPadding(false);
-        list.setPadding(0, style.dp(8), 0, style.dp(26));
-        list.setItemAnimator(null);
+        list.setPadding(0, style.dp(10), 0, style.dp(26));
+        configureListAnimations();
         adapter = new RowAdapter();
         list.setAdapter(adapter);
         new ItemTouchHelper(new DragCallback()).attachToRecyclerView(list);
-        addView(list, new LayoutParams(-1, 0, 1));
+        content.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
+
+        dismissLayer = new View(context);
+        dismissLayer.setBackgroundColor(Color.TRANSPARENT);
+        dismissLayer.setVisibility(GONE);
+        dismissLayer.setElevation(style.dp(4));
+        dismissLayer.setOnClickListener(ignored -> closeMenu());
+        stage.addView(dismissLayer, new FrameLayout.LayoutParams(-1, -1));
+
+        dropdown = column();
+        dropdown.setVisibility(GONE);
+        dropdown.setElevation(style.dp(7));
+        stage.addView(dropdown, new FrameLayout.LayoutParams(-1, -2));
+        filtersHost.addOnLayoutChangeListener((view, left, top, right, bottom,
+                                               oldLeft, oldTop, oldRight, oldBottom) ->
+                positionMenuLayers());
     }
 
     public void bind(AllTasksUiState state, DayPalette palette) {
@@ -131,6 +194,7 @@ public final class AllTasksView extends LinearLayout {
         boolean paletteChanged = this.palette == null || this.palette.ink != palette.ink
                 || this.palette.leaf1 != palette.leaf1 || this.palette.accent != palette.accent;
         this.palette = palette;
+        configureListAnimations();
         bindingSearch = true;
         if (!search.getText().toString().equals(state.query)) {
             search.setText(state.query);
@@ -140,91 +204,323 @@ public final class AllTasksView extends LinearLayout {
         search.setTextColor(palette.ink);
         search.setHintTextColor(palette.hint);
         GradientDrawable searchBackground = style.pill(UiStyle.alpha(palette.leaf1, .86f), 25);
-        searchBackground.setStroke(style.dp(1), palette.leaf1Edge);
+        searchBackground.setStroke(Math.max(1, style.dp(1)), palette.leaf1Edge);
         search.setBackground(searchBackground);
-        ((TextView) getChildAt(0)).setTextColor(palette.ink2);
+
         String nextControlsKey = state.status + "|" + state.slots + "|" + state.recurrences
-                + "|" + state.weekday + "|" + state.mode + "|" + palette.accent + '|'
-                + palette.ink2;
+                + "|" + state.weekday + "|" + state.mode + "|" + filtersOpen + "|"
+                + openMenu + "|" + palette.accent + '|' + palette.ink2;
         if (!nextControlsKey.equals(controlsKey)) {
             controlsKey = nextControlsKey;
             renderControls();
+        } else {
+            renderCount();
         }
         adapter.submitList(AllTasksRow.project(state));
         if (paletteChanged && adapter.getItemCount() > 0)
             adapter.notifyItemRangeChanged(0, adapter.getItemCount(), "palette");
     }
 
-    @Override protected void onDetachedFromWindow() {
-        handler.removeCallbacks(publishSearch);
-        super.onDetachedFromWindow();
+    private void configureListAnimations() {
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            if (list != null) list.setItemAnimator(null);
+            return;
+        }
+        if (list != null && list.getItemAnimator() instanceof DefaultItemAnimator) return;
+        if (list == null) return;
+        DefaultItemAnimator animator = new DefaultItemAnimator();
+        animator.setSupportsChangeAnimations(false);
+        animator.setAddDuration(240);
+        animator.setRemoveDuration(240);
+        animator.setMoveDuration(240);
+        animator.setChangeDuration(240);
+        list.setItemAnimator(animator);
     }
 
     private void renderControls() {
-        controls.removeAllViews();
-        LinearLayout modes = row();
-        modes.addView(chip(R.string.all_tasks_mode, state.mode == AllTasksUiState.Mode.LIST,
-                () -> listener.onMode(AllTasksUiState.Mode.LIST)));
-        modes.addView(chip(R.string.all_sort_mode, state.mode == AllTasksUiState.Mode.SORT,
-                () -> listener.onMode(AllTasksUiState.Mode.SORT)));
-        controls.addView(horizontal(modes));
+        filterFlow.removeAllViews();
+        if (state.mode == AllTasksUiState.Mode.LIST)
+            filterFlow.addView(filterChip(statusLabel(), state.status != AllTasksUiState.Status.ACTIVE,
+                    FilterMenu.STATUS));
+        filterFlow.addView(filterChip(multiLabel(getContext().getString(R.string.all_filter_time),
+                slotLabels()), !state.slots.isEmpty(), FilterMenu.SLOTS));
+        filterFlow.addView(filterChip(multiLabel(getContext().getString(R.string.all_filter_rhythm),
+                recurrenceLabels()), !state.recurrences.isEmpty(), FilterMenu.RHYTHMS));
+        if (state.mode == AllTasksUiState.Mode.SORT)
+            filterFlow.addView(filterChip(weekdayChipLabel(), state.weekday != 0,
+                    FilterMenu.WEEKDAY));
+        if (activeFilterCount() > 0) filterFlow.addView(resetAction());
+        filtersHost.setVisibility(filtersOpen ? VISIBLE : GONE);
 
-        LinearLayout statuses = row();
-        statuses.addView(chip(R.string.all_status_active,
-                state.status == AllTasksUiState.Status.ACTIVE,
-                () -> listener.onStatus(AllTasksUiState.Status.ACTIVE)));
-        statuses.addView(chip(R.string.all_status_archived,
-                state.status == AllTasksUiState.Status.ARCHIVED,
-                () -> listener.onStatus(AllTasksUiState.Status.ARCHIVED)));
-        statuses.addView(chip(R.string.all_status_all,
-                state.status == AllTasksUiState.Status.ALL,
-                () -> listener.onStatus(AllTasksUiState.Status.ALL)));
-        controls.addView(labeled(R.string.all_filter_status, statuses));
+        resultActions.removeAllViews();
+        int modeLabel = state.mode == AllTasksUiState.Mode.LIST
+                ? R.string.all_sort_mode : R.string.all_tasks_mode;
+        resultActions.addView(resultAction(getContext().getString(modeLabel), () -> {
+            closeMenu();
+            listener.onMode(state.mode == AllTasksUiState.Mode.LIST
+                    ? AllTasksUiState.Mode.SORT : AllTasksUiState.Mode.LIST);
+        }));
+        String filterText = getContext().getString(R.string.all_filter_toggle);
+        if (!filtersOpen && activeFilterCount() > 0)
+            filterText += " · " + activeFilterCount();
+        filterText += filtersOpen ? " ⌃" : " ⌄";
+        resultActions.addView(resultAction(filterText, this::toggleFilters));
+        renderCount();
+        renderDropdown();
+        post(this::positionMenuLayers);
+    }
 
-        LinearLayout times = row();
-        int[] timeLabels = {R.string.slot_morning, R.string.slot_midday,
-                R.string.slot_evening, R.string.slot_later};
-        TaskSlot[] slotValues = TaskSlot.values();
-        for (int index = 0; index < slotValues.length; index++) {
-            TaskSlot slot = slotValues[index];
-            times.addView(chip(timeLabels[index], state.slots.contains(slot), () -> {
-                EnumSet<TaskSlot> values = state.slots.isEmpty()
-                        ? EnumSet.noneOf(TaskSlot.class) : EnumSet.copyOf(state.slots);
-                if (!values.add(slot)) values.remove(slot);
-                listener.onSlots(values);
-            }));
-        }
-        controls.addView(labeled(R.string.all_filter_time, times));
-
-        LinearLayout rhythms = row();
-        int[] rhythmLabels = {R.string.rhythm_once, R.string.rhythm_daily,
-                R.string.rhythm_every_n, R.string.rhythm_weekdays};
-        Recurrence[] rhythmValues = {Recurrence.ONCE, Recurrence.DAILY,
-                Recurrence.INTERVAL, Recurrence.WEEKDAYS};
-        for (int index = 0; index < rhythmValues.length; index++) {
-            Recurrence recurrence = rhythmValues[index];
-            rhythms.addView(chip(rhythmLabels[index], state.recurrences.contains(recurrence), () -> {
-                EnumSet<Recurrence> values = state.recurrences.isEmpty()
-                        ? EnumSet.noneOf(Recurrence.class) : EnumSet.copyOf(state.recurrences);
-                if (!values.add(recurrence)) values.remove(recurrence);
-                listener.onRecurrences(values);
-            }));
-        }
-        controls.addView(labeled(R.string.all_filter_rhythm, rhythms));
-
+    private void renderCount() {
+        count.setTextColor(palette.muted);
         if (state.mode == AllTasksUiState.Mode.SORT) {
-            LinearLayout days = row();
-            days.addView(chip(R.string.all_every_day, state.weekday == 0,
-                    () -> listener.onWeekday(0)));
+            int matched = state.schedule.size();
+            if (matched == 0) count.setText("");
+            else if (hasQueryOrFilters())
+                count.setText(getContext().getString(R.string.all_schedule_result_filtered,
+                        matched, state.schedulePoolSize));
+            else count.setText(getContext().getResources().getQuantityString(
+                    R.plurals.all_schedule_result, matched, matched));
+            return;
+        }
+        int matched = state.tasks.size();
+        if (matched == 0) {
+            count.setText("");
+        } else if (hasQueryOrFilters()) {
+            count.setText(getContext().getString(R.string.all_task_result_filtered,
+                    matched, state.taskPoolSize));
+        } else {
+            int steps = 0;
+            for (AllTasksUiState.TaskItem item : state.tasks) steps += item.steps.size();
+            count.setText(getContext().getString(R.string.all_task_result,
+                    matched, steps));
+        }
+    }
+
+    private TextView filterChip(String label, boolean selected, FilterMenu menu) {
+        TextView chip = style.sans(label + " ⌄", 14,
+                selected ? palette.accentText : palette.ink2, selected);
+        chip.setGravity(Gravity.CENTER);
+        chip.setMinHeight(style.dp(44));
+        chip.setPadding(style.dp(14), 0, style.dp(14), 0);
+        chip.setSelected(selected);
+        GradientDrawable background = style.pill(selected ? palette.accent
+                : Color.TRANSPARENT, 22);
+        if (!selected) background.setStroke(Math.max(1, style.dp(1)), palette.dot);
+        chip.setBackground(ripple(background, 22));
+        chip.setOnClickListener(ignored -> {
+            openMenu = openMenu == menu ? null : menu;
+            controlsKey = "";
+            renderControls();
+        });
+        chip.setContentDescription(label);
+        return chip;
+    }
+
+    private TextView resetAction() {
+        TextView reset = style.sans(getContext().getString(R.string.all_filter_reset),
+                14, palette.ink2, false);
+        reset.setGravity(Gravity.CENTER);
+        reset.setMinHeight(style.dp(44));
+        reset.setPadding(style.dp(8), 0, style.dp(8), 0);
+        reset.setPaintFlags(reset.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        reset.setBackground(ripple(style.pill(Color.TRANSPARENT, 22), 22));
+        reset.setOnClickListener(ignored -> {
+            closeMenu();
+            listener.onResetFilters();
+        });
+        return reset;
+    }
+
+    private TextView resultAction(String label, Runnable action) {
+        TextView view = style.sans(label, 14, palette.ink2, false);
+        view.setGravity(Gravity.CENTER);
+        view.setMinHeight(style.dp(44));
+        view.setPadding(style.dp(8), 0, style.dp(8), 0);
+        view.setBackground(ripple(style.pill(Color.TRANSPARENT, 22), 22));
+        view.setOnClickListener(ignored -> action.run());
+        return view;
+    }
+
+    private void renderDropdown() {
+        dropdown.removeAllViews();
+        if (openMenu == null || !filtersOpen) {
+            dropdown.setVisibility(GONE);
+            dismissLayer.setVisibility(GONE);
+            return;
+        }
+        dropdown.setPadding(0, style.dp(6), 0, style.dp(6));
+        dropdown.setBackground(style.leaf(palette.leaf1, palette.leaf1Edge,
+                8, 24, 8, 24));
+        style.shadow(dropdown, palette, 7, .75f);
+        if (openMenu == FilterMenu.STATUS) {
+            addMenuItem(R.string.all_status_active,
+                    state.status == AllTasksUiState.Status.ACTIVE, () -> {
+                        closeMenu(); listener.onStatus(AllTasksUiState.Status.ACTIVE);
+                    });
+            addMenuItem(R.string.all_status_archived,
+                    state.status == AllTasksUiState.Status.ARCHIVED, () -> {
+                        closeMenu(); listener.onStatus(AllTasksUiState.Status.ARCHIVED);
+                    });
+            addMenuItem(R.string.all_status_all,
+                    state.status == AllTasksUiState.Status.ALL, () -> {
+                        closeMenu(); listener.onStatus(AllTasksUiState.Status.ALL);
+                    });
+        } else if (openMenu == FilterMenu.SLOTS) {
+            int[] labels = {R.string.slot_morning, R.string.slot_midday,
+                    R.string.slot_evening, R.string.slot_later};
+            TaskSlot[] values = TaskSlot.values();
+            for (int index = 0; index < values.length; index++) {
+                TaskSlot slot = values[index];
+                addMenuItem(labels[index], state.slots.contains(slot), () -> {
+                    EnumSet<TaskSlot> selected = state.slots.isEmpty()
+                            ? EnumSet.noneOf(TaskSlot.class) : EnumSet.copyOf(state.slots);
+                    if (!selected.add(slot)) selected.remove(slot);
+                    listener.onSlots(selected);
+                });
+            }
+        } else if (openMenu == FilterMenu.RHYTHMS) {
+            int[] labels = {R.string.rhythm_once, R.string.rhythm_daily,
+                    R.string.rhythm_every_n, R.string.rhythm_weekdays};
+            Recurrence[] values = {Recurrence.ONCE, Recurrence.DAILY,
+                    Recurrence.INTERVAL, Recurrence.WEEKDAYS};
+            for (int index = 0; index < values.length; index++) {
+                Recurrence recurrence = values[index];
+                addMenuItem(labels[index], state.recurrences.contains(recurrence), () -> {
+                    EnumSet<Recurrence> selected = state.recurrences.isEmpty()
+                            ? EnumSet.noneOf(Recurrence.class)
+                            : EnumSet.copyOf(state.recurrences);
+                    if (!selected.add(recurrence)) selected.remove(recurrence);
+                    listener.onRecurrences(selected);
+                });
+            }
+        } else {
+            addMenuItem(R.string.all_every_day, state.weekday == 0, () -> {
+                closeMenu(); listener.onWeekday(0);
+            });
             int[] labels = {R.string.day_mon, R.string.day_tue, R.string.day_wed,
                     R.string.day_thu, R.string.day_fri, R.string.day_sat, R.string.day_sun};
             for (int index = 0; index < labels.length; index++) {
                 int day = index + 1;
-                days.addView(chip(labels[index], state.weekday == day,
-                        () -> listener.onWeekday(day)));
+                addMenuItem(labels[index], state.weekday == day, () -> {
+                    closeMenu(); listener.onWeekday(day);
+                });
             }
-            controls.addView(labeled(R.string.all_filter_day, days));
         }
+        dropdown.setVisibility(VISIBLE);
+        dismissLayer.setVisibility(VISIBLE);
+    }
+
+    private void addMenuItem(int label, boolean selected, Runnable action) {
+        TextView item = style.sans(getContext().getString(label), 17,
+                selected ? palette.accentText : palette.ink, selected);
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setMinHeight(style.dp(48));
+        item.setPadding(style.dp(20), 0, style.dp(20), 0);
+        item.setBackground(ripple(style.pill(selected ? palette.accent
+                : Color.TRANSPARENT, 0), 0));
+        item.setSelected(selected);
+        item.setOnClickListener(ignored -> action.run());
+        dropdown.addView(item, new LinearLayout.LayoutParams(-1, -2));
+    }
+
+    private void positionMenuLayers() {
+        if (openMenu == null || !filtersOpen) return;
+        int top = filtersHost.getBottom() + style.dp(8);
+        FrameLayout.LayoutParams menuParams = (FrameLayout.LayoutParams) dropdown.getLayoutParams();
+        menuParams.topMargin = top;
+        dropdown.setLayoutParams(menuParams);
+        FrameLayout.LayoutParams dismissParams = (FrameLayout.LayoutParams)
+                dismissLayer.getLayoutParams();
+        dismissParams.topMargin = filtersHost.getBottom();
+        dismissLayer.setLayoutParams(dismissParams);
+        dropdown.bringToFront();
+    }
+
+    private void toggleFilters() {
+        closeMenu();
+        filtersOpen = !filtersOpen;
+        controlsKey = "";
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            renderControls();
+            return;
+        }
+        LayoutTransition transition = new LayoutTransition();
+        transition.setDuration(palette.motion.stateChangeDurationMs);
+        transition.setInterpolator(LayoutTransition.CHANGING, STATE_EASING);
+        content.setLayoutTransition(transition);
+        renderControls();
+        content.postDelayed(() -> content.setLayoutTransition(null),
+                palette.motion.stateChangeDurationMs);
+    }
+
+    private void closeMenu() {
+        if (openMenu == null) return;
+        openMenu = null;
+        controlsKey = "";
+        renderControls();
+    }
+
+    private int activeFilterCount() {
+        int result = state.slots.size() + state.recurrences.size();
+        if (state.mode == AllTasksUiState.Mode.LIST
+                && state.status != AllTasksUiState.Status.ACTIVE) result++;
+        if (state.mode == AllTasksUiState.Mode.SORT && state.weekday != 0) result++;
+        return result;
+    }
+
+    private boolean hasQueryOrFilters() {
+        return !state.query.trim().isEmpty() || activeFilterCount() > 0;
+    }
+
+    private String statusLabel() {
+        String value;
+        if (state.status == AllTasksUiState.Status.ARCHIVED)
+            value = getContext().getString(R.string.all_status_archived);
+        else if (state.status == AllTasksUiState.Status.ALL)
+            value = getContext().getString(R.string.all_status_all);
+        else value = getContext().getString(R.string.all_status_active);
+        return getContext().getString(R.string.all_filter_value,
+                getContext().getString(R.string.all_filter_status), value);
+    }
+
+    private String weekdayChipLabel() {
+        if (state.weekday == 0) return getContext().getString(R.string.all_filter_day);
+        int[] labels = {R.string.day_mon, R.string.day_tue, R.string.day_wed,
+                R.string.day_thu, R.string.day_fri, R.string.day_sat, R.string.day_sun};
+        return getContext().getString(R.string.all_filter_value,
+                getContext().getString(R.string.all_filter_day),
+                getContext().getString(labels[state.weekday - 1]));
+    }
+
+    private List<String> slotLabels() {
+        List<String> values = new ArrayList<>();
+        if (state.slots.contains(TaskSlot.MORNING)) values.add(getContext().getString(R.string.slot_morning));
+        if (state.slots.contains(TaskSlot.MIDDAY)) values.add(getContext().getString(R.string.slot_midday));
+        if (state.slots.contains(TaskSlot.EVENING)) values.add(getContext().getString(R.string.slot_evening));
+        if (state.slots.contains(TaskSlot.LATER)) values.add(getContext().getString(R.string.slot_later));
+        return values;
+    }
+
+    private List<String> recurrenceLabels() {
+        List<String> values = new ArrayList<>();
+        Recurrence[] recurrences = {Recurrence.ONCE, Recurrence.DAILY,
+                Recurrence.INTERVAL, Recurrence.WEEKDAYS};
+        for (Recurrence recurrence : recurrences)
+            if (state.recurrences.contains(recurrence)) values.add(recurrenceLabel(recurrence));
+        return values;
+    }
+
+    private String multiLabel(String base, List<String> selected) {
+        if (selected.isEmpty()) return base;
+        String summary = selected.size() == 1 && selected.get(0).length() <= 12
+                ? selected.get(0)
+                : getContext().getString(R.string.all_filter_selected_count, selected.size());
+        return getContext().getString(R.string.all_filter_value, base, summary);
+    }
+
+    @Override protected void onDetachedFromWindow() {
+        closeMenu();
+        super.onDetachedFromWindow();
     }
 
     private final class RowAdapter extends ListAdapter<AllTasksRow, RowHolder> {
@@ -258,6 +554,11 @@ public final class AllTasksView extends LinearLayout {
             holder.bind(getItem(position));
         }
 
+        @Override public void onBindViewHolder(@NonNull RowHolder holder, int position,
+                                               @NonNull List<Object> payloads) {
+            holder.bind(getItem(position));
+        }
+
         void selectForSwap(String id) {
             selectedStepId = id;
             notifyItemRangeChanged(0, getItemCount(), "actions");
@@ -266,13 +567,13 @@ public final class AllTasksView extends LinearLayout {
     }
 
     private final class RowHolder extends RecyclerView.ViewHolder {
-        private AllTasksRow row;
-
         RowHolder(@NonNull FrameLayout root) { super(root); }
 
         void bind(AllTasksRow value) {
-            row = value;
             FrameLayout root = (FrameLayout) itemView;
+            root.setLayoutParams(new RecyclerView.LayoutParams(-1,
+                    value.kind == AllTasksRow.Kind.STEP_TARGET
+                            ? dragActive ? style.dp(44) : 0 : -2));
             root.removeAllViews();
             root.setAccessibilityDelegate(null);
             root.setContentDescription(null);
@@ -283,12 +584,14 @@ public final class AllTasksView extends LinearLayout {
                 case TASK_HEADER: child = taskHeader(value); break;
                 case STEP: child = stepRow(value); break;
                 case STEP_TARGET: child = stepTarget(value); break;
+                case STEP_ADD: child = stepAdd(value); break;
                 case SLOT_HEADER: child = slotHeader(value.slot); break;
                 case SCHEDULE: child = scheduleRow(value); break;
                 case SCHEDULE_TARGET: child = scheduleTarget(value); break;
                 default: child = empty(value.emptyReason);
             }
-            root.addView(child, new FrameLayout.LayoutParams(-1, -2));
+            root.addView(child, new FrameLayout.LayoutParams(-1,
+                    value.kind == AllTasksRow.Kind.STEP_TARGET ? -1 : -2));
             installAccessibility(root, value);
         }
     }
@@ -296,66 +599,108 @@ public final class AllTasksView extends LinearLayout {
     private View taskHeader(AllTasksRow row) {
         AllTasksUiState.TaskItem item = row.task;
         LinearLayout card = column();
-        card.setPadding(style.dp(18), style.dp(14), style.dp(10), style.dp(12));
-        card.setBackground(style.leaf(item.archived ? palette.leaf3 : palette.leaf2,
-                style.edge(palette, item.archived ? 3 : 2), 42, 8, 42, 8));
-        style.shadow(card, palette, 5, .55f);
+        card.setPadding(style.dp(18), style.dp(14), style.dp(8),
+                item.expanded ? 0 : style.dp(12));
+        card.setBackground(item.expanded
+                ? new CardSegmentDrawable(CardSegment.TOP)
+                : style.leaf(palette.leaf2, palette.leaf2Edge, 42, 8, 42, 8));
+        if (!item.expanded) style.shadow(card, palette, 5, .55f);
         LinearLayout header = row();
         LinearLayout copy = column();
-        copy.addView(style.serif(item.task.title, 22,
-                item.archived ? palette.done : palette.ink, false, 350));
-        copy.addView(style.sans(taskMeta(item), 14, palette.hint, false));
+        TextView title = style.serif(item.task.title, 22, palette.ink, false, 350);
+        title.setText(highlight(item.task.title, item.needle));
+        copy.addView(title);
+        TextView meta = style.sans(taskMeta(item), 14, palette.hint, false);
+        LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(-1, -2);
+        metaParams.topMargin = style.dp(3);
+        copy.addView(meta, metaParams);
         header.addView(copy, new LinearLayout.LayoutParams(0, -2, 1));
-        ImageButton expand = icon(item.expanded ? R.drawable.ic_expand_less
-                : R.drawable.ic_expand_more, item.expanded ? R.string.a11y_collapse_task
-                : R.string.a11y_expand_task);
-        expand.setOnClickListener(view -> listener.onToggleTask(item.task.id.value));
-        header.addView(expand, new LinearLayout.LayoutParams(style.dp(48), style.dp(48)));
+        TextView menu = style.sans("⋮", 21, palette.dot, false);
+        menu.setGravity(Gravity.CENTER);
+        menu.setContentDescription(getContext().getString(R.string.a11y_task_menu,
+                item.task.title));
+        menu.setBackground(ripple(style.pill(Color.TRANSPARENT, 24), 24));
+        menu.setOnClickListener(anchor -> showTaskMenu(anchor, item));
+        header.addView(menu, new LinearLayout.LayoutParams(style.dp(48), style.dp(48)));
         card.addView(header);
-        LinearLayout actions = row();
-        if (!item.archived)
-            actions.addView(textAction(R.string.task_edit,
-                    () -> listener.onEditTask(item.task.id.value)));
-        actions.addView(textAction(R.string.task_delete,
-                () -> listener.onDeleteTask(item.task.id.value, item.task.title)));
-        card.addView(actions);
+
+        TextView steps = style.sans(stepLine(item), 15, palette.ink2, false);
+        steps.setGravity(Gravity.CENTER_VERTICAL);
+        steps.setMinHeight(style.dp(44));
+        steps.setPadding(0, 0, style.dp(8), 0);
+        if (!item.steps.isEmpty()) {
+            steps.setOnClickListener(ignored -> listener.onToggleTask(item.cardKey));
+            steps.setContentDescription(getContext().getString(item.expanded
+                    ? R.string.a11y_collapse_task : R.string.a11y_expand_task));
+        }
+        LinearLayout.LayoutParams stepParams = new LinearLayout.LayoutParams(-2, -2);
+        stepParams.topMargin = style.dp(-4);
+        card.addView(steps, stepParams);
         card.setContentDescription(getContext().getString(R.string.a11y_task_row,
                 item.task.title, taskMeta(item)));
-        card.setLayoutParams(rowMargins(0, 0, 0, 12));
+        card.setLayoutParams(rowMargins(0, 0, 0, item.expanded ? 0 : style.dp(10)));
         return card;
     }
 
+    private void showTaskMenu(View anchor, AllTasksUiState.TaskItem item) {
+        PopupMenu menu = new PopupMenu(getContext(), anchor);
+        menu.getMenu().add(0, 1, 0, R.string.task_edit);
+        menu.getMenu().add(0, 2, 1, R.string.task_delete);
+        menu.setOnMenuItemClickListener(selected -> {
+            if (selected.getItemId() == 1) listener.onEditTask(item.task.id.value);
+            else listener.onDeleteTask(item.task.id.value, item.task.title);
+            return true;
+        });
+        menu.show();
+    }
+
     private View stepRow(AllTasksRow row) {
-        LinearLayout result = row();
-        result.setPadding(style.dp(8), style.dp(3), style.dp(8), style.dp(3));
-        if (!row.task.archived) result.addView(icon(R.drawable.ic_drag_handle,
-                R.string.all_drag_step), new LinearLayout.LayoutParams(style.dp(48), style.dp(48)));
-        TextView title = style.sans(row.step.text, 17,
-                row.task.archived ? palette.done : palette.ink, false);
-        title.setGravity(Gravity.CENTER_VERTICAL);
-        title.setMinHeight(style.dp(48));
-        result.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
-        result.setBackground(style.pill(UiStyle.alpha(palette.leaf1, .72f), 18));
+        LinearLayout shell = row();
+        shell.setPadding(style.dp(8), 0, style.dp(8), style.dp(4));
+        shell.setBackground(new CardSegmentDrawable(CardSegment.MIDDLE));
+        LinearLayout pill = row();
+        pill.setPadding(style.dp(8), style.dp(3), style.dp(8), style.dp(3));
+        pill.setBackground(ripple(style.pill(UiStyle.alpha(palette.leaf1, .72f), 18), 18));
         if (!row.task.archived)
-            result.setOnClickListener(view -> listener.onEditStep(row.taskId, row.step.id));
-        result.setContentDescription(getContext().getString(row.task.archived
-                ? R.string.a11y_archived_step_row : R.string.a11y_step_row, row.step.text));
-        result.setLayoutParams(rowMargins(style.dp(8), 0, 0, style.dp(4)));
-        return result;
+            pill.addView(icon(R.drawable.ic_drag_handle, R.string.all_drag_step),
+                    new LinearLayout.LayoutParams(style.dp(44), style.dp(44)));
+        TextView title = style.sans(row.step.text, 17, palette.ink, false);
+        title.setText(highlight(row.step.text, row.task.needle));
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        title.setMinHeight(style.dp(44));
+        pill.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        pill.setOnClickListener(view -> listener.onEditStep(row.taskId, row.step.id));
+        pill.setContentDescription(getContext().getString(R.string.a11y_step_row, row.step.text));
+        shell.addView(pill, new LinearLayout.LayoutParams(-1, -2));
+        return shell;
     }
 
     private View stepTarget(AllTasksRow row) {
-        TextView target = style.sans(getContext().getString(row.endTarget
-                ? R.string.all_add_step : R.string.all_step_insert_target), 14,
-                palette.muted, false);
-        target.setGravity(Gravity.CENTER_VERTICAL);
-        target.setMinHeight(style.dp(48));
-        target.setPadding(style.dp(56), 0, style.dp(8), 0);
-        if (row.endTarget)
-            target.setOnClickListener(view -> listener.onAddStep(row.taskId));
-        target.setContentDescription(getContext().getString(row.endTarget
-                ? R.string.a11y_add_step_target : R.string.a11y_step_drop_target));
+        FrameLayout target = new FrameLayout(getContext());
+        target.setBackground(new CardSegmentDrawable(CardSegment.MIDDLE));
+        if (dragActive) {
+            View line = new View(getContext());
+            line.setBackgroundColor(palette.light);
+            FrameLayout.LayoutParams lineParams = new FrameLayout.LayoutParams(-1, style.dp(2));
+            lineParams.gravity = Gravity.CENTER_VERTICAL;
+            lineParams.setMargins(style.dp(16), 0, style.dp(16), 0);
+            target.addView(line, lineParams);
+            target.setContentDescription(getContext().getString(R.string.a11y_step_drop_target));
+        }
         return target;
+    }
+
+    private View stepAdd(AllTasksRow row) {
+        TextView add = style.sans("＋ " + getContext().getString(R.string.all_add_step),
+                14, palette.ink2, false);
+        add.setGravity(Gravity.CENTER_VERTICAL);
+        add.setMinHeight(style.dp(44));
+        add.setPadding(style.dp(20), 0, style.dp(8), 0);
+        add.setBackground(new CardSegmentDrawable(CardSegment.BOTTOM));
+        add.setOnClickListener(ignored -> listener.onAddStep(row.taskId));
+        add.setContentDescription(getContext().getString(R.string.a11y_add_step_target));
+        add.setLayoutParams(rowMargins(0, 0, 0, style.dp(10)));
+        return add;
     }
 
     private View slotHeader(TaskSlot slot) {
@@ -396,14 +741,16 @@ public final class AllTasksView extends LinearLayout {
         LinearLayout empty = column();
         empty.setPadding(style.dp(22), style.dp(28), style.dp(22), style.dp(28));
         empty.setBackground(style.dashed(palette));
+        empty.setRotation(-.5f);
         int title;
         int subtitle;
-        if (reason == AllTasksRow.EmptyReason.NO_TASKS) {
-            title = R.string.all_no_tasks_title; subtitle = R.string.all_no_tasks_subtitle;
-        } else if (reason == AllTasksRow.EmptyReason.SEARCH) {
+        if (reason == AllTasksRow.EmptyReason.SEARCH) {
             title = R.string.all_empty_search_title; subtitle = R.string.all_empty_search_subtitle;
         } else if (reason == AllTasksRow.EmptyReason.FILTERS) {
-            title = R.string.all_empty_filter_title; subtitle = R.string.all_empty_filter_subtitle;
+            title = R.string.all_empty_filter_title;
+            subtitle = state.mode == AllTasksUiState.Mode.SORT
+                    ? R.string.all_empty_filter_sort_subtitle
+                    : R.string.all_empty_filter_subtitle;
         } else {
             title = R.string.all_empty_status_title; subtitle = R.string.all_empty_status_subtitle;
         }
@@ -411,6 +758,23 @@ public final class AllTasksView extends LinearLayout {
         empty.addView(style.sans(getContext().getString(subtitle), 16, palette.hint, false),
                 params(-1, -2, 0, 12, 0, 0));
         return empty;
+    }
+
+    private CharSequence highlight(String value, String needle) {
+        if (needle == null || needle.isEmpty()) return value;
+        SpannableString result = new SpannableString(value);
+        String haystack = value.toLowerCase(Locale.GERMAN);
+        int from = 0;
+        while (from < haystack.length()) {
+            int start = haystack.indexOf(needle, from);
+            if (start < 0) break;
+            int end = start + needle.length();
+            result.setSpan(new RoundedHighlightSpan(UiStyle.alpha(palette.light, .34f),
+                            style.dp(3), style.dp(1)), start, end,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            from = end;
+        }
+        return result;
     }
 
     private void installAccessibility(View view, AllTasksRow row) {
@@ -448,21 +812,22 @@ public final class AllTasksView extends LinearLayout {
             if (stepIndex(row) > 0) result.add(new Action(R.id.action_step_up, R.string.a11y_step_up));
             if (stepIndex(row) < row.task.steps.size() - 1)
                 result.add(new Action(R.id.action_step_down, R.string.a11y_step_down));
-            if (otherTask(row.taskId, -1) != null)
+            if (otherTask(row.cardKey, row.taskId, -1) != null)
                 result.add(new Action(R.id.action_step_previous_task,
                         R.string.a11y_step_previous_task));
-            if (otherTask(row.taskId, 1) != null)
-                result.add(new Action(R.id.action_step_next_task, R.string.a11y_step_next_task));
+            if (otherTask(row.cardKey, row.taskId, 1) != null)
+                result.add(new Action(R.id.action_step_next_task,
+                        R.string.a11y_step_next_task));
             result.add(new Action(R.id.action_step_select_swap, R.string.a11y_step_select_swap));
             if (adapter.selectedStepId != null && !adapter.selectedStepId.equals(row.step.id))
                 result.add(new Action(R.id.action_step_swap_selected,
                         R.string.a11y_step_swap_selected));
         } else if (row.kind == AllTasksRow.Kind.SCHEDULE) {
             int index = scheduleIndex(row);
-            int count = scheduleInSlot(row.slot).size();
+            int inSlot = scheduleInSlot(row.slot).size();
             if (index > 0) result.add(new Action(R.id.action_schedule_up,
                     R.string.a11y_schedule_up));
-            if (index < count - 1) result.add(new Action(R.id.action_schedule_down,
+            if (index < inSlot - 1) result.add(new Action(R.id.action_schedule_down,
                     R.string.a11y_schedule_down));
             if (row.slot.rank > 0) result.add(new Action(R.id.action_schedule_previous_slot,
                     R.string.a11y_schedule_previous_slot));
@@ -500,28 +865,28 @@ public final class AllTasksView extends LinearLayout {
         int index = stepIndex(row);
         int target = index + delta;
         if (target < 0 || target >= row.task.steps.size()) return false;
-        String before;
-        if (delta < 0) before = row.task.steps.get(target).id;
-        else before = index + 2 < row.task.steps.size()
-                ? row.task.steps.get(index + 2).id : null;
+        String before = delta < 0 ? row.task.steps.get(target).id
+                : index + 2 < row.task.steps.size() ? row.task.steps.get(index + 2).id : null;
         listener.onMoveStep(row.step.id, row.taskId, before);
         return true;
     }
 
     private boolean moveStepToTask(AllTasksRow row, int direction) {
-        AllTasksUiState.TaskItem target = otherTask(row.taskId, direction);
+        AllTasksUiState.TaskItem target = otherTask(row.cardKey, row.taskId, direction);
         if (target == null) return false;
         listener.onMoveStep(row.step.id, target.task.id.value, null);
         return true;
     }
 
-    private AllTasksUiState.TaskItem otherTask(String taskId, int direction) {
+    private AllTasksUiState.TaskItem otherTask(String cardKey, String taskId, int direction) {
         int current = -1;
         for (int index = 0; index < state.tasks.size(); index++)
-            if (state.tasks.get(index).task.id.value.equals(taskId)) current = index;
+            if (state.tasks.get(index).cardKey.equals(cardKey)) current = index;
         for (int index = current + direction; index >= 0 && index < state.tasks.size();
-             index += direction)
-            if (!state.tasks.get(index).archived) return state.tasks.get(index);
+             index += direction) {
+            AllTasksUiState.TaskItem candidate = state.tasks.get(index);
+            if (!candidate.archived && !candidate.task.id.value.equals(taskId)) return candidate;
+        }
         return null;
     }
 
@@ -574,16 +939,38 @@ public final class AllTasksView extends LinearLayout {
 
         @Override public boolean isLongPressDragEnabled() { return true; }
 
+        @Override public void onSelectedChanged(RecyclerView.ViewHolder viewHolder, int actionState) {
+            super.onSelectedChanged(viewHolder, actionState);
+            if (actionState != ItemTouchHelper.ACTION_STATE_DRAG || viewHolder == null) return;
+            int position = viewHolder.getBindingAdapterPosition();
+            if (position == RecyclerView.NO_POSITION) return;
+            if (adapter.getCurrentList().get(position).kind == AllTasksRow.Kind.STEP)
+                setDragActive(true);
+        }
+
+        @Override public void clearView(@NonNull RecyclerView recyclerView,
+                                        @NonNull RecyclerView.ViewHolder viewHolder) {
+            super.clearView(recyclerView, viewHolder);
+            setDragActive(false);
+        }
+
         @Override public boolean onMove(@NonNull RecyclerView recyclerView,
                                         @NonNull RecyclerView.ViewHolder viewHolder,
                                         @NonNull RecyclerView.ViewHolder target) {
-            int from = viewHolder.getBindingAdapterPosition();
-            int to = target.getBindingAdapterPosition();
-            return dispatchDrag(from, to);
+            return dispatchDrag(viewHolder.getBindingAdapterPosition(),
+                    target.getBindingAdapterPosition());
         }
 
         @Override public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder,
                                        int direction) { }
+    }
+
+    private void setDragActive(boolean active) {
+        if (dragActive == active) return;
+        dragActive = active;
+        for (int index = 0; index < adapter.getItemCount(); index++)
+            if (adapter.getCurrentList().get(index).kind == AllTasksRow.Kind.STEP_TARGET)
+                adapter.notifyItemChanged(index, "drag");
     }
 
     private boolean dispatchDrag(int from, int to) {
@@ -621,6 +1008,7 @@ public final class AllTasksView extends LinearLayout {
 
     int rowCountForTest() { return adapter.getItemCount(); }
     long rowIdForTest(int position) { return adapter.getItemId(position); }
+    AllTasksRow adapterRowForTest(int position) { return adapter.getCurrentList().get(position); }
     boolean dragForTest(int from, int to) { return dispatchDrag(from, to); }
     boolean accessibilityActionForTest(int position, int action) {
         return dispatchAccessibility(adapter.getCurrentList().get(position), action);
@@ -635,6 +1023,8 @@ public final class AllTasksView extends LinearLayout {
     }
     RecyclerView recyclerForTest() { return list; }
     EditText searchForTest() { return search; }
+    void setDragActiveForTest(boolean active) { setDragActive(active); }
+    boolean filtersOpenForTest() { return filtersOpen; }
 
     private ImageButton icon(int drawable, int description) {
         ImageButton button = new ImageButton(getContext());
@@ -642,77 +1032,34 @@ public final class AllTasksView extends LinearLayout {
         button.setColorFilter(palette.dot);
         button.setBackgroundColor(Color.TRANSPARENT);
         button.setContentDescription(getContext().getString(description));
-        button.setPadding(style.dp(12), style.dp(12), style.dp(12), style.dp(12));
+        button.setPadding(style.dp(10), style.dp(10), style.dp(10), style.dp(10));
         return button;
     }
 
-    private TextView chip(int label, boolean selected, Runnable action) {
-        TextView chip = style.sans(getContext().getString(label), 14,
-                selected ? palette.accentText : palette.ink2, selected);
-        chip.setGravity(Gravity.CENTER);
-        chip.setMinHeight(style.dp(44));
-        chip.setPadding(style.dp(15), 0, style.dp(15), 0);
-        chip.setSelected(selected);
-        GradientDrawable background = style.pill(selected ? palette.accent
-                : Color.TRANSPARENT, 22);
-        if (!selected) background.setStroke(style.dp(1), palette.dot);
-        chip.setBackground(background);
-        chip.setOnClickListener(view -> action.run());
-        LayoutParams params = new LayoutParams(-2, style.dp(44));
-        params.rightMargin = style.dp(8);
-        chip.setLayoutParams(params);
-        return chip;
-    }
-
-    private View labeled(int label, LinearLayout row) {
-        LinearLayout wrapper = column();
-        TextView heading = style.serif(getContext().getString(label), 14,
-                palette.muted, true, 300);
-        ViewCompat.setAccessibilityHeading(heading, true);
-        wrapper.addView(heading);
-        wrapper.addView(horizontal(row), params(-1, -2, 0, 5, 0, 0));
-        wrapper.setLayoutParams(params(-1, -2, 0, 10, 0, 0));
-        return wrapper;
-    }
-
-    private HorizontalScrollView horizontal(LinearLayout row) {
-        HorizontalScrollView scroll = new HorizontalScrollView(getContext());
-        scroll.setHorizontalScrollBarEnabled(false);
-        scroll.addView(row);
-        return scroll;
-    }
-
-    private LinearLayout row() {
-        LinearLayout row = new LinearLayout(getContext());
-        row.setOrientation(HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        return row;
-    }
-
-    private LinearLayout column() {
-        LinearLayout column = new LinearLayout(getContext());
-        column.setOrientation(VERTICAL);
-        return column;
-    }
-
-    private TextView textAction(int label, Runnable action) {
-        TextView view = style.sans(getContext().getString(label), 15, palette.ink2, false);
-        view.setGravity(Gravity.CENTER);
-        view.setMinHeight(style.dp(48));
-        view.setPadding(style.dp(14), 0, style.dp(14), 0);
-        view.setOnClickListener(ignored -> action.run());
-        return view;
+    private RippleDrawable ripple(Drawable content, float radius) {
+        return new RippleDrawable(ColorStateList.valueOf(UiStyle.alpha(palette.ink, .10f)),
+                content, style.pill(Color.WHITE, radius));
     }
 
     private String taskMeta(AllTasksUiState.TaskItem item) {
-        String timing = item.archived ? getContext().getString(R.string.all_archived)
-                : item.task.nextDueOn == null ? getContext().getString(R.string.all_no_due)
+        String timing = item.task.nextDueOn == null ? getContext().getString(R.string.all_no_due)
                 : getContext().getString(R.string.all_next_due,
                 item.task.nextDueOn.format(DateTimeFormatter.ofPattern("dd.MM.")));
-        String steps = item.steps.size() == 1 ? getContext().getString(R.string.all_step_count)
-                : getContext().getString(R.string.all_steps_count, item.steps.size());
-        return getContext().getString(R.string.all_task_meta,
-                recurrenceLabel(item.task.recurrence), timing, steps);
+        String value = slotLabel(item.slot) + " · " + recurrenceLabel(item.task.recurrence)
+                + " · " + timing;
+        return item.archived ? value + " · " + getContext().getString(R.string.all_archived)
+                : value;
+    }
+
+    private String stepLine(AllTasksUiState.TaskItem item) {
+        int count = item.steps.size();
+        if (count == 0) return getContext().getString(R.string.all_no_steps);
+        if (item.searchExpanded)
+            return getContext().getString(R.string.all_steps_matching,
+                    item.matchingSteps.size(), count) + " ⌃";
+        String label = count == 1 ? getContext().getString(R.string.all_step_count)
+                : getContext().getString(R.string.all_steps_count, count);
+        return label + (item.expanded ? " ⌃" : " ⌄");
     }
 
     private String recurrenceLabel(Recurrence value) {
@@ -727,6 +1074,19 @@ public final class AllTasksView extends LinearLayout {
         if (slot == TaskSlot.MIDDAY) return getContext().getString(R.string.slot_midday);
         if (slot == TaskSlot.EVENING) return getContext().getString(R.string.slot_evening);
         return getContext().getString(R.string.slot_later);
+    }
+
+    private LinearLayout row() {
+        LinearLayout row = new LinearLayout(getContext());
+        row.setOrientation(HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        return row;
+    }
+
+    private LinearLayout column() {
+        LinearLayout column = new LinearLayout(getContext());
+        column.setOrientation(VERTICAL);
+        return column;
     }
 
     private static LayoutParams params(int width, int height, int left, int top,
@@ -746,5 +1106,100 @@ public final class AllTasksView extends LinearLayout {
         final int id;
         final int label;
         Action(int id, int label) { this.id = id; this.label = label; }
+    }
+
+    private static final class RoundedHighlightSpan extends ReplacementSpan {
+        private final int color;
+        private final float radius;
+        private final float padding;
+
+        RoundedHighlightSpan(int color, float radius, float padding) {
+            this.color = color;
+            this.radius = radius;
+            this.padding = padding;
+        }
+
+        @Override public int getSize(@NonNull Paint paint, CharSequence text, int start, int end,
+                                     Paint.FontMetricsInt metrics) {
+            return Math.round(paint.measureText(text, start, end) + padding * 2);
+        }
+
+        @Override public void draw(@NonNull Canvas canvas, CharSequence text, int start, int end,
+                                   float x, int top, int y, int bottom,
+                                   @NonNull Paint paint) {
+            int oldColor = paint.getColor();
+            float width = paint.measureText(text, start, end);
+            paint.setColor(color);
+            canvas.drawRoundRect(new RectF(x, top, x + width + padding * 2, bottom),
+                    radius, radius, paint);
+            paint.setColor(oldColor);
+            canvas.drawText(text, start, end, x + padding, y, paint);
+        }
+    }
+
+    private enum CardSegment { TOP, MIDDLE, BOTTOM }
+
+    /** Draws one continuous leaf edge across independently virtualized card rows. */
+    private final class CardSegmentDrawable extends Drawable {
+        private final CardSegment segment;
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        CardSegmentDrawable(CardSegment segment) {
+            this.segment = segment;
+            fill.setColor(palette.leaf2);
+            fill.setStyle(Paint.Style.FILL);
+            edge.setColor(palette.leaf2Edge);
+            edge.setStyle(Paint.Style.STROKE);
+            edge.setStrokeWidth(Math.max(1, style.dp(1)));
+        }
+
+        @Override public void draw(@NonNull Canvas canvas) {
+            float half = edge.getStrokeWidth() / 2f;
+            RectF bounds = new RectF(getBounds().left + half, getBounds().top,
+                    getBounds().right - half, getBounds().bottom);
+            Path shape = new Path();
+            float topLeft = segment == CardSegment.TOP ? style.dp(42) : 0;
+            float topRight = segment == CardSegment.TOP ? style.dp(8) : 0;
+            float bottomRight = segment == CardSegment.BOTTOM ? style.dp(42) : 0;
+            float bottomLeft = segment == CardSegment.BOTTOM ? style.dp(8) : 0;
+            shape.addRoundRect(bounds, new float[]{topLeft, topLeft, topRight, topRight,
+                    bottomRight, bottomRight, bottomLeft, bottomLeft}, Path.Direction.CW);
+            canvas.drawPath(shape, fill);
+
+            Path border = new Path();
+            if (segment == CardSegment.TOP) {
+                border.moveTo(bounds.left, bounds.bottom);
+                border.lineTo(bounds.left, bounds.top + topLeft);
+                border.quadTo(bounds.left, bounds.top,
+                        bounds.left + topLeft, bounds.top + half);
+                border.lineTo(bounds.right - topRight, bounds.top + half);
+                border.quadTo(bounds.right, bounds.top,
+                        bounds.right, bounds.top + topRight);
+                border.lineTo(bounds.right, bounds.bottom);
+            } else if (segment == CardSegment.MIDDLE) {
+                border.moveTo(bounds.left, bounds.top);
+                border.lineTo(bounds.left, bounds.bottom);
+                border.moveTo(bounds.right, bounds.top);
+                border.lineTo(bounds.right, bounds.bottom);
+            } else {
+                border.moveTo(bounds.left, bounds.top);
+                border.lineTo(bounds.left, bounds.bottom - bottomLeft);
+                border.quadTo(bounds.left, bounds.bottom,
+                        bounds.left + bottomLeft, bounds.bottom - half);
+                border.lineTo(bounds.right - bottomRight, bounds.bottom - half);
+                border.quadTo(bounds.right, bounds.bottom,
+                        bounds.right, bounds.bottom - bottomRight);
+                border.lineTo(bounds.right, bounds.top);
+            }
+            canvas.drawPath(border, edge);
+        }
+
+        @Override public void setAlpha(int alpha) { fill.setAlpha(alpha); edge.setAlpha(alpha); }
+        @Override public void setColorFilter(ColorFilter colorFilter) {
+            fill.setColorFilter(colorFilter); edge.setColorFilter(colorFilter);
+        }
+        @Override @SuppressWarnings("deprecation")
+        public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 }

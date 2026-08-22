@@ -229,6 +229,25 @@ public final class UseCaseRobolectricTest {
         assertEquals("Erster Schritt", repository.templates(task.id).get(0).text);
     }
 
+    @Test public void editingArchivedDefinitionKeepsItArchived() {
+        new CreateTask(repository, repository, clock, ids).execute(TaskDefinition.basic(
+                "Archiv", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
+                Collections.singletonList("Alt")));
+        Task task = repository.allTasks().get(0);
+        repository.updateTask(task.withOccurrenceState(true, task.nextDueOn,
+                task.lastScheduledOn, TODAY, task.hasCompletedOccurrence));
+
+        new UpdateTask(repository, repository, ids, clock).execute(task.id,
+                TaskDefinition.basic("Archiv geändert", TaskSlot.EVENING,
+                        Recurrence.ONCE, 1, 0, Collections.singletonList("Neu")));
+
+        Task updated = repository.findTask(task.id);
+        assertTrue(updated.archived);
+        assertEquals("Archiv geändert", updated.title);
+        assertEquals(TaskSlot.EVENING, repository.scheduleEntries(task.id).get(0).slot);
+        assertEquals("Neu", repository.templates(task.id).get(0).text);
+    }
+
     @Test public void toggleAndCompleteAreIdempotentCommandsWithIsolatedXpPolicy() {
         new CreateTask(repository, repository, clock, ids).execute(TaskDefinition.basic(
                 "Routine", TaskSlot.MORNING, Recurrence.DAILY, 1, 0,

@@ -106,9 +106,14 @@ public final class AllTasksViewModel extends ViewModel {
     public void updateMode(AllTasksUiState.Mode value) {
         updateFilter(filter -> filter.withMode(value));
     }
-    public void toggleTask(TaskId value) {
-        updateFilter(filter -> filter.toggleExpanded(value.value));
+    public void resetVisibleFilters() {
+        updateFilter(AllTasksFilter::resetVisibleFilters);
     }
+    public void toggleCard(String cardKey) {
+        updateFilter(filter -> filter.toggleExpanded(cardKey));
+    }
+    /** Compatibility entrypoint for restored pre-placement expansion state. */
+    public void toggleTask(TaskId value) { toggleCard(value.value); }
 
     public void moveSchedule(ScheduleMoveRequest request) {
         UiCommand key = new UiCommand(UiCommand.Kind.ORGANIZE,

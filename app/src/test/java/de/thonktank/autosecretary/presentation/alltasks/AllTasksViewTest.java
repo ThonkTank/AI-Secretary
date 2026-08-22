@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -54,6 +55,9 @@ public final class AllTasksViewTest {
         assertTrue(rows.stream().anyMatch(value -> value.kind == AllTasksRow.Kind.STEP_TARGET
                 && value.endTarget));
         assertEquals(null, find(view, context.getString(R.string.action_complete)));
+        find(view, context.getString(R.string.all_filter_value,
+                context.getString(R.string.all_filter_status),
+                context.getString(R.string.all_status_active)) + " ⌄").performClick();
         find(view, context.getString(R.string.all_status_archived)).performClick();
         assertEquals(AllTasksUiState.Status.ARCHIVED, recorder.status);
     }
@@ -73,6 +77,38 @@ public final class AllTasksViewTest {
                 && value.slot == TaskSlot.MORNING));
         assertTrue(rows.stream().anyMatch(value -> value.kind == AllTasksRow.Kind.SLOT_HEADER
                 && value.slot == TaskSlot.EVENING));
+    }
+
+    @Test public void compactHeaderRemovesTitleAndCollapsesFiltersWithoutResettingState() {
+        Context context = ApplicationProvider.getApplicationContext();
+        AllTasksView view = new AllTasksView(context, new Recorder());
+        AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog())
+                .withSlots(Collections.singleton(TaskSlot.EVENING));
+        view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+
+        assertNull(find(view, context.getString(R.string.all_title)));
+        TextView toggle = find(view, context.getString(R.string.all_filter_toggle) + " ⌃");
+        assertNotNull(toggle);
+        toggle.performClick();
+
+        assertFalse(view.filtersOpenForTest());
+        assertNotNull(find(view, context.getString(R.string.all_filter_toggle) + " · 1 ⌄"));
+    }
+
+    @Test public void sortHeaderFixesStatusAndOffersWeekdayDropdown() {
+        Context context = ApplicationProvider.getApplicationContext();
+        AllTasksView view = new AllTasksView(context, new Recorder());
+        AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog())
+                .withStatus(AllTasksUiState.Status.ARCHIVED)
+                .withMode(AllTasksUiState.Mode.SORT);
+
+        view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+
+        assertEquals(AllTasksUiState.Status.ACTIVE, state.status);
+        assertNull(find(view, context.getString(R.string.all_filter_value,
+                context.getString(R.string.all_filter_status),
+                context.getString(R.string.all_status_active)) + " ⌄"));
+        assertNotNull(find(view, context.getString(R.string.all_filter_day) + " ⌄"));
     }
 
     private static TaskCatalog catalog() {

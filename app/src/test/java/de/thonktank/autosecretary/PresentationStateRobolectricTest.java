@@ -336,7 +336,7 @@ public final class PresentationStateRobolectricTest {
         android.os.Bundle stored = handle.get("all_tasks_filter");
         AllTasksFilter restored = new AllTasksSavedStateAdapter().decode(stored);
         assertEquals("Gym", restored.query);
-        assertEquals(AllTasksUiState.Status.ALL, restored.status);
+        assertEquals(AllTasksUiState.Status.ACTIVE, restored.status);
         assertEquals(java.util.EnumSet.of(TaskSlot.EVENING), restored.slots);
         assertEquals(java.util.EnumSet.of(Recurrence.WEEKDAYS), restored.recurrences);
         assertEquals(4, restored.weekday);

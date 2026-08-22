@@ -17,7 +17,9 @@ Alles-Tab bietet einen ruhigen Ort zum Organisieren, ohne zum Abarbeiten einzula
 - Offene Schritte lassen sich im Fokusblatt per langem Druck für das heutige Vorkommen umsortieren. Diese Ausführungsreihenfolge verändert weder die Schrittdefinition noch spätere Vorkommen.
 - Das Widget ist der Arbeitsbereich: abhaken, später setzen und Bedingungen erfüllen. Erstellen und Bearbeiten öffnen die App.
 - Im Alles-Tab lassen sich aktive und archivierte Aufgaben suchen und nach Status, Tageszeit
-  oder Rhythmus filtern. Aufgaben können bearbeitet und ihre Schritte ergänzt, bearbeitet,
+  oder Rhythmus filtern. Jede Zeitplatzierung erhält eine eigene ruhige Karte; Bearbeiten oder
+  Löschen wirkt auf die gemeinsame Definition. Auch archivierte Definitionen dürfen bearbeitet
+  werden und bleiben dabei archiviert. Schritte aktiver Aufgaben können ergänzt, bearbeitet,
   verschoben oder getauscht werden.
 - Eine eigene Sortieransicht zeigt jede eingeplante Tageszeit einer Aufgabe separat. Die
   Reihenfolge und Tageszeit werden ausschließlich per bewusstem Drag-and-drop geändert.

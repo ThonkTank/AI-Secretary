@@ -39,8 +39,11 @@ public final class AllTasksUiStateTest {
         AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog)
                 .withQuery("kniebeugen");
 
-        assertEquals(1, state.tasks.size());
+        assertEquals(2, state.tasks.size());
         assertEquals("gym", state.tasks.get(0).task.id.value);
+        assertEquals(TaskSlot.MORNING, state.tasks.get(0).slot);
+        assertEquals(TaskSlot.EVENING, state.tasks.get(1).slot);
+        assertTrue(state.tasks.stream().allMatch(value -> value.searchExpanded));
 
         state = state.withQuery("").withSlots(EnumSet.of(TaskSlot.EVENING))
                 .withRecurrences(EnumSet.of(Recurrence.DAILY));
@@ -66,11 +69,33 @@ public final class AllTasksUiStateTest {
 
     @Test public void archiveIsHiddenByDefaultAndReadablyFilterable() {
         AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog());
-        assertEquals(2, state.tasks.size());
+        assertEquals(3, state.tasks.size());
         state = state.withStatus(AllTasksUiState.Status.ARCHIVED);
         assertEquals(1, state.tasks.size());
         assertTrue(state.tasks.get(0).archived);
         assertTrue(state.schedule.isEmpty());
+    }
+
+    @Test public void placementCardsExpandIndependentlyAndCountAgainstStatusPool() {
+        AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog());
+
+        assertEquals(3, state.taskPoolSize);
+        assertEquals(3, state.tasks.size());
+        state = state.toggleExpanded(AllTasksUiState.cardKey("gym", TaskSlot.EVENING));
+
+        assertTrue(state.tasks.stream().filter(value -> value.task.id.value.equals("gym"))
+                .anyMatch(value -> value.slot == TaskSlot.EVENING && value.expanded));
+        assertTrue(state.tasks.stream().filter(value -> value.task.id.value.equals("gym"))
+                .anyMatch(value -> value.slot == TaskSlot.MORNING && !value.expanded));
+    }
+
+    @Test public void searchDoesNotInspectTaskOrStepNotes() {
+        AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog())
+                .withQuery("Training");
+        assertTrue(state.tasks.isEmpty());
+
+        state = AllTasksUiState.empty().withCatalog(catalog()).withQuery("tief");
+        assertTrue(state.tasks.isEmpty());
     }
 
     private static TaskCatalog catalog() {

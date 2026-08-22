@@ -73,8 +73,21 @@
     <string name="all_filter_status">Status</string>
     <string name="all_filter_day">Wochentag</string>
     <string name="all_every_day">alle Tage</string>
+    <string name="all_filter_toggle">Filter</string>
+    <string name="all_filter_reset">zurücksetzen</string>
+    <string name="all_filter_value">%1$s: %2$s</string>
+    <string name="all_filter_selected_count">%1$d gewählt</string>
+    <string name="all_task_result">%1$d Aufgaben, %2$d Schritte</string>
+    <string name="all_task_result_filtered">%1$d von %2$d Aufgaben</string>
+    <plurals name="all_schedule_result">
+        <item quantity="one">%1$d Einordnung</item>
+        <item quantity="other">%1$d Einordnungen</item>
+    </plurals>
+    <string name="all_schedule_result_filtered">%1$d von %2$d Einordnungen</string>
     <string name="all_steps_count">%1$d Schritte</string>
     <string name="all_step_count">1 Schritt</string>
+    <string name="all_no_steps">keine Schritte</string>
+    <string name="all_steps_matching">%1$d von %2$d Schritten passen</string>
     <string name="all_add_step">Schritt hinzufügen</string>
     <string name="all_step_insert_target">Schritt hier einfügen</string>
     <string name="all_schedule_insert_target">Aufgabe hier einordnen</string>
@@ -88,11 +101,13 @@
     <string name="all_empty_search_subtitle">Versuche einen anderen Suchbegriff. Die Filter bleiben erhalten.</string>
     <string name="all_empty_filter_title">Keine Aufgabe erfüllt diese Filter.</string>
     <string name="all_empty_filter_subtitle">Entferne einen Zeit-, Rhythmus- oder Tagesfilter.</string>
+    <string name="all_empty_filter_sort_subtitle">Entferne einen Zeit-, Rhythmus- oder Tagesfilter.</string>
     <string name="all_empty_status_title">Dieser Bereich ist leer.</string>
     <string name="all_empty_status_subtitle">Wechsle zwischen aktiven, archivierten oder allen Aufgaben.</string>
     <string name="a11y_expand_task">Schritte anzeigen</string>
     <string name="a11y_collapse_task">Schritte ausblenden</string>
     <string name="a11y_task_row">Aufgabe %1$s. %2$s</string>
+    <string name="a11y_task_menu">Menü für Aufgabe %1$s</string>
     <string name="a11y_step_row">Schritt %1$s. Antippen zum Bearbeiten, lange drücken zum Verschieben.</string>
     <string name="a11y_archived_step_row">Archivierter Schritt %1$s. Nur Lesen.</string>
     <string name="a11y_add_step_target">Neuen Schritt zu dieser Aufgabe hinzufügen oder einen Schritt hier ablegen.</string>

@@ -62,6 +62,8 @@ public final class AllTasksInteractionTest {
 
             int dragSource = view.positionForTest(AllTasksRow.Kind.STEP, "first-a");
             int dragTarget = view.positionForTest(AllTasksRow.Kind.STEP_TARGET, "second:end");
+            if (dragTarget < 0) dragTarget = view.positionForTest(
+                    AllTasksRow.Kind.STEP_TARGET, "second|MORNING:end");
             assertTrue(view.dragForTest(dragSource, dragTarget));
             assertEquals("first-a|second|null", recorder.stepMove);
         });

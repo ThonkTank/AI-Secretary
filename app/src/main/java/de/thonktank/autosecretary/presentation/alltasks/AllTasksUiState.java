@@ -30,9 +30,15 @@ public final class AllTasksUiState {
     /** ISO weekday 1..7, or zero for no weekday filter. */
     public final int weekday;
     public final Mode mode;
+    public final Set<String> expandedCardKeys;
+    /** Compatibility alias for older presentation tests. */
     public final Set<String> expandedTaskIds;
     public final List<TaskItem> tasks;
     public final List<ScheduleItem> schedule;
+    /** Placement-card count after status, before time/rhythm/search filters. */
+    public final int taskPoolSize;
+    /** Active schedule-placement count before time/rhythm/weekday/search filters. */
+    public final int schedulePoolSize;
 
     private AllTasksUiState(TaskCatalog catalog, AllTasksFilter filter) {
         this.catalog = catalog == null ? new TaskCatalog(Collections.emptyList()) : catalog;
@@ -43,7 +49,10 @@ public final class AllTasksUiState {
         this.recurrences = this.filter.recurrences;
         this.weekday = this.filter.weekday;
         this.mode = this.filter.mode;
-        this.expandedTaskIds = this.filter.expandedTaskIds;
+        this.expandedCardKeys = this.filter.expandedCardKeys;
+        this.expandedTaskIds = this.expandedCardKeys;
+        this.taskPoolSize = countTaskPool();
+        this.schedulePoolSize = countSchedulePool();
         this.tasks = Collections.unmodifiableList(projectTasks());
         this.schedule = Collections.unmodifiableList(projectSchedule());
     }
@@ -77,22 +86,35 @@ public final class AllTasksUiState {
     public AllTasksUiState withMode(Mode value) {
         return new AllTasksUiState(catalog, filter.withMode(value));
     }
-    public AllTasksUiState toggleExpanded(String taskId) {
-        return new AllTasksUiState(catalog, filter.toggleExpanded(taskId));
+    public AllTasksUiState resetVisibleFilters() {
+        return new AllTasksUiState(catalog, filter.resetVisibleFilters());
+    }
+    public AllTasksUiState toggleExpanded(String cardKey) {
+        return new AllTasksUiState(catalog, filter.toggleExpanded(cardKey));
     }
 
     private List<TaskItem> projectTasks() {
         List<TaskItem> result = new ArrayList<>();
+        String needle = normalizedQuery(query);
         for (TaskCatalog.Item item : catalog.items) {
             boolean archived = item.task.archived || item.task.conditionDone;
-            if ((status == Status.ACTIVE && archived)
-                    || (status == Status.ARCHIVED && !archived))
-                continue;
+            if (!inStatus(archived)) continue;
             if (!recurrences.isEmpty() && !recurrences.contains(item.task.recurrence)) continue;
-            if (!slots.isEmpty() && !hasSlot(item.schedule, slots)) continue;
-            if (!matches(item, query)) continue;
-            result.add(new TaskItem(item, archived, expandedTaskIds.contains(item.task.id.value)));
+            boolean titleMatch = contains(item.task.title, needle);
+            List<TaskStepTemplate> matchingSteps = matchingSteps(item.steps, needle);
+            if (!needle.isEmpty() && !titleMatch && matchingSteps.isEmpty()) continue;
+            for (TaskScheduleEntry placement : item.schedule) {
+                if (!slots.isEmpty() && !slots.contains(placement.slot)) continue;
+                String cardKey = cardKey(item.task.id.value, placement.slot);
+                boolean manual = expandedCardKeys.contains(cardKey)
+                        || expandedCardKeys.contains(item.task.id.value);
+                result.add(new TaskItem(item, placement, archived, manual,
+                        titleMatch, matchingSteps, needle));
+            }
         }
+        result.sort(Comparator.comparingInt((TaskItem value) -> value.slot.rank)
+                .thenComparingLong(value -> value.task.catalogOrder)
+                .thenComparing(value -> value.task.id.value));
         return result;
     }
 
@@ -115,21 +137,53 @@ public final class AllTasksUiState {
     }
 
     private static boolean matches(TaskCatalog.Item item, String query) {
-        String needle = query == null ? "" : query.trim().toLowerCase(Locale.GERMAN);
+        String needle = normalizedQuery(query);
         if (needle.isEmpty()) return true;
-        if (contains(item.task.title, needle) || contains(item.task.note, needle)) return true;
+        if (contains(item.task.title, needle)) return true;
         for (TaskStepTemplate step : item.steps)
-            if (contains(step.text, needle) || contains(step.note, needle)) return true;
+            if (contains(step.text, needle)) return true;
         return false;
+    }
+
+    private int countTaskPool() {
+        int count = 0;
+        for (TaskCatalog.Item item : catalog.items) {
+            boolean archived = item.task.archived || item.task.conditionDone;
+            if (inStatus(archived)) count += item.schedule.size();
+        }
+        return count;
+    }
+
+    private int countSchedulePool() {
+        int count = 0;
+        for (TaskCatalog.Item item : catalog.items)
+            if (!item.task.archived && !item.task.conditionDone) count += item.schedule.size();
+        return count;
+    }
+
+    private boolean inStatus(boolean archived) {
+        return status == Status.ALL || status == Status.ARCHIVED && archived
+                || status == Status.ACTIVE && !archived;
+    }
+
+    private static List<TaskStepTemplate> matchingSteps(List<TaskStepTemplate> steps,
+                                                         String needle) {
+        if (needle.isEmpty()) return Collections.emptyList();
+        List<TaskStepTemplate> result = new ArrayList<>();
+        for (TaskStepTemplate step : steps) if (contains(step.text, needle)) result.add(step);
+        return result;
+    }
+
+    private static String normalizedQuery(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.GERMAN);
+    }
+
+    public static String cardKey(String taskId, TaskSlot slot) {
+        return taskId + '|' + slot.name();
     }
 
     private static boolean contains(String value, String needle) {
         return value != null && value.toLowerCase(Locale.GERMAN).contains(needle);
-    }
-
-    private static boolean hasSlot(List<TaskScheduleEntry> values, Set<TaskSlot> selected) {
-        for (TaskScheduleEntry value : values) if (selected.contains(value.slot)) return true;
-        return false;
     }
 
     private static boolean eligibleOn(Task task, int weekday) {
@@ -144,12 +198,32 @@ public final class AllTasksUiState {
     public static final class TaskItem {
         public final Task task;
         public final List<TaskStepTemplate> steps;
+        public final List<TaskStepTemplate> visibleSteps;
+        public final List<TaskStepTemplate> matchingSteps;
         public final List<TaskScheduleEntry> schedule;
+        public final TaskScheduleEntry placement;
+        public final TaskSlot slot;
+        public final String cardKey;
         public final boolean archived;
         public final boolean expanded;
-        TaskItem(TaskCatalog.Item item, boolean archived, boolean expanded) {
+        public final boolean manuallyExpanded;
+        public final boolean searchExpanded;
+        public final boolean titleMatch;
+        public final String needle;
+        TaskItem(TaskCatalog.Item item, TaskScheduleEntry placement, boolean archived,
+                 boolean manuallyExpanded, boolean titleMatch,
+                 List<TaskStepTemplate> matchingSteps, String needle) {
             task = item.task; steps = item.steps; schedule = item.schedule;
-            this.archived = archived; this.expanded = expanded;
+            this.placement = placement; this.slot = placement.slot;
+            this.cardKey = cardKey(task.id.value, slot);
+            this.archived = archived;
+            this.manuallyExpanded = manuallyExpanded;
+            this.matchingSteps = Collections.unmodifiableList(new ArrayList<>(matchingSteps));
+            this.searchExpanded = !needle.isEmpty() && !matchingSteps.isEmpty();
+            this.expanded = manuallyExpanded || searchExpanded;
+            this.visibleSteps = searchExpanded ? this.matchingSteps : steps;
+            this.titleMatch = titleMatch;
+            this.needle = needle;
         }
     }
 

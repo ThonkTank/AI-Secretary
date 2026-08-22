@@ -9,7 +9,8 @@ import java.util.List;
 
 /** Flat, stable row projection consumed by the virtualized management list. */
 final class AllTasksRow {
-    enum Kind { TASK_HEADER, STEP_TARGET, STEP, SLOT_HEADER, SCHEDULE_TARGET, SCHEDULE, EMPTY }
+    enum Kind { TASK_HEADER, STEP_TARGET, STEP, STEP_ADD, SLOT_HEADER,
+        SCHEDULE_TARGET, SCHEDULE, EMPTY }
 
     final Kind kind;
     final String key;
@@ -19,6 +20,7 @@ final class AllTasksRow {
     final TaskStepTemplate step;
     final AllTasksUiState.ScheduleItem schedule;
     final String taskId;
+    final String cardKey;
     final String beforeId;
     final TaskSlot slot;
     final boolean endTarget;
@@ -28,7 +30,7 @@ final class AllTasksRow {
 
     private AllTasksRow(Kind kind, String key, String content,
                         AllTasksUiState.TaskItem task, TaskStepTemplate step,
-                        AllTasksUiState.ScheduleItem schedule, String taskId,
+                        AllTasksUiState.ScheduleItem schedule, String taskId, String cardKey,
                         String beforeId, TaskSlot slot, boolean endTarget,
                         EmptyReason emptyReason) {
         this.kind = kind;
@@ -39,6 +41,7 @@ final class AllTasksRow {
         this.step = step;
         this.schedule = schedule;
         this.taskId = taskId;
+        this.cardKey = cardKey;
         this.beforeId = beforeId;
         this.slot = slot;
         this.endTarget = endTarget;
@@ -55,21 +58,26 @@ final class AllTasksRow {
         List<AllTasksRow> result = new ArrayList<>();
         for (AllTasksUiState.TaskItem item : state.tasks) {
             String taskId = item.task.id.value;
-            result.add(new AllTasksRow(Kind.TASK_HEADER, "task:" + taskId,
+            String cardKey = item.cardKey;
+            result.add(new AllTasksRow(Kind.TASK_HEADER, "task:" + cardKey,
                     item.task.title + '|' + item.archived + '|' + item.expanded + '|'
                             + item.steps.size() + '|' + item.task.nextDueOn + '|'
-                            + item.task.recurrence,
-                    item, null, null, taskId, null, null, false, null));
+                            + item.task.recurrence + '|' + item.slot + '|' + item.needle,
+                    item, null, null, taskId, cardKey, null, null, false, null));
             if (!item.expanded) continue;
-            for (TaskStepTemplate step : item.steps) {
+            for (TaskStepTemplate step : item.visibleSteps) {
                 if (!item.archived)
-                    result.add(target(Kind.STEP_TARGET, taskId, step.id, null, false));
-                result.add(new AllTasksRow(Kind.STEP, "step:" + step.id,
-                        step.text + '|' + step.note + '|' + item.archived,
-                        item, step, null, taskId, null, null, false, null));
+                    result.add(target(Kind.STEP_TARGET, taskId, cardKey,
+                            step.id, null, false));
+                result.add(new AllTasksRow(Kind.STEP, "step:" + cardKey + ':' + step.id,
+                        step.text + '|' + step.note + '|' + item.archived + '|' + item.needle,
+                        item, step, null, taskId, cardKey, null, null, false, null));
             }
             if (!item.archived)
-                result.add(target(Kind.STEP_TARGET, taskId, null, null, true));
+                result.add(target(Kind.STEP_TARGET, taskId, cardKey, null, null, true));
+            result.add(new AllTasksRow(Kind.STEP_ADD, "add:" + cardKey,
+                    cardKey + '|' + item.archived, item, null, null, taskId, cardKey,
+                    null, null, true, null));
         }
         return Collections.unmodifiableList(result);
     }
@@ -80,37 +88,36 @@ final class AllTasksRow {
         for (TaskSlot slot : TaskSlot.values()) {
             if (!state.slots.isEmpty() && !state.slots.contains(slot)) continue;
             result.add(new AllTasksRow(Kind.SLOT_HEADER, "slot:" + slot.name(), slot.name(),
-                    null, null, null, null, null, slot, false, null));
+                    null, null, null, null, null, null, slot, false, null));
             for (AllTasksUiState.ScheduleItem item : state.schedule) {
                 if (item.slot != slot) continue;
-                result.add(target(Kind.SCHEDULE_TARGET, null, item.id, slot, false));
+                result.add(target(Kind.SCHEDULE_TARGET, null, null, item.id, slot, false));
                 result.add(new AllTasksRow(Kind.SCHEDULE, "schedule:" + item.id,
                         item.title + '|' + item.slot + '|' + item.displayOrder,
-                        null, null, item, item.taskId, null, slot, false, null));
+                        null, null, item, item.taskId, null, null, slot, false, null));
             }
-            result.add(target(Kind.SCHEDULE_TARGET, null, null, slot, true));
+            result.add(target(Kind.SCHEDULE_TARGET, null, null, null, slot, true));
         }
         return Collections.unmodifiableList(result);
     }
 
-    private static AllTasksRow target(Kind kind, String taskId, String beforeId,
+    private static AllTasksRow target(Kind kind, String taskId, String cardKey, String beforeId,
                                       TaskSlot slot, boolean end) {
-        String owner = taskId == null ? slot.name() : taskId;
+        String owner = taskId == null ? slot.name() : cardKey;
         String before = beforeId == null ? "end" : beforeId;
         return new AllTasksRow(kind, kind.name() + ':' + owner + ':' + before,
-                owner + '|' + before, null, null, null, taskId, beforeId, slot,
+                owner + '|' + before, null, null, null, taskId, cardKey, beforeId, slot,
                 end, null);
     }
 
     private static AllTasksRow empty(AllTasksUiState state) {
         EmptyReason reason;
-        if (state.catalog.items.isEmpty()) reason = EmptyReason.NO_TASKS;
-        else if (!state.query.trim().isEmpty()) reason = EmptyReason.SEARCH;
+        if (!state.query.trim().isEmpty()) reason = EmptyReason.SEARCH;
         else if (!state.slots.isEmpty() || !state.recurrences.isEmpty() || state.weekday != 0)
             reason = EmptyReason.FILTERS;
         else reason = EmptyReason.STATUS;
         return new AllTasksRow(Kind.EMPTY, "empty:" + reason, reason.name(), null,
-                null, null, null, null, null, false, reason);
+                null, null, null, null, null, null, false, reason);
     }
 
     private static long stableId(String value) {

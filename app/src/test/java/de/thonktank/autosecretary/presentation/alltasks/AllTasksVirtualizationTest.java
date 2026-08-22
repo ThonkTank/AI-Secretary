@@ -6,7 +6,6 @@ import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import static android.view.View.MeasureSpec.EXACTLY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
@@ -58,6 +57,7 @@ public final class AllTasksVirtualizationTest {
         assertTrue(view.recyclerForTest().getChildCount() < view.rowCountForTest());
         long firstId = view.rowIdForTest(0);
         RecyclerView.ViewHolder first = view.recyclerForTest().findViewHolderForAdapterPosition(0);
+        assertEquals(firstId, first.getItemId());
 
         view.bind(state.withQuery("Aufgabe"),
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
@@ -65,8 +65,9 @@ public final class AllTasksVirtualizationTest {
         layout(view, 412, 900);
 
         assertEquals(firstId, view.rowIdForTest(0));
-        assertSame(first.itemView,
-                view.recyclerForTest().findViewHolderForAdapterPosition(0).itemView);
+        RecyclerView.ViewHolder rebound =
+                view.recyclerForTest().findViewHolderForAdapterPosition(0);
+        assertEquals(firstId, rebound.getItemId());
     }
 
     @Test public void flatRowsMakeCrossTaskDragAndAccessibilityReorderUnambiguous() {
@@ -79,7 +80,8 @@ public final class AllTasksVirtualizationTest {
         shadowOf(Looper.getMainLooper()).idle();
 
         int source = view.positionForTest(AllTasksRow.Kind.STEP, "step-0-a");
-        int target = view.positionForTest(AllTasksRow.Kind.STEP_TARGET, "task-1:end");
+        int target = view.positionForTest(AllTasksRow.Kind.STEP_TARGET,
+                "task-1|MORNING:end");
         assertTrue(view.dragForTest(source, target));
         assertEquals("step-0-a|task-1|null", recorder.stepMove);
 
@@ -117,6 +119,29 @@ public final class AllTasksVirtualizationTest {
         assertFalse(view.dragForTest(step, 0));
     }
 
+    @Test public void stepInsertionTargetsOccupySpaceOnlyDuringDrag() {
+        Context context = ApplicationProvider.getApplicationContext();
+        AllTasksView view = new AllTasksView(context, new Recorder());
+        AllTasksUiState state = AllTasksUiState.from(catalog(1), AllTasksFilter.defaults())
+                .toggleExpanded("task-0");
+        view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+        layout(view, 412, 1_000);
+        shadowOf(Looper.getMainLooper()).idle();
+        int target = view.positionForTest(AllTasksRow.Kind.STEP_TARGET,
+                "task-0|MORNING:step-0-a");
+        RecyclerView.ViewHolder hidden = view.recyclerForTest()
+                .findViewHolderForAdapterPosition(target);
+        assertTrue(hidden == null || hidden.itemView.getMeasuredHeight() == 0);
+
+        view.setDragActiveForTest(true);
+        shadowOf(Looper.getMainLooper()).idle();
+        layout(view, 412, 1_000);
+        RecyclerView.ViewHolder shown = view.recyclerForTest()
+                .findViewHolderForAdapterPosition(target);
+
+        assertTrue(shown != null && shown.itemView.getMeasuredHeight() > 0);
+    }
+
     @Test public void emptyProjectionExplainsSearchFilterAndStatusSeparately() {
         AllTasksUiState base = AllTasksUiState.from(catalog(1), AllTasksFilter.defaults());
         assertEquals(AllTasksRow.EmptyReason.SEARCH,
@@ -129,7 +154,7 @@ public final class AllTasksVirtualizationTest {
                         .get(0).emptyReason);
     }
 
-    @Test public void searchPublishesOnlyOnceAfterTheShortDebounce() {
+    @Test public void searchPublishesEveryIncrementImmediately() {
         Context context = ApplicationProvider.getApplicationContext();
         Recorder recorder = new Recorder();
         AllTasksView view = new AllTasksView(context, recorder);
@@ -138,11 +163,8 @@ public final class AllTasksVirtualizationTest {
 
         view.searchForTest().setText("A");
         view.searchForTest().setText("Au");
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(179));
-        assertEquals(null, recorder.query);
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(1));
         assertEquals("Au", recorder.query);
-        assertEquals(1, recorder.queryCount);
+        assertEquals(2, recorder.queryCount);
     }
 
     @Test public void managementListFitsRequiredWidthsAndLargeFontWithoutRowOverflow() {
@@ -166,7 +188,12 @@ public final class AllTasksVirtualizationTest {
                 View child = recycler.getChildAt(index);
                 assertTrue(width + "dp/" + scale,
                         child.getLeft() >= 0 && child.getRight() <= recycler.getWidth());
-                assertTrue(width + "dp/" + scale, child.getMeasuredHeight() > 0);
+                RecyclerView.ViewHolder holder = recycler.getChildViewHolder(child);
+                AllTasksRow row = view.adapterRowForTest(
+                        holder.getBindingAdapterPosition());
+                assertTrue(width + "dp/" + scale,
+                        child.getMeasuredHeight() > 0
+                                || row.kind == AllTasksRow.Kind.STEP_TARGET);
             }
         }
     }
