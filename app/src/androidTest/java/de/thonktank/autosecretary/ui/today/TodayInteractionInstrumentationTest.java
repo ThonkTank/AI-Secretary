@@ -3,9 +3,11 @@ package de.thonktank.autosecretary.ui.today;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import android.app.Instrumentation;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
@@ -26,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 
 import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.R;
@@ -47,6 +50,9 @@ import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 
 @RunWith(AndroidJUnit4.class)
 public final class TodayInteractionInstrumentationTest {
+    private static final long UI_TIMEOUT_MILLIS = 5_000L;
+    private static final long UI_POLL_MILLIS = 16L;
+
     private TodayInteractionHarnessActivity activity;
 
     @After public void closeActivity() {
@@ -57,28 +63,38 @@ public final class TodayInteractionInstrumentationTest {
         Harness harness = mount();
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         AtomicReference<View> firstBody = new AtomicReference<>();
-        AtomicReference<View> lastBody = new AtomicReference<>();
         instrumentation.runOnMainSync(() -> {
             firstBody.set(longClickable(harness.rows().get(0)));
-            lastBody.set(longClickable(harness.rows().get(2)));
         });
         assertNotNull(firstBody.get());
-        assertNotNull(lastBody.get());
 
-        int[] start = centerOnScreen(firstBody.get());
-        int[] end = centerOnScreen(lastBody.get());
+        Rect listBounds = awaitInteractiveBounds(instrumentation, harness.list);
+        Rect sourceBounds = awaitInteractiveBounds(instrumentation, firstBody.get());
+        int[] start = new int[]{sourceBounds.centerX(), sourceBounds.centerY()};
+        int edgeInset = Math.max(2, Math.round(8f
+                * activity.getResources().getDisplayMetrics().density));
+        int[] end = new int[]{start[0], listBounds.bottom - edgeInset};
+        assertTrue(listBounds.contains(start[0], start[1]));
+        assertTrue(listBounds.contains(end[0], end[1]));
+
         long down = SystemClock.uptimeMillis();
-        instrumentation.sendPointerSync(MotionEvent.obtain(down, down,
-                MotionEvent.ACTION_DOWN, start[0], start[1], 0));
-        SystemClock.sleep(ViewConfiguration.getLongPressTimeout() + 100L);
+        sendPointer(instrumentation, down, down, MotionEvent.ACTION_DOWN, start);
+        awaitCondition(instrumentation, "Long press did not start step reordering",
+                () -> harness.has(TodayAction.Kind.BEGIN_REORDER),
+                ViewConfiguration.getLongPressTimeout() + UI_TIMEOUT_MILLIS);
+
         long move = SystemClock.uptimeMillis();
-        instrumentation.sendPointerSync(MotionEvent.obtain(down, move,
-                MotionEvent.ACTION_MOVE, end[0], end[1], 0));
-        SystemClock.sleep(150L);
+        sendPointer(instrumentation, down, move, MotionEvent.ACTION_MOVE, end);
+        awaitCondition(instrumentation, "Drag did not preview and edge-scroll",
+                () -> harness.has(TodayAction.Kind.PREVIEW_REORDER)
+                        && harness.scrollHost.distance != 0,
+                UI_TIMEOUT_MILLIS);
+
         long up = SystemClock.uptimeMillis();
-        instrumentation.sendPointerSync(MotionEvent.obtain(down, up,
-                MotionEvent.ACTION_UP, end[0], end[1], 0));
-        instrumentation.waitForIdleSync();
+        sendPointer(instrumentation, down, up, MotionEvent.ACTION_UP, end);
+        awaitCondition(instrumentation, "Drop did not persist the reordered steps",
+                () -> harness.has(TodayAction.Kind.DROP_REORDER)
+                        && !harness.commands.isEmpty(), UI_TIMEOUT_MILLIS);
 
         assertTrue(harness.has(TodayAction.Kind.BEGIN_REORDER));
         assertTrue(harness.has(TodayAction.Kind.PREVIEW_REORDER));
@@ -132,11 +148,43 @@ public final class TodayInteractionInstrumentationTest {
         return harness;
     }
 
-    private static int[] centerOnScreen(View view) {
-        int[] location = new int[2];
-        view.getLocationOnScreen(location);
-        return new int[]{location[0] + view.getWidth() / 2,
-                location[1] + view.getHeight() / 2};
+    private Rect awaitInteractiveBounds(Instrumentation instrumentation, View view) {
+        Rect result = new Rect();
+        awaitCondition(instrumentation, "Target view never became interactive", () -> {
+            Rect visible = new Rect();
+            Rect window = new Rect();
+            View decor = activity.getWindow().getDecorView();
+            if (!activity.hasWindowFocus() || !view.isAttachedToWindow() || !view.isShown()
+                    || !view.getGlobalVisibleRect(visible)
+                    || !decor.getGlobalVisibleRect(window) || !visible.intersect(window)
+                    || visible.width() < 3 || visible.height() < 3) return false;
+            result.set(visible);
+            return true;
+        }, UI_TIMEOUT_MILLIS);
+        return result;
+    }
+
+    private static void sendPointer(Instrumentation instrumentation, long downTime,
+                                    long eventTime, int action, int[] location) {
+        MotionEvent event = MotionEvent.obtain(downTime, eventTime, action,
+                location[0], location[1], 0);
+        try {
+            instrumentation.sendPointerSync(event);
+        } finally {
+            event.recycle();
+        }
+    }
+
+    private static void awaitCondition(Instrumentation instrumentation, String message,
+                                       BooleanSupplier condition, long timeoutMillis) {
+        long deadline = SystemClock.uptimeMillis() + timeoutMillis;
+        AtomicReference<Boolean> matched = new AtomicReference<>(false);
+        while (SystemClock.uptimeMillis() < deadline) {
+            instrumentation.runOnMainSync(() -> matched.set(condition.getAsBoolean()));
+            if (matched.get()) return;
+            SystemClock.sleep(UI_POLL_MILLIS);
+        }
+        fail(message);
     }
 
     private static View longClickable(View view) {
