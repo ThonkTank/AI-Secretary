@@ -70,9 +70,11 @@ public final class TodayInteractionInstrumentationTest {
     @After public void closeActivity() {
         if (currentGesture != null) {
             try {
-                currentGesture.cancel();
+                // A system drag owns the pointer after long-press. Releasing the finger ends
+                // that drag reliably on API 26; an injected ACTION_CANCEL can leave it stale.
+                currentGesture.up();
             } catch (RuntimeException | AssertionError error) {
-                Log.e(TAG, "Could not cancel the active test gesture", error);
+                Log.e(TAG, "Could not release the active test gesture", error);
             }
         }
         if (activity != null) activity.finish();
