@@ -10,6 +10,7 @@ import android.app.UiAutomation;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.os.SystemClock;
+import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -80,9 +81,10 @@ public final class TodayInteractionInstrumentationTest {
 
         long down = SystemClock.uptimeMillis();
         sendPointer(instrumentation, down, down, MotionEvent.ACTION_DOWN, start);
+        SystemClock.sleep(ViewConfiguration.getLongPressTimeout() + 100L);
         awaitCondition(instrumentation, "Long press did not start step reordering",
                 () -> harness.has(TodayAction.Kind.BEGIN_REORDER),
-                ViewConfiguration.getLongPressTimeout() + UI_TIMEOUT_MILLIS);
+                UI_TIMEOUT_MILLIS);
 
         long move = SystemClock.uptimeMillis();
         sendPointer(instrumentation, down, move, MotionEvent.ACTION_MOVE, end);
@@ -168,8 +170,18 @@ public final class TodayInteractionInstrumentationTest {
 
     private static void sendPointer(Instrumentation instrumentation, long downTime,
                                     long eventTime, int action, int[] location) {
-        MotionEvent event = MotionEvent.obtain(downTime, eventTime, action,
-                location[0], location[1], 0);
+        MotionEvent.PointerProperties properties = new MotionEvent.PointerProperties();
+        properties.id = 0;
+        properties.toolType = MotionEvent.TOOL_TYPE_FINGER;
+        MotionEvent.PointerCoords coordinates = new MotionEvent.PointerCoords();
+        coordinates.x = location[0];
+        coordinates.y = location[1];
+        coordinates.pressure = 1f;
+        coordinates.size = 1f;
+        MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, 1,
+                new MotionEvent.PointerProperties[]{properties},
+                new MotionEvent.PointerCoords[]{coordinates}, 0, 0, 1f, 1f,
+                0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
         try {
             UiAutomation automation = instrumentation.getUiAutomation();
             assertNotNull("UI automation is required for system drag injection", automation);
