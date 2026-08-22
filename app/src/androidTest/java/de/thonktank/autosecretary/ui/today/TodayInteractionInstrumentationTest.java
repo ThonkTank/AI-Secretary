@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.app.Instrumentation;
+import android.app.UiAutomation;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.os.SystemClock;
@@ -71,7 +72,7 @@ public final class TodayInteractionInstrumentationTest {
         Rect listBounds = awaitInteractiveBounds(instrumentation, harness.list);
         Rect sourceBounds = awaitInteractiveBounds(instrumentation, firstBody.get());
         int[] start = new int[]{sourceBounds.centerX(), sourceBounds.centerY()};
-        int edgeInset = Math.max(2, Math.round(8f
+        int edgeInset = Math.max(2, Math.round(32f
                 * activity.getResources().getDisplayMetrics().density));
         int[] end = new int[]{start[0], listBounds.bottom - edgeInset};
         assertTrue(listBounds.contains(start[0], start[1]));
@@ -154,9 +155,10 @@ public final class TodayInteractionInstrumentationTest {
             Rect visible = new Rect();
             Rect window = new Rect();
             View decor = activity.getWindow().getDecorView();
+            decor.getWindowVisibleDisplayFrame(window);
             if (!activity.hasWindowFocus() || !view.isAttachedToWindow() || !view.isShown()
                     || !view.getGlobalVisibleRect(visible)
-                    || !decor.getGlobalVisibleRect(window) || !visible.intersect(window)
+                    || window.isEmpty() || !visible.intersect(window)
                     || visible.width() < 3 || visible.height() < 3) return false;
             result.set(visible);
             return true;
@@ -169,7 +171,10 @@ public final class TodayInteractionInstrumentationTest {
         MotionEvent event = MotionEvent.obtain(downTime, eventTime, action,
                 location[0], location[1], 0);
         try {
-            instrumentation.sendPointerSync(event);
+            UiAutomation automation = instrumentation.getUiAutomation();
+            assertNotNull("UI automation is required for system drag injection", automation);
+            assertTrue("Pointer event injection failed",
+                    automation.injectInputEvent(event, true));
         } finally {
             event.recycle();
         }
