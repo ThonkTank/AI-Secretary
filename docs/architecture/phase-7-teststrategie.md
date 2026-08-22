@@ -116,6 +116,19 @@ Verbindliches Abschluss-Gate:
 Der serielle Modus ist die reproduzierbare Referenz auf speicherknappen Rechnern. Er ersetzt
 keine Ausführung der Instrumentationstests auf einem Android-Zielsystem.
 
+Nach einem UI-Release wird die bewusste Aktualisierung auf genau einem physischen Gerät mit der
+vorherigen Produktionsversion ausgeführt:
+
+```bash
+./scripts/ci/run-device-acceptance.sh forest-android-1010501
+```
+
+Das Skript installiert nichts per ADB. Es validiert Metadaten und APK-Hash, prüft Vorher-/Nachher-
+Versionen rund um den am Gerät ausgelösten In-App-Updatepfad und schreibt Screenshot,
+UI-Hierarchie, Geräteeigenschaften und `report.json` nach
+`build/reports/device-acceptance/<release-tag>`. Ohne genau ein autorisiertes Gerät bleibt der
+Bericht auf `pending`; eine Phase ist dann nicht vollständig abgenommen.
+
 ## Abschlussmessung
 
 Auf derselben lokalen Umgebung sank die Laufzeit der
