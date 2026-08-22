@@ -54,6 +54,8 @@ import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 public final class TodayInteractionInstrumentationTest {
     private static final long UI_TIMEOUT_MILLIS = 5_000L;
     private static final long UI_POLL_MILLIS = 16L;
+    private static final int DRAG_MOVE_STEPS = 12;
+    private static final long DRAG_MOVE_DELAY_MILLIS = 24L;
 
     private TodayInteractionHarnessActivity activity;
 
@@ -86,8 +88,7 @@ public final class TodayInteractionInstrumentationTest {
                 () -> harness.has(TodayAction.Kind.BEGIN_REORDER),
                 UI_TIMEOUT_MILLIS);
 
-        long move = SystemClock.uptimeMillis();
-        sendPointer(instrumentation, down, move, MotionEvent.ACTION_MOVE, end);
+        movePointer(instrumentation, down, start, end);
         awaitCondition(instrumentation, "Drag did not preview and edge-scroll",
                 () -> harness.has(TodayAction.Kind.PREVIEW_REORDER)
                         && harness.scrollHost.distance != 0,
@@ -189,6 +190,20 @@ public final class TodayInteractionInstrumentationTest {
                     automation.injectInputEvent(event, true));
         } finally {
             event.recycle();
+        }
+    }
+
+    private static void movePointer(Instrumentation instrumentation, long downTime,
+                                    int[] start, int[] end) {
+        for (int step = 1; step <= DRAG_MOVE_STEPS; step++) {
+            float progress = step / (float) DRAG_MOVE_STEPS;
+            int[] location = new int[]{
+                    Math.round(start[0] + (end[0] - start[0]) * progress),
+                    Math.round(start[1] + (end[1] - start[1]) * progress)
+            };
+            sendPointer(instrumentation, downTime, SystemClock.uptimeMillis(),
+                    MotionEvent.ACTION_MOVE, location);
+            SystemClock.sleep(DRAG_MOVE_DELAY_MILLIS);
         }
     }
 
