@@ -1,0 +1,75 @@
+import unittest
+
+from change_scope import ChangeScope, classify
+
+
+class ChangeScopeTest(unittest.TestCase):
+    def test_empty_and_documentation_only_changes_require_no_build(self):
+        self.assertEqual(ChangeScope(False, False, False), classify([]))
+        self.assertEqual(
+            ChangeScope(False, False, False),
+            classify(["README.md", "AGENTS.md", "docs/releasing.md"]),
+        )
+
+    def test_host_tests_require_quality_without_device_or_release(self):
+        self.assertEqual(
+            ChangeScope(True, False, False),
+            classify(["app/src/test/java/example/ProjectionTest.java"]),
+        )
+        self.assertEqual(
+            ChangeScope(True, False, False),
+            classify(["scripts/release/test_release_tool.py"]),
+        )
+
+    def test_android_tests_and_ci_harness_require_instrumentation_without_release(self):
+        for path in (
+            "app/src/androidTest/java/example/DeviceTest.java",
+            "scripts/ci/run-upgrade-test.sh",
+            ".github/workflows/verify.yml",
+            "app/schemas/de.example/14.json",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(
+                    ChangeScope(True, True, False),
+                    classify([path]),
+                )
+
+    def test_production_and_embedded_contract_changes_require_every_gate(self):
+        for path in (
+            "app/src/main/java/example/Main.java",
+            "app/src/main/res/values/strings.xml",
+            "core-domain/src/main/java/example/Rule.java",
+            "today-core/src/main/java/example/State.java",
+            "app/build.gradle.kts",
+            "gradle/wrapper/gradle-wrapper.properties",
+            "release/release.properties",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(
+                    ChangeScope(True, True, True),
+                    classify([path]),
+                )
+
+    def test_mixed_scope_uses_the_strongest_required_gate(self):
+        self.assertEqual(
+            ChangeScope(True, True, True),
+            classify(
+                [
+                    "docs/releasing.md",
+                    "app/src/test/java/example/Test.java",
+                    "app/src/main/java/example/Main.java",
+                ]
+            ),
+        )
+
+    def test_github_output_is_stable_and_lowercase(self):
+        self.assertEqual(
+            "quality_required=true\n"
+            "instrumentation_required=false\n"
+            "release_required=false",
+            ChangeScope(True, False, False).github_output(),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

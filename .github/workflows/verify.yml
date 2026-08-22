@@ -17,12 +17,14 @@ jobs:
   release_scope:
     runs-on: ubuntu-latest
     outputs:
-      app_changed: ${{ steps.scope.outputs.app_changed }}
+      quality_required: ${{ steps.scope.outputs.quality_required }}
+      instrumentation_required: ${{ steps.scope.outputs.instrumentation_required }}
+      release_required: ${{ steps.scope.outputs.release_required }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-      - name: Decide whether this revision may publish an app
+      - name: Classify verification and release scope
         id: scope
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -31,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$EVENT_NAME" = workflow_dispatch ]; then
-            printf 'app_changed=true\n' >> "$GITHUB_OUTPUT"
+            python3 scripts/ci/change_scope.py --all >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ "$EVENT_NAME" = pull_request ]; then
@@ -39,17 +41,12 @@ jobs:
           else
             FROM_SHA="$BEFORE_SHA"
           fi
-          CHANGED=$(git diff --name-only "$FROM_SHA" "$GITHUB_SHA")
-          if printf '%s\n' "$CHANGED" | awk '
-            NF && $0 !~ /^docs\// && $0 !~ /^[^/]+\.md$/ { found=1 }
-            END { exit found ? 0 : 1 }
-          '; then
-            printf 'app_changed=true\n' >> "$GITHUB_OUTPUT"
-          else
-            printf 'app_changed=false\n' >> "$GITHUB_OUTPUT"
-          fi
+          git diff --name-only "$FROM_SHA" "$GITHUB_SHA" \
+            | python3 scripts/ci/change_scope.py >> "$GITHUB_OUTPUT"
 
   quality:
+    if: needs.release_scope.outputs.quality_required == 'true'
+    needs: [release_scope]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -58,6 +55,8 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
+      - name: Test change-scope tool
+        run: python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
       - name: Test release contract tool
         run: python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
       - name: Compile, unit tests, goldens, lint and APKs
@@ -77,7 +76,7 @@ jobs:
             app/build/outputs/apk/release/app-release-unsigned.apk
 
   instrumentation:
-    if: github.event_name != 'pull_request' && needs.release_scope.outputs.app_changed == 'true'
+    if: needs.release_scope.outputs.instrumentation_required == 'true'
     needs: [quality, release_scope]
     runs-on: ubuntu-latest
     strategy:
@@ -113,23 +112,65 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: ./gradlew connectedDebugAndroidTest
 
-  pr-gate:
-    name: pull-request-gate
-    if: always() && github.event_name == 'pull_request'
-    needs: [quality]
+  instrumentation-gate:
+    name: instrumentation-gate
+    if: always()
+    needs: [quality, release_scope, instrumentation]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Require every pull-request quality job
+      - name: Require the applicable Android verification jobs
         env:
+          SCOPE_RESULT: ${{ needs.release_scope.result }}
+          QUALITY_REQUIRED: ${{ needs.release_scope.outputs.quality_required }}
           QUALITY_RESULT: ${{ needs.quality.result }}
+          INSTRUMENTATION_REQUIRED: ${{ needs.release_scope.outputs.instrumentation_required }}
+          INSTRUMENTATION_RESULT: ${{ needs.instrumentation.result }}
         run: |
-          test "$QUALITY_RESULT" = success
+          set -euo pipefail
+          test "$SCOPE_RESULT" = success
+          if [ "$QUALITY_REQUIRED" = true ]; then
+            test "$QUALITY_RESULT" = success
+          else
+            test "$QUALITY_RESULT" = skipped
+          fi
+          if [ "$INSTRUMENTATION_REQUIRED" = true ]; then
+            test "$INSTRUMENTATION_RESULT" = success
+          else
+            test "$INSTRUMENTATION_RESULT" = skipped
+          fi
+
+  pr-gate:
+    name: pull-request-gate
+    if: always() && github.event_name == 'pull_request'
+    needs: [quality, release_scope, instrumentation-gate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Require every applicable pull-request gate
+        env:
+          SCOPE_RESULT: ${{ needs.release_scope.result }}
+          QUALITY_REQUIRED: ${{ needs.release_scope.outputs.quality_required }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          INSTRUMENTATION_GATE_RESULT: ${{ needs.instrumentation-gate.result }}
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = success
+          if [ "$QUALITY_REQUIRED" = true ]; then
+            test "$QUALITY_RESULT" = success
+          else
+            test "$QUALITY_RESULT" = skipped
+          fi
+          test "$INSTRUMENTATION_GATE_RESULT" = success
 
   package:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.release_scope.outputs.app_changed == 'true'
-    needs: [quality, instrumentation, release_scope]
+    if: >-
+      always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      needs.release_scope.outputs.release_required == 'true' &&
+      needs.quality.result == 'success' && needs.instrumentation-gate.result == 'success'
+    needs: [quality, instrumentation-gate, release_scope]
     runs-on: ubuntu-latest
     permissions:
       contents: read

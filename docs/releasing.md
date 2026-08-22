@@ -1,11 +1,12 @@
 # Auto Secretary – Builds und Updates veröffentlichen
 
-Jeder Push auf `main` durchläuft den schnellen Quality-Job. Enthält der Push App-, Build- oder
-Releasecode, folgen Instrumentierungstests und ein echter Produktions-Upgrade-Test auf API 26 und
-API 35. Reine Änderungen unter `docs/` sowie an Repository-Markdown werden geprüft, erzeugen aber
-keinen APK-Kandidaten und kein GitHub Release. Nur wenn die unabhängigen Qualitätsprüfungen
-erfolgreich sind, baut GitHub genau einmal einen signierten Produktionskandidaten. Derselbe
-Kandidat wird auf beiden API-Stufen getestet und anschließend bytegleich veröffentlicht.
+Der Workflow klassifiziert jede Änderung getrennt für Host-Qualität, Android-Instrumentierung und
+Produktveröffentlichung. Reine Änderungen unter `docs/` sowie an Repository-Markdown bestehen mit
+dem Scope- und PR-Sammelcheck, ohne einen Android-Build zu starten. Andere Nicht-Produktänderungen
+durchlaufen das passende Quality- beziehungsweise Instrumentierungs-Gate, erzeugen aber keine neue
+App-Version. Produkt- und eingebettete Vertragsänderungen werden schon im Pull Request auf API 26
+und API 35 instrumentiert. Nach dem Merge wiederholt `main` diese Prüfungen für den exakten
+Release-Commit und führt zusätzlich den echten Produktions-Upgrade-Test auf beiden APIs aus.
 
 ## Dauerhafter Signaturschlüssel
 
@@ -47,23 +48,27 @@ bezeichnet werden.
 
 ## Automatischer Ablauf
 
-1. Eine Änderung wird auf einem Themenbranch committed, als Pull Request geprüft und nach grünen
-   Pflichtchecks per Squash-Merge nach `main` übernommen. Bis Phase 2 der Härtungsroadmap die
-   Repositoryregeln technisch erzwingt, ist dieser Ablauf organisatorisch verbindlich.
-2. `.github/workflows/verify.yml` führt das vollständige Quality-Gate aus.
-3. `scripts/release/release_tool.py` schreibt die letzte veröffentlichte Produktversion um genau
+1. Eine Änderung wird auf einem Themenbranch committed. Der getestete Scope-Classifier entscheidet
+   unabhängig, ob Quality, API-26/35-Instrumentierung und später ein Produktrelease erforderlich
+   sind.
+2. Der stabile Check `pull-request-gate` fasst alle für den Pull Request anwendbaren Prüfungen
+   zusammen. Das Ruleset von `main` verlangt diesen aktuellen grünen Check und einen Squash-Merge.
+3. Der Merge-Commit auf `main` wird erneut klassifiziert. Nur eine produktionswirksame Änderung
+   darf Packaging, Upgrade und Publish starten; Test-, Workflow- und Dokumentationsänderungen
+   veröffentlichen keine App-Version.
+4. `scripts/release/release_tool.py` schreibt die letzte veröffentlichte Produktversion um genau
    eins fort. Workflownummern beeinflussen die sichtbare Version nicht; ein fehlgeschlagener Lauf
    kann deshalb keine Versionsnummer überspringen.
-4. Die Produktions-APK wird einmal signiert und auf Paketname, Version, Größe, Hash und
+5. Die Produktions-APK wird einmal signiert und auf Paketname, Version, Größe, Hash und
    Zertifikat geprüft. APK, Metadaten, Releaseplan und signiertes Test-APK werden als kurzlebiges
    internes Workflow-Artefakt weitergereicht.
-5. Die explizit unterstützte Produktions-APK 0.2.80 wird installiert und mit dem versionierten
+6. Die explizit unterstützte Produktions-APK 0.2.80 wird installiert und mit dem versionierten
    Fixture `release/upgrade-fixtures/v0.2.80.json` befüllt. `adb install -r` aktualisiert sie auf
    den Kandidaten; anschließend müssen App-Start, höherer Versionscode, Room-Schema und alle
    erwarteten Testdaten erhalten sein.
-6. Ein neuer oder nach einem Fehler wiederaufgenommener Draft erhält genau
+7. Ein neuer oder nach einem Fehler wiederaufgenommener Draft erhält genau
    `AutoSecretary.apk` und `release-metadata.json`; vorhandene Assets werden kontrolliert ersetzt.
-7. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter, vergleicht die APK byteweise mit
+8. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter, vergleicht die APK byteweise mit
    dem getesteten Kandidaten und veröffentlicht erst danach. Der höchste Build wird als „Latest“
    markiert.
 
@@ -124,6 +129,7 @@ Aufgaben bei allen folgenden Updates erhalten.
 Der lokale Quality-Gate bleibt:
 
 ```bash
+python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
 python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
 ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease
 ```

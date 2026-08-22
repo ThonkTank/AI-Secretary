@@ -116,20 +116,23 @@ Jeder Push auf `main` muss vor einer Veröffentlichung folgende Prüfungen beste
 - Upgrade der vorherigen signierten Produktions-APK auf exakt den später veröffentlichten
   Kandidaten auf API 26 und API 35
 
-Ein Pull Request führt den schnellen Quality-Gate aus: Kompilierung, Unit-/Robolectric-Tests,
-exakte Goldens, Android Lint, Debug-/Android-Test-/Release-Build und Größenlimits. Der stabile
-Sammelcheck `pull-request-gate` hängt ausschließlich von diesem Block ab. Emulatoren werden im
-PR nicht doppelt gestartet.
+Ein getesteter Scope-Classifier unterscheidet Quality-, Instrumentierungs- und Releasebedarf.
+Reine Dokumentationsänderungen bestehen ohne Android-Build; Hosttests und Releasewerkzeuge lösen
+keine Produktveröffentlichung aus. Für Produktionscode, Android-Instrumentierung,
+Buildkonfiguration oder Instrumentierungsskripte führt bereits der Pull Request die API-26/35-
+Matrix aus. Der stabile Sammelcheck `pull-request-gate` verlangt alle für den Scope anwendbaren
+Jobs und bleibt auch bei begründet übersprungenen Jobs vorhanden.
 
-Erst der validierte Fast-Forward auf `main` startet den vollständigen Release-Gate mit
-Instrumentierung auf API 26 und API 35, signiertem Produktionskandidaten, echtem Upgrade der
+Das Ruleset von `main` verlangt einen aktuellen Pull Request, den grünen `pull-request-gate` und
+einen Squash-Merge; Force-Push und Löschen sind gesperrt. Der resultierende `main`-Commit wiederholt
+seine anwendbaren Prüfungen. Ausschließlich eine produktionswirksame Änderung startet danach den
+vollständigen Release-Gate mit signiertem Produktionskandidaten, echtem Upgrade der
 Vorgängerversion auf beiden APIs und bytegeprüfter Veröffentlichung. Ein lokaler Release-Build
 bleibt ohne ausdrücklich bereitgestellte Produktionszugangsdaten unsigniert.
 
-Fehlerbehebungen mit unmittelbarer Nutzerwirkung dürfen nach einem grünen Quality-Gate direkt
-auf `main` fast-forwarded werden. Strukturrefactorings werden auf einer Feature-Branch als Pull
-Request geprüft. Eine Änderung der Versionsstrategie bleibt ein separates Vorhaben; sie wird
-nicht mit gewöhnlichen Refactorings gekoppelt.
+Auch Fehlerbehebungen mit unmittelbarer Nutzerwirkung folgen dem Pull-Request-Gate. Eine Änderung
+der Versionsstrategie bleibt ein separates Vorhaben; sie wird nicht mit gewöhnlichen
+Refactorings gekoppelt.
 
 ### Legacy-Versionen
 
