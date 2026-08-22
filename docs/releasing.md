@@ -53,6 +53,8 @@ bezeichnet werden.
    sind.
 2. Der stabile Check `pull-request-gate` fasst alle für den Pull Request anwendbaren Prüfungen
    zusammen. Das Ruleset von `main` verlangt diesen aktuellen grünen Check und einen Squash-Merge.
+   Instrumentierungsfehler laden je API Screenshot, UI-Hierarchie, Logcat und Input-/Displaydaten
+   hoch; der ursprüngliche Test-Exitcode bleibt dabei maßgeblich.
 3. Der Merge-Commit auf `main` wird erneut klassifiziert. Nur eine produktionswirksame Änderung
    darf Packaging, Upgrade und Publish starten; Test-, Workflow- und Dokumentationsänderungen
    veröffentlichen keine App-Version.
@@ -71,6 +73,11 @@ bezeichnet werden.
 8. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter, vergleicht die APK byteweise mit
    dem getesteten Kandidaten und veröffentlicht erst danach. Der höchste Build wird als „Latest“
    markiert.
+
+Änderungen am testinternen `TouchGestureDriver` erfordern zusätzlich einen manuell gestarteten,
+grünen Lauf von `Today gesture instrumentation soak`. Dieser führt die isolierte Gestensuite nach
+jeweils sauberer Deinstallation fünfmal auf API 26 und fünfmal auf API 35 aus und verwendet keine
+automatischen Retries.
 
 Ein Fehler vor der abschließenden Prüfung veröffentlicht nichts. Ein Wiederanlauf verwendet einen
 vorhandenen Draft, Tag und Assets desselben Commits weiter. Ein bereits veröffentlichter Commit

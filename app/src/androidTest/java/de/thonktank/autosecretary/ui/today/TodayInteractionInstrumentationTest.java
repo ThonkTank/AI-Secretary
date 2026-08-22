@@ -6,22 +6,21 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.app.Instrumentation;
-import android.app.UiAutomation;
 import android.content.Intent;
 import android.graphics.Rect;
-import android.os.Build;
 import android.os.SystemClock;
-import android.view.InputDevice;
-import android.view.MotionEvent;
+import android.util.Log;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.junit.After;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 import org.junit.runner.RunWith;
 
 import java.time.LocalTime;
@@ -53,97 +52,150 @@ import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 
 @RunWith(AndroidJUnit4.class)
 public final class TodayInteractionInstrumentationTest {
+    private static final String TAG = "TodayGestureTest";
     private static final long UI_TIMEOUT_MILLIS = 5_000L;
     private static final long UI_POLL_MILLIS = 16L;
-    private static final int DRAG_MOVE_STEPS = 12;
-    private static final long DRAG_MOVE_DELAY_MILLIS = 24L;
-    private static final int EDGE_HOLD_STEPS = 8;
 
     private TodayInteractionHarnessActivity activity;
+    private Harness currentHarness;
+    private TouchGestureDriver currentGesture;
+    private String currentGeometry = "geometry=not-initialized";
+
+    @Rule public final TestWatcher failureDiagnostics = new TestWatcher() {
+        @Override protected void failed(Throwable error, Description description) {
+            Log.e(TAG, "FAILED " + description.getMethodName() + "\n" + diagnostics(), error);
+        }
+    };
 
     @After public void closeActivity() {
+        if (currentGesture != null) {
+            try {
+                // A system drag owns the pointer after long-press. Releasing the finger ends
+                // that drag reliably on API 26; an injected ACTION_CANCEL can leave it stale.
+                currentGesture.up();
+            } catch (RuntimeException | AssertionError error) {
+                Log.e(TAG, "Could not release the active test gesture", error);
+            }
+        }
         if (activity != null) activity.finish();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
     }
 
-    @Test public void realLongPressDragDropAndEdgeScrollUseTheTodayStateMachine() {
-        Harness harness = mount();
-        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
-        AtomicReference<View> firstBody = new AtomicReference<>();
-        instrumentation.runOnMainSync(() -> {
-            firstBody.set(longClickable(harness.rows().get(0)));
-        });
-        assertNotNull(firstBody.get());
+    @Test public void longPressStartsReorder() {
+        GestureScenario scenario = gestureScenario();
 
-        Rect listBounds = awaitInteractiveBounds(instrumentation, harness.list);
-        Rect sourceBounds = awaitInteractiveBounds(instrumentation, firstBody.get());
-        int[] start = new int[]{sourceBounds.centerX(), sourceBounds.centerY()};
-        int edgeInset = Math.max(2, Math.round(8f
-                * activity.getResources().getDisplayMetrics().density));
-        int[] end = new int[]{start[0], listBounds.bottom - edgeInset};
-        assertTrue(listBounds.contains(start[0], start[1]));
-        assertTrue(listBounds.contains(end[0], end[1]));
-        int touchDeviceId = touchscreenDeviceId();
-        assertTrue("A touchscreen input device is required", touchDeviceId >= 0);
+        scenario.beginReorder();
 
-        long down = SystemClock.uptimeMillis();
-        sendPointer(instrumentation, down, down, MotionEvent.ACTION_DOWN, start,
-                touchDeviceId);
-        SystemClock.sleep(ViewConfiguration.getLongPressTimeout() + 100L);
-        awaitCondition(instrumentation, "Long press did not start step reordering",
-                () -> harness.has(TodayAction.Kind.BEGIN_REORDER),
-                UI_TIMEOUT_MILLIS);
+        assertTrue(scenario.harness.has(TodayAction.Kind.BEGIN_REORDER));
+    }
 
-        movePointer(instrumentation, down, start, end, touchDeviceId);
-        awaitCondition(instrumentation, "Drag did not preview the reordered steps",
-                () -> harness.has(TodayAction.Kind.PREVIEW_REORDER),
-                UI_TIMEOUT_MILLIS);
-        holdPointerAtEdge(instrumentation, down, end, touchDeviceId);
-        awaitCondition(instrumentation, "Drag did not edge-scroll",
-                () -> harness.scrollHost.distance != 0,
-                UI_TIMEOUT_MILLIS);
+    @Test public void dragPreviewsAndDropPersistsReorder() {
+        GestureScenario scenario = gestureScenario();
+        scenario.beginReorder();
 
-        long up = SystemClock.uptimeMillis();
-        sendPointer(instrumentation, down, up, MotionEvent.ACTION_UP, end, touchDeviceId);
-        awaitCondition(instrumentation, "Drop did not persist the reordered steps",
-                () -> harness.has(TodayAction.Kind.DROP_REORDER)
-                        && !harness.commands.isEmpty(), UI_TIMEOUT_MILLIS);
+        logPhase("move-to-row");
+        scenario.gesture.moveTo(scenario.rowTarget);
+        awaitCondition("Drag did not preview the reordered steps",
+                () -> scenario.harness.has(TodayAction.Kind.PREVIEW_REORDER));
 
-        assertTrue(harness.has(TodayAction.Kind.BEGIN_REORDER));
-        assertTrue(harness.has(TodayAction.Kind.PREVIEW_REORDER));
-        assertTrue(harness.has(TodayAction.Kind.DROP_REORDER));
-        assertTrue(harness.scrollHost.distance != 0);
+        logPhase("drop");
+        scenario.gesture.up();
+        awaitCondition("Drop did not persist the reordered steps",
+                () -> scenario.harness.has(TodayAction.Kind.DROP_REORDER)
+                        && !scenario.harness.commands.isEmpty());
+
         assertEquals(TodayCommand.Kind.PERSIST_REORDER,
-                harness.commands.get(0).kind);
+                scenario.harness.commands.get(0).kind);
     }
 
-    @Test public void accessibilityAndRecreationShareTheSameReorderContract() {
+    @Test public void holdingAtBottomEdgeScrolls() {
+        GestureScenario scenario = gestureScenario();
+        scenario.beginReorder();
+
+        logPhase("move-to-bottom-edge");
+        scenario.gesture.moveTo(scenario.bottomEdge);
+        scenario.gesture.holdAtEdge(scenario.bottomEdge);
+        awaitCondition("Holding the drag at the bottom edge did not scroll",
+                () -> scenario.harness.scrollHost.distance != 0);
+
+        assertTrue(scenario.harness.scrollHost.distance > 0);
+    }
+
+    @Test public void accessibilityReorderPersists() {
         Harness harness = mount();
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+
+        logPhase("accessibility-move-to-front");
         instrumentation.runOnMainSync(() -> {
             View secondBody = longClickable(harness.rows().get(1));
             assertNotNull(secondBody);
             assertTrue(secondBody.performAccessibilityAction(
                     R.id.action_today_step_front, null));
         });
-        assertTrue(harness.has(TodayAction.Kind.BEGIN_REORDER));
-        assertTrue(harness.has(TodayAction.Kind.PREVIEW_REORDER));
-        assertTrue(harness.has(TodayAction.Kind.DROP_REORDER));
+        awaitCondition("Accessibility reorder did not persist",
+                () -> harness.has(TodayAction.Kind.BEGIN_REORDER)
+                        && harness.has(TodayAction.Kind.PREVIEW_REORDER)
+                        && harness.has(TodayAction.Kind.DROP_REORDER)
+                        && !harness.commands.isEmpty());
 
-        activity.finish();
-        instrumentation.waitForIdleSync();
-        Harness recreation = mount();
-        recreation.coordinator.emit(TodayAction.beginReorder("a",
-                Arrays.asList("a", "b", "c")));
+        assertEquals(TodayCommand.Kind.PERSIST_REORDER, harness.commands.get(0).kind);
+    }
+
+    @Test public void recreationCancelsActiveReorder() {
+        Harness harness = mount();
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+
+        logPhase("begin-reorder-before-recreation");
+        instrumentation.runOnMainSync(() -> harness.coordinator.emit(
+                TodayAction.beginReorder("a", Arrays.asList("a", "b", "c"))));
         assertEquals(TodayFeatureState.Reorder.Phase.DRAGGING,
-                recreation.state.get().reorder.phase);
+                harness.state.get().reorder.phase);
+
+        logPhase("recreate-and-rebind");
         instrumentation.runOnMainSync(activity::recreate);
         instrumentation.waitForIdleSync();
-        recreation.coordinator.rebind(recreation.today);
+        instrumentation.runOnMainSync(() -> harness.coordinator.rebind(harness.today));
+        awaitCondition("Recreation did not cancel the active reorder",
+                () -> harness.state.get().reorder.phase
+                        == TodayFeatureState.Reorder.Phase.IDLE
+                        && harness.state.get().feedback
+                        == TodayFeatureState.Feedback.REORDER_INTERRUPTED);
 
-        assertEquals(TodayFeatureState.Reorder.Phase.IDLE,
-                recreation.state.get().reorder.phase);
         assertEquals(TodayFeatureState.Feedback.REORDER_INTERRUPTED,
-                recreation.state.get().feedback);
+                harness.state.get().feedback);
+    }
+
+    private GestureScenario gestureScenario() {
+        Harness harness = mount();
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        AtomicReference<View> firstBody = new AtomicReference<>();
+        AtomicReference<View> lastBody = new AtomicReference<>();
+        instrumentation.runOnMainSync(() -> {
+            List<FocusStepRowView> rows = harness.rows();
+            firstBody.set(longClickable(rows.get(0)));
+            lastBody.set(longClickable(rows.get(rows.size() - 1)));
+        });
+        assertNotNull(firstBody.get());
+        assertNotNull(lastBody.get());
+
+        Rect listBounds = awaitInteractiveBounds(harness.list);
+        Rect sourceBounds = awaitInteractiveBounds(firstBody.get());
+        Rect targetBounds = awaitInteractiveBounds(lastBody.get());
+        int[] start = {sourceBounds.centerX(), sourceBounds.centerY()};
+        int[] rowTarget = {targetBounds.centerX(), targetBounds.centerY()};
+        int edgeInset = Math.max(2, Math.round(8f
+                * activity.getResources().getDisplayMetrics().density));
+        int[] bottomEdge = {start[0], listBounds.bottom - edgeInset};
+        assertTrue(listBounds.contains(start[0], start[1]));
+        assertTrue(listBounds.contains(rowTarget[0], rowTarget[1]));
+        assertTrue(listBounds.contains(bottomEdge[0], bottomEdge[1]));
+
+        TouchGestureDriver gesture = new TouchGestureDriver(instrumentation, firstBody.get());
+        currentGesture = gesture;
+        currentGeometry = "list=" + listBounds + " source=" + sourceBounds
+                + " target=" + targetBounds + " start=" + point(start)
+                + " rowTarget=" + point(rowTarget) + " bottomEdge=" + point(bottomEdge);
+        return new GestureScenario(harness, gesture, start, rowTarget, bottomEdge);
     }
 
     private Harness mount() {
@@ -152,6 +204,7 @@ public final class TodayInteractionInstrumentationTest {
                 TodayInteractionHarnessActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         activity = (TodayInteractionHarnessActivity) instrumentation.startActivitySync(intent);
         Harness harness = new Harness(activity);
+        currentHarness = harness;
         instrumentation.runOnMainSync(() -> {
             activity.setContentView(harness.list);
             harness.render();
@@ -160,9 +213,9 @@ public final class TodayInteractionInstrumentationTest {
         return harness;
     }
 
-    private Rect awaitInteractiveBounds(Instrumentation instrumentation, View view) {
+    private Rect awaitInteractiveBounds(View view) {
         Rect result = new Rect();
-        awaitCondition(instrumentation, "Target view never became interactive", () -> {
+        awaitCondition("Target view never became interactive", () -> {
             Rect visible = new Rect();
             Rect window = new Rect();
             View decor = activity.getWindow().getDecorView();
@@ -173,86 +226,36 @@ public final class TodayInteractionInstrumentationTest {
                     || visible.width() < 3 || visible.height() < 3) return false;
             result.set(visible);
             return true;
-        }, UI_TIMEOUT_MILLIS);
+        });
         return result;
     }
 
-    private static void sendPointer(Instrumentation instrumentation, long downTime,
-                                    long eventTime, int action, int[] location,
-                                    int touchDeviceId) {
-        MotionEvent.PointerProperties properties = new MotionEvent.PointerProperties();
-        properties.id = 0;
-        properties.toolType = MotionEvent.TOOL_TYPE_FINGER;
-        MotionEvent.PointerCoords coordinates = new MotionEvent.PointerCoords();
-        coordinates.x = location[0];
-        coordinates.y = location[1];
-        coordinates.pressure = 1f;
-        coordinates.size = 1f;
-        MotionEvent.PointerProperties[] pointerProperties =
-                new MotionEvent.PointerProperties[]{properties};
-        MotionEvent.PointerCoords[] pointerCoordinates =
-                new MotionEvent.PointerCoords[]{coordinates};
-        MotionEvent event = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-                ? MotionEvent.obtain(downTime, eventTime, action, 1, pointerProperties,
-                        pointerCoordinates, 0, 0, 1f, 1f, touchDeviceId, 0,
-                        InputDevice.SOURCE_TOUCHSCREEN, 0, 0,
-                        MotionEvent.CLASSIFICATION_NONE)
-                : MotionEvent.obtain(downTime, eventTime, action, 1, pointerProperties,
-                        pointerCoordinates, 0, 0, 1f, 1f, touchDeviceId, 0,
-                        InputDevice.SOURCE_TOUCHSCREEN, 0);
-        try {
-            UiAutomation automation = instrumentation.getUiAutomation();
-            assertNotNull("UI automation is required for system drag injection", automation);
-            assertTrue("Pointer event injection failed",
-                    automation.injectInputEvent(event, true));
-        } finally {
-            event.recycle();
-        }
-    }
-
-    private static void movePointer(Instrumentation instrumentation, long downTime,
-                                    int[] start, int[] end, int touchDeviceId) {
-        for (int step = 1; step <= DRAG_MOVE_STEPS; step++) {
-            float progress = step / (float) DRAG_MOVE_STEPS;
-            int[] location = new int[]{
-                    Math.round(start[0] + (end[0] - start[0]) * progress),
-                    Math.round(start[1] + (end[1] - start[1]) * progress)
-            };
-            sendPointer(instrumentation, downTime, SystemClock.uptimeMillis(),
-                    MotionEvent.ACTION_MOVE, location, touchDeviceId);
-            SystemClock.sleep(DRAG_MOVE_DELAY_MILLIS);
-        }
-    }
-
-    private static int touchscreenDeviceId() {
-        for (int deviceId : InputDevice.getDeviceIds()) {
-            InputDevice device = InputDevice.getDevice(deviceId);
-            if (device != null && device.supportsSource(InputDevice.SOURCE_TOUCHSCREEN))
-                return deviceId;
-        }
-        return -1;
-    }
-
-    private static void holdPointerAtEdge(Instrumentation instrumentation, long downTime,
-                                          int[] edge, int touchDeviceId) {
-        for (int step = 0; step < EDGE_HOLD_STEPS; step++) {
-            int[] location = new int[]{edge[0], edge[1] - step % 2};
-            sendPointer(instrumentation, downTime, SystemClock.uptimeMillis(),
-                    MotionEvent.ACTION_MOVE, location, touchDeviceId);
-            SystemClock.sleep(DRAG_MOVE_DELAY_MILLIS);
-        }
-    }
-
-    private static void awaitCondition(Instrumentation instrumentation, String message,
-                                       BooleanSupplier condition, long timeoutMillis) {
-        long deadline = SystemClock.uptimeMillis() + timeoutMillis;
+    private void awaitCondition(String message, BooleanSupplier condition) {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MILLIS;
         AtomicReference<Boolean> matched = new AtomicReference<>(false);
         while (SystemClock.uptimeMillis() < deadline) {
             instrumentation.runOnMainSync(() -> matched.set(condition.getAsBoolean()));
             if (matched.get()) return;
             SystemClock.sleep(UI_POLL_MILLIS);
         }
-        fail(message);
+        fail(message + "\n" + diagnostics());
+    }
+
+    private void logPhase(String phase) {
+        Log.i(TAG, "PHASE " + phase + "\n" + diagnostics());
+    }
+
+    private String diagnostics() {
+        String harness = currentHarness == null ? "harness=not-mounted"
+                : currentHarness.describe();
+        String gesture = currentGesture == null ? "gesture=not-created"
+                : currentGesture.describe();
+        return currentGeometry + "\n" + gesture + "\n" + harness;
+    }
+
+    private static String point(int[] point) {
+        return "(" + point[0] + "," + point[1] + ")";
     }
 
     private static View longClickable(View view) {
@@ -264,6 +267,33 @@ public final class TodayInteractionInstrumentationTest {
             if (result != null) return result;
         }
         return null;
+    }
+
+    private final class GestureScenario {
+        final Harness harness;
+        final TouchGestureDriver gesture;
+        final int[] start;
+        final int[] rowTarget;
+        final int[] bottomEdge;
+
+        GestureScenario(Harness harness, TouchGestureDriver gesture, int[] start,
+                        int[] rowTarget, int[] bottomEdge) {
+            this.harness = harness;
+            this.gesture = gesture;
+            this.start = start;
+            this.rowTarget = rowTarget;
+            this.bottomEdge = bottomEdge;
+        }
+
+        void beginReorder() {
+            logPhase("long-press");
+            gesture.down(start);
+            gesture.holdForLongPress();
+            awaitCondition("Long press did not start step reordering",
+                    () -> harness.has(TodayAction.Kind.BEGIN_REORDER)
+                            && harness.state.get().reorder.phase
+                            == TodayFeatureState.Reorder.Phase.DRAGGING);
+        }
     }
 
     private static final class Harness {
@@ -308,6 +338,18 @@ public final class TodayInteractionInstrumentationTest {
         boolean has(TodayAction.Kind kind) {
             for (TodayAction action : actions) if (action.kind == kind) return true;
             return false;
+        }
+
+        String describe() {
+            List<String> actionKinds = new ArrayList<>();
+            for (TodayAction action : actions) actionKinds.add(action.kind.name());
+            List<String> commandKinds = new ArrayList<>();
+            for (TodayCommand command : commands) commandKinds.add(command.kind.name());
+            TodayFeatureState value = state.get();
+            return "actions=" + actionKinds + " commands=" + commandKinds
+                    + " reorderPhase=" + value.reorder.phase
+                    + " feedback=" + value.feedback
+                    + " scrollDistance=" + scrollHost.distance;
         }
     }
 
