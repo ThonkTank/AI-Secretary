@@ -6,6 +6,8 @@ import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import static android.view.View.MeasureSpec.EXACTLY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
@@ -46,6 +48,33 @@ import java.util.List;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class AllTasksVirtualizationTest {
+    @Test public void contentRebindReusesTheExistingHolderChildHierarchy() {
+        Context context = ApplicationProvider.getApplicationContext();
+        AllTasksView view = new AllTasksView(context, new Recorder());
+        AllTasksUiState state = AllTasksUiState.from(catalog(2),
+                AllTasksPresentationState.defaults());
+        view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+        shadowOf(Looper.getMainLooper()).idle();
+        layout(view, 412, 900);
+
+        int position = view.positionForTest(AllTasksRow.Kind.TASK_HEADER, "task-0|MORNING");
+        View card = view.hierarchyAnchorForTest(position);
+        assertNotNull(card);
+        View header = ((ViewGroup) card).getChildAt(0);
+        View title = ((ViewGroup) ((ViewGroup) header).getChildAt(0)).getChildAt(0);
+
+        view.bind(state.withQuery("Aufgabe"),
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+        shadowOf(Looper.getMainLooper()).idle();
+        layout(view, 412, 900);
+
+        View reboundCard = view.hierarchyAnchorForTest(position);
+        assertSame(card, reboundCard);
+        assertSame(header, ((ViewGroup) reboundCard).getChildAt(0));
+        assertSame(title, ((ViewGroup) ((ViewGroup) ((ViewGroup) reboundCard)
+                .getChildAt(0)).getChildAt(0)).getChildAt(0));
+    }
+
     @Test public void longCatalogAttachesOnlyVisibleRecyclerRowsAndKeepsStableIds() {
         Context context = ApplicationProvider.getApplicationContext();
         AllTasksView view = new AllTasksView(context, new Recorder());

@@ -122,7 +122,7 @@ final class AllTasksRow {
             reason = EmptyReason.FILTERS;
         else reason = EmptyReason.STATUS;
         return new AllTasksRow(Kind.EMPTY, "empty:" + reason,
-                new AllTasksRowContent.Empty(reason), null,
+                new AllTasksRowContent.Empty(reason, state.mode), null,
                 null, null, null, null, null, null, false, reason);
     }
 

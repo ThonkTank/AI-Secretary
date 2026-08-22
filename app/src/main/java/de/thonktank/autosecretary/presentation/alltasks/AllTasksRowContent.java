@@ -154,13 +154,18 @@ abstract class AllTasksRowContent {
 
     static final class Empty extends AllTasksRowContent {
         final AllTasksRow.EmptyReason reason;
+        final AllTasksUiState.Mode mode;
 
-        Empty(AllTasksRow.EmptyReason reason) { this.reason = reason; }
-
-        @Override public boolean equals(Object other) {
-            return this == other || other instanceof Empty && reason == ((Empty) other).reason;
+        Empty(AllTasksRow.EmptyReason reason, AllTasksUiState.Mode mode) {
+            this.reason = reason;
+            this.mode = mode;
         }
 
-        @Override public int hashCode() { return Objects.hash(reason); }
+        @Override public boolean equals(Object other) {
+            return this == other || other instanceof Empty
+                    && reason == ((Empty) other).reason && mode == ((Empty) other).mode;
+        }
+
+        @Override public int hashCode() { return Objects.hash(reason, mode); }
     }
 }
