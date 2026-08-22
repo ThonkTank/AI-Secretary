@@ -134,11 +134,25 @@ früheren Quelltextscans auf Android-/Managementimporte; Pakettests bleiben für
 App-Modul bestehen. Die App-Unit-Suite testet die Kernklassen weiterhin zusammen mit den realen
 Mappern, Room-Adaptern und Views.
 
-`TodayInteractionInstrumentationTest` ergänzt den Gerätepfad für Pointer-Long-Press mit
-Drag/Drop, framebasiertes Randscrollen, reale Accessibilityaktionen und Recreation während
-einer nicht persistierten Vorschau. Lokal ist kein ADB-Ziel verbunden. Deshalb ist nur die
-erfolgreiche Kompilierung der Android-Test-APK ein lokaler Nachweis; die vorhandene
-CI-Instrumentierungsmatrix führt `connectedDebugAndroidTest` auf API 26 und API 35 aus.
+`TodayInteractionInstrumentationTest` ergänzt den Gerätepfad in fünf voneinander unabhängigen
+Szenarien: Long-Press-Beginn, Preview und persistierter Drop, Randscrollen, Accessibility-Reorder
+und Abbruch bei Recreation. `TouchGestureDriver` besitzt als einzige Testklasse Finger-,
+Touchscreen-Geräte-, Display- und Eventzeitinformationen. Die Tests warten auf beobachtbare
+Today-Aktionen, Commands, Scrollzustand oder Coordinator-State; zeitgesteuert bleiben nur die
+reale Long-Press-Schwelle und die Pointer-Bewegungsfolge.
+
+`scripts/ci/run-instrumentation.sh` bewahrt den Gradle-Exitcode und sammelt bei einem Fehler noch
+während der laufenden Emulatorinstanz Screenshot, UI-Hierarchie, Logcat, Geräte-, Input-,
+Display- und Window-Daten. Die Testlogs ergänzen Start-, Ziel- und Listengeometrie, Touch-Geräte-
+und Display-ID, Today-Aktionen, Commands und Scrollstrecke. GitHub lädt diese Daten getrennt je
+API als Fehlerartefakt hoch.
+
+Der manuell startbare Workflow `instrumentation-soak.yml` deinstalliert App und Test-App vor
+jedem Durchlauf und führt ausschließlich die Today-Gestensuite fünfmal auf API 26 und fünfmal auf
+API 35 aus. Er enthält keine Wiederholungslogik nach Fehlern: Ein fehlgeschlagener Versuch beendet
+den jeweiligen Matrixjob und liefert dessen Diagnoseartefakt. Jede Änderung am
+`TouchGestureDriver` benötigt vor Abschluss der Phase beziehungsweise des Pull Requests einen
+vollständig grünen Soak-Lauf.
 
 Die Golden-Suite wurde auf Redundanz geprüft. Die Fokus-Komponentengoldens schützen
 Notiz-/Wiederholungs-/Hidden-Row-Geometrie, während die Homescreen-Goldens die gemeinsame
