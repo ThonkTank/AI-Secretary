@@ -47,6 +47,8 @@ Der requirementweise Abschlussabgleich der Roadmap steht im
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
+Die [Charakterisierung des Alles-Tabs](all-tasks-characterization.md) hält dessen einmaligen
+Handoff-Abgleich, visuelle Zustandsmatrix und sicheren Baseline-Prozess fest.
 Die [aktuelle Today-/Fokus-Architektur](today-focus-architecture.md) dokumentiert Datenfluss,
 Verantwortlichkeiten, Invarianten, Schema und Widgetinvalidierung. Die aktuelle Testschichtung,
 Migrationsmatrix und Golden-/Accessibility-Verträge beschreibt die

@@ -98,6 +98,31 @@ public final class AllTasksUiStateTest {
         assertTrue(state.tasks.isEmpty());
     }
 
+    @Test public void filterAxesUseOrInternallyAndAndAcrossStatusSearchAndAxes() {
+        AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog())
+                .withStatus(AllTasksUiState.Status.ALL)
+                .withSlots(EnumSet.of(TaskSlot.MORNING, TaskSlot.MIDDAY))
+                .withRecurrences(EnumSet.of(Recurrence.DAILY, Recurrence.WEEKDAYS));
+
+        assertEquals(2, state.tasks.size());
+        assertTrue(state.tasks.stream().anyMatch(value -> value.task.id.value.equals("gym")
+                && value.slot == TaskSlot.MORNING));
+        assertTrue(state.tasks.stream().anyMatch(value -> value.task.id.value.equals("weekday")
+                && value.slot == TaskSlot.MIDDAY));
+
+        state = state.withQuery("kniebeugen");
+        assertEquals(1, state.tasks.size());
+        assertEquals("gym", state.tasks.get(0).task.id.value);
+
+        state = AllTasksUiState.empty().withCatalog(catalog())
+                .withStatus(AllTasksUiState.Status.ARCHIVED)
+                .withSlots(EnumSet.of(TaskSlot.LATER))
+                .withRecurrences(EnumSet.of(Recurrence.ONCE))
+                .withQuery("alt");
+        assertEquals(1, state.tasks.size());
+        assertEquals("archive", state.tasks.get(0).task.id.value);
+    }
+
     private static TaskCatalog catalog() {
         Task gym = Task.restore(TaskId.of("gym"), "Gym", Recurrence.DAILY, 1, 0,
                 false, "", false, false, MONDAY, null, null, 1_024, false, 45,

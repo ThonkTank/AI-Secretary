@@ -15,6 +15,7 @@ import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.ImageButton;
 import android.widget.ScrollView;
 
 import androidx.recyclerview.widget.RecyclerView;
@@ -215,6 +216,38 @@ public final class AllTasksVirtualizationTest {
         assertTrue(firstListFocus > searchIndex);
     }
 
+    @Test public void interactiveRowsMeetMinimumHeightAndIconTargetsAreSquare() {
+        Context context = ApplicationProvider.getApplicationContext();
+        AllTasksView view = new AllTasksView(context, new Recorder());
+        AllTasksUiState state = AllTasksUiState.from(catalog(2), AllTasksFilter.defaults())
+                .toggleExpanded("task-0");
+        view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+        shadowOf(Looper.getMainLooper()).idle();
+        layout(view, 412, 1_000);
+        shadowOf(Looper.getMainLooper()).idle();
+
+        List<View> targets = new ArrayList<>();
+        collectClickable(view, targets);
+        int minimum = Math.round(44 * context.getResources().getDisplayMetrics().density);
+        assertTrue("Expected search, filters, result actions and card actions", targets.size() >= 8);
+        for (View target : targets) {
+            String label = target.getClass().getSimpleName() + " "
+                    + String.valueOf(target.getContentDescription());
+            assertTrue(label + " width=" + target.getWidth(), target.getWidth() > 0);
+            assertTrue(label + " height=" + target.getHeight(), target.getHeight() >= minimum);
+            if (target instanceof ImageButton) {
+                boolean stepHandle = context.getString(R.string.all_drag_step)
+                        .contentEquals(target.getContentDescription());
+                int iconMinimum = Math.round((stepHandle ? 44 : 48)
+                        * context.getResources().getDisplayMetrics().density);
+                assertTrue(label + " icon width=" + target.getWidth(),
+                        target.getWidth() >= iconMinimum);
+                assertTrue(label + " icon height=" + target.getHeight(),
+                        target.getHeight() >= iconMinimum);
+            }
+        }
+    }
+
     @Test public void rendererMountsManagementRecyclerBesideNotInsideDashboardScroll() {
         Context context = ApplicationProvider.getApplicationContext();
         LinearLayout shell = new LinearLayout(context);
@@ -290,6 +323,15 @@ public final class AllTasksVirtualizationTest {
             if (current == parent) return true;
         }
         return false;
+    }
+
+    private static void collectClickable(View view, List<View> result) {
+        if (view.getVisibility() != View.VISIBLE) return;
+        if (view.isClickable() && view.isEnabled()) result.add(view);
+        if (!(view instanceof ViewGroup)) return;
+        ViewGroup group = (ViewGroup) view;
+        for (int index = 0; index < group.getChildCount(); index++)
+            collectClickable(group.getChildAt(index), result);
     }
 
     private static final class Recorder implements AllTasksView.Listener {
