@@ -13,6 +13,7 @@
         android:orientation="vertical">
 
         <LinearLayout
+            android:id="@+id/task_editor_header"
             android:layout_width="match_parent"
             android:layout_height="54dp"
             android:gravity="center_vertical"
