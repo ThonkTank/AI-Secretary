@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class TaskEditorGoldenCatalogTest {
-    @Test public void scenarioCatalogExactlyMatchesTheOnlyEditorBaselineDirectory()
+    @Test public void scenarioCatalogsExactlyMatchTheOnlyEditorBaselineDirectories()
             throws IOException {
         Set<String> scenarios = TaskEditorGoldenScenario.ALL.stream()
                 .map(value -> value.id + ".png")
@@ -36,10 +36,27 @@ public final class TaskEditorGoldenCatalogTest {
                     .collect(Collectors.toCollection(LinkedHashSet::new));
         }
         assertEquals(scenarios, references);
-        try (java.util.stream.Stream<Path> children = Files.list(root)) {
-            assertFalse(children.anyMatch(value -> Files.isDirectory(value)
-                    && !value.getFileName().toString().equals("wizard")));
+        Set<String> adaptiveScenarios = TaskEditorAdaptiveGoldenScenario.ALL.stream()
+                .map(value -> value.id + ".png")
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Path adaptive = root.resolve("adaptive");
+        Set<String> adaptiveBaselines;
+        try (java.util.stream.Stream<Path> paths = Files.list(adaptive)) {
+            adaptiveBaselines = paths.filter(value -> value.getFileName().toString()
+                            .endsWith(".png"))
+                    .map(value -> value.getFileName().toString())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
         }
+        assertEquals(adaptiveScenarios, adaptiveBaselines);
+        Set<String> allowed = new LinkedHashSet<>();
+        allowed.add("wizard"); allowed.add("adaptive");
+        Set<String> actualChildren;
+        try (java.util.stream.Stream<Path> children = Files.list(root)) {
+            actualChildren = children.filter(Files::isDirectory)
+                    .map(value -> value.getFileName().toString())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+        assertEquals(allowed, actualChildren);
     }
 
     @Test public void scenarioIdentifiersAreUniqueAndDoNotDriveFixtureDecisions()
@@ -53,6 +70,7 @@ public final class TaskEditorGoldenCatalogTest {
         assertFalse(source.contains("id.contains("));
         assertFalse(source.contains("id.startsWith("));
         assertFalse(source.contains("id.equals("));
+        assertEquals(5, TaskEditorAdaptiveGoldenScenario.ALL.size());
     }
 
     private static Path projectPath(String relative) {

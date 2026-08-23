@@ -1,30 +1,31 @@
 package de.thonktank.autosecretary;
 
-import android.animation.ValueAnimator;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.GradientDrawable;
 import android.text.InputFilter;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
-import android.view.animation.PathInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Space;
 import android.widget.TextView;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -45,44 +46,55 @@ public final class TaskEditorView extends FrameLayout {
     }
 
     private static final int PAGE_COUNT = 4;
+    static final String DEPENDENT_TAG = "task-editor:dependent";
     private final UiStyle style;
+    private final TaskEditorLayoutPolicy layout;
     private final Listener listener;
     private final TaskEditorValidator validator = new TaskEditorValidator();
     private final TaskEditorTextFormatter formatter;
     private final LinearLayout leaf;
     private final ScrollView scroll;
+    private final LinearLayout actions;
     private final TextView cancel;
     private final TextView contextLabel;
     private final Button primary;
     private final TextView secondary;
     private final TextView destructive;
     private final LinearLayout progress;
+    private LinearLayout compactSecondActionRow;
     private EditorUiState state;
     private EditorUiState lastEmitted;
     private DayPalette palette;
     private TaskEditorControlFactory controls;
     private LocalDate today;
     private AlertDialog prompt;
+    private AlertDialog closingPrompt;
     private EditorUiState.Prompt shownPrompt = EditorUiState.Prompt.NONE;
     private int pendingDirection;
     private Object pendingFocusTag;
     private int pendingSelection = -1;
     private Integer pendingScrollY;
+    private boolean renderedOnce;
+    private boolean pendingDependentEnter;
+    private int dependentTransitionGeneration;
 
     public TaskEditorView(Context context, Listener listener) {
         super(context);
         this.listener = listener;
         style = new UiStyle(context);
+        layout = TaskEditorLayoutPolicy.from(context.getResources());
         formatter = new TaskEditorTextFormatter(new AndroidUiTextProvider(context));
         LayoutInflater.from(context).inflate(R.layout.task_editor_view, this, true);
         leaf = findViewById(R.id.task_editor_leaf);
         scroll = findViewById(R.id.task_editor_scroll);
+        actions = findViewById(R.id.task_editor_actions);
         cancel = findViewById(R.id.task_editor_cancel);
         contextLabel = findViewById(R.id.task_editor_context);
         primary = findViewById(R.id.task_editor_save);
         secondary = findViewById(R.id.task_editor_discard);
         destructive = findViewById(R.id.task_editor_delete);
         progress = findViewById(R.id.task_editor_progress);
+        applyAdaptiveLayout();
         findViewById(R.id.task_editor_prompt_host).setVisibility(GONE);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
         scroll.setOverScrollMode(OVER_SCROLL_IF_CONTENT_SCROLLS);
@@ -92,12 +104,53 @@ public final class TaskEditorView extends FrameLayout {
         if (value == lastEmitted && this.palette == palette
                 && this.today != null && this.today.equals(today)) return;
         prepareViewport(state, value);
+        dependentTransitionGeneration++;
+        View dependent = findViewWithTag(DEPENDENT_TAG);
+        if (dependent != null) TaskEditorMotion.cancel(dependent);
         state = value;
         this.palette = palette;
         controls = new TaskEditorControlFactory(getContext(), style, palette);
         this.today = today;
         lastEmitted = null;
         render();
+    }
+
+    private void applyAdaptiveLayout() {
+        if (!layout.compact) return;
+        View header = findViewById(R.id.task_editor_header);
+        header.setPadding(style.dp(layout.pageStartDp), header.getPaddingTop(),
+                style.dp(layout.pageEndDp), header.getPaddingBottom());
+        scroll.setPadding(style.dp(layout.pageStartDp), scroll.getPaddingTop(),
+                style.dp(layout.pageEndDp), scroll.getPaddingBottom());
+        ViewGroup.LayoutParams actionParams = actions.getLayoutParams();
+        actionParams.height = style.dp(layout.footerHeightDp);
+        actions.setLayoutParams(actionParams);
+        actions.setOrientation(LinearLayout.VERTICAL);
+        actions.setGravity(Gravity.CENTER_VERTICAL);
+        actions.setPadding(style.dp(layout.pageStartDp), style.dp(4),
+                style.dp(layout.pageEndDp), style.dp(4));
+
+        actions.removeAllViews();
+        LinearLayout primaryRow = new LinearLayout(getContext());
+        primaryRow.setGravity(Gravity.CENTER_VERTICAL);
+        primaryRow.addView(primary, new LinearLayout.LayoutParams(-2, style.dp(52)));
+        LinearLayout.LayoutParams secondaryParams = new LinearLayout.LayoutParams(
+                -2, style.dp(48));
+        secondaryParams.setMargins(style.dp(18), 0, 0, 0);
+        primaryRow.addView(secondary, secondaryParams);
+        primaryRow.addView(new Space(getContext()), new LinearLayout.LayoutParams(0, 1, 1));
+        actions.addView(primaryRow, new LinearLayout.LayoutParams(-1, style.dp(56)));
+
+        compactSecondActionRow = new LinearLayout(getContext());
+        compactSecondActionRow.setGravity(Gravity.CENTER_VERTICAL);
+        compactSecondActionRow.addView(destructive,
+                new LinearLayout.LayoutParams(-2, style.dp(48)));
+        compactSecondActionRow.addView(new Space(getContext()),
+                new LinearLayout.LayoutParams(0, 1, 1));
+        compactSecondActionRow.addView(progress,
+                new LinearLayout.LayoutParams(-2, style.dp(48)));
+        actions.addView(compactSecondActionRow,
+                new LinearLayout.LayoutParams(-1, style.dp(48)));
     }
 
     public boolean handleBack() {
@@ -117,6 +170,9 @@ public final class TaskEditorView extends FrameLayout {
         boolean detail = state.expandedStepId != null;
         cancel.setText(detail ? R.string.editor_back_steps : R.string.editor_cancel);
         cancel.setTextColor(palette.muted);
+        cancel.setMinWidth(style.dp(48));
+        cancel.setBackground(controls.transparentRipple(24));
+        AccessibilityRoles.button(cancel);
         cancel.setOnClickListener(view -> { if (detail) closeStepDetail(); else requestClose(); });
         contextLabel.setText(detail ? getContext().getString(R.string.step_marker,
                 expandedIndex() + 1) : getContext().getString(state.taskId == null
@@ -132,9 +188,16 @@ public final class TaskEditorView extends FrameLayout {
         else renderSummary();
         if (!state.storageError.isEmpty()) leaf.addView(errorView(state.storageError),
                 params(-1, -2, 0, 12, 0, 0));
+        configureAccessibilityOrder();
         restoreViewportAfterRender();
         animatePage();
         renderPrompt();
+        if (pendingDependentEnter) {
+            pendingDependentEnter = false;
+            View dependent = findViewWithTag(DEPENDENT_TAG);
+            if (dependent != null) TaskEditorMotion.enter(dependent, palette, 6f, style);
+        }
+        renderedOnce = true;
     }
 
     private void configureFooter(boolean detail) {
@@ -143,7 +206,8 @@ public final class TaskEditorView extends FrameLayout {
                 : state.page == EditorUiState.Page.SUMMARY ? R.string.action_save
                 : R.string.editor_next));
         primary.setTextColor(palette.accentText);
-        primary.setBackground(style.pill(palette.accent, 26));
+        primary.setBackground(controls.pillRipple(palette.accent, 26));
+        AccessibilityRoles.button(primary);
         primary.setEnabled(!state.saving && !hasVisibleBlockingIssue(detail));
         primary.setAlpha(primary.isEnabled() ? 1f : .48f);
         primary.setOnClickListener(view -> {
@@ -153,6 +217,9 @@ public final class TaskEditorView extends FrameLayout {
         });
 
         secondary.setTextColor(palette.ink2);
+        secondary.setMinWidth(style.dp(48));
+        secondary.setBackground(controls.transparentRipple(24));
+        AccessibilityRoles.button(secondary);
         if (detail || state.page == EditorUiState.Page.TITLE) secondary.setVisibility(GONE);
         else {
             secondary.setVisibility(VISIBLE);
@@ -166,6 +233,9 @@ public final class TaskEditorView extends FrameLayout {
         }
 
         destructive.setTextColor(palette.bad);
+        destructive.setMinWidth(style.dp(48));
+        destructive.setBackground(controls.transparentRipple(24));
+        AccessibilityRoles.button(destructive);
         if (detail) {
             destructive.setVisibility(VISIBLE);
             destructive.setText(R.string.step_remove);
@@ -176,11 +246,16 @@ public final class TaskEditorView extends FrameLayout {
             destructive.setOnClickListener(view -> showPrompt(EditorUiState.Prompt.DELETE));
         } else destructive.setVisibility(GONE);
         renderProgress(detail);
+        if (compactSecondActionRow != null) compactSecondActionRow.setVisibility(
+                destructive.getVisibility() == VISIBLE || progress.getVisibility() == VISIBLE
+                        ? VISIBLE : INVISIBLE);
     }
 
     private void configureLeaf(boolean summary) {
-        leaf.setPadding(style.dp(summary ? 0 : 26), style.dp(summary ? 0 : 26),
-                style.dp(summary ? 0 : 26), style.dp(summary ? 0 : 30));
+        leaf.setPadding(style.dp(summary ? 0 : layout.leafHorizontalPaddingDp),
+                style.dp(summary ? 0 : layout.leafTopPaddingDp),
+                style.dp(summary ? 0 : layout.leafHorizontalPaddingDp),
+                style.dp(summary ? 0 : layout.leafBottomPaddingDp));
         if (summary) {
             leaf.setBackgroundColor(Color.TRANSPARENT);
             leaf.setRotation(0);
@@ -229,12 +304,15 @@ public final class TaskEditorView extends FrameLayout {
                 () -> setRecurrence(Recurrence.INTERVAL));
         leaf.addView(rhythm, params(-1, -2, 0, 24, 0, 0));
         if (state.recurrence == Recurrence.WEEKDAYS) {
-            leaf.addView(dayPicker(state.weekdayMask, mask -> apply(
+            LinearLayout dependent = dependentContainer();
+            dependent.addView(dayPicker(state.weekdayMask, mask -> apply(
                     TaskEditorStateReducer.updateWeekdays(state, mask), true)),
-                    params(-1, style.dp(48), 0, 14, 0, 0));
+                    new LinearLayout.LayoutParams(-1, -2));
             if (hasIssue(ValidationIssue.Field.WEEKDAYS))
-                leaf.addView(errorView(R.string.err_weekdays_empty));
+                dependent.addView(errorView(R.string.err_weekdays_empty));
+            leaf.addView(dependent, params(-1, -2, 0, 14, 0, 0));
         } else if (state.recurrence == Recurrence.INTERVAL) {
+            LinearLayout dependent = dependentContainer();
             LinearLayout interval = new LinearLayout(getContext());
             interval.setGravity(Gravity.CENTER_VERTICAL);
             EditText number = numberField(state.intervalDays,
@@ -246,9 +324,10 @@ public final class TaskEditorView extends FrameLayout {
             LinearLayout.LayoutParams unitParams = new LinearLayout.LayoutParams(-2, -2);
             unitParams.setMargins(style.dp(12), 0, 0, 0);
             interval.addView(unit, unitParams);
-            leaf.addView(interval, params(-1, -2, 0, 14, 0, 0));
+            dependent.addView(interval);
             if (hasIssue(ValidationIssue.Field.INTERVAL))
-                leaf.addView(errorView(R.string.err_interval_zero));
+                dependent.addView(errorView(R.string.err_interval_zero));
+            leaf.addView(dependent, params(-1, -2, 0, 14, 0, 0));
         }
         if (state.recurrence != Recurrence.ONCE) addTimes();
         addDuration();
@@ -265,6 +344,7 @@ public final class TaskEditorView extends FrameLayout {
         hero.setPadding(style.dp(26), style.dp(24), style.dp(26), style.dp(24));
         hero.setBackground(new LeafShapeDrawable(palette.leaf1, palette.leaf1Edge, style.dp(1),
                 style.dp(10), style.dp(64), style.dp(10), style.dp(64)));
+        controls.applyLeafPressState(hero, 10, 64, 10, 64);
         hero.setRotation(-.7f);
         style.shadow(hero, palette, 14, 1f);
         hero.addView(style.serif(state.title, 30, palette.ink, false, 200));
@@ -273,6 +353,8 @@ public final class TaskEditorView extends FrameLayout {
         hero.setContentDescription(getContext().getString(R.string.a11y_editor_summary_row,
                 getContext().getString(R.string.field_title_label), state.title,
                 getContext().getString(R.string.editor_change)));
+        hero.setMinimumHeight(style.dp(48));
+        AccessibilityRoles.button(hero);
         hero.setOnClickListener(view -> navigate(EditorUiState.Page.TITLE, true, -1));
         leaf.addView(hero, params(-1, -2, 0, 0, 0, 9));
         addSummaryRow(R.string.field_rhythm_label, formatter.rhythm(state), EditorUiState.Page.SCHEDULE, 0);
@@ -294,6 +376,9 @@ public final class TaskEditorView extends FrameLayout {
                 optional ? palette.leaf3Edge : palette.leaf2Edge, style.dp(1),
                 style.dp(index % 2 == 0 ? 8 : 56), style.dp(index % 2 == 0 ? 56 : 8),
                 style.dp(index % 2 == 0 ? 8 : 56), style.dp(index % 2 == 0 ? 56 : 8)));
+        controls.applyLeafPressState(row, index % 2 == 0 ? 8 : 56,
+                index % 2 == 0 ? 56 : 8, index % 2 == 0 ? 8 : 56,
+                index % 2 == 0 ? 56 : 8);
         float[] rotations = {1.1f, -1.5f, .8f, -.7f, 1.4f, -1f};
         row.setRotation(rotations[index]);
         LinearLayout words = new LinearLayout(getContext());
@@ -306,6 +391,11 @@ public final class TaskEditorView extends FrameLayout {
         row.addView(words, new LinearLayout.LayoutParams(0, -2, 1));
         row.addView(style.serif(getContext().getString(R.string.editor_change), 14,
                 palette.accent, true, 300));
+        row.setMinimumHeight(style.dp(48));
+        row.setContentDescription(getContext().getString(R.string.a11y_editor_summary_row,
+                getContext().getString(label), value,
+                getContext().getString(R.string.editor_change)));
+        AccessibilityRoles.button(row);
         row.setOnClickListener(view -> navigate(target, true, 1));
         leaf.addView(row, params(-1, -2, 0, 0, 0, 9));
     }
@@ -488,15 +578,25 @@ public final class TaskEditorView extends FrameLayout {
     private void renderPrompt() {
         if (state.prompt == EditorUiState.Prompt.NONE) {
             if (prompt != null) {
-                prompt.setOnDismissListener(null);
-                prompt.dismiss();
+                AlertDialog closing = prompt;
                 prompt = null;
+                closingPrompt = closing;
+                closing.setOnDismissListener(null);
+                View decor = closing.getWindow() == null ? null
+                        : closing.getWindow().getDecorView();
+                Runnable dismiss = () -> {
+                    if (closing.isShowing()) closing.dismiss();
+                    if (closingPrompt == closing) closingPrompt = null;
+                };
+                if (decor == null || !renderedOnce) dismiss.run();
+                else TaskEditorMotion.fadeOut(decor, palette, dismiss);
             }
             shownPrompt = EditorUiState.Prompt.NONE;
             return;
         }
         if (prompt != null && shownPrompt == state.prompt && prompt.isShowing()) return;
         if (prompt != null) prompt.dismiss();
+        dismissClosingPrompt();
         boolean deleting = state.prompt == EditorUiState.Prompt.DELETE;
         LinearLayout card = new LinearLayout(getContext());
         card.setOrientation(LinearLayout.VERTICAL);
@@ -521,7 +621,9 @@ public final class TaskEditorView extends FrameLayout {
         actions.setGravity(Gravity.CENTER_VERTICAL);
         TextView confirm = style.primaryButton(getContext().getString(deleting
                 ? R.string.ask_delete_confirm : R.string.ask_discard_confirm), palette);
-        if (deleting) confirm.setBackground(style.pill(palette.bad, 26));
+        confirm.setBackground(style.pill(deleting ? palette.bad : palette.accent, 26));
+        controls.applyPillPressState(confirm, 26);
+        AccessibilityRoles.button(confirm);
         confirm.setOnClickListener(view -> {
             if (deleting) listener.onDelete(state.taskId); else listener.onDismiss();
         });
@@ -529,14 +631,17 @@ public final class TaskEditorView extends FrameLayout {
         TextView keep = style.sans(getContext().getString(deleting ? R.string.ask_delete_keep
                 : R.string.ask_discard_keep), 17, palette.ink2, false);
         keep.setGravity(Gravity.CENTER);
+        keep.setMinWidth(style.dp(48));
         keep.setMinHeight(style.dp(48));
+        keep.setBackground(controls.transparentRipple(24));
+        AccessibilityRoles.button(keep);
         keep.setOnClickListener(view -> closePrompt());
         LinearLayout.LayoutParams keepParams = new LinearLayout.LayoutParams(-2, style.dp(48));
         keepParams.setMargins(style.dp(16), 0, 0, 0);
         actions.addView(keep, keepParams);
         card.addView(actions, params(-1, -2, 0, 20, 0, 0));
         FrameLayout wrapper = new FrameLayout(getContext());
-        wrapper.setPadding(style.dp(60), 0, style.dp(22), 0);
+        wrapper.setPadding(style.dp(layout.pageStartDp), 0, style.dp(layout.pageEndDp), 0);
         FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
         wrapper.addView(card, cardParams);
         prompt = new AlertDialog.Builder(getContext()).setView(wrapper).create();
@@ -551,10 +656,29 @@ public final class TaskEditorView extends FrameLayout {
             window.setGravity(Gravity.TOP);
             WindowManager.LayoutParams attributes = window.getAttributes();
             attributes.dimAmount = .53f;
-            attributes.y = style.dp(250);
+            attributes.y = style.dp(layout.promptTopDp(screenHeightDp(), 0));
             window.setAttributes(attributes);
             window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            card.post(() -> positionPrompt(window, card));
+            if (renderedOnce) TaskEditorMotion.fadeIn(window.getDecorView(), palette);
+            else TaskEditorMotion.settle(window.getDecorView());
         }
+    }
+
+    private void positionPrompt(Window window, View card) {
+        if (window == null || !card.isAttachedToWindow()) return;
+        int cardHeightDp = Math.round(card.getHeight()
+                / getResources().getDisplayMetrics().density);
+        WindowManager.LayoutParams attributes = window.getAttributes();
+        attributes.y = style.dp(layout.promptTopDp(screenHeightDp(), cardHeightDp));
+        window.setAttributes(attributes);
+    }
+
+    private int screenHeightDp() {
+        int configured = getResources().getConfiguration().screenHeightDp;
+        if (configured > 0) return configured;
+        return Math.round(getResources().getDisplayMetrics().heightPixels
+                / getResources().getDisplayMetrics().density);
     }
 
     @Override protected void onDetachedFromWindow() {
@@ -563,8 +687,21 @@ public final class TaskEditorView extends FrameLayout {
             prompt.dismiss();
             prompt = null;
         }
+        dismissClosingPrompt();
         super.onDetachedFromWindow();
     }
+
+    private void dismissClosingPrompt() {
+        if (closingPrompt == null) return;
+        AlertDialog closing = closingPrompt;
+        closingPrompt = null;
+        Window window = closing.getWindow();
+        if (window != null) TaskEditorMotion.cancel(window.getDecorView());
+        closing.setOnDismissListener(null);
+        if (closing.isShowing()) closing.dismiss();
+    }
+
+    AlertDialog promptForTest() { return prompt; }
 
     private void renderProgress(boolean detail) {
         progress.removeAllViews();
@@ -583,19 +720,57 @@ public final class TaskEditorView extends FrameLayout {
         }
     }
 
+    private void configureAccessibilityOrder() {
+        List<View> order = new ArrayList<>();
+        order.add(cancel);
+        order.add(contextLabel);
+        collectAccessibilityOrder(leaf, order);
+        order.add(primary);
+        if (secondary.getVisibility() == VISIBLE) order.add(secondary);
+        if (destructive.getVisibility() == VISIBLE) order.add(destructive);
+        View previous = null;
+        View previousFocusable = null;
+        for (View view : order) {
+            if (view.getVisibility() != VISIBLE) continue;
+            if (view.getId() == NO_ID) view.setId(View.generateViewId());
+            view.setAccessibilityTraversalAfter(previous == null ? NO_ID : previous.getId());
+            previous = view;
+            if (!view.isFocusable()) continue;
+            if (previousFocusable != null)
+                previousFocusable.setNextFocusForwardId(view.getId());
+            previousFocusable = view;
+        }
+        if (previousFocusable != null) previousFocusable.setNextFocusForwardId(NO_ID);
+    }
+
+    private static void collectAccessibilityOrder(View view, List<View> output) {
+        if (view.getVisibility() != VISIBLE) return;
+        boolean describedGroup = view instanceof ViewGroup
+                && view.getContentDescription() != null
+                && view.getContentDescription().length() > 0;
+        if (view instanceof TextView || view.isClickable() || describedGroup) output.add(view);
+        if (!(view instanceof ViewGroup)) return;
+        ViewGroup group = (ViewGroup) view;
+        for (int index = 0; index < group.getChildCount(); index++) {
+            View child = group.getChildAt(index);
+            if (!describedGroup || child.isClickable())
+                collectAccessibilityOrder(child, output);
+        }
+    }
+
     private void animatePage() {
         if (pendingDirection == 0) return;
         int direction = pendingDirection;
         pendingDirection = 0;
-        if (!ValueAnimator.areAnimatorsEnabled()) {
-            leaf.setAlpha(1f);
-            leaf.setTranslationX(0);
+        if (!TaskEditorMotion.enabled()) {
+            TaskEditorMotion.settle(leaf);
             return;
         }
         leaf.setAlpha(0f);
         leaf.setTranslationX(style.dp(18) * direction);
-        leaf.animate().alpha(1f).translationX(0).setDuration(240L)
-                .setInterpolator(new PathInterpolator(.2f, .7f, .3f, 1f)).start();
+        leaf.animate().alpha(1f).translationX(0)
+                .setDuration(TaskEditorMotion.duration(palette))
+                .setInterpolator(TaskEditorMotion.interpolator()).start();
     }
 
     private void addQuestion(int resource) {
@@ -632,12 +807,17 @@ public final class TaskEditorView extends FrameLayout {
         row.setPadding(style.dp(18), style.dp(12), style.dp(18), style.dp(12));
         row.setBackground(new LeafShapeDrawable(palette.leaf2, palette.leaf2Edge, style.dp(1),
                 style.dp(8), style.dp(42), style.dp(8), style.dp(42)));
+        controls.applyLeafPressState(row, 8, 42, 8, 42);
         row.addView(style.serif(value, 18, palette.ink2, false, 400),
                 new LinearLayout.LayoutParams(0, -2, 1));
         row.addView(style.serif(getContext().getString(R.string.editor_change), 14,
                 palette.accent, true, 300));
+        row.setContentDescription(getContext().getString(R.string.a11y_editor_value_row,
+                value, getContext().getString(R.string.editor_change)));
+        AccessibilityRoles.button(row, style.dp(48));
         row.setOnClickListener(view -> action.run());
         leaf.addView(row, params(-1, -2, 0, 10, 0, 0));
+        AccessibilityRoles.installExpandedTouchTarget(row, style.dp(48));
     }
     private TextView errorView(int resource) { return controls.errorView(resource); }
     private TextView errorView(String value) { return controls.errorView(value); }
@@ -662,11 +842,62 @@ public final class TaskEditorView extends FrameLayout {
     private void apply(EditorUiState next, boolean rerender) {
         EditorUiState validated = liveValidated(next);
         boolean issueChanged = !state.issues.equals(validated.issues);
-        if (rerender || issueChanged) prepareViewport(state, validated);
+        boolean mustRender = rerender || issueChanged;
+        EditorUiState previous = state;
+        if (mustRender) prepareViewport(previous, validated);
+        if (rerender && dependentUiChanged(previous, validated)
+                && animateDependentExit(validated)) return;
         state = validated;
-        if (rerender || issueChanged) render();
+        if (rerender && dependentKey(validated) != 0 && dependentKey(previous) == 0)
+            pendingDependentEnter = true;
+        if (mustRender) render();
         lastEmitted = validated;
         listener.onDraftChanged(validated);
+    }
+
+    private boolean animateDependentExit(EditorUiState validated) {
+        View dependent = findViewWithTag(DEPENDENT_TAG);
+        if (dependent == null || !TaskEditorMotion.enabled()) return false;
+        int generation = ++dependentTransitionGeneration;
+        state = validated;
+        lastEmitted = validated;
+        listener.onDraftChanged(validated);
+        TaskEditorMotion.fadeOut(dependent, palette, () -> {
+            if (generation != dependentTransitionGeneration) return;
+            pendingDependentEnter = dependentKey(validated) != 0;
+            render();
+        });
+        return true;
+    }
+
+    private static boolean dependentUiChanged(EditorUiState previous, EditorUiState next) {
+        return previous != null && next != null
+                && previous.page == next.page
+                && Objects.equals(previous.expandedStepId, next.expandedStepId)
+                && dependentKey(previous) != dependentKey(next);
+    }
+
+    private static int dependentKey(EditorUiState value) {
+        if (value == null) return 0;
+        if (value.expandedStepId != null) {
+            for (EditorStepState step : value.stepStates) {
+                if (!step.id.equals(value.expandedStepId)) continue;
+                if (step.cadenceMode == StepCadenceMode.WEEKDAYS) return 11;
+                if (step.cadenceMode == StepCadenceMode.INTERVAL) return 12;
+                return 0;
+            }
+        }
+        if (value.page != EditorUiState.Page.SCHEDULE) return 0;
+        if (value.recurrence == Recurrence.WEEKDAYS) return 1;
+        if (value.recurrence == Recurrence.INTERVAL) return 2;
+        return 0;
+    }
+
+    private LinearLayout dependentContainer() {
+        LinearLayout container = new LinearLayout(getContext());
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setTag(DEPENDENT_TAG);
+        return container;
     }
 
     private EditorUiState liveValidated(EditorUiState value) {

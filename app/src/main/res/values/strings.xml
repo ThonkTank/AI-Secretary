@@ -129,7 +129,11 @@
     <string name="a11y_editor_chip_selected">%1$s, ausgewählt</string>
     <string name="a11y_editor_move_up">nach oben</string>
     <string name="a11y_editor_move_down">nach unten</string>
+    <string name="a11y_editor_move_up_step">%1$s nach oben verschieben</string>
+    <string name="a11y_editor_move_down_step">%1$s nach unten verschieben</string>
+    <string name="a11y_editor_step_row">Schritt %1$d, %2$s, %3$s, bearbeiten</string>
     <string name="a11y_editor_summary_row">%1$s, %2$s, %3$s</string>
+    <string name="a11y_editor_value_row">%1$s, %2$s</string>
     <string name="a11y_schedule_up">Zeitplatzierung nach oben verschieben</string>
     <string name="a11y_schedule_down">Zeitplatzierung nach unten verschieben</string>
     <string name="a11y_schedule_previous_slot">In die vorherige Tageszeit verschieben</string>

@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -52,10 +53,13 @@ final class TaskStepsEditorView extends LinearLayout {
                 getContext().getString(R.string.step_add)), 15,
                 palette.ink2, false);
         add.setGravity(Gravity.CENTER_VERTICAL);
+        add.setMinWidth(style.dp(48));
         add.setMinHeight(style.dp(52));
         add.setPadding(style.dp(16), 0, style.dp(16), 0);
         add.setBackground(style.dashed(palette));
+        controls.applyLeafPressState(add, 10, 64, 10, 64);
         add.setContentDescription(getContext().getString(R.string.step_add));
+        AccessibilityRoles.button(add);
         add.setOnClickListener(view -> apply(TaskEditorStateReducer.addStep(state), true));
         addView(add, params(-1, -2, 0, 18, 0, 0));
     }
@@ -110,13 +114,18 @@ final class TaskStepsEditorView extends LinearLayout {
                 () -> updateStep(index, currentStep(index).withCadenceMode(
                         StepCadenceMode.INTERVAL), true));
         addView(choices);
-        if (step.cadenceMode == StepCadenceMode.WEEKDAYS)
-            addView(dayPicker(step.weekdayMask,
+        LinearLayout dependent = new LinearLayout(getContext());
+        dependent.setOrientation(VERTICAL);
+        dependent.setTag(TaskEditorView.DEPENDENT_TAG);
+        if (step.cadenceMode == StepCadenceMode.WEEKDAYS) {
+            dependent.addView(dayPicker(step.weekdayMask,
                     mask -> {
                         if (mask != 0)
                             updateStep(index, currentStep(index).withWeekdayMask(mask), true);
                     }),
-                    params(-1, style.dp(48), 0, 14, 0, 0));
+                    new LayoutParams(-1, -2));
+            addView(dependent, params(-1, -2, 0, 14, 0, 0));
+        }
         if (step.cadenceMode == StepCadenceMode.INTERVAL) {
             LinearLayout interval = new LinearLayout(getContext());
             interval.setGravity(Gravity.CENTER_VERTICAL);
@@ -129,9 +138,10 @@ final class TaskStepsEditorView extends LinearLayout {
             LinearLayout.LayoutParams unitParams = new LinearLayout.LayoutParams(-2, -2);
             unitParams.setMargins(style.dp(12), 0, 0, 0);
             interval.addView(unit, unitParams);
-            addView(interval, params(-1, -2, 0, 14, 0, 0));
+            dependent.addView(interval);
             if (hasIssue(ValidationIssue.Field.STEP_INTERVAL, step.id))
-                addView(errorView(R.string.err_interval_zero));
+                dependent.addView(errorView(R.string.err_interval_zero));
+            addView(dependent, params(-1, -2, 0, 14, 0, 0));
         }
     }
 
@@ -147,24 +157,47 @@ final class TaskStepsEditorView extends LinearLayout {
                 style.dp(error ? 2 : 1), style.dp(index % 2 == 0 ? 56 : 8),
                 style.dp(index % 2 == 0 ? 8 : 56), style.dp(index % 2 == 0 ? 56 : 8),
                 style.dp(index % 2 == 0 ? 8 : 56)));
+        controls.applyLeafPressState(row, index % 2 == 0 ? 56 : 8,
+                index % 2 == 0 ? 8 : 56, index % 2 == 0 ? 56 : 8,
+                index % 2 == 0 ? 8 : 56);
         row.setRotation(index % 2 == 0 ? -.8f : .9f);
         style.shadow(row, palette, 7, .7f);
         row.addView(style.serif(String.valueOf(index + 1), 16, palette.muted, true, 300),
                 new LinearLayout.LayoutParams(style.dp(22), -2));
         LinearLayout words = new LinearLayout(getContext());
         words.setOrientation(VERTICAL);
-        words.addView(style.serif(step.text.isEmpty()
+        TextView title = style.serif(step.text.isEmpty()
                 ? getContext().getString(R.string.step_name_hint) : step.text,
-                19, error ? palette.bad : palette.ink, false, 400));
+                19, error ? palette.bad : palette.ink, false, 400);
+        title.setSingleLine(true);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        words.addView(title);
         String meta = meta(step);
-        if (!meta.isEmpty()) words.addView(style.serif(meta, 14, palette.muted, true, 300));
+        if (!meta.isEmpty()) {
+            TextView metaView = style.serif(meta, 14, palette.muted, true, 300);
+            metaView.setSingleLine(true);
+            metaView.setEllipsize(TextUtils.TruncateAt.END);
+            words.addView(metaView);
+        }
         row.addView(words, new LinearLayout.LayoutParams(0, -2, 1));
-        row.addView(moveButton(R.string.editor_move_up_symbol, R.string.a11y_editor_move_up,
+        row.addView(moveButton(R.string.editor_move_up_symbol,
+                getContext().getString(R.string.a11y_editor_move_up_step,
+                        step.text.isEmpty() ? getContext().getString(R.string.step_name_hint)
+                                : step.text),
                 () -> moveStep(index, index - 1),
                 () -> moveStep(index, 0)));
-        row.addView(moveButton(R.string.editor_move_down_symbol, R.string.a11y_editor_move_down,
+        row.addView(moveButton(R.string.editor_move_down_symbol,
+                getContext().getString(R.string.a11y_editor_move_down_step,
+                        step.text.isEmpty() ? getContext().getString(R.string.step_name_hint)
+                                : step.text),
                 () -> moveStep(index, index + 1),
                 () -> moveStep(index, state.stepStates.size() - 1)));
+        String accessibleMeta = meta.isEmpty()
+                ? getContext().getString(R.string.editor_summary_empty) : meta;
+        row.setContentDescription(getContext().getString(R.string.a11y_editor_step_row,
+                index + 1, step.text.isEmpty() ? getContext().getString(R.string.step_name_hint)
+                        : step.text, accessibleMeta));
+        AccessibilityRoles.button(row);
         row.setOnClickListener(view -> expandStep(step.id));
         addView(row, params(-1, -2, 0, 14, 0, 0));
     }
@@ -261,13 +294,15 @@ final class TaskStepsEditorView extends LinearLayout {
         controls.addChip(row, label, selected, action);
     }
 
-    private TextView moveButton(int symbol, int contentDescription, Runnable click,
+    private TextView moveButton(int symbol, String contentDescription, Runnable click,
                                 Runnable longClick) {
         TextView view = style.sans(getContext().getString(symbol), 15, palette.dot, false);
         view.setGravity(Gravity.CENTER);
         view.setMinWidth(style.dp(48));
         view.setMinHeight(style.dp(48));
-        view.setContentDescription(getContext().getString(contentDescription));
+        view.setContentDescription(contentDescription);
+        view.setBackground(controls.transparentRipple(24));
+        AccessibilityRoles.button(view);
         view.setOnClickListener(ignored -> click.run());
         view.setOnLongClickListener(ignored -> { longClick.run(); return true; });
         return view;

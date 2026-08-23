@@ -5,5 +5,8 @@
         <activity
             android:name=".ui.today.TodayInteractionHarnessActivity"
             android:exported="false" />
+        <activity
+            android:name=".TaskEditorInteractionHarnessActivity"
+            android:exported="false" />
     </application>
 </manifest>
