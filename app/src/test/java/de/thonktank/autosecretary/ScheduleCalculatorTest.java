@@ -16,7 +16,7 @@ import java.time.LocalDate;
 public class ScheduleCalculatorTest {
     private Task task(Recurrence recurrence, int interval, int mask, LocalDate due) {
         return Task.restore(TaskId.of("id"), "Test", recurrence, interval, mask,
-                false, "", false, false, due, null, null, 1_001_000L, false,
+                false, "", false, false, due, null, null, due, 1_001_000L, false,
                 null, de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
                 null, null, null, null, "");
     }

@@ -188,7 +188,7 @@ public final class CompletionInMemoryTest {
             TaskId taskId = TaskId.of("stress-task-" + taskIndex);
             TaskSlot slot = TaskSlot.values()[taskIndex % TaskSlot.values().length];
             Task task = Task.restore(taskId, "Aufgabe " + taskIndex, Recurrence.DAILY,
-                    1, 0, false, "", false, false, TODAY, null, null, taskIndex,
+                    1, 0, false, "", false, false, TODAY, null, null, TODAY, taskIndex,
                     false, null, TaskBoundKind.FOREVER, null, null, null, null, "");
             repository.insertTask(task);
             repository.putScheduleEntries(Collections.singletonList(
@@ -232,7 +232,7 @@ public final class CompletionInMemoryTest {
         }
         TaskId id = TaskId.of(nextId());
         repository.insertTask(Task.restore(id, title, recurrence, 1, 0, true, condition,
-                false, false, clock.today(), null, null, 1_024L, false, null,
+                false, false, clock.today(), null, null, clock.today(), 1_024L, false, null,
                 TaskBoundKind.FOREVER, null, null, null, null, ""));
         repository.putScheduleEntries(Collections.singletonList(
                 new TaskScheduleEntry(nextId(), id, slot, 1_024L)));

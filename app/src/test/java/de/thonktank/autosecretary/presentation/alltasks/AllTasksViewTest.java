@@ -158,7 +158,7 @@ public final class AllTasksViewTest {
     private static TaskCatalog catalog() {
         Task task = Task.restore(TaskId.of("task"), "Morgenroutine", Recurrence.DAILY,
                 1, 0, false, "", false, false, LocalDate.of(2026, 8, 20), null, null,
-                1_024, false, 30,
+                LocalDate.of(2026, 8, 20), 1_024, false, 30,
                 TaskBoundKind.FOREVER, null, null, null, null, "");
         return new TaskCatalog(Collections.singletonList(new TaskCatalog.Item(task,
                 Arrays.asList(new TaskStepTemplate("one", task.id, 0, "Duschen"),

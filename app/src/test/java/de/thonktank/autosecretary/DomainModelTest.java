@@ -75,17 +75,20 @@ public final class DomainModelTest {
     @Test public void invalidDomainCombinationsAreRejectedAtCreation() {
         assertThrows(IllegalArgumentException.class, () -> Task.restore(
                 TaskId.of("weekday"), "Routine", Recurrence.WEEKDAYS, 1, 0, false, "",
-                false, false, LocalDate.of(2026, 8, 15), null, null, 1_001_000L, false,
+                false, false, LocalDate.of(2026, 8, 15), null, null,
+                LocalDate.of(2026, 8, 15), 1_001_000L, false,
                 null, TaskBoundKind.FOREVER, null, null, null, null, ""));
         assertThrows(IllegalArgumentException.class, () -> Task.restore(
                 TaskId.of("ongoing"), "Praktikum", Recurrence.ONCE, 1, 0, true, "",
-                false, false, LocalDate.of(2026, 8, 15), null, null, 4_001_000L, false,
+                false, false, LocalDate.of(2026, 8, 15), null, null,
+                LocalDate.of(2026, 8, 15), 4_001_000L, false,
                 null, TaskBoundKind.FOREVER, null, null, null, null, ""));
     }
 
     @Test public void entityMapperKeepsRoomCodesOutOfTheDomainModel() {
         TaskEntity entity = new TaskEntity("id", "Aufgabe", "DAILY", 1, 0,
-                false, "", false, false, "2026-08-15", "", "", 1_001_000L,
+                false, "", false, false, "2026-08-15", "2026-08-15", "", "",
+                1_001_000L,
                 true, null, "FOREVER", "", null, null, "", "");
         TaskEntityMapper mapper = new TaskEntityMapper();
 
@@ -93,6 +96,7 @@ public final class DomainModelTest {
         TaskEntity roundTrip = mapper.toEntity(task);
 
         assertEquals(Recurrence.DAILY, task.recurrence);
+        assertEquals(LocalDate.of(2026, 8, 15), task.cadenceAnchorOn);
         assertEquals("DAILY", roundTrip.recurrence);
         assertEquals(1_001_000L, roundTrip.catalogOrder);
     }

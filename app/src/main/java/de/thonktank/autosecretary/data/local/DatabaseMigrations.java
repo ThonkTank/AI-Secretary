@@ -6,6 +6,8 @@ import android.util.Log;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
+import de.thonktank.autosecretary.DatabaseContract;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -464,6 +466,36 @@ public final class DatabaseMigrations {
                     + "INTEGER NOT NULL DEFAULT 0");
         }
     };
+
+    /** Persists the immutable first due date used by calendar-day step cadences. */
+    public static final Migration MIGRATION_15_16 = new Migration(15, 16) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE tasks ADD COLUMN cadenceAnchorOn TEXT");
+            database.execSQL("UPDATE tasks SET cadenceAnchorOn = ("
+                    + "SELECT MIN(occurrences.scheduledOn) FROM occurrences "
+                    + "WHERE occurrences.taskId = tasks.id)");
+            database.execSQL("UPDATE tasks SET cadenceAnchorOn = NULLIF(nextDueOn, '') "
+                    + "WHERE cadenceAnchorOn IS NULL");
+        }
+    };
+
+    /** Complete historical graph for migration fixtures and archive tests. */
+    public static Migration[] all() {
+        return from(1);
+    }
+
+    /** Contiguous migration path from {@code version} to the current Room schema. */
+    public static Migration[] from(int version) {
+        Migration[] migrations = {MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+                MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
+                MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16};
+        if (version < 1 || version > DatabaseContract.VERSION)
+            throw new IllegalArgumentException("Unsupported database version: " + version);
+        Migration[] result = new Migration[DatabaseContract.VERSION - version];
+        System.arraycopy(migrations, version - 1, result, 0, result.length);
+        return result;
+    }
 
     private static List<Integer> parseLegacyRepetitions(String stepId, String stored) {
         List<Integer> values = new ArrayList<>();

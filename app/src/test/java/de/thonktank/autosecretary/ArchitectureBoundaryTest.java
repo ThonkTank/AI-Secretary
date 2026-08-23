@@ -126,10 +126,11 @@ public final class ArchitectureBoundaryTest {
 
     @Test public void productionMigrationGraphStartsAtSupportedSchemaEight() throws Exception {
         String source = read(main("data/local/DatabaseFactory.java"));
-        assertTrue(source.contains("MIGRATION_8_9"));
+        assertTrue(source.contains("DatabaseMigrations.from("));
+        assertTrue(source.contains("PRODUCTION_UPGRADE_SOURCE_VERSION"));
         for (int version = 1; version < 8; version++)
             assertFalse("unsupported migration " + version + " registered",
-                    source.contains("MIGRATION_" + version + "_" + (version + 1) + ","));
+                    source.contains("MIGRATION_" + version + "_" + (version + 1)));
     }
 
     @Test public void removedCompatibilityMutationFacadesStayRemoved() throws Exception {

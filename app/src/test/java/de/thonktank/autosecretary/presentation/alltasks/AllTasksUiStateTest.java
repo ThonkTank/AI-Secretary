@@ -165,15 +165,17 @@ public final class AllTasksUiStateTest {
 
     private static TaskCatalog catalog() {
         Task gym = Task.restore(TaskId.of("gym"), "Gym", Recurrence.DAILY, 1, 0,
-                false, "", false, false, MONDAY, null, null, 1_024, false, 45,
+                false, "", false, false, MONDAY, null, null, MONDAY, 1_024, false, 45,
                 de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
                 null, null, null, null, "Training");
         Task weekday = Task.restore(TaskId.of("weekday"), "Büro", Recurrence.WEEKDAYS,
-                1, 1, false, "", false, false, MONDAY, null, null, 2_048, false, null,
+                1, 1, false, "", false, false, MONDAY, null, null, MONDAY, 2_048,
+                false, null,
                 de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
                 null, null, null, null, "");
         Task archived = Task.restore(TaskId.of("archive"), "Alt", Recurrence.ONCE,
-                1, 0, false, "", false, true, null, MONDAY, MONDAY, 3_072, true, null,
+                1, 0, false, "", false, true, null, MONDAY, MONDAY, null, 3_072,
+                true, null,
                 de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
                 null, null, null, null, "");
         return new TaskCatalog(Arrays.asList(

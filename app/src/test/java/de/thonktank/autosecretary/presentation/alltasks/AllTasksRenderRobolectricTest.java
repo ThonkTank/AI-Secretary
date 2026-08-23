@@ -237,7 +237,8 @@ public final class AllTasksRenderRobolectricTest {
                 archived ? null : LocalDate.of(2026, 8, 23),
                 archived ? LocalDate.of(2026, 8, 20) : null,
                 archived ? LocalDate.of(2026, 8, 20) : null,
-                order, archived, null, TaskBoundKind.FOREVER,
+                archived ? null : LocalDate.of(2026, 8, 23), order, archived, null,
+                TaskBoundKind.FOREVER,
                 null, null, null, null, "");
         List<TaskScheduleEntry> schedule = new ArrayList<>();
         for (TaskSlot slot : slots)

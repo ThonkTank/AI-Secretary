@@ -34,7 +34,9 @@ import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
+import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
+import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
@@ -172,6 +174,77 @@ public final class TaskEditorFeatureRobolectricTest {
         clock.date = TODAY.plusDays(2);
         materialize.execute();
         assertEquals(2, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+    }
+
+    @Test public void cadenceAnchorSurvivesHistoryDeletionReloadAndDefinitionEdit() {
+        TaskStepDefinition always = new TaskStepDefinition(null, 0, "Immer", 0,
+                StepAmount.none(), "");
+        TaskStepDefinition interval = new TaskStepDefinition(null, 1, "Intervall", 0, 2,
+                StepAmount.none(), "");
+        TaskDefinition original = definition("Pflege", Recurrence.DAILY, 0,
+                TaskBoundKind.FOREVER, null, Arrays.asList(always, interval));
+        new CreateTask(repository, repository, clock, ids).execute(original);
+        Task task = repository.allTasks().get(0);
+        assertEquals(TODAY, task.cadenceAnchorOn);
+
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        closeOpenOccurrence();
+        database.getOpenHelper().getWritableDatabase().execSQL(
+                "DELETE FROM occurrences WHERE taskId='" + task.id.value + "'");
+
+        List<TaskStepTemplate> templates = repository.templates(task.id);
+        TaskDefinition edited = definition("Pflege bearbeitet", Recurrence.DAILY, 0,
+                TaskBoundKind.FOREVER, null, Arrays.asList(
+                new TaskStepDefinition(templates.get(0).id, 0, "Immer", 0,
+                        StepAmount.none(), ""),
+                new TaskStepDefinition(templates.get(1).id, 1, "Intervall", 0, 2,
+                        StepAmount.none(), "")));
+        new UpdateTask(repository, repository, ids, clock).execute(task.id, edited);
+        repository = new RoomTaskRepository(database);
+        assertEquals(TODAY, repository.findTask(task.id).cadenceAnchorOn);
+
+        clock.date = TODAY.plusDays(1);
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        assertEquals(1, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+        closeOpenOccurrence();
+        clock.date = TODAY.plusDays(2);
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        assertEquals(2, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+    }
+
+    @Test public void activeStepIntervalWithoutPersistedAnchorFailsFast() {
+        TaskId id = TaskId.of("missing-anchor");
+        repository.insertTask(Task.restore(id, "Beschädigt", Recurrence.DAILY, 1, 0,
+                false, "", false, false, TODAY, null, null, null, 1_024L, false,
+                null, TaskBoundKind.FOREVER, null, null, null, null, ""));
+        repository.insertTemplates(Collections.singletonList(new TaskStepTemplate(
+                "interval", id, 0, "Intervall", 0, 2, StepAmount.none(), "")));
+        repository.putScheduleEntries(Collections.singletonList(new TaskScheduleEntry(
+                "schedule", id, TaskSlot.MORNING, 1_024L)));
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> new MaterializeDueOccurrences(repository, clock, ids).execute());
+        assertTrue(failure.getMessage().contains("missing-anchor"));
+    }
+
+    @Test public void changingIntervalLengthRecalculatesCursorButPreservesAnchor() {
+        TaskDefinition everyThreeDays = new TaskDefinition("Intervall", null, TaskSlot.MORNING,
+                Recurrence.INTERVAL, 3, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
+                null, null, null, null, "", Collections.emptyList());
+        new CreateTask(repository, repository, clock, ids).execute(everyThreeDays);
+        Task task = repository.allTasks().get(0);
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        assertEquals(TODAY.plusDays(3), repository.findTask(task.id).nextDueOn);
+
+        clock.date = TODAY.plusDays(1);
+        TaskDefinition everyFiveDays = new TaskDefinition("Intervall", null, TaskSlot.MORNING,
+                Recurrence.INTERVAL, 5, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
+                null, null, null, null, "", Collections.emptyList());
+        new UpdateTask(repository, repository, ids, clock).execute(task.id, everyFiveDays);
+
+        Task updated = repository.findTask(task.id);
+        assertEquals(TODAY.plusDays(1), updated.nextDueOn);
+        assertEquals(TODAY, updated.cadenceAnchorOn);
     }
 
     private void closeOpenOccurrence() {

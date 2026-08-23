@@ -145,8 +145,9 @@ public final class PresentationStateRobolectricTest {
 
         TaskId migratedId = TaskId.of("migrated-ongoing");
         repository.insertTask(Task.restore(migratedId, "Bearbeitbar", Recurrence.INTERVAL,
-                4, 0, true, "Fertig", false, false, clock.today(), null, null, 1_024L,
-                false, null, TaskBoundKind.FOREVER, null, null, null, null, ""));
+                4, 0, true, "Fertig", false, false, clock.today(), null, null,
+                clock.today(), 1_024L, false, null, TaskBoundKind.FOREVER, null, null,
+                null, null, ""));
         repository.insertTemplates(java.util.Arrays.asList(
                 new de.thonktank.autosecretary.domain.model.TaskStepTemplate(
                         "ongoing-a", migratedId, 0, "A"),

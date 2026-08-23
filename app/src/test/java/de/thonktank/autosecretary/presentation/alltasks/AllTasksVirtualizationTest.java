@@ -321,7 +321,8 @@ public final class AllTasksVirtualizationTest {
         for (int index = 0; index < count; index++) {
             Task task = Task.restore(TaskId.of("task-" + index), "Aufgabe " + index,
                     Recurrence.DAILY, 1, 0, false, "", false, false,
-                    LocalDate.of(2026, 8, 21), null, null, 1_024L + index, false,
+                    LocalDate.of(2026, 8, 21), null, null,
+                    LocalDate.of(2026, 8, 21), 1_024L + index, false,
                     null, TaskBoundKind.FOREVER, null, null, null, null, "");
             List<TaskStepTemplate> steps = Arrays.asList(
                     new TaskStepTemplate("step-" + index + "-a", task.id, 0, "Erster"),
