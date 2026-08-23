@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.text.Editable;
 import android.text.InputType;
+import android.text.Selection;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.ViewGroup;
@@ -74,9 +75,10 @@ final class TaskStepsEditorView extends LinearLayout {
         addView(question(R.string.editor_frage_schritt));
         EditText name = input(R.string.step_name_hint, step.text, false,
                 value -> updateStep(index, currentStep(index).withText(value), false));
+        name.setTag(focusTag("title", step.id));
         name.setSingleLine(true);
         addView(name, params(-1, style.dp(48), 0, 22, 0, 0));
-        if (state.errors.contains(TaskEditorValidator.STEP_PREFIX + step.id))
+        if (hasIssue(ValidationIssue.Field.STEP_TITLE, step.id))
             addView(errorView(R.string.err_step_empty));
 
         if (state.recurrence != Recurrence.ONCE) addDaySchedule(index, step);
@@ -89,12 +91,13 @@ final class TaskStepsEditorView extends LinearLayout {
         addAmountChip(amounts, R.string.amount_duration, StepAmountKind.DURATION, step, index);
         addView(amounts);
         addAmountInputs(step, index);
-        if (state.errors.contains(TaskEditorValidator.AMOUNT_PREFIX + step.id))
+        if (hasIssue(ValidationIssue.Field.STEP_AMOUNT, step.id))
             addView(errorView(R.string.err_amount_zero));
 
         addLabel(R.string.step_note_label, 24, 4);
         EditText note = input(R.string.field_note_hint, step.note, false,
                 value -> updateStep(index, currentStep(index).withNote(value), false));
+        note.setTag(focusTag("note", step.id));
         note.setSingleLine(true);
         addView(note, new LayoutParams(-1, style.dp(48)));
     }
@@ -103,27 +106,31 @@ final class TaskStepsEditorView extends LinearLayout {
         addLabel(R.string.editor_label_tage_frage, 24, 10);
         EditorFlowLayout choices = new EditorFlowLayout(getContext());
         addChip(choices, R.string.editor_tage_immer,
-                step.weekdayMask == 0 && step.intervalDays == 0,
-                () -> updateStep(index, currentStep(index).withIntervalDays(0), true));
-        addChip(choices, R.string.editor_tage_feste, step.weekdayMask != 0,
-                () -> updateStep(index, currentStep(index).withWeekdayMask(
-                        currentStep(index).weekdayMask == 0 ? 1 : currentStep(index).weekdayMask),
-                        true));
-        addChip(choices, R.string.editor_tage_intervall, step.intervalDays != 0,
-                () -> updateStep(index, currentStep(index).withIntervalDays(
-                        currentStep(index).intervalDays < 2 ? 2
-                                : currentStep(index).intervalDays), true));
+                step.cadenceMode == StepCadenceMode.ALWAYS,
+                () -> updateStep(index, currentStep(index).withCadenceMode(
+                        StepCadenceMode.ALWAYS), true));
+        addChip(choices, R.string.editor_tage_feste,
+                step.cadenceMode == StepCadenceMode.WEEKDAYS,
+                () -> updateStep(index, currentStep(index).withCadenceMode(
+                        StepCadenceMode.WEEKDAYS), true));
+        addChip(choices, R.string.editor_tage_intervall,
+                step.cadenceMode == StepCadenceMode.INTERVAL,
+                () -> updateStep(index, currentStep(index).withCadenceMode(
+                        StepCadenceMode.INTERVAL), true));
         addView(choices);
-        if (step.weekdayMask != 0)
+        if (step.cadenceMode == StepCadenceMode.WEEKDAYS)
             addView(dayPicker(step.weekdayMask,
-                    mask -> updateStep(index, currentStep(index).withWeekdayMask(mask), true)),
+                    mask -> {
+                        if (mask != 0)
+                            updateStep(index, currentStep(index).withWeekdayMask(mask), true);
+                    }),
                     params(-1, style.dp(48), 0, 14, 0, 0));
-        if (step.intervalDays != 0) {
+        if (step.cadenceMode == StepCadenceMode.INTERVAL) {
             LinearLayout interval = new LinearLayout(getContext());
             interval.setGravity(Gravity.CENTER_VERTICAL);
             EditText number = numberField(step.intervalDays,
-                    value -> updateStep(index, currentStep(index).withIntervalDays(
-                            value == null ? 0 : value), false));
+                    value -> updateStep(index, currentStep(index).withIntervalDays(value), false));
+            number.setTag(focusTag("interval", step.id));
             interval.addView(number, new LinearLayout.LayoutParams(style.dp(96), style.dp(48)));
             TextView unit = style.serif(getContext().getString(R.string.editor_interval_unit),
                     17, palette.muted, true, 300);
@@ -131,7 +138,7 @@ final class TaskStepsEditorView extends LinearLayout {
             unitParams.setMargins(style.dp(12), 0, 0, 0);
             interval.addView(unit, unitParams);
             addView(interval, params(-1, -2, 0, 14, 0, 0));
-            if (state.errors.contains(TaskEditorValidator.STEP_INTERVAL_PREFIX + step.id))
+            if (hasIssue(ValidationIssue.Field.STEP_INTERVAL, step.id))
                 addView(errorView(R.string.err_interval_zero));
         }
     }
@@ -140,9 +147,9 @@ final class TaskStepsEditorView extends LinearLayout {
         LinearLayout row = new LinearLayout(getContext());
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(style.dp(16), style.dp(12), style.dp(8), style.dp(12));
-        boolean error = state.errors.contains(TaskEditorValidator.STEP_PREFIX + step.id)
-                || state.errors.contains(TaskEditorValidator.AMOUNT_PREFIX + step.id)
-                || state.errors.contains(TaskEditorValidator.STEP_INTERVAL_PREFIX + step.id);
+        boolean error = hasIssue(ValidationIssue.Field.STEP_TITLE, step.id)
+                || hasIssue(ValidationIssue.Field.STEP_AMOUNT, step.id)
+                || hasIssue(ValidationIssue.Field.STEP_INTERVAL, step.id);
         row.setBackground(new LeafShapeDrawable(error ? UiStyle.alpha(palette.bad, .10f)
                 : palette.leaf2, error ? palette.bad : palette.leaf2Edge,
                 style.dp(error ? 2 : 1), style.dp(index % 2 == 0 ? 56 : 8),
@@ -191,22 +198,26 @@ final class TaskStepsEditorView extends LinearLayout {
         if (step.amount instanceof StepAmount.SetsReps) {
             StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
             row.addView(numberInput(amount.sets, R.string.amount_sets_unit,
-                    value -> updateSets(index, value, true)), new LayoutParams(0, -2, 1));
+                    value -> updateSets(index, value, true), focusTag("sets", step.id)),
+                    new LayoutParams(0, -2, 1));
             TextView multiply = style.serif("×", 22, palette.muted, false, 400);
             multiply.setGravity(Gravity.CENTER);
             row.addView(multiply, new LayoutParams(style.dp(34), style.dp(58)));
             row.addView(numberInput(amount.repetitions, R.string.amount_reps_unit,
-                    value -> updateSets(index, value, false)), new LayoutParams(0, -2, 1));
+                    value -> updateSets(index, value, false), focusTag("repetitions", step.id)),
+                    new LayoutParams(0, -2, 1));
         } else if (step.amount instanceof StepAmount.Repetitions) {
             row.addView(numberInput(((StepAmount.Repetitions) step.amount).repetitions,
                     R.string.amount_reps_unit, value -> updateStep(index,
                             currentStep(index).withAmount(StepAmount.repetitions(orZero(value))),
-                            false)), new LayoutParams(0, -2, 1));
+                            false), focusTag("repetitions", step.id)),
+                    new LayoutParams(0, -2, 1));
         } else {
             row.addView(numberInput(((StepAmount.Duration) step.amount).seconds,
                     R.string.amount_seconds_unit, value -> updateStep(index,
                             currentStep(index).withAmount(StepAmount.duration(orZero(value))),
-                            false)), new LayoutParams(0, -2, 1));
+                            false), focusTag("duration", step.id)),
+                    new LayoutParams(0, -2, 1));
         }
         addView(row, params(-1, -2, 0, 12, 0, 0));
     }
@@ -261,10 +272,13 @@ final class TaskStepsEditorView extends LinearLayout {
         return input;
     }
 
-    private LinearLayout numberInput(Integer value, int unit, IntegerListener listener) {
+    private LinearLayout numberInput(Integer value, int unit, IntegerListener listener,
+                                     String focusTag) {
         LinearLayout wrapper = new LinearLayout(getContext());
         wrapper.setOrientation(VERTICAL);
-        wrapper.addView(numberField(value, listener), new LayoutParams(-1, style.dp(45)));
+        EditText number = numberField(value, listener);
+        number.setTag(focusTag);
+        wrapper.addView(number, new LayoutParams(-1, style.dp(45)));
         wrapper.addView(style.sans(getContext().getString(unit), 14, palette.hint, false));
         return wrapper;
     }
@@ -330,13 +344,14 @@ final class TaskStepsEditorView extends LinearLayout {
 
     private String meta(EditorStepState step) {
         List<String> values = new ArrayList<>();
-        if (step.weekdayMask != 0) {
+        if (step.cadenceMode == StepCadenceMode.WEEKDAYS) {
             String[] days = {"Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"};
             List<String> selected = new ArrayList<>();
             for (int index = 0; index < days.length; index++)
                 if ((step.weekdayMask & 1 << index) != 0) selected.add(days[index]);
             values.add(android.text.TextUtils.join(" · ", selected));
-        } else if (step.intervalDays != 0) {
+        } else if (step.cadenceMode == StepCadenceMode.INTERVAL
+                && step.intervalDays != null) {
             values.add("alle " + step.intervalDays + " Tage");
         }
         String amount = formatter.format(step.amount, "");
@@ -348,6 +363,12 @@ final class TaskStepsEditorView extends LinearLayout {
         for (int index = 0; index < state.stepStates.size(); index++)
             if (state.stepStates.get(index).id.equals(state.expandedStepId)) return index;
         return -1;
+    }
+    private boolean hasIssue(ValidationIssue.Field field, String stepId) {
+        return state.issues.contains(ValidationIssue.step(field, stepId));
+    }
+    private static String focusTag(String field, String stepId) {
+        return "step:" + stepId + ':' + field;
     }
 
     private void updateStep(int index, EditorStepState step, boolean rerender) {
@@ -368,11 +389,15 @@ final class TaskStepsEditorView extends LinearLayout {
 
     private TextWatcher watcher(StringListener listener) {
         return new TextWatcher() {
+            private int selection;
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                selection = start + count;
+            }
+            @Override public void afterTextChanged(Editable s) {
+                Selection.setSelection(s, Math.max(0, Math.min(selection, s.length())));
                 listener.accept(s.toString());
             }
-            @Override public void afterTextChanged(Editable s) { }
         };
     }
     private static Integer parseInteger(String value) {

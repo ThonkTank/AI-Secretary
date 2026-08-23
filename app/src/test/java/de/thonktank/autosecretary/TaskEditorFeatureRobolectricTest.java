@@ -7,6 +7,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.os.Bundle;
 
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
@@ -29,6 +30,7 @@ import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
@@ -279,16 +281,38 @@ public final class TaskEditorFeatureRobolectricTest {
                 Recurrence.WEEKDAYS, 1, 1 | 8, TimeOfDay.MORNING.bit,
                 TaskBoundKind.FOR_WEEKS, TODAY.plusWeeks(2), 2, null, null,
                 "Notiz", Collections.singletonList(step), step.id, 2)
-                .withFeedback(Collections.singleton(TaskEditorValidator.AMOUNT_PREFIX + step.id),
+                .withFeedback(Collections.singleton(ValidationIssue.step(
+                                ValidationIssue.Field.STEP_AMOUNT, step.id)),
                         EditorUiState.Prompt.DISCARD, "");
         draft = draft.withPage(EditorUiState.Page.SCHEDULE, true);
+        draft = draft.withValidationAttempt(EditorUiState.Page.STEPS, step.id, draft.issues);
+        draft = draft.withValidationAttempt(EditorUiState.Page.SCHEDULE, null, draft.issues);
         EditorUiState restored = EditorUiState.fromBundle(draft.toBundle());
         assertTrue(restored.dirty);
         assertEquals(step.id, restored.expandedStepId);
         assertEquals(EditorUiState.Prompt.DISCARD, restored.prompt);
-        assertTrue(restored.errors.contains(TaskEditorValidator.AMOUNT_PREFIX + step.id));
+        assertTrue(restored.issues.contains(ValidationIssue.step(
+                ValidationIssue.Field.STEP_AMOUNT, step.id)));
+        assertTrue(restored.attemptedStepIds.contains(step.id));
+        assertTrue(restored.attemptedPages.contains(EditorUiState.Page.SCHEDULE));
         assertEquals(EditorUiState.Page.SCHEDULE, restored.page);
         assertTrue(restored.returnToSummary);
+    }
+
+    @Test public void stepCadenceBundleKeepsSelectedEmptyIntervalAndReadsLegacyValues() {
+        EditorStepState interval = new EditorStepState("step", "Gießen",
+                StepCadenceMode.INTERVAL, 0, null, StepAmount.none(), "");
+        EditorStepState restored = EditorStepState.fromBundle(interval.toBundle());
+        assertEquals(StepCadenceMode.INTERVAL, restored.cadenceMode);
+        assertEquals(null, restored.intervalDays);
+
+        Bundle legacy = new Bundle();
+        legacy.putString("id", "legacy"); legacy.putString("text", "Alt");
+        legacy.putInt("weekdays", 0); legacy.putInt("interval", 4);
+        legacy.putString("amount", StepAmountKind.NONE.name());
+        EditorStepState migrated = EditorStepState.fromBundle(legacy);
+        assertEquals(StepCadenceMode.INTERVAL, migrated.cadenceMode);
+        assertEquals(Integer.valueOf(4), migrated.intervalDays);
     }
 
     private static TaskDefinition definition(String title, Recurrence recurrence, int weekdays,

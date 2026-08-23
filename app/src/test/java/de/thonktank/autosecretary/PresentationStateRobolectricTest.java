@@ -193,7 +193,7 @@ public final class PresentationStateRobolectricTest {
 
         viewModel.saveEditor(EditorUiState.create());
 
-        assertFalse(value().editor.errors.isEmpty());
+        assertFalse(value().editor.issues.isEmpty());
         assertFalse(value().editor.saving);
     }
 

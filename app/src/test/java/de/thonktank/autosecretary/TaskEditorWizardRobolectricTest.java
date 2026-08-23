@@ -3,19 +3,24 @@ package de.thonktank.autosecretary;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.robolectric.Shadows.shadowOf;
 
 import android.content.Context;
+import android.app.Activity;
 import android.os.Bundle;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.EditText;
 
 import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 
 import java.time.LocalDate;
@@ -35,9 +40,10 @@ public final class TaskEditorWizardRobolectricTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 23);
 
     @Test public void createFlowAdvancesAndEditingStartsOnSummary() {
-        Context context = ApplicationProvider.getApplicationContext();
+        Activity context = Robolectric.buildActivity(Activity.class).setup().get();
         RecordingListener listener = new RecordingListener();
         TaskEditorView view = new TaskEditorView(context, listener);
+        context.setContentView(view);
         EditorUiState create = validState(new ArrayList<>()).withPage(EditorUiState.Page.TITLE,
                 false);
         view.bind(create, palette(), TODAY);
@@ -72,6 +78,96 @@ public final class TaskEditorWizardRobolectricTest {
         view.bind(crowded, palette(), TODAY);
         measure(view);
         assertTrue(scroll.canScrollVertically(1));
+    }
+
+    @Test public void correctingAttemptedTitleRemovesIssueAndReenablesNextWithoutLosingFocus() {
+        Activity context = Robolectric.buildActivity(Activity.class).setup().get();
+        RecordingListener listener = new RecordingListener();
+        TaskEditorView view = new TaskEditorView(context, listener);
+        context.setContentView(view);
+        EditorUiState invalid = validState(new ArrayList<>()).draft("", TaskSlot.MORNING,
+                30, Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit,
+                TaskBoundKind.FOREVER, null, null, null, null, "",
+                new ArrayList<>(), null, 1);
+        view.bind(invalid, palette(), TODAY);
+        Button next = view.findViewById(R.id.task_editor_save);
+
+        next.performClick();
+        assertFalse(next.isEnabled());
+        EditText title = view.findViewWithTag("task:title");
+        title.requestFocus();
+        title.setText("Korrigierter Titel");
+        shadowOf(Looper.getMainLooper()).idle();
+
+        EditText restored = view.findViewWithTag("task:title");
+        assertTrue(restored.hasFocus());
+        assertEquals(restored.length(), restored.getSelectionStart());
+        assertTrue(next.isEnabled());
+        assertTrue(listener.draft.issues.isEmpty());
+        next.performClick();
+        assertEquals(EditorUiState.Page.SCHEDULE, listener.draft.page);
+    }
+
+    @Test public void correctingAttemptedStepTitleAndAmountReenablesApply() {
+        Activity context = Robolectric.buildActivity(Activity.class).setup().get();
+        RecordingListener listener = new RecordingListener();
+        TaskEditorView view = new TaskEditorView(context, listener);
+        context.setContentView(view);
+        List<EditorStepState> steps = new ArrayList<>();
+        steps.add(new EditorStepState("step", "", StepCadenceMode.ALWAYS, 0, null,
+                StepAmount.setsReps(0, 12), ""));
+        EditorUiState invalid = validState(steps).withPage(EditorUiState.Page.STEPS, false)
+                .withExpandedStep("step");
+        view.bind(invalid, palette(), TODAY);
+        measure(view);
+        Button apply = view.findViewById(R.id.task_editor_save);
+
+        apply.performClick();
+        assertFalse(apply.isEnabled());
+        ((EditText) view.findViewWithTag("step:step:title")).setText("Liegestütze");
+        assertFalse(apply.isEnabled());
+        ScrollView scroll = view.findViewById(R.id.task_editor_scroll);
+        scroll.scrollTo(0, 80);
+        int previousScroll = scroll.getScrollY();
+        EditText sets = view.findViewWithTag("step:step:sets");
+        sets.requestFocus();
+        sets.setSelection(sets.length());
+        sets.setText("3");
+        shadowOf(Looper.getMainLooper()).idle();
+
+        assertTrue(apply.isEnabled());
+        assertTrue(listener.draft.issues.isEmpty());
+        assertTrue(((EditText) view.findViewWithTag("step:step:sets")).hasFocus());
+        assertEquals(previousScroll, scroll.getScrollY());
+        apply.performClick();
+        assertEquals(null, listener.draft.expandedStepId);
+    }
+
+    @Test public void blankStepIntervalRemainsSelectedInvalidAndCanBeCorrected() {
+        Context context = ApplicationProvider.getApplicationContext();
+        RecordingListener listener = new RecordingListener();
+        TaskEditorView view = new TaskEditorView(context, listener);
+        List<EditorStepState> steps = new ArrayList<>();
+        steps.add(new EditorStepState("step", "Gießen", StepCadenceMode.INTERVAL, 0, 2,
+                StepAmount.none(), ""));
+        EditorUiState state = validState(steps).withPage(EditorUiState.Page.STEPS, false)
+                .withExpandedStep("step");
+        view.bind(state, palette(), TODAY);
+        Button apply = view.findViewById(R.id.task_editor_save);
+        EditText interval = view.findViewWithTag("step:step:interval");
+
+        interval.setText("");
+        assertEquals(StepCadenceMode.INTERVAL,
+                listener.draft.stepStates.get(0).cadenceMode);
+        assertEquals(null, listener.draft.stepStates.get(0).intervalDays);
+        apply.performClick();
+        assertFalse(apply.isEnabled());
+        assertTrue(listener.draft.issues.contains(ValidationIssue.step(
+                ValidationIssue.Field.STEP_INTERVAL, "step")));
+
+        ((EditText) view.findViewWithTag("step:step:interval")).setText("3");
+        assertTrue(apply.isEnabled());
+        assertEquals(Integer.valueOf(3), listener.draft.stepStates.get(0).intervalDays);
     }
 
     private static EditorUiState validState(List<EditorStepState> steps) {

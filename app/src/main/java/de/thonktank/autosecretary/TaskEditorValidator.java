@@ -9,46 +9,43 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 
 public final class TaskEditorValidator {
-    public static final String TITLE = "title";
-    public static final String DURATION = "duration";
-    public static final String WEEKDAYS = "weekdays";
-    public static final String INTERVAL = "interval";
-    public static final String TIMES = "times";
-    public static final String BOUND = "bound";
-    public static final String STEP_PREFIX = "step:";
-    public static final String AMOUNT_PREFIX = "amount:";
-    public static final String STEP_INTERVAL_PREFIX = "step-interval:";
-
-    public Set<String> errors(EditorUiState draft, LocalDate today) {
-        Set<String> errors = new LinkedHashSet<>();
+    public Set<ValidationIssue> issues(EditorUiState draft, LocalDate today) {
+        Set<ValidationIssue> issues = new LinkedHashSet<>();
         String title = draft.title == null ? "" : draft.title.trim();
-        if (title.isEmpty() || title.length() > 120) errors.add(TITLE);
-        if (draft.estimatedMinutes != null && draft.estimatedMinutes < 1) errors.add(DURATION);
+        if (title.isEmpty() || title.length() > 120)
+            issues.add(ValidationIssue.task(ValidationIssue.Field.TITLE));
+        if (draft.estimatedMinutes != null && draft.estimatedMinutes < 1)
+            issues.add(ValidationIssue.task(ValidationIssue.Field.DURATION));
         if (draft.recurrence == Recurrence.WEEKDAYS && draft.weekdayMask == 0)
-            errors.add(WEEKDAYS);
+            issues.add(ValidationIssue.task(ValidationIssue.Field.WEEKDAYS));
         if (draft.recurrence == Recurrence.INTERVAL && draft.intervalDays < 1)
-            errors.add(INTERVAL);
+            issues.add(ValidationIssue.task(ValidationIssue.Field.INTERVAL));
         if (draft.recurrence != Recurrence.ONCE && draft.timeOfDayMask == 0)
-            errors.add(TIMES);
+            issues.add(ValidationIssue.task(ValidationIssue.Field.TIMES));
         if (draft.recurrence != Recurrence.ONCE) {
             if ((draft.boundKind == TaskBoundKind.UNTIL_DATE
                     || draft.boundKind == TaskBoundKind.FOR_WEEKS)
                     && (draft.boundUntilOn == null || draft.boundUntilOn.isBefore(today)))
-                errors.add(BOUND);
+                issues.add(ValidationIssue.task(ValidationIssue.Field.BOUND));
             if (draft.boundKind == TaskBoundKind.FOR_WEEKS
-                    && (draft.boundWeeks == null || draft.boundWeeks < 1)) errors.add(BOUND);
+                    && (draft.boundWeeks == null || draft.boundWeeks < 1))
+                issues.add(ValidationIssue.task(ValidationIssue.Field.BOUND));
             if (draft.boundKind == TaskBoundKind.N_TIMES
-                    && (draft.remainingCount == null || draft.remainingCount < 1)) errors.add(BOUND);
+                    && (draft.remainingCount == null || draft.remainingCount < 1))
+                issues.add(ValidationIssue.task(ValidationIssue.Field.BOUND));
         } else if (draft.deadlineOn != null && draft.deadlineOn.isBefore(today)) {
-            errors.add(BOUND);
+            issues.add(ValidationIssue.task(ValidationIssue.Field.BOUND));
         }
         for (EditorStepState step : draft.stepStates) {
-            if (step.text.trim().isEmpty()) errors.add(STEP_PREFIX + step.id);
-            if (!step.amount.isValid()) errors.add(AMOUNT_PREFIX + step.id);
-            if (step.intervalDays != 0 && step.intervalDays < 2)
-                errors.add(STEP_INTERVAL_PREFIX + step.id);
+            if (step.text.trim().isEmpty())
+                issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_TITLE, step.id));
+            if (!step.amount.isValid())
+                issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, step.id));
+            if (step.cadenceMode == StepCadenceMode.INTERVAL
+                    && (step.intervalDays == null || step.intervalDays < 2))
+                issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_INTERVAL, step.id));
         }
-        return Collections.unmodifiableSet(errors);
+        return Collections.unmodifiableSet(issues);
     }
 
 }
