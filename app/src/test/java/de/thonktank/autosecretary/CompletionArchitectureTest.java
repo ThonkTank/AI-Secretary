@@ -88,7 +88,7 @@ public final class CompletionArchitectureTest {
 
     private static Task task(Recurrence recurrence) {
         return Task.restore(TaskId.of("task"), "Aufgabe", recurrence, 1, 0,
-                false, "", false, false, TODAY, null, null, 1_024L, false,
+                false, "", false, false, TODAY, null, null, TODAY, 1_024L, false,
                 null, TaskBoundKind.FOREVER, null, null, null, null, "");
     }
 

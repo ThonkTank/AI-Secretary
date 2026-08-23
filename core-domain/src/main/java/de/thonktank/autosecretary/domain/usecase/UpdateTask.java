@@ -38,7 +38,8 @@ public final class UpdateTask {
             if (current == null) return null;
             LocalDate nextDue = current.nextDueOn;
             if (current.recurrence != definition.recurrence
-                    || current.weekdayMask != definition.weekdayMask) {
+                    || current.weekdayMask != definition.weekdayMask
+                    || current.intervalDays != definition.intervalDays) {
                 LocalDate today = clock == null ? current.nextDueOn : clock.today();
                 if (today != null)
                     nextDue = ScheduleCalculator.firstDue(definition.recurrence,

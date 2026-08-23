@@ -31,7 +31,7 @@ public final class DashboardRewardProjectionTest {
     @Test public void stepDewAndRoutineVesselExposeTheirMultipliedResults() {
         TaskId taskId = TaskId.of("routine");
         Task task = Task.restore(taskId, "Routine", Recurrence.DAILY, 1, 0,
-                false, "", false, false, TODAY, null, null, 1, false,
+                false, "", false, false, TODAY, null, null, TODAY, 1, false,
                 null, TaskBoundKind.FOREVER, null, null, null, null, "");
         Occurrence occurrence = new Occurrence("today", taskId, TODAY, TaskSlot.MORNING,
                 OccurrenceState.OPEN, 1, null);

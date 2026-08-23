@@ -1,0 +1,911 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 16,
+    "identityHash": "674dd14d6386b884cde35e04a1fc7052",
+    "entities": [
+      {
+        "tableName": "tasks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `recurrence` TEXT NOT NULL, `intervalDays` INTEGER NOT NULL, `weekdayMask` INTEGER NOT NULL, `ongoing` INTEGER NOT NULL, `conditionText` TEXT NOT NULL, `conditionDone` INTEGER NOT NULL, `archived` INTEGER NOT NULL, `nextDueOn` TEXT NOT NULL, `cadenceAnchorOn` TEXT, `lastScheduledOn` TEXT, `lastCompletedOn` TEXT, `catalogOrder` INTEGER NOT NULL, `hasCompletedOccurrence` INTEGER NOT NULL, `estimatedMinutes` INTEGER, `boundKind` TEXT NOT NULL, `boundUntilOn` TEXT, `boundWeeks` INTEGER, `remainingCount` INTEGER, `deadlineOn` TEXT, `note` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recurrence",
+            "columnName": "recurrence",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervalDays",
+            "columnName": "intervalDays",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weekdayMask",
+            "columnName": "weekdayMask",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ongoing",
+            "columnName": "ongoing",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conditionText",
+            "columnName": "conditionText",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conditionDone",
+            "columnName": "conditionDone",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archived",
+            "columnName": "archived",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextDueOn",
+            "columnName": "nextDueOn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cadenceAnchorOn",
+            "columnName": "cadenceAnchorOn",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastScheduledOn",
+            "columnName": "lastScheduledOn",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "lastCompletedOn",
+            "columnName": "lastCompletedOn",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "catalogOrder",
+            "columnName": "catalogOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasCompletedOccurrence",
+            "columnName": "hasCompletedOccurrence",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estimatedMinutes",
+            "columnName": "estimatedMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "boundKind",
+            "columnName": "boundKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "boundUntilOn",
+            "columnName": "boundUntilOn",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "boundWeeks",
+            "columnName": "boundWeeks",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "remainingCount",
+            "columnName": "remainingCount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "deadlineOn",
+            "columnName": "deadlineOn",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_tasks_archived_conditionDone_catalogOrder",
+            "unique": false,
+            "columnNames": [
+              "archived",
+              "conditionDone",
+              "catalogOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tasks_archived_conditionDone_catalogOrder` ON `${TABLE_NAME}` (`archived`, `conditionDone`, `catalogOrder`)"
+          }
+        ]
+      },
+      {
+        "tableName": "task_steps",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `taskId` TEXT NOT NULL, `position` INTEGER NOT NULL, `text` TEXT NOT NULL, `weekdayMask` INTEGER NOT NULL, `intervalDays` INTEGER NOT NULL, `amountKind` TEXT NOT NULL, `plannedSets` INTEGER, `plannedReps` INTEGER, `plannedDurationSeconds` INTEGER, `note` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`taskId`) REFERENCES `tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taskId",
+            "columnName": "taskId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "weekdayMask",
+            "columnName": "weekdayMask",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intervalDays",
+            "columnName": "intervalDays",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amountKind",
+            "columnName": "amountKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plannedSets",
+            "columnName": "plannedSets",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "plannedReps",
+            "columnName": "plannedReps",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "plannedDurationSeconds",
+            "columnName": "plannedDurationSeconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_task_steps_taskId",
+            "unique": false,
+            "columnNames": [
+              "taskId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_task_steps_taskId` ON `${TABLE_NAME}` (`taskId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "tasks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "taskId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "occurrences",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `taskId` TEXT NOT NULL, `scheduledOn` TEXT NOT NULL, `state` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `completedOn` TEXT, `slot` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`taskId`) REFERENCES `tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taskId",
+            "columnName": "taskId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scheduledOn",
+            "columnName": "scheduledOn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedOn",
+            "columnName": "completedOn",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "slot",
+            "columnName": "slot",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_occurrences_taskId",
+            "unique": false,
+            "columnNames": [
+              "taskId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_occurrences_taskId` ON `${TABLE_NAME}` (`taskId`)"
+          },
+          {
+            "name": "index_occurrences_state_completedOn",
+            "unique": false,
+            "columnNames": [
+              "state",
+              "completedOn"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_occurrences_state_completedOn` ON `${TABLE_NAME}` (`state`, `completedOn`)"
+          },
+          {
+            "name": "index_occurrences_taskId_scheduledOn_slot",
+            "unique": true,
+            "columnNames": [
+              "taskId",
+              "scheduledOn",
+              "slot"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_occurrences_taskId_scheduledOn_slot` ON `${TABLE_NAME}` (`taskId`, `scheduledOn`, `slot`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "tasks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "taskId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "occurrence_steps",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `occurrenceId` TEXT NOT NULL, `position` INTEGER NOT NULL, `text` TEXT NOT NULL, `done` INTEGER NOT NULL, `amountKind` TEXT NOT NULL, `plannedSets` INTEGER, `plannedReps` INTEGER, `plannedDurationSeconds` INTEGER, `note` TEXT NOT NULL, `actualRepetitions` TEXT NOT NULL, `sourceTemplateId` TEXT, `comboOwnerId` TEXT NOT NULL, `originOccurrenceId` TEXT, `carryForwardReason` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`occurrenceId`) REFERENCES `occurrences`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurrenceId",
+            "columnName": "occurrenceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "done",
+            "columnName": "done",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amountKind",
+            "columnName": "amountKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plannedSets",
+            "columnName": "plannedSets",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "plannedReps",
+            "columnName": "plannedReps",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "plannedDurationSeconds",
+            "columnName": "plannedDurationSeconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "legacyActualRepetitions",
+            "columnName": "actualRepetitions",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceTemplateId",
+            "columnName": "sourceTemplateId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "comboOwnerId",
+            "columnName": "comboOwnerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originOccurrenceId",
+            "columnName": "originOccurrenceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "carryForwardReason",
+            "columnName": "carryForwardReason",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_occurrence_steps_occurrenceId",
+            "unique": false,
+            "columnNames": [
+              "occurrenceId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_occurrence_steps_occurrenceId` ON `${TABLE_NAME}` (`occurrenceId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "occurrences",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "occurrenceId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "stats",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `xp` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "xp",
+            "columnName": "xp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "combo_progress",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ownerId` TEXT NOT NULL, `taskId` TEXT NOT NULL, `kind` TEXT NOT NULL, `points` INTEGER NOT NULL, `settledThroughOn` TEXT NOT NULL, PRIMARY KEY(`ownerId`), FOREIGN KEY(`taskId`) REFERENCES `tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "ownerId",
+            "columnName": "ownerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taskId",
+            "columnName": "taskId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "points",
+            "columnName": "points",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "settledThroughOn",
+            "columnName": "settledThroughOn",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "ownerId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_combo_progress_taskId",
+            "unique": false,
+            "columnNames": [
+              "taskId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_combo_progress_taskId` ON `${TABLE_NAME}` (`taskId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "tasks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "taskId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "reward_bookings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `transactionId` TEXT NOT NULL, `occurrenceId` TEXT NOT NULL, `occurrenceStepId` TEXT, `ownerId` TEXT NOT NULL, `kind` TEXT NOT NULL, `target` TEXT NOT NULL, `xpDelta` INTEGER NOT NULL, `comboPointDelta` INTEGER NOT NULL, `bookedOn` TEXT NOT NULL, `reversesBookingId` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`occurrenceId`) REFERENCES `occurrences`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`occurrenceStepId`) REFERENCES `occurrence_steps`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "transactionId",
+            "columnName": "transactionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurrenceId",
+            "columnName": "occurrenceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurrenceStepId",
+            "columnName": "occurrenceStepId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ownerId",
+            "columnName": "ownerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "target",
+            "columnName": "target",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "xpDelta",
+            "columnName": "xpDelta",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comboPointDelta",
+            "columnName": "comboPointDelta",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bookedOn",
+            "columnName": "bookedOn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reversesBookingId",
+            "columnName": "reversesBookingId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_reward_bookings_transactionId",
+            "unique": false,
+            "columnNames": [
+              "transactionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_reward_bookings_transactionId` ON `${TABLE_NAME}` (`transactionId`)"
+          },
+          {
+            "name": "index_reward_bookings_occurrenceId",
+            "unique": false,
+            "columnNames": [
+              "occurrenceId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_reward_bookings_occurrenceId` ON `${TABLE_NAME}` (`occurrenceId`)"
+          },
+          {
+            "name": "index_reward_bookings_occurrenceStepId",
+            "unique": false,
+            "columnNames": [
+              "occurrenceStepId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_reward_bookings_occurrenceStepId` ON `${TABLE_NAME}` (`occurrenceStepId`)"
+          },
+          {
+            "name": "index_reward_bookings_ownerId",
+            "unique": false,
+            "columnNames": [
+              "ownerId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_reward_bookings_ownerId` ON `${TABLE_NAME}` (`ownerId`)"
+          },
+          {
+            "name": "index_reward_bookings_reversesBookingId",
+            "unique": true,
+            "columnNames": [
+              "reversesBookingId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_reward_bookings_reversesBookingId` ON `${TABLE_NAME}` (`reversesBookingId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "occurrences",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "occurrenceId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "occurrence_steps",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "occurrenceStepId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "reward_assignments",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`bookingId` TEXT NOT NULL, `occurrenceId` TEXT NOT NULL, PRIMARY KEY(`bookingId`), FOREIGN KEY(`bookingId`) REFERENCES `reward_bookings`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`occurrenceId`) REFERENCES `occurrences`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "bookingId",
+            "columnName": "bookingId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurrenceId",
+            "columnName": "occurrenceId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "bookingId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_reward_assignments_occurrenceId",
+            "unique": false,
+            "columnNames": [
+              "occurrenceId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_reward_assignments_occurrenceId` ON `${TABLE_NAME}` (`occurrenceId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "reward_bookings",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bookingId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "occurrences",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "occurrenceId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "repetition_results",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`stepId` TEXT NOT NULL, `slotIndex` INTEGER NOT NULL, `actualRepetitions` INTEGER NOT NULL, PRIMARY KEY(`stepId`, `slotIndex`), FOREIGN KEY(`stepId`) REFERENCES `occurrence_steps`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "stepId",
+            "columnName": "stepId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "slotIndex",
+            "columnName": "slotIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actualRepetitions",
+            "columnName": "actualRepetitions",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "stepId",
+            "slotIndex"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_repetition_results_stepId",
+            "unique": false,
+            "columnNames": [
+              "stepId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_repetition_results_stepId` ON `${TABLE_NAME}` (`stepId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "occurrence_steps",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "stepId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "task_schedule_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `taskId` TEXT NOT NULL, `slot` TEXT NOT NULL, `displayOrder` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`taskId`) REFERENCES `tasks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taskId",
+            "columnName": "taskId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "slot",
+            "columnName": "slot",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayOrder",
+            "columnName": "displayOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_task_schedule_entries_taskId",
+            "unique": false,
+            "columnNames": [
+              "taskId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_task_schedule_entries_taskId` ON `${TABLE_NAME}` (`taskId`)"
+          },
+          {
+            "name": "index_task_schedule_entries_taskId_slot",
+            "unique": true,
+            "columnNames": [
+              "taskId",
+              "slot"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_task_schedule_entries_taskId_slot` ON `${TABLE_NAME}` (`taskId`, `slot`)"
+          },
+          {
+            "name": "index_task_schedule_entries_slot_displayOrder",
+            "unique": false,
+            "columnNames": [
+              "slot",
+              "displayOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_task_schedule_entries_slot_displayOrder` ON `${TABLE_NAME}` (`slot`, `displayOrder`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "tasks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "taskId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '674dd14d6386b884cde35e04a1fc7052')"
+    ]
+  }
+}

@@ -57,7 +57,8 @@ public final class TaskScheduleServiceTest {
     private static Task task(String id) {
         return Task.restore(TaskId.of(id), id, Recurrence.DAILY, 1, 0,
                 false, "", false, false, LocalDate.of(2026, 8, 21), null, null,
-                1_024, false, null, TaskBoundKind.FOREVER, null, null, null,
+                LocalDate.of(2026, 8, 21), 1_024, false, null, TaskBoundKind.FOREVER,
+                null, null, null,
                 null, "");
     }
 

@@ -35,7 +35,11 @@ final class DueDatePlanner {
         List<TaskSlot> slots = schedule.slots(task.id);
         if (slots.isEmpty())
             throw new IllegalStateException("Active task has no schedule: " + task.id.value);
-        LocalDate intervalAnchor = intervalAnchor(task, history);
+        LocalDate intervalAnchor = task.cadenceAnchorOn;
+        if (!task.archived && !task.conditionDone && hasIntervalCadence(templates)
+                && intervalAnchor == null)
+            throw new IllegalStateException("Active task with step intervals has no cadence "
+                    + "anchor: " + task.id.value);
         while (cursor != null && !cursor.isAfter(today) && canPlan(task, cursor)
                 && (task.boundKind != TaskBoundKind.N_TIMES
                 || materialized < (task.remainingCount == null ? 0 : task.remainingCount))) {
@@ -97,12 +101,11 @@ final class DueDatePlanner {
         return elapsed >= 0 && elapsed % template.intervalDays == 0;
     }
 
-    private static LocalDate intervalAnchor(Task task, List<Occurrence> history) {
-        LocalDate anchor = null;
-        for (Occurrence occurrence : history)
-            if (anchor == null || occurrence.scheduledOn.isBefore(anchor))
-                anchor = occurrence.scheduledOn;
-        return anchor == null ? task.planningCursor() : anchor;
+    private static boolean hasIntervalCadence(List<TaskStepTemplate> templates) {
+        if (templates == null) return false;
+        for (TaskStepTemplate template : templates)
+            if (template.intervalDays > 0) return true;
+        return false;
     }
 
     private static Set<String> templateIds(List<TaskStepTemplate> values) {

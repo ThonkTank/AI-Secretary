@@ -221,6 +221,7 @@ public final class UseCaseRobolectricTest {
         assertEquals("Neu", updated.title);
         assertEquals(TaskSlot.EVENING, repository.scheduleEntries(task.id).get(0).slot);
         assertEquals(Recurrence.WEEKDAYS, updated.recurrence);
+        assertEquals(TODAY, updated.cadenceAnchorOn);
         assertEquals(1, updated.intervalDays);
         assertEquals(17, updated.weekdayMask);
         assertEquals(Integer.valueOf(25), updated.estimatedMinutes);
@@ -291,7 +292,7 @@ public final class UseCaseRobolectricTest {
     @Test public void closingOngoingTaskCreatesAReceiptAndCanBeFullyUndoneToday() {
         Task ongoing = Task.restore(TaskId.of("ongoing"), "Praktikum", Recurrence.ONCE,
                 1, 0, true, "Vertrag unterschrieben", false, false, null, null, null,
-                1_024L, false, null, TaskBoundKind.FOREVER, null, null, null, null, "");
+                null, 1_024L, false, null, TaskBoundKind.FOREVER, null, null, null, null, "");
         repository.insertTask(ongoing);
         repository.putScheduleEntries(Collections.singletonList(
                 new de.thonktank.autosecretary.domain.model.TaskScheduleEntry(
@@ -324,7 +325,8 @@ public final class UseCaseRobolectricTest {
     @Test public void arbitraryTodayUndoUsesTargetedScheduleProjectionAndExactBooking() {
         Task task = Task.restore(TaskId.of("multi"), "Mehrfach", Recurrence.DAILY,
                 1, 0, false, "", false, false, TODAY.plusDays(1), null, null,
-                1_024L, false, null, TaskBoundKind.FOREVER, null, null, null, null, "");
+                TODAY, 1_024L, false, null, TaskBoundKind.FOREVER, null, null, null,
+                null, "");
         repository.insertTask(task);
         Occurrence older = new Occurrence("older", task.id, TODAY.minusDays(1),
                 TaskSlot.MORNING, OccurrenceState.OPEN, 1, null);

@@ -120,6 +120,7 @@ public final class UpgradePersistenceTest {
         assertEquals(TITLE, task.title);
         assertEquals(4_001_024L, task.catalogOrder);
         assertEquals("FOREVER", task.boundKind);
+        assertEquals("2999-12-31", task.cadenceAnchorOn);
 
         List<TaskScheduleEntity> schedule = database.tasks().scheduleEntries(TASK_ID);
         assertEquals(1, schedule.size());

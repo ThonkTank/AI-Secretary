@@ -18,6 +18,7 @@ public class TaskEntity {
     public boolean conditionDone;
     public boolean archived;
     @NonNull public String nextDueOn;
+    @Nullable public String cadenceAnchorOn;
     @Nullable public String lastScheduledOn;
     @Nullable public String lastCompletedOn;
     public long catalogOrder;
@@ -34,6 +35,7 @@ public class TaskEntity {
                       @NonNull String recurrence, int intervalDays, int weekdayMask,
                       boolean ongoing, @NonNull String conditionText, boolean conditionDone,
                       boolean archived, @NonNull String nextDueOn,
+                      @Nullable String cadenceAnchorOn,
                       @Nullable String lastScheduledOn, @Nullable String lastCompletedOn,
                       long catalogOrder, boolean hasCompletedOccurrence,
                       Integer estimatedMinutes,
@@ -50,6 +52,7 @@ public class TaskEntity {
         this.conditionDone = conditionDone;
         this.archived = archived;
         this.nextDueOn = nextDueOn;
+        this.cadenceAnchorOn = cadenceAnchorOn;
         this.lastScheduledOn = lastScheduledOn;
         this.lastCompletedOn = lastCompletedOn;
         this.catalogOrder = catalogOrder;

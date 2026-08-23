@@ -24,7 +24,8 @@ public final class TaskEntityMapper {
                 Recurrence.fromStorage(entity.recurrence), entity.intervalDays, entity.weekdayMask,
                 entity.ongoing, entity.conditionText, entity.conditionDone, entity.archived,
                 date(entity.nextDueOn), date(entity.lastScheduledOn), date(entity.lastCompletedOn),
-                entity.catalogOrder, entity.hasCompletedOccurrence, entity.estimatedMinutes,
+                date(entity.cadenceAnchorOn), entity.catalogOrder,
+                entity.hasCompletedOccurrence, entity.estimatedMinutes,
                 TaskBoundKind.fromStorage(entity.boundKind),
                 date(entity.boundUntilOn), entity.boundWeeks, entity.remainingCount,
                 date(entity.deadlineOn), entity.note);
@@ -34,7 +35,8 @@ public final class TaskEntityMapper {
         return new TaskEntity(task.id.value, task.title, task.recurrence.storageCode(),
                 task.intervalDays, task.weekdayMask, task.ongoing,
                 task.conditionText, task.conditionDone, task.archived, text(task.nextDueOn),
-                nullableText(task.lastScheduledOn), nullableText(task.lastCompletedOn),
+                nullableText(task.cadenceAnchorOn), nullableText(task.lastScheduledOn),
+                nullableText(task.lastCompletedOn),
                 task.catalogOrder, task.hasCompletedOccurrence, task.estimatedMinutes,
                 task.boundKind.storageCode(), nullableText(task.boundUntilOn), task.boundWeeks,
                 task.remainingCount, nullableText(task.deadlineOn), task.note);

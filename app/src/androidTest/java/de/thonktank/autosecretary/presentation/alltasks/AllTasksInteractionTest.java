@@ -124,7 +124,8 @@ public final class AllTasksInteractionTest {
     private static Task task(String id, long order) {
         return Task.restore(TaskId.of(id), "Aufgabe " + id, Recurrence.DAILY, 1, 0,
                 false, "", false, false, LocalDate.of(2026, 8, 21), null, null,
-                order, false, null, de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
+                LocalDate.of(2026, 8, 21), order, false, null,
+                de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
                 null, null, null, null, "");
     }
 

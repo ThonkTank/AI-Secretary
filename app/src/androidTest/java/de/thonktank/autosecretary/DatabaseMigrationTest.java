@@ -356,6 +356,45 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test public void migration15To16UsesHistoryThenCursorAndAllowsEmptyArchiveAnchor()
+            throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 15);
+        insertVersionFifteenTask(database, "history", false, "2026-08-23");
+        insertVersionFifteenTask(database, "cursor", false, "2026-08-25");
+        insertVersionFifteenTask(database, "archive", true, "");
+        database.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,sortOrder,"
+                + "completedOn,slot) VALUES "
+                + "('later','history','2026-08-20','COMPLETED',2,'2026-08-20','MORNING'),"
+                + "('first','history','2026-08-18','COMPLETED',1,'2026-08-18','MORNING')");
+
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 16, true, DatabaseMigrations.MIGRATION_15_16);
+        assertCadenceAnchor(database, "history", "2026-08-18");
+        assertCadenceAnchor(database, "cursor", "2026-08-25");
+        assertCadenceAnchor(database, "archive", null);
+        database.close();
+    }
+
+    private static void insertVersionFifteenTask(SupportSQLiteDatabase database, String id,
+                                                  boolean archived, String nextDueOn) {
+        database.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,weekdayMask,"
+                + "ongoing,conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,"
+                + "lastCompletedOn,catalogOrder,hasCompletedOccurrence,estimatedMinutes,"
+                + "boundKind,boundUntilOn,boundWeeks,remainingCount,deadlineOn,note) VALUES "
+                + "('" + id + "','Task','DAILY',1,0,0,'',0," + (archived ? 1 : 0)
+                + ",'" + nextDueOn + "',NULL,NULL,1,0,NULL,'FOREVER',NULL,NULL,NULL,NULL,'')");
+    }
+
+    private static void assertCadenceAnchor(SupportSQLiteDatabase database, String taskId,
+                                            String expected) {
+        try (Cursor cursor = database.query("SELECT cadenceAnchorOn FROM tasks WHERE id='"
+                + taskId + "'")) {
+            assertTrue(cursor.moveToFirst());
+            if (expected == null) assertTrue(cursor.isNull(0));
+            else assertEquals(expected, cursor.getString(0));
+        }
+    }
+
     private static void assertColumnsMissing(SupportSQLiteDatabase database, String table,
                                              String... forbidden) {
         try (Cursor cursor = database.query("PRAGMA table_info(" + table + ")")) {

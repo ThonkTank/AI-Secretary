@@ -15,6 +15,8 @@ public final class Task {
     public final boolean archived;
     /** Planning cursor; materialization advances it independently from completion. */
     public final LocalDate nextDueOn;
+    /** Immutable first due date used as the calendar-day anchor for step cadences. */
+    public final LocalDate cadenceAnchorOn;
     public final LocalDate lastScheduledOn;
     public final LocalDate lastCompletedOn;
     public final long catalogOrder;
@@ -29,7 +31,8 @@ public final class Task {
 
     private Task(TaskId id, String title, Recurrence recurrence, int intervalDays,
                  int weekdayMask, boolean ongoing, String conditionText, boolean conditionDone,
-                 boolean archived, LocalDate nextDueOn, LocalDate lastScheduledOn,
+                 boolean archived, LocalDate nextDueOn, LocalDate cadenceAnchorOn,
+                 LocalDate lastScheduledOn,
                  LocalDate lastCompletedOn, long catalogOrder, boolean hasCompletedOccurrence,
                  Integer estimatedMinutes, TaskBoundKind boundKind, LocalDate boundUntilOn,
                  Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn, String note) {
@@ -53,6 +56,7 @@ public final class Task {
         this.conditionDone = conditionDone;
         this.archived = archived;
         this.nextDueOn = nextDueOn;
+        this.cadenceAnchorOn = cadenceAnchorOn;
         this.lastScheduledOn = lastScheduledOn;
         this.lastCompletedOn = lastCompletedOn;
         this.catalogOrder = catalogOrder;
@@ -70,7 +74,7 @@ public final class Task {
                               long catalogOrder) {
         return restore(id, definition.title, definition.recurrence, definition.intervalDays,
                 definition.weekdayMask, false, "", false, false, firstDueOn, null, null,
-                catalogOrder, false, definition.estimatedMinutes, definition.boundKind,
+                firstDueOn, catalogOrder, false, definition.estimatedMinutes, definition.boundKind,
                 definition.boundUntilOn, definition.boundWeeks, definition.remainingCount,
                 definition.deadlineOn, definition.note);
     }
@@ -79,12 +83,13 @@ public final class Task {
                                int weekdayMask, boolean ongoing, String conditionText,
                                boolean conditionDone, boolean archived, LocalDate nextDueOn,
                                LocalDate lastScheduledOn, LocalDate lastCompletedOn,
-                               long catalogOrder, boolean hasCompletedOccurrence,
-                               Integer estimatedMinutes, TaskBoundKind boundKind,
-                               LocalDate boundUntilOn, Integer boundWeeks,
+                               LocalDate cadenceAnchorOn, long catalogOrder,
+                               boolean hasCompletedOccurrence, Integer estimatedMinutes,
+                               TaskBoundKind boundKind, LocalDate boundUntilOn, Integer boundWeeks,
                                Integer remainingCount, LocalDate deadlineOn, String note) {
         return new Task(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
-                conditionDone, archived, nextDueOn, lastScheduledOn, lastCompletedOn,
+                conditionDone, archived, nextDueOn, cadenceAnchorOn,
+                lastScheduledOn, lastCompletedOn,
                 catalogOrder, hasCompletedOccurrence, estimatedMinutes, boundKind, boundUntilOn,
                 boundWeeks, remainingCount, deadlineOn, note);
     }
@@ -158,7 +163,7 @@ public final class Task {
                       Integer newRemainingCount, LocalDate newDeadlineOn, String newNote) {
         return restore(id, newTitle, newRecurrence, newIntervalDays, newWeekdayMask, newOngoing,
                 newConditionText, newConditionDone, newArchived, newNextDueOn,
-                newLastScheduledOn, newLastCompletedOn, newCatalogOrder,
+                newLastScheduledOn, newLastCompletedOn, cadenceAnchorOn, newCatalogOrder,
                 newHasCompletedOccurrence, newEstimatedMinutes, newBoundKind,
                 newBoundUntilOn, newBoundWeeks, newRemainingCount, newDeadlineOn, newNote);
     }

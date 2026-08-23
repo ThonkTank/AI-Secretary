@@ -64,7 +64,7 @@ public final class WidgetDashboardMapperTest {
 
     private static Task task(String id, String title, long order) {
         return Task.restore(TaskId.of(id), title, Recurrence.DAILY, 1, 0,
-                false, "", false, false, TODAY, null, null, order, false,
+                false, "", false, false, TODAY, null, null, TODAY, order, false,
                 null, TaskBoundKind.FOREVER, null, null, null, null, "");
     }
 
