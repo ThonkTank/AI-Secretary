@@ -56,7 +56,7 @@ public final class CreateTask {
             TaskStepDefinition step = definitions.get(i);
             String id = step.id == null ? ids.nextId() : step.id;
             result.add(new TaskStepTemplate(id, taskId, i, step.text, step.weekdayMask,
-                    step.amount, step.note));
+                    step.intervalDays, step.amount, step.note));
         }
         return result;
     }

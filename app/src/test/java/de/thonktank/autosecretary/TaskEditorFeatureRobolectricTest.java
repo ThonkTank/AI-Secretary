@@ -146,6 +146,38 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals("23 kg", snapshot.note);
     }
 
+    @Test public void stepIntervalsStayAnchoredToTheFirstDueCalendarDay() {
+        TaskStepDefinition always = new TaskStepDefinition(null, 0, "Immer", 0,
+                StepAmount.none(), "");
+        TaskStepDefinition everyOtherDay = new TaskStepDefinition(null, 1, "Intervall", 0, 2,
+                StepAmount.none(), "");
+        new CreateTask(repository, repository, clock, ids).execute(definition(
+                "Pflege", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
+                Arrays.asList(always, everyOtherDay)));
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, clock, ids);
+
+        materialize.execute();
+        assertEquals(2, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+        closeOpenOccurrence();
+
+        clock.date = TODAY.plusDays(1);
+        materialize.execute();
+        assertEquals(1, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+        assertEquals("Immer", repository.occurrenceSteps(
+                repository.openOccurrences().get(0).id).get(0).text);
+        closeOpenOccurrence();
+
+        clock.date = TODAY.plusDays(2);
+        materialize.execute();
+        assertEquals(2, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+    }
+
+    private void closeOpenOccurrence() {
+        Occurrence occurrence = repository.openOccurrences().get(0);
+        new CompleteRemainingSteps(repository, clock).execute(occurrence.id);
+        new CompleteOccurrence(repository, clock).execute(occurrence.id);
+    }
+
     @Test public void repetitionResultsSurviveReloadAndCorrectionsPreserveRewards() {
         int monday = 1;
         TaskStepDefinition mondayStep = new TaskStepDefinition(null, 0, "Beinpresse", monday,
@@ -249,11 +281,14 @@ public final class TaskEditorFeatureRobolectricTest {
                 "Notiz", Collections.singletonList(step), step.id, 2)
                 .withFeedback(Collections.singleton(TaskEditorValidator.AMOUNT_PREFIX + step.id),
                         EditorUiState.Prompt.DISCARD, "");
+        draft = draft.withPage(EditorUiState.Page.SCHEDULE, true);
         EditorUiState restored = EditorUiState.fromBundle(draft.toBundle());
         assertTrue(restored.dirty);
         assertEquals(step.id, restored.expandedStepId);
         assertEquals(EditorUiState.Prompt.DISCARD, restored.prompt);
         assertTrue(restored.errors.contains(TaskEditorValidator.AMOUNT_PREFIX + step.id));
+        assertEquals(EditorUiState.Page.SCHEDULE, restored.page);
+        assertTrue(restored.returnToSummary);
     }
 
     private static TaskDefinition definition(String title, Recurrence recurrence, int weekdays,

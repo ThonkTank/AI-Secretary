@@ -64,7 +64,7 @@ public final class UpdateTask {
                     ? step.id : ids.nextId();
             retained.add(identity);
             updated.add(new TaskStepTemplate(identity, taskId, i, step.text,
-                    step.weekdayMask, step.amount, step.note));
+                    step.weekdayMask, step.intervalDays, step.amount, step.note));
         }
         for (TaskStepTemplate old : existing)
             if (!retained.contains(old.id)) repository.deleteTemplate(old.id);

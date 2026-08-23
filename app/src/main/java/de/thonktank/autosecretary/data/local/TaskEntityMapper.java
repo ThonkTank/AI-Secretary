@@ -55,7 +55,7 @@ public final class TaskEntityMapper {
 
     public TaskStepTemplate toDomain(TaskStepEntity entity) {
         return new TaskStepTemplate(entity.id, TaskId.of(entity.taskId), entity.position, entity.text,
-                entity.weekdayMask, StepAmount.fromStorage(
+                entity.weekdayMask, entity.intervalDays, StepAmount.fromStorage(
                         StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
                         entity.plannedReps, entity.plannedDurationSeconds), entity.note);
     }
@@ -63,7 +63,7 @@ public final class TaskEntityMapper {
     public TaskStepEntity toEntity(TaskStepTemplate step) {
         StoredAmount amount = stored(step.amount);
         return new TaskStepEntity(step.id, step.taskId.value, step.position, step.text,
-                step.weekdayMask, amount.kind.storageCode(), amount.sets,
+                step.weekdayMask, step.intervalDays, amount.kind.storageCode(), amount.sets,
                 amount.repetitions, amount.durationSeconds, step.note);
     }
 

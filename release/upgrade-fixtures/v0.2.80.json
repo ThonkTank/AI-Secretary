@@ -5,7 +5,7 @@
     "versionCode": 1008001,
     "databaseVersion": 8
   },
-  "targetDatabaseVersion": 14,
+  "targetDatabaseVersion": 15,
   "tables": {
     "tasks": {
       "id": "upgrade-e2e-task",
@@ -101,6 +101,7 @@
     "task_steps": {
       "id": "upgrade-e2e-template",
       "text": "Persistierten Schritt lesen",
+      "intervalDays": 0,
       "amountKind": "NONE"
     },
     "occurrences": {

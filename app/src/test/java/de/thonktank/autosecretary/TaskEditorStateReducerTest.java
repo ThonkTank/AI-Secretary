@@ -35,4 +35,13 @@ public final class TaskEditorStateReducerTest {
         EditorUiState state = TaskEditorStateReducer.addStep(EditorUiState.create());
         assertSame(state, TaskEditorStateReducer.moveStep(state, 0, 4));
     }
+
+    @Test public void navigationDoesNotMakeTheDraftDirty() {
+        EditorUiState original = EditorUiState.create();
+        EditorUiState navigated = original.withPage(EditorUiState.Page.SCHEDULE, true);
+
+        assertEquals(EditorUiState.Page.SCHEDULE, navigated.page);
+        assertEquals(true, navigated.returnToSummary);
+        assertEquals(false, navigated.dirty);
+    }
 }

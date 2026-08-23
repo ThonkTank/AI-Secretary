@@ -339,6 +339,23 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test public void migration14To15AddsDisabledStepIntervals() throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 14);
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 15, true, DatabaseMigrations.MIGRATION_14_15);
+        try (Cursor cursor = database.query("PRAGMA table_info(task_steps)")) {
+            boolean found = false;
+            while (cursor.moveToNext()) {
+                if (!"intervalDays".equals(cursor.getString(
+                        cursor.getColumnIndexOrThrow("name")))) continue;
+                found = true;
+                assertEquals("0", cursor.getString(cursor.getColumnIndexOrThrow("dflt_value")));
+            }
+            assertTrue(found);
+        }
+        database.close();
+    }
+
     private static void assertColumnsMissing(SupportSQLiteDatabase database, String table,
                                              String... forbidden) {
         try (Cursor cursor = database.query("PRAGMA table_info(" + table + ")")) {

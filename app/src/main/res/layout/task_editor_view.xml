@@ -48,7 +48,7 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:clipToPadding="false"
-            android:fillViewport="true"
+            android:fillViewport="false"
             android:paddingStart="60dp"
             android:paddingTop="8dp"
             android:paddingEnd="22dp"
@@ -106,6 +106,14 @@
                 android:gravity="center"
                 android:text="@string/action_delete"
                 android:textSize="17sp" />
+
+            <LinearLayout
+                android:id="@+id/task_editor_progress"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
 

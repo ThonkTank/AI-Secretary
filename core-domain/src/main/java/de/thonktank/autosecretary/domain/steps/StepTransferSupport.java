@@ -66,6 +66,7 @@ final class StepTransferSupport {
     static TaskStepTemplate reparent(TaskStepTemplate value, Task task, int position) {
         return new TaskStepTemplate(value.id, task.id, position, value.text,
                 task.recurrence == Recurrence.ONCE ? 0 : value.weekdayMask,
+                task.recurrence == Recurrence.ONCE ? 0 : value.intervalDays,
                 value.amount, value.note);
     }
 

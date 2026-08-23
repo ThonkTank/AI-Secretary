@@ -14,24 +14,32 @@ public final class EditorStepState {
     public final String id;
     public final String text;
     public final int weekdayMask;
+    public final int intervalDays;
     public final StepAmount amount;
     public final String note;
 
     public EditorStepState(String id, String text, int weekdayMask, StepAmount amount,
                            String note) {
+        this(id, text, weekdayMask, 0, amount, note);
+    }
+
+    public EditorStepState(String id, String text, int weekdayMask, int intervalDays,
+                           StepAmount amount, String note) {
         this.id = id;
         this.text = text == null ? "" : text;
         this.weekdayMask = weekdayMask & 0x7f;
+        this.intervalDays = this.weekdayMask == 0 ? Math.max(0, intervalDays) : 0;
         this.amount = amount == null ? StepAmount.none() : amount;
         this.note = note == null ? "" : note;
     }
 
     public static EditorStepState blank(int identity) {
-        return new EditorStepState(DRAFT_PREFIX + identity, "", 0, StepAmount.none(), "");
+        return new EditorStepState(DRAFT_PREFIX + identity, "", 0, 0,
+                StepAmount.none(), "");
     }
 
     public static EditorStepState from(TaskStepTemplate value) {
-        return new EditorStepState(value.id, value.text, value.weekdayMask,
+        return new EditorStepState(value.id, value.text, value.weekdayMask, value.intervalDays,
                 value.amount, value.note);
     }
 
@@ -39,29 +47,34 @@ public final class EditorStepState {
 
     public TaskStepDefinition definition(int position, boolean once) {
         return new TaskStepDefinition(isDraftIdentity() ? null : id, position, text,
-                once ? 0 : weekdayMask, amount, note);
+                once ? 0 : weekdayMask, once ? 0 : intervalDays, amount, note);
     }
 
     public EditorStepState withText(String value) {
-        return new EditorStepState(id, value, weekdayMask, amount, note);
+        return new EditorStepState(id, value, weekdayMask, intervalDays, amount, note);
     }
 
     public EditorStepState withWeekdayMask(int value) {
-        return new EditorStepState(id, text, value, amount, note);
+        return new EditorStepState(id, text, value, 0, amount, note);
+    }
+
+    public EditorStepState withIntervalDays(int value) {
+        return new EditorStepState(id, text, 0, value, amount, note);
     }
 
     public EditorStepState withAmount(StepAmount value) {
-        return new EditorStepState(id, text, weekdayMask, value, note);
+        return new EditorStepState(id, text, weekdayMask, intervalDays, value, note);
     }
 
     public EditorStepState withNote(String value) {
-        return new EditorStepState(id, text, weekdayMask, amount, value);
+        return new EditorStepState(id, text, weekdayMask, intervalDays, amount, value);
     }
 
     Bundle toBundle() {
         Bundle bundle = new Bundle();
         bundle.putString("id", id); bundle.putString("text", text);
-        bundle.putInt("weekdays", weekdayMask); bundle.putString("amount", amount.kind().name());
+        bundle.putInt("weekdays", weekdayMask); bundle.putInt("interval", intervalDays);
+        bundle.putString("amount", amount.kind().name());
         if (amount instanceof StepAmount.SetsReps) {
             StepAmount.SetsReps value = (StepAmount.SetsReps) amount;
             putInteger(bundle, "sets", value.sets);
@@ -77,7 +90,7 @@ public final class EditorStepState {
 
     static EditorStepState fromBundle(Bundle bundle) {
         return new EditorStepState(bundle.getString("id"), bundle.getString("text", ""),
-                bundle.getInt("weekdays"), StepAmount.fromStorage(
+                bundle.getInt("weekdays"), bundle.getInt("interval"), StepAmount.fromStorage(
                         enumValue(bundle.getString("amount")), integer(bundle, "sets"),
                         integer(bundle, "reps"), integer(bundle, "duration")),
                 bundle.getString("note", ""));
@@ -98,11 +111,12 @@ public final class EditorStepState {
         if (!(other instanceof EditorStepState)) return false;
         EditorStepState value = (EditorStepState) other;
         return Objects.equals(id, value.id) && text.equals(value.text)
-                && weekdayMask == value.weekdayMask && amount.equals(value.amount)
+                && weekdayMask == value.weekdayMask && intervalDays == value.intervalDays
+                && amount.equals(value.amount)
                 && note.equals(value.note);
     }
 
     @Override public int hashCode() {
-        return Objects.hash(id, text, weekdayMask, amount, note);
+        return Objects.hash(id, text, weekdayMask, intervalDays, amount, note);
     }
 }
