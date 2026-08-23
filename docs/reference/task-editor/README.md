@@ -57,3 +57,30 @@ Status: **VISUELL FREIGEGEBEN**
 - Prüfgrundlage: das oben verlinkte Side-by-Side-Kontaktblatt für alle zehn kanonischen Zustände
 
 Automatisierte Goldens und eine Prüfung durch Codex ersetzen diese Freigabe ausdrücklich nicht.
+
+## Adaptive Fidelity (Phase 5)
+
+[`contact-sheet-adaptive-fidelity.png`](contact-sheet-adaptive-fidelity.png) dokumentiert die fünf
+zusätzlichen Abnahmeszenarien: die Übersicht in der Nachtpalette sowie Titel, Rhythmus, Schritte
+und Übersicht bei 320×640 dp und Schriftfaktor 1,5. Die zehn kanonischen 412×892-Ansichten bleiben
+pixelgleich zu ihren bestehenden Regression-Baselines.
+
+Der adaptive Vertrag verwendet bei Breiten unter 360 dp oder einem Schriftfaktor ab 1,3 das
+Kompaktlayout. Es teilt die Fußzeile in zwei Reihen, ordnet die Wochentage als 4+3-Raster an und
+lässt das Fokusblatt nur bei echtem Überlauf scrollen. Interaktive Ziele werden in beiden Layouts
+mit mindestens 48×48 dp geprüft. Abhängige Felder und Prompts verwenden den 240-ms-Motion-Token
+mit der Kurve `(0.2, 0.7, 0.3, 1)`; bei ausgeschalteten Systemanimationen werden sie unmittelbar
+in den Endzustand versetzt. Ein Quelltext-Gate verhindert unabhängige hart codierte Farben in den
+Editor-Komponenten.
+
+Die neuen Baselines liegen unter `app/src/test/resources/golden/task-editor/adaptive`. Sie können
+nur mit den lokalen, expliziten Update-Schaltern
+`UPDATE_TASK_EDITOR_ADAPTIVE_GOLDENS=1` und
+`UPDATE_TASK_EDITOR_ADAPTIVE_CONTACT=1` geschrieben werden; CI darf sie nicht verändern.
+
+### Erneute menschliche Freigabe
+
+Status: **AUSSTEHEND**
+
+Die Freigabe muss sich auf das adaptive Kontaktblatt im Phase-5-PR beziehen. Automatisierte
+Goldens und die technische Prüfung durch Codex ersetzen diese Freigabe ausdrücklich nicht.
