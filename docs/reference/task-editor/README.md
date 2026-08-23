@@ -80,7 +80,13 @@ nur mit den lokalen, expliziten Update-Schaltern
 
 ### Erneute menschliche Freigabe
 
-Status: **AUSSTEHEND**
+Status: **VISUELL FREIGEGEBEN**
 
-Die Freigabe muss sich auf das adaptive Kontaktblatt im Phase-5-PR beziehen. Automatisierte
-Goldens und die technische Prüfung durch Codex ersetzen diese Freigabe ausdrücklich nicht.
+- Prüfende Person: Auftraggeber / Repository-Owner `ThonkTank`
+- Datum: 2026-08-23
+- Geprüfter UI-Commit: `db758d3675dd44253ccc06367b0dc7bde35b45e1`
+- Ergebnis: „visuell freigegeben“
+- Prüfgrundlage: das adaptive Kontaktblatt mit Nachtübersicht und den vier Kompaktansichten
+
+Automatisierte Goldens und die technische Prüfung durch Codex ersetzen diese Freigabe
+ausdrücklich nicht.
