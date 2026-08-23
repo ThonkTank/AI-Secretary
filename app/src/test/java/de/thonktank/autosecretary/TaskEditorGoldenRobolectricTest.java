@@ -120,7 +120,8 @@ public final class TaskEditorGoldenRobolectricTest {
                 ? EditorUiState.Page.SUMMARY : EditorUiState.Page.TITLE;
         state = state.withPage(page, false);
         if (name.equals("02-titel-fehler")) state = state.withFeedback(
-                Collections.singleton(TaskEditorValidator.TITLE), EditorUiState.Prompt.NONE, "");
+                Collections.singleton(ValidationIssue.task(ValidationIssue.Field.TITLE)),
+                EditorUiState.Prompt.NONE, "");
         if (name.equals("09-abbrechen-rueckfrage"))
             state = state.withFeedback(Collections.emptySet(), EditorUiState.Prompt.DISCARD, "");
         if (name.equals("08-uebersicht") || name.equals("10-loeschen-rueckfrage")) {

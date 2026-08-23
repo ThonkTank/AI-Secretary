@@ -93,15 +93,15 @@ public final class UiComponentRobolectricTest {
     @Test public void validatorCoversEveryEditorConstraint() {
         TaskEditorValidator validator = new TaskEditorValidator();
         EditorUiState base = EditorUiState.create();
-        assertTrue(validator.errors(base, LocalDate.of(2026, 8, 21))
-                .contains(TaskEditorValidator.TITLE));
+        assertTrue(validator.issues(base, LocalDate.of(2026, 8, 21))
+                .contains(ValidationIssue.task(ValidationIssue.Field.TITLE)));
         EditorUiState weekdays = base.withDraft("Routine", TaskSlot.MORNING,
                 Recurrence.WEEKDAYS, 1, 0, Collections.emptyList());
-        assertTrue(validator.errors(weekdays, LocalDate.of(2026, 8, 21))
-                .contains(TaskEditorValidator.WEEKDAYS));
+        assertTrue(validator.issues(weekdays, LocalDate.of(2026, 8, 21))
+                .contains(ValidationIssue.task(ValidationIssue.Field.WEEKDAYS)));
         EditorUiState valid = base.withDraft("Vorhaben", TaskSlot.LATER,
                 Recurrence.ONCE, 1, 0, Collections.emptyList());
-        assertTrue(validator.errors(valid, LocalDate.of(2026, 8, 21)).isEmpty());
+        assertTrue(validator.issues(valid, LocalDate.of(2026, 8, 21)).isEmpty());
     }
 
     @Test public void rendererReusesTheMountedViewTreeForNormalUpdates() {

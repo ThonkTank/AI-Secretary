@@ -42,7 +42,9 @@ public final class EditorUiState {
     public final String note;
     public final List<EditorStepState> stepStates;
     public final String expandedStepId;
-    public final Set<String> errors;
+    public final Set<ValidationIssue> issues;
+    public final Set<Page> attemptedPages;
+    public final Set<String> attemptedStepIds;
     public final Prompt prompt;
     public final String storageError;
     public final int nextDraftIdentity;
@@ -57,7 +59,8 @@ public final class EditorUiState {
                           int timeOfDayMask, TaskBoundKind boundKind, LocalDate boundUntilOn,
                           Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn,
                           String note, List<EditorStepState> steps, String expandedStepId,
-                          Set<String> errors, Prompt prompt, String storageError,
+                          Set<ValidationIssue> issues, Set<Page> attemptedPages,
+                          Set<String> attemptedStepIds, Prompt prompt, String storageError,
                           int nextDraftIdentity, String baseline, Page page,
                           boolean returnToSummary) {
         this.open = open; this.loading = loading; this.saving = saving; this.taskId = taskId;
@@ -70,7 +73,10 @@ public final class EditorUiState {
         this.note = note == null ? "" : note;
         this.stepStates = Collections.unmodifiableList(new ArrayList<>(steps));
         this.expandedStepId = expandedStepId;
-        this.errors = Collections.unmodifiableSet(new LinkedHashSet<>(errors));
+        this.issues = Collections.unmodifiableSet(new LinkedHashSet<>(issues));
+        this.attemptedPages = Collections.unmodifiableSet(new LinkedHashSet<>(attemptedPages));
+        this.attemptedStepIds = Collections.unmodifiableSet(
+                new LinkedHashSet<>(attemptedStepIds));
         this.prompt = prompt; this.storageError = storageError == null ? "" : storageError;
         this.nextDraftIdentity = nextDraftIdentity;
         String signature = signature(title, slot, estimatedMinutes, recurrence, intervalDays,
@@ -95,7 +101,8 @@ public final class EditorUiState {
                 null, Recurrence.DAILY, 2, 0, TimeOfDay.fromSlot(slot).bit,
                 TaskBoundKind.FOREVER, null, null,
                 null, null, "", Collections.emptyList(), null, Collections.emptySet(),
-                Prompt.NONE, "", 1, null, Page.TITLE, false);
+                Collections.emptySet(), Collections.emptySet(), Prompt.NONE, "", 1, null,
+                Page.TITLE, false);
     }
 
     public static EditorUiState loading(String taskId) {
@@ -106,7 +113,8 @@ public final class EditorUiState {
         return new EditorUiState(open, loading, false, taskId, "", TaskSlot.MORNING,
                 null, Recurrence.ONCE, 2, 0, 0, TaskBoundKind.FOREVER, null, null,
                 null, null, "", Collections.emptyList(), null, Collections.emptySet(),
-                Prompt.NONE, "", 1, null, taskId == null ? Page.TITLE : Page.SUMMARY, false);
+                Collections.emptySet(), Collections.emptySet(), Prompt.NONE, "", 1, null,
+                taskId == null ? Page.TITLE : Page.SUMMARY, false);
     }
 
     public static EditorUiState edit(TaskDetails details) {
@@ -117,7 +125,8 @@ public final class EditorUiState {
                 details.intervalDays, details.weekdayMask, details.timeOfDayMask,
                 details.boundKind, details.boundUntilOn, details.boundWeeks,
                 details.remainingCount, details.deadlineOn, details.note, steps, null,
-                Collections.emptySet(), Prompt.NONE, "", 1, null, Page.SUMMARY, false);
+                Collections.emptySet(), Collections.emptySet(), Collections.emptySet(),
+                Prompt.NONE, "", 1, null, Page.SUMMARY, false);
     }
 
     public EditorUiState withDraft(String title, TaskSlot slot, Recurrence recurrence,
@@ -144,40 +153,66 @@ public final class EditorUiState {
         return new EditorUiState(true, false, false, taskId, title, slot, estimatedMinutes,
                 recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, steps,
-                expandedStepId, Collections.emptySet(), Prompt.NONE, "", nextDraftIdentity,
-                baseline, page, returnToSummary);
+                expandedStepId, Collections.emptySet(), attemptedPages, attemptedStepIds,
+                Prompt.NONE, "", nextDraftIdentity, baseline, page, returnToSummary);
     }
 
-    public EditorUiState withFeedback(Set<String> errors, Prompt prompt, String storageError) {
+    public EditorUiState withFeedback(Set<ValidationIssue> issues, Prompt prompt,
+                                      String storageError) {
         return new EditorUiState(open, loading, saving, taskId, title, slot, estimatedMinutes,
                 recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
-                expandedStepId, errors, prompt, storageError, nextDraftIdentity, baseline,
-                page, returnToSummary);
+                expandedStepId, issues, attemptedPages, attemptedStepIds, prompt, storageError,
+                nextDraftIdentity, baseline, page, returnToSummary);
+    }
+
+    public EditorUiState withValidationAttempt(Page attemptedPage, String attemptedStepId,
+                                               Set<ValidationIssue> visibleIssues) {
+        Set<Page> pages = new LinkedHashSet<>(attemptedPages);
+        Set<String> steps = new LinkedHashSet<>(attemptedStepIds);
+        if (attemptedStepId == null) pages.add(attemptedPage);
+        else steps.add(attemptedStepId);
+        return new EditorUiState(open, loading, saving, taskId, title, slot, estimatedMinutes,
+                recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
+                boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
+                expandedStepId, visibleIssues, pages, steps, prompt, storageError,
+                nextDraftIdentity, baseline, page, returnToSummary);
+    }
+
+    public EditorUiState withAllValidationAttempted(Set<ValidationIssue> visibleIssues) {
+        Set<Page> pages = new LinkedHashSet<>(attemptedPages);
+        pages.add(Page.TITLE); pages.add(Page.SCHEDULE); pages.add(Page.STEPS);
+        Set<String> steps = new LinkedHashSet<>(attemptedStepIds);
+        for (EditorStepState step : stepStates) steps.add(step.id);
+        return new EditorUiState(open, loading, saving, taskId, title, slot, estimatedMinutes,
+                recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
+                boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
+                expandedStepId, visibleIssues, pages, steps, prompt, storageError,
+                nextDraftIdentity, baseline, page, returnToSummary);
     }
 
     public EditorUiState withSaving(boolean value) {
         return new EditorUiState(open, loading, value, taskId, title, slot, estimatedMinutes,
                 recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
-                expandedStepId, errors, prompt, storageError, nextDraftIdentity, baseline,
-                page, returnToSummary);
+                expandedStepId, issues, attemptedPages, attemptedStepIds, prompt, storageError,
+                nextDraftIdentity, baseline, page, returnToSummary);
     }
 
     public EditorUiState withPage(Page value, boolean returnToSummary) {
         return new EditorUiState(open, loading, saving, taskId, title, slot, estimatedMinutes,
                 recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
-                expandedStepId, errors, prompt, storageError, nextDraftIdentity, baseline,
-                value, returnToSummary);
+                expandedStepId, issues, attemptedPages, attemptedStepIds, prompt, storageError,
+                nextDraftIdentity, baseline, value, returnToSummary);
     }
 
     public EditorUiState withExpandedStep(String id) {
         return new EditorUiState(open, loading, saving, taskId, title, slot, estimatedMinutes,
                 recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
-                id, errors, prompt, storageError, nextDraftIdentity, baseline, page,
-                returnToSummary);
+                id, issues, attemptedPages, attemptedStepIds, prompt, storageError,
+                nextDraftIdentity, baseline, page, returnToSummary);
     }
 
     public TaskDefinition definition() {
@@ -203,8 +238,15 @@ public final class EditorUiState {
         ArrayList<Bundle> values = new ArrayList<>();
         for (EditorStepState value : stepStates) values.add(value.toBundle());
         bundle.putParcelableArrayList("step_states", values);
-        bundle.putString("expanded", expandedStepId); bundle.putStringArrayList("errors",
-                new ArrayList<>(errors)); bundle.putString("prompt", prompt.name());
+        bundle.putString("expanded", expandedStepId);
+        ArrayList<Bundle> issueValues = new ArrayList<>();
+        for (ValidationIssue issue : issues) issueValues.add(issue.toBundle());
+        bundle.putParcelableArrayList("validation_issues", issueValues);
+        ArrayList<String> pages = new ArrayList<>();
+        for (Page value : attemptedPages) pages.add(value.name());
+        bundle.putStringArrayList("attempted_pages", pages);
+        bundle.putStringArrayList("attempted_steps", new ArrayList<>(attemptedStepIds));
+        bundle.putString("prompt", prompt.name());
         bundle.putString("storage_error", storageError); bundle.putInt("next_id", nextDraftIdentity);
         bundle.putString("baseline", baseline); bundle.putString("page", page.name());
         bundle.putBoolean("return_summary", returnToSummary);
@@ -216,7 +258,9 @@ public final class EditorUiState {
         List<EditorStepState> steps = new ArrayList<>();
         ArrayList<Bundle> values = bundle.getParcelableArrayList("step_states");
         if (values != null) for (Bundle value : values) steps.add(EditorStepState.fromBundle(value));
-        ArrayList<String> errors = bundle.getStringArrayList("errors");
+        Set<ValidationIssue> issues = issues(bundle);
+        Set<Page> attemptedPages = pages(bundle.getStringArrayList("attempted_pages"));
+        Set<String> attemptedSteps = strings(bundle.getStringArrayList("attempted_steps"));
         return new EditorUiState(true, bundle.getBoolean("loading"), bundle.getBoolean("saving"),
                 bundle.getString("task_id"), bundle.getString("title", ""),
                 enumValue(TaskSlot.class, bundle.getString("slot"), TaskSlot.MORNING),
@@ -226,8 +270,8 @@ public final class EditorUiState {
                 enumValue(TaskBoundKind.class, bundle.getString("bound"), TaskBoundKind.FOREVER),
                 date(bundle, "until"), integer(bundle, "weeks"), integer(bundle, "count"),
                 date(bundle, "deadline"), bundle.getString("note", ""), steps,
-                bundle.getString("expanded"), errors == null ? Collections.emptySet()
-                : new LinkedHashSet<>(errors), enumValue(Prompt.class,
+                bundle.getString("expanded"), issues, attemptedPages, attemptedSteps,
+                enumValue(Prompt.class,
                 bundle.getString("prompt"), Prompt.NONE), bundle.getString("storage_error", ""),
                 bundle.getInt("next_id", 1), bundle.getString("baseline"),
                 enumValue(Page.class, bundle.getString("page"),
@@ -246,7 +290,8 @@ public final class EditorUiState {
                 + Objects.toString(note, ""));
         for (EditorStepState step : steps)
             result.append('|').append(step.id).append(':').append(step.text).append(':')
-                    .append(step.weekdayMask).append(':').append(step.intervalDays).append(':')
+                    .append(step.cadenceMode).append(':').append(step.weekdayMask).append(':')
+                    .append(step.intervalDays).append(':')
                     .append(step.amount).append(':')
                     .append(step.note);
         return result.toString();
@@ -264,6 +309,48 @@ public final class EditorUiState {
     private static LocalDate date(Bundle bundle, String key) {
         String value = bundle.getString(key);
         return value == null || value.isEmpty() ? null : LocalDate.parse(value);
+    }
+    private static Set<ValidationIssue> issues(Bundle bundle) {
+        Set<ValidationIssue> result = new LinkedHashSet<>();
+        ArrayList<Bundle> values = bundle.getParcelableArrayList("validation_issues");
+        if (values != null) for (Bundle value : values) {
+            ValidationIssue issue = ValidationIssue.fromBundle(value);
+            if (issue != null) result.add(issue);
+        }
+        if (!result.isEmpty() || bundle.containsKey("validation_issues")) return result;
+        ArrayList<String> legacy = bundle.getStringArrayList("errors");
+        if (legacy != null) for (String value : legacy) {
+            ValidationIssue issue = legacyIssue(value);
+            if (issue != null) result.add(issue);
+        }
+        return result;
+    }
+    private static ValidationIssue legacyIssue(String value) {
+        if ("title".equals(value)) return ValidationIssue.task(ValidationIssue.Field.TITLE);
+        if ("duration".equals(value)) return ValidationIssue.task(ValidationIssue.Field.DURATION);
+        if ("weekdays".equals(value)) return ValidationIssue.task(ValidationIssue.Field.WEEKDAYS);
+        if ("interval".equals(value)) return ValidationIssue.task(ValidationIssue.Field.INTERVAL);
+        if ("times".equals(value)) return ValidationIssue.task(ValidationIssue.Field.TIMES);
+        if ("bound".equals(value)) return ValidationIssue.task(ValidationIssue.Field.BOUND);
+        if (value != null && value.startsWith("step-interval:"))
+            return ValidationIssue.step(ValidationIssue.Field.STEP_INTERVAL,
+                    value.substring("step-interval:".length()));
+        if (value != null && value.startsWith("amount:"))
+            return ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT,
+                    value.substring("amount:".length()));
+        if (value != null && value.startsWith("step:"))
+            return ValidationIssue.step(ValidationIssue.Field.STEP_TITLE,
+                    value.substring("step:".length()));
+        return null;
+    }
+    private static Set<Page> pages(ArrayList<String> values) {
+        Set<Page> result = new LinkedHashSet<>();
+        if (values != null) for (String value : values)
+            result.add(enumValue(Page.class, value, Page.TITLE));
+        return result;
+    }
+    private static Set<String> strings(ArrayList<String> values) {
+        return values == null ? Collections.emptySet() : new LinkedHashSet<>(values);
     }
     private static <T extends Enum<T>> T enumValue(Class<T> type, String value, T fallback) {
         if (value == null) return fallback;

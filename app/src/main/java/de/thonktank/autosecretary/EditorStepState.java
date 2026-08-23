@@ -13,8 +13,9 @@ public final class EditorStepState {
     private static final String DRAFT_PREFIX = "draft:";
     public final String id;
     public final String text;
+    public final StepCadenceMode cadenceMode;
     public final int weekdayMask;
-    public final int intervalDays;
+    public final Integer intervalDays;
     public final StepAmount amount;
     public final String note;
 
@@ -25,10 +26,19 @@ public final class EditorStepState {
 
     public EditorStepState(String id, String text, int weekdayMask, int intervalDays,
                            StepAmount amount, String note) {
+        this(id, text, weekdayMask != 0 ? StepCadenceMode.WEEKDAYS
+                        : intervalDays != 0 ? StepCadenceMode.INTERVAL : StepCadenceMode.ALWAYS,
+                weekdayMask, intervalDays == 0 ? null : intervalDays, amount, note);
+    }
+
+    public EditorStepState(String id, String text, StepCadenceMode cadenceMode,
+                           int weekdayMask, Integer intervalDays, StepAmount amount, String note) {
         this.id = id;
         this.text = text == null ? "" : text;
-        this.weekdayMask = weekdayMask & 0x7f;
-        this.intervalDays = this.weekdayMask == 0 ? Math.max(0, intervalDays) : 0;
+        this.cadenceMode = cadenceMode == null ? StepCadenceMode.ALWAYS : cadenceMode;
+        this.weekdayMask = this.cadenceMode == StepCadenceMode.WEEKDAYS
+                ? weekdayMask & 0x7f : 0;
+        this.intervalDays = this.cadenceMode == StepCadenceMode.INTERVAL ? intervalDays : null;
         this.amount = amount == null ? StepAmount.none() : amount;
         this.note = note == null ? "" : note;
     }
@@ -46,34 +56,50 @@ public final class EditorStepState {
     public boolean isDraftIdentity() { return id == null || id.startsWith(DRAFT_PREFIX); }
 
     public TaskStepDefinition definition(int position, boolean once) {
+        if (!once && cadenceMode == StepCadenceMode.INTERVAL
+                && (intervalDays == null || intervalDays < 2))
+            throw new IllegalStateException("A valid step interval is required before saving");
         return new TaskStepDefinition(isDraftIdentity() ? null : id, position, text,
-                once ? 0 : weekdayMask, once ? 0 : intervalDays, amount, note);
+                once || cadenceMode != StepCadenceMode.WEEKDAYS ? 0 : weekdayMask,
+                once || cadenceMode != StepCadenceMode.INTERVAL ? 0 : intervalDays,
+                amount, note);
     }
 
     public EditorStepState withText(String value) {
-        return new EditorStepState(id, value, weekdayMask, intervalDays, amount, note);
+        return new EditorStepState(id, value, cadenceMode, weekdayMask, intervalDays, amount, note);
     }
 
     public EditorStepState withWeekdayMask(int value) {
-        return new EditorStepState(id, text, value, 0, amount, note);
+        return new EditorStepState(id, text, StepCadenceMode.WEEKDAYS, value, null, amount, note);
     }
 
-    public EditorStepState withIntervalDays(int value) {
-        return new EditorStepState(id, text, 0, value, amount, note);
+    public EditorStepState withIntervalDays(Integer value) {
+        return new EditorStepState(id, text, StepCadenceMode.INTERVAL, 0, value, amount, note);
+    }
+
+    public EditorStepState withCadenceMode(StepCadenceMode value) {
+        if (value == StepCadenceMode.WEEKDAYS)
+            return new EditorStepState(id, text, value, weekdayMask == 0 ? 1 : weekdayMask,
+                    null, amount, note);
+        if (value == StepCadenceMode.INTERVAL)
+            return new EditorStepState(id, text, value, 0,
+                    intervalDays == null ? 2 : intervalDays, amount, note);
+        return new EditorStepState(id, text, StepCadenceMode.ALWAYS, 0, null, amount, note);
     }
 
     public EditorStepState withAmount(StepAmount value) {
-        return new EditorStepState(id, text, weekdayMask, intervalDays, value, note);
+        return new EditorStepState(id, text, cadenceMode, weekdayMask, intervalDays, value, note);
     }
 
     public EditorStepState withNote(String value) {
-        return new EditorStepState(id, text, weekdayMask, intervalDays, amount, value);
+        return new EditorStepState(id, text, cadenceMode, weekdayMask, intervalDays, amount, value);
     }
 
     Bundle toBundle() {
         Bundle bundle = new Bundle();
         bundle.putString("id", id); bundle.putString("text", text);
-        bundle.putInt("weekdays", weekdayMask); bundle.putInt("interval", intervalDays);
+        bundle.putString("cadence", cadenceMode.name());
+        bundle.putInt("weekdays", weekdayMask); putInteger(bundle, "interval", intervalDays);
         bundle.putString("amount", amount.kind().name());
         if (amount instanceof StepAmount.SetsReps) {
             StepAmount.SetsReps value = (StepAmount.SetsReps) amount;
@@ -89,11 +115,22 @@ public final class EditorStepState {
     }
 
     static EditorStepState fromBundle(Bundle bundle) {
+        int weekdays = bundle.getInt("weekdays");
+        Integer interval = bundle.containsKey("cadence") ? integer(bundle, "interval")
+                : bundle.getInt("interval") == 0 ? null : bundle.getInt("interval");
+        StepCadenceMode cadence = cadence(bundle.getString("cadence"), weekdays, interval);
         return new EditorStepState(bundle.getString("id"), bundle.getString("text", ""),
-                bundle.getInt("weekdays"), bundle.getInt("interval"), StepAmount.fromStorage(
+                cadence, weekdays, interval, StepAmount.fromStorage(
                         enumValue(bundle.getString("amount")), integer(bundle, "sets"),
                         integer(bundle, "reps"), integer(bundle, "duration")),
                 bundle.getString("note", ""));
+    }
+
+    private static StepCadenceMode cadence(String value, int weekdays, Integer interval) {
+        try { return value == null ? weekdays != 0 ? StepCadenceMode.WEEKDAYS
+                : interval != null ? StepCadenceMode.INTERVAL : StepCadenceMode.ALWAYS
+                : StepCadenceMode.valueOf(value); }
+        catch (IllegalArgumentException error) { return StepCadenceMode.ALWAYS; }
     }
 
     private static StepAmountKind enumValue(String value) {
@@ -111,12 +148,13 @@ public final class EditorStepState {
         if (!(other instanceof EditorStepState)) return false;
         EditorStepState value = (EditorStepState) other;
         return Objects.equals(id, value.id) && text.equals(value.text)
-                && weekdayMask == value.weekdayMask && intervalDays == value.intervalDays
+                && cadenceMode == value.cadenceMode && weekdayMask == value.weekdayMask
+                && Objects.equals(intervalDays, value.intervalDays)
                 && amount.equals(value.amount)
                 && note.equals(value.note);
     }
 
     @Override public int hashCode() {
-        return Objects.hash(id, text, weekdayMask, intervalDays, amount, note);
+        return Objects.hash(id, text, cadenceMode, weekdayMask, intervalDays, amount, note);
     }
 }

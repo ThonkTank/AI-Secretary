@@ -11,6 +11,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.InputType;
+import android.text.Selection;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -73,6 +74,9 @@ public final class TaskEditorView extends FrameLayout {
     private AlertDialog prompt;
     private EditorUiState.Prompt shownPrompt = EditorUiState.Prompt.NONE;
     private int pendingDirection;
+    private Object pendingFocusTag;
+    private int pendingSelection = -1;
+    private Integer pendingScrollY;
 
     public TaskEditorView(Context context, Listener listener) {
         super(context);
@@ -134,7 +138,7 @@ public final class TaskEditorView extends FrameLayout {
         else renderSummary();
         if (!state.storageError.isEmpty()) leaf.addView(errorView(state.storageError),
                 params(-1, -2, 0, 12, 0, 0));
-        scroll.post(() -> scroll.scrollTo(0, 0));
+        restoreViewportAfterRender();
         animatePage();
         renderPrompt();
     }
@@ -146,7 +150,7 @@ public final class TaskEditorView extends FrameLayout {
                 : R.string.editor_next));
         primary.setTextColor(palette.accentText);
         primary.setBackground(style.pill(palette.accent, 26));
-        primary.setEnabled(!state.saving && !hasVisibleBlockingError(detail));
+        primary.setEnabled(!state.saving && !hasVisibleBlockingIssue(detail));
         primary.setAlpha(primary.isEnabled() ? 1f : .48f);
         primary.setOnClickListener(view -> {
             if (detail) applyStepDetail();
@@ -203,12 +207,13 @@ public final class TaskEditorView extends FrameLayout {
                         state.boundKind, state.boundUntilOn, state.boundWeeks,
                         state.remainingCount, state.deadlineOn, state.note, state.stepStates,
                         state.expandedStepId), false));
+        title.setTag("task:title");
         title.setFilters(new InputFilter[]{new InputFilter.LengthFilter(120)});
         title.setImeOptions(EditorInfo.IME_ACTION_NEXT);
-        if (state.errors.contains(TaskEditorValidator.TITLE))
+        if (hasIssue(ValidationIssue.Field.TITLE))
             title.setBackgroundTintList(ColorStateList.valueOf(palette.bad));
         leaf.addView(title, params(-1, style.dp(52), 0, 20, 0, 0));
-        if (state.errors.contains(TaskEditorValidator.TITLE))
+        if (hasIssue(ValidationIssue.Field.TITLE))
             leaf.addView(errorView(state.title.trim().isEmpty()
                     ? R.string.err_title_empty : R.string.err_title_long));
 
@@ -219,6 +224,7 @@ public final class TaskEditorView extends FrameLayout {
                         state.boundKind, state.boundUntilOn, state.boundWeeks,
                         state.remainingCount, state.deadlineOn, value, state.stepStates,
                         state.expandedStepId), false));
+        note.setTag("task:note");
         note.setMinHeight(style.dp(56));
         leaf.addView(note);
         addBoundOrDeadline();
@@ -242,13 +248,14 @@ public final class TaskEditorView extends FrameLayout {
                     state.timeOfDayMask, state.boundKind, state.boundUntilOn, state.boundWeeks,
                     state.remainingCount, state.deadlineOn, state.note, state.stepStates,
                     state.expandedStepId), true)), params(-1, style.dp(48), 0, 14, 0, 0));
-            if (state.errors.contains(TaskEditorValidator.WEEKDAYS))
+            if (hasIssue(ValidationIssue.Field.WEEKDAYS))
                 leaf.addView(errorView(R.string.err_weekdays_empty));
         } else if (state.recurrence == Recurrence.INTERVAL) {
             LinearLayout interval = new LinearLayout(getContext());
             interval.setGravity(Gravity.CENTER_VERTICAL);
             EditText number = numberField(state.intervalDays,
                     value -> setInterval(value == null ? 0 : value));
+            number.setTag("task:interval");
             interval.addView(number, new LinearLayout.LayoutParams(style.dp(96), style.dp(48)));
             TextView unit = style.serif(getContext().getString(R.string.editor_interval_unit),
                     17, palette.muted, true, 300);
@@ -256,7 +263,7 @@ public final class TaskEditorView extends FrameLayout {
             unitParams.setMargins(style.dp(12), 0, 0, 0);
             interval.addView(unit, unitParams);
             leaf.addView(interval, params(-1, -2, 0, 14, 0, 0));
-            if (state.errors.contains(TaskEditorValidator.INTERVAL))
+            if (hasIssue(ValidationIssue.Field.INTERVAL))
                 leaf.addView(errorView(R.string.err_interval_zero));
         }
         if (state.recurrence != Recurrence.ONCE) addTimes();
@@ -344,7 +351,7 @@ public final class TaskEditorView extends FrameLayout {
         }
         leaf.addView(row);
         addBoundValue();
-        if (state.errors.contains(TaskEditorValidator.BOUND))
+        if (hasIssue(ValidationIssue.Field.BOUND))
             leaf.addView(errorView(R.string.err_until_past));
     }
 
@@ -406,7 +413,7 @@ public final class TaskEditorView extends FrameLayout {
         if (custom) leaf.addView(numberInput(state.estimatedMinutes,
                 R.string.duration_custom_unit, value -> {
                     if (value != null && value > 0) setDuration(value);
-                }), params(-1, -2, 0, 10, 0, 0));
+                }, "task:duration"), params(-1, -2, 0, 10, 0, 0));
     }
 
     private void setRecurrence(Recurrence recurrence) {
@@ -466,9 +473,10 @@ public final class TaskEditorView extends FrameLayout {
     }
 
     private void advance() {
-        Set<String> errors = errorsForPage(state.page, false);
-        if (!errors.isEmpty()) {
-            apply(state.withFeedback(errors, EditorUiState.Prompt.NONE, ""), true);
+        Set<ValidationIssue> all = validator.issues(state, today);
+        Set<ValidationIssue> issues = issuesForPage(all, state.page, false);
+        if (!issues.isEmpty()) {
+            apply(state.withValidationAttempt(state.page, null, all), true);
             return;
         }
         EditorUiState.Page next = state.returnToSummary ? EditorUiState.Page.SUMMARY
@@ -477,21 +485,23 @@ public final class TaskEditorView extends FrameLayout {
     }
 
     private void applyStepDetail() {
-        Set<String> errors = errorsForPage(EditorUiState.Page.STEPS, true);
-        if (!errors.isEmpty()) {
-            apply(state.withFeedback(errors, EditorUiState.Prompt.NONE, ""), true);
+        Set<ValidationIssue> all = validator.issues(state, today);
+        Set<ValidationIssue> issues = issuesForPage(all, EditorUiState.Page.STEPS, true);
+        if (!issues.isEmpty()) {
+            apply(state.withValidationAttempt(EditorUiState.Page.STEPS,
+                    state.expandedStepId, all), true);
             return;
         }
         closeStepDetail();
     }
 
     private void requestSave() {
-        Set<String> errors = validator.errors(state, today);
-        if (!errors.isEmpty()) {
-            EditorUiState.Page target = firstErrorPage(errors);
-            EditorUiState next = state.withFeedback(errors, EditorUiState.Prompt.NONE, "")
+        Set<ValidationIssue> issues = validator.issues(state, today);
+        if (!issues.isEmpty()) {
+            EditorUiState.Page target = firstIssuePage(issues);
+            EditorUiState next = state.withAllValidationAttempted(issues)
                     .withPage(target, true);
-            String stepId = firstStepError(errors);
+            String stepId = firstStepIssue(issues);
             if (stepId != null) next = next.withExpandedStep(stepId);
             apply(next, true);
             return;
@@ -499,51 +509,31 @@ public final class TaskEditorView extends FrameLayout {
         listener.onSave(state);
     }
 
-    private Set<String> errorsForPage(EditorUiState.Page page, boolean currentStepOnly) {
-        Set<String> all = validator.errors(state, today);
-        Set<String> result = new LinkedHashSet<>();
-        for (String error : all) {
-            if (page == EditorUiState.Page.TITLE && (TaskEditorValidator.TITLE.equals(error)
-                    || TaskEditorValidator.BOUND.equals(error))) result.add(error);
-            else if (page == EditorUiState.Page.SCHEDULE
-                    && (TaskEditorValidator.WEEKDAYS.equals(error)
-                    || TaskEditorValidator.INTERVAL.equals(error)
-                    || TaskEditorValidator.DURATION.equals(error)
-                    || TaskEditorValidator.TIMES.equals(error))) result.add(error);
-            else if (page == EditorUiState.Page.STEPS && isStepError(error)
-                    && (!currentStepOnly || error.endsWith(state.expandedStepId))) result.add(error);
-        }
+    private Set<ValidationIssue> issuesForPage(Set<ValidationIssue> all,
+                                               EditorUiState.Page page,
+                                               boolean currentStepOnly) {
+        Set<ValidationIssue> result = new LinkedHashSet<>();
+        for (ValidationIssue issue : all)
+            if (issue.belongsTo(page) && (!currentStepOnly
+                    || issue.belongsToStep(state.expandedStepId))) result.add(issue);
         return Collections.unmodifiableSet(result);
     }
 
-    private boolean hasVisibleBlockingError(boolean detail) {
-        if (state.errors.isEmpty()) return false;
-        return !errorsForPage(state.page, detail).isEmpty();
+    private boolean hasVisibleBlockingIssue(boolean detail) {
+        if (state.issues.isEmpty()) return false;
+        return !issuesForPage(state.issues, state.page, detail).isEmpty();
     }
 
-    private static boolean isStepError(String value) {
-        return value.startsWith(TaskEditorValidator.STEP_PREFIX)
-                || value.startsWith(TaskEditorValidator.AMOUNT_PREFIX)
-                || value.startsWith(TaskEditorValidator.STEP_INTERVAL_PREFIX);
-    }
-
-    private EditorUiState.Page firstErrorPage(Set<String> errors) {
-        for (String value : errors)
-            if (TaskEditorValidator.TITLE.equals(value) || TaskEditorValidator.BOUND.equals(value))
-                return EditorUiState.Page.TITLE;
-        for (String value : errors) if (!isStepError(value)) return EditorUiState.Page.SCHEDULE;
+    private EditorUiState.Page firstIssuePage(Set<ValidationIssue> issues) {
+        for (ValidationIssue issue : issues)
+            if (issue.belongsTo(EditorUiState.Page.TITLE)) return EditorUiState.Page.TITLE;
+        for (ValidationIssue issue : issues)
+            if (issue.belongsTo(EditorUiState.Page.SCHEDULE)) return EditorUiState.Page.SCHEDULE;
         return EditorUiState.Page.STEPS;
     }
 
-    private static String firstStepError(Set<String> errors) {
-        for (String value : errors) {
-            if (value.startsWith(TaskEditorValidator.STEP_INTERVAL_PREFIX))
-                return value.substring(TaskEditorValidator.STEP_INTERVAL_PREFIX.length());
-            if (value.startsWith(TaskEditorValidator.AMOUNT_PREFIX))
-                return value.substring(TaskEditorValidator.AMOUNT_PREFIX.length());
-            if (value.startsWith(TaskEditorValidator.STEP_PREFIX))
-                return value.substring(TaskEditorValidator.STEP_PREFIX.length());
-        }
+    private static String firstStepIssue(Set<ValidationIssue> issues) {
+        for (ValidationIssue issue : issues) if (issue.stepId != null) return issue.stepId;
         return null;
     }
 
@@ -572,10 +562,10 @@ public final class TaskEditorView extends FrameLayout {
     }
     private void showPrompt(EditorUiState.Prompt value) {
         if (value == EditorUiState.Prompt.DELETE && state.taskId == null) return;
-        apply(state.withFeedback(state.errors, value, state.storageError), true);
+        apply(state.withFeedback(state.issues, value, state.storageError), true);
     }
     private void closePrompt() {
-        apply(state.withFeedback(state.errors, EditorUiState.Prompt.NONE,
+        apply(state.withFeedback(state.issues, EditorUiState.Prompt.NONE,
                 state.storageError), true);
     }
 
@@ -730,10 +720,13 @@ public final class TaskEditorView extends FrameLayout {
         input.addTextChangedListener(watcher(text -> listener.accept(parseInteger(text))));
         return input;
     }
-    private LinearLayout numberInput(Integer value, int unit, IntegerListener listener) {
+    private LinearLayout numberInput(Integer value, int unit, IntegerListener listener,
+                                     String focusTag) {
         LinearLayout wrapper = new LinearLayout(getContext());
         wrapper.setOrientation(LinearLayout.VERTICAL);
-        wrapper.addView(numberField(value, listener), new LinearLayout.LayoutParams(-1, style.dp(45)));
+        EditText number = numberField(value, listener);
+        number.setTag(focusTag);
+        wrapper.addView(number, new LinearLayout.LayoutParams(-1, style.dp(45)));
         wrapper.addView(style.sans(getContext().getString(unit), 14, palette.hint, false));
         return wrapper;
     }
@@ -883,18 +876,66 @@ public final class TaskEditorView extends FrameLayout {
                 state.nextDraftIdentity);
     }
     private void apply(EditorUiState next, boolean rerender) {
-        state = next;
-        if (rerender) render();
-        lastEmitted = next;
-        listener.onDraftChanged(next);
+        EditorUiState validated = liveValidated(next);
+        boolean issueChanged = !state.issues.equals(validated.issues);
+        if (issueChanged && !rerender) captureViewportForNextRender();
+        state = validated;
+        if (rerender || issueChanged) render();
+        lastEmitted = validated;
+        listener.onDraftChanged(validated);
+    }
+
+    private EditorUiState liveValidated(EditorUiState value) {
+        if (value.attemptedPages.isEmpty() && value.attemptedStepIds.isEmpty()) return value;
+        Set<ValidationIssue> visible = new LinkedHashSet<>();
+        for (ValidationIssue issue : validator.issues(value, today)) {
+            if ((issue.stepId == null && value.attemptedPages.contains(issue.field.page))
+                    || (issue.stepId != null && (value.attemptedPages.contains(
+                    EditorUiState.Page.STEPS)
+                    || value.attemptedStepIds.contains(issue.stepId)))) visible.add(issue);
+        }
+        return value.withFeedback(visible, value.prompt, value.storageError);
+    }
+
+    private void captureViewportForNextRender() {
+        View focused = findFocus();
+        if (focused instanceof EditText && focused.getTag() != null) {
+            pendingFocusTag = focused.getTag();
+            pendingSelection = ((EditText) focused).getSelectionStart();
+        }
+        pendingScrollY = scroll.getScrollY();
+    }
+
+    private void restoreViewportAfterRender() {
+        Object focusTag = pendingFocusTag;
+        int selection = pendingSelection;
+        Integer scrollY = pendingScrollY;
+        pendingFocusTag = null; pendingSelection = -1; pendingScrollY = null;
+        scroll.post(() -> {
+            scroll.scrollTo(0, scrollY == null ? 0 : scrollY);
+            if (focusTag == null) return;
+            View focused = findViewWithTag(focusTag);
+            if (!(focused instanceof EditText)) return;
+            EditText input = (EditText) focused;
+            input.requestFocus();
+            input.setSelection(Math.max(0, Math.min(selection, input.length())));
+        });
+    }
+
+    private boolean hasIssue(ValidationIssue.Field field) {
+        return state.issues.contains(ValidationIssue.task(field));
     }
     private TextWatcher watcher(StringListener listener) {
         return new TextWatcher() {
+            private int selection;
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                selection = start + count;
+            }
+            @Override public void afterTextChanged(Editable s) {
+                Selection.setSelection(s, Math.max(0, Math.min(selection, s.length())));
                 listener.accept(s.toString());
             }
-            @Override public void afterTextChanged(Editable s) { }
         };
     }
     private static Integer parseInteger(String value) {

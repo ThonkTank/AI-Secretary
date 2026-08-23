@@ -246,9 +246,9 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     }
 
     void saveEditor(EditorUiState draft) {
-        Set<String> errors = new TaskEditorValidator().errors(draft, clock.today());
-        if (!errors.isEmpty()) {
-            setEditor(draft.withFeedback(errors, EditorUiState.Prompt.NONE, ""));
+        Set<ValidationIssue> issues = new TaskEditorValidator().issues(draft, clock.today());
+        if (!issues.isEmpty()) {
+            setEditor(draft.withAllValidationAttempted(issues));
             return;
         }
         UiCommand key = command(draft.taskId == null ? UiCommand.Kind.CREATE

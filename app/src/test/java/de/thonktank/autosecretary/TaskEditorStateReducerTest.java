@@ -3,8 +3,12 @@ package de.thonktank.autosecretary;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+
+import java.util.Collections;
 
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 
@@ -43,5 +47,17 @@ public final class TaskEditorStateReducerTest {
         assertEquals(EditorUiState.Page.SCHEDULE, navigated.page);
         assertEquals(true, navigated.returnToSummary);
         assertEquals(false, navigated.dirty);
+    }
+
+    @Test public void validationAttemptsAndTypedIssuesDoNotMakeTheDraftDirty() {
+        EditorUiState original = EditorUiState.create();
+        ValidationIssue issue = ValidationIssue.task(ValidationIssue.Field.TITLE);
+
+        EditorUiState attempted = original.withValidationAttempt(EditorUiState.Page.TITLE,
+                null, Collections.singleton(issue));
+
+        assertFalse(attempted.dirty);
+        assertTrue(attempted.attemptedPages.contains(EditorUiState.Page.TITLE));
+        assertTrue(attempted.issues.contains(issue));
     }
 }
