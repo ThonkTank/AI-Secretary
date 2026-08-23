@@ -125,6 +125,11 @@
     <string name="a11y_today_step_front">Für heute ganz nach vorn verschieben</string>
     <string name="a11y_today_step_back">Für heute ganz nach hinten verschieben</string>
     <string name="a11y_today_step_moved">Heutige Schritt-Reihenfolge geändert.</string>
+    <string name="a11y_editor_chip">%1$s</string>
+    <string name="a11y_editor_chip_selected">%1$s, ausgewählt</string>
+    <string name="a11y_editor_move_up">nach oben</string>
+    <string name="a11y_editor_move_down">nach unten</string>
+    <string name="a11y_editor_summary_row">%1$s, %2$s, %3$s</string>
     <string name="a11y_schedule_up">Zeitplatzierung nach oben verschieben</string>
     <string name="a11y_schedule_down">Zeitplatzierung nach unten verschieben</string>
     <string name="a11y_schedule_previous_slot">In die vorherige Tageszeit verschieben</string>
@@ -240,6 +245,16 @@
     <string name="editor_interval_unit">Tage Abstand</string>
     <string name="editor_summary_steps">%1$d Schritte</string>
     <string name="editor_summary_duration">etwa %1$d Minuten</string>
+    <string name="editor_duration_minutes">%1$d Minuten</string>
+    <string name="editor_summary_empty">—</string>
+    <string name="editor_summary_join">%1$s · %2$s</string>
+    <string name="editor_summary_rhythm_time">%1$s %2$s</string>
+    <string name="editor_weekdays_workweek">Mo–Fr</string>
+    <string name="editor_date_pattern" translatable="false">dd.MM.</string>
+    <string name="editor_step_add_label">＋  %1$s</string>
+    <string name="editor_multiply">×</string>
+    <string name="editor_move_up_symbol" translatable="false">↑</string>
+    <string name="editor_move_down_symbol" translatable="false">↓</string>
     <string name="editor_marker">was steht an</string>
     <string name="field_title_label">Titel</string>
     <string name="field_title_hint">Titel eingeben</string>

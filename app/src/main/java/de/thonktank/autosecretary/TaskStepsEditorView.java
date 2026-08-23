@@ -1,28 +1,17 @@
 package de.thonktank.autosecretary;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
-import android.text.Editable;
-import android.text.InputType;
-import android.text.Selection;
-import android.text.TextWatcher;
 import android.view.Gravity;
-import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
-import de.thonktank.autosecretary.presentation.StepTextFormatter;
+import de.thonktank.autosecretary.presentation.TaskEditorTextFormatter;
 
 /** Wizard page for the step list and the uncounted step-detail sub-page. */
 final class TaskStepsEditorView extends LinearLayout {
@@ -30,7 +19,8 @@ final class TaskStepsEditorView extends LinearLayout {
 
     private final UiStyle style;
     private final Listener listener;
-    private final StepTextFormatter formatter;
+    private final TaskEditorTextFormatter formatter;
+    private final TaskEditorControlFactory controls;
     private final DayPalette palette;
     private EditorUiState state;
 
@@ -41,7 +31,8 @@ final class TaskStepsEditorView extends LinearLayout {
         this.state = state;
         this.palette = palette;
         this.listener = listener;
-        formatter = new StepTextFormatter(new AndroidUiTextProvider(context));
+        formatter = new TaskEditorTextFormatter(new AndroidUiTextProvider(context));
+        controls = new TaskEditorControlFactory(context, style, palette);
         setOrientation(VERTICAL);
         setClipChildren(false);
         setClipToPadding(false);
@@ -57,7 +48,8 @@ final class TaskStepsEditorView extends LinearLayout {
         addView(question(R.string.editor_frage_schritte));
         for (int index = 0; index < state.stepStates.size(); index++)
             addCollapsedStep(index, state.stepStates.get(index));
-        TextView add = style.sans("＋  " + getContext().getString(R.string.step_add), 15,
+        TextView add = style.sans(getContext().getString(R.string.editor_step_add_label,
+                getContext().getString(R.string.step_add)), 15,
                 palette.ink2, false);
         add.setGravity(Gravity.CENTER_VERTICAL);
         add.setMinHeight(style.dp(52));
@@ -84,7 +76,7 @@ final class TaskStepsEditorView extends LinearLayout {
         if (state.recurrence != Recurrence.ONCE) addDaySchedule(index, step);
 
         addLabel(R.string.step_amount_label, 24, 10);
-        EditorFlowLayout amounts = new EditorFlowLayout(getContext());
+        EditorFlowLayout amounts = controls.flow();
         addAmountChip(amounts, R.string.amount_none, StepAmountKind.NONE, step, index);
         addAmountChip(amounts, R.string.amount_sets_reps, StepAmountKind.SETS_REPS, step, index);
         addAmountChip(amounts, R.string.amount_reps, StepAmountKind.REPS, step, index);
@@ -104,7 +96,7 @@ final class TaskStepsEditorView extends LinearLayout {
 
     private void addDaySchedule(int index, EditorStepState step) {
         addLabel(R.string.editor_label_tage_frage, 24, 10);
-        EditorFlowLayout choices = new EditorFlowLayout(getContext());
+        EditorFlowLayout choices = controls.flow();
         addChip(choices, R.string.editor_tage_immer,
                 step.cadenceMode == StepCadenceMode.ALWAYS,
                 () -> updateStep(index, currentStep(index).withCadenceMode(
@@ -167,9 +159,11 @@ final class TaskStepsEditorView extends LinearLayout {
         String meta = meta(step);
         if (!meta.isEmpty()) words.addView(style.serif(meta, 14, palette.muted, true, 300));
         row.addView(words, new LinearLayout.LayoutParams(0, -2, 1));
-        row.addView(moveButton("↑", () -> moveStep(index, index - 1),
+        row.addView(moveButton(R.string.editor_move_up_symbol, R.string.a11y_editor_move_up,
+                () -> moveStep(index, index - 1),
                 () -> moveStep(index, 0)));
-        row.addView(moveButton("↓", () -> moveStep(index, index + 1),
+        row.addView(moveButton(R.string.editor_move_down_symbol, R.string.a11y_editor_move_down,
+                () -> moveStep(index, index + 1),
                 () -> moveStep(index, state.stepStates.size() - 1)));
         row.setOnClickListener(view -> expandStep(step.id));
         addView(row, params(-1, -2, 0, 14, 0, 0));
@@ -200,7 +194,8 @@ final class TaskStepsEditorView extends LinearLayout {
             row.addView(numberInput(amount.sets, R.string.amount_sets_unit,
                     value -> updateSets(index, value, true), focusTag("sets", step.id)),
                     new LayoutParams(0, -2, 1));
-            TextView multiply = style.serif("×", 22, palette.muted, false, 400);
+            TextView multiply = style.serif(getContext().getString(R.string.editor_multiply),
+                    22, palette.muted, false, 400);
             multiply.setGravity(Gravity.CENTER);
             row.addView(multiply, new LayoutParams(style.dp(34), style.dp(58)));
             row.addView(numberInput(amount.repetitions, R.string.amount_reps_unit,
@@ -242,121 +237,48 @@ final class TaskStepsEditorView extends LinearLayout {
         return StepAmount.none();
     }
 
-    private EditText input(int hint, String value, boolean multiline, StringListener listener) {
-        EditText input = new EditText(getContext());
-        input.setHint(hint);
-        input.setText(value);
-        input.setTextSize(17);
-        input.setTextColor(palette.ink);
-        input.setHintTextColor(palette.dot);
-        input.setTypeface(style.sans);
-        input.setPadding(0, style.dp(2), 0, style.dp(6));
-        input.setBackgroundTintList(ColorStateList.valueOf(palette.accent));
-        input.setInputType(InputType.TYPE_CLASS_TEXT
-                | (multiline ? InputType.TYPE_TEXT_FLAG_MULTI_LINE : 0));
-        input.setSelection(input.length());
-        input.addTextChangedListener(watcher(listener));
-        return input;
+    private EditText input(int hint, String value, boolean multiline,
+                           TaskEditorControlFactory.StringListener listener) {
+        return controls.input(hint, value, multiline, 17, false, listener);
     }
 
-    private EditText numberField(Integer value, IntegerListener listener) {
-        EditText input = new EditText(getContext());
-        input.setText(value == null || value <= 0 ? "" : String.valueOf(value));
-        input.setTextSize(23);
-        input.setTypeface(style.serif);
-        input.setTextColor(palette.ink);
-        input.setSingleLine(true);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
-        input.setBackgroundTintList(ColorStateList.valueOf(palette.accent));
-        input.addTextChangedListener(watcher(text -> listener.accept(parseInteger(text))));
-        return input;
+    private EditText numberField(Integer value,
+                                 TaskEditorControlFactory.IntegerListener listener) {
+        return controls.numberField(value, listener);
     }
 
-    private LinearLayout numberInput(Integer value, int unit, IntegerListener listener,
+    private LinearLayout numberInput(Integer value, int unit,
+                                     TaskEditorControlFactory.IntegerListener listener,
                                      String focusTag) {
-        LinearLayout wrapper = new LinearLayout(getContext());
-        wrapper.setOrientation(VERTICAL);
-        EditText number = numberField(value, listener);
-        number.setTag(focusTag);
-        wrapper.addView(number, new LayoutParams(-1, style.dp(45)));
-        wrapper.addView(style.sans(getContext().getString(unit), 14, palette.hint, false));
-        return wrapper;
+        return controls.numberInput(value, unit, listener, focusTag);
     }
 
-    private LinearLayout dayPicker(int mask, IntListener listener) {
-        LinearLayout row = new LinearLayout(getContext());
-        int[] labels = {R.string.day_mon, R.string.day_tue, R.string.day_wed,
-                R.string.day_thu, R.string.day_fri, R.string.day_sat, R.string.day_sun};
-        for (int index = 0; index < labels.length; index++) {
-            final int bit = 1 << index;
-            boolean selected = (mask & bit) != 0;
-            TextView day = style.sans(getContext().getString(labels[index]), 14,
-                    selected ? palette.accentText : palette.ink, selected);
-            day.setGravity(Gravity.CENTER);
-            day.setMinHeight(style.dp(48));
-            GradientDrawable background = style.pill(selected ? palette.accent
-                    : Color.TRANSPARENT, 19);
-            if (!selected) background.setStroke(style.dp(1), palette.dot);
-            day.setBackground(background);
-            day.setOnClickListener(view -> listener.accept(mask ^ bit));
-            LayoutParams dayParams = new LayoutParams(0, style.dp(48), 1);
-            if (index > 0) dayParams.setMargins(style.dp(8), 0, 0, 0);
-            row.addView(day, dayParams);
-        }
-        return row;
+    private LinearLayout dayPicker(int mask, TaskEditorControlFactory.IntListener listener) {
+        return controls.dayPicker(mask, listener);
     }
 
     private void addChip(EditorFlowLayout row, int label, boolean selected, Runnable action) {
-        String text = getContext().getString(label);
-        TextView chip = style.sans(text, 15, selected ? palette.accentText : palette.ink, selected);
-        chip.setGravity(Gravity.CENTER);
-        chip.setMinHeight(style.dp(48));
-        chip.setPadding(style.dp(16), 0, style.dp(16), 0);
-        GradientDrawable background = style.pill(selected ? palette.accent
-                : Color.TRANSPARENT, 24);
-        if (!selected) background.setStroke(style.dp(1), palette.dot);
-        chip.setBackground(background);
-        chip.setOnClickListener(view -> action.run());
-        chip.setContentDescription(text + (selected ? ", ausgewählt" : ""));
-        row.addView(chip, new ViewGroup.LayoutParams(-2, style.dp(48)));
+        controls.addChip(row, label, selected, action);
     }
 
-    private TextView moveButton(String text, Runnable click, Runnable longClick) {
-        TextView view = style.sans(text, 15, palette.dot, false);
+    private TextView moveButton(int symbol, int contentDescription, Runnable click,
+                                Runnable longClick) {
+        TextView view = style.sans(getContext().getString(symbol), 15, palette.dot, false);
         view.setGravity(Gravity.CENTER);
         view.setMinWidth(style.dp(48));
         view.setMinHeight(style.dp(48));
-        view.setContentDescription(text.equals("↑") ? "nach oben" : "nach unten");
+        view.setContentDescription(getContext().getString(contentDescription));
         view.setOnClickListener(ignored -> click.run());
         view.setOnLongClickListener(ignored -> { longClick.run(); return true; });
         return view;
     }
 
     private TextView errorView(int resource) {
-        TextView error = style.serif(getContext().getString(resource), 14, palette.bad, true, 300);
-        error.setPadding(style.dp(12), style.dp(9), style.dp(12), style.dp(9));
-        GradientDrawable background = style.pill(UiStyle.alpha(palette.bad, .10f), 10);
-        background.setStroke(style.dp(1), UiStyle.alpha(palette.bad, .34f));
-        error.setBackground(background);
-        error.setLayoutParams(params(-1, -2, 0, 7, 0, 0));
-        return error;
+        return controls.errorView(resource);
     }
 
     private String meta(EditorStepState step) {
-        List<String> values = new ArrayList<>();
-        if (step.cadenceMode == StepCadenceMode.WEEKDAYS) {
-            String[] days = {"Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"};
-            List<String> selected = new ArrayList<>();
-            for (int index = 0; index < days.length; index++)
-                if ((step.weekdayMask & 1 << index) != 0) selected.add(days[index]);
-            values.add(android.text.TextUtils.join(" · ", selected));
-        } else if (step.cadenceMode == StepCadenceMode.INTERVAL
-                && step.intervalDays != null) {
-            values.add("alle " + step.intervalDays + " Tage");
-        }
-        String amount = formatter.format(step.amount, "");
-        if (!amount.isEmpty()) values.add(amount);
-        return android.text.TextUtils.join(" · ", values);
+        return formatter.stepMeta(step);
     }
 
     private int expandedIndex() {
@@ -387,31 +309,10 @@ final class TaskStepsEditorView extends LinearLayout {
         listener.onStateChanged(next, rerender);
     }
 
-    private TextWatcher watcher(StringListener listener) {
-        return new TextWatcher() {
-            private int selection;
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                selection = start + count;
-            }
-            @Override public void afterTextChanged(Editable s) {
-                Selection.setSelection(s, Math.max(0, Math.min(selection, s.length())));
-                listener.accept(s.toString());
-            }
-        };
-    }
-    private static Integer parseInteger(String value) {
-        if (value == null || value.trim().isEmpty()) return null;
-        try { return Integer.parseInt(value.trim()); }
-        catch (NumberFormatException error) { return 0; }
-    }
     private static LayoutParams params(int width, int height, int left, int top,
                                        int right, int bottom) {
         LayoutParams params = new LayoutParams(width, height);
         params.setMargins(left, top, right, bottom);
         return params;
     }
-    private interface StringListener { void accept(String value); }
-    private interface IntegerListener { void accept(Integer value); }
-    private interface IntListener { void accept(int value); }
 }

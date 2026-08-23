@@ -248,13 +248,13 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     void saveEditor(EditorUiState draft) {
         Set<ValidationIssue> issues = new TaskEditorValidator().issues(draft, clock.today());
         if (!issues.isEmpty()) {
-            setEditor(draft.withAllValidationAttempted(issues));
+            setEditor(TaskEditorStateReducer.allValidationAttempted(draft, issues));
             return;
         }
         UiCommand key = command(draft.taskId == null ? UiCommand.Kind.CREATE
                 : UiCommand.Kind.UPDATE, draft.taskId == null ? "new" : draft.taskId);
         if (!begin(key, false)) return;
-        setEditor(draft.withSaving(true));
+        setEditor(TaskEditorStateReducer.saving(draft, true));
         worker.execute(() -> {
             try {
                 if (draft.taskId == null) tasks.create.execute(draft.definition());
@@ -276,9 +276,9 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                 synchronized (stateLock) {
                     Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
                     actions.remove(key);
-                    EditorUiState failed = draft.withSaving(false).withFeedback(
-                            Collections.emptySet(), EditorUiState.Prompt.NONE,
-                            texts.text(R.string.error_change_save));
+                    EditorUiState failed = TaskEditorStateReducer.feedback(
+                            TaskEditorStateReducer.saving(draft, false), Collections.emptySet(),
+                            EditorUiState.Prompt.NONE, texts.text(R.string.error_change_save));
                     current = current.withRunningActions(actions).withEditor(failed);
                     savedState.set(EDITOR, failed.toBundle());
                     state.postValue(current);
@@ -293,7 +293,7 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         if (!begin(key, false)) return;
         EditorUiState draft;
         synchronized (stateLock) { draft = current.editor; }
-        setEditor(draft.withSaving(true));
+        setEditor(TaskEditorStateReducer.saving(draft, true));
         worker.execute(() -> {
             try {
                 tasks.delete.execute(TaskId.of(taskId));
@@ -311,7 +311,8 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                 invalidateWidgets();
             } catch (RuntimeException error) {
                 logger.error("TaskViewModel", "Editor delete failed", error);
-                setEditor(draft.withSaving(false).withFeedback(Collections.emptySet(),
+                setEditor(TaskEditorStateReducer.feedback(
+                        TaskEditorStateReducer.saving(draft, false), Collections.emptySet(),
                         EditorUiState.Prompt.NONE, texts.text(R.string.error_change_save)));
             }
         });

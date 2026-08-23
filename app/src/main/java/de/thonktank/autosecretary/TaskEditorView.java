@@ -8,16 +8,11 @@ import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
-import android.text.Editable;
 import android.text.InputFilter;
-import android.text.InputType;
-import android.text.Selection;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
@@ -30,19 +25,15 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
-import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
+import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
+import de.thonktank.autosecretary.presentation.TaskEditorTextFormatter;
 
 /** Full-screen state-driven four-page task wizard mounted above the dashboard. */
 public final class TaskEditorView extends FrameLayout {
@@ -53,12 +44,11 @@ public final class TaskEditorView extends FrameLayout {
         void onDismiss();
     }
 
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern(
-            "dd.MM.", Locale.GERMANY);
     private static final int PAGE_COUNT = 4;
     private final UiStyle style;
     private final Listener listener;
     private final TaskEditorValidator validator = new TaskEditorValidator();
+    private final TaskEditorTextFormatter formatter;
     private final LinearLayout leaf;
     private final ScrollView scroll;
     private final TextView cancel;
@@ -70,6 +60,7 @@ public final class TaskEditorView extends FrameLayout {
     private EditorUiState state;
     private EditorUiState lastEmitted;
     private DayPalette palette;
+    private TaskEditorControlFactory controls;
     private LocalDate today;
     private AlertDialog prompt;
     private EditorUiState.Prompt shownPrompt = EditorUiState.Prompt.NONE;
@@ -82,6 +73,7 @@ public final class TaskEditorView extends FrameLayout {
         super(context);
         this.listener = listener;
         style = new UiStyle(context);
+        formatter = new TaskEditorTextFormatter(new AndroidUiTextProvider(context));
         LayoutInflater.from(context).inflate(R.layout.task_editor_view, this, true);
         leaf = findViewById(R.id.task_editor_leaf);
         scroll = findViewById(R.id.task_editor_scroll);
@@ -99,8 +91,10 @@ public final class TaskEditorView extends FrameLayout {
     public void bind(EditorUiState value, DayPalette palette, LocalDate today) {
         if (value == lastEmitted && this.palette == palette
                 && this.today != null && this.today.equals(today)) return;
+        prepareViewport(state, value);
         state = value;
         this.palette = palette;
+        controls = new TaskEditorControlFactory(getContext(), style, palette);
         this.today = today;
         lastEmitted = null;
         render();
@@ -202,11 +196,7 @@ public final class TaskEditorView extends FrameLayout {
     private void renderTitle() {
         addQuestion(R.string.editor_frage_titel);
         EditText title = input(R.string.field_title_hint, state.title, false, 25, true,
-                value -> apply(draft(value, state.estimatedMinutes, state.recurrence,
-                        state.intervalDays, state.weekdayMask, state.timeOfDayMask,
-                        state.boundKind, state.boundUntilOn, state.boundWeeks,
-                        state.remainingCount, state.deadlineOn, state.note, state.stepStates,
-                        state.expandedStepId), false));
+                value -> apply(TaskEditorStateReducer.updateTitle(state, value), false));
         title.setTag("task:title");
         title.setFilters(new InputFilter[]{new InputFilter.LengthFilter(120)});
         title.setImeOptions(EditorInfo.IME_ACTION_NEXT);
@@ -219,11 +209,7 @@ public final class TaskEditorView extends FrameLayout {
 
         addLabel(R.string.field_note_label, 26, 4);
         EditText note = input(R.string.field_note_hint, state.note, true, 17, false,
-                value -> apply(draft(state.title, state.estimatedMinutes, state.recurrence,
-                        state.intervalDays, state.weekdayMask, state.timeOfDayMask,
-                        state.boundKind, state.boundUntilOn, state.boundWeeks,
-                        state.remainingCount, state.deadlineOn, value, state.stepStates,
-                        state.expandedStepId), false));
+                value -> apply(TaskEditorStateReducer.updateNote(state, value), false));
         note.setTag("task:note");
         note.setMinHeight(style.dp(56));
         leaf.addView(note);
@@ -243,11 +229,9 @@ public final class TaskEditorView extends FrameLayout {
                 () -> setRecurrence(Recurrence.INTERVAL));
         leaf.addView(rhythm, params(-1, -2, 0, 24, 0, 0));
         if (state.recurrence == Recurrence.WEEKDAYS) {
-            leaf.addView(dayPicker(state.weekdayMask, mask -> apply(draft(state.title,
-                    state.estimatedMinutes, state.recurrence, state.intervalDays, mask,
-                    state.timeOfDayMask, state.boundKind, state.boundUntilOn, state.boundWeeks,
-                    state.remainingCount, state.deadlineOn, state.note, state.stepStates,
-                    state.expandedStepId), true)), params(-1, style.dp(48), 0, 14, 0, 0));
+            leaf.addView(dayPicker(state.weekdayMask, mask -> apply(
+                    TaskEditorStateReducer.updateWeekdays(state, mask), true)),
+                    params(-1, style.dp(48), 0, 14, 0, 0));
             if (hasIssue(ValidationIssue.Field.WEEKDAYS))
                 leaf.addView(errorView(R.string.err_weekdays_empty));
         } else if (state.recurrence == Recurrence.INTERVAL) {
@@ -284,19 +268,20 @@ public final class TaskEditorView extends FrameLayout {
         hero.setRotation(-.7f);
         style.shadow(hero, palette, 14, 1f);
         hero.addView(style.serif(state.title, 30, palette.ink, false, 200));
-        hero.addView(style.serif(summaryLine(), 16, palette.muted, true, 300),
+        hero.addView(style.serif(formatter.summaryLine(state), 16, palette.muted, true, 300),
                 params(-1, -2, 0, 8, 0, 0));
-        hero.setContentDescription(getContext().getString(R.string.field_title_label) + ", "
-                + state.title + ", " + getContext().getString(R.string.editor_change));
+        hero.setContentDescription(getContext().getString(R.string.a11y_editor_summary_row,
+                getContext().getString(R.string.field_title_label), state.title,
+                getContext().getString(R.string.editor_change)));
         hero.setOnClickListener(view -> navigate(EditorUiState.Page.TITLE, true, -1));
         leaf.addView(hero, params(-1, -2, 0, 0, 0, 9));
-        addSummaryRow(R.string.field_rhythm_label, rhythmSummary(), EditorUiState.Page.SCHEDULE, 0);
-        addSummaryRow(R.string.field_timeofday_label, timeSummary(), EditorUiState.Page.SCHEDULE, 1);
-        addSummaryRow(R.string.field_duration_label, durationSummary(), EditorUiState.Page.SCHEDULE, 2);
+        addSummaryRow(R.string.field_rhythm_label, formatter.rhythm(state), EditorUiState.Page.SCHEDULE, 0);
+        addSummaryRow(R.string.field_timeofday_label, formatter.time(state), EditorUiState.Page.SCHEDULE, 1);
+        addSummaryRow(R.string.field_duration_label, formatter.duration(state), EditorUiState.Page.SCHEDULE, 2);
         addSummaryRow(state.recurrence == Recurrence.ONCE ? R.string.editor_label_deadline
-                : R.string.field_bound_label, boundSummary(), EditorUiState.Page.TITLE, 3);
-        addSummaryRow(R.string.field_steps_label, stepsSummary(), EditorUiState.Page.STEPS, 4);
-        addSummaryRow(R.string.field_note_label, state.note.isEmpty() ? "—" : state.note,
+                : R.string.field_bound_label, formatter.bound(state), EditorUiState.Page.TITLE, 3);
+        addSummaryRow(R.string.field_steps_label, formatter.steps(state), EditorUiState.Page.STEPS, 4);
+        addSummaryRow(R.string.field_note_label, state.note.isEmpty() ? formatter.empty() : state.note,
                 EditorUiState.Page.TITLE, 5);
     }
 
@@ -358,19 +343,19 @@ public final class TaskEditorView extends FrameLayout {
     private void addBoundValue() {
         if (state.recurrence == Recurrence.ONCE) {
             if (state.deadlineOn != null) addValueLeaf(getContext().getString(
-                    R.string.bound_until_value, DATE.format(state.deadlineOn)),
+                    R.string.bound_until_value, formatter.date(state.deadlineOn)),
                     () -> pickDate(state.deadlineOn, this::setDeadline));
             return;
         }
         if (state.boundKind == TaskBoundKind.UNTIL_DATE) {
             LocalDate value = state.boundUntilOn == null ? today : state.boundUntilOn;
-            addValueLeaf(getContext().getString(R.string.bound_until_value, DATE.format(value)),
+            addValueLeaf(getContext().getString(R.string.bound_until_value, formatter.date(value)),
                     () -> pickDate(value, date -> applyBound(date, null, null)));
         } else if (state.boundKind == TaskBoundKind.FOR_WEEKS) {
             int weeks = state.boundWeeks == null || state.boundWeeks < 1 ? 1 : state.boundWeeks;
             LocalDate until = today.plusWeeks(weeks);
             addValueLeaf(getContext().getString(R.string.bound_weeks_value, weeks,
-                    DATE.format(until)), () -> showNumberPicker(weeks,
+                    formatter.date(until)), () -> showNumberPicker(weeks,
                     value -> applyBound(today.plusWeeks(value), value, null)));
         } else if (state.boundKind == TaskBoundKind.N_TIMES) {
             int count = state.remainingCount == null || state.remainingCount < 1
@@ -417,129 +402,59 @@ public final class TaskEditorView extends FrameLayout {
     }
 
     private void setRecurrence(Recurrence recurrence) {
-        int times = recurrence == Recurrence.ONCE ? 0 : state.timeOfDayMask == 0
-                ? TimeOfDay.fromSlot(state.slot).bit : state.timeOfDayMask;
-        int weekdays = recurrence == Recurrence.WEEKDAYS
-                ? state.weekdayMask == 0 ? 1 : state.weekdayMask : 0;
-        LocalDate deadline = recurrence == Recurrence.ONCE
-                && state.boundKind == TaskBoundKind.UNTIL_DATE ? state.boundUntilOn
-                : recurrence == Recurrence.ONCE ? state.deadlineOn : null;
-        apply(draft(state.title, state.estimatedMinutes, recurrence,
-                recurrence == Recurrence.INTERVAL ? Math.max(2, state.intervalDays) : 1,
-                weekdays, times, TaskBoundKind.FOREVER, null, null, null, deadline,
-                state.note, state.stepStates, state.expandedStepId), true);
+        apply(TaskEditorStateReducer.updateRecurrence(state, recurrence), true);
     }
 
     private void setDuration(Integer value) {
-        apply(draft(state.title, value, state.recurrence, state.intervalDays, state.weekdayMask,
-                state.timeOfDayMask, state.boundKind, state.boundUntilOn, state.boundWeeks,
-                state.remainingCount, state.deadlineOn, state.note, state.stepStates,
-                state.expandedStepId), true);
+        apply(TaskEditorStateReducer.updateDuration(state, value), true);
     }
     private void setInterval(int value) {
-        apply(draft(state.title, state.estimatedMinutes, state.recurrence, value,
-                state.weekdayMask, state.timeOfDayMask, state.boundKind, state.boundUntilOn,
-                state.boundWeeks, state.remainingCount, state.deadlineOn, state.note,
-                state.stepStates, state.expandedStepId), false);
+        apply(TaskEditorStateReducer.updateInterval(state, value), false);
     }
     private void toggleTime(TimeOfDay value) {
-        int times = state.timeOfDayMask ^ value.bit;
-        if (times == 0) return;
-        TaskSlot slot = TimeOfDay.earliestSlot(times, state.slot);
-        apply(state.draft(state.title, slot, state.estimatedMinutes, state.recurrence,
-                state.intervalDays, state.weekdayMask, times, state.boundKind,
-                state.boundUntilOn, state.boundWeeks, state.remainingCount, state.deadlineOn,
-                state.note, state.stepStates, state.expandedStepId, state.nextDraftIdentity), true);
+        apply(TaskEditorStateReducer.toggleTime(state, value), true);
     }
     private void setDeadline(LocalDate date) {
-        apply(draft(state.title, state.estimatedMinutes, state.recurrence, state.intervalDays,
-                state.weekdayMask, state.timeOfDayMask, state.boundKind, state.boundUntilOn,
-                state.boundWeeks, state.remainingCount, date, state.note, state.stepStates,
-                state.expandedStepId), true);
+        apply(TaskEditorStateReducer.updateDeadline(state, date), true);
     }
     private void setBound(TaskBoundKind kind) {
-        apply(draft(state.title, state.estimatedMinutes, state.recurrence, state.intervalDays,
-                state.weekdayMask, state.timeOfDayMask, kind,
-                kind == TaskBoundKind.UNTIL_DATE ? today
-                        : kind == TaskBoundKind.FOR_WEEKS ? today.plusWeeks(1) : null,
-                kind == TaskBoundKind.FOR_WEEKS ? 1 : null,
-                kind == TaskBoundKind.N_TIMES ? 1 : null, null, state.note,
-                state.stepStates, state.expandedStepId), true);
+        apply(TaskEditorStateReducer.updateBoundKind(state, kind, today), true);
     }
     private void applyBound(LocalDate until, Integer weeks, Integer count) {
-        apply(draft(state.title, state.estimatedMinutes, state.recurrence, state.intervalDays,
-                state.weekdayMask, state.timeOfDayMask, state.boundKind, until, weeks, count,
-                null, state.note, state.stepStates, state.expandedStepId), true);
+        apply(TaskEditorStateReducer.updateBound(state, until, weeks, count), true);
     }
 
     private void advance() {
         Set<ValidationIssue> all = validator.issues(state, today);
-        Set<ValidationIssue> issues = issuesForPage(all, state.page, false);
-        if (!issues.isEmpty()) {
-            apply(state.withValidationAttempt(state.page, null, all), true);
-            return;
-        }
-        EditorUiState.Page next = state.returnToSummary ? EditorUiState.Page.SUMMARY
-                : next(state.page);
-        navigate(next, false, 1);
+        EditorUiState next = TaskEditorStateReducer.advance(state, all);
+        if (next.page != state.page) pendingDirection = 1;
+        apply(next, true);
     }
 
     private void applyStepDetail() {
         Set<ValidationIssue> all = validator.issues(state, today);
-        Set<ValidationIssue> issues = issuesForPage(all, EditorUiState.Page.STEPS, true);
-        if (!issues.isEmpty()) {
-            apply(state.withValidationAttempt(EditorUiState.Page.STEPS,
-                    state.expandedStepId, all), true);
-            return;
-        }
-        closeStepDetail();
+        EditorUiState next = TaskEditorStateReducer.applyStepDetail(state, all);
+        if (next.expandedStepId == null) pendingDirection = -1;
+        apply(next, true);
     }
 
     private void requestSave() {
         Set<ValidationIssue> issues = validator.issues(state, today);
         if (!issues.isEmpty()) {
-            EditorUiState.Page target = firstIssuePage(issues);
-            EditorUiState next = state.withAllValidationAttempted(issues)
-                    .withPage(target, true);
-            String stepId = firstStepIssue(issues);
-            if (stepId != null) next = next.withExpandedStep(stepId);
+            EditorUiState next = TaskEditorStateReducer.routeValidationFailure(state, issues);
             apply(next, true);
             return;
         }
         listener.onSave(state);
     }
 
-    private Set<ValidationIssue> issuesForPage(Set<ValidationIssue> all,
-                                               EditorUiState.Page page,
-                                               boolean currentStepOnly) {
-        Set<ValidationIssue> result = new LinkedHashSet<>();
-        for (ValidationIssue issue : all)
-            if (issue.belongsTo(page) && (!currentStepOnly
-                    || issue.belongsToStep(state.expandedStepId))) result.add(issue);
-        return Collections.unmodifiableSet(result);
-    }
-
     private boolean hasVisibleBlockingIssue(boolean detail) {
-        if (state.issues.isEmpty()) return false;
-        return !issuesForPage(state.issues, state.page, detail).isEmpty();
-    }
-
-    private EditorUiState.Page firstIssuePage(Set<ValidationIssue> issues) {
-        for (ValidationIssue issue : issues)
-            if (issue.belongsTo(EditorUiState.Page.TITLE)) return EditorUiState.Page.TITLE;
-        for (ValidationIssue issue : issues)
-            if (issue.belongsTo(EditorUiState.Page.SCHEDULE)) return EditorUiState.Page.SCHEDULE;
-        return EditorUiState.Page.STEPS;
-    }
-
-    private static String firstStepIssue(Set<ValidationIssue> issues) {
-        for (ValidationIssue issue : issues) if (issue.stepId != null) return issue.stepId;
-        return null;
+        return TaskEditorStateReducer.hasVisibleBlockingIssue(state, detail);
     }
 
     private void navigate(EditorUiState.Page page, boolean returnToSummary, int direction) {
         pendingDirection = direction;
-        apply(state.withPage(page, returnToSummary).withExpandedStep(null), true);
+        apply(TaskEditorStateReducer.navigate(state, page, returnToSummary), true);
     }
     private void closeStepDetail() {
         pendingDirection = -1;
@@ -562,11 +477,12 @@ public final class TaskEditorView extends FrameLayout {
     }
     private void showPrompt(EditorUiState.Prompt value) {
         if (value == EditorUiState.Prompt.DELETE && state.taskId == null) return;
-        apply(state.withFeedback(state.issues, value, state.storageError), true);
+        apply(TaskEditorStateReducer.feedback(state, state.issues, value,
+                state.storageError), true);
     }
     private void closePrompt() {
-        apply(state.withFeedback(state.issues, EditorUiState.Prompt.NONE,
-                state.storageError), true);
+        apply(TaskEditorStateReducer.feedback(state, state.issues,
+                EditorUiState.Prompt.NONE, state.storageError), true);
     }
 
     private void renderPrompt() {
@@ -691,82 +607,24 @@ public final class TaskEditorView extends FrameLayout {
                 true, 300), params(-1, -2, 0, top, 0, bottom));
     }
     private EditText input(int hint, String value, boolean multiline, float size,
-                           boolean serif, StringListener listener) {
-        EditText input = new EditText(getContext());
-        input.setHint(hint);
-        input.setText(value);
-        input.setTextSize(size);
-        input.setTextColor(palette.ink);
-        input.setHintTextColor(palette.dot);
-        input.setTypeface(serif ? style.serif : style.sans);
-        input.setPadding(0, style.dp(2), 0, style.dp(6));
-        input.setBackgroundTintList(ColorStateList.valueOf(palette.accent));
-        input.setInputType(InputType.TYPE_CLASS_TEXT
-                | (multiline ? InputType.TYPE_TEXT_FLAG_MULTI_LINE : 0));
-        input.setSingleLine(!multiline);
-        input.setSelection(input.length());
-        input.addTextChangedListener(watcher(listener));
-        return input;
+                           boolean serif, TaskEditorControlFactory.StringListener listener) {
+        return controls.input(hint, value, multiline, size, serif, listener);
     }
-    private EditText numberField(Integer value, IntegerListener listener) {
-        EditText input = new EditText(getContext());
-        input.setText(value == null || value <= 0 ? "" : String.valueOf(value));
-        input.setTextSize(23);
-        input.setTypeface(style.serif);
-        input.setTextColor(palette.ink);
-        input.setSingleLine(true);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
-        input.setBackgroundTintList(ColorStateList.valueOf(palette.accent));
-        input.addTextChangedListener(watcher(text -> listener.accept(parseInteger(text))));
-        return input;
+    private EditText numberField(Integer value,
+                                 TaskEditorControlFactory.IntegerListener listener) {
+        return controls.numberField(value, listener);
     }
-    private LinearLayout numberInput(Integer value, int unit, IntegerListener listener,
+    private LinearLayout numberInput(Integer value, int unit,
+                                     TaskEditorControlFactory.IntegerListener listener,
                                      String focusTag) {
-        LinearLayout wrapper = new LinearLayout(getContext());
-        wrapper.setOrientation(LinearLayout.VERTICAL);
-        EditText number = numberField(value, listener);
-        number.setTag(focusTag);
-        wrapper.addView(number, new LinearLayout.LayoutParams(-1, style.dp(45)));
-        wrapper.addView(style.sans(getContext().getString(unit), 14, palette.hint, false));
-        return wrapper;
+        return controls.numberInput(value, unit, listener, focusTag);
     }
-    private EditorFlowLayout flow() { return new EditorFlowLayout(getContext()); }
+    private EditorFlowLayout flow() { return controls.flow(); }
     private void addChip(EditorFlowLayout row, int label, boolean selected, Runnable action) {
-        String text = getContext().getString(label);
-        TextView chip = style.sans(text, 15, selected ? palette.accentText : palette.ink, selected);
-        chip.setGravity(Gravity.CENTER);
-        chip.setMinHeight(style.dp(48));
-        chip.setPadding(style.dp(16), 0, style.dp(16), 0);
-        GradientDrawable background = style.pill(selected ? palette.accent
-                : Color.TRANSPARENT, 24);
-        if (!selected) background.setStroke(style.dp(1), palette.dot);
-        chip.setBackground(background);
-        chip.setOnClickListener(view -> action.run());
-        chip.setContentDescription(text + (selected ? ", ausgewählt" : ""));
-        row.addView(chip, new ViewGroup.LayoutParams(-2, style.dp(48)));
+        controls.addChip(row, label, selected, action);
     }
-    private LinearLayout dayPicker(int mask, IntListener listener) {
-        LinearLayout row = new LinearLayout(getContext());
-        int[] labels = {R.string.day_mon, R.string.day_tue, R.string.day_wed,
-                R.string.day_thu, R.string.day_fri, R.string.day_sat, R.string.day_sun};
-        for (int index = 0; index < labels.length; index++) {
-            final int bit = 1 << index;
-            boolean selected = (mask & bit) != 0;
-            TextView day = style.sans(getContext().getString(labels[index]), 14,
-                    selected ? palette.accentText : palette.ink, selected);
-            day.setGravity(Gravity.CENTER);
-            day.setMinHeight(style.dp(48));
-            GradientDrawable background = style.pill(selected ? palette.accent
-                    : Color.TRANSPARENT, 19);
-            if (!selected) background.setStroke(style.dp(1), palette.dot);
-            day.setBackground(background);
-            day.setOnClickListener(view -> listener.accept(mask ^ bit));
-            LinearLayout.LayoutParams dayParams = new LinearLayout.LayoutParams(
-                    0, style.dp(48), 1);
-            if (index > 0) dayParams.setMargins(style.dp(8), 0, 0, 0);
-            row.addView(day, dayParams);
-        }
-        return row;
+    private LinearLayout dayPicker(int mask, TaskEditorControlFactory.IntListener listener) {
+        return controls.dayPicker(mask, listener);
     }
     private void addValueLeaf(String value, Runnable action) {
         LinearLayout row = new LinearLayout(getContext());
@@ -781,16 +639,8 @@ public final class TaskEditorView extends FrameLayout {
         row.setOnClickListener(view -> action.run());
         leaf.addView(row, params(-1, -2, 0, 10, 0, 0));
     }
-    private TextView errorView(int resource) { return errorView(getContext().getString(resource)); }
-    private TextView errorView(String value) {
-        TextView error = style.serif(value, 14, palette.bad, true, 300);
-        error.setPadding(style.dp(12), style.dp(9), style.dp(12), style.dp(9));
-        GradientDrawable background = style.pill(UiStyle.alpha(palette.bad, .10f), 10);
-        background.setStroke(style.dp(1), UiStyle.alpha(palette.bad, .34f));
-        error.setBackground(background);
-        error.setLayoutParams(params(-1, -2, 0, 7, 0, 0));
-        return error;
-    }
+    private TextView errorView(int resource) { return controls.errorView(resource); }
+    private TextView errorView(String value) { return controls.errorView(value); }
     private void pickDate(LocalDate initial, DateListener listener) {
         LocalDate value = initial == null || initial.isBefore(today) ? today : initial;
         DatePickerDialog dialog = new DatePickerDialog(getContext(), (view, year, month, day) ->
@@ -799,86 +649,20 @@ public final class TaskEditorView extends FrameLayout {
         dialog.getDatePicker().setMinDate(java.sql.Date.valueOf(today.toString()).getTime());
         dialog.show();
     }
-    private void showNumberPicker(int initial, IntListener listener) {
+    private void showNumberPicker(int initial, TaskEditorControlFactory.IntListener listener) {
         EditText input = numberField(Math.max(1, initial), value -> { });
         new AlertDialog.Builder(getContext()).setView(input)
                 .setPositiveButton(R.string.step_apply, (dialog, which) -> {
-                    Integer value = parseInteger(input.getText().toString());
+                    Integer value = TaskEditorControlFactory.parseInteger(
+                            input.getText().toString());
                     listener.accept(value == null || value < 1 ? 1 : value);
                 }).setNegativeButton(R.string.ask_delete_keep, null).show();
     }
 
-    private String summaryLine() {
-        List<String> values = new ArrayList<>();
-        String rhythm = rhythmSummary();
-        if (state.recurrence == Recurrence.WEEKDAYS && state.weekdayMask == 31) rhythm = "Mo–Fr";
-        values.add(state.recurrence == Recurrence.ONCE ? rhythm : rhythm + " " + timeSummary());
-        if (state.estimatedMinutes != null) values.add(getContext().getString(
-                R.string.editor_summary_duration, state.estimatedMinutes));
-        values.add(getContext().getString(R.string.editor_summary_steps, state.stepStates.size()));
-        return TextUtils.join(" · ", values);
-    }
-    private String rhythmSummary() {
-        if (state.recurrence == Recurrence.ONCE) return getContext().getString(R.string.rhythm_once);
-        if (state.recurrence == Recurrence.DAILY) return getContext().getString(R.string.rhythm_daily);
-        if (state.recurrence == Recurrence.INTERVAL)
-            return getContext().getString(R.string.rhythm_every_n_value, state.intervalDays);
-        return days(state.weekdayMask);
-    }
-    private String timeSummary() {
-        if (state.recurrence == Recurrence.ONCE) return "—";
-        String[] names = {getContext().getString(R.string.tod_morning),
-                getContext().getString(R.string.tod_noon),
-                getContext().getString(R.string.tod_evening),
-                getContext().getString(R.string.tod_night)};
-        List<String> values = new ArrayList<>();
-        for (int index = 0; index < TimeOfDay.values().length; index++)
-            if ((state.timeOfDayMask & TimeOfDay.values()[index].bit) != 0) values.add(names[index]);
-        return TextUtils.join(" · ", values);
-    }
-    private String durationSummary() {
-        return state.estimatedMinutes == null ? "—" : state.estimatedMinutes + " Minuten";
-    }
-    private String boundSummary() {
-        if (state.recurrence == Recurrence.ONCE) return state.deadlineOn == null
-                ? getContext().getString(R.string.deadline_none)
-                : getContext().getString(R.string.bound_until_value, DATE.format(state.deadlineOn));
-        if (state.boundKind == TaskBoundKind.FOREVER)
-            return getContext().getString(R.string.bound_forever);
-        if (state.boundKind == TaskBoundKind.UNTIL_DATE)
-            return getContext().getString(R.string.bound_until_value, DATE.format(state.boundUntilOn));
-        if (state.boundKind == TaskBoundKind.FOR_WEEKS)
-            return getContext().getString(R.string.bound_weeks_value, state.boundWeeks,
-                    DATE.format(state.boundUntilOn));
-        return getContext().getString(R.string.bound_times_value, state.remainingCount);
-    }
-    private String stepsSummary() {
-        if (state.stepStates.isEmpty()) return "—";
-        List<String> values = new ArrayList<>();
-        for (EditorStepState step : state.stepStates) values.add(step.text);
-        return TextUtils.join(" · ", values);
-    }
-    private static String days(int mask) {
-        String[] names = {"Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"};
-        List<String> values = new ArrayList<>();
-        for (int index = 0; index < names.length; index++)
-            if ((mask & 1 << index) != 0) values.add(names[index]);
-        return TextUtils.join(" · ", values);
-    }
-
-    private EditorUiState draft(String title, Integer estimated, Recurrence recurrence,
-                                int interval, int weekdays, int times, TaskBoundKind bound,
-                                LocalDate until, Integer weeks, Integer count,
-                                LocalDate deadline, String note, List<EditorStepState> steps,
-                                String expanded) {
-        return state.draft(title, state.slot, estimated, recurrence, interval, weekdays, times,
-                bound, until, weeks, count, deadline, note, steps, expanded,
-                state.nextDraftIdentity);
-    }
     private void apply(EditorUiState next, boolean rerender) {
         EditorUiState validated = liveValidated(next);
         boolean issueChanged = !state.issues.equals(validated.issues);
-        if (issueChanged && !rerender) captureViewportForNextRender();
+        if (rerender || issueChanged) prepareViewport(state, validated);
         state = validated;
         if (rerender || issueChanged) render();
         lastEmitted = validated;
@@ -886,15 +670,7 @@ public final class TaskEditorView extends FrameLayout {
     }
 
     private EditorUiState liveValidated(EditorUiState value) {
-        if (value.attemptedPages.isEmpty() && value.attemptedStepIds.isEmpty()) return value;
-        Set<ValidationIssue> visible = new LinkedHashSet<>();
-        for (ValidationIssue issue : validator.issues(value, today)) {
-            if ((issue.stepId == null && value.attemptedPages.contains(issue.field.page))
-                    || (issue.stepId != null && (value.attemptedPages.contains(
-                    EditorUiState.Page.STEPS)
-                    || value.attemptedStepIds.contains(issue.stepId)))) visible.add(issue);
-        }
-        return value.withFeedback(visible, value.prompt, value.storageError);
+        return TaskEditorStateReducer.liveValidation(value, validator.issues(value, today));
     }
 
     private void captureViewportForNextRender() {
@@ -904,6 +680,17 @@ public final class TaskEditorView extends FrameLayout {
             pendingSelection = ((EditText) focused).getSelectionStart();
         }
         pendingScrollY = scroll.getScrollY();
+    }
+
+    private void prepareViewport(EditorUiState previous, EditorUiState next) {
+        if (previous != null && previous.page == next.page
+                && Objects.equals(previous.expandedStepId, next.expandedStepId)) {
+            captureViewportForNextRender();
+            return;
+        }
+        pendingFocusTag = null;
+        pendingSelection = -1;
+        pendingScrollY = 0;
     }
 
     private void restoreViewportAfterRender() {
@@ -925,29 +712,6 @@ public final class TaskEditorView extends FrameLayout {
     private boolean hasIssue(ValidationIssue.Field field) {
         return state.issues.contains(ValidationIssue.task(field));
     }
-    private TextWatcher watcher(StringListener listener) {
-        return new TextWatcher() {
-            private int selection;
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                selection = start + count;
-            }
-            @Override public void afterTextChanged(Editable s) {
-                Selection.setSelection(s, Math.max(0, Math.min(selection, s.length())));
-                listener.accept(s.toString());
-            }
-        };
-    }
-    private static Integer parseInteger(String value) {
-        if (value == null || value.trim().isEmpty()) return null;
-        try { return Integer.parseInt(value.trim()); }
-        catch (NumberFormatException error) { return 0; }
-    }
-    private static EditorUiState.Page next(EditorUiState.Page page) {
-        if (page == EditorUiState.Page.TITLE) return EditorUiState.Page.SCHEDULE;
-        if (page == EditorUiState.Page.SCHEDULE) return EditorUiState.Page.STEPS;
-        return EditorUiState.Page.SUMMARY;
-    }
     private static EditorUiState.Page previous(EditorUiState.Page page) {
         if (page == EditorUiState.Page.SUMMARY) return EditorUiState.Page.STEPS;
         if (page == EditorUiState.Page.STEPS) return EditorUiState.Page.SCHEDULE;
@@ -959,8 +723,5 @@ public final class TaskEditorView extends FrameLayout {
         params.setMargins(left, top, right, bottom);
         return params;
     }
-    private interface StringListener { void accept(String value); }
-    private interface IntegerListener { void accept(Integer value); }
-    private interface IntListener { void accept(int value); }
     private interface DateListener { void accept(LocalDate value); }
 }

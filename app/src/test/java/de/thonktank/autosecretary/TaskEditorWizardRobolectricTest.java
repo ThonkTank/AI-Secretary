@@ -80,6 +80,31 @@ public final class TaskEditorWizardRobolectricTest {
         assertTrue(scroll.canScrollVertically(1));
     }
 
+    @Test public void samePageRebindKeepsScrollWhileRealNavigationResetsIt() {
+        Activity context = Robolectric.buildActivity(Activity.class).setup().get();
+        TaskEditorView view = new TaskEditorView(context, new RecordingListener());
+        context.setContentView(view);
+        List<EditorStepState> steps = new ArrayList<>();
+        for (int index = 0; index < 18; index++)
+            steps.add(new EditorStepState("s" + index, "Schritt " + index, 0,
+                    StepAmount.none(), ""));
+        EditorUiState state = validState(steps).withPage(EditorUiState.Page.STEPS, false);
+        DayPalette palette = palette();
+        view.bind(state, palette, TODAY);
+        measure(view);
+        ScrollView scroll = view.findViewById(R.id.task_editor_scroll);
+        scroll.scrollTo(0, 180);
+
+        view.bind(state.withFeedback(state.issues, EditorUiState.Prompt.NONE, ""),
+                palette, TODAY);
+        shadowOf(Looper.getMainLooper()).idle();
+        assertEquals(180, scroll.getScrollY());
+
+        view.bind(state.withPage(EditorUiState.Page.TITLE, false), palette, TODAY);
+        shadowOf(Looper.getMainLooper()).idle();
+        assertEquals(0, scroll.getScrollY());
+    }
+
     @Test public void correctingAttemptedTitleRemovesIssueAndReenablesNextWithoutLosingFocus() {
         Activity context = Robolectric.buildActivity(Activity.class).setup().get();
         RecordingListener listener = new RecordingListener();
