@@ -15,7 +15,8 @@ public final class DatabaseFactory {
                 // but are intentionally not part of the supported production graph.
                 .addMigrations(DatabaseMigrations.MIGRATION_8_9, DatabaseMigrations.MIGRATION_9_10,
                         DatabaseMigrations.MIGRATION_10_11, DatabaseMigrations.MIGRATION_11_12,
-                        DatabaseMigrations.MIGRATION_12_13, DatabaseMigrations.MIGRATION_13_14)
+                        DatabaseMigrations.MIGRATION_12_13, DatabaseMigrations.MIGRATION_13_14,
+                        DatabaseMigrations.MIGRATION_14_15)
                 .build();
     }
 }

@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -34,6 +35,7 @@ final class DueDatePlanner {
         List<TaskSlot> slots = schedule.slots(task.id);
         if (slots.isEmpty())
             throw new IllegalStateException("Active task has no schedule: " + task.id.value);
+        LocalDate intervalAnchor = intervalAnchor(task, history);
         while (cursor != null && !cursor.isAfter(today) && canPlan(task, cursor)
                 && (task.boundKind != TaskBoundKind.N_TIMES
                 || materialized < (task.remainingCount == null ? 0 : task.remainingCount))) {
@@ -41,7 +43,8 @@ final class DueDatePlanner {
                 String occurrenceKey = key(task.id, cursor, slot);
                 boolean alreadyMaterialized = existingDates.contains(occurrenceKey);
                 if (!alreadyMaterialized && allowed(task, materialized)) {
-                    List<TaskStepTemplate> applicable = applicable(templates, cursor);
+                    List<TaskStepTemplate> applicable = applicable(templates, cursor,
+                            intervalAnchor);
                     List<TaskStepTemplate> selected = result.computeIfAbsent(slot,
                             ignored -> new ArrayList<>());
                     Set<String> seen = templateIds(selected);
@@ -78,12 +81,28 @@ final class DueDatePlanner {
     }
 
     private static List<TaskStepTemplate> applicable(List<TaskStepTemplate> templates,
-                                                      LocalDate date) {
+                                                      LocalDate date, LocalDate intervalAnchor) {
         if (templates == null) return Collections.emptyList();
         List<TaskStepTemplate> result = new ArrayList<>();
         for (TaskStepTemplate template : templates)
-            if (ScheduleCalculator.appliesOn(template.weekdayMask, date)) result.add(template);
+            if (appliesOn(template, date, intervalAnchor)) result.add(template);
         return result;
+    }
+
+    private static boolean appliesOn(TaskStepTemplate template, LocalDate date,
+                                     LocalDate intervalAnchor) {
+        if (!ScheduleCalculator.appliesOn(template.weekdayMask, date)) return false;
+        if (template.intervalDays == 0) return true;
+        long elapsed = ChronoUnit.DAYS.between(intervalAnchor, date);
+        return elapsed >= 0 && elapsed % template.intervalDays == 0;
+    }
+
+    private static LocalDate intervalAnchor(Task task, List<Occurrence> history) {
+        LocalDate anchor = null;
+        for (Occurrence occurrence : history)
+            if (anchor == null || occurrence.scheduledOn.isBefore(anchor))
+                anchor = occurrence.scheduledOn;
+        return anchor == null ? task.planningCursor() : anchor;
     }
 
     private static Set<String> templateIds(List<TaskStepTemplate> values) {

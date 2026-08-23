@@ -17,6 +17,7 @@ public final class TaskEditorValidator {
     public static final String BOUND = "bound";
     public static final String STEP_PREFIX = "step:";
     public static final String AMOUNT_PREFIX = "amount:";
+    public static final String STEP_INTERVAL_PREFIX = "step-interval:";
 
     public Set<String> errors(EditorUiState draft, LocalDate today) {
         Set<String> errors = new LinkedHashSet<>();
@@ -44,6 +45,8 @@ public final class TaskEditorValidator {
         for (EditorStepState step : draft.stepStates) {
             if (step.text.trim().isEmpty()) errors.add(STEP_PREFIX + step.id);
             if (!step.amount.isValid()) errors.add(AMOUNT_PREFIX + step.id);
+            if (step.intervalDays != 0 && step.intervalDays < 2)
+                errors.add(STEP_INTERVAL_PREFIX + step.id);
         }
         return Collections.unmodifiableSet(errors);
     }

@@ -457,6 +457,14 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Adds optional calendar-day cadence to reusable step templates. */
+    public static final Migration MIGRATION_14_15 = new Migration(14, 15) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN intervalDays "
+                    + "INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     private static List<Integer> parseLegacyRepetitions(String stepId, String stored) {
         List<Integer> values = new ArrayList<>();
         try {

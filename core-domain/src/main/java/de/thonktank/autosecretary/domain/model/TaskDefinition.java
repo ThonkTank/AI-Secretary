@@ -62,8 +62,10 @@ public final class TaskDefinition {
         for (int i = 0; i < steps.size(); i++) {
             TaskStepDefinition step = Objects.requireNonNull(steps.get(i), "step");
             if (step.position != i) throw new IllegalArgumentException("Step positions must be contiguous");
-            copied.add(recurrence == Recurrence.ONCE && step.weekdayMask != 0
-                    ? new TaskStepDefinition(step.id, i, step.text, 0, step.amount, step.note)
+            copied.add(recurrence == Recurrence.ONCE
+                    && (step.weekdayMask != 0 || step.intervalDays != 0)
+                    ? new TaskStepDefinition(step.id, i, step.text, 0, 0,
+                    step.amount, step.note)
                     : step);
         }
         this.title = title.trim();

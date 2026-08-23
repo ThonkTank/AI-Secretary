@@ -21,6 +21,7 @@ import de.thonktank.autosecretary.domain.model.TimeOfDay;
 
 public final class EditorUiState {
     public enum Prompt { NONE, DISCARD, DELETE }
+    public enum Page { TITLE, SCHEDULE, STEPS, SUMMARY }
 
     public final boolean open;
     public final boolean loading;
@@ -47,6 +48,8 @@ public final class EditorUiState {
     public final int nextDraftIdentity;
     public final String baseline;
     public final boolean dirty;
+    public final Page page;
+    public final boolean returnToSummary;
 
     private EditorUiState(boolean open, boolean loading, boolean saving, String taskId,
                           String title, TaskSlot slot, Integer estimatedMinutes,
@@ -55,7 +58,8 @@ public final class EditorUiState {
                           Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn,
                           String note, List<EditorStepState> steps, String expandedStepId,
                           Set<String> errors, Prompt prompt, String storageError,
-                          int nextDraftIdentity, String baseline) {
+                          int nextDraftIdentity, String baseline, Page page,
+                          boolean returnToSummary) {
         this.open = open; this.loading = loading; this.saving = saving; this.taskId = taskId;
         this.title = title == null ? "" : title; this.slot = slot;
         this.estimatedMinutes = estimatedMinutes; this.recurrence = recurrence;
@@ -74,6 +78,8 @@ public final class EditorUiState {
                 remainingCount, deadlineOn, note, steps);
         this.baseline = baseline == null ? signature : baseline;
         this.dirty = !this.baseline.equals(signature);
+        this.page = page == null ? Page.TITLE : page;
+        this.returnToSummary = returnToSummary;
     }
 
     public static EditorUiState closed() {
@@ -86,9 +92,10 @@ public final class EditorUiState {
 
     public static EditorUiState create(TaskSlot slot) {
         return new EditorUiState(true, false, false, null, "", slot,
-                null, Recurrence.ONCE, 2, 0, 0, TaskBoundKind.FOREVER, null, null,
+                null, Recurrence.DAILY, 2, 0, TimeOfDay.fromSlot(slot).bit,
+                TaskBoundKind.FOREVER, null, null,
                 null, null, "", Collections.emptyList(), null, Collections.emptySet(),
-                Prompt.NONE, "", 1, null);
+                Prompt.NONE, "", 1, null, Page.TITLE, false);
     }
 
     public static EditorUiState loading(String taskId) {
@@ -99,7 +106,7 @@ public final class EditorUiState {
         return new EditorUiState(open, loading, false, taskId, "", TaskSlot.MORNING,
                 null, Recurrence.ONCE, 2, 0, 0, TaskBoundKind.FOREVER, null, null,
                 null, null, "", Collections.emptyList(), null, Collections.emptySet(),
-                Prompt.NONE, "", 1, null);
+                Prompt.NONE, "", 1, null, taskId == null ? Page.TITLE : Page.SUMMARY, false);
     }
 
     public static EditorUiState edit(TaskDetails details) {
@@ -110,7 +117,7 @@ public final class EditorUiState {
                 details.intervalDays, details.weekdayMask, details.timeOfDayMask,
                 details.boundKind, details.boundUntilOn, details.boundWeeks,
                 details.remainingCount, details.deadlineOn, details.note, steps, null,
-                Collections.emptySet(), Prompt.NONE, "", 1, null);
+                Collections.emptySet(), Prompt.NONE, "", 1, null, Page.SUMMARY, false);
     }
 
     public EditorUiState withDraft(String title, TaskSlot slot, Recurrence recurrence,
@@ -138,21 +145,39 @@ public final class EditorUiState {
                 recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, steps,
                 expandedStepId, Collections.emptySet(), Prompt.NONE, "", nextDraftIdentity,
-                baseline);
+                baseline, page, returnToSummary);
     }
 
     public EditorUiState withFeedback(Set<String> errors, Prompt prompt, String storageError) {
         return new EditorUiState(open, loading, saving, taskId, title, slot, estimatedMinutes,
                 recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
-                expandedStepId, errors, prompt, storageError, nextDraftIdentity, baseline);
+                expandedStepId, errors, prompt, storageError, nextDraftIdentity, baseline,
+                page, returnToSummary);
     }
 
     public EditorUiState withSaving(boolean value) {
         return new EditorUiState(open, loading, value, taskId, title, slot, estimatedMinutes,
                 recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
                 boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
-                expandedStepId, errors, prompt, storageError, nextDraftIdentity, baseline);
+                expandedStepId, errors, prompt, storageError, nextDraftIdentity, baseline,
+                page, returnToSummary);
+    }
+
+    public EditorUiState withPage(Page value, boolean returnToSummary) {
+        return new EditorUiState(open, loading, saving, taskId, title, slot, estimatedMinutes,
+                recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
+                boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
+                expandedStepId, errors, prompt, storageError, nextDraftIdentity, baseline,
+                value, returnToSummary);
+    }
+
+    public EditorUiState withExpandedStep(String id) {
+        return new EditorUiState(open, loading, saving, taskId, title, slot, estimatedMinutes,
+                recurrence, intervalDays, weekdayMask, timeOfDayMask, boundKind,
+                boundUntilOn, boundWeeks, remainingCount, deadlineOn, note, stepStates,
+                id, errors, prompt, storageError, nextDraftIdentity, baseline, page,
+                returnToSummary);
     }
 
     public TaskDefinition definition() {
@@ -181,7 +206,8 @@ public final class EditorUiState {
         bundle.putString("expanded", expandedStepId); bundle.putStringArrayList("errors",
                 new ArrayList<>(errors)); bundle.putString("prompt", prompt.name());
         bundle.putString("storage_error", storageError); bundle.putInt("next_id", nextDraftIdentity);
-        bundle.putString("baseline", baseline);
+        bundle.putString("baseline", baseline); bundle.putString("page", page.name());
+        bundle.putBoolean("return_summary", returnToSummary);
         return bundle;
     }
 
@@ -203,7 +229,10 @@ public final class EditorUiState {
                 bundle.getString("expanded"), errors == null ? Collections.emptySet()
                 : new LinkedHashSet<>(errors), enumValue(Prompt.class,
                 bundle.getString("prompt"), Prompt.NONE), bundle.getString("storage_error", ""),
-                bundle.getInt("next_id", 1), bundle.getString("baseline"));
+                bundle.getInt("next_id", 1), bundle.getString("baseline"),
+                enumValue(Page.class, bundle.getString("page"),
+                        bundle.getString("task_id") == null ? Page.TITLE : Page.SUMMARY),
+                bundle.getBoolean("return_summary"));
     }
 
     private static String signature(String title, TaskSlot slot, Integer estimated,
@@ -217,7 +246,8 @@ public final class EditorUiState {
                 + Objects.toString(note, ""));
         for (EditorStepState step : steps)
             result.append('|').append(step.id).append(':').append(step.text).append(':')
-                    .append(step.weekdayMask).append(':').append(step.amount).append(':')
+                    .append(step.weekdayMask).append(':').append(step.intervalDays).append(':')
+                    .append(step.amount).append(':')
                     .append(step.note);
         return result.toString();
     }
