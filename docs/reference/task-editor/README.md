@@ -48,14 +48,12 @@ Editor-Baselines und erzwingt die Eins-zu-eins-Zuordnung von Szenario, Golden un
 
 ## Menschliche Freigabe
 
-Status: **AUSSTEHEND**
+Status: **VISUELL FREIGEGEBEN**
 
-Vor dem Merge muss eine menschliche Person das Kontaktblatt im Pull Request prüfen und hier oder
-im PR dokumentieren:
-
-- Name/Handle der prüfenden Person;
-- Datum;
-- geprüfter PR-Commit;
-- Ergebnis „freigegeben“ oder konkrete Abweichungen.
+- Prüfende Person: Auftraggeber / Repository-Owner `ThonkTank`
+- Datum: 2026-08-23
+- Geprüfter PR-Commit: `5a6047eb82e64d8bf4e984855eb0358da2c0df62`
+- Ergebnis: „visuell freigegeben“
+- Prüfgrundlage: das oben verlinkte Side-by-Side-Kontaktblatt für alle zehn kanonischen Zustände
 
 Automatisierte Goldens und eine Prüfung durch Codex ersetzen diese Freigabe ausdrücklich nicht.
