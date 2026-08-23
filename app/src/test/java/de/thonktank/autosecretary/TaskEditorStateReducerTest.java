@@ -129,4 +129,33 @@ public final class TaskEditorStateReducerTest {
         assertEquals(EditorUiState.Prompt.DISCARD, saving.prompt);
         assertTrue(saving.attemptedPages.contains(EditorUiState.Page.STEPS));
     }
+
+    @Test public void validationEventsRouteAndRefreshWithoutViewLogic() {
+        ValidationIssue title = ValidationIssue.task(ValidationIssue.Field.TITLE);
+        EditorUiState original = EditorUiState.create();
+
+        EditorUiState blocked = TaskEditorStateReducer.advance(original,
+                Collections.singleton(title));
+        assertEquals(EditorUiState.Page.TITLE, blocked.page);
+        assertTrue(blocked.attemptedPages.contains(EditorUiState.Page.TITLE));
+        assertTrue(blocked.issues.contains(title));
+
+        EditorUiState corrected = TaskEditorStateReducer.updateTitle(blocked, "Lesen");
+        corrected = TaskEditorStateReducer.liveValidation(corrected, Collections.emptySet());
+        assertTrue(corrected.issues.isEmpty());
+        EditorUiState advanced = TaskEditorStateReducer.advance(corrected,
+                Collections.emptySet());
+        assertEquals(EditorUiState.Page.SCHEDULE, advanced.page);
+
+        EditorUiState withStep = TaskEditorStateReducer.addStep(advanced);
+        ValidationIssue step = ValidationIssue.step(ValidationIssue.Field.STEP_TITLE,
+                withStep.expandedStepId);
+        EditorUiState invalidDetail = TaskEditorStateReducer.applyStepDetail(withStep,
+                Collections.singleton(step));
+        assertEquals(withStep.expandedStepId, invalidDetail.expandedStepId);
+        assertTrue(invalidDetail.attemptedStepIds.contains(withStep.expandedStepId));
+        EditorUiState closedDetail = TaskEditorStateReducer.applyStepDetail(invalidDetail,
+                Collections.emptySet());
+        assertNull(closedDetail.expandedStepId);
+    }
 }

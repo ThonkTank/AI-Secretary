@@ -79,6 +79,11 @@ public final class TaskEditorStateModelRobolectricTest {
         legacy.putString("prompt", "DELETE");
 
         EditorUiState restored = EditorUiState.fromBundle(legacy);
+        TaskEditorDraft expectedDraft = new TaskEditorDraft("Altbestand", TaskSlot.MIDDAY, 25,
+                Recurrence.WEEKDAYS, 1, 5, TimeOfDay.MIDDAY.bit,
+                TaskBoundKind.UNTIL_DATE, LocalDate.of(2026, 9, 1), null, null, null,
+                "übernommen", Collections.singletonList(step), 2);
+        assertEquals(expectedDraft.snapshot(), restored.draft.snapshot());
         assertEquals("Altbestand", restored.title);
         assertEquals(TaskSlot.MIDDAY, restored.slot);
         assertEquals(Integer.valueOf(25), restored.estimatedMinutes);
