@@ -8,5 +8,9 @@
         <activity
             android:name=".TaskEditorInteractionHarnessActivity"
             android:exported="false" />
+        <activity
+            android:name=".ComposeSmokeActivity"
+            android:exported="false"
+            android:theme="@style/ComposeSmokeTheme" />
     </application>
 </manifest>

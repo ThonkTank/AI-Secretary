@@ -411,3 +411,75 @@ Größengates und API-37-Installations-/Upgrade-Nachweise bleiben Phase 2c. Eine
 Nachtarbeitsphase ist nach der auf demselben Branch erledigten Nacharbeit nicht erforderlich.
 Der lokale Stand erfüllt Phase 2a; der Phasenabschluss bleibt bis zu grüner Remote-Matrix und
 Squash-Merge offen.
+
+### Phase 2b – Vorprüfung und Implementationsplan
+
+- Ausgangspunkt ist der saubere, mit `origin/main` identische Squash-Merge `f610298a` aus Pull
+  Request #258. Dessen Quality-, API-26-/35-Instrumentierungs-, Animation-API-26-/35-/37.0- und
+  Sammelchecks sind grün. Der erste breite API-35-Lauf wurde ausschließlich durch einen
+  fokussierten Pixel-Launcher-ANR blockiert; der vollständige Lauf bestand auf einem frischen
+  Runner in 4:35 Minuten. App-Crash, Zustands- oder Geometriefehler lagen nicht vor.
+- Der gemergte Stand enthält weiterhin keinen Kotlin-Produktcode und keine Compose-Abhängigkeit.
+  `MainActivity` bleibt eine `ComponentActivity`; vorhandene Debug-Harnesses sind bereits in einem
+  eigenen Debug-Manifest von der Release-App getrennt. Diese Grenze wird für den Smoke-Host
+  wiederverwendet.
+- Compose-Compiler-Plugin 2.3.21, Compose BOM 2026.08.00, Compose UI ohne Material, Activity und
+  Activity Compose 1.13.0 sowie Room KTX 2.8.4 werden exakt gepinnt. Lifecycle 2.11.0 und Room
+  Runtime/Compiler 2.8.4 bleiben unverändert. `buildFeatures.compose` aktiviert Compose; ein
+  Kotlin-Android-Plugin oder Built-in-Kotlin-Opt-out bleibt ausgeschlossen.
+- Der Smoke-Host wird als nicht exportierte Debug-Activity mit transparentem Plattform-Theme
+  umgesetzt. Er verwendet `setContent` mit einer leeren, zustandslosen Composition, besitzt
+  weder Material-, Produktzustands- noch Navigationsbezug und taucht nicht im Release-Manifest
+  auf. Ein Instrumentierungstest startet diesen echten Host und belegt die angehängte Composition
+  sowie den unsichtbaren Fenstervertrag.
+- Compose bringt unvermeidlich Laufzeitklassen in das unminifizierte Debug-APK. Deshalb wird das
+  bisherige Vor-Compose-Limit von 5 MiB bereits mit der Abhängigkeitseinführung auf den
+  verbindlichen Roadmapwert von 10 MiB angehoben und statisch gesichert. Phase 2c ergänzt weiterhin
+  den fehlenden unsigned-Release-Grenzwert von 8 MiB, bestätigt den Font-Grenzwert explizit und
+  erweitert Neuinstallation sowie Produktionsupgrade um API 37. Diese Präzisierung verhindert
+  einen künstlich unmergebaren Zwischenstand, ohne den Umfang von 2c vorwegzunehmen.
+
+Der Nachweis für 2b umfasst exakte Abhängigkeits- und Manifestverträge, Kotlin-/Compose-Compile,
+den gezielten Smoke-Host-Gerätetest, die vollständige Unit-/Lint-/APK-Suite, Größenmessung und die
+bestehende Remote-Instrumentierungs- und Animationsmatrix. R8, `minSdk 26`, `targetSdk 35`, JVM 17,
+Schema, App-ID und sichtbares Produktverhalten bleiben unverändert.
+
+### Phase 2b – Implementation und Nachweise
+
+- Das Compose-Compiler-Plugin 2.3.21 ist über AGPs Built-in Kotlin aktiviert. Der Compose BOM
+  2026.08.00 löst Compose UI auf 1.12.0 auf; Activity und Activity Compose stehen auf 1.13.0,
+  Lifecycle auf 2.11.0 und Room Runtime/KTX/Compiler auf 2.8.4. Material ist weder direkt noch
+  transitiv im Runtime-Klassenpfad vorhanden.
+- `ComposeSmokeActivity` ist ausschließlich im Debug-Quellsatz vorhanden, nicht exportiert und
+  verwendet ein transparentes Plattform-Theme. Ihre leere `setContent`-Composition besitzt weder
+  Zustand noch Navigation oder Produktbezug. Der Instrumentierungstest prüft am echten Activity-
+  Fenster eine angehängte `ComposeView`-Composition, Transparenz und fehlendes Dimmen. Das
+  Release-Manifest enthält den Host nicht; `compileReleaseKotlin` bleibt deshalb `NO-SOURCE`.
+- Der Abhängigkeitsabgleich zeigte, dass Activity Compose die alte direkte Core-Anforderung
+  1.13.1 ohnehin auf 1.18.0 anhob. Die Nacharbeit deklariert jetzt direkt die tatsächlich
+  aufgelöste und getestete Version 1.18.0 und entfernt den durch `compileSdk 37` überholten
+  Ausnahmekommentar. Der resultierende Runtime-Klassenpfad ändert sich dadurch nicht.
+- Lokal sind alle 20 Release-/Workflow-Vertragstests, die Shell-Syntax, 426 App-Tests ohne Fehler
+  bei einem bewusst deaktivierten Benchmark, `lintDebug`, Debug-/AndroidTest- und unsigned
+  Release-Paketierung grün. Die vollständige Suite lief mit Java 21 in 10:53 Minuten. Ein Lauf mit
+  dem systemweiten Java 25 wurde verworfen, weil Robolectric 4.14 bereits beim ASM-Class-Reading
+  scheitert; die CI und der gültige Nachweis verwenden unverändert Java 21.
+- Das Debug-APK misst 8.530.338 Byte, das AndroidTest-APK 653.541 Byte, das unsigned Release-APK
+  6.340.450 Byte und die Fonts zusammen 1.478.008 Byte. Damit unterschreitet der lokale Stand
+  bereits alle Roadmapgrenzen; in 2b ist davon wie geplant nur das Debug-Limit von 10 MiB als
+  Merge-Gate aktiv.
+
+### Phase 2b – Roadmap-Abgleich und Nacharbeit
+
+Der negative Abgleich fand keine Material-, Zustands-, Navigations-, Schema-, R8- oder sichtbare
+Produktkopplung. Er fand jedoch die irreführende alte Core-Direktversion; diese zweite
+Versionswahrheit wurde auf demselben Branch bereinigt und statisch abgesichert. Eine zusätzliche
+Nachtarbeitsphase ist deshalb nicht erforderlich.
+
+Ein lokaler API-36.1-Play-Store-Emulator stürzte in zwei frischen Startversuchen jeweils im
+Emulator-Prozess ab, bevor Android Shell-Kommandos annahm und bevor die App installiert wurde.
+Dieser Infrastrukturversuch ist kein Gerätebeleg. Der verbindliche Smoke-Host-Nachweis bleibt
+daher die frische Remote-Instrumentierungsmatrix. API-37-Neuinstallation und das echte
+Produktupgrade, das unsigned-Release-Gate und das explizite Font-Gate bleiben unverändert Phase
+2c. Der lokale Stand erfüllt die Implementationsgrenze von 2b; der Abschluss bleibt bis zur
+grünen Remote-Matrix und zum Squash-Merge offen.

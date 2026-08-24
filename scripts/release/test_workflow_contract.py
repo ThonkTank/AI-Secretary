@@ -24,6 +24,34 @@ BUILT_IN_KOTLIN_SMOKE = (
     / "autosecretary"
     / "BuiltInKotlinSmokeTest.kt"
 ).read_text(encoding="utf-8")
+DEBUG_MANIFEST = (ROOT / "app" / "src" / "debug" / "AndroidManifest.xml").read_text(
+    encoding="utf-8"
+)
+MAIN_MANIFEST = (ROOT / "app" / "src" / "main" / "AndroidManifest.xml").read_text(
+    encoding="utf-8"
+)
+COMPOSE_SMOKE_HOST = (
+    ROOT
+    / "app"
+    / "src"
+    / "debug"
+    / "kotlin"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "ComposeSmokeActivity.kt"
+).read_text(encoding="utf-8")
+COMPOSE_SMOKE_TEST = (
+    ROOT
+    / "app"
+    / "src"
+    / "androidTest"
+    / "kotlin"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "ComposeSmokeInstrumentationTest.kt"
+).read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
 SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").read_text(
     encoding="utf-8"
@@ -130,6 +158,41 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("org.jetbrains.kotlin.android", ROOT_BUILD + APP_BUILD)
         self.assertNotIn("android.builtInKotlin=false", GRADLE_PROPERTIES)
         self.assertIn("kotlinSourcesCompileThroughAgp", BUILT_IN_KOTLIN_SMOKE)
+
+    def test_phase_2b_compose_smoke_host_is_exact_invisible_and_debug_only(self):
+        self.assertIn(
+            'id("org.jetbrains.kotlin.plugin.compose") version "2.3.21" apply false',
+            ROOT_BUILD,
+        )
+        self.assertIn('id("org.jetbrains.kotlin.plugin.compose")', APP_BUILD)
+        self.assertIn("compose = true", APP_BUILD)
+        self.assertIn(
+            'implementation(platform("androidx.compose:compose-bom:2026.08.00"))',
+            APP_BUILD,
+        )
+        self.assertIn('implementation("androidx.compose.ui:ui")', APP_BUILD)
+        self.assertIn('implementation("androidx.activity:activity:1.13.0")', APP_BUILD)
+        self.assertIn(
+            'implementation("androidx.activity:activity-compose:1.13.0")',
+            APP_BUILD,
+        )
+        self.assertIn('implementation("androidx.room:room-ktx:2.8.4")', APP_BUILD)
+        self.assertIn('implementation("androidx.lifecycle:lifecycle-viewmodel:2.11.0")', APP_BUILD)
+        self.assertIn('implementation("androidx.core:core:1.18.0")', APP_BUILD)
+        self.assertNotIn('androidx.core:core:1.13.1', APP_BUILD)
+        self.assertNotIn("androidx.compose.material", APP_BUILD + COMPOSE_SMOKE_HOST)
+        self.assertIn("setContent { }", COMPOSE_SMOKE_HOST)
+        self.assertNotIn("remember", COMPOSE_SMOKE_HOST)
+        self.assertNotIn("mutableState", COMPOSE_SMOKE_HOST)
+        self.assertIn('android:name=".ComposeSmokeActivity"', DEBUG_MANIFEST)
+        self.assertIn('android:exported="false"', DEBUG_MANIFEST)
+        self.assertNotIn("ComposeSmokeActivity", MAIN_MANIFEST)
+        self.assertIn("composeView.hasComposition", COMPOSE_SMOKE_TEST)
+        self.assertIn("FLAG_DIM_BEHIND", COMPOSE_SMOKE_TEST)
+        self.assertIn(
+            'test "$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)" -lt 10485760',
+            WORKFLOW,
+        )
 
     def test_change_scope_separates_quality_instrumentation_and_release(self):
         release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
