@@ -124,10 +124,64 @@ jobs:
             app/build/outputs/androidTest-results/connected/
           retention-days: 14
 
+  animation-instrumentation:
+    if: needs.release_scope.outputs.instrumentation_required == 'true'
+    needs: [quality, release_scope]
+    runs-on: ubuntu-latest
+    env:
+      INSTRUMENTATION_API_LEVEL: ${{ matrix.api-level }}
+      INSTRUMENTATION_ANIMATION_SCALE: "1.0"
+      INSTRUMENTATION_TEST_CLASS: de.thonktank.autosecretary.TaskEditorInteractionInstrumentationTest,de.thonktank.autosecretary.presentation.alltasks.AllTasksInteractionTest,de.thonktank.autosecretary.ui.today.TodayInteractionInstrumentationTest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: 26
+            target: default
+            arch: x86_64
+          - api-level: 35
+            target: google_apis
+            arch: x86_64
+          - api-level: 37
+            target: google_apis
+            arch: x86_64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Animation-on interaction tests on API ${{ matrix.api-level }}
+        uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: ${{ matrix.arch }}
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: ./scripts/ci/run-instrumentation.sh
+      - name: Upload animation instrumentation failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: animation-instrumentation-failure-api-${{ matrix.api-level }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            build/reports/instrumentation/
+            app/build/reports/androidTests/connected/
+            app/build/outputs/androidTest-results/connected/
+          retention-days: 14
+
   instrumentation-gate:
     name: instrumentation-gate
     if: always()
-    needs: [quality, release_scope, instrumentation]
+    needs: [quality, release_scope, instrumentation, animation-instrumentation]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -139,6 +193,7 @@ jobs:
           QUALITY_RESULT: ${{ needs.quality.result }}
           INSTRUMENTATION_REQUIRED: ${{ needs.release_scope.outputs.instrumentation_required }}
           INSTRUMENTATION_RESULT: ${{ needs.instrumentation.result }}
+          ANIMATION_INSTRUMENTATION_RESULT: ${{ needs.animation-instrumentation.result }}
         run: |
           set -euo pipefail
           test "$SCOPE_RESULT" = success
@@ -149,8 +204,10 @@ jobs:
           fi
           if [ "$INSTRUMENTATION_REQUIRED" = true ]; then
             test "$INSTRUMENTATION_RESULT" = success
+            test "$ANIMATION_INSTRUMENTATION_RESULT" = success
           else
             test "$INSTRUMENTATION_RESULT" = skipped
+            test "$ANIMATION_INSTRUMENTATION_RESULT" = skipped
           fi
 
   pr-gate:
