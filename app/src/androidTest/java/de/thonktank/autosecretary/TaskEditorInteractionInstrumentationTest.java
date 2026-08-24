@@ -146,17 +146,21 @@ public final class TaskEditorInteractionInstrumentationTest {
     @Test public void recreationDuringPageMotionRestoresThePublishedDestination() {
         mount(validState());
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
-        instrumentation.runOnMainSync(() -> activity.editor()
-                .findViewById(R.id.task_editor_save).performClick());
-        assertEquals(EditorUiState.Page.SCHEDULE, activity.editorState().page);
-        boolean activeMotion = hasTrace("editor-motion", "page-start");
-        assertTrue("page transition did not start or settle", activeMotion
-                || hasTrace("editor-motion", "page-settled"));
-        if (activeMotion) assertFalse(
-                "page animation already ended before recreation was requested",
-                hasTrace("editor-motion", "page-end"));
-
-        recreate();
+        TaskEditorInteractionHarnessActivity previous = activity;
+        instrumentation.runOnMainSync(() -> {
+            activity.editor().findViewById(R.id.task_editor_save).performClick();
+            assertEquals(EditorUiState.Page.SCHEDULE, activity.editorState().page);
+            boolean activeMotion = hasTrace("editor-motion", "page-start");
+            assertTrue("page transition did not start or settle", activeMotion
+                    || hasTrace("editor-motion", "page-settled"));
+            if (activeMotion) assertFalse(
+                    "page animation ended before the same UI turn requested recreation",
+                    hasTrace("editor-motion", "page-end"));
+            activity.recreate();
+        });
+        scenario.onActivity(value -> activity = value);
+        await("editor activity was not recreated", () -> activity != previous
+                && activity.hasWindowFocus());
 
         await("recreated editor did not restore the published page",
                 () -> activity.editorState().page == EditorUiState.Page.SCHEDULE

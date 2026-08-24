@@ -298,7 +298,14 @@ beziehungsweise schließt das visuelle Mounting ab.
 Der erste lokale Gesamtlauf meldete einmalig den unveränderten
 `AllTasksVirtualizationTest.contentRebindReusesTheExistingHolderChildHierarchy`. Der fokussierte
 Lauf auf unverändertem Code und die anschließende vollständige 427-Test-Wiederholung waren grün;
-der fachfremde Test wurde nicht abgeschwächt und der Remote-Workflow erhält keinen Retry. Lokal
-ist kein Emulator verfügbar, daher stehen die echten Recreation- und Animationsläufe auf API 26,
-35 und 37 noch im Remote-Gate aus. Weitere lokale Scope-Kürzungen, Doppelzustände oder notwendige
-Nacharbeitsphasen wurden nach der Cancel-Korrektur nicht identifiziert.
+der fachfremde Test wurde nicht abgeschwächt und der Remote-Workflow erhielt keinen Retry. Im
+ersten Remote-Lauf waren Quality, die breite Instrumentierung auf API 26/35 und die
+Animation-on-Suite auf API 35/37 grün. Nur der neue Page-Motion-Test auf API 26 scheiterte, weil
+der Testthread erst nach dem vollständigen 240-ms-Animationslauf wieder eingeplant wurde. Das war
+kein verlorener Produktzustand, sondern ein zu schwacher Testaufbau. Die Korrektur veröffentlicht
+den Seitenwechsel und fordert die Activity-Recreation nun im selben UI-Turn an; solange Motion
+aktiv ist, kann zwischen beiden Operationen kein Frame und damit kein Animationsende laufen. Die
+AndroidTest-Kompilierung sowie die fokussierten State-, Motion- und Architekturtests sind auf
+diesem Korrekturstand mit Java 21 grün. Ein neuer vollständiger Remote-Gate steht noch aus.
+Weitere lokale Scope-Kürzungen, Doppelzustände oder notwendige Nacharbeitsphasen wurden nach
+dieser deterministischen Testkorrektur nicht identifiziert.
