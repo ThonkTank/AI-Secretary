@@ -898,3 +898,107 @@ und Fontbestand sind unverändert. Der erste lokale Vollversuch unter dem inzwis
 JDK 25 scheiterte global in Robolectrics ASM-Instrumentierung und wurde nicht als Produktfehler
 gewertet; der verbindliche Java-21-Lauf ist vollständig grün. Der Abschluss von 3c1 erfordert nun
 den eigenen grünen Pull Request, Squash-Merge und den veröffentlichenden `main`-Lauf.
+
+### Phase 3c1 – Remote-Abschluss
+
+Pull Request #266 bestand Quality sowie breite und animationsaktive Instrumentierung auf API
+26/35/37 und wurde als `d5b9cc55` per Squash nach `main` übernommen. Der erste `main`-Lauf war
+bis einschließlich Package, API 26 und API 35 grün. API 37 installierte und startete Vorversion
+und Kandidat erfolgreich, sah beim Seed der bestehenden 0.2.80-Fixture jedoch einmal SQLite
+`user_version=0` statt 8. Der gezielte GitHub-Rerun konnte das Kandidatenartefakt aus Versuch 1
+wegen der versuchsgebundenen Artefaktbenennung nicht beziehen und erreichte deshalb keinen
+Emulator.
+
+Der vorgesehene manuelle Vollmodus erzeugte daraufhin alle Artefakte in einem neuen konsistenten
+Run auf exakt demselben SHA. Quality, beide Instrumentierungsarten sowie signierte Neuinstallation
+und echtes Upgrade bestanden auf API 26/35/37; insbesondere war die API-37-Fixture wieder Schema
+8 und der Kandidat migrierte erfolgreich. Release 0.2.119 (`forest-android-1011901`) veröffentlicht
+exakt `d5b9cc5517860a07ce2d44e8fa6195ae97b88c18` mit APK und Metadaten. Damit ist 3c1 vollständig
+abgeschlossen; der einmalige Fixturezustand begründet keine Code-Nachtarbeit.
+
+### Phase 3c2 – erneute Vorprüfung und weiterer Zuschnitt
+
+Die erneute Sichtung des Dashboardpfads fand eine zuvor verdeckte Transaktionsgrenze:
+`TaskViewModel.loadContent()` und `loadTodayProjection()` heißen zwar Reads, rufen aber
+`DashboardPresenter.refreshWithChanges()` auf. Dieser führt vor der Projektion
+`MaterializeDueOccurrences` und optional `ApplyComboDecay` schreibend aus. Würde dieser gesamte
+Block direkt in `LatestReadPipeline` verschoben, könnte `collectLatest` eine bereits gestartete
+Write-Transaktion unterbrechen und damit den zentralen Roadmapvertrag verletzen.
+
+Zusätzlich dürfen kosmetische Anzeige- oder Minutensignale einen noch ausstehenden fachlichen
+Dashboard-Read nicht verdrängen. Der aktuelle Activity-Minutentimer liest nur bei tatsächlichem
+Tageswechsel neu; ein naiver gemeinsamer Latest-Strom würde entweder jede Minute unnötig die
+Datenbank lesen oder bei getrennten Kurzpfaden eine fachliche Invalidierung verlieren. 3c2 wird
+daher vor Produktcode geteilt:
+
+- **Phase 3c2a** erweitert den Read-Vertrag um eine auf einem injizierten seriellen Executor
+  laufende, nach Start nicht abbrechbare Vorbereitung. Erst die anschließende reine Projektion ist
+  interruptible. Ein typisiertes Dashboard-Routing trennt Content- von Appearance-Ereignissen und
+  lässt `MINUTE_TICK` nur bei geändertem Datum in den Contentstrom. Race-Tests beweisen, dass neue
+  Ereignisse eine laufende Vorbereitung nicht unterbrechen, danach aber den alten Read verwerfen.
+  Noch kein ViewModel verwendet den Vertrag.
+- **Phase 3c2b** montiert `PresentationInvalidationSource` im `AppContainer` und stellt
+  `TaskViewModel` und `AllTasksViewModel` gemeinsam um. Erfolgreiche Commands schließen nur ihren
+  seriellen Writezustand ab; Room invalidiert anschließend beide Projektionen. Die Activity-
+  Broker, tabgebundene Reloads, direkten Kalender-/Preference-Observer und manuellen Lifecycle-
+  Refreshs entfallen im selben Cutover. Widgetinvalidierungen bleiben bis 3c3 unverändert und
+  werden nicht an den neuen Widgetstrom doppelt angeschlossen.
+
+### Phase 3c2a – Implementationsplan
+
+`LatestReadPipeline.prepared(...)` erhält vor dem bestehenden interruptiblen Read eine optionale
+`LatestReadPreparation<I>`. Sie wird mit `NonCancellable` auf einem nicht besitzenden Adapter des
+übergebenen `Executor` ausgeführt: `close()` oder eine neuere Eingabe dürfen eine gestartete
+Vorbereitung nicht interrupten; nach deren Ende wird Cancellation vor dem reinen Read wirksam.
+Der Adapter schließt den ViewModel-Executor nicht selbst.
+
+`DashboardInvalidationRouting` veröffentlicht aus dem bestehenden Dashboardstrom zwei abgeleitete
+Flows. Content umfasst Initial, Datenbank, Kalender und Policy sowie Clock-Initial/Vordergrund;
+ein Minutentick gehört nur bei einem vom zuletzt publizierten Datum abweichenden Snapshot dazu.
+Appearance umfasst Displaypräferenzen und alle Uhrsnapshots. Die Zielquelle bleibt weiterhin
+ungemountet, sodass 3c2a keine zweite Produktwahrheit erzeugt. Barrieren statt Sleeps sichern
+nicht abbrechbare Vorbereitung, Cancellation vor Projektion, neuestes Ergebnis, Close während
+Vorbereitung und die Tagesgrenzentscheidung.
+
+### Phase 3c2a – Implementation und Roadmap-Abgleich
+
+- `LatestReadPipeline.prepared(...)` führt eine `LatestReadPreparation` mit `NonCancellable` auf
+  einem injizierten `Executor` aus. Eine neuere Invalidierung wartet auf die bereits gestartete
+  Vorbereitung, überspringt danach deren veralteten Read und verarbeitet erst dann die neueste
+  Eingabe. Der bestehende Read bleibt über `runInterruptible` abbrechbar. Der Executoradapter
+  besitzt den Executor nicht und verändert dessen Shutdown-Lifecycle nicht.
+- `close()` canceln weiterhin sofort den Pipeline-Scope, unterbrechen aber keine laufende
+  Vorbereitung. Nach deren Ende werden weder Read noch Publication ausgeführt. Auch ein erst nach
+  `close()` auftretender Vorbereitungsfehler wird aufgrund des erneuten Active-Checks nicht mehr
+  in einen verwaisten UI-Fehler übersetzt.
+- `DashboardInvalidationRouting` trennt Content und Appearance. Fachliche Quellen sowie
+  Clock-Initial/Vordergrund laufen in Content; ein `MINUTE_TICK` nur bei unbekanntem oder
+  abweichendem geladenen Datum. Display und alle Uhrsnapshots laufen in Appearance. Fehlende
+  Clock-Payloads wählen sicherheitshalber den Content-Read.
+- `AppContainer`, Presenter, ViewModels und Activity bleiben unverändert. Der neue Vertrag ist
+  ungemountet und erzeugt weder Observer noch Writes oder einen parallelen Screen-State.
+
+Die Race-Tests blockieren Vorbereitungen und Reads über Latches. Sie belegen, dass eine neuere
+Eingabe die gestartete Vorbereitung nicht interruptet, den alten Read danach aber vollständig
+überspringt; `close()` lässt die Vorbereitung enden und unterdrückt Read, Publication und späten
+Fehler. Ein Displayevent wird nachweislich vollständig verarbeitet, während ein Content-Read
+blockiert, ohne diesen zu canceln. Routingtests sichern Tagesgrenze, Vordergrund, unbekanntes
+Datum, fehlende Payloads und die exakten Ursachemengen. Alle neuen Verträge bestanden fünf
+frische Wiederholungsläufe ohne Sleeps.
+
+Der negative Gegencheck ergänzte zwei zunächst fehlende Nachweise: die Nicht-Cancellation eines
+laufenden Content-Reads durch kosmetische Ereignisse und die Unterdrückung eines späten Fehlers
+aus einer nach `close()` endenden Vorbereitung. Beide Lücken sind im Produktionsvertrag und in
+deterministischen Tests geschlossen. Für 3c2b ist nun verbindlich, den seriellen Write-Executor
+nur geordnet zu schließen; ein externes `shutdownNow()` könnte naturgemäß auch eine
+`NonCancellable`-Coroutine auf Betriebssystemebene interrupten. Weitere Shortcuts oder
+Transaktionsverschiebungen wurden nicht gefunden; eine Nachtarbeitsphase ist für 3c2a nicht
+erforderlich.
+
+Lokal bestanden unter Java 21 die vollständige Suite mit 448 Tests ohne Fehler (ein bewusst
+übersprungener Test), Lint sowie Debug-, Android-Test- und unsigned Release-APK. Die 14
+CI-Harnesstests und 22 Release-/Workflow-Vertragstests sind ebenfalls grün; die fünf frischen
+Wiederholungen der neuen Race- und Routingtests blieben deterministisch. Die APK-Größen betragen
+8.776.812 Byte Debug, 653.541 Byte Android-Test und 6.373.218 Byte unsigned Release; der
+Fontbestand bleibt mit 1.478.008 Byte unverändert. Der Abschluss von 3c2a erfordert nun den
+eigenen grünen Pull Request, Squash-Merge und den veröffentlichenden `main`-Lauf.

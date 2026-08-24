@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -11,6 +12,7 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -120,6 +122,140 @@ class LatestReadPipelineTest {
         } finally {
             pipeline.close()
             readDispatcher.close()
+        }
+    }
+
+    @Test
+    fun newerInputWaitsForStartedPreparationThenSkipsItsRead() = runBlocking {
+        val inputs = Channel<Int>(Channel.UNLIMITED)
+        val firstPreparationStarted = CountDownLatch(1)
+        val releaseFirstPreparation = CountDownLatch(1)
+        val preparationInterrupted = AtomicBoolean()
+        val preparations = ConcurrentLinkedQueue<Int>()
+        val reads = ConcurrentLinkedQueue<Int>()
+        val publications = Channel<Int>(Channel.UNLIMITED)
+        val failures = ConcurrentLinkedQueue<Throwable>()
+        val preparationExecutor = Executors.newSingleThreadExecutor()
+        val pipeline = LatestReadPipeline.prepared(
+            inputs = inputs.receiveAsFlow(),
+            preparationExecutor = preparationExecutor,
+            preparation = LatestReadPreparation { input ->
+                preparations.add(input)
+                if (input == 1) {
+                    firstPreparationStarted.countDown()
+                    try {
+                        releaseFirstPreparation.await()
+                    } catch (interrupted: InterruptedException) {
+                        preparationInterrupted.set(true)
+                        throw interrupted
+                    }
+                }
+            },
+            read = LatestRead { input ->
+                reads.add(input)
+                input
+            },
+            publish = LatestReadPublication { publications.trySend(it) },
+            failure = LatestReadFailure { failures.add(it) },
+        )
+        try {
+            assertTrue(inputs.trySend(1).isSuccess)
+            withTimeout(5_000) { runInterruptible { firstPreparationStarted.await() } }
+            assertTrue(inputs.trySend(2).isSuccess)
+
+            releaseFirstPreparation.countDown()
+
+            assertEquals(2, withTimeout(5_000) { publications.receive() })
+            assertEquals(listOf(1, 2), preparations.toList())
+            assertEquals(listOf(2), reads.toList())
+            assertFalse(preparationInterrupted.get())
+            assertTrue(failures.isEmpty())
+        } finally {
+            pipeline.close()
+            preparationExecutor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun closingDuringPreparationLetsItFinishButPreventsReadAndPublication() = runBlocking {
+        val inputs = Channel<Int>(Channel.UNLIMITED)
+        val preparationStarted = CountDownLatch(1)
+        val releasePreparation = CountDownLatch(1)
+        val preparationInterrupted = AtomicBoolean()
+        val reads = AtomicInteger()
+        val publications = AtomicInteger()
+        val failures = ConcurrentLinkedQueue<Throwable>()
+        val preparationExecutor = Executors.newSingleThreadExecutor()
+        val pipeline = LatestReadPipeline.prepared(
+            inputs = inputs.receiveAsFlow(),
+            preparationExecutor = preparationExecutor,
+            preparation = LatestReadPreparation<Int> {
+                preparationStarted.countDown()
+                try {
+                    releasePreparation.await()
+                } catch (interrupted: InterruptedException) {
+                    preparationInterrupted.set(true)
+                    throw interrupted
+                }
+            },
+            read = LatestRead<Int, Int> {
+                reads.incrementAndGet()
+                it
+            },
+            publish = LatestReadPublication { publications.incrementAndGet() },
+            failure = LatestReadFailure { failures.add(it) },
+        )
+        try {
+            assertTrue(inputs.trySend(1).isSuccess)
+            withTimeout(5_000) { runInterruptible { preparationStarted.await() } }
+
+            pipeline.close()
+            releasePreparation.countDown()
+            withTimeout(5_000) { pipeline.awaitStopped() }
+
+            assertFalse(preparationInterrupted.get())
+            assertEquals(0, reads.get())
+            assertEquals(0, publications.get())
+            assertTrue(failures.isEmpty())
+        } finally {
+            releasePreparation.countDown()
+            pipeline.close()
+            preparationExecutor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun failureFromPreparationAfterCloseIsNotPublished() = runBlocking {
+        val inputs = Channel<Int>(Channel.UNLIMITED)
+        val preparationStarted = CountDownLatch(1)
+        val releasePreparation = CountDownLatch(1)
+        val failures = ConcurrentLinkedQueue<Throwable>()
+        val preparationExecutor = Executors.newSingleThreadExecutor()
+        val pipeline = LatestReadPipeline.prepared(
+            inputs = inputs.receiveAsFlow(),
+            preparationExecutor = preparationExecutor,
+            preparation = LatestReadPreparation<Int> {
+                preparationStarted.countDown()
+                releasePreparation.await()
+                throw IllegalStateException("late preparation failure")
+            },
+            read = LatestRead<Int, Int> { it },
+            publish = LatestReadPublication { throw AssertionError("must not publish") },
+            failure = LatestReadFailure { failures.add(it) },
+        )
+        try {
+            assertTrue(inputs.trySend(1).isSuccess)
+            withTimeout(5_000) { runInterruptible { preparationStarted.await() } }
+
+            pipeline.close()
+            releasePreparation.countDown()
+            withTimeout(5_000) { pipeline.awaitStopped() }
+
+            assertTrue(failures.isEmpty())
+        } finally {
+            releasePreparation.countDown()
+            pipeline.close()
+            preparationExecutor.shutdownNow()
         }
     }
 }
