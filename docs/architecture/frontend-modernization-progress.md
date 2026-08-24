@@ -312,8 +312,15 @@ reentrant im Instrumentierungsschritt stehen. Der festgefahrene und durch die Ko
 Workflow wurde nicht wiederholt, sondern abgebrochen. Die Recreation liegt jetzt als vorderste
 Main-Queue-Nachricht hinter demselben UI-Turn: Sie läuft weiterhin garantiert vor dem nächsten
 Animationsframe, aber erst nachdem der aktuelle Callback sauber zurückgekehrt ist. Der Test
-wartet explizit auf das Destroy-Signal, bevor er die neue Activity bindet. Die
-AndroidTest-Kompilierung sowie die fokussierten State-, Motion- und Architekturtests sind auf
-diesem Korrekturstand mit Java 21 grün. Ein neuer vollständiger Remote-Gate steht noch aus.
-Weitere lokale Scope-Kürzungen, Doppelzustände oder notwendige Nacharbeitsphasen wurden nach
-dieser deterministischen Testkorrektur nicht identifiziert.
+wartet explizit auf das Ende der zerstörten Activity, bevor er die neue Instanz bindet.
+
+Der folgende Remote-Lauf endete wieder in normaler Zeit; Quality, beide breiten Gerätejobs und
+Animation-on auf API 35/37 waren grün. API 26 meldete jedoch ein `page-end` schon innerhalb
+desselben ununterbrochenen UI-Callbacks. Da dort kein Animationsframe laufen kann, war dies ein
+verspätetes End-Event eines vorherigen Test-Hosts, das erst nach dem globalen `@Before`-Clear
+eintraf. Die finale Isolation leert die Spur deshalb unmittelbar vor dem Klick im selben
+UI-Turn. Für den Lifecycle wartet sie instanzbezogen auf `previous.isDestroyed()` statt auf ein
+globales Destroy-Event. Die AndroidTest-Kompilierung sowie die fokussierten State-, Motion- und
+Architekturtests sind auf diesem Korrekturstand mit Java 21 grün. Ein neuer vollständiger
+Remote-Gate steht noch aus. Weitere lokale Scope-Kürzungen, Doppelzustände oder notwendige
+Nacharbeitsphasen wurden nach dieser deterministischen Testkorrektur nicht identifiziert.

@@ -150,6 +150,7 @@ public final class TaskEditorInteractionInstrumentationTest {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         TaskEditorInteractionHarnessActivity previous = activity;
         instrumentation.runOnMainSync(() -> {
+            PresentationTrace.clear();
             activity.editor().findViewById(R.id.task_editor_save).performClick();
             assertEquals(EditorUiState.Page.SCHEDULE, activity.editorState().page);
             boolean activeMotion = hasTrace("editor-motion", "page-start");
@@ -160,8 +161,7 @@ public final class TaskEditorInteractionInstrumentationTest {
                     hasTrace("editor-motion", "page-end"));
             new Handler(Looper.getMainLooper()).postAtFrontOfQueue(activity::recreate);
         });
-        await("editor activity did not begin recreation",
-                () -> hasTrace("editor-host", "destroy"));
+        await("editor activity did not finish destruction", previous::isDestroyed);
         scenario.onActivity(value -> activity = value);
         await("editor activity was not recreated", () -> activity != previous
                 && activity.hasWindowFocus());
