@@ -11,6 +11,7 @@ import android.app.Dialog;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.KeyEvent;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -34,6 +35,7 @@ import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35, qualifiers = "w412dp-h892dp-xhdpi")
@@ -165,6 +167,23 @@ public final class TaskEditorAcceptanceRobolectricTest {
         deleting.view.findViewById(R.id.task_editor_delete).performClick();
         clickDialogText(deleting.context, R.string.ask_delete_confirm);
         assertEquals("edit", deleting.listener.deletedTaskId);
+    }
+
+    @Test public void backDuringPromptExitIsRoutedToTheCurrentEditorState() {
+        EditorUiState original = clean(valid(Collections.emptyList(),
+                EditorUiState.Page.SUMMARY), "edit", EditorUiState.Page.SUMMARY, null);
+        EditorUiState dirty = TaskEditorStateReducer.updateTitle(original, "Geändert");
+        Harness harness = harness(dirty);
+        harness.view.findViewById(R.id.task_editor_delete).performClick();
+        clickDialogText(harness.context, R.string.ask_delete_keep);
+
+        Dialog closing = ShadowDialog.getLatestDialog();
+        assertNotNull(closing);
+        closing.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK));
+        closing.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK));
+
+        assertEquals(EditorUiState.Prompt.DISCARD, harness.listener.draft.prompt);
+        assertNotNull(harness.view.promptForTest());
     }
 
     @Test public void stepsCanBeAddedEditedMovedAndRemoved() {

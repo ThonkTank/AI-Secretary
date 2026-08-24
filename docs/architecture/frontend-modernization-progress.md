@@ -97,8 +97,24 @@ durch den Workflow-Vertrag gegen versehentliche Lücken gesichert. Zeitbasiertes
 bestehenden Editor-/Today-Tests und fehlende Lifecycle-Races wurden nicht als Shortcut ignoriert,
 sondern bleiben der bereits festgelegte Kern von Phase 1b.
 
-Der lokale Android-Quality-Build konnte nicht ausgeführt werden: Die vorhandene Java-21-Laufzeit
-ist nur eine JRE ohne Compiler, während die frühere System-JDK-Position leer ist; Java 25 ist mit
-der aktuellen AGP-Version inkompatibel. Das verpflichtende Remote-Gate mit JDK 21 muss diesen
-Nachweis erbringen. Bis dahin ist Phase 1a nicht abgeschlossen und eine Nacharbeitsentscheidung
-verfrüht.
+Die erste Remote-Runde belegte unmittelbar den Nutzen des neuen Gates: API 26 und 35 fanden
+denselben realen Fehler. Während der Löschdialog nach „Behalten“ noch ausblendete, fing sein altes
+Dialogfenster Hardware-Back ab; der aktuelle Editorzustand erhielt die Aktion nicht. Der
+ausblendende Dialog leitet Back nun an den aktuellen State Owner weiter, und ein fokussierter
+Robolectric-Test sichert den Übergang von DELETE über die Ausblendung zu DISCARD. API 37 schlug
+vor dem Emulatorstart fehl, weil das verfügbare Preview-Paket `android-37.0` nur im Canary-Kanal
+liegt; die Matrix verwendet deshalb explizit `37.0`/`canary`, ohne das Preview als stabil
+auszugeben.
+
+Der erste breite API-35-Lauf zeigte außerdem bereits bei der Fensterfokus-Synchronisation mehrere
+Fehler, obwohl dieselbe Suite auf API 26 grün war. Das ist ein unabhängiges, schon vorher mögliches
+Testharness-Race und bleibt bis zur Wiederholung des aktualisierten Commits unter Beobachtung; es
+wird nicht mit einem Retry kaschiert.
+
+Für den lokalen Android-Nachweis war zunächst nur eine Java-21-JRE ohne Compiler verfügbar. Mit
+einem temporären vollständigen Temurin-21-JDK wurden anschließend der neue fokussierte
+Editor-Regressionslauf sowie `testDebugUnitTest`, `lintDebug`, `assembleDebug`,
+`assembleDebugAndroidTest` und `assembleRelease` erfolgreich ausgeführt. Der erste Gesamtlauf
+scheiterte nach grünen Unit-Tests einmalig an der DNS-Auflösung von Google Maven; nach bestätigter
+Erreichbarkeit bestand die unveränderte Wiederholung vollständig. Der aktualisierte Remote-Gate
+und die abschließende Nacharbeitsentscheidung stehen noch aus.

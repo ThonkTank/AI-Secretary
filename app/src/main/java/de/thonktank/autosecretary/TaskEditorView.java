@@ -9,6 +9,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.text.InputFilter;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -582,6 +583,11 @@ public final class TaskEditorView extends FrameLayout {
                 prompt = null;
                 closingPrompt = closing;
                 closing.setOnDismissListener(null);
+                closing.setOnKeyListener((dialog, keyCode, event) -> {
+                    if (keyCode != KeyEvent.KEYCODE_BACK) return false;
+                    if (event.getAction() == KeyEvent.ACTION_UP) handleBack();
+                    return true;
+                });
                 View decor = closing.getWindow() == null ? null
                         : closing.getWindow().getDecorView();
                 Runnable dismiss = () -> {
