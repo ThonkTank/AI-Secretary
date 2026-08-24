@@ -111,7 +111,8 @@ für API 37 benennt die eigentliche Ursache: Das auf dem GitHub-Runner vorinstal
 `avdmanager` schreibt für minor-versionierte Pakete fälschlich `target=android-0`. Nur der
 Preview-Zweig aktualisiert die SDK-Command-line-Tools deshalb vor der AVD-Erzeugung auf Version 22
 oder neuer; der Workflowvertrag sichert sowohl diese Voraussetzung als auch den vorgezogenen
-ADB-Start.
+ADB-Start. Mit den tatsächlich installierten Tools 23 bootete API 37 anschließend und führte
+dieselben zehn Interaktionstests wie API 26 und 35 aus.
 
 Der erste breite API-35-Lauf zeigte außerdem bereits bei der Fensterfokus-Synchronisation mehrere
 Fehler, obwohl dieselbe Suite auf API 26 grün war. Das ist ein unabhängiges, schon vorher mögliches
@@ -120,7 +121,11 @@ wird nicht mit einem Retry kaschiert. Ein späterer Lauf reproduzierte das Muste
 im Animation-on-Job: Editor und Today erhielten durchgehend keinen Window-Fokus, während
 AllTasks ohne echte Activity-Interaktion weiterlief. Der gemeinsame Runner weckt und entsperrt
 das Gerät deshalb nun vor jeder UI-Instrumentierung explizit, statt implizit auf den Zustand des
-Emulator-Images zu vertrauen.
+Emulator-Images zu vertrauen. Nachdem dieser Startfokus stabil war, isolierten API 35 und 37 noch
+eine zweite Synchronisationslücke: Der Test sendete Back nach dem fachlichen Schließen des
+Löschdialogs, aber vor der abgeschlossenen Fokusübergabe vom Dialogfenster an die Activity. Der
+Dialogpfad verarbeitet Back während seines Fade-outs bereits selbst; für den nachfolgenden
+Activity-Pfad wartet der Gerätetest nun zusätzlich auf den tatsächlichen Window-Fokus.
 
 Für den lokalen Android-Nachweis war zunächst nur eine Java-21-JRE ohne Compiler verfügbar. Mit
 einem temporären vollständigen Temurin-21-JDK wurden anschließend der neue fokussierte

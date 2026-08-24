@@ -77,7 +77,8 @@ public final class TaskEditorInteractionInstrumentationTest {
             keep.performClick();
         });
         await("keep did not close delete prompt", () -> activity.prompt() == null
-                && activity.editorState().prompt == EditorUiState.Prompt.NONE);
+                && activity.editorState().prompt == EditorUiState.Prompt.NONE
+                && activity.hasWindowFocus());
         assertEquals(null, activity.deletedTaskId());
 
         pressHardwareBack();
