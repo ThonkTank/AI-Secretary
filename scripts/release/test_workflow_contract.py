@@ -249,6 +249,8 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertEqual(2, UPGRADE_RUNNER.count("\nverify_package_absent\n"))
         self.assertEqual(2, UPGRADE_RUNNER.count("\nstart_main_activity\n"))
         self.assertIn('*"Status: ok"*', UPGRADE_RUNNER)
+        self.assertIn('pm list packages "$package_name"', UPGRADE_RUNNER)
+        self.assertNotIn('pm path "$package_name"', UPGRADE_RUNNER)
 
     def test_change_scope_separates_quality_instrumentation_and_release(self):
         release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(

@@ -551,3 +551,39 @@ Paketabwesenheit vor der Neuinstallation und nach der Deinstallation; der Harnes
 Reihenfolge und beide Prüfungen. Weitere lokale Abkürzungen oder Scope-Vereinfachungen wurden
 nicht gefunden. Der Phasenabschluss bleibt bis zu grünen Remote-Matrizen, signierter
 API-37-Neuinstallation und -Upgrade, Veröffentlichung und Squash-Merge auf `main` offen.
+
+### Phase 2c – Nachtarbeitsphase: Vorprüfung und Reparaturplan
+
+Pull Request #260 bestand Quality, die breite Matrix und die Animationsmatrix auf API 26/35/37
+vollständig und wurde als `fcebab0b` per Squash nach `main` übernommen. Der Produktionslauf baute
+den signierten Kandidaten, stoppte aber auf allen drei Upgradegeräten innerhalb der ersten
+Paketabwesenheitsprüfung, noch bevor eine Installation ausgeführt wurde. Ursache ist ein falscher
+Shellvertrag: `pm path` meldet ein erwartungsgemäß fehlendes Paket mit Exitcode 1; `set -e`
+interpretierte gerade diesen sauberen Ausgangszustand als Fehler. App, APK, Signatur, Start und
+Upgradepfad wurden in diesen drei Jobs daher noch nicht erreicht.
+
+Die Reparatur bleibt eine kleine, eigene Nachtarbeitsphase ohne Produktänderung. Die
+Abwesenheitsprüfung wechselt auf `pm list packages` und wertet die exakte Paketzeile aus: Ein
+Transport- oder Shellfehler bleibt fatal, eine leere erfolgreiche Liste bedeutet abwesend und
+eine exakte Paketzeile bedeutet installiert. Der Harnesstest emuliert ausdrücklich, dass der alte
+`pm path`-Weg fehlschlagen würde, und sichert zweimal den neuen Aufruf. Danach müssen erneut
+CI-/Release-Vertragstests, Shell-Syntax, vollständiger PR, Squash-Merge und die gesamte
+Produktionskette einschließlich API 37 grün sein; eine bloße Wiederholung des gescheiterten Laufs
+wäre kein zulässiger Abschluss.
+
+### Phase 2c – Nachtarbeitsphase: Implementation und Gegencheck
+
+Die Paketabwesenheitsprüfung verwendet nun `pm list packages` mit dem exakten Paketnamen. Der
+Befehl selbst muss erfolgreich sein; nur seine leere Ausgabe gilt als abwesend, während die
+exakte `package:`-Zeile vor jeder Installation hart abbricht. Damit wird weder der erwartete
+„nicht installiert“-Zustand noch ein ADB-/Package-Manager-Fehler verschluckt. Der ausführbare
+Harnesstest belegt sowohl den vollständigen Erfolgsweg mit zwei Abwesenheitsprüfungen als auch den
+Negativweg, der ein bereits vorhandenes Paket vor dem ersten Installationsversuch stoppt. Der alte
+`pm path`-Aufruf ist zusätzlich statisch ausgeschlossen.
+
+Lokal bestanden 14 CI-Harnesstests, 22 Release-/Workflow-Vertragstests, Shell-Syntax und
+Diff-Whitespace-Prüfung. Der negative Abgleich fand keine weitere Statusmaskierung, keine
+Abschwächung von Neuinstallation, Start, Versionsprüfung oder Datenreadback und keine Änderung an
+Produktcode, Buildabhängigkeiten oder Roadmap-Scope. Eine weitere Nachtarbeitsunterteilung ist
+lokal nicht begründet. Abschlussbeleg bleiben ein grüner eigener Pull Request, Squash-Merge und
+der anschließend vollständig grüne Produktionslauf auf API 26/35/37 mit Veröffentlichung.
