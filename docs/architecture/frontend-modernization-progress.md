@@ -686,3 +686,47 @@ Tracker-Aktualisierung. Nur das erwartete positive Flow-Ereignis besitzt noch ei
 Fehlergrenze gegen einen tatsächlich hängenden Test. Weitere Scope-Vereinfachungen wurden nicht
 gefunden. Phase 3a ist lokal vollständig; ihr Abschluss bleibt der eigene grüne Pull Request, der
 Squash-Merge auf `main` und der daraus resultierende grüne Produktionslauf.
+
+### Phase 3a – Nachtarbeitsphase: deterministischer Room-Vertrag
+
+Pull Request #263 bestand Quality und beide Instrumentierungsmatrizen auf API 26/35/37 und wurde
+als `8ddb92ff` per Squash nach `main` übernommen. Der anschließende Produktionslauf scheiterte
+jedoch in Quality: `committedTransactionEmitsOnceAfterBothWrites` war auf dem frischen Runner
+nicht reproduzierbar grün; alle Geräte-, Paket-, Upgrade- und Publishjobs wurden korrekt gesperrt.
+Damit ist Phase 3a trotz des grünen PRs noch nicht abgeschlossen.
+
+Die Ursache liegt im Testaufbau. Er sammelte den neuen `createFlow` und registrierte parallel einen
+zweiten, alten `InvalidationTracker.Observer`, um eine exakte Callbackanzahl unmittelbar nach
+`refreshVersionsSync()` zu prüfen. Room zieht Datenbankänderungen jedoch auf einem anderen Thread;
+ein Observer darf deshalb in Race-Situationen auch Änderungen vor seiner Registrierung sehen.
+Zudem verspricht der bewusst mit `conflate()` begrenzte öffentliche Adapter keine Callbackanzahl,
+sondern einen neuen Ladeimpuls nach Invalidierung. Der Test prüfte somit eine stärkere und
+zeitabhängige Eigenschaft als der Produktionsvertrag.
+
+Die Nachtarbeit entfernt den konkurrierenden Legacy-Observer vollständig. Die echte
+In-Memory-Datenbank erhält direkte Test-Executors, sodass Invalidierungsarbeit und der
+`runBlocking`-Testplan deterministisch geordnet sind. Der Commit-Test belegt nur den relevanten
+Vertrag: Nach zwei Writes in derselben erfolgreichen Transaktion liefert der Flow `stats` und der
+zweite Wert ist persistiert. Der Rollback-Test lässt den Coroutine-Ereignisloop ohne Wanduhrzeit
+abarbeiten und belegt anschließend sowohl einen leeren Flow-Kanal als auch unveränderte Daten.
+Danach müssen isolierter Wiederholungstest, vollständige lokale Suite, eigener Pull Request,
+Squash-Merge und der komplette veröffentlichende `main`-Lauf erneut grün sein.
+
+### Phase 3a – Nachtarbeitsphase: Implementation und Gegencheck
+
+Der Room-Test verwendet nun für Query- und Transaktionsarbeit einen direkten Executor und sammelt
+ausschließlich `RoomInvalidationSource.changes`. Die Commit-Prüfung erwartet nach dem Ende der
+gemeinsamen Transaktion den `stats`-Impuls und liest den zweiten geschriebenen Wert zurück; sie
+behauptet keine durch `conflate()` ausdrücklich nicht garantierte Callbackanzahl mehr. Nach dem
+Rollback wird der `runBlocking`-Ereignisloop mit `yield()` ohne Wanduhrzeit abgearbeitet. Danach
+müssen der Flow-Kanal leer und die Stats-Zeile nicht vorhanden sein. Der parallele Legacy-Observer
+und `refreshVersionsSync()` sind vollständig entfernt.
+
+Der gezielte Room-Test bestand einmal nach vollständiger Neukompilierung und danach fünf weitere
+frische Wiederholungsläufe. Anschließend bestanden erneut 14 CI-Harnesstests, 22
+Release-/Workflow-Vertragstests und die vollständige App-Suite mit 429 Tests ohne Fehler (ein
+bewusst übersprungener Test), Lint sowie alle drei APK-Builds. Größen und Produktionscode sind
+gegenüber dem ersten 3a-Stand unverändert. Der negative Gegencheck findet weder zeitbasierte
+Abwesenheitsbehauptungen noch einen zweiten Beobachtungsmechanismus oder eine Abschwächung von
+Commit-/Rollbackgrenzen. Der endgültige Abschluss erfordert weiterhin einen eigenen grünen PR,
+Squash-Merge und den vollständig veröffentlichenden `main`-Lauf.
