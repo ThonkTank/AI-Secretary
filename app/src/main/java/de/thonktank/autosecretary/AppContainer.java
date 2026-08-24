@@ -5,7 +5,12 @@ import android.content.Context;
 
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.data.local.DatabaseFactory;
+import de.thonktank.autosecretary.data.local.RoomInvalidationSource;
 import de.thonktank.autosecretary.data.local.RoomTaskRepository;
+import de.thonktank.autosecretary.data.observable.AndroidMinuteTicker;
+import de.thonktank.autosecretary.data.observable.CalendarInvalidationSource;
+import de.thonktank.autosecretary.data.observable.ClockInvalidationSource;
+import de.thonktank.autosecretary.data.observable.PreferenceInvalidationSource;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
@@ -31,6 +36,7 @@ import de.thonktank.autosecretary.update.domain.UpdateTrustPolicy;
 
 public final class AppContainer {
     public final AppDatabase database;
+    public final RoomInvalidationSource databaseInvalidations;
     public final Clock clock;
     public final ZoneIdProvider zones;
     public final IdGenerator ids;
@@ -39,6 +45,9 @@ public final class AppContainer {
     public final TaskUseCases tasks;
     public final CalendarDataSource calendar;
     public final UiPreferences uiPreferences;
+    public final CalendarInvalidationSource calendarInvalidations;
+    public final PreferenceInvalidationSource preferenceInvalidations;
+    public final ClockInvalidationSource clockInvalidations;
     public final DashboardPresenter dashboardPresenter;
     public final UiTextProvider texts;
     public final AppExecutors executors;
@@ -58,12 +67,16 @@ public final class AppContainer {
         this.ids = ids;
         this.logger = logger;
         this.database = databases.create(app);
+        this.databaseInvalidations = new RoomInvalidationSource(database);
         this.taskRepository = new RoomTaskRepository(database);
         this.tasks = new TaskUseCases(taskRepository, clock, ids);
         this.uiPreferences = new UiPreferences(app, logger);
         this.texts = new AndroidUiTextProvider(app);
         this.calendar = new CalendarRepository(app, clock, zones,
                 uiPreferences::calendarPolicy, logger, texts);
+        this.calendarInvalidations = new CalendarInvalidationSource(calendar);
+        this.preferenceInvalidations = new PreferenceInvalidationSource(uiPreferences);
+        this.clockInvalidations = new ClockInvalidationSource(clock, new AndroidMinuteTicker());
         this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
                 tasks.materializeDue, new DashboardUiMapper(texts), tasks.applyComboDecay);
         this.executors = new AppExecutors();
