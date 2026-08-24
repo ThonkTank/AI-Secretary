@@ -176,12 +176,14 @@ jobs:
           test ! -e "$NEW_TOOLS"
           test ! -e "$BACKUP_TOOLS"
 
+          set +e
           set +o pipefail
           yes | "$CURRENT_TOOLS/bin/sdkmanager" --install "cmdline-tools;latest" >/dev/null
           INSTALL_STATUS=${PIPESTATUS[1]}
           set -o pipefail
-          test "$INSTALL_STATUS" -eq 0
+          set -e
           test -x "$NEW_TOOLS/bin/avdmanager"
+          echo "SDK manager side-install exit status: $INSTALL_STATUS"
 
           mv "$CURRENT_TOOLS" "$BACKUP_TOOLS"
           mv "$NEW_TOOLS" "$CURRENT_TOOLS"

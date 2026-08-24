@@ -108,6 +108,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("if: matrix.channel != 'stable'", animation_instrumentation)
         self.assertIn('cmdline-tools;latest', animation_instrumentation)
         self.assertIn('cmdline-tools/latest-2', animation_instrumentation)
+        self.assertIn('test -x "$NEW_TOOLS/bin/avdmanager"', animation_instrumentation)
         self.assertIn('test "$TOOLS_MAJOR" -ge 22', animation_instrumentation)
         self.assertIn("pre-emulator-launch-script: adb start-server", animation_instrumentation)
         self.assertIn("disable-animations: false", animation_instrumentation)
