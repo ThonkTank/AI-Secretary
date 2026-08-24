@@ -798,3 +798,103 @@ Java-21-App-Suite mit 435 Tests ohne Fehler (ein bewusst übersprungener Test), 
 Android-Test- und unsigned Release-APK. Die Größen betragen 8.776.812 Byte Debug, 653.541 Byte
 Android-Test, 6.356.834 Byte Release und 1.478.008 Byte Fonts. Phase 3b ist lokal vollständig; ihr
 Abschluss bleibt der eigene grüne PR, Squash-Merge und veröffentlichende `main`-Lauf.
+
+### Phase 3c – erneute Vorprüfung und weiterer Zuschnitt
+
+Release 0.2.118 (`forest-android-1011801`) veröffentlicht Phase 3b exakt aus dem grünen
+`main`-Commit `00a7bae1`. Alle vier Quellen sind weiterhin kalt und werden im Produkt noch nicht
+gesammelt. Der aktuelle Datenfluss besitzt deshalb unverändert drei manuelle Wahrheiten:
+
+- `TaskViewModel` und `AllTasksViewModel` laden nach eigenen Writes synchron auf ihren seriellen
+  Workern nach und veröffentlichen danach `catalogChanges` beziehungsweise `contentChanges`.
+  `MainActivity` übersetzt diese beiden Ereignisse wechselseitig in weitere Reads.
+- Vordergrund, Kalenderberechtigung und ein Activity-eigener, nicht an die Minutengrenze
+  ausgerichteter Handler erzeugen zusätzliche Dashboard-Reads.
+- Widgetupdates werden aus `TaskViewModel`, `MainActivity`, `TaskActionReceiver` und den bestehenden
+  Kalender-/Präferenzcallbacks angestoßen. `WidgetUpdateCoordinator` serialisiert zwar Zyklen,
+  kann aber einen bereits veralteten Read nicht zugunsten einer neueren Invalidierung abbrechen.
+
+Ein gemeinsamer 3c-PR wäre nicht kohärent reviewbar: Koordinationsprimitiven, zwei ViewModels,
+Activity-Lifecycle und RemoteViews würden gleichzeitig geändert. Phase 3c wird deshalb vor dem
+ersten Produktcode weiter geteilt:
+
+- **Phase 3c1** führt einen geteilten, zieltypisierten Invalidierungsstrom und eine schließbare
+  Latest-Read-Pipeline ein. Der Strom sammelt die vier kalten Quellen höchstens einmal, startet
+  nur mit mindestens einem Consumer und gibt jedem Consumer einen eigenen Initialimpuls. Race-
+  Tests belegen, dass ein neuer Impuls einen alten Read unterbricht, nur das neueste Ergebnis
+  veröffentlicht wird und ein Abbruch nicht als Fehler erscheint. Noch kein Produkt-Consumer
+  wird umgestellt.
+- **Phase 3c2** stellt Dashboard und Alles-Katalog gemeinsam auf diese Pipeline um. Bereits
+  gestartete Writes bleiben auf ihren seriellen Workern und werden nie von Read-Abbrüchen erfasst.
+  Erst nach Write-/Read-Race-Tests entfallen `catalogChanges`, `contentChanges`, die Activity-
+  Broker und tabgebundene Reloads.
+- **Phase 3c3** bindet Widgets an denselben Strom, bündelt überlappende Zyklen und entfernt danach
+  die verteilten Widgetinvalidierungen, den Activity-Minutentimer und die manuellen
+  Vordergrund-/Permission-Refreshs. Tagesgrenze, Vordergrundmaterialisierung, keine installierten
+  Widgets und Provider-Lifecycle werden eigenständig geprüft.
+
+### Phase 3c1 – Implementationsplan
+
+`PresentationInvalidationSource` führt Datenbank, Kalender, Anzeigepräferenzen, Kalenderpolicy
+und Uhr in einen einzigen `SharedFlow` zusammen. Ein Ereignis enthält Ursache, Zielmenge und – wo
+vorhanden – den bereits beobachteten Präferenz- oder Uhrwert. Zielgefilterte Flows für Dashboard,
+Katalog und Widgets erhalten nach dem Filter einen eigenen `INITIAL`-Impuls; so hängt der erste
+Read eines spät startenden Consumers nicht vom zuletzt geteilten Ereignis ab. `shareIn` verwendet
+`WhileSubscribed`, damit ohne Consumer weder Providerlistener noch Minutenticker laufen.
+
+`LatestReadPipeline<I, O>` besitzt einen eigenen, explizit schließbaren Coroutine-Scope. Sie
+verarbeitet Eingaben mit `collectLatest`, führt den synchronen Read unterbrechbar auf einem
+injizierten Read-Dispatcher aus und veröffentlicht erst nach erfolgreichem Abschluss. Eine
+Cancellation wird weitergereicht und niemals in den Fehlerkanal übersetzt. Deterministische
+Tests verwenden Barrieren statt Schlafzeiten und prüfen Initialimpulse je Ziel, genau eine
+Upstream-Subscription trotz mehrerer Consumer, Stop/Neustart sowie die Reihenfolge eines
+blockierten alten und eines schnellen neuen Reads. `AppContainer` montiert die Quelle noch nicht;
+damit bleibt 3c1 ein einzelner Vertrag ohne ungenutzten Application-Scope oder zweiten Reloadpfad.
+
+### Phase 3c1 – Implementation und Roadmap-Abgleich
+
+- `PresentationInvalidationSource` bildet die fünf beobachtbaren Ströme auf typisierte Ursachen
+  und die Zielmengen Dashboard, Katalog und Widgets ab. Ein einziger `shareIn`-Scope mit
+  `WhileSubscribed` verhindert vervielfachte Room-, Provider-, Preference- und Uhr-Collector.
+  Jeder Zielstrom liefert unabhängig vom gemeinsamen Verlauf zuerst seinen eigenen Initialimpuls.
+- Die Anmeldung am gemeinsamen Strom erfolgt vor der Freigabe dieses Initialimpulses. Die
+  Initialwerte der kalten Upstreams werden bewusst nicht verworfen: Sie bestätigen nach der
+  tatsächlichen Observer-Registrierung nochmals den aktuellen Stand und schließen so die Lücke
+  zwischen frühem Initial-Read und verspätetem Room-/Provider-Start. Spätere Ereignisse tragen
+  Tabellenmenge, Präferenzwert, Policy oder Uhrsnapshot bereits typisiert mit.
+- `LatestReadPipeline` verarbeitet Eingaben mit `collectLatest`, verschiebt synchrone Reads per
+  `runInterruptible` auf einen separaten Dispatcher und prüft vor der Veröffentlichung erneut die
+  aktive Generation. Cancellation wird weitergereicht und nicht als Fehler gemeldet. Quelle und
+  Pipeline sind explizit schließbar; Schließen beendet aktive Collector und unterbricht einen
+  blockierenden Read.
+- `AppContainer`, ViewModels, Activity, Widgets, DAOs, Writes und sichtbares Verhalten bleiben in
+  3c1 unverändert. Es existiert daher weiterhin genau der alte Produkt-Reloadpfad und noch kein
+  ungenutzter Application-Lifetime-Scope.
+
+Deterministische Tests sichern eine einzige Upstream-Subscription bei mehreren Ziel-Consumern,
+Stop und Neustart nach dem letzten Consumer, zielgenaue Ursachen und Payloads, einen unabhängigen
+Initialimpuls für spät startende Widgets sowie vollständiges Schließen. Zwei weitere Race-Tests
+blockieren den alten synchronen Read an einer Barriere: Eine neuere Eingabe beziehungsweise
+`close()` unterbricht ihn; nur das neue Ergebnis wird veröffentlicht und Cancellation bleibt aus
+dem Fehlerkanal. Ein echter Lesefehler wird gemeldet, ohne spätere Reads zu beenden. Es werden
+weder `sleep` noch kurze Negativzeitfenster verwendet; Zeitgrenzen dienen ausschließlich als
+Abbruch für tatsächlich hängende Tests.
+
+Der negative Gegencheck fand im ersten Entwurf zwei relevante Shortcuts. Zunächst wurden die
+Initialwerte der kalten Quellen entfernt, um einen Startburst zu vermeiden. Damit hätte eine
+Änderung zwischen dem ersten Consumer-Read und der tatsächlichen Upstream-Registrierung übersehen
+werden können. Die finale Fassung behält diese Bestätigungssignale und lässt `collectLatest` die
+überholten Start-Reads abbrechen. Außerdem stoppte `close()` anfangs nur den internen Sharing-
+Scope, nicht zwingend bereits sammelnde Ziel-Flows. Ein explizites Close-Signal beendet nun beide
+Seiten und ist getestet. Weitere Doppelzustände, aktive Parallelpfade oder veränderte
+Transaktionsgrenzen wurden nicht gefunden; eine gesonderte Nachtarbeitsphase ist für 3c1 deshalb
+nicht erforderlich.
+
+Lokal bestanden unter Java 21 die vollständige Suite mit 441 Tests ohne Fehler (ein bewusst
+übersprungener Test), Lint sowie Debug-, Android-Test- und unsigned Release-APK. Zusätzlich sind
+14 CI-Harnesstests und 22 Release-/Workflow-Vertragstests grün. Die APK-Größen betragen 8.776.812
+Byte Debug, 653.541 Byte Android-Test und 6.356.834 Byte Release; Produktabhängigkeiten, Schema 16
+und Fontbestand sind unverändert. Der erste lokale Vollversuch unter dem inzwischen systemweiten
+JDK 25 scheiterte global in Robolectrics ASM-Instrumentierung und wurde nicht als Produktfehler
+gewertet; der verbindliche Java-21-Lauf ist vollständig grün. Der Abschluss von 3c1 erfordert nun
+den eigenen grünen Pull Request, Squash-Merge und den veröffentlichenden `main`-Lauf.
