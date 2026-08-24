@@ -19,6 +19,9 @@ import android.content.Context;
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 import androidx.lifecycle.SavedStateHandle;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LifecycleRegistry;
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 
@@ -60,6 +63,7 @@ import org.robolectric.annotation.Config;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.AbstractExecutorService;
@@ -186,6 +190,35 @@ public final class PresentationStateRobolectricTest {
         worker.runNext();
         assertFalse(value().isRunning(new UiCommand(UiCommand.Kind.CREATE, "new")));
         assertEquals(1, repository.allTasks().size());
+    }
+
+    @Test public void refreshCompletesForTheRecreatedLifecycleOwnerWithoutDuplicateWork() {
+        ManualExecutor worker = new ManualExecutor();
+        AtomicInteger calendarLoads = new AtomicInteger();
+        viewModel = newViewModel(new SavedStateHandle(), worker, () -> { }, calendarLoads);
+        assertTrue(value().loading);
+        assertEquals(1, worker.pendingCount());
+
+        RecordingLifecycleOwner first = new RecordingLifecycleOwner();
+        List<Boolean> firstStates = new ArrayList<>();
+        viewModel.state().observe(first, state -> firstStates.add(state.loading));
+        assertEquals(Collections.singletonList(true), firstStates);
+
+        first.destroy();
+        RecordingLifecycleOwner recreated = new RecordingLifecycleOwner();
+        List<Boolean> recreatedStates = new ArrayList<>();
+        viewModel.state().observe(recreated, state -> recreatedStates.add(state.loading));
+
+        worker.runNext();
+
+        assertFalse(value().loading);
+        assertEquals(1, calendarLoads.get());
+        assertEquals(0, worker.pendingCount());
+        assertEquals(Collections.singletonList(true), firstStates);
+        assertTrue(recreatedStates.get(0));
+        assertFalse(recreatedStates.get(recreatedStates.size() - 1));
+        assertEquals(1, Collections.frequency(recreatedStates, false));
+        recreated.destroy();
     }
 
     @Test public void editorValidationErrorsStayInTypedEditorState() throws Exception {
@@ -436,6 +469,21 @@ public final class PresentationStateRobolectricTest {
         private final ArrayDeque<Runnable> pending = new ArrayDeque<>();
         @Override public void execute(Runnable command) { pending.add(command); }
         void runNext() { pending.remove().run(); }
+        int pendingCount() { return pending.size(); }
+    }
+
+    private static final class RecordingLifecycleOwner implements LifecycleOwner {
+        private final LifecycleRegistry lifecycle = new LifecycleRegistry(this);
+
+        RecordingLifecycleOwner() {
+            lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_CREATE);
+            lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_START);
+            lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_RESUME);
+        }
+
+        @Override public Lifecycle getLifecycle() { return lifecycle; }
+
+        void destroy() { lifecycle.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY); }
     }
 
     private static final class FixedClock implements Clock {

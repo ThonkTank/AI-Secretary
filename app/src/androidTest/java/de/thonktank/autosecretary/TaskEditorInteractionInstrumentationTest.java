@@ -15,6 +15,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.core.app.ActivityScenario;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -34,11 +35,13 @@ import java.util.function.BooleanSupplier;
 @RunWith(AndroidJUnit4.class)
 public final class TaskEditorInteractionInstrumentationTest {
     private TaskEditorInteractionHarnessActivity activity;
+    private ActivityScenario<TaskEditorInteractionHarnessActivity> scenario;
 
     @Before public void clearTrace() { PresentationTrace.clear(); }
 
     @After public void closeActivity() {
-        if (activity != null) activity.finish();
+        if (scenario != null) scenario.close();
+        else if (activity != null) activity.finish();
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
     }
 
@@ -117,15 +120,73 @@ public final class TaskEditorInteractionInstrumentationTest {
                 == EditorUiState.Page.TITLE);
     }
 
+    @Test public void recreationDuringTextInputRestoresTheLatestDraft() {
+        mount(EditorUiState.create(TaskSlot.MORNING));
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        instrumentation.runOnMainSync(() -> {
+            EditText title = activity.editor().findViewWithTag("task:title");
+            title.requestFocus();
+            title.setText("Recreation-sicher");
+        });
+        await("typed draft did not reach the state owner",
+                () -> "Recreation-sicher".equals(activity.editorState().title));
+
+        recreate();
+
+        await("recreated editor did not restore the typed draft", () -> {
+            EditText title = activity.editor().findViewWithTag("task:title");
+            return title != null && "Recreation-sicher".contentEquals(title.getText())
+                    && "Recreation-sicher".equals(activity.editorState().title);
+        });
+        assertEquals(0, activity.saveRequests());
+        assertEquals(0, activity.deleteRequests());
+        assertEquals(0, activity.dismissRequests());
+    }
+
+    @Test public void recreationDuringPageMotionRestoresThePublishedDestination() {
+        mount(validState());
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        instrumentation.runOnMainSync(() -> activity.editor()
+                .findViewById(R.id.task_editor_save).performClick());
+        assertEquals(EditorUiState.Page.SCHEDULE, activity.editorState().page);
+        boolean activeMotion = hasTrace("editor-motion", "page-start");
+        assertTrue("page transition did not start or settle", activeMotion
+                || hasTrace("editor-motion", "page-settled"));
+        if (activeMotion) assertFalse(
+                "page animation already ended before recreation was requested",
+                hasTrace("editor-motion", "page-end"));
+
+        recreate();
+
+        await("recreated editor did not restore the published page",
+                () -> activity.editorState().page == EditorUiState.Page.SCHEDULE
+                        && text(activity.editor(), activity.getString(
+                                R.string.editor_frage_rhythmus)) != null);
+        assertEquals(0, activity.saveRequests());
+        assertEquals(0, activity.deleteRequests());
+        assertEquals(0, activity.dismissRequests());
+    }
+
     private void mount(EditorUiState initial) {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         Intent intent = new Intent(instrumentation.getTargetContext(),
                 TaskEditorInteractionHarnessActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        activity = (TaskEditorInteractionHarnessActivity) instrumentation.startActivitySync(intent);
-        instrumentation.runOnMainSync(() -> activity.mount(initial));
+        scenario = ActivityScenario.launch(intent);
+        scenario.onActivity(value -> {
+            activity = value;
+            value.mount(initial);
+        });
         instrumentation.waitForIdleSync();
         await("editor window never received focus", activity::hasWindowFocus);
+    }
+
+    private void recreate() {
+        TaskEditorInteractionHarnessActivity previous = activity;
+        scenario.recreate();
+        scenario.onActivity(value -> activity = value);
+        await("editor activity was not recreated", () -> activity != previous
+                && activity.hasWindowFocus());
     }
 
     private void pressHardwareBack() {
@@ -150,6 +211,12 @@ public final class TaskEditorInteractionInstrumentationTest {
             if (found != null) return found;
         }
         return null;
+    }
+
+    private static boolean hasTrace(String owner, String kind) {
+        for (PresentationTrace.Event event : PresentationTrace.snapshot())
+            if (owner.equals(event.owner) && kind.equals(event.kind)) return true;
+        return false;
     }
 
     private static EditorUiState validState() {

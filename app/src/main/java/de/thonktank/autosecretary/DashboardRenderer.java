@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.ui.today.FocusCardUiModel;
@@ -94,21 +96,34 @@ public final class DashboardRenderer {
         for (int i = 0; i < leaves.size(); i++) {
             View leaf = leaves.get(i);
             float originalRotation = leaf.getRotation();
+            boolean[] completed = {false};
+            Runnable completeLeaf = () -> {
+                if (completed[0]) return;
+                completed[0] = true;
+                leaf.animate().setListener(null);
+                leaf.setTranslationX(0f);
+                leaf.setTranslationY(0f);
+                leaf.setRotation(originalRotation);
+                leaf.setAlpha(1f);
+                if (--remaining[0] == 0) {
+                    traceLeaves("editor-end", leaves.size());
+                    finished.run();
+                }
+            };
             leaf.animate().translationX(style.dp(motion.leafFlightXDp + i * 10))
                     .translationY(style.dp(motion.leafFlightYDp + i * 6))
                     .rotation(originalRotation + motion.leafFlightRotationDegrees).alpha(0f)
                     .setDuration(motion.leafFlightDurationMs)
                     .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
-                    .withEndAction(() -> {
-                        leaf.setTranslationX(0f);
-                        leaf.setTranslationY(0f);
-                        leaf.setRotation(originalRotation);
-                        leaf.setAlpha(1f);
-                        if (--remaining[0] == 0) {
-                            traceLeaves("editor-end", leaves.size());
-                            finished.run();
+                    .setListener(new AnimatorListenerAdapter() {
+                        @Override public void onAnimationCancel(Animator animation) {
+                            completeLeaf.run();
                         }
-                    });
+
+                        @Override public void onAnimationEnd(Animator animation) {
+                            completeLeaf.run();
+                        }
+                    }).start();
         }
     }
 

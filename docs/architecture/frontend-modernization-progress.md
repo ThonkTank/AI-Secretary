@@ -225,3 +225,80 @@ Damit lief die neue Signalsynchronisation auf allen in Phase 1a verbindlich gema
 ohne einen Fokus- oder Timeoutfehler zu verdecken. Nach der ausgeführten Nachtarbeit ist keine
 weitere Nacharbeitsphase erforderlich; vor dem Squash-Merge muss der um diesen Audit ergänzte Head
 denselben erforderlichen Gate erneut bestehen.
+
+Der Audit-Head bestand anschließend denselben vollständigen Gate erneut. Pull Request #256 wurde
+als `9cc7a92f` per Squash nach `main` übernommen; Phase 1b ist damit implementiert und benötigt als
+nicht sichtbarer Diagnose-/Testumbau keine physische UI-Abnahme.
+
+### Phase 1c – Vorprüfung
+
+- Ausgangspunkt: sauberer `main` auf `9cc7a92f`, identisch mit `origin/main`.
+- Der Editor-Debug-Host stellt bei Activity-Recreation noch keinen Draft wieder her; die drei
+  Gerätetests starten Activities außerdem über eine rohe Instrumentation-Referenz, die nach
+  Recreation auf die zerstörte Instanz zeigen würde.
+- `TaskViewModel` führt Refreshes in seinem Executor aus und bleibt bei normaler Activity-
+  Recreation erhalten. Ein Test mit kontrolliertem Executor und tatsächlich wechselndem
+  Lifecycle-Owner fehlt jedoch.
+- `MainActivity.openEditorWithFlight` veröffentlicht den neuen Editorzustand erst im End-Callback
+  der Dashboard-Animation. Damit löst Motion Navigation aus und eine Recreation während des
+  Flights kann den fachlichen Übergang verlieren.
+- `RewardAnimator` quittiert ViewModel-Effekte am Animationsende. Die Bestandsprüfung klassifiziert
+  dies als presentation-only FIFO-Fortschritt, nicht als Fachaktion, Navigation oder Persistenz;
+  eine vorgezogene Quittierung würde bei Recreation noch nicht abgespielte Rewards verlieren und
+  bleibt deshalb bis zum stabilen Reward-Cutover in Phase 8 unverändert.
+
+### Phase 1c – Implementationsplan
+
+Der `TaskViewModel` bleibt alleiniger Owner von Editor-, Refresh- und Reward-State. Für den
+Editorflight veröffentlicht `MainActivity` die Navigation sofort; `TaskEditorCoordinator` darf
+nur das visuelle Mounting bis zum Ende verzögern und verwirft bei Activity-Zerstörung jeden alten
+Presentation-Callback. Editorgerätetests verwenden `ActivityScenario`; der Debug-Host speichert
+und bindet ausschließlich den bereits vorhandenen `EditorUiState`, sodass Recreation während
+Texteingabe und laufender Page-Motion ohne zweite Wahrheit geprüft werden kann.
+
+Ein kontrollierter `TaskViewModel`-Test startet den echten asynchronen Refresh, zerstört den alten
+Lifecycle-Owner, bindet einen neuen an dasselbe ViewModel und schließt erst dann den Worker ab.
+Unit- und Architekturverträge sichern, dass kein Editor-Motion-Callback ViewModel-Navigation,
+Fachcommand oder Persistenz enthält; vorhandene andere End-Callbacks wurden einzeln als reine
+View-Bereinigung, Dekoration oder presentation-only Effektquittierung klassifiziert. Der
+bestehende Remote-Gate führt dieselben Editor-, Today- und AllTasks-Fachassertionen mit Animationen
+aus und bildet den abschließenden Runtimevergleich.
+
+### Phase 1c – Ergebnis und lokaler Nachaudit
+
+- Der Editorgerätetest verwendet nun `ActivityScenario`. Der Debug-Host serialisiert dabei keinen
+  zweiten Draft, sondern denselben versionierten `EditorUiState`, den auch der produktive
+  `SavedStateHandle` verwendet. Eigene Fälle recreaten während fokussierter Texteingabe und nach
+  veröffentlichtem Seitenwechsel bei noch aktiver Motion; Save, Delete und Dismiss bleiben null.
+- Ein kontrollierter Test führt den echten `TaskViewModel`-Initialrefresh mit nur einem
+  Workerauftrag aus, zerstört den ersten Lifecycle-Owner, bindet einen neuen an dasselbe retained
+  ViewModel und belegt genau einen Datenload sowie den finalen `loading=false`-Zustand nur beim
+  neuen Owner.
+- `MainActivity` veröffentlicht `openEditor` jetzt unmittelbar nach dem Tap und außerhalb jedes
+  Motion-Callbacks. `TaskEditorCoordinator` hält ausschließlich das visuelle Mounting zurück;
+  Recreation entsorgt den alten Callback, und ein Doppeltap kann nach dem veröffentlichten
+  Open-State keinen zweiten Übergang starten.
+- Abbruch und reguläres Ende jedes Dashboard-Flights laufen über dieselbe idempotente
+  Presentation-Vervollständigung. Damit kann eine abgebrochene View-Animation keinen bereits
+  geöffneten Editor dauerhaft unsichtbar lassen.
+- Lokale Nachweise mit Java 21: fokussierte State-, Motion- und Architekturtests,
+  AndroidTest-Kompilierung, anschließend die vollständigen 427 Unit-Tests, `lintDebug`,
+  `assembleDebug`, `assembleDebugAndroidTest` und `assembleRelease`. Alle 12 CI-Tooltests, alle 18
+  Release-/Workflow-Vertragstests und `git diff --check` sind grün.
+
+Der negative Audit verwarf zunächst einen geplanten Reward-Umbau: Sofortige Quittierung hätte
+eine lokale zweite FIFO benötigt und bei Recreation noch nicht dargestellte Rewards verlieren
+können. Da die bestehende Quittierung ausschließlich den Presentation-Effekt fortschaltet und
+weder Fachcommand noch Navigation oder Persistenz ist, blieb sie bewusst unverändert; der stabile
+Reward-Cutover gehört weiterhin Phase 8. Als blockierende Schwäche blieb dagegen der alte
+`withEndAction`-Pfad des Dashboard-Flights, weil Android ihn bei Cancel nicht zuverlässig ausführt.
+Die Nachtarbeitskorrektur behandelt End und Cancel einmalig und setzt nur Views zurück
+beziehungsweise schließt das visuelle Mounting ab.
+
+Der erste lokale Gesamtlauf meldete einmalig den unveränderten
+`AllTasksVirtualizationTest.contentRebindReusesTheExistingHolderChildHierarchy`. Der fokussierte
+Lauf auf unverändertem Code und die anschließende vollständige 427-Test-Wiederholung waren grün;
+der fachfremde Test wurde nicht abgeschwächt und der Remote-Workflow erhält keinen Retry. Lokal
+ist kein Emulator verfügbar, daher stehen die echten Recreation- und Animationsläufe auf API 26,
+35 und 37 noch im Remote-Gate aus. Weitere lokale Scope-Kürzungen, Doppelzustände oder notwendige
+Nacharbeitsphasen wurden nach der Cancel-Korrektur nicht identifiziert.

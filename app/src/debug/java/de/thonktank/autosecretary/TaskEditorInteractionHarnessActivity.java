@@ -11,15 +11,33 @@ import java.time.LocalTime;
 /** Debug-only on-device host for the task editor interaction contract. */
 public final class TaskEditorInteractionHarnessActivity extends Activity
         implements TaskEditorView.Listener {
+    private static final String EDITOR_STATE = "editor_state";
     private TaskEditorView editor;
     private EditorUiState state;
     private boolean dismissed;
     private String deletedTaskId;
+    private int saveRequests;
+    private int deleteRequests;
+    private int dismissRequests;
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         PresentationTrace.emit("editor-host", "create", "saved=" + (savedInstanceState != null));
         setContentView(new FrameLayout(this));
+        if (savedInstanceState != null) {
+            Bundle restored = savedInstanceState.getBundle(EDITOR_STATE);
+            if (restored != null) mount(EditorUiState.fromBundle(restored));
+        }
+    }
+
+    @Override protected void onSaveInstanceState(Bundle outState) {
+        if (state != null) outState.putBundle(EDITOR_STATE, state.toBundle());
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override protected void onDestroy() {
+        PresentationTrace.emit("editor-host", "destroy", "changing=" + isChangingConfigurations());
+        super.onDestroy();
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {
@@ -32,6 +50,9 @@ public final class TaskEditorInteractionHarnessActivity extends Activity
         state = initial;
         dismissed = false;
         deletedTaskId = null;
+        saveRequests = 0;
+        deleteRequests = 0;
+        dismissRequests = 0;
         editor = new TaskEditorView(this, this);
         setContentView(editor);
         editor.bind(initial, DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.LIGHT),
@@ -42,6 +63,9 @@ public final class TaskEditorInteractionHarnessActivity extends Activity
     public EditorUiState editorState() { return state; }
     public boolean dismissed() { return dismissed; }
     public String deletedTaskId() { return deletedTaskId; }
+    public int saveRequests() { return saveRequests; }
+    public int deleteRequests() { return deleteRequests; }
+    public int dismissRequests() { return dismissRequests; }
     public AlertDialog prompt() { return editor == null ? null : editor.promptForTest(); }
 
     @Override public void onBackPressed() {
@@ -50,7 +74,16 @@ public final class TaskEditorInteractionHarnessActivity extends Activity
     }
 
     @Override public void onDraftChanged(EditorUiState draft) { state = draft; }
-    @Override public void onSave(EditorUiState draft) { state = draft; }
-    @Override public void onDelete(String taskId) { deletedTaskId = taskId; }
-    @Override public void onDismiss() { dismissed = true; }
+    @Override public void onSave(EditorUiState draft) {
+        saveRequests++;
+        state = draft;
+    }
+    @Override public void onDelete(String taskId) {
+        deleteRequests++;
+        deletedTaskId = taskId;
+    }
+    @Override public void onDismiss() {
+        dismissRequests++;
+        dismissed = true;
+    }
 }
