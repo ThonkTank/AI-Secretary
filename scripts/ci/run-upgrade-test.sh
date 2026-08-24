@@ -38,9 +38,12 @@ verify_installed_version() {
 }
 
 verify_package_absent() {
-  local package_paths
-  package_paths=$(adb shell pm path "$package_name" | tr -d '\r')
-  test -z "$package_paths"
+  local installed_packages
+  installed_packages=$(adb shell pm list packages "$package_name" | tr -d '\r')
+  if printf '%s\n' "$installed_packages" | grep -Fxq "package:$package_name"; then
+    echo "Package is still installed: $package_name" >&2
+    exit 1
+  fi
 }
 
 start_main_activity() {
