@@ -15,6 +15,7 @@ import de.thonktank.autosecretary.UiCommand;
 import de.thonktank.autosecretary.UiEvent;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.TaskCatalog;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.TaskCatalogQuery;
@@ -28,10 +29,14 @@ import de.thonktank.autosecretary.domain.steps.StepTransferResult;
 import de.thonktank.autosecretary.domain.steps.StepSwapRequest;
 import de.thonktank.autosecretary.domain.steps.SwapTaskSteps;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
+import de.thonktank.autosecretary.presentation.observable.LatestReadPipeline;
+import de.thonktank.autosecretary.presentation.observable.PresentationInvalidation;
+import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
@@ -48,19 +53,19 @@ public final class AllTasksViewModel extends ViewModel {
     private final UiTextProvider texts;
     private final SavedStateHandle savedState;
     private final ExecutorService worker;
+    private final LatestReadPipeline<PresentationInvalidation, TaskCatalog> reads;
     private final AllTasksSavedStateAdapter savedStateAdapter = new AllTasksSavedStateAdapter();
     private final MutableLiveData<AllTasksUiState> state = new MutableLiveData<>();
     private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
-    private final MutableLiveData<Long> contentChanges = new MutableLiveData<>();
     private final Set<UiCommand> running = new LinkedHashSet<>();
     private final Object lock = new Object();
     private AllTasksUiState current;
-    private long changeVersion;
 
     public AllTasksViewModel(TaskCatalogQuery catalog, MoveScheduleEntry moveSchedule,
                       MoveTaskStep moveStep, SwapTaskSteps swapSteps, DeleteTask deleteTask,
                       UiTextProvider texts, SavedStateHandle savedState,
-                      ExecutorService worker) {
+                      ExecutorService worker, PresentationInvalidationSource invalidations,
+                      Executor collectionExecutor) {
         this.catalog = catalog;
         this.moveSchedule = moveSchedule;
         this.moveStep = moveStep;
@@ -73,28 +78,20 @@ public final class AllTasksViewModel extends ViewModel {
                 savedState.get(SAVED_PRESENTATION));
         current = AllTasksUiState.from(null, presentation);
         state.setValue(current);
-        reload();
+        if (collectionExecutor == null)
+            reads = LatestReadPipeline.reading(invalidations.getCatalogChanges(), worker,
+                    ignored -> catalog.execute(), this::publishCatalog,
+                    ignored -> events.postValue(UiEvent.error(
+                            texts.text(R.string.error_catalog_load))));
+        else
+            reads = LatestReadPipeline.reading(invalidations.getCatalogChanges(), worker,
+                    collectionExecutor, ignored -> catalog.execute(), this::publishCatalog,
+                    ignored -> events.postValue(UiEvent.error(
+                            texts.text(R.string.error_catalog_load))));
     }
 
     public LiveData<AllTasksUiState> state() { return state; }
     public LiveData<UiEvent> events() { return events; }
-    public LiveData<Long> contentChanges() { return contentChanges; }
-
-    public void reload() {
-        UiCommand key = new UiCommand(UiCommand.Kind.REFRESH, "catalog");
-        if (!begin(key)) return;
-        worker.execute(() -> {
-            try {
-                synchronized (lock) {
-                    current = current.withCatalog(catalog.execute());
-                    running.remove(key);
-                    state.postValue(current);
-                }
-            } catch (RuntimeException error) {
-                fail(key, texts.text(R.string.error_catalog_load));
-            }
-        });
-    }
 
     public void updateQuery(String value) {
         updateFilter(filter -> filter.withQuery(value));
@@ -154,10 +151,7 @@ public final class AllTasksViewModel extends ViewModel {
                     return;
                 }
                 synchronized (lock) {
-                    current = current.withCatalog(catalog.execute());
                     running.remove(key);
-                    state.postValue(current);
-                    contentChanges.postValue(++changeVersion);
                 }
             } catch (RuntimeException error) {
                 fail(key, texts.text(R.string.error_change_save));
@@ -200,6 +194,13 @@ public final class AllTasksViewModel extends ViewModel {
         events.postValue(UiEvent.error(message));
     }
 
+    private void publishCatalog(TaskCatalog value) {
+        synchronized (lock) {
+            current = current.withCatalog(value);
+            state.postValue(current);
+        }
+    }
+
     private void updateFilter(FilterChange change) {
         updatePresentation(presentation -> presentation.withFilter(
                 change.apply(presentation.filter)));
@@ -214,7 +215,10 @@ public final class AllTasksViewModel extends ViewModel {
         }
     }
 
-    @Override public void onCleared() { worker.shutdownNow(); }
+    @Override public void onCleared() {
+        reads.close();
+        worker.shutdown();
+    }
 
     private interface FilterChange { AllTasksFilter apply(AllTasksFilter filter); }
     private interface PresentationChange {
@@ -243,7 +247,8 @@ public final class AllTasksViewModel extends ViewModel {
             return (T) new AllTasksViewModel(container.tasks.loadTaskCatalog,
                     container.tasks.moveScheduleEntry, container.tasks.moveTaskStep,
                     container.tasks.swapTaskSteps, container.tasks.delete, container.texts,
-                    SavedStateHandleSupport.createSavedStateHandle(extras), workers.get());
+                    SavedStateHandleSupport.createSavedStateHandle(extras), workers.get(),
+                    container.presentationInvalidations, null);
         }
     }
 }

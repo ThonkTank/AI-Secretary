@@ -16,8 +16,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
@@ -50,7 +48,6 @@ public class MainActivity extends ComponentActivity {
     public static final String CONFIRM_TASK = "confirm_task";
     public static final String CONFIRM_TASK_TITLE = "confirm_task_title";
     public static final String OPEN_EDITOR = "open_editor";
-    private final Handler minuteHandler = new Handler(Looper.getMainLooper());
     private AppContainer container;
     private TaskViewModel viewModel;
     private AllTasksViewModel allTasksViewModel;
@@ -73,7 +70,6 @@ public class MainActivity extends ComponentActivity {
     private final ActivityResultLauncher<String> calendarPermission = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
                 syncCalendarPermission();
-                viewModel.refresh(DashboardRefreshReason.EXTERNAL_DATA);
             });
 
     private final ActivityResultLauncher<Intent> installPermission = registerForActivityResult(
@@ -132,16 +128,11 @@ public class MainActivity extends ComponentActivity {
                 container.texts, container.updateConfiguration.automaticChecksEnabled);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
-        viewModel.catalogChanges().observe(this, ignored -> allTasksViewModel.reload());
         allTasksViewModel.state().observe(this, value -> {
             allTasksState = value;
             if (uiState != null) render(uiState);
         });
         allTasksViewModel.events().observe(this, this::handleEvent);
-        allTasksViewModel.contentChanges().observe(this, ignored -> {
-            viewModel.load();
-            container.widgetUpdates.updateAll();
-        });
         viewModel.rewardEffects().observe(this, this::handleRewardEffects);
         updates.state().observe(this, this::renderUpdate);
         updates.effects().observe(this, updates::handleEffect);
@@ -155,7 +146,6 @@ public class MainActivity extends ComponentActivity {
         });
         handleLaunchIntent();
         syncCalendarPermission();
-        minuteHandler.post(minuteTick);
     }
 
     @Override protected void onResume() {
@@ -163,7 +153,7 @@ public class MainActivity extends ComponentActivity {
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "resume", "");
         if (viewModel != null) {
             syncCalendarPermission();
-            viewModel.refresh(DashboardRefreshReason.FOREGROUND);
+            container.clockInvalidations.materializeForeground();
         }
         if (updates != null) updates.onResume();
     }
@@ -182,16 +172,8 @@ public class MainActivity extends ComponentActivity {
     @Override protected void onDestroy() {
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "destroy", "");
         if (editorCoordinator != null) editorCoordinator.dispose();
-        minuteHandler.removeCallbacksAndMessages(null);
         super.onDestroy();
     }
-
-    private final Runnable minuteTick = new Runnable() {
-        @Override public void run() {
-            if (viewModel != null) viewModel.minuteChanged();
-            minuteHandler.postDelayed(this, 60_000L);
-        }
-    };
 
     private void buildShell() {
         UiStyle style = new UiStyle(this);
@@ -260,11 +242,7 @@ public class MainActivity extends ComponentActivity {
         if (PresentationTrace.enabled()) PresentationTrace.emit("dashboard", "render",
                 "navigation=" + state.navigation + " loading=" + state.loading
                         + " editorOpen=" + state.editor.open);
-        boolean enteringAll = uiState == null || uiState.navigation
-                != NavigationDestination.ALL_TASKS;
         uiState = state;
-        if (state.navigation == NavigationDestination.ALL_TASKS && enteringAll)
-            allTasksViewModel.reload();
         forest.setPalette(state.palette);
         header.bind(container.clock.time(), state.palette, state.dashboard.xpProgress);
         footer.bind(state.navigation, state.palette);
@@ -373,8 +351,11 @@ public class MainActivity extends ComponentActivity {
         if (viewModel == null) return;
         boolean granted = checkSelfPermission(Manifest.permission.READ_CALENDAR)
                 == PackageManager.PERMISSION_GRANTED;
-        viewModel.updateCalendarPermission(granted,
+        boolean changed = viewModel.updateCalendarPermission(granted,
                 shouldShowRequestPermissionRationale(Manifest.permission.READ_CALENDAR));
+        if (changed) {
+            container.calendarInvalidations.materializeExternalChange();
+        }
     }
 
     private void handleLaunchIntent() {

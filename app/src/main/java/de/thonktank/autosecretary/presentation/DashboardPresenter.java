@@ -43,7 +43,10 @@ public final class DashboardPresenter {
     }
 
     public TodayUiModel load() {
-        LocalDate today = clock.today();
+        return load(clock.today());
+    }
+
+    public TodayUiModel load(LocalDate today) {
         return mapper.map(loadDomain(today), today);
     }
 
@@ -66,8 +69,10 @@ public final class DashboardPresenter {
         return loadDomain(today);
     }
 
-    private boolean prepareDomain() {
+    public boolean prepare() {
         boolean changed = decay != null && decay.execute();
         return materializeDue.execute() || changed;
     }
+
+    private boolean prepareDomain() { return prepare(); }
 }

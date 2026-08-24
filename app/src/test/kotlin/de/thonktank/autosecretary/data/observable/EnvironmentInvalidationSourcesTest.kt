@@ -60,6 +60,22 @@ class EnvironmentInvalidationSourcesTest {
     }
 
     @Test
+    fun calendarFlowMaterializesPermissionChangesThroughTheSameSubscription() = runBlocking {
+        val calendar = FakeCalendarDataSource()
+        val source = CalendarInvalidationSource(calendar)
+        val emissions = source.changes.produceIn(this)
+
+        assertEquals(Unit, emissions.next())
+        assertEquals(1, calendar.observerCount)
+
+        source.materializeExternalChange()
+
+        assertEquals(Unit, emissions.next())
+        assertEquals(1, calendar.observerCount)
+        emissions.cancel()
+    }
+
+    @Test
     fun preferenceFlowsExposeDisplayAndCalendarPolicyChanges() = runBlocking {
         val preferences = UiPreferences(context, NoOpLogger)
         val source = PreferenceInvalidationSource(preferences)

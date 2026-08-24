@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.data.observable.ClockSnapshot
 import de.thonktank.autosecretary.data.observable.PreferenceInvalidationSource
 import de.thonktank.autosecretary.data.preferences.DisplayPreferences
 import java.io.Closeable
+import java.util.concurrent.Executor
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -16,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -86,6 +88,22 @@ class PresentationInvalidationSource internal constructor(
         sharingDispatcher = Dispatchers.Default,
     )
 
+    /** Deterministic Java-friendly construction for tests without changing source ownership. */
+    constructor(
+        databaseInvalidations: RoomInvalidationSource,
+        calendarInvalidations: CalendarInvalidationSource,
+        preferenceInvalidations: PreferenceInvalidationSource,
+        clockInvalidations: ClockInvalidationSource,
+        sharingExecutor: Executor,
+    ) : this(
+        databaseChanges = databaseInvalidations.changes,
+        calendarChanges = calendarInvalidations.changes,
+        displayPreferenceChanges = preferenceInvalidations.displayPreferences,
+        calendarPolicyChanges = preferenceInvalidations.calendarPolicy,
+        clockChanges = clockInvalidations.changes,
+        sharingDispatcher = sharingExecutor.asCoroutineDispatcher(),
+    )
+
     private val scope = CoroutineScope(SupervisorJob() + sharingDispatcher)
     private val closed = CompletableDeferred<Unit>()
     private val shared = merge(
@@ -141,6 +159,12 @@ class PresentationInvalidationSource internal constructor(
     val widgetChanges: Flow<PresentationInvalidation> = forTarget(
         PresentationInvalidationTarget.WIDGETS,
     )
+    /** Temporary 3c2b bridge; widget reads themselves move to this stream in 3c3. */
+    val widgetEnvironmentChanges: Flow<PresentationInvalidation> = widgetChanges.filter { event ->
+        event.cause == PresentationInvalidationCause.CALENDAR ||
+            event.cause == PresentationInvalidationCause.CALENDAR_POLICY ||
+            event.cause == PresentationInvalidationCause.DISPLAY_PREFERENCES
+    }
 
     private fun forTarget(
         target: PresentationInvalidationTarget,

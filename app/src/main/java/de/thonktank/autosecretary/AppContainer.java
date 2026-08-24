@@ -21,6 +21,7 @@ import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
+import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
 import de.thonktank.autosecretary.update.application.UpdateRepository;
 import de.thonktank.autosecretary.update.application.UpdateClock;
 import de.thonktank.autosecretary.update.application.UpdateConfiguration;
@@ -48,6 +49,7 @@ public final class AppContainer {
     public final CalendarInvalidationSource calendarInvalidations;
     public final PreferenceInvalidationSource preferenceInvalidations;
     public final ClockInvalidationSource clockInvalidations;
+    public final PresentationInvalidationSource presentationInvalidations;
     public final DashboardPresenter dashboardPresenter;
     public final UiTextProvider texts;
     public final AppExecutors executors;
@@ -77,6 +79,8 @@ public final class AppContainer {
         this.calendarInvalidations = new CalendarInvalidationSource(calendar);
         this.preferenceInvalidations = new PreferenceInvalidationSource(uiPreferences);
         this.clockInvalidations = new ClockInvalidationSource(clock, new AndroidMinuteTicker());
+        this.presentationInvalidations = new PresentationInvalidationSource(databaseInvalidations,
+                calendarInvalidations, preferenceInvalidations, clockInvalidations);
         this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
                 tasks.materializeDue, new DashboardUiMapper(texts), tasks.applyComboDecay);
         this.executors = new AppExecutors();

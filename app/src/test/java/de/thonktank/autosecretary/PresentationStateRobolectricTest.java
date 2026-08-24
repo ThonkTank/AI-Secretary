@@ -28,6 +28,10 @@ import androidx.test.core.app.ApplicationProvider;
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.data.local.RoomTaskRepository;
+import de.thonktank.autosecretary.data.local.RoomInvalidationSource;
+import de.thonktank.autosecretary.data.observable.CalendarInvalidationSource;
+import de.thonktank.autosecretary.data.observable.ClockInvalidationSource;
+import de.thonktank.autosecretary.data.observable.PreferenceInvalidationSource;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
@@ -49,6 +53,7 @@ import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
+import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import org.junit.After;
@@ -88,6 +93,8 @@ public final class PresentationStateRobolectricTest {
     private final RecordingLogger logger = new RecordingLogger();
     private final AtomicInteger ids = new AtomicInteger();
     private TaskViewModel viewModel;
+    private PresentationInvalidationSource invalidationSource;
+    private CalendarInvalidationSource calendarInvalidations;
     private final List<String> databaseQueries = new CopyOnWriteArrayList<>();
 
     @Before public void setUp() {
@@ -95,6 +102,8 @@ public final class PresentationStateRobolectricTest {
         context.deleteSharedPreferences("forest_ui");
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
                 .allowMainThreadQueries()
+                .setQueryExecutor(Runnable::run)
+                .setTransactionExecutor(Runnable::run)
                 .setQueryCallback((sql, arguments) -> databaseQueries.add(sql), Runnable::run)
                 .build();
         repository = new RoomTaskRepository(database);
@@ -107,6 +116,7 @@ public final class PresentationStateRobolectricTest {
 
     @After public void tearDown() {
         if (viewModel != null) viewModel.onCleared();
+        if (invalidationSource != null) invalidationSource.close();
         database.close();
         context.deleteSharedPreferences("forest_ui");
     }
@@ -179,7 +189,7 @@ public final class PresentationStateRobolectricTest {
     @Test public void duplicateCommandsAreIgnoredWhileTheFirstIsRunning() throws Exception {
         ManualExecutor worker = new ManualExecutor();
         viewModel = newViewModel(new SavedStateHandle(), worker);
-        worker.runNext();
+        worker.runAll();
         assertFalse(value().loading);
 
         EditorUiState draft = EditorUiState.create().withDraft("Einmal", TaskSlot.MORNING,
@@ -187,7 +197,7 @@ public final class PresentationStateRobolectricTest {
         viewModel.saveEditor(draft);
         viewModel.saveEditor(draft);
 
-        worker.runNext();
+        worker.runAll();
         assertFalse(value().isRunning(new UiCommand(UiCommand.Kind.CREATE, "new")));
         assertEquals(1, repository.allTasks().size());
     }
@@ -209,7 +219,7 @@ public final class PresentationStateRobolectricTest {
         List<Boolean> recreatedStates = new ArrayList<>();
         viewModel.state().observe(recreated, state -> recreatedStates.add(state.loading));
 
-        worker.runNext();
+        worker.runAll();
 
         assertFalse(value().loading);
         assertEquals(1, calendarLoads.get());
@@ -241,9 +251,8 @@ public final class PresentationStateRobolectricTest {
                         new TaskStepDefinition(null, 0, "Kniebeugen", 0,
                                 StepAmount.setsReps(3, 12), "")));
         tasks.create.execute(definition);
-        viewModel.load();
+        refreshDatabase();
         invalidations.set(0);
-        viewModel.load();
         assertEquals(0, invalidations.get());
         String stepId = value().dashboard.focus.steps.get(0).id;
 
@@ -265,6 +274,11 @@ public final class PresentationStateRobolectricTest {
         AtomicInteger invalidations = new AtomicInteger();
         viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(),
                 invalidations::incrementAndGet);
+        invalidations.set(0);
+
+        calendarInvalidations.materializeExternalChange();
+        assertEquals(1, invalidations.get());
+        invalidations.set(0);
         TodayUiModel dashboardBefore = value().dashboard;
 
         preferences.setFocusStepLimit(FocusStepLimit.THREE);
@@ -289,7 +303,7 @@ public final class PresentationStateRobolectricTest {
         viewModel = newViewModel(new SavedStateHandle());
         databaseQueries.clear();
 
-        viewModel.load();
+        calendarInvalidations.materializeExternalChange();
 
         long unfilteredTaskInventoryReads = databaseQueries.stream()
                 .map(value -> value.trim().toLowerCase(java.util.Locale.ROOT))
@@ -299,7 +313,7 @@ public final class PresentationStateRobolectricTest {
                 1L, unfilteredTaskInventoryReads);
     }
 
-    @Test public void todayReorderDoesNotReloadDashboardOrCalendarAndInvalidatesOnce() {
+    @Test public void todayReorderUsesOneRoomDrivenDashboardReadAndSkipsCalendar() {
         AtomicInteger calendarLoads = new AtomicInteger();
         AtomicInteger invalidations = new AtomicInteger();
         viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(),
@@ -310,7 +324,7 @@ public final class PresentationStateRobolectricTest {
                 new TaskStepDefinition(null, 0, "A", 0, StepAmount.none(), ""),
                 new TaskStepDefinition(null, 1, "B", 0, StepAmount.none(), ""),
                 new TaskStepDefinition(null, 2, "C", 0, StepAmount.none(), ""))));
-        viewModel.load();
+        refreshDatabase();
         List<de.thonktank.autosecretary.presentation.today.FocusStepUiModel> steps =
                 value().dashboard.focus.steps;
         String first = steps.get(0).id;
@@ -323,10 +337,11 @@ public final class PresentationStateRobolectricTest {
         assertEquals(0, calendarLoads.get());
         assertEquals(1, invalidations.get());
         assertEquals(first, value().dashboard.focus.steps.get(2).id);
-        assertTrue(databaseQueries.stream().noneMatch(sql -> sql.toLowerCase(
-                java.util.Locale.ROOT).contains(" from tasks")));
-        assertTrue(databaseQueries.stream().noneMatch(sql -> sql.toLowerCase(
-                java.util.Locale.ROOT).contains(" from task_schedule")));
+        long dashboardReads = databaseQueries.stream()
+                .map(sql -> sql.trim().toLowerCase(java.util.Locale.ROOT))
+                .filter(sql -> sql.equals("select * from tasks"))
+                .count();
+        assertEquals(1L, dashboardReads);
     }
 
     @Test public void completionReloadsOnlyTodayAndPreservesSiblingPresentationState() {
@@ -335,7 +350,7 @@ public final class PresentationStateRobolectricTest {
                 calendarLoads);
         tasks.create.execute(TaskDefinition.basic("Abschließen", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
-        viewModel.load();
+        refreshDatabase();
         viewModel.openEditor(null);
         preferences.setFocusStepLimit(FocusStepLimit.THREE);
         CalendarUiState calendarBefore = value().calendar;
@@ -355,9 +370,7 @@ public final class PresentationStateRobolectricTest {
 
     @Test public void managementViewModelOwnsCatalogAndRestoresOnlyThroughSavedStateAdapter() {
         SavedStateHandle handle = new SavedStateHandle();
-        AllTasksViewModel management = new AllTasksViewModel(tasks.loadTaskCatalog,
-                tasks.moveScheduleEntry, tasks.moveTaskStep, tasks.swapTaskSteps, tasks.delete,
-                new AndroidUiTextProvider(context), handle, new DirectExecutor());
+        AllTasksViewModel management = newAllTasksViewModel(handle);
 
         management.updateQuery("Gym");
         management.updateStatus(AllTasksUiState.Status.ALL);
@@ -382,9 +395,7 @@ public final class PresentationStateRobolectricTest {
         assertNotNull(management.state().getValue());
         management.onCleared();
 
-        AllTasksViewModel afterRotation = new AllTasksViewModel(tasks.loadTaskCatalog,
-                tasks.moveScheduleEntry, tasks.moveTaskStep, tasks.swapTaskSteps, tasks.delete,
-                new AndroidUiTextProvider(context), handle, new DirectExecutor());
+        AllTasksViewModel afterRotation = newAllTasksViewModel(handle);
         assertEquals("Gym", afterRotation.state().getValue().query);
         assertEquals(AllTasksUiState.Mode.SORT, afterRotation.state().getValue().mode);
         assertTrue(afterRotation.state().getValue().expandedCardKeys.contains(cardKey));
@@ -392,21 +403,35 @@ public final class PresentationStateRobolectricTest {
         afterRotation.onCleared();
     }
 
-    @Test public void managementCommandPublishesItsOwnCatalogAndTypedChangeResult() {
+    @Test public void managementCommandIsReprojectedThroughRoomWithoutABrokerSignal() {
         tasks.create.execute(TaskDefinition.basic("Sortieren", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
         de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
         String entryId = repository.scheduleEntries(task.id).get(0).id;
-        AllTasksViewModel management = new AllTasksViewModel(tasks.loadTaskCatalog,
-                tasks.moveScheduleEntry, tasks.moveTaskStep, tasks.swapTaskSteps, tasks.delete,
-                new AndroidUiTextProvider(context), new SavedStateHandle(), new DirectExecutor());
+        AllTasksViewModel management = newAllTasksViewModel(new SavedStateHandle());
 
         management.moveSchedule(new ScheduleMoveRequest(ScheduleEntryId.of(entryId),
                 TaskSlot.EVENING, java.util.Optional.empty()));
 
         assertEquals(TaskSlot.EVENING, repository.scheduleEntries(task.id).get(0).slot);
-        assertEquals(Long.valueOf(1L), management.contentChanges().getValue());
         assertEquals(TaskSlot.EVENING, management.state().getValue().schedule.get(0).slot);
+        management.onCleared();
+    }
+
+    @Test public void oneRoomWriteReprojectsDashboardAndCatalogWithoutCrossSignals() {
+        viewModel = newViewModel(new SavedStateHandle());
+        AllTasksViewModel management = newAllTasksViewModel(new SavedStateHandle());
+
+        tasks.create.execute(TaskDefinition.basic("Gemeinsame Wahrheit", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, Collections.emptyList()));
+        refreshDatabase();
+
+        assertTrue((value().dashboard.focus != null
+                        && "Gemeinsame Wahrheit".equals(value().dashboard.focus.title()))
+                || value().dashboard.timeline.stream().anyMatch(item -> item.task != null
+                        && "Gemeinsame Wahrheit".equals(item.task.title)));
+        assertTrue(management.state().getValue().tasks.stream()
+                .anyMatch(item -> "Gemeinsame Wahrheit".equals(item.task.title)));
         management.onCleared();
     }
 
@@ -439,8 +464,41 @@ public final class PresentationStateRobolectricTest {
                 return () -> { };
             }
         };
+        if (invalidationSource != null) invalidationSource.close();
+        calendarInvalidations = new CalendarInvalidationSource(calendar);
+        invalidationSource = new PresentationInvalidationSource(
+                new RoomInvalidationSource(database), calendarInvalidations,
+                new PreferenceInvalidationSource(preferences),
+                new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
         return new TaskViewModel(tasks, presenter, calendar, preferences, clock, logger,
-                new AndroidUiTextProvider(context), handle, worker, widgets);
+                new AndroidUiTextProvider(context), invalidationSource, handle, worker, widgets,
+                Runnable::run);
+    }
+
+    private AllTasksViewModel newAllTasksViewModel(SavedStateHandle handle) {
+        if (invalidationSource == null) {
+            CalendarDataSource calendar = new CalendarDataSource() {
+                @Override public CalendarResult loadToday() {
+                    return new CalendarResult.Success(Collections.emptyList());
+                }
+                @Override public Subscription observeChanges(Runnable observer) {
+                    return () -> { };
+                }
+            };
+            calendarInvalidations = new CalendarInvalidationSource(calendar);
+            invalidationSource = new PresentationInvalidationSource(
+                    new RoomInvalidationSource(database), calendarInvalidations,
+                    new PreferenceInvalidationSource(preferences),
+                    new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
+        }
+        return new AllTasksViewModel(tasks.loadTaskCatalog, tasks.moveScheduleEntry,
+                tasks.moveTaskStep, tasks.swapTaskSteps, tasks.delete,
+                new AndroidUiTextProvider(context), handle, new DirectExecutor(),
+                invalidationSource, Runnable::run);
+    }
+
+    private void refreshDatabase() {
+        database.getInvalidationTracker().refreshVersionsSync();
     }
 
     private DashboardUiState value() {
@@ -469,6 +527,11 @@ public final class PresentationStateRobolectricTest {
         private final ArrayDeque<Runnable> pending = new ArrayDeque<>();
         @Override public void execute(Runnable command) { pending.add(command); }
         void runNext() { pending.remove().run(); }
+        void runAll() {
+            int remaining = 100;
+            while (!pending.isEmpty() && remaining-- > 0) pending.remove().run();
+            if (!pending.isEmpty()) throw new AssertionError("Executor did not become idle");
+        }
         int pendingCount() { return pending.size(); }
     }
 
