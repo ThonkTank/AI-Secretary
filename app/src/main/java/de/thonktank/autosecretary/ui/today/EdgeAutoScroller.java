@@ -2,6 +2,8 @@ package de.thonktank.autosecretary.ui.today;
 
 import android.widget.ScrollView;
 
+import de.thonktank.autosecretary.PresentationTrace;
+
 /** Frame-driven edge scrolling whose speed does not depend on drag-event frequency. */
 public final class EdgeAutoScroller implements Runnable {
     public interface ScrollHost {
@@ -46,6 +48,7 @@ public final class EdgeAutoScroller implements Runnable {
                 : pointerY > viewportHeight - edgeSize ? 1 : 0;
         if (next == direction) return;
         direction = next;
+        traceValue("direction", direction);
         lastFrame = time.nowMillis();
         remainder = 0f;
         if (direction == 0) stopFrame();
@@ -55,6 +58,7 @@ public final class EdgeAutoScroller implements Runnable {
     public void stop() {
         direction = 0;
         remainder = 0f;
+        trace("stop", "");
         stopFrame();
     }
 
@@ -67,8 +71,21 @@ public final class EdgeAutoScroller implements Runnable {
         float distance = remainder + direction * pixelsPerSecond * elapsed / 1_000f;
         int pixels = (int) distance;
         remainder = distance - pixels;
-        if (pixels != 0) host.scrollBy(pixels);
+        if (pixels != 0) {
+            host.scrollBy(pixels);
+            traceValue("frame", pixels);
+        }
         scheduleFrame();
+    }
+
+    private static void trace(String kind, String detail) {
+        if (PresentationTrace.enabled())
+            PresentationTrace.emit("today-edge-scroll", kind, detail);
+    }
+
+    private static void traceValue(String kind, int value) {
+        if (PresentationTrace.enabled())
+            PresentationTrace.emit("today-edge-scroll", kind, "value=" + value);
     }
 
     private void scheduleFrame() {

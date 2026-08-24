@@ -107,6 +107,9 @@ public final class FocusStepListLayout extends ViewGroup {
         reorderModeListener.onReorderModeChanged(isReordering());
         setVisibility(model.task.steps.isEmpty() ? GONE : VISIBLE);
         requestLayout();
+        if (PresentationTrace.enabled()) PresentationTrace.emit("today-steps", "bind",
+                "rows=" + rowIds.size() + " reorder="
+                        + (reorder == null ? "none" : reorder.phase));
     }
 
     @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -197,10 +200,10 @@ public final class FocusStepListLayout extends ViewGroup {
 
     private boolean beginReorder(FocusStepRowView row, String stepId) {
         if (rowIds.size() < 2) return false;
-        actions.emit(TodayAction.beginReorder(stepId, rowIds));
+        emit(TodayAction.beginReorder(stepId, rowIds));
         ClipData data = ClipData.newPlainText("today-step", stepId);
         boolean started = row.startDragAndDrop(data, new View.DragShadowBuilder(row), stepId, 0);
-        if (!started) actions.emit(TodayAction.cancelReorder(stepId));
+        if (!started) emit(TodayAction.cancelReorder(stepId));
         return started;
     }
 
@@ -213,13 +216,13 @@ public final class FocusStepListLayout extends ViewGroup {
             return true;
         }
         if (event.getAction() == DragEvent.ACTION_DROP) {
-            actions.emit(TodayAction.dropReorder(stepId, beforeStepId(stepId)));
+            emit(TodayAction.dropReorder(stepId, beforeStepId(stepId)));
             if (autoScroller != null) autoScroller.stop();
             return true;
         }
         if (event.getAction() == DragEvent.ACTION_DRAG_ENDED) {
             if (autoScroller != null) autoScroller.stop();
-            if (!event.getResult()) actions.emit(TodayAction.cancelReorder(stepId));
+            if (!event.getResult()) emit(TodayAction.cancelReorder(stepId));
             return true;
         }
         return true;
@@ -227,7 +230,7 @@ public final class FocusStepListLayout extends ViewGroup {
 
     private void emitPreview(String stepId, int target) {
         List<String> preview = movedOrder(rowIds, stepId, target);
-        if (!preview.equals(rowIds)) actions.emit(TodayAction.previewReorder(stepId, preview));
+        if (!preview.equals(rowIds)) emit(TodayAction.previewReorder(stepId, preview));
     }
 
     private int targetIndex(float y) {
@@ -254,13 +257,19 @@ public final class FocusStepListLayout extends ViewGroup {
             target = rowIds.size() - 1;
         else return false;
         List<String> preview = movedOrder(rowIds, stepId, target);
-        actions.emit(TodayAction.beginReorder(stepId, rowIds));
-        actions.emit(TodayAction.previewReorder(stepId, preview));
+        emit(TodayAction.beginReorder(stepId, rowIds));
+        emit(TodayAction.previewReorder(stepId, preview));
         int movedIndex = preview.indexOf(stepId);
         String before = movedIndex + 1 < preview.size() ? preview.get(movedIndex + 1) : null;
-        actions.emit(TodayAction.dropReorder(stepId, before));
+        emit(TodayAction.dropReorder(stepId, before));
         announceForAccessibility(getContext().getString(R.string.a11y_today_step_moved));
         return true;
+    }
+
+    private void emit(TodayAction action) {
+        if (PresentationTrace.enabled())
+            PresentationTrace.emit("today-steps", "action", action.kind.name());
+        actions.emit(action);
     }
 
     private static List<String> movedOrder(List<String> source, String stepId, int target) {

@@ -71,6 +71,7 @@ public final class DashboardRenderer {
 
     public void animateEditorTransition(Runnable finished) {
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            trace("editor-settled", "animations=false");
             finished.run();
             return;
         }
@@ -83,9 +84,11 @@ public final class DashboardRenderer {
         if (leaves.isEmpty() && empty != null && empty.getVisibility() == View.VISIBLE)
             leaves.add(empty);
         if (leaves.isEmpty()) {
+            trace("editor-settled", "leaves=0");
             finished.run();
             return;
         }
+        traceLeaves("editor-start", leaves.size());
         final int[] remaining = {leaves.size()};
         MotionTokens motion = MotionTokens.standard();
         for (int i = 0; i < leaves.size(); i++) {
@@ -101,9 +104,22 @@ public final class DashboardRenderer {
                         leaf.setTranslationY(0f);
                         leaf.setRotation(originalRotation);
                         leaf.setAlpha(1f);
-                        if (--remaining[0] == 0) finished.run();
+                        if (--remaining[0] == 0) {
+                            traceLeaves("editor-end", leaves.size());
+                            finished.run();
+                        }
                     });
         }
+    }
+
+    private static void trace(String kind, String detail) {
+        if (PresentationTrace.enabled())
+            PresentationTrace.emit("dashboard-motion", kind, detail);
+    }
+
+    private static void traceLeaves(String kind, int count) {
+        if (PresentationTrace.enabled())
+            PresentationTrace.emit("dashboard-motion", kind, "leaves=" + count);
     }
 
     private void mount(NavigationDestination destination) {

@@ -3,12 +3,10 @@ package de.thonktank.autosecretary.ui.today;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import android.app.Instrumentation;
 import android.content.Intent;
 import android.graphics.Rect;
-import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestWatcher;
@@ -33,6 +32,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
 import de.thonktank.autosecretary.DayPalette;
+import de.thonktank.autosecretary.PresentationAwaiter;
+import de.thonktank.autosecretary.PresentationTrace;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.RepetitionInputState;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
@@ -53,13 +54,13 @@ import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 @RunWith(AndroidJUnit4.class)
 public final class TodayInteractionInstrumentationTest {
     private static final String TAG = "TodayGestureTest";
-    private static final long UI_TIMEOUT_MILLIS = 5_000L;
-    private static final long UI_POLL_MILLIS = 16L;
 
     private TodayInteractionHarnessActivity activity;
     private Harness currentHarness;
     private TouchGestureDriver currentGesture;
     private String currentGeometry = "geometry=not-initialized";
+
+    @Before public void clearTrace() { PresentationTrace.clear(); }
 
     @Rule public final TestWatcher failureDiagnostics = new TestWatcher() {
         @Override protected void failed(Throwable error, Description description) {
@@ -232,14 +233,9 @@ public final class TodayInteractionInstrumentationTest {
 
     private void awaitCondition(String message, BooleanSupplier condition) {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
-        long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MILLIS;
-        AtomicReference<Boolean> matched = new AtomicReference<>(false);
-        while (SystemClock.uptimeMillis() < deadline) {
-            instrumentation.runOnMainSync(() -> matched.set(condition.getAsBoolean()));
-            if (matched.get()) return;
-            SystemClock.sleep(UI_POLL_MILLIS);
-        }
-        fail(message + "\n" + diagnostics());
+        PresentationAwaiter.await(instrumentation, message + "\n" + diagnostics(), condition,
+                activity == null ? null : activity.getWindow().getDecorView(),
+                currentHarness == null ? null : currentHarness.list);
     }
 
     private void logPhase(String phase) {
@@ -251,7 +247,8 @@ public final class TodayInteractionInstrumentationTest {
                 : currentHarness.describe();
         String gesture = currentGesture == null ? "gesture=not-created"
                 : currentGesture.describe();
-        return currentGeometry + "\n" + gesture + "\n" + harness;
+        return currentGeometry + "\n" + gesture + "\n" + harness
+                + "\nPresentation trace:\n" + PresentationTrace.describe();
     }
 
     private static String point(int[] point) {
