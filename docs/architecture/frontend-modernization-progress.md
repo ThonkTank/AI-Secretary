@@ -132,5 +132,17 @@ einem temporären vollständigen Temurin-21-JDK wurden anschließend der neue fo
 Editor-Regressionslauf sowie `testDebugUnitTest`, `lintDebug`, `assembleDebug`,
 `assembleDebugAndroidTest` und `assembleRelease` erfolgreich ausgeführt. Der erste Gesamtlauf
 scheiterte nach grünen Unit-Tests einmalig an der DNS-Auflösung von Google Maven; nach bestätigter
-Erreichbarkeit bestand die unveränderte Wiederholung vollständig. Der aktualisierte Remote-Gate
-und die abschließende Nacharbeitsentscheidung stehen noch aus.
+Erreichbarkeit bestand die unveränderte Wiederholung vollständig. Nach der letzten
+Instrumentierungskorrektur kompilierten zusätzlich `compileDebugAndroidTestJavaWithJavac` und die
+Unit-Suite erneut erfolgreich.
+
+Der abschließende Remote-Gate von Pull Request #255 ist grün: Quality, die breite
+animationsfreie Instrumentierung auf API 26 und 35 sowie die gezielte Animation-on-Suite auf API
+26, 35 und 37 bestanden; API 37 führte dabei tatsächlich alle zehn Tests aus. Es wurden weder
+Retry noch neue Wartezeiten eingeführt. Der anfangs vermutete reine ADB-Startfehler erwies sich als
+unvollständige Diagnose und wurde nicht als dauerhafte Erklärung stehen gelassen; der
+minor-versionierte AVD-Fehler ist mit der eng auf Preview-Pakete begrenzten und explizit
+verifizierten Toolaktualisierung behoben. Die verbliebenen bestehenden 16-ms-Pollingschleifen,
+Lifecycle-Races und der fehlende Presentation Trace sind weiterhin sichtbar und gehören gemäß
+Originalroadmap zu Phase 1b. Weitere verdeckte Scope-Kürzungen oder fachliche Seiteneffekte fand
+der Nachaudit nicht; eine zusätzliche Nacharbeitsphase ist vor dem Squash-Merge nicht nötig.
