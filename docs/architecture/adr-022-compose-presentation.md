@@ -1,6 +1,7 @@
 # ADR-022: schrittweise Compose-Präsentationsarchitektur
 
-Status: angenommen  
+Status: angenommen
+
 Datum: 2026-08-24
 
 ## Kontext

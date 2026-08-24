@@ -1,8 +1,11 @@
 # Roadmap: robuste Compose-Präsentationsarchitektur
 
-Status: verbindlich  
-Beschlossen: 2026-08-24  
-Ausgangsstand: `e56ce330` (`forest-android-1011101`)  
+Status: verbindlich
+
+Beschlossen: 2026-08-24
+
+Ausgangsstand: `e56ce330` (`forest-android-1011101`)
+
 Ausgangsschema: Room 16
 
 ## Ziel und unveränderliche Grenzen
