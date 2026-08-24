@@ -34,25 +34,28 @@ import de.thonktank.autosecretary.domain.schedule.ScheduleMoveResult;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
+import de.thonktank.autosecretary.presentation.observable.DashboardInvalidationRouting;
+import de.thonktank.autosecretary.presentation.observable.LatestReadPipeline;
+import de.thonktank.autosecretary.presentation.observable.PresentationInvalidation;
+import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationCause;
+import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 
 import java.time.LocalTime;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
 public final class TaskViewModel extends ViewModel implements TodayCommandDispatcher.Handlers {
     private static final String NAVIGATION = "navigation";
     private static final String EDITOR = "editor";
-    private static final UiCommand REFRESH = new UiCommand(UiCommand.Kind.REFRESH, "today");
-
     private final TaskUseCases tasks;
     private final DashboardPresenter dashboard;
     private final CalendarDataSource calendar;
@@ -62,40 +65,35 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     private final UiTextProvider texts;
     private final WidgetInvalidator widgets;
     private final SavedStateHandle savedState;
-    private final CalendarDataSource.Subscription calendarSubscription;
-    private final UiPreferences.Subscription displayPreferencesSubscription;
     private final ExecutorService worker;
+    private final LatestReadPipeline<PresentationInvalidation, Content> contentReads;
+    private final LatestReadPipeline<PresentationInvalidation, Appearance> appearanceReads;
+    private final LatestReadPipeline<PresentationInvalidation, PresentationInvalidation>
+            widgetEnvironmentChanges;
     private final MutableLiveData<DashboardUiState> state = new MutableLiveData<>();
     private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
-    private final MutableLiveData<Long> catalogChanges = new MutableLiveData<>();
     private final RewardEffectQueue rewardQueue = new RewardEffectQueue();
     private final RepetitionInputReducer repetitionInputReducer = new RepetitionInputReducer();
     private final MutableLiveData<RewardEffectQueue.Snapshot> rewardEffects =
             new MutableLiveData<>(rewardQueue.snapshot());
     private final Object stateLock = new Object();
-    private final DashboardRefreshPolicy refreshPolicy = new DashboardRefreshPolicy();
     private final TodayCoordinator todayCoordinator;
     private DashboardUiState current;
     private LocalDate loadedDate;
-    private long catalogChangeVersion;
+    private UiThemeMode widgetThemeMode;
 
     TaskViewModel(AppContainer container, SavedStateHandle savedState, ExecutorService worker) {
         this(container.tasks, container.dashboardPresenter, container.calendar,
                 container.uiPreferences, container.clock, container.logger, container.texts,
-                savedState, worker, container.widgetUpdates::updateAll);
+                container.presentationInvalidations, savedState, worker,
+                container.widgetUpdates::updateAll, null);
     }
 
     TaskViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
                   UiPreferences preferences, Clock clock, AppLogger logger,
-                  UiTextProvider texts, SavedStateHandle savedState, ExecutorService worker) {
-        this(tasks, dashboard, calendar, preferences, clock, logger, texts, savedState,
-                worker, () -> { });
-    }
-
-    TaskViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
-                  UiPreferences preferences, Clock clock, AppLogger logger,
-                  UiTextProvider texts, SavedStateHandle savedState, ExecutorService worker,
-                  WidgetInvalidator widgets) {
+                  UiTextProvider texts, PresentationInvalidationSource invalidations,
+                  SavedStateHandle savedState, ExecutorService worker, WidgetInvalidator widgets,
+                  @Nullable Executor collectionExecutor) {
         this.tasks = tasks;
         this.dashboard = dashboard;
         this.calendar = calendar;
@@ -109,52 +107,48 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
         EditorUiState editor = EditorUiState.fromBundle(savedState.get(EDITOR));
         DisplayPreferences display = preferences.displayPreferences();
+        widgetThemeMode = display.themeMode;
         current = new DashboardUiState(navigation, TodayUiModel.empty(),
                 CalendarUiState.empty(), palette(display.themeMode),
-                CalendarPermissionStatus.UNKNOWN, false, Collections.emptySet(), editor,
+                CalendarPermissionStatus.UNKNOWN, true, Collections.emptySet(), editor,
                 RepetitionInputState.idle(), display.themeMode, display.focusStepLimit,
                 UpdateUiState.idle());
         todayCoordinator = new TodayCoordinator(current.dashboard,
                 new TodayCommandDispatcher(this), this::publishTodayFeatureState);
         state.setValue(current);
-        displayPreferencesSubscription = preferences.observeDisplayPreferences(
-                this::onDisplayPreferences);
-        calendarSubscription = calendar.observeChanges(this::calendarChanged);
-        refresh(DashboardRefreshReason.INITIAL);
+        DashboardInvalidationRouting routing = new DashboardInvalidationRouting(
+                invalidations, this::loadedDashboardDate);
+        if (collectionExecutor == null) {
+            contentReads = LatestReadPipeline.prepared(routing.getContentChanges(), worker,
+                    ignored -> prepareContent(), this::loadContent, this::publishContent,
+                    this::contentReadFailed);
+            appearanceReads = LatestReadPipeline.reading(routing.getAppearanceChanges(), worker,
+                    ignored -> loadAppearance(), this::publishAppearance,
+                    this::appearanceReadFailed);
+            widgetEnvironmentChanges = LatestReadPipeline.reading(
+                    invalidations.getWidgetEnvironmentChanges(), worker, value -> value,
+                    this::publishWidgetEnvironmentChange, this::widgetEnvironmentChangeFailed);
+        } else {
+            contentReads = LatestReadPipeline.prepared(routing.getContentChanges(), worker,
+                    collectionExecutor, ignored -> prepareContent(), this::loadContent,
+                    this::publishContent, this::contentReadFailed);
+            appearanceReads = LatestReadPipeline.reading(routing.getAppearanceChanges(), worker,
+                    collectionExecutor, ignored -> loadAppearance(), this::publishAppearance,
+                    this::appearanceReadFailed);
+            widgetEnvironmentChanges = LatestReadPipeline.reading(
+                    invalidations.getWidgetEnvironmentChanges(), worker, collectionExecutor,
+                    value -> value, this::publishWidgetEnvironmentChange,
+                    this::widgetEnvironmentChangeFailed);
+        }
         if (editor.open && editor.loading && editor.taskId != null) openEditor(editor.taskId);
     }
 
     LiveData<DashboardUiState> state() { return state; }
     LiveData<UiEvent> events() { return events; }
-    LiveData<Long> catalogChanges() { return catalogChanges; }
     LiveData<RewardEffectQueue.Snapshot> rewardEffects() { return rewardEffects; }
 
     void acknowledgeRewardEffect(String id) {
         rewardEffects.setValue(rewardQueue.acknowledge(id));
-    }
-
-    void load() {
-        refresh(DashboardRefreshReason.PERSISTED_CHANGE);
-    }
-
-    void refresh(DashboardRefreshReason reason) {
-        LocalDate today = clock.today();
-        synchronized (stateLock) {
-            if (!refreshPolicy.requiresLoad(reason, loadedDate, today)) return;
-        }
-        if (!begin(REFRESH, true)) return;
-        worker.execute(() -> {
-            try {
-                publishContent(REFRESH, loadContent(), false);
-            } catch (RuntimeException error) {
-                fail(REFRESH, texts.text(R.string.error_dashboard_load), error);
-            }
-        });
-    }
-
-    void minuteChanged() {
-        update(value -> value.withPalette(palette(value.themeMode)));
-        refresh(DashboardRefreshReason.DATE_CHANGED);
     }
 
     void updateUpdateState(UpdateUiState updateState) {
@@ -259,15 +253,11 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
             try {
                 if (draft.taskId == null) tasks.create.execute(draft.definition());
                 else tasks.update.execute(TaskId.of(draft.taskId), draft.definition());
-                catalogChanges.postValue(++catalogChangeVersion);
-                Content content = loadContent();
                 savedState.set(EDITOR, null);
                 synchronized (stateLock) {
                     Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
                     actions.remove(key);
-                    current = current.withContent(content.dashboard.withCalendar(
-                                    content.calendar.events()), CalendarUiState.from(content.calendar))
-                            .withRunningActions(actions).withEditor(EditorUiState.closed());
+                    current = current.withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
                 }
                 invalidateWidgets();
@@ -297,15 +287,11 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         worker.execute(() -> {
             try {
                 tasks.delete.execute(TaskId.of(taskId));
-                catalogChanges.postValue(++catalogChangeVersion);
-                Content content = loadContent();
                 savedState.set(EDITOR, null);
                 synchronized (stateLock) {
                     Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
                     actions.remove(key);
-                    current = current.withContent(content.dashboard.withCalendar(
-                                    content.calendar.events()), CalendarUiState.from(content.calendar))
-                            .withRunningActions(actions).withEditor(EditorUiState.closed());
+                    current = current.withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
                 }
                 invalidateWidgets();
@@ -318,7 +304,7 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         });
     }
 
-    void updateCalendarPermission(boolean granted, boolean showRationale) {
+    boolean updateCalendarPermission(boolean granted, boolean showRationale) {
         CalendarPermissionStatus permission;
         if (granted) permission = CalendarPermissionStatus.GRANTED;
         else if (!preferences.calendarPermissionAsked() || showRationale)
@@ -329,10 +315,7 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
             changed = current.calendarPermission != permission;
         }
         update(value -> value.withPermission(permission));
-        if (changed) {
-            refresh(DashboardRefreshReason.EXTERNAL_DATA);
-            invalidateWidgets();
-        }
+        return changed;
     }
 
     void onCalendarPermissionAction() {
@@ -463,7 +446,8 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         worker.execute(() -> {
             try {
                 action.run();
-                publishContent(key, loadContent(), true);
+                finishCommand(key);
+                invalidateWidgets();
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
             } catch (RuntimeException error) {
@@ -477,7 +461,8 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         worker.execute(() -> {
             try {
                 RewardReceipt result = action.run();
-                publishContent(key, loadContent(), true);
+                finishCommand(key);
+                invalidateWidgets();
                 RewardEffect effect = RewardEffect.from(result, key);
                 if (effect != null) rewardEffects.postValue(rewardQueue.enqueue(effect));
             } catch (IllegalArgumentException error) {
@@ -493,7 +478,8 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         worker.execute(() -> {
             try {
                 action.run();
-                publishToday(key, loadTodayProjection(), true);
+                finishTodayCommand(key);
+                invalidateWidgets();
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
             } catch (RuntimeException error) {
@@ -507,7 +493,8 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         worker.execute(() -> {
             try {
                 RewardReceipt receipt = action.run();
-                publishToday(key, loadTodayProjection(), true);
+                finishTodayCommand(key);
+                invalidateWidgets();
                 enqueueReward(receipt, key);
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
@@ -524,7 +511,8 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                 AdvanceTodayStepResult result = tasks.advanceTodayStep.execute(stepId);
                 boolean changed = result.status == AdvanceTodayStepResult.Status.PROGRESS_RECORDED
                         || result.status == AdvanceTodayStepResult.Status.STEP_COMPLETED;
-                publishToday(key, loadTodayProjection(), changed);
+                finishTodayCommand(key);
+                if (changed) invalidateWidgets();
                 enqueueReward(result.rewardReceipt, key);
             } catch (RuntimeException error) {
                 fail(key, texts.text(R.string.error_change_save), error);
@@ -537,7 +525,8 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         worker.execute(() -> {
             try {
                 StepExecutionResult result = action.run();
-                publishToday(key, loadTodayProjection(), result.changed());
+                finishTodayCommand(key);
+                if (result.changed()) invalidateWidgets();
                 enqueueReward(result.rewardReceipt, key);
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
@@ -573,25 +562,16 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         });
     }
 
-    private TodayProjection loadTodayProjection() {
-        DashboardPresenter.Refresh refresh = dashboard.refreshWithChanges();
-        List<CalendarEventSnapshot> eventsSnapshot;
-        synchronized (stateLock) {
-            eventsSnapshot = current.calendar.events;
-        }
-        return new TodayProjection(refresh.dashboard.withCalendar(eventsSnapshot),
-                refresh.persistedChanges, clock.today());
-    }
-
-    private void publishToday(UiCommand key, TodayProjection projection,
-                              boolean commandPersisted) {
-        todayCoordinator.rebind(projection.today);
-        finishTodayCommand(key);
-        loadedDate = projection.date;
-        if (commandPersisted || projection.persistedChanges) invalidateWidgets();
-    }
-
     private void finishTodayCommand(UiCommand key) {
+        synchronized (stateLock) {
+            Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
+            actions.remove(key);
+            current = current.withRunningActions(actions).withLoading(false);
+            state.postValue(current);
+        }
+    }
+
+    private void finishCommand(UiCommand key) {
         synchronized (stateLock) {
             Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
             actions.remove(key);
@@ -605,10 +585,23 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         if (effect != null) rewardEffects.postValue(rewardQueue.enqueue(effect));
     }
 
-    private Content loadContent() {
+    private Content loadContent(PresentationInvalidation invalidation) {
         LocalDate today = clock.today();
-        DashboardPresenter.Refresh refresh = dashboard.refreshWithChanges();
-        return new Content(refresh.dashboard, calendar.loadToday(), refresh.persistedChanges, today);
+        boolean dashboardOnly = invalidation.getCause() == PresentationInvalidationCause.DATABASE
+                && loadedDashboardDate() != null;
+        return new Content(dashboard.load(today), dashboardOnly ? null : calendar.loadToday(), today);
+    }
+
+    private void prepareContent() {
+        if (dashboard.prepare()) invalidateWidgets();
+    }
+
+    private Appearance loadAppearance() {
+        return new Appearance(preferences.displayPreferences(), clock.time());
+    }
+
+    private LocalDate loadedDashboardDate() {
+        synchronized (stateLock) { return loadedDate; }
     }
 
     private boolean begin(UiCommand key, boolean loading) {
@@ -623,22 +616,24 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         }
     }
 
-    private void publishContent(UiCommand key, Content content, boolean commandPersisted) {
-        TodayUiModel composed = content.dashboard.withCalendar(content.calendar.events());
+    private void publishContent(Content content) {
+        List<CalendarEventSnapshot> eventsSnapshot;
+        synchronized (stateLock) {
+            eventsSnapshot = content.calendar == null
+                    ? current.calendar.events : content.calendar.events();
+        }
+        TodayUiModel composed = content.dashboard.withCalendar(eventsSnapshot);
         todayCoordinator.rebind(composed);
         TodayFeatureState todayFeature = todayCoordinator.state();
         synchronized (stateLock) {
-            Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
-            actions.remove(key);
-            CalendarUiState calendarState = CalendarUiState.from(content.calendar);
-            current = current.withContent(composed, calendarState)
-                    .withTodayFeature(todayFeature)
-                    .withRunningActions(actions);
+            if (content.calendar == null)
+                current = current.withToday(composed).withTodayFeature(todayFeature);
+            else
+                current = current.withContent(composed, CalendarUiState.from(content.calendar))
+                        .withTodayFeature(todayFeature);
             loadedDate = content.date;
             state.postValue(current);
         }
-        if (commandPersisted || content.persistedChanges)
-            invalidateWidgets();
     }
 
     private void fail(UiCommand key, String message, RuntimeException error) {
@@ -650,6 +645,32 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
             state.postValue(current);
         }
         events.postValue(UiEvent.error(message));
+    }
+
+    private void contentReadFailed(Throwable error) {
+        logger.error("TaskViewModel", "Dashboard projection failed", error);
+        update(value -> value.withLoading(false));
+        events.postValue(UiEvent.error(texts.text(R.string.error_dashboard_load)));
+    }
+
+    private void appearanceReadFailed(Throwable error) {
+        logger.error("TaskViewModel", "Dashboard appearance projection failed", error);
+    }
+
+    private void publishWidgetEnvironmentChange(PresentationInvalidation change) {
+        if (change.getCause() == PresentationInvalidationCause.DISPLAY_PREFERENCES) {
+            DisplayPreferences display = change.getDisplayPreferences();
+            if (display == null) return;
+            synchronized (stateLock) {
+                if (widgetThemeMode == display.themeMode) return;
+                widgetThemeMode = display.themeMode;
+            }
+        }
+        invalidateWidgets();
+    }
+
+    private void widgetEnvironmentChangeFailed(Throwable error) {
+        logger.error("TaskViewModel", "Widget environment invalidation failed", error);
     }
 
     private void update(StateChange change) {
@@ -666,11 +687,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         }
     }
 
-    private void calendarChanged() {
-        refresh(DashboardRefreshReason.EXTERNAL_DATA);
-        invalidateWidgets();
-    }
-
     private void invalidateWidgets() {
         try {
             widgets.invalidate();
@@ -679,18 +695,20 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         }
     }
 
-    private void onDisplayPreferences(DisplayPreferences value) {
-        boolean themeChanged;
+    private void publishAppearance(Appearance appearance) {
         synchronized (stateLock) {
-            themeChanged = current.themeMode != value.themeMode;
-            current = current.withDisplayPreferences(value, palette(value.themeMode));
+            current = current.withDisplayPreferences(appearance.preferences,
+                    palette(appearance.preferences.themeMode, appearance.time));
             state.postValue(current);
         }
-        if (themeChanged) invalidateWidgets();
     }
 
     private DayPalette palette(UiThemeMode mode) {
-        return DayPalette.at(clock.time(), DayPalette.Mode.valueOf(mode.name()));
+        return palette(mode, clock.time());
+    }
+
+    private static DayPalette palette(UiThemeMode mode, LocalTime time) {
+        return DayPalette.at(time, DayPalette.Mode.valueOf(mode.name()));
     }
 
     private static NavigationDestination restoredNavigation(String stored) {
@@ -718,9 +736,10 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     }
 
     @Override protected void onCleared() {
-        calendarSubscription.close();
-        displayPreferencesSubscription.close();
-        worker.shutdownNow();
+        contentReads.close();
+        appearanceReads.close();
+        widgetEnvironmentChanges.close();
+        worker.shutdown();
     }
 
     interface Action { void run(); }
@@ -731,26 +750,21 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     private static final class Content {
         final TodayUiModel dashboard;
         final CalendarResult calendar;
-        final boolean persistedChanges;
         final LocalDate date;
-        Content(TodayUiModel dashboard, CalendarResult calendar, boolean persistedChanges,
-                LocalDate date) {
+        Content(TodayUiModel dashboard, CalendarResult calendar, LocalDate date) {
             this.dashboard = dashboard;
             this.calendar = calendar;
-            this.persistedChanges = persistedChanges;
             this.date = date;
         }
     }
 
-    private static final class TodayProjection {
-        final TodayUiModel today;
-        final boolean persistedChanges;
-        final LocalDate date;
+    private static final class Appearance {
+        final DisplayPreferences preferences;
+        final LocalTime time;
 
-        TodayProjection(TodayUiModel today, boolean persistedChanges, LocalDate date) {
-            this.today = today;
-            this.persistedChanges = persistedChanges;
-            this.date = date;
+        Appearance(DisplayPreferences preferences, LocalTime time) {
+            this.preferences = preferences;
+            this.time = time;
         }
     }
 

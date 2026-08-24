@@ -54,6 +54,30 @@ public final class ArchitectureBoundaryTest {
         assertTrue(activity.contains("viewModel::dispatchToday"));
     }
 
+    @Test public void screensShareInvalidationsWithoutActivityBrokerOrManualReloads()
+            throws Exception {
+        String activity = read(main("MainActivity.java"));
+        String dashboard = read(main("TaskViewModel.java"));
+        String catalog = read(main("presentation/alltasks/AllTasksViewModel.java"));
+        String container = read(main("AppContainer.java"));
+
+        for (String removed : new String[]{"catalogChanges()", "contentChanges()",
+                "minuteHandler", "allTasksViewModel.reload()", "viewModel.load()",
+                "viewModel.refresh("})
+            assertFalse("manual broker remains: " + removed, activity.contains(removed));
+        assertFalse(dashboard.contains("observeDisplayPreferences("));
+        assertFalse(dashboard.contains("calendar.observeChanges("));
+        assertFalse(dashboard.contains("shutdownNow()"));
+        assertFalse(catalog.contains("shutdownNow()"));
+        assertTrue(container.contains("PresentationInvalidationSource presentationInvalidations"));
+        assertTrue(activity.contains("clockInvalidations.materializeForeground()"));
+        assertTrue(activity.contains("calendarInvalidations.materializeExternalChange()"));
+        assertFalse(catalog.contains("current.withCatalog(catalog.execute())"));
+        assertTrue(dashboard.indexOf("contentReads.close()")
+                < dashboard.indexOf("worker.shutdown()"));
+        assertTrue(catalog.indexOf("reads.close()") < catalog.indexOf("worker.shutdown()"));
+    }
+
     @Test public void motionCallbacksCannotOwnEditorNavigation() throws Exception {
         String activity = read(main("MainActivity.java"));
         String open = activity.substring(activity.indexOf("private void openEditorWithFlight()"),

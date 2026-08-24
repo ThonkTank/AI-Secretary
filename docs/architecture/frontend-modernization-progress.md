@@ -1002,3 +1002,115 @@ Wiederholungen der neuen Race- und Routingtests blieben deterministisch. Die APK
 8.776.812 Byte Debug, 653.541 Byte Android-Test und 6.373.218 Byte unsigned Release; der
 Fontbestand bleibt mit 1.478.008 Byte unverändert. Der Abschluss von 3c2a erfordert nun den
 eigenen grünen Pull Request, Squash-Merge und den veröffentlichenden `main`-Lauf.
+
+### Phase 3c2a – Remote-Abschluss
+
+Pull Request #267 bestand Quality sowie breite und animationsaktive Instrumentierung auf API
+26/35/37 und wurde als `67df90f3` per Squash nach `main` übernommen. Der Produktionslauf
+`32783240295` bestand erneut Quality, beide Instrumentierungsmatrizen, signierte Paketierung sowie
+Neuinstallation und echtes Upgrade auf allen drei API-Stufen. Release 0.2.120
+(`forest-android-1012001`) veröffentlicht APK und Metadaten exakt aus
+`67df90f38feba3876e018d42465c4435b6f954a3`. Damit ist der vorbereitete Read-Vertrag vollständig
+abgeschlossen.
+
+### Phase 3c2b – erneute Vorprüfung und Implementationsplan
+
+Die erneute Sichtung von Roadmap und Merge-Stand bestätigt den gemeinsamen Screen-Cutover. Eine
+weitere Teilung würde entweder Dashboard und Katalog noch über Activity-Signale koppeln oder
+neue Invalidierungen parallel zu manuellen Reloads betreiben. Beides widerspräche dem Vertrag
+einer einzigen Wahrheit. 3c2b bleibt deshalb ein kohärenter Themenbranch für `AppContainer`,
+beide ViewModels und die zugehörige Activity-Verdrahtung; Widgets werden zwar weiterhin aus den
+alten Produktstellen angestoßen, sammeln den neuen Widgetstrom aber erst in 3c3.
+
+`AppContainer` montiert genau eine `PresentationInvalidationSource` über die in 3a/3b eingeführten
+kalten Quellen. `TaskViewModel` filtert sie über `DashboardInvalidationRouting`: Die Content-
+Pipeline materialisiert Fälligkeiten und Combo-Verfall auf ihrem seriellen Executor in der nicht
+abbrechbaren Vorbereitung. Danach liest sie Dashboard und Kalender rein und interruptible; nur
+das neueste Ergebnis wird atomar publiziert. Eine getrennte Appearance-Pipeline liest aktuelle
+Anzeigepräferenzen und Uhrzeit, ändert ausschließlich Präferenz- und Palettenzustand und kann
+einen laufenden Content-Read weder abbrechen noch ersetzen. Der geladene Tag wird unter demselben
+State-Lock wie der Screen State gelesen und publiziert.
+
+`AllTasksViewModel` sammelt den gemeinsamen Katalogstrom in einer eigenen Latest-Read-Pipeline.
+Erfolgreiche Dashboard-, Editor- und Katalogcommands führen nach dem seriellen Write keinen
+direkten DAO-Read mehr aus und senden kein ViewModel-Signal; sie schließen nur Running-, Editor-,
+Today- oder Rewardzustand ab. Die Room-Invalidierung startet danach beide erforderlichen
+Projektionen. Vorbereitung und Commands teilen absichtlich denselben seriellen Executor. Beim
+Clearing werden erst beide Pipelines geschlossen und aktive Reads abgebrochen, danach wird der
+Executor geordnet per `shutdown()` geschlossen; ein gestarteter Write oder eine gestartete
+Vorbereitung wird nie per `shutdownNow()` unterbrochen.
+
+`MainActivity` entfernt `catalogChanges`, `contentChanges`, den Reload beim Eintritt in den
+Alles-Tab und ihren eigenen 60-Sekunden-Handler. `onResume()` materialisiert nur noch den
+gemeinsamen Clock-Foregroundimpuls. Ein tatsächlich geänderter Kalenderberechtigungsstatus
+materialisiert einen expliziten Impuls in `CalendarInvalidationSource`; das ViewModel selbst
+aktualisiert dabei ausschließlich seinen Permission-Screen-State. Die bis 3c3 noch nötige
+RemoteViews-Aktualisierung bleibt an diesem Übergang sichtbar, erzeugt aber keinen zweiten
+Screen-Read.
+
+Die Nachweise umfassen automatische Screen-Aktualisierung nach realen Room-Writes ohne Broker,
+Latest-Wins bei konkurrierenden Projektionen, nicht abbrechbare Vorbereitung, getrennte
+Appearance-Aktualisierung, Tagesgrenze und Foreground, Permissionmaterialisierung, geordnetes
+Clearing sowie die Abwesenheit aller vier alten Activity-/ViewModel-Signale. Bestehende
+Editor-, Today-, Alles-, Lifecycle-, Animations- und Upgradeverträge bleiben Teil des vollen
+Gates; Schema, DAO-API, visuelle Baselines und Produktverhalten ändern sich nicht.
+
+### Phase 3c2b – Implementation und Roadmap-Abgleich
+
+- `AppContainer` besitzt nun genau eine `PresentationInvalidationSource`. Dashboard und
+  Alles-Katalog sammeln zielgefilterte Flows daraus; `catalogChanges`, `contentChanges`, beide
+  manuellen Reloadmethoden, die Activity-Broker, der tabgebundene Alles-Reload und der Activity-
+  Minutentimer sind entfernt.
+- Die Dashboard-Content-Pipeline führt `DashboardPresenter.prepare()` nicht abbrechbar auf dem
+  seriellen ViewModel-Executor aus und liest danach die reine Projektion interruptible. Bei einer
+  reinen Room-Invalidierung nach bereits geladenem Screen wird nur Today neu gelesen und der
+  vorhandene Kalenderzustand atomar beibehalten. Kalender-, Policy-, Tages- und Foregroundimpulse
+  lesen beide Projektionen. Appearance besitzt eine unabhängige Latest-Pipeline und verändert nur
+  Displaypräferenzen und Palette.
+- Dashboard- und Katalogcommands lesen nach einem erfolgreichen Write nicht mehr selbst aus den
+  DAOs. Sie schließen Running-, Editor-, Today- und Rewardzustand auf ihrer seriellen Queue ab;
+  Room treibt anschließend beide Projektionen. `onCleared()` schließt zuerst alle Pipelines und
+  verwendet danach ausschließlich `shutdown()`, sodass aktive Reads abbrechen, gestartete Writes
+  und Vorbereitungen aber nicht auf Betriebssystemebene unterbrochen werden.
+- `MainActivity.onResume()` materialisiert den gemeinsamen Clock-Foregroundimpuls. Eine tatsächlich
+  geänderte Kalenderberechtigung materialisiert `CalendarInvalidationSource` und aktualisiert im
+  ViewModel nur den typisierten Permissionzustand. Der Kalenderadapter hält weiterhin genau eine
+  Provider-Subscription pro gemeinsamem Upstream.
+
+Der negative Gegencheck fand zwei relevante Übergangsrisiken. Zunächst wurde Collection im
+Java-Testadapter versuchsweise auf denselben seriellen Executor wie Vorbereitung und Read gelegt.
+Eine dort blockierte Vorbereitung verhinderte dann, dass `collectLatest` die neuere Invalidierung
+überhaupt entgegennehmen konnte. Die finale Fassung trennt Collection wieder strikt vom
+besitzenden Work-Executor; ein deterministischer Test lässt die alte Vorbereitung enden, verwirft
+deren Read und publiziert nur die neue Generation.
+
+Außerdem hätten mit dem Entfernen der direkten Kalender-/Preference-Observer Provider- und
+Policyänderungen bis 3c3 zwar den Screen, nicht aber RemoteViews erreicht. Eine eng begrenzte
+Übergangsbrücke sammelt deshalb denselben geteilten Widget-Zielstrom nur für Kalender,
+Kalenderpolicy und echte Themewechsel. Sie startet keinen Widget-Read, ignoriert reine Focus-
+Preference- und Clock-Ereignisse und überlappt nicht mit den bis 3c3 verbleibenden manuellen
+Datenbank-Write-Invalidierungen. Ein Permission-/Kalenderimpuls und ein Themewechsel erzeugen
+jeweils genau eine Widgetinvalidierung; ein Focus-Limit-Wechsel keine. Die vollständige
+Widget-Read-Pipeline, installierte-Widget-Erkennung und Entfernung der letzten manuellen
+Writepfade bleiben unverändert der kohärente Scope von 3c3.
+
+Produktnahe Robolectric-Tests verwenden eine echte In-Memory-Room-Datenbank und denselben
+gemeinsamen Quellenverbund wie die App. Ein einzelner Room-Write reprojectet Dashboard und
+Alles-Katalog ohne Cross-Signal; Managementwrites lesen ihren Katalog nicht direkt zurück.
+Lifecycle-Recreation übernimmt die laufende Initialprojektion ohne doppelte Arbeit, reine
+Room-Today-Updates überspringen weiterhin den Kalenderprovider, und Architekturtests sichern die
+Abwesenheit der entfernten Broker sowie die Reihenfolge Pipeline-Close vor geordnetem Shutdown.
+Nach diesen Korrekturen findet der erneute Gegencheck keine parallele Screen-Wahrheit, keine
+veränderte Transaktionsgrenze und keinen fehlenden blockierenden Nachweis. Eine gesonderte
+Nachtarbeitsphase ist für 3c2b daher derzeit nicht erforderlich; verbindlich bleibt der volle
+lokale und entfernte Gate.
+
+Lokal bestanden unter Java 21 die vollständige Suite mit 449 Tests ohne Fehler (ein bewusst
+übersprungener Test), Lint sowie Debug-, Android-Test- und unsigned Release-APK. Die 14
+CI-Harnesstests und 22 Release-/Workflow-Vertragstests sind ebenfalls grün. Fünf frische Läufe
+der Screen-, Quellen-, Routing-, Pipeline- und Architekturtests bestanden jeweils aus geleertem
+Testoutput ohne Race-Ausfall. Die APK-Größen betragen 8.777.100 Byte Debug, 653.541 Byte
+Android-Test und 6.373.218 Byte unsigned Release; der Fontbestand bleibt mit 1.478.008 Byte
+unverändert. Schema 16, Signatur-, Upgrade- und visuelle Verträge wurden nicht geändert. Der
+Abschluss von 3c2b erfordert nun den eigenen grünen Pull Request, Squash-Merge und den
+veröffentlichenden `main`-Lauf.

@@ -86,13 +86,79 @@ class LatestReadPipeline<I, O> @JvmOverloads constructor(
             read: LatestRead<I, O>,
             publish: LatestReadPublication<O>,
             failure: LatestReadFailure,
+        ): LatestReadPipeline<I, O> {
+            val dispatcher = preparationExecutor.asCoroutineDispatcher()
+            return LatestReadPipeline(
+                inputs = inputs,
+                read = read,
+                publish = publish,
+                failure = failure,
+                readDispatcher = dispatcher,
+                preparation = preparation,
+                preparationDispatcher = dispatcher,
+            )
+        }
+
+        /** Deterministic variant with a separately owned collection executor. */
+        @JvmStatic
+        fun <I, O> prepared(
+            inputs: Flow<I>,
+            preparationExecutor: Executor,
+            collectionExecutor: Executor,
+            preparation: LatestReadPreparation<I>,
+            read: LatestRead<I, O>,
+            publish: LatestReadPublication<O>,
+            failure: LatestReadFailure,
+        ): LatestReadPipeline<I, O> {
+            val workDispatcher = preparationExecutor.asCoroutineDispatcher()
+            return LatestReadPipeline(
+                inputs = inputs,
+                read = read,
+                publish = publish,
+                failure = failure,
+                readDispatcher = workDispatcher,
+                collectionDispatcher = collectionExecutor.asCoroutineDispatcher(),
+                preparation = preparation,
+                preparationDispatcher = workDispatcher,
+            )
+        }
+
+        /** Java-friendly latest-read pipeline without transferring ownership of the executor. */
+        @JvmStatic
+        fun <I, O> reading(
+            inputs: Flow<I>,
+            executor: Executor,
+            read: LatestRead<I, O>,
+            publish: LatestReadPublication<O>,
+            failure: LatestReadFailure,
+        ): LatestReadPipeline<I, O> {
+            val dispatcher = executor.asCoroutineDispatcher()
+            return LatestReadPipeline(
+                inputs = inputs,
+                read = read,
+                publish = publish,
+                failure = failure,
+                readDispatcher = dispatcher,
+            )
+        }
+
+
+        /** Deterministic variant with a separately owned collection executor. */
+        @JvmStatic
+        fun <I, O> reading(
+            inputs: Flow<I>,
+            executor: Executor,
+            collectionExecutor: Executor,
+            read: LatestRead<I, O>,
+            publish: LatestReadPublication<O>,
+            failure: LatestReadFailure,
         ): LatestReadPipeline<I, O> = LatestReadPipeline(
             inputs = inputs,
             read = read,
             publish = publish,
             failure = failure,
-            preparation = preparation,
-            preparationDispatcher = preparationExecutor.asCoroutineDispatcher(),
+            readDispatcher = executor.asCoroutineDispatcher(),
+            collectionDispatcher = collectionExecutor.asCoroutineDispatcher(),
         )
     }
 }
