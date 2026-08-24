@@ -8,7 +8,6 @@ import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
 import android.content.Context;
-import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -19,8 +18,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 
 import java.time.Duration;
 import java.time.LocalTime;
@@ -42,7 +41,7 @@ public final class RepStepperViewTest {
         assertTrue(plus.isEnabled());
         plus.dispatchTouchEvent(MotionEvent.obtain(0, 0,
                 MotionEvent.ACTION_DOWN, 10, 10, 0));
-        Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(950));
+        ShadowLooper.shadowMainLooper().idleFor(Duration.ofMillis(950));
         plus.dispatchTouchEvent(MotionEvent.obtain(0, 951,
                 MotionEvent.ACTION_UP, 10, 10, 0));
 
@@ -65,7 +64,7 @@ public final class RepStepperViewTest {
 
         plus.dispatchTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1, 1, 0));
         root.removeView(stepper);
-        Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1));
+        ShadowLooper.shadowMainLooper().idleFor(Duration.ofSeconds(1));
 
         assertEquals(0, changes.get());
         assertFalse(plus.isPressed());

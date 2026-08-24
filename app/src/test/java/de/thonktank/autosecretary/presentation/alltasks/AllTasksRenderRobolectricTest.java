@@ -1,13 +1,12 @@
 package de.thonktank.autosecretary;
 
 import static org.junit.Assert.assertNotNull;
-import static org.robolectric.Shadows.shadowOf;
+import static org.robolectric.shadows.ShadowLooper.shadowMainLooper;
 
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -154,9 +153,9 @@ public final class AllTasksRenderRobolectricTest {
         AllTasksView view = new AllTasksView(context, new AllTasksView.Listener() { });
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
         view.bind(state, palette);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         interaction.accept(view);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
 
         float density = context.getResources().getDisplayMetrics().density;
         int width = Math.round(widthDp * density);
@@ -164,7 +163,7 @@ public final class AllTasksRenderRobolectricTest {
         root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
         root.layout(0, 0, width, height);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         root.draw(new Canvas(bitmap));
         GoldenAssertions.compare(AllTasksRenderRobolectricTest.class,

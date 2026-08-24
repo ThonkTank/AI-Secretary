@@ -5,7 +5,6 @@ import de.thonktank.autosecretary.ui.leaf.WoodGrainRenderPipeline;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.os.Looper;
 import android.view.View;
 import android.widget.LinearLayout;
 
@@ -13,10 +12,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
+import org.robolectric.shadows.ShadowLooper;
 
 import java.io.File;
 
@@ -89,9 +88,9 @@ public final class HomescreenGoldenRobolectricTest {
             content.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
             content.layout(0, 0, width, height);
-            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            ShadowLooper.shadowMainLooper().idle();
             WoodGrainRenderPipeline.awaitIdleForTest();
-            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            ShadowLooper.shadowMainLooper().idle();
             Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             content.draw(new Canvas(bitmap));
             assertGolden(preview, bitmap);

@@ -24,7 +24,7 @@ if (requireReleaseSigning && !signingReady) {
 
 android {
     namespace = "de.thonktank.autosecretary"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "de.thonktank.autosecretary"
@@ -82,9 +82,13 @@ android {
     }
 
     sourceSets {
-        getByName("androidTest").assets.srcDir("$projectDir/schemas")
-        getByName("androidTest").assets.srcDir(rootProject.file("release/upgrade-fixtures"))
-        getByName("test").resources.srcDir(rootProject.file("release/upgrade-fixtures"))
+        getByName("androidTest").assets.directories.add("$projectDir/schemas")
+        getByName("androidTest").assets.directories.add(
+            rootProject.file("release/upgrade-fixtures").absolutePath,
+        )
+        getByName("test").resources.directories.add(
+            rootProject.file("release/upgrade-fixtures").absolutePath,
+        )
     }
 }
 
@@ -115,7 +119,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata:2.11.0")
     // Room migration tests require JSON 1.8.1; align SavedState's serialization core with it.
     implementation(platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:1.8.1"))
-    //noinspection GradleDependency -- 1.11+ requires compileSdk 36 and AGP 8.9.1.
     implementation("androidx.activity:activity:1.10.1")
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test:core:1.7.0")

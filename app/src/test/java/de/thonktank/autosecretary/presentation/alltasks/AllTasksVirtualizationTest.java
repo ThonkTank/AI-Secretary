@@ -9,11 +9,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-import static org.robolectric.Shadows.shadowOf;
+import static org.robolectric.shadows.ShadowLooper.shadowMainLooper;
 
 import android.content.Context;
 import android.content.res.Configuration;
-import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -54,7 +53,7 @@ public final class AllTasksVirtualizationTest {
         AllTasksUiState state = AllTasksUiState.from(catalog(2),
                 AllTasksPresentationState.defaults());
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         layout(view, 412, 900);
 
         int position = view.positionForTest(AllTasksRow.Kind.TASK_HEADER, "task-0|MORNING");
@@ -65,7 +64,7 @@ public final class AllTasksVirtualizationTest {
 
         view.bind(state.withQuery("Aufgabe"),
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         layout(view, 412, 900);
 
         View reboundCard = view.hierarchyAnchorForTest(position);
@@ -82,7 +81,7 @@ public final class AllTasksVirtualizationTest {
                 AllTasksPresentationState.defaults());
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
         layout(view, 412, 900);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
 
         assertEquals(120, view.rowCountForTest());
         assertTrue(view.recyclerForTest().getChildCount() < view.rowCountForTest());
@@ -92,7 +91,7 @@ public final class AllTasksVirtualizationTest {
 
         view.bind(state.withQuery("Aufgabe"),
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         layout(view, 412, 900);
 
         assertEquals(firstId, view.rowIdForTest(0));
@@ -110,7 +109,7 @@ public final class AllTasksVirtualizationTest {
                 .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING))
                 .toggleExpanded(AllTasksUiState.cardKey("task-1", TaskSlot.MORNING));
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
 
         int source = view.positionForTest(AllTasksRow.Kind.STEP, "step-0-a");
         int target = view.positionForTest(AllTasksRow.Kind.STEP_TARGET,
@@ -145,7 +144,7 @@ public final class AllTasksVirtualizationTest {
                         item.schedule.get(0).slot));
         AllTasksView view = new AllTasksView(context, new Recorder());
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
 
         List<AllTasksRow> rows = AllTasksRow.project(state);
         assertFalse(rows.stream().anyMatch(value -> value.kind == AllTasksRow.Kind.STEP_TARGET));
@@ -162,7 +161,7 @@ public final class AllTasksVirtualizationTest {
                 .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING));
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
         layout(view, 412, 1_000);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         int target = view.positionForTest(AllTasksRow.Kind.STEP_TARGET,
                 "task-0|MORNING:step-0-a");
         RecyclerView.ViewHolder hidden = view.recyclerForTest()
@@ -170,7 +169,7 @@ public final class AllTasksVirtualizationTest {
         assertTrue(hidden == null || hidden.itemView.getMeasuredHeight() == 0);
 
         view.setDragActiveForTest(true);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         layout(view, 412, 1_000);
         RecyclerView.ViewHolder shown = view.recyclerForTest()
                 .findViewHolderForAdapterPosition(target);
@@ -218,7 +217,7 @@ public final class AllTasksVirtualizationTest {
                     AllTasksPresentationState.defaults())
                     .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING));
             view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
-            shadowOf(Looper.getMainLooper()).idle();
+            shadowMainLooper().idle();
             layout(view, width, 1_000);
             RecyclerView recycler = view.recyclerForTest();
             assertTrue(width + "dp/" + scale, recycler.getMeasuredWidth() > 0);
@@ -243,7 +242,7 @@ public final class AllTasksVirtualizationTest {
                 AllTasksPresentationState.defaults())
                 .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING));
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         layout(view, 412, 1_000);
         ArrayList<View> focusables = new ArrayList<>();
         view.addFocusables(focusables, View.FOCUS_FORWARD);
@@ -261,9 +260,9 @@ public final class AllTasksVirtualizationTest {
                 AllTasksPresentationState.defaults())
                 .toggleExpanded(AllTasksUiState.cardKey("task-0", TaskSlot.MORNING));
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         layout(view, 412, 1_000);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
 
         List<View> targets = new ArrayList<>();
         collectClickable(view, targets);

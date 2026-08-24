@@ -1,8 +1,29 @@
+import hashlib
 import pathlib
 import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+ROOT_BUILD = (ROOT / "build.gradle.kts").read_text(encoding="utf-8")
+APP_BUILD = (ROOT / "app" / "build.gradle.kts").read_text(encoding="utf-8")
+GRADLE_PROPERTIES = (ROOT / "gradle.properties").read_text(encoding="utf-8")
+GRADLE_WRAPPER = (
+    ROOT / "gradle" / "wrapper" / "gradle-wrapper.properties"
+).read_text(encoding="utf-8")
+GRADLE_WRAPPER_JAR = ROOT / "gradle" / "wrapper" / "gradle-wrapper.jar"
+GRADLE_UNIX_LAUNCHER = (ROOT / "gradlew").read_text(encoding="utf-8")
+GRADLE_WINDOWS_LAUNCHER = (ROOT / "gradlew.bat").read_text(encoding="utf-8")
+BUILT_IN_KOTLIN_SMOKE = (
+    ROOT
+    / "app"
+    / "src"
+    / "test"
+    / "kotlin"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "BuiltInKotlinSmokeTest.kt"
+).read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
 SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").read_text(
     encoding="utf-8"
@@ -86,6 +107,30 @@ RELEASE_PRESENTATION_TRACE = (
 
 
 class WorkflowContractTest(unittest.TestCase):
+    def test_phase_2a_build_foundation_is_exact_and_uses_built_in_kotlin(self):
+        self.assertIn(
+            'id("com.android.application") version "9.2.0" apply false',
+            ROOT_BUILD,
+        )
+        self.assertIn("gradle-9.4.1-bin.zip", GRADLE_WRAPPER)
+        self.assertEqual(
+            "55243ef57851f12b070ad14f7f5bb8302daceeebc5bce5ece5fa6edb23e1145c",
+            hashlib.sha256(GRADLE_WRAPPER_JAR.read_bytes()).hexdigest(),
+        )
+        self.assertIn('-jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar"', GRADLE_UNIX_LAUNCHER)
+        self.assertIn(
+            '-jar "%APP_HOME%\\gradle\\wrapper\\gradle-wrapper.jar"',
+            GRADLE_WINDOWS_LAUNCHER,
+        )
+        self.assertIn("compileSdk = 37", APP_BUILD)
+        self.assertIn("minSdk = 26", APP_BUILD)
+        self.assertIn("targetSdk = 35", APP_BUILD)
+        self.assertIn("sourceCompatibility = JavaVersion.VERSION_17", APP_BUILD)
+        self.assertIn("targetCompatibility = JavaVersion.VERSION_17", APP_BUILD)
+        self.assertNotIn("org.jetbrains.kotlin.android", ROOT_BUILD + APP_BUILD)
+        self.assertNotIn("android.builtInKotlin=false", GRADLE_PROPERTIES)
+        self.assertIn("kotlinSourcesCompileThroughAgp", BUILT_IN_KOTLIN_SMOKE)
+
     def test_change_scope_separates_quality_instrumentation_and_release(self):
         release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
             "\n  quality:", 1

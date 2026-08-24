@@ -13,7 +13,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.RectF;
-import android.os.Looper;
 import android.view.View;
 import android.widget.FrameLayout;
 
@@ -21,8 +20,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 
 import java.time.LocalTime;
 import java.util.Arrays;
@@ -92,7 +91,7 @@ public final class WoodGrainRenderPipelineTest {
                         new RectF(180, 140, 300, 260), 8)));
         root.removeView(grain);
         WoodGrainRenderPipeline.awaitIdleForTest();
-        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        ShadowLooper.shadowMainLooper().idle();
         Bitmap bitmap = Bitmap.createBitmap(600, 480, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         grain.draw(canvas);
@@ -104,7 +103,7 @@ public final class WoodGrainRenderPipelineTest {
         grain.draw(canvas);
         assertFalse(grain.isDirty());
         WoodGrainRenderPipeline.awaitIdleForTest();
-        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        ShadowLooper.shadowMainLooper().idle();
         assertTrue("accepted geometry must invalidate the reattached view", grain.isDirty());
         int builds = WoodGrainRenderPipeline.buildCountForTest();
         for (int index = 0; index < 8; index++) grain.draw(canvas);

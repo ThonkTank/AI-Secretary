@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.os.Looper;
 import android.view.View;
 import android.widget.FrameLayout;
 
@@ -16,8 +15,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -142,7 +141,7 @@ public final class WoodGrainBenchmarkTest {
         void draw() { grain.draw(canvas); }
         void awaitGeometry() {
             WoodGrainRenderPipeline.awaitIdleForTest();
-            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            ShadowLooper.shadowMainLooper().idle();
         }
         WoodGrainRenderRequest request() {
             float density = grain.getResources().getDisplayMetrics().density;

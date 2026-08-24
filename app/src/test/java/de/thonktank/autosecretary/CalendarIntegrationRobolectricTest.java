@@ -28,8 +28,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadow.api.Shadow;
+import org.robolectric.shadows.ShadowApplication;
 import org.robolectric.shadows.ShadowContentResolver;
 
 import java.time.Duration;
@@ -56,18 +57,15 @@ public final class CalendarIntegrationRobolectricTest {
         info.authority = CalendarContract.AUTHORITY;
         provider.attachInfo(context, info);
         ShadowContentResolver.registerProviderInternal(CalendarContract.AUTHORITY, provider);
-        Shadows.shadowOf((android.app.Application) context)
-                .grantPermissions(Manifest.permission.READ_CALENDAR);
+        shadowApplication().grantPermissions(Manifest.permission.READ_CALENDAR);
     }
 
     @After public void tearDown() {
-        Shadows.shadowOf((android.app.Application) context)
-                .denyPermissions(Manifest.permission.READ_CALENDAR);
+        shadowApplication().denyPermissions(Manifest.permission.READ_CALENDAR);
     }
 
     @Test public void missingPermissionIsDifferentFromAnEmptyCalendar() {
-        Shadows.shadowOf((android.app.Application) context)
-                .denyPermissions(Manifest.permission.READ_CALENDAR);
+        shadowApplication().denyPermissions(Manifest.permission.READ_CALENDAR);
 
         CalendarResult result = repository(ZoneId.of("Europe/Berlin")).loadToday();
 
@@ -76,8 +74,7 @@ public final class CalendarIntegrationRobolectricTest {
     }
 
     @Test public void permissionChangeInvalidatesAPreviouslyCachedMissingResult() {
-        Shadows.shadowOf((android.app.Application) context)
-                .denyPermissions(Manifest.permission.READ_CALENDAR);
+        shadowApplication().denyPermissions(Manifest.permission.READ_CALENDAR);
         CalendarRepository repository = repository(ZoneId.of("Europe/Berlin"));
         final int[] notifications = {0};
         repository.observeChanges(() -> notifications[0]++);
@@ -85,8 +82,7 @@ public final class CalendarIntegrationRobolectricTest {
         context.getContentResolver().notifyChange(CalendarContract.Events.CONTENT_URI, null);
         assertEquals(0, notifications[0]);
 
-        Shadows.shadowOf((android.app.Application) context)
-                .grantPermissions(Manifest.permission.READ_CALENDAR);
+        shadowApplication().grantPermissions(Manifest.permission.READ_CALENDAR);
 
         assertTrue(repository.loadToday() instanceof CalendarResult.Success);
         assertEquals(1, provider.queries);
@@ -112,6 +108,10 @@ public final class CalendarIntegrationRobolectricTest {
         assertEquals("08:30", result.events().get(1).time);
         assertTrue(!provider.selection.contains(CalendarContract.Calendars.ACCOUNT_TYPE));
         assertNull(provider.selectionArgs);
+    }
+
+    private ShadowApplication shadowApplication() {
+        return Shadow.extract(context);
     }
 
     @Test public void googleOnlyIsAnExplicitPolicy() {
