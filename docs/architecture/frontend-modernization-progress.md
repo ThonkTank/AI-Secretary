@@ -321,6 +321,12 @@ verspätetes End-Event eines vorherigen Test-Hosts, das erst nach dem globalen `
 eintraf. Die finale Isolation leert die Spur deshalb unmittelbar vor dem Klick im selben
 UI-Turn. Für den Lifecycle wartet sie instanzbezogen auf `previous.isDestroyed()` statt auf ein
 globales Destroy-Event. Die AndroidTest-Kompilierung sowie die fokussierten State-, Motion- und
-Architekturtests sind auf diesem Korrekturstand mit Java 21 grün. Ein neuer vollständiger
-Remote-Gate steht noch aus. Weitere lokale Scope-Kürzungen, Doppelzustände oder notwendige
-Nacharbeitsphasen wurden nach dieser deterministischen Testkorrektur nicht identifiziert.
+Architekturtests sind auf diesem Korrekturstand mit Java 21 grün. Der vollständige Remote-Gate
+für `4f80103f` ist ohne Retry grün: Quality, die breite animationsfreie Instrumentierung auf API
+26/35, die zwölf kritischen Animation-on-Tests auf API 26/35/37 sowie Instrumentierungs- und
+PR-Sammelgate bestanden. Der API-26-Animationsjob kehrte mit 2:28 Minuten in seine normale
+Laufzeit zurück. Das Instrumentierungs-Sammelgate wartete anschließend rund 21 Minuten ohne
+Runner in der GitHub-Queue, lief nach Zuweisung aber in drei Sekunden erfolgreich durch; alle
+zugrunde liegenden Ergebnisse waren bereits grün. Weitere lokale Scope-Kürzungen, Doppelzustände
+oder notwendige Nacharbeitsphasen wurden im abschließenden Vergleich des gesamten Phase-1-Diffs
+mit der Original-Roadmap nicht identifiziert.
