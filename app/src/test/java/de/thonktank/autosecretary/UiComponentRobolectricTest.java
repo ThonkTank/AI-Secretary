@@ -44,10 +44,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.Robolectric;
-import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadow.api.Shadow;
 import org.robolectric.shadows.ShadowAlertDialog;
+import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowValueAnimator;
 
 import java.time.LocalDate;
@@ -78,8 +79,9 @@ public final class UiComponentRobolectricTest {
             AlertDialog confirmation = ShadowAlertDialog.getLatestAlertDialog();
 
             assertNotNull(confirmation);
+            ShadowAlertDialog shadowConfirmation = Shadow.extract(confirmation);
             assertEquals(activity.getString(R.string.close_task_title),
-                    Shadows.shadowOf(confirmation).getTitle());
+                    shadowConfirmation.getTitle());
             assertFalse(activity.getIntent().hasExtra(MainActivity.CONFIRM_TASK));
             assertFalse(activity.getIntent().hasExtra(MainActivity.CONFIRM_TASK_TITLE));
 
@@ -247,7 +249,7 @@ public final class UiComponentRobolectricTest {
         root.layout(0, 0, root.getMeasuredWidth(), root.getMeasuredHeight());
         header.bind(LocalTime.of(9, 40), palette,
                 new de.thonktank.autosecretary.domain.model.XpProgress(70));
-        Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+        ShadowLooper.shadowMainLooper().idle();
         LeafSurface headerLeaf = first(header, LeafSurface.class);
         assertNotNull(headerLeaf);
         assertEquals(new LeafShape(8, 56, 8, 56), headerLeaf.shape());

@@ -10,7 +10,6 @@ import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.os.Looper;
 import android.view.View;
 import android.widget.FrameLayout;
 
@@ -18,9 +17,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
+import org.robolectric.shadows.ShadowLooper;
 
 import java.io.File;
 import java.time.LocalTime;
@@ -68,9 +67,9 @@ public final class FocusTaskViewGoldenRobolectricTest {
         root.layout(0, 0, width, height);
         assertEquals("focus=" + view.getMeasuredHeight() + " root=" + root.getMeasuredHeight(),
                 following, ViewTestQueries.visibleFollowingStepRows(view));
-        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        ShadowLooper.shadowMainLooper().idle();
         WoodGrainRenderPipeline.awaitIdleForTest();
-        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        ShadowLooper.shadowMainLooper().idle();
 
         Bitmap actual = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         root.draw(new Canvas(actual));

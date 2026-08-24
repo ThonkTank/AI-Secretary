@@ -3,12 +3,11 @@ package de.thonktank.autosecretary;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.robolectric.Shadows.shadowOf;
+import static org.robolectric.shadows.ShadowLooper.shadowMainLooper;
 
 import android.content.Context;
 import android.app.Activity;
 import android.os.Bundle;
-import android.os.Looper;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -97,11 +96,11 @@ public final class TaskEditorWizardRobolectricTest {
 
         view.bind(state.withFeedback(state.issues, EditorUiState.Prompt.NONE, ""),
                 palette, TODAY);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         assertEquals(180, scroll.getScrollY());
 
         view.bind(state.withPage(EditorUiState.Page.TITLE, false), palette, TODAY);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         assertEquals(0, scroll.getScrollY());
     }
 
@@ -122,7 +121,7 @@ public final class TaskEditorWizardRobolectricTest {
         EditText title = view.findViewWithTag("task:title");
         title.requestFocus();
         title.setText("Korrigierter Titel");
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
 
         EditText restored = view.findViewWithTag("task:title");
         assertTrue(restored.hasFocus());
@@ -158,7 +157,7 @@ public final class TaskEditorWizardRobolectricTest {
         sets.requestFocus();
         sets.setSelection(sets.length());
         sets.setText("3");
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
 
         assertTrue(apply.isEnabled());
         assertTrue(listener.draft.issues.isEmpty());

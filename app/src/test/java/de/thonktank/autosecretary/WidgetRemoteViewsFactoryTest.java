@@ -22,8 +22,9 @@ import androidx.test.core.app.ApplicationProvider;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.Shadows;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadow.api.Shadow;
+import org.robolectric.shadows.ShadowApplication;
 
 import java.time.LocalTime;
 import de.thonktank.autosecretary.calendar.CalendarResult;
@@ -168,8 +169,8 @@ public final class WidgetRemoteViewsFactoryTest {
 
         applied.findViewById(R.id.widget_action).performClick();
 
-        Intent launched = Shadows.shadowOf((android.app.Application) context)
-                .getNextStartedActivity();
+        ShadowApplication shadowApplication = Shadow.extract(context);
+        Intent launched = shadowApplication.getNextStartedActivity();
         assertNotNull(launched);
         assertEquals("ongoing", launched.getStringExtra(MainActivity.CONFIRM_TASK));
         assertEquals("Praktikum", launched.getStringExtra(MainActivity.CONFIRM_TASK_TITLE));

@@ -4,14 +4,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.robolectric.Shadows.shadowOf;
+import static org.robolectric.shadows.ShadowLooper.shadowMainLooper;
 
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.graphics.drawable.RippleDrawable;
-import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -131,7 +130,7 @@ public final class TaskEditorAdaptiveRobolectricTest {
         editor.bind(TaskEditorGoldenScenario.ALL.get(3).state(), palette(),
                 TaskEditorGoldenScenario.TODAY);
         measure(editor, activity, 412, 892);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
 
         TextView selected = text(editor, activity.getString(R.string.rhythm_weekdays));
         assertNotNull(selected);
@@ -181,7 +180,7 @@ public final class TaskEditorAdaptiveRobolectricTest {
         editor.bind(TaskEditorGoldenScenario.ALL.get(6).state(), palette(),
                 TaskEditorGoldenScenario.TODAY);
         measure(editor, activity, 412, 892);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         View number = editor.findViewWithTag("step:s0:sets");
         assertNotNull(number);
         assertTrue(((ViewGroup) number.getParent()).getTouchDelegate()
@@ -190,7 +189,7 @@ public final class TaskEditorAdaptiveRobolectricTest {
         editor.bind(TaskEditorGoldenScenario.ALL.get(0).state(), palette(),
                 TaskEditorGoldenScenario.TODAY);
         measure(editor, activity, 412, 892);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         View valueRow = described(editor, "für 6 Wochen");
         assertNotNull(valueRow);
         assertTrue(((ViewGroup) valueRow.getParent()).getTouchDelegate()
@@ -231,7 +230,7 @@ public final class TaskEditorAdaptiveRobolectricTest {
         promptEditor.bind(TaskEditorGoldenScenario.ALL.get(9).state(), palette(),
                 TaskEditorGoldenScenario.TODAY);
         measure(promptEditor, activity, 412, 892);
-        shadowOf(Looper.getMainLooper()).idle();
+        shadowMainLooper().idle();
         assertNotNull(promptEditor.promptForTest());
         assertInteractiveTargets(promptEditor.promptForTest().getWindow().getDecorView(),
                 dp(activity, 48));
@@ -339,7 +338,7 @@ public final class TaskEditorAdaptiveRobolectricTest {
             editor.bind(TaskEditorGoldenScenario.ALL.get(scenario).state(), palette(),
                     TaskEditorGoldenScenario.TODAY);
             measure(editor, context, widthDp, heightDp);
-            shadowOf(Looper.getMainLooper()).idle();
+            shadowMainLooper().idle();
             try {
                 assertInteractiveTargets(editor, dp(context, 48));
             } catch (AssertionError failure) {

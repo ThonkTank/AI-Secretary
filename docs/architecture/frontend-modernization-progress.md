@@ -330,3 +330,84 @@ Runner in der GitHub-Queue, lief nach Zuweisung aber in drei Sekunden erfolgreic
 zugrunde liegenden Ergebnisse waren bereits grün. Weitere lokale Scope-Kürzungen, Doppelzustände
 oder notwendige Nacharbeitsphasen wurden im abschließenden Vergleich des gesamten Phase-1-Diffs
 mit der Original-Roadmap nicht identifiziert.
+
+## Phase 2 – moderne, gepinnte Buildgrundlage
+
+### Vorprüfung und Aufteilung
+
+- Ausgangspunkt: sauberer `main` auf `8d97a173`, identisch mit `origin/main`.
+- Das Projekt verwendet noch AGP 8.7.3, Gradle 8.10.2 und `compileSdk 35`; `minSdk 26`,
+  `targetSdk 35` und Java-Quell-/Zielkompatibilität 17 entsprechen bereits dem Zielvertrag.
+- Das App-Modul enthält weiterhin keine Kotlin-Datei. Room Runtime/Compiler 2.8.4 und Lifecycle
+  2.11.0 sind bereits gepinnt; Activity steht wegen der alten Buildgrenze noch auf 1.10.1.
+- Die lokale Ausgangsgröße beträgt 4.959.767 Byte für Debug, 3.755.943 Byte für den unsigned
+  Release-Build und 1.478.008 Byte für alle Fonts. Der bisherige CI-Vertrag begrenzt Debug sogar
+  auf 5 MiB, prüft den unsigned Release-Build aber noch nicht.
+- Die offiziellen Kompatibilitätsangaben wurden am 24. August 2026 erneut geprüft: AGP 9.2
+  verlangt Gradle 9.4.1, unterstützt API 37 und JDK 17; Built-in Kotlin ist ab AGP 9 ohne
+  `org.jetbrains.kotlin.android` standardmäßig aktiv. Die festgelegten stabilen Artefakte AGP
+  9.2.0, Compose-Compiler/Kotlin 2.3.21, Compose BOM 2026.08.00, Activity Compose 1.13.0,
+  Lifecycle 2.11.0 und Room KTX 2.8.4 sind in ihren offiziellen Repositories vorhanden.
+
+Die Phase ist als einzelner Sprint nicht kohärent reviewbar und wird vor Produktcode geteilt:
+
+- **Phase 2a** aktualisiert AGP, Gradle und `compileSdk`, aktiviert Built-in Kotlin ohne Opt-out
+  und belegt den Kotlin-Testcompile bei weiterhin unverändertem JVM-, Min-/Target-SDK- und
+  Produktvertrag.
+- **Phase 2b** führt Compose-Compiler, BOM, Activity Compose und Room KTX als einen gepinnten Satz
+  ein und mountet ausschließlich einen unsichtbaren, zustandslosen Smoke-Host ohne Material oder
+  Produktzustand.
+- **Phase 2c** verschärft die Größenverträge und erweitert Neuinstallation sowie den echten
+  Produktionsupgradepfad um API 37. R8 bleibt in allen drei Unterphasen unverändert.
+
+### Phase 2a – Implementationsplan
+
+Der Gradle Wrapper wird vollständig auf 9.4.1 und das Android-Plugin auf 9.2.0 aktualisiert;
+`compileSdk` steigt isoliert auf 37. `minSdk 26`, `targetSdk 35`, Java 17, Signatur-, Schema- und
+Releaseverträge bleiben unverändert. Es wird weder der alte Kotlin-Android-Pluginpfad noch ein
+Built-in-Kotlin-Opt-out eingeführt. Ein kleiner Kotlin-Test im Testquellensatz kompiliert und
+läuft über AGPs Built-in Kotlin, ohne Produktcode oder APK-Oberfläche zu erweitern. Statische
+Buildverträge sichern die exakten Pins und Grenzen gegen späteren Drift. Der Nachweis umfasst
+Wrapper-/Plugin-Auflösung, Kotlin-Testcompile, vollständige Unit-/Lint-/APK-Suite sowie die
+bestehende Remote-Instrumentierungsmatrix.
+
+### Phase 2a – Implementation und Nachweise
+
+- Gradle Wrapper, Wrapper-JAR und beide Launcher wurden mit Gradle 9.4.1 neu erzeugt; ein
+  Vertragstest pinnt zusätzlich den SHA-256 des Wrapper-JARs und den aktuellen `-jar`-Startpfad.
+  AGP steht auf 9.2.0 und `compileSdk` auf 37. `minSdk 26`, `targetSdk 35`, Java 17, R8-,
+  Signatur-, Schema- und Produktverträge blieben unverändert.
+- AGPs Built-in Kotlin kompiliert und startet den neuen `BuiltInKotlinSmokeTest` ohne
+  `org.jetbrains.kotlin.android` und ohne Opt-out. Es wurde noch kein Kotlin- oder Compose-Code
+  in den Produktquellsatz aufgenommen.
+- Die von AGP 9 als veraltet gemeldeten Source-Set-Aufrufe wurden auf die neue `directories`-DSL
+  umgestellt, ohne die Schema- oder Upgrade-Fixture-Pfade zu ändern.
+- API 37 enthält den alten `FingerprintManager`-Stub nicht mehr. Robolectrics breite
+  `Shadows.shadowOf`-Überladungstabelle referenzierte diesen Typ bereits beim Java-Testcompile,
+  obwohl die betroffenen Tests nur API 26 und 35 ausführen. Die Tests verwenden deshalb nun die
+  typspezifischen `ShadowLooper`-/`ShadowApplication`-Zugriffe beziehungsweise `Shadow.extract`;
+  Test-SDKs, Assertions und Ablauf blieben unverändert.
+- Lokale Nachweise mit Java 21: Gradle-9.4.1-Auflösung, alle 19 Release-/Workflow-Vertragstests,
+  Shell-Syntax, vollständige 426 Testfälle der App-Suite ohne Fehler (ein bewusst deaktivierter
+  Benchmark), `lintDebug`, `assembleDebug`, AndroidTest-Kompilierung und `assembleRelease` sind
+  grün. Der kalte Gesamtaufbau benötigte nach Toolchain- und SDK-Wechsel 14:02 Minuten; die
+  abschließende vollständige App-Suite auf dem bereinigten Stand 5:34 Minuten.
+- Die erzeugten Artefakte liegen bei 4.833.656 Byte für Debug, 3.754.873 Byte für den unsigned
+  Release-Build und 1.478.008 Byte für die Fonts. Damit bleiben sie bereits unter den später in
+  Phase 2c verbindlich zu automatisierenden Grenzen.
+
+### Phase 2a – Roadmap-Abgleich und Nacharbeit
+
+Der Abgleich identifizierte zwei zunächst nicht hinreichend saubere Stellen: Der neue Wrapper
+war zwischen Unix- und Windows-Launcher nicht vollständig einheitlich regeneriert, und ein
+vorschnelles Upgrade der Testplattform hätte den Scope über die eigentliche API-37-
+Kompilierhürde hinaus erweitert. Die Nacharbeit regenerierte deshalb alle Wrapper-Bestandteile,
+pinnt ihren Vertrag und behielt die bewährte Robolectric-Version bei; nur deren überbreite,
+gegen API 37 nicht mehr kompilierbare Hilfs-API wurde durch typspezifische Zugriffe ersetzt.
+
+Es bestehen weder parallele Buildwahrheiten noch Produkt-, Zustands- oder UI-Änderungen. Compose,
+Activity Compose, Room KTX und der unsichtbare Smoke-Host bleiben vollständig Phase 2b;
+Größengates und API-37-Installations-/Upgrade-Nachweise bleiben Phase 2c. Eine separate
+Nachtarbeitsphase ist nach der auf demselben Branch erledigten Nacharbeit nicht erforderlich.
+Der lokale Stand erfüllt Phase 2a; der Phasenabschluss bleibt bis zu grüner Remote-Matrix und
+Squash-Merge offen.
