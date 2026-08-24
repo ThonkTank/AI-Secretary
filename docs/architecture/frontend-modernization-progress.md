@@ -218,5 +218,10 @@ auf dem Main Thread und erzeugt weder Fachzustand noch Navigation.
 
 Recreation während Editor-Motion, Refresh und Eingabe sowie die fachliche Gleichheit mit und ohne
 Animation wurden nicht stillschweigend vereinfacht; sie bleiben der vorab dokumentierte Umfang
-von Phase 1c. Der entfernte Gerätegate von Phase 1b steht noch aus. Abgesehen von seinem Ergebnis
-ist nach der ausgeführten Nachtarbeit keine weitere lokale Nacharbeitsphase erforderlich.
+von Phase 1c. Der erste vollständige Remote-Gate von Pull Request #256 ist grün: Quality, die
+breite animationsfreie Instrumentierung auf API 26 und 35 sowie die kritische Animation-on-Suite
+auf API 26, 35 und 37 bestanden ohne Retry; auch Instrumentierungs- und PR-Sammelgate sind grün.
+Damit lief die neue Signalsynchronisation auf allen in Phase 1a verbindlich gemachten Runtimes,
+ohne einen Fokus- oder Timeoutfehler zu verdecken. Nach der ausgeführten Nachtarbeit ist keine
+weitere Nacharbeitsphase erforderlich; vor dem Squash-Merge muss der um diesen Audit ergänzte Head
+denselben erforderlichen Gate erneut bestehen.
