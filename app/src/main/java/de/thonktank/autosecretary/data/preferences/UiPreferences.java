@@ -99,4 +99,18 @@ public final class UiPreferences {
         preferences.edit().putString(CALENDAR_POLICY, policy.name()).apply();
     }
 
+    public Subscription observeCalendarPolicy(Consumer<CalendarPolicy> observer) {
+        if (observer == null) throw new IllegalArgumentException("Observer is required");
+        SharedPreferences.OnSharedPreferenceChangeListener listener = (source, key) -> {
+            if (CALENDAR_POLICY.equals(key)) observer.accept(calendarPolicy());
+        };
+        preferences.registerOnSharedPreferenceChangeListener(listener);
+        observer.accept(calendarPolicy());
+        AtomicBoolean closed = new AtomicBoolean();
+        return () -> {
+            if (closed.compareAndSet(false, true))
+                preferences.unregisterOnSharedPreferenceChangeListener(listener);
+        };
+    }
+
 }

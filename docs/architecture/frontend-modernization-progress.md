@@ -730,3 +730,71 @@ gegenüber dem ersten 3a-Stand unverändert. Der negative Gegencheck findet wede
 Abwesenheitsbehauptungen noch einen zweiten Beobachtungsmechanismus oder eine Abschwächung von
 Commit-/Rollbackgrenzen. Der endgültige Abschluss erfordert weiterhin einen eigenen grünen PR,
 Squash-Merge und den vollständig veröffentlichenden `main`-Lauf.
+
+### Phase 3b – Vorprüfung und Implementationsplan
+
+Phase 3a wurde nach der deterministischen Nachtarbeitsreparatur auf `main` als `33925947`
+vollständig im manuellen Vollmodus geprüft: Quality, breite und animationsaktive
+Instrumentierung sowie signierte Neuinstallation und echtes Upgrade bestanden auf API 26/35/37;
+Release 0.2.117 (`forest-android-1011701`) veröffentlicht exakt diesen Commit. Der neue
+Room-Adapter ist weiterhin kalt und besitzt noch keinen Screen-Collector.
+
+Im aktuellen Stand liefert `CalendarRepository` Provideränderungen über eine explizit schließbare
+Callback-Subscription. `UiPreferences` besitzt dasselbe Muster nur für Theme und Fokuslimit;
+die Kalenderpolicy ist les- und schreibbar, aber nicht beobachtbar. `MainActivity` hält dagegen
+einen unpräzise ab Erzeugungszeit laufenden 60-Sekunden-Handler und übersetzt `onResume()` sowie
+den Permission-Callback selbst in Dashboard-Refreshs. Diese Broker werden erst in 3c entfernt;
+3b führt ausschließlich die gemeinsam beobachtbaren Quellen ein.
+
+- `CalendarInvalidationSource` registriert vor seinem initialen Ladeimpuls genau eine bestehende
+  Calendar-Subscription und schließt sie bei Collector-Abbruch.
+- `PreferenceInvalidationSource` adaptiert Anzeigepräferenzen und Kalenderpolicy als getrennte,
+  conflated Flows. `UiPreferences` erhält dafür den zum bestehenden Displayvertrag symmetrischen
+  Policy-Observer; irrelevante Preference-Schlüssel lösen keinen Impuls aus.
+- `ClockInvalidationSource` veröffentlicht Datum, Uhrzeit und Grund (`INITIAL`, `MINUTE_TICK`,
+  `FOREGROUND`). Ein Android-Treiber richtet den nächsten Tick an der realen Minutengrenze aus;
+  er wird erst mit einem Collector gestartet und bei dessen Abbruch gestoppt. Vordergrund wird
+  bewusst über eine explizite Materialisierung eingespeist und ist kein Activity-Lifecycle im
+  Datenobjekt.
+- `AppContainer` stellt Room-, Kalender-, Präferenz- und Uhrquellen als Composition Root bereit.
+  Da alle Flows kalt sind und der Uhrtreiber keine Subscription ohne Collector besitzt, entstehen
+  noch keine parallelen Reloads oder Application-Lifetime-Arbeiten.
+
+Deterministische Tests sichern Initialimpulse, Kalender-Start/Stop, Display- und Policywechsel,
+Minutensignal, Tagesgrenze, Vordergrundmaterialisierung und das Stoppen des Uhrtreibers. Sie
+verwenden ausschließlich manuelle Signale beziehungsweise den Coroutine-Ereignisloop; Schlafen
+und kurze Abwesenheitsfristen bleiben ausgeschlossen. 3b verändert weder bestehende Consumer,
+Screen State, Widgetinvalidierung, DAO-/Transaktionsgrenzen noch sichtbares Verhalten.
+
+### Phase 3b – Implementation und Roadmap-Abgleich
+
+- Kalenderänderungen werden als kalter, conflated Flow mit initialem Ladeimpuls angeboten. Die
+  bestehende Provider-Subscription wird vor diesem Impuls registriert und bei Collector-Abbruch
+  entfernt; der Kalendercache und seine Permissionbehandlung bleiben unverändert.
+- Anzeigepräferenzen und Kalenderpolicy besitzen getrennte kalte Flows. Der neue symmetrische
+  `UiPreferences`-Policyvertrag liefert den aktuellen Wert sofort, reagiert nur auf seinen eigenen
+  Schlüssel und entfernt den SharedPreferences-Listener idempotent. Theme und Fokuslimit bleiben
+  ein atomarer `DisplayPreferences`-Wert.
+- Die Uhrquelle liefert explizite Snapshots für Initialzustand, Minutentick und Vordergrund. Der
+  Android-Treiber startet pro Collector erst nach dem Initialsnapshot, richtet den ersten und alle
+  folgenden Ticks an echten Minutengrenzen aus und entfernt den Runnable beim Schließen. Ein
+  Vordergrundimpuls ohne Collector startet keine Arbeit; bei späterer Sammlung materialisiert der
+  Initialsnapshot ohnehin die aktuelle Uhr.
+- `AppContainer` hält nun alle vier beobachtbaren Quellen. Keine davon wird in 3b gesammelt;
+  `MainActivity`, ViewModels, der alte Minutentimer, manuelle Reloads und verteilte
+  Widgetinvalidierungen bleiben deshalb bewusst bis zum gemeinsamen 3c-Cutover unverändert.
+
+Der Negativ-Audit fand zunächst, dass nur der manuelle Fake-Ticker, nicht aber die Ausrichtung und
+Abmeldung des echten Android-Handlers geprüft war. Die Implementationsnachtarbeit machte dessen
+Handler und Zeitquelle testbar und belegt mit Robolectrics virtueller Zeit exakt den Tick von
+59.999 ms auf die Minutengrenze sowie das Ausbleiben weiterer Signale nach `close()` – ohne
+Wanduhrzeit. Weitere Doppelzustände oder aktive Parallelpfade wurden nicht eingeführt. Mehrere
+spätere Screen-Collector dürfen den kalten Uhrtreiber nicht unabhängig vervielfachen; 3c bündelt
+die Quellen daher in einer einzigen geteilten Read-/Invalidierungspipeline.
+
+Lokal bestanden die neuen Quellenverträge, die angrenzenden Kalender-, Präferenz-, ViewModel- und
+Dependency-Tests, 14 CI-Harnesstests, 22 Release-/Workflow-Vertragstests und die vollständige
+Java-21-App-Suite mit 435 Tests ohne Fehler (ein bewusst übersprungener Test), Lint sowie Debug-,
+Android-Test- und unsigned Release-APK. Die Größen betragen 8.776.812 Byte Debug, 653.541 Byte
+Android-Test, 6.356.834 Byte Release und 1.478.008 Byte Fonts. Phase 3b ist lokal vollständig; ihr
+Abschluss bleibt der eigene grüne PR, Squash-Merge und veröffentlichende `main`-Lauf.

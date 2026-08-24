@@ -6,6 +6,7 @@ import android.content.Context;
 
 import androidx.test.core.app.ApplicationProvider;
 
+import de.thonktank.autosecretary.calendar.CalendarPolicy;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.DisplayPreferences;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
@@ -67,6 +68,21 @@ public final class FocusStepLimitPreferencesTest {
 
         subscription.close();
         preferences.setFocusStepLimit(FocusStepLimit.ONE);
+        assertEquals(2, observed.size());
+    }
+
+    @Test public void calendarPolicyChangesStopAfterTheSubscriptionCloses() {
+        List<CalendarPolicy> observed = new ArrayList<>();
+        UiPreferences.Subscription subscription = preferences.observeCalendarPolicy(observed::add);
+
+        preferences.setCalendarPolicy(CalendarPolicy.GOOGLE_ONLY);
+
+        assertEquals(2, observed.size());
+        assertEquals(CalendarPolicy.ALL_VISIBLE, observed.get(0));
+        assertEquals(CalendarPolicy.GOOGLE_ONLY, observed.get(1));
+
+        subscription.close();
+        preferences.setCalendarPolicy(CalendarPolicy.ALL_VISIBLE);
         assertEquals(2, observed.size());
     }
 }
