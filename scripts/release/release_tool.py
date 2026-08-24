@@ -27,7 +27,7 @@ REQUIRED_PROPERTIES = {
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 COMMIT = re.compile(r"^[0-9a-f]{40}$")
 MAX_VERSION_CODE = 2_100_000_000
-MAX_APK_BYTES = 10 * 1024 * 1024
+MAX_APK_BYTES = 8 * 1024 * 1024
 
 
 class ReleaseContractError(ValueError):

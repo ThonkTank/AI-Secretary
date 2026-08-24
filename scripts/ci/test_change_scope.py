@@ -43,6 +43,7 @@ class ChangeScopeTest(unittest.TestCase):
             "app/build.gradle.kts",
             "gradle/wrapper/gradle-wrapper.properties",
             "release/release.properties",
+            "scripts/release/release_tool.py",
         ):
             with self.subTest(path=path):
                 self.assertEqual(

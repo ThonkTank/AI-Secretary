@@ -120,6 +120,14 @@ class ReleaseToolTest(unittest.TestCase):
         with self.assertRaises(ReleaseContractError):
             validate_metadata(metadata, apk, plan)
 
+    def test_apk_larger_than_eight_mib_is_rejected(self):
+        apk = self.root / "AutoSecretary.apk"
+        with apk.open("wb") as target:
+            target.truncate(8 * 1024 * 1024 + 1)
+        plan = release_plan(self.contract, COMMIT, [])
+        with self.assertRaises(ReleaseContractError):
+            build_metadata(plan, apk)
+
     def test_upgrade_release_is_the_explicit_supported_production_version(self):
         releases = [
             {"tag_name": "forest-android-1008001", "draft": False, "prerelease": False},
