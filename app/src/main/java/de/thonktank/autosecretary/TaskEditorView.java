@@ -109,6 +109,7 @@ public final class TaskEditorView extends FrameLayout {
         View dependent = findViewWithTag(DEPENDENT_TAG);
         if (dependent != null) TaskEditorMotion.cancel(dependent);
         state = value;
+        traceState("bind", value);
         this.palette = palette;
         controls = new TaskEditorControlFactory(getContext(), style, palette);
         this.today = today;
@@ -770,13 +771,16 @@ public final class TaskEditorView extends FrameLayout {
         pendingDirection = 0;
         if (!TaskEditorMotion.enabled()) {
             TaskEditorMotion.settle(leaf);
+            traceMotion("page-settled", direction);
             return;
         }
+        traceMotion("page-start", direction);
         leaf.setAlpha(0f);
         leaf.setTranslationX(style.dp(18) * direction);
         leaf.animate().alpha(1f).translationX(0)
                 .setDuration(TaskEditorMotion.duration(palette))
-                .setInterpolator(TaskEditorMotion.interpolator()).start();
+                .setInterpolator(TaskEditorMotion.interpolator())
+                .withEndAction(() -> traceMotion("page-end", direction)).start();
     }
 
     private void addQuestion(int resource) {
@@ -854,11 +858,29 @@ public final class TaskEditorView extends FrameLayout {
         if (rerender && dependentUiChanged(previous, validated)
                 && animateDependentExit(validated)) return;
         state = validated;
+        traceState("state", validated);
         if (rerender && dependentKey(validated) != 0 && dependentKey(previous) == 0)
             pendingDependentEnter = true;
         if (mustRender) render();
         lastEmitted = validated;
         listener.onDraftChanged(validated);
+    }
+
+    private static void traceState(String kind, EditorUiState value) {
+        if (!PresentationTrace.enabled()) return;
+        if (value == null) {
+            PresentationTrace.emit("editor", kind, "state=null");
+            return;
+        }
+        PresentationTrace.emit("editor", kind, "page=" + value.page
+                + " prompt=" + value.prompt + " dirty=" + value.dirty
+                + " saving=" + value.saving + " open=" + value.open
+                + " detail=" + (value.expandedStepId != null));
+    }
+
+    private static void traceMotion(String kind, int direction) {
+        if (PresentationTrace.enabled()) PresentationTrace.emit("editor-motion", kind,
+                "direction=" + direction);
     }
 
     private boolean animateDependentExit(EditorUiState validated) {

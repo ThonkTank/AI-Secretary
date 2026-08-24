@@ -146,3 +146,77 @@ verifizierten Toolaktualisierung behoben. Die verbliebenen bestehenden 16-ms-Pol
 Lifecycle-Races und der fehlende Presentation Trace sind weiterhin sichtbar und gehören gemäß
 Originalroadmap zu Phase 1b. Weitere verdeckte Scope-Kürzungen oder fachliche Seiteneffekte fand
 der Nachaudit nicht; eine zusätzliche Nacharbeitsphase ist vor dem Squash-Merge nicht nötig.
+
+Pull Request #255 bestand auch auf seinem Audit-Head erneut die vollständige Matrix und wurde als
+`12bc2f98` per Squash nach `main` übernommen. Phase 1a ist damit implementiert. Sie verändert
+keine sichtbare Produktfläche und benötigt kein UI-Cutover-Gate auf einem physischen Gerät.
+
+### Phase 1b – Vorprüfung und erneute Aufteilung
+
+- Ausgangspunkt: sauberer `main` auf `12bc2f98`, identisch mit `origin/main`.
+- Die kritischen Editor- und Today-Gerätetests warten noch in zwei Schleifen alle 16 ms auf
+  Zustände. Andere Instrumentierungstests verwenden bereits ausschließlich Androids
+  Idle-Synchronisation oder synchrone Zustandsübergänge.
+- `TouchGestureDriver` enthält ebenfalls zeitliche Abstände. Diese erzeugen jedoch eine echte
+  Long-Press-/Drag-Eingabe mit systemkonformer Dauer und sind keine Wartebedingung auf einen
+  Präsentationszustand; sie werden deshalb nicht als Polling kaschiert oder entfernt.
+- Einen Presentation Trace gibt es noch nicht. Editor-Motion, Today-Actions, Window-Fokus und
+  Randscrollen besitzen daher kein gemeinsames beobachtbares Diagnosesignal.
+- Der bestehende Today-Test prüft Recreation während eines aktiven Reorders. Recreation während
+  Editor-Motion, Refresh und Texteingabe sowie der explizite Vergleich fachlicher Seiteneffekte
+  mit und ohne Animation fehlen weiterhin.
+
+Der nach Phase 1a verbleibende Umfang ist erneut nicht in einem kohärenten Sprint abschließbar und
+wird vor Produktcode weiter geteilt:
+
+- **Phase 1b** führt einen im Release wirkungslosen, im Debug-Build aufzeichnenden Presentation
+  Trace ein. Editor-, Today- und Lifecycle-Übergänge liefern monotone Signale. Die Editor- und
+  Today-Gerätetests warten über diese Signale und Layout-/Fokus-Callbacks mit hartem Timeout statt
+  über Polling und protokollieren bei Fehlern den Trace.
+- **Phase 1c** ergänzt auf dieser Grundlage Recreation während Animation, Refresh und Eingabe
+  sowie den Nachweis, dass Animationen keine Fachaktion, Navigation oder Persistenz auslösen.
+
+### Phase 1b – Implementationsplan
+
+Die Varianten `debug` und `release` erhalten dieselbe kleine Trace-Schnittstelle: Debug speichert
+eine begrenzte, sequenzierte Ereignisfolge und erlaubt kurzlebige Listener; Release verwirft die
+Ereignisse und hält keine Historie. Hauptcode emittiert nur beschreibende Präsentationsereignisse,
+keine Fachaktionen. Instrumentiert werden Editor-State/Motion, Today-State/Randscrollen sowie die
+Window-Fokusübergänge der Debug-Hosts. Ein AndroidTest-Helfer registriert zuerst Trace-, Layout-
+und Fokus-Callbacks, prüft die Bedingung ausschließlich auf dem Main Thread und blockiert den
+Testthread höchstens bis zum festen Timeout. Die bisherigen `SystemClock.sleep(16)`-Schleifen
+entfallen; Workflow-Vertragstests verhindern ihre Rückkehr.
+
+### Phase 1b – Ergebnis und lokaler Nachaudit
+
+- Der Debug-Build besitzt nun einen auf 256 Einträge begrenzten, monoton sequenzierten
+  Presentation Trace. Er beobachtet echte Activity-Lifecycle-/Fokuswechsel, Dashboard- und
+  Editorzustände, Editor-/Dashboard-Motion sowie Today-Reorder und Randscrollen, ohne selbst
+  Actions auszulösen.
+- Die Release-Variante hält weder Historie noch Listener. Eine explizite Aktivierungsabfrage
+  verhindert zusätzlich, dass der Hauptcode dort Diagnosedetails und insbesondere Strings pro
+  Animationsframe erzeugt.
+- `PresentationAwaiter` registriert Trace-, Layout- und Attach-Signale vor der ersten
+  Zustandsprüfung, wertet Bedingungen nur auf dem Main Thread aus und verwendet lediglich einen
+  festen Fünf-Sekunden-Abbruch für echte Signalausfälle. Editor- und Today-Interaktionstests
+  enthalten keine Zustands-Pollingschleife mehr.
+- Die verbleibenden Sleeps in `TouchGestureDriver` bilden weiterhin ausschließlich Long-Press-
+  Dauer und zeitlich getrennte reale Move-Events ab; sie fragen keinen UI-Zustand ab.
+- Lokale Nachweise mit Java 21: vollständiges `testDebugUnitTest`, `lintDebug`, `assembleDebug`,
+  `assembleDebugAndroidTest` und `assembleRelease`; nach der Nachtarbeit erneut Unit-Suite,
+  AndroidTest-Kompilierung und Release-Artefakt. Zusätzlich sind alle 12 CI-Tooltests, alle 18
+  Release-/Workflow-Vertragstests und `git diff --check` grün.
+
+Der negative Nachaudit fand zunächst einen nichtfunktionalen, aber realen Shortcut: Obwohl die
+Release-Trace-Implementierung Ereignisse verwarf, hätte Java bereits vor dem No-op Detailstrings
+erzeugt; beim Randscrollen sogar pro Frame. Diese Last wurde in einer Nachtarbeitskorrektur durch
+eine vorgezogene Variantenabfrage entfernt und ihr Debug-/Release-Vertrag zusätzlich statisch
+gesichert. Die doppelte kleine Variantenoberfläche bleibt ein Drift-Risiko, wird aber durch die
+Kompilierung beider Varianten und den Vertragstest begrenzt. Der Awaiter kann durch mehrere
+Signalklassen häufiger als nötig geweckt werden, prüft dabei jedoch nur die explizite Bedingung
+auf dem Main Thread und erzeugt weder Fachzustand noch Navigation.
+
+Recreation während Editor-Motion, Refresh und Eingabe sowie die fachliche Gleichheit mit und ohne
+Animation wurden nicht stillschweigend vereinfacht; sie bleiben der vorab dokumentierte Umfang
+von Phase 1c. Der entfernte Gerätegate von Phase 1b steht noch aus. Abgesehen von seinem Ergebnis
+ist nach der ausgeführten Nachtarbeit keine weitere lokale Nacharbeitsphase erforderlich.

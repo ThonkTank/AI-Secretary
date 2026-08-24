@@ -18,10 +18,17 @@ public final class TaskEditorInteractionHarnessActivity extends Activity
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        PresentationTrace.emit("editor-host", "create", "saved=" + (savedInstanceState != null));
         setContentView(new FrameLayout(this));
     }
 
+    @Override public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        PresentationTrace.emit("editor-host", "window-focus", "value=" + hasFocus);
+    }
+
     public void mount(EditorUiState initial) {
+        PresentationTrace.emit("editor-host", "mount", "page=" + initial.page);
         state = initial;
         dismissed = false;
         deletedTaskId = null;

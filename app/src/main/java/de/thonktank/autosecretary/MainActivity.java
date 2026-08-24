@@ -83,6 +83,8 @@ public class MainActivity extends ComponentActivity {
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "create",
+                "saved=" + (savedInstanceState != null));
         container = AutoSecretaryApplication.from(this).container();
         EdgeToEdge.enable(this);
         buildShell();
@@ -158,6 +160,7 @@ public class MainActivity extends ComponentActivity {
 
     @Override protected void onResume() {
         super.onResume();
+        if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "resume", "");
         if (viewModel != null) {
             syncCalendarPermission();
             viewModel.refresh(DashboardRefreshReason.FOREGROUND);
@@ -165,7 +168,19 @@ public class MainActivity extends ComponentActivity {
         if (updates != null) updates.onResume();
     }
 
+    @Override protected void onPause() {
+        if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "pause", "");
+        super.onPause();
+    }
+
+    @Override public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "window-focus",
+                "value=" + hasFocus);
+    }
+
     @Override protected void onDestroy() {
+        if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "destroy", "");
         minuteHandler.removeCallbacksAndMessages(null);
         super.onDestroy();
     }
@@ -241,6 +256,9 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void render(DashboardUiState state) {
+        if (PresentationTrace.enabled()) PresentationTrace.emit("dashboard", "render",
+                "navigation=" + state.navigation + " loading=" + state.loading
+                        + " editorOpen=" + state.editor.open);
         boolean enteringAll = uiState == null || uiState.navigation
                 != NavigationDestination.ALL_TASKS;
         uiState = state;

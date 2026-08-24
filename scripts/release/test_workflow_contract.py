@@ -26,6 +26,17 @@ TODAY_GESTURE_TEST = (
     / "today"
     / "TodayInteractionInstrumentationTest.java"
 ).read_text(encoding="utf-8")
+EDITOR_INTERACTION_TEST = (
+    ROOT
+    / "app"
+    / "src"
+    / "androidTest"
+    / "java"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "TaskEditorInteractionInstrumentationTest.java"
+).read_text(encoding="utf-8")
 TOUCH_DRIVER = (
     ROOT
     / "app"
@@ -38,6 +49,39 @@ TOUCH_DRIVER = (
     / "ui"
     / "today"
     / "TouchGestureDriver.java"
+).read_text(encoding="utf-8")
+PRESENTATION_AWAITER = (
+    ROOT
+    / "app"
+    / "src"
+    / "androidTest"
+    / "java"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "PresentationAwaiter.java"
+).read_text(encoding="utf-8")
+DEBUG_PRESENTATION_TRACE = (
+    ROOT
+    / "app"
+    / "src"
+    / "debug"
+    / "java"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "PresentationTrace.java"
+).read_text(encoding="utf-8")
+RELEASE_PRESENTATION_TRACE = (
+    ROOT
+    / "app"
+    / "src"
+    / "release"
+    / "java"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "PresentationTrace.java"
 ).read_text(encoding="utf-8")
 
 
@@ -192,6 +236,24 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("downTime", TOUCH_DRIVER)
         self.assertIn("actions=", TODAY_GESTURE_TEST)
         self.assertIn("scrollDistance=", TODAY_GESTURE_TEST)
+
+    def test_critical_interaction_tests_use_signals_instead_of_polling(self):
+        for source in (EDITOR_INTERACTION_TEST, TODAY_GESTURE_TEST):
+            with self.subTest(source=source[:80]):
+                self.assertIn("PresentationAwaiter.await", source)
+                self.assertNotIn("SystemClock.sleep", source)
+                self.assertNotIn("UI_POLL_MILLIS", source)
+
+        self.assertIn("CountDownLatch", PRESENTATION_AWAITER)
+        self.assertIn("TIMEOUT_MILLIS", PRESENTATION_AWAITER)
+        self.assertNotIn("SystemClock.sleep", PRESENTATION_AWAITER)
+
+    def test_presentation_trace_is_bounded_in_debug_and_disabled_in_release(self):
+        self.assertIn("CAPACITY = 256", DEBUG_PRESENTATION_TRACE)
+        self.assertIn("boolean enabled() { return true; }", DEBUG_PRESENTATION_TRACE)
+        self.assertIn("boolean enabled() { return false; }", RELEASE_PRESENTATION_TRACE)
+        self.assertNotIn("ArrayDeque", RELEASE_PRESENTATION_TRACE)
+        self.assertNotIn("CopyOnWriteArrayList", RELEASE_PRESENTATION_TRACE)
 
 
 if __name__ == "__main__":

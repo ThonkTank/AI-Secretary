@@ -33,12 +33,15 @@ final class TaskEditorMotion {
         cancel(view);
         if (!animationsEnabled) {
             settle(view);
+            trace("enter-settled", view);
             return;
         }
+        trace("enter-start", view);
         view.setAlpha(0f);
         view.setTranslationY(style.dp(translationDp));
         view.animate().alpha(1f).translationY(0f).setDuration(duration(palette))
-                .setInterpolator(interpolator()).start();
+                .setInterpolator(interpolator())
+                .withEndAction(() -> trace("enter-end", view)).start();
     }
 
     static void fadeIn(View view, DayPalette palette) {
@@ -49,11 +52,14 @@ final class TaskEditorMotion {
         cancel(view);
         if (!animationsEnabled) {
             settle(view);
+            trace("fade-in-settled", view);
             return;
         }
+        trace("fade-in-start", view);
         view.setAlpha(0f);
         view.animate().alpha(1f).setDuration(duration(palette))
-                .setInterpolator(interpolator()).start();
+                .setInterpolator(interpolator())
+                .withEndAction(() -> trace("fade-in-end", view)).start();
     }
 
     static void fadeOut(View view, DayPalette palette, Runnable finished) {
@@ -65,11 +71,16 @@ final class TaskEditorMotion {
         cancel(view);
         if (!animationsEnabled) {
             view.setAlpha(0f);
+            trace("fade-out-settled", view);
             finished.run();
             return;
         }
+        trace("fade-out-start", view);
         view.animate().alpha(0f).setDuration(duration(palette))
-                .setInterpolator(interpolator()).withEndAction(finished).start();
+                .setInterpolator(interpolator()).withEndAction(() -> {
+                    trace("fade-out-end", view);
+                    finished.run();
+                }).start();
     }
 
     static void cancel(View view) {
@@ -77,11 +88,20 @@ final class TaskEditorMotion {
         animator.setListener(null);
         animator.withEndAction(null);
         animator.cancel();
+        trace("cancel", view);
     }
 
     static void settle(View view) {
         view.setAlpha(1f);
         view.setTranslationX(0f);
         view.setTranslationY(0f);
+    }
+
+    private static void trace(String kind, View view) {
+        if (!PresentationTrace.enabled()) return;
+        Object tag = view == null ? null : view.getTag();
+        String detail = view == null ? "view=null" : "view="
+                + view.getClass().getSimpleName() + (tag == null ? "" : " tag=" + tag);
+        PresentationTrace.emit("editor-motion", kind, detail);
     }
 }

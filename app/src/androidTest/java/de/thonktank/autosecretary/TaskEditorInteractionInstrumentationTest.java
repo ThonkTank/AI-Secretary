@@ -4,12 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import android.app.AlertDialog;
 import android.app.Instrumentation;
 import android.content.Intent;
-import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
@@ -26,6 +24,7 @@ import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -34,8 +33,9 @@ import java.util.function.BooleanSupplier;
 
 @RunWith(AndroidJUnit4.class)
 public final class TaskEditorInteractionInstrumentationTest {
-    private static final long TIMEOUT_MILLIS = 5_000L;
     private TaskEditorInteractionHarnessActivity activity;
+
+    @Before public void clearTrace() { PresentationTrace.clear(); }
 
     @After public void closeActivity() {
         if (activity != null) activity.finish();
@@ -135,14 +135,9 @@ public final class TaskEditorInteractionInstrumentationTest {
 
     private void await(String message, BooleanSupplier condition) {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
-        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MILLIS;
-        while (SystemClock.uptimeMillis() < deadline) {
-            final boolean[] matched = {false};
-            instrumentation.runOnMainSync(() -> matched[0] = condition.getAsBoolean());
-            if (matched[0]) return;
-            SystemClock.sleep(16L);
-        }
-        fail(message);
+        PresentationAwaiter.await(instrumentation, message, condition,
+                activity == null ? null : activity.getWindow().getDecorView(),
+                activity == null ? null : activity.editor());
     }
 
     private static TextView text(View root, String value) {
