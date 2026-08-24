@@ -8,6 +8,7 @@ report_dir="$report_root/api-$api_level/attempt-$attempt"
 test_class="${INSTRUMENTATION_TEST_CLASS:-}"
 gradle_executable="${INSTRUMENTATION_GRADLE_EXECUTABLE:-./gradlew}"
 animation_scale="${INSTRUMENTATION_ANIMATION_SCALE:-}"
+prepare_interaction_device="${INSTRUMENTATION_PREPARE_INTERACTION_DEVICE:-false}"
 animation_settings=(window_animation_scale transition_animation_scale animator_duration_scale)
 
 gradle_arguments=(connectedDebugAndroidTest --stacktrace)
@@ -19,6 +20,11 @@ if [ "${INSTRUMENTATION_RERUN_TASKS:-false}" = true ]; then
 fi
 
 status=0
+if [ "$prepare_interaction_device" = true ]; then
+  adb shell input keyevent KEYCODE_WAKEUP || status=43
+  adb shell wm dismiss-keyguard || status=43
+  adb shell input keyevent 82 || status=43
+fi
 if [ -n "$animation_scale" ]; then
   for setting in "${animation_settings[@]}"; do
     adb shell settings put global "$setting" "$animation_scale" || status=41
@@ -39,9 +45,9 @@ fi
 
 if [ "$status" -ne 0 ]; then
   mkdir -p "$report_dir"
-  printf 'api_level=%s\nattempt=%s\ntest_class=%s\nanimation_scale=%s\ngradle_exit_code=%s\nexit_code=%s\n' \
+  printf 'api_level=%s\nattempt=%s\ntest_class=%s\nanimation_scale=%s\nprepare_interaction_device=%s\ngradle_exit_code=%s\nexit_code=%s\n' \
     "$api_level" "$attempt" "${test_class:-all}" "${animation_scale:-unchanged}" \
-    "$status" "$status" \
+    "$prepare_interaction_device" "$status" "$status" \
     > "$report_dir/run-context.txt"
   for setting in "${animation_settings[@]}"; do
     printf '%s=%s\n' "$setting" "$(adb shell settings get global "$setting" 2>/dev/null \

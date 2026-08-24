@@ -109,6 +109,7 @@ class InstrumentationRunnerTest(unittest.TestCase):
                     "EXPECTED_SCALE": "1.0",
                     "GRADLE_MARKER": str(gradle_marker),
                     "INSTRUMENTATION_ANIMATION_SCALE": "1.0",
+                    "INSTRUMENTATION_PREPARE_INTERACTION_DEVICE": "true",
                     "INSTRUMENTATION_GRADLE_EXECUTABLE": str(gradle),
                     "PATH": str(temporary) + os.pathsep + environment["PATH"],
                 }
@@ -119,6 +120,13 @@ class InstrumentationRunnerTest(unittest.TestCase):
             self.assertEqual(0, result.returncode)
             self.assertTrue(gradle_marker.is_file())
             calls = adb_log.read_text()
+            for command in (
+                "shell input keyevent KEYCODE_WAKEUP",
+                "shell wm dismiss-keyguard",
+                "shell input keyevent 82",
+            ):
+                with self.subTest(command=command):
+                    self.assertIn(command, calls)
             for setting in (
                 "window_animation_scale",
                 "transition_animation_scale",

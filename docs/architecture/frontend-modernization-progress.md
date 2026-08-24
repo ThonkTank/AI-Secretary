@@ -105,14 +105,22 @@ Robolectric-Test sichert den Übergang von DELETE über die Ausblendung zu DISCA
 vor dem Emulatorstart fehl, weil das verfügbare Preview-Paket `android-37.0` nur im Canary-Kanal
 liegt; die Matrix verwendet deshalb explizit `37.0`/`canary`, ohne das Preview als stabil
 auszugeben. Dieser Preview-Emulator installierte anschließend korrekt, blieb beim Kaltstart aber
-offline: Der Emulator erreichte den ADB-Daemon vor dessen implizitem Start nicht und verband sich
-danach nicht erneut. Der Matrixjob startet ADB deshalb nun explizit vor dem Emulator. Der
-Workflowvertrag verhindert, dass diese Preview-Voraussetzung versehentlich wieder entfällt.
+offline. Ein expliziter ADB-Start vor dem Emulator schloss im Folgelauf den zunächst sichtbaren
+Daemon-Startfehler aus, der Gast blieb dennoch volle 600 Sekunden offline. Die Upstream-Diagnose
+für API 37 benennt die eigentliche Ursache: Das auf dem GitHub-Runner vorinstallierte alte
+`avdmanager` schreibt für minor-versionierte Pakete fälschlich `target=android-0`. Nur der
+Preview-Zweig aktualisiert die SDK-Command-line-Tools deshalb vor der AVD-Erzeugung auf Version 22
+oder neuer; der Workflowvertrag sichert sowohl diese Voraussetzung als auch den vorgezogenen
+ADB-Start.
 
 Der erste breite API-35-Lauf zeigte außerdem bereits bei der Fensterfokus-Synchronisation mehrere
 Fehler, obwohl dieselbe Suite auf API 26 grün war. Das ist ein unabhängiges, schon vorher mögliches
 Testharness-Race und bleibt bis zur Wiederholung des aktualisierten Commits unter Beobachtung; es
-wird nicht mit einem Retry kaschiert.
+wird nicht mit einem Retry kaschiert. Ein späterer Lauf reproduzierte das Muster ausschließlich
+im Animation-on-Job: Editor und Today erhielten durchgehend keinen Window-Fokus, während
+AllTasks ohne echte Activity-Interaktion weiterlief. Der gemeinsame Runner weckt und entsperrt
+das Gerät deshalb nun vor jeder UI-Instrumentierung explizit, statt implizit auf den Zustand des
+Emulator-Images zu vertrauen.
 
 Für den lokalen Android-Nachweis war zunächst nur eine Java-21-JRE ohne Compiler verfügbar. Mit
 einem temporären vollständigen Temurin-21-JDK wurden anschließend der neue fokussierte

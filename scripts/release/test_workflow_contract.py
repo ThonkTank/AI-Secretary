@@ -61,6 +61,9 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("app_changed", WORKFLOW)
         self.assertIn("outputs.quality_required == 'true'", quality)
         self.assertIn("outputs.instrumentation_required == 'true'", instrumentation)
+        self.assertIn(
+            'INSTRUMENTATION_PREPARE_INTERACTION_DEVICE: "true"', instrumentation
+        )
         self.assertNotIn("github.event_name != 'pull_request'", instrumentation)
         self.assertIn("outputs.release_required == 'true'", package)
 
@@ -98,9 +101,21 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("api-level: 35", animation_instrumentation)
         self.assertIn('api-level: "37.0"', animation_instrumentation)
         self.assertIn("channel: canary", animation_instrumentation)
+        self.assertIn(
+            "name: Update SDK tools for minor-versioned preview packages",
+            animation_instrumentation,
+        )
+        self.assertIn("if: matrix.channel != 'stable'", animation_instrumentation)
+        self.assertIn('cmdline-tools;latest', animation_instrumentation)
+        self.assertIn('cmdline-tools/latest-2', animation_instrumentation)
+        self.assertIn('test "$TOOLS_MAJOR" -ge 22', animation_instrumentation)
         self.assertIn("pre-emulator-launch-script: adb start-server", animation_instrumentation)
         self.assertIn("disable-animations: false", animation_instrumentation)
         self.assertIn('INSTRUMENTATION_ANIMATION_SCALE: "1.0"', animation_instrumentation)
+        self.assertIn(
+            'INSTRUMENTATION_PREPARE_INTERACTION_DEVICE: "true"',
+            animation_instrumentation,
+        )
         self.assertIn("TaskEditorInteractionInstrumentationTest", animation_instrumentation)
         self.assertIn("AllTasksInteractionTest", animation_instrumentation)
         self.assertIn("TodayInteractionInstrumentationTest", animation_instrumentation)

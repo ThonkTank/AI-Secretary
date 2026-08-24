@@ -81,6 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       INSTRUMENTATION_API_LEVEL: ${{ matrix.api-level }}
+      INSTRUMENTATION_PREPARE_INTERACTION_DEVICE: "true"
     strategy:
       fail-fast: false
       matrix:
@@ -131,6 +132,7 @@ jobs:
     env:
       INSTRUMENTATION_API_LEVEL: ${{ matrix.api-level }}
       INSTRUMENTATION_ANIMATION_SCALE: "1.0"
+      INSTRUMENTATION_PREPARE_INTERACTION_DEVICE: "true"
       INSTRUMENTATION_TEST_CLASS: de.thonktank.autosecretary.TaskEditorInteractionInstrumentationTest,de.thonktank.autosecretary.presentation.alltasks.AllTasksInteractionTest,de.thonktank.autosecretary.ui.today.TodayInteractionInstrumentationTest
     strategy:
       fail-fast: false
@@ -161,6 +163,34 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Update SDK tools for minor-versioned preview packages
+        if: matrix.channel != 'stable'
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          CURRENT_TOOLS="$SDK_ROOT/cmdline-tools/latest"
+          NEW_TOOLS="$SDK_ROOT/cmdline-tools/latest-2"
+          BACKUP_TOOLS="$RUNNER_TEMP/android-cmdline-tools-before-preview"
+          test -n "$SDK_ROOT"
+          test -x "$CURRENT_TOOLS/bin/sdkmanager"
+          test ! -e "$NEW_TOOLS"
+          test ! -e "$BACKUP_TOOLS"
+
+          set +o pipefail
+          yes | "$CURRENT_TOOLS/bin/sdkmanager" --install "cmdline-tools;latest" >/dev/null
+          INSTALL_STATUS=${PIPESTATUS[1]}
+          set -o pipefail
+          test "$INSTALL_STATUS" -eq 0
+          test -x "$NEW_TOOLS/bin/avdmanager"
+
+          mv "$CURRENT_TOOLS" "$BACKUP_TOOLS"
+          mv "$NEW_TOOLS" "$CURRENT_TOOLS"
+          TOOLS_VERSION=$("$CURRENT_TOOLS/bin/sdkmanager" --version 2>/dev/null \
+            | sed -n 's/^\([0-9][0-9.]*\)$/\1/p' | head -n 1)
+          TOOLS_MAJOR=${TOOLS_VERSION%%.*}
+          test -n "$TOOLS_VERSION"
+          test "$TOOLS_MAJOR" -ge 22
+          echo "Android SDK command-line tools $TOOLS_VERSION"
       - name: Animation-on interaction tests on API ${{ matrix.api-level }}
         uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
         with:
