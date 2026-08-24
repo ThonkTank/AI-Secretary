@@ -187,8 +187,10 @@ jobs:
 
           mv "$CURRENT_TOOLS" "$BACKUP_TOOLS"
           mv "$NEW_TOOLS" "$CURRENT_TOOLS"
-          TOOLS_VERSION=$("$CURRENT_TOOLS/bin/sdkmanager" --version 2>/dev/null \
-            | grep -Eo '^[0-9][0-9.]*' | head -n 1)
+          "$CURRENT_TOOLS/bin/avdmanager" list device >/dev/null
+          test -f "$CURRENT_TOOLS/source.properties"
+          TOOLS_VERSION=$(sed -n 's/^Pkg.Revision=//p' \
+            "$CURRENT_TOOLS/source.properties" | head -n 1)
           TOOLS_MAJOR=${TOOLS_VERSION%%.*}
           test -n "$TOOLS_VERSION"
           test "$TOOLS_MAJOR" -ge 22
