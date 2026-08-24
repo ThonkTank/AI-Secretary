@@ -24,8 +24,6 @@ class ChangeScopeTest(unittest.TestCase):
     def test_android_tests_and_ci_harness_require_instrumentation_without_release(self):
         for path in (
             "app/src/androidTest/java/example/DeviceTest.java",
-            "scripts/ci/run-upgrade-test.sh",
-            ".github/workflows/verify.yml",
             "app/schemas/de.example/14.json",
         ):
             with self.subTest(path=path):
@@ -41,8 +39,12 @@ class ChangeScopeTest(unittest.TestCase):
             "core-domain/src/main/java/example/Rule.java",
             "today-core/src/main/java/example/State.java",
             "app/build.gradle.kts",
+            ".github/workflows/verify.yml",
             "gradle/wrapper/gradle-wrapper.properties",
             "release/release.properties",
+            "scripts/ci/change_scope.py",
+            "scripts/ci/prepare-preview-sdk-tools.sh",
+            "scripts/ci/run-upgrade-test.sh",
             "scripts/release/release_tool.py",
         ):
             with self.subTest(path=path):

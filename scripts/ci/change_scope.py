@@ -10,6 +10,7 @@ from typing import Iterable
 
 
 BUILD_INPUTS = {
+    ".github/workflows/verify.yml",
     "app/build.gradle.kts",
     "build.gradle.kts",
     "core-domain/build.gradle.kts",
@@ -17,6 +18,9 @@ BUILD_INPUTS = {
     "gradlew",
     "gradlew.bat",
     "release/release.properties",
+    "scripts/ci/change_scope.py",
+    "scripts/ci/prepare-preview-sdk-tools.sh",
+    "scripts/ci/run-upgrade-test.sh",
     "scripts/release/release_tool.py",
     "settings.gradle.kts",
     "today-core/build.gradle.kts",

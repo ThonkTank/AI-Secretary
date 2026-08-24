@@ -587,3 +587,25 @@ Abschwächung von Neuinstallation, Start, Versionsprüfung oder Datenreadback un
 Produktcode, Buildabhängigkeiten oder Roadmap-Scope. Eine weitere Nachtarbeitsunterteilung ist
 lokal nicht begründet. Abschlussbeleg bleiben ein grüner eigener Pull Request, Squash-Merge und
 der anschließend vollständig grüne Produktionslauf auf API 26/35/37 mit Veröffentlichung.
+
+### Phase 2c – zweite Nachtarbeitsphase: Release-Scope
+
+Pull Request #261 und der Squash-Commit `283dd13a` bestanden Quality sowie breite und
+animationsaktive Instrumentierung auf API 26/35/37. Der anschließende `main`-Lauf übersprang
+jedoch Paketierung, Produktionsupgrade und Veröffentlichung: `run-upgrade-test.sh` lag nur unter
+dem allgemeinen Instrumentierungspräfix und war nicht als Release-Input klassifiziert. Dadurch
+konnte ausgerechnet eine Änderung am Produktionsfreigabe-Runner ihre eigene Ausführung vermeiden.
+Der grüne Lauf ist deshalb kein Abschlussbeleg.
+
+Die zweite Nachtarbeitsphase korrigiert ausschließlich diese Scope-Lücke. Upgrade-Runner,
+Scope-Klassifikator, der Release-/Publishworkflow und die auch im API-37-Produktionsupgrade
+verwendete Preview-SDK-Vorbereitung werden explizite Build-/Release-Inputs; damit erzwingen
+Änderungen an Produktionsprüfung, Gate-Entscheidung oder Produktionsinfrastruktur immer Quality,
+Instrumentierung, signierten Kandidaten, Produktionsupgrade und Veröffentlichung. Der
+Klassifikatortest verschiebt diese Pfade aus „nur Instrumentierung“ in „alle Gates“. Da
+`change_scope.py` selbst Teil dieses Commits ist, muss bereits der Merge dieser Korrektur die
+Produktionskette automatisch starten. Produktcode und die fachlichen Phase-2-Verträge bleiben
+unverändert; lokal werden erneut alle CI- und Release-Vertragstests sowie der resultierende Scope
+geprüft. Der negative Abgleich findet danach keinen weiteren ausführenden Pfad der
+Produktionskette außerhalb des Release-Scope. Als Abschluss gelten nur ein eigener grüner Pull
+Request, Squash-Merge und ein veröffentlichender `main`-Lauf mit API-26/35/37-Upgrades.
