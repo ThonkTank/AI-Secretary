@@ -54,6 +54,22 @@ public final class ArchitectureBoundaryTest {
         assertTrue(activity.contains("viewModel::dispatchToday"));
     }
 
+    @Test public void motionCallbacksCannotOwnEditorNavigation() throws Exception {
+        String activity = read(main("MainActivity.java"));
+        String open = activity.substring(activity.indexOf("private void openEditorWithFlight()"),
+                activity.indexOf("private void renderUpdate("));
+        assertTrue(open.contains("editorCoordinator.deferNextOpen()"));
+        assertTrue(open.contains("editorCoordinator::completeDeferredOpen"));
+        assertFalse(open.contains("() -> viewModel.openEditor"));
+        assertTrue(open.indexOf("animateEditorTransition")
+                < open.lastIndexOf("viewModel.openEditor(null)"));
+
+        String renderer = read(main("DashboardRenderer.java"));
+        assertTrue(renderer.contains("onAnimationCancel"));
+        assertTrue(renderer.contains("onAnimationEnd"));
+        assertTrue(renderer.contains("if (completed[0]) return"));
+    }
+
     @Test public void viewModelDelegatesClosedTodayCommandRouting() throws Exception {
         String viewModel = read(main("TaskViewModel.java"));
         String dispatcher = read(main("presentation/today/TodayCommandDispatcher.java"));

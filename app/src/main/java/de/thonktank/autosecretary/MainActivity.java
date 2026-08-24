@@ -181,6 +181,7 @@ public class MainActivity extends ComponentActivity {
 
     @Override protected void onDestroy() {
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "destroy", "");
+        if (editorCoordinator != null) editorCoordinator.dispose();
         minuteHandler.removeCallbacksAndMessages(null);
         super.onDestroy();
     }
@@ -278,12 +279,15 @@ public class MainActivity extends ComponentActivity {
 
     private void openEditorWithFlight() {
         if (viewModel == null) return;
+        if (uiState != null && uiState.editor.open) return;
         if (renderer == null || uiState == null
                 || uiState.navigation != NavigationDestination.TODAY) {
             viewModel.openEditor(null);
             return;
         }
-        renderer.animateEditorTransition(() -> viewModel.openEditor(null));
+        editorCoordinator.deferNextOpen();
+        renderer.animateEditorTransition(editorCoordinator::completeDeferredOpen);
+        viewModel.openEditor(null);
     }
 
     private void renderUpdate(UpdateUiState state) {

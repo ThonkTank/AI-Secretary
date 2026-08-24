@@ -15,6 +15,11 @@ public final class TaskEditorCoordinator {
     private TaskEditorView editor;
     private int topInset;
     private int bottomInset;
+    private boolean deferredOpen;
+    private boolean disposed;
+    private EditorUiState pendingState;
+    private DayPalette pendingPalette;
+    private LocalDate pendingToday;
 
     public TaskEditorCoordinator(Context context, FrameLayout root, View dashboard,
                                  TaskEditorView.Listener listener) {
@@ -31,11 +36,45 @@ public final class TaskEditorCoordinator {
     }
 
     public void render(EditorUiState state, DayPalette palette, LocalDate today) {
+        if (disposed) return;
         if (!state.open) {
+            deferredOpen = false;
+            clearPendingOpen();
             unmount();
             dashboard.setVisibility(View.VISIBLE);
             return;
         }
+        if (deferredOpen) {
+            pendingState = state;
+            pendingPalette = palette;
+            pendingToday = today;
+            return;
+        }
+        renderOpen(state, palette, today);
+    }
+
+    public void deferNextOpen() {
+        if (!disposed) deferredOpen = true;
+    }
+
+    public void completeDeferredOpen() {
+        if (disposed) return;
+        deferredOpen = false;
+        if (pendingState == null) return;
+        EditorUiState state = pendingState;
+        DayPalette palette = pendingPalette;
+        LocalDate today = pendingToday;
+        clearPendingOpen();
+        renderOpen(state, palette, today);
+    }
+
+    public void dispose() {
+        disposed = true;
+        deferredOpen = false;
+        clearPendingOpen();
+    }
+
+    private void renderOpen(EditorUiState state, DayPalette palette, LocalDate today) {
         dashboard.setVisibility(View.INVISIBLE);
         if (state.loading) return;
         if (editor == null) {
@@ -54,5 +93,11 @@ public final class TaskEditorCoordinator {
         if (editor == null) return;
         root.removeView(editor);
         editor = null;
+    }
+
+    private void clearPendingOpen() {
+        pendingState = null;
+        pendingPalette = null;
+        pendingToday = null;
     }
 }

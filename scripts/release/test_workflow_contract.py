@@ -247,6 +247,13 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("CountDownLatch", PRESENTATION_AWAITER)
         self.assertIn("TIMEOUT_MILLIS", PRESENTATION_AWAITER)
         self.assertNotIn("SystemClock.sleep", PRESENTATION_AWAITER)
+        self.assertIn(
+            "recreationDuringTextInputRestoresTheLatestDraft", EDITOR_INTERACTION_TEST
+        )
+        self.assertIn(
+            "recreationDuringPageMotionRestoresThePublishedDestination",
+            EDITOR_INTERACTION_TEST,
+        )
 
     def test_presentation_trace_is_bounded_in_debug_and_disabled_in_release(self):
         self.assertIn("CAPACITY = 256", DEBUG_PRESENTATION_TRACE)

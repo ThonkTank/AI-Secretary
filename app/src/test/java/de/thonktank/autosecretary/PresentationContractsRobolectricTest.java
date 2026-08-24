@@ -95,6 +95,33 @@ public final class PresentationContractsRobolectricTest {
         assertFalse(coordinator.handleBack());
     }
 
+    @Test public void editorStateCanOpenBeforeItsPresentationTransitionCompletes() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        FrameLayout root = new FrameLayout(activity);
+        View dashboard = new View(activity);
+        root.addView(dashboard);
+        activity.setContentView(root);
+        TaskEditorCoordinator coordinator = new TaskEditorCoordinator(activity, root, dashboard,
+                new TaskEditorView.Listener() {
+                    @Override public void onDraftChanged(EditorUiState draft) { }
+                    @Override public void onSave(EditorUiState draft) { }
+                    @Override public void onDelete(String taskId) { }
+                    @Override public void onDismiss() { }
+                });
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+
+        coordinator.deferNextOpen();
+        coordinator.render(EditorUiState.create(), palette, LocalDate.of(2026, 8, 24));
+
+        assertEquals(View.VISIBLE, dashboard.getVisibility());
+        assertEquals(1, root.getChildCount());
+
+        coordinator.completeDeferredOpen();
+
+        assertEquals(View.INVISIBLE, dashboard.getVisibility());
+        assertEquals(2, root.getChildCount());
+    }
+
     private static RewardEffect effect() {
         RewardBooking booking = new RewardBooking("booking", "transaction", "occurrence",
                 null, "task:test", RewardBooking.Kind.SINGLE_COMPLETION,
