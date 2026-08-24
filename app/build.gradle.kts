@@ -2,6 +2,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 val releaseContract = Properties().apply {
@@ -75,6 +76,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        compose = true
     }
 
     testOptions {
@@ -108,18 +110,21 @@ tasks.withType<JavaCompile>().configureEach {
 dependencies {
     implementation(project(":core-domain"))
     implementation(project(":today-core"))
-    //noinspection GradleDependency -- newer Core releases require a newer compile SDK.
-    implementation("androidx.core:core:1.13.1")
+    implementation("androidx.core:core:1.18.0")
     implementation("androidx.customview:customview:1.1.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
     annotationProcessor("androidx.room:room-compiler:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.11.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.11.0")
     implementation("androidx.lifecycle:lifecycle-livedata:2.11.0")
     // Room migration tests require JSON 1.8.1; align SavedState's serialization core with it.
     implementation(platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:1.8.1"))
-    implementation("androidx.activity:activity:1.10.1")
+    implementation(platform("androidx.compose:compose-bom:2026.08.00"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.activity:activity:1.13.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test:core:1.7.0")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
