@@ -170,6 +170,7 @@ jobs:
           channel: ${{ matrix.channel }}
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          pre-emulator-launch-script: adb start-server
           script: ./scripts/ci/run-instrumentation.sh
       - name: Upload animation instrumentation failure diagnostics
         if: failure()

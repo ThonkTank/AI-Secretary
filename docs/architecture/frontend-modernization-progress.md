@@ -104,7 +104,10 @@ ausblendende Dialog leitet Back nun an den aktuellen State Owner weiter, und ein
 Robolectric-Test sichert den Übergang von DELETE über die Ausblendung zu DISCARD. API 37 schlug
 vor dem Emulatorstart fehl, weil das verfügbare Preview-Paket `android-37.0` nur im Canary-Kanal
 liegt; die Matrix verwendet deshalb explizit `37.0`/`canary`, ohne das Preview als stabil
-auszugeben.
+auszugeben. Dieser Preview-Emulator installierte anschließend korrekt, blieb beim Kaltstart aber
+offline: Der Emulator erreichte den ADB-Daemon vor dessen implizitem Start nicht und verband sich
+danach nicht erneut. Der Matrixjob startet ADB deshalb nun explizit vor dem Emulator. Der
+Workflowvertrag verhindert, dass diese Preview-Voraussetzung versehentlich wieder entfällt.
 
 Der erste breite API-35-Lauf zeigte außerdem bereits bei der Fensterfokus-Synchronisation mehrere
 Fehler, obwohl dieselbe Suite auf API 26 grün war. Das ist ein unabhängiges, schon vorher mögliches
