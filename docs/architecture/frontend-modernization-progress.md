@@ -1114,3 +1114,21 @@ Android-Test und 6.373.218 Byte unsigned Release; der Fontbestand bleibt mit 1.4
 unverändert. Schema 16, Signatur-, Upgrade- und visuelle Verträge wurden nicht geändert. Der
 Abschluss von 3c2b erfordert nun den eigenen grünen Pull Request, Squash-Merge und den
 veröffentlichenden `main`-Lauf.
+
+### Phase 3c2b – Remote-Abschluss und Geräte-Gate
+
+Pull Request #268 bestand Quality sowie breite und animationsaktive Instrumentierung auf API
+26/35/37 und wurde als `a83584aa` per Squash nach `main` übernommen. Der Produktionslauf
+`32788757316` bestand erneut Quality, beide Instrumentierungsmatrizen, signierte Paketierung sowie
+Neuinstallation und echtes Upgrade auf allen drei API-Stufen. Release 0.2.121
+(`forest-android-1012101`) veröffentlicht `AutoSecretary.apk` und `release-metadata.json` exakt
+aus `a83584aa06067b381964bd3082aaea2c791fd34c`.
+
+Die automatisierte Implementation von 3c2b ist damit abgeschlossen. Die laut Roadmap für diesen
+UI-relevanten Screen-Datenfluss-Cutover zusätzlich erforderliche Installation über den
+In-App-Updater und Abnahme auf einem physischen Gerät ist jedoch **ausstehend**: Der erneute
+Gerätecheck vom 25. August 2026 fand über das repositoryunabhängige SDK-ADB kein verbundenes
+Gerät. Dieser fehlende externe Nachweis wird nicht durch Emulator-, Upgrade- oder Releaseerfolg
+ersetzt. Phase 3c3 wartet deshalb; vor ihrer Vorprüfung muss ein entsperrtes, autorisiertes
+Android-Gerät erreichbar sein und Release 0.2.121 über den echten Updatepfad installiert und
+abgenommen werden.
