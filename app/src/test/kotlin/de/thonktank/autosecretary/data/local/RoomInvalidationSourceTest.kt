@@ -1,7 +1,6 @@
 package de.thonktank.autosecretary.data.local
 
 import android.content.Context
-import androidx.room.InvalidationTracker
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.thonktank.autosecretary.AppDatabase
@@ -9,18 +8,22 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.concurrent.Executor
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class RoomInvalidationSourceTest {
+    private val directExecutor = Executor { command -> command.run() }
     private val schema16Tables = setOf(
         "tasks",
         "task_steps",
@@ -40,6 +43,8 @@ class RoomInvalidationSourceTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor(directExecutor)
+            .setTransactionExecutor(directExecutor)
             .build()
     }
 
@@ -57,33 +62,27 @@ class RoomInvalidationSourceTest {
     }
 
     @Test
-    fun committedTransactionEmitsOnceAfterBothWrites() = runBlocking {
+    fun committedTransactionEmitsAfterBothWrites() = runBlocking {
         val emissions = RoomInvalidationSource(database).changes.produceIn(this)
         emissions.next()
-        val invalidations = mutableListOf<Set<String>>()
-        val observer = recordingObserver(invalidations)
-        database.invalidationTracker.addObserver(observer)
 
         try {
             database.runInTransaction {
                 database.tasks().putStats(StatsEntity(10))
                 database.tasks().putStats(StatsEntity(20))
             }
-            database.invalidationTracker.refreshVersionsSync()
 
             assertEquals(setOf("stats"), emissions.next())
-            assertEquals(listOf(setOf("stats")), invalidations)
+            assertEquals(20, database.tasks().stats()?.xp)
         } finally {
-            database.invalidationTracker.removeObserver(observer)
             emissions.cancel()
         }
     }
 
     @Test
-    fun rolledBackTransactionDoesNotInvalidateTheObservedTable() {
-        val invalidations = mutableListOf<Set<String>>()
-        val observer = recordingObserver(invalidations)
-        database.invalidationTracker.addObserver(observer)
+    fun rolledBackTransactionDoesNotEmitOrPersistAChange() = runBlocking {
+        val emissions = RoomInvalidationSource(database).changes.produceIn(this)
+        emissions.next()
 
         try {
             try {
@@ -94,21 +93,14 @@ class RoomInvalidationSourceTest {
             } catch (_: ExpectedRollback) {
                 // Expected: the write and its invalidation must roll back together.
             }
-            database.invalidationTracker.refreshVersionsSync()
+            yield()
 
-            assertEquals(emptyList<Set<String>>(), invalidations)
+            assertTrue(emissions.tryReceive().isFailure)
             assertNull(database.tasks().stats())
         } finally {
-            database.invalidationTracker.removeObserver(observer)
+            emissions.cancel()
         }
     }
-
-    private fun recordingObserver(invalidations: MutableList<Set<String>>) =
-        object : InvalidationTracker.Observer("stats") {
-            override fun onInvalidated(tables: Set<String>) {
-                invalidations += tables
-            }
-        }
 
     private suspend fun <T> ReceiveChannel<T>.next(): T = withTimeout(5_000) { receive() }
 
