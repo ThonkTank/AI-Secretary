@@ -304,7 +304,15 @@ Animation-on-Suite auf API 35/37 grün. Nur der neue Page-Motion-Test auf API 26
 der Testthread erst nach dem vollständigen 240-ms-Animationslauf wieder eingeplant wurde. Das war
 kein verlorener Produktzustand, sondern ein zu schwacher Testaufbau. Die Korrektur veröffentlicht
 den Seitenwechsel und fordert die Activity-Recreation nun im selben UI-Turn an; solange Motion
-aktiv ist, kann zwischen beiden Operationen kein Frame und damit kein Animationsende laufen. Die
+aktiv ist, kann zwischen beiden Operationen kein Frame und damit kein Animationsende laufen.
+
+Die erste Fassung dieser Korrektur rief `Activity.recreate()` direkt innerhalb des UI-Callbacks
+auf. API 35/37 und alle anderen Jobs waren grün, auf API 26 blieb der Lifecycle dadurch jedoch
+reentrant im Instrumentierungsschritt stehen. Der festgefahrene und durch die Korrektur veraltete
+Workflow wurde nicht wiederholt, sondern abgebrochen. Die Recreation liegt jetzt als vorderste
+Main-Queue-Nachricht hinter demselben UI-Turn: Sie läuft weiterhin garantiert vor dem nächsten
+Animationsframe, aber erst nachdem der aktuelle Callback sauber zurückgekehrt ist. Der Test
+wartet explizit auf das Destroy-Signal, bevor er die neue Activity bindet. Die
 AndroidTest-Kompilierung sowie die fokussierten State-, Motion- und Architekturtests sind auf
 diesem Korrekturstand mit Java 21 grün. Ein neuer vollständiger Remote-Gate steht noch aus.
 Weitere lokale Scope-Kürzungen, Doppelzustände oder notwendige Nacharbeitsphasen wurden nach

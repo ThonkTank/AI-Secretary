@@ -8,6 +8,8 @@ import static org.junit.Assert.assertTrue;
 import android.app.AlertDialog;
 import android.app.Instrumentation;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
@@ -156,8 +158,10 @@ public final class TaskEditorInteractionInstrumentationTest {
             if (activeMotion) assertFalse(
                     "page animation ended before the same UI turn requested recreation",
                     hasTrace("editor-motion", "page-end"));
-            activity.recreate();
+            new Handler(Looper.getMainLooper()).postAtFrontOfQueue(activity::recreate);
         });
+        await("editor activity did not begin recreation",
+                () -> hasTrace("editor-host", "destroy"));
         scenario.onActivity(value -> activity = value);
         await("editor activity was not recreated", () -> activity != previous
                 && activity.hasWindowFocus());
