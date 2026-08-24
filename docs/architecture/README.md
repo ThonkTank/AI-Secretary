@@ -28,6 +28,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-019: Eindeutige Today-Projektion, Rewards und Interaktionszustände](adr-019-today-zustand-rewards-und-aktionen.md)
 - [ADR-020: Compilergrenzen für Domain und Today-Kern](adr-020-compilergrenzen.md)
 - [ADR-021: Platzierungskarten und Archivbearbeitung im Alles-Tab](adr-021-alles-tab-platzierungskarten.md)
+- [ADR-022: schrittweise Compose-Präsentationsarchitektur](adr-022-compose-presentation.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -44,6 +45,12 @@ Die phasenweisen Implementierungs- und Auditresultate stehen im
 [Fortschrittsprotokoll](today-focus-cleanup-progress.md).
 Der requirementweise Abschlussabgleich der Roadmap steht im
 [Roadmap-Abschlussaudit](roadmap-audit.md).
+
+Die neue, verbindliche [Roadmap der Frontend-Modernisierung](frontend-modernization-roadmap.md)
+führt die Präsentation schrittweise zu Kotlin, Compose und eindeutigen Screen-State-Ownern. Ihre
+Vorprüfungen, Phasenergebnisse und Selbstkritik werden getrennt im
+[Fortschrittsprotokoll der Frontend-Modernisierung](frontend-modernization-progress.md)
+festgehalten.
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
