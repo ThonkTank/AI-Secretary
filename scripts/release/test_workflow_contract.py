@@ -59,6 +59,15 @@ SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").re
 INSTRUMENTATION_RUNNER = (ROOT / "scripts" / "ci" / "run-instrumentation.sh").read_text(
     encoding="utf-8"
 )
+PREVIEW_SDK_RUNNER = (
+    ROOT / "scripts" / "ci" / "prepare-preview-sdk-tools.sh"
+).read_text(encoding="utf-8")
+UPGRADE_RUNNER = (ROOT / "scripts" / "ci" / "run-upgrade-test.sh").read_text(
+    encoding="utf-8"
+)
+RELEASE_TOOL = (ROOT / "scripts" / "release" / "release_tool.py").read_text(
+    encoding="utf-8"
+)
 SOAK_RUNNER = (ROOT / "scripts" / "ci" / "run-instrumentation-soak.sh").read_text(
     encoding="utf-8"
 )
@@ -194,6 +203,53 @@ class WorkflowContractTest(unittest.TestCase):
             WORKFLOW,
         )
 
+    def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):
+        quality = WORKFLOW.split("\n  quality:", 1)[1].split(
+            "\n  instrumentation:", 1
+        )[0]
+        instrumentation = WORKFLOW.split("\n  instrumentation:", 1)[1].split(
+            "\n  animation-instrumentation:", 1
+        )[0]
+        animation = WORKFLOW.split("\n  animation-instrumentation:", 1)[1].split(
+            "\n  instrumentation-gate:", 1
+        )[0]
+        upgrade = WORKFLOW.split("\n  upgrade:", 1)[1].split("\n  publish:", 1)[0]
+
+        self.assertIn(
+            'test "$(stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk)" -lt 8388608',
+            quality,
+        )
+        self.assertIn(
+            'test "$(du -cb app/src/main/res/font/*.ttf | tail -1 | cut -f1)" -lt 1677722',
+            quality,
+        )
+        self.assertIn("MAX_APK_BYTES = 8 * 1024 * 1024", RELEASE_TOOL)
+        for job in (instrumentation, animation, upgrade):
+            with self.subTest(job=job[:40]):
+                self.assertIn('api-level: "37.0"', job)
+                self.assertIn("channel: canary", job)
+                self.assertIn("if: matrix.channel != 'stable'", job)
+                self.assertIn("./scripts/ci/prepare-preview-sdk-tools.sh", job)
+                self.assertIn("channel: ${{ matrix.channel }}", job)
+                self.assertIn("pre-emulator-launch-script: adb start-server", job)
+        self.assertNotIn('cmdline-tools;latest', WORKFLOW)
+        self.assertIn('sdkmanager" --install "cmdline-tools;latest"', PREVIEW_SDK_RUNNER)
+        self.assertIn('test -x "$new_tools/bin/avdmanager"', PREVIEW_SDK_RUNNER)
+        self.assertIn('"$current_tools/bin/avdmanager" list device', PREVIEW_SDK_RUNNER)
+        self.assertIn('test "$tools_major" -ge 22', PREVIEW_SDK_RUNNER)
+
+        fresh_install = UPGRADE_RUNNER.index('install_apk "$candidate_apk"')
+        clean_remove = UPGRADE_RUNNER.index('adb uninstall "$package_name"')
+        previous_install = UPGRADE_RUNNER.index('install_apk "$previous_apk"')
+        upgrade_install = UPGRADE_RUNNER.index('install_apk "$candidate_apk" upgrade')
+        self.assertLess(fresh_install, clean_remove)
+        self.assertLess(clean_remove, previous_install)
+        self.assertLess(previous_install, upgrade_install)
+        self.assertEqual(2, UPGRADE_RUNNER.count("\nverify_installed_version\n"))
+        self.assertEqual(2, UPGRADE_RUNNER.count("\nverify_package_absent\n"))
+        self.assertEqual(2, UPGRADE_RUNNER.count("\nstart_main_activity\n"))
+        self.assertIn('*"Status: ok"*', UPGRADE_RUNNER)
+
     def test_change_scope_separates_quality_instrumentation_and_release(self):
         release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
             "\n  quality:", 1
@@ -258,12 +314,10 @@ class WorkflowContractTest(unittest.TestCase):
             animation_instrumentation,
         )
         self.assertIn("if: matrix.channel != 'stable'", animation_instrumentation)
-        self.assertIn('cmdline-tools;latest', animation_instrumentation)
-        self.assertIn('cmdline-tools/latest-2', animation_instrumentation)
-        self.assertIn('test -x "$NEW_TOOLS/bin/avdmanager"', animation_instrumentation)
-        self.assertIn('"$CURRENT_TOOLS/bin/avdmanager" list device', animation_instrumentation)
-        self.assertIn('"$CURRENT_TOOLS/source.properties"', animation_instrumentation)
-        self.assertIn('test "$TOOLS_MAJOR" -ge 22', animation_instrumentation)
+        self.assertIn(
+            "run: ./scripts/ci/prepare-preview-sdk-tools.sh",
+            animation_instrumentation,
+        )
         self.assertIn("pre-emulator-launch-script: adb start-server", animation_instrumentation)
         self.assertIn("disable-animations: false", animation_instrumentation)
         self.assertIn('INSTRUMENTATION_ANIMATION_SCALE: "1.0"', animation_instrumentation)

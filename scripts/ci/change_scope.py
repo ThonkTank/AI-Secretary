@@ -17,6 +17,7 @@ BUILD_INPUTS = {
     "gradlew",
     "gradlew.bat",
     "release/release.properties",
+    "scripts/release/release_tool.py",
     "settings.gradle.kts",
     "today-core/build.gradle.kts",
 }

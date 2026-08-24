@@ -14,6 +14,45 @@ candidate_version=$5
 runner="${package_name}.test/androidx.test.runner.AndroidJUnitRunner"
 test_class="${package_name}.UpgradePersistenceTest"
 
+install_apk() {
+  local apk=$1
+  local mode=${2:-fresh}
+  local output
+  if [ "$mode" = upgrade ]; then
+    output=$(adb install -r "$apk")
+  else
+    output=$(adb install "$apk")
+  fi
+  printf '%s\n' "$output"
+  case "$output" in
+    *Success*) ;;
+    *) exit 1 ;;
+  esac
+}
+
+verify_installed_version() {
+  local installed_version
+  installed_version=$(adb shell dumpsys package "$package_name" \
+    | sed -n 's/^[[:space:]]*versionCode=\([0-9]*\).*/\1/p' | head -n 1)
+  test "$installed_version" = "$candidate_version"
+}
+
+verify_package_absent() {
+  local package_paths
+  package_paths=$(adb shell pm path "$package_name" | tr -d '\r')
+  test -z "$package_paths"
+}
+
+start_main_activity() {
+  local output
+  output=$(adb shell am start -W -n "${package_name}/.MainActivity")
+  printf '%s\n' "$output"
+  case "$output" in
+    *"Status: ok"*) ;;
+    *) exit 1 ;;
+  esac
+}
+
 run_probe() {
   local phase=$1
   local method=$2
@@ -31,20 +70,27 @@ for artifact in "$previous_apk" "$candidate_apk" "$test_apk"; do
   test -f "$artifact"
 done
 
-adb install "$previous_apk"
-adb shell am start -W -n "${package_name}/.MainActivity"
+# First prove that the exact signed candidate installs and starts on a clean device. Remove it
+# before exercising the independent previous-production-to-candidate upgrade path below.
+verify_package_absent
+install_apk "$candidate_apk"
+start_main_activity
+verify_installed_version
 adb shell am force-stop "$package_name"
-adb install "$test_apk"
+uninstall_result=$(adb uninstall "$package_name")
+case "$uninstall_result" in
+  *Success*) ;;
+  *) echo "$uninstall_result" >&2; exit 1 ;;
+esac
+verify_package_absent
+
+install_apk "$previous_apk"
+start_main_activity
+adb shell am force-stop "$package_name"
+install_apk "$test_apk"
 run_probe seed seedPreviousVersion
 
-upgrade_result=$(adb install -r "$candidate_apk")
-case "$upgrade_result" in
-  *Success*) ;;
-  *) echo "$upgrade_result" >&2; exit 1 ;;
-esac
-
-installed_version=$(adb shell dumpsys package "$package_name" \
-  | sed -n 's/^[[:space:]]*versionCode=\([0-9]*\).*/\1/p' | head -n 1)
-test "$installed_version" = "$candidate_version"
+install_apk "$candidate_apk" upgrade
+verify_installed_version
 run_probe verify currentVersionStartsAndReadsPreviousData
 adb shell am force-stop "$package_name"

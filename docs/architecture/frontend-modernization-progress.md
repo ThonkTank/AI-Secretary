@@ -483,3 +483,71 @@ daher die frische Remote-Instrumentierungsmatrix. API-37-Neuinstallation und das
 Produktupgrade, das unsigned-Release-Gate und das explizite Font-Gate bleiben unverändert Phase
 2c. Der lokale Stand erfüllt die Implementationsgrenze von 2b; der Abschluss bleibt bis zur
 grünen Remote-Matrix und zum Squash-Merge offen.
+
+### Phase 2c – Vorprüfung und Implementationsplan
+
+- Ausgangspunkt ist der saubere, mit `origin/main` identische Squash-Merge `b962ed8e` aus Pull
+  Request #259. Quality, breite Instrumentierung einschließlich Compose-Smoke auf API 26/35,
+  Animationen auf API 26/35/37 und beide PR-Sammelgates sind grün. Der anschließende `main`-Lauf
+  baute und signierte Release 0.2.115, bestand die Produktionsupgrades auf API 26/35 und
+  veröffentlichte exakt den getesteten Commit.
+- Im ersten `main`-Versuch blockierte ausschließlich ein sichtbarer Pixel-Launcher-ANR den Fokus
+  aller API-35-Animationstests. Screenshot, Window-Dump und acht gleichartige Fokusfehler belegen
+  das fremde Systemfenster; der fokussierte Wiederholungslauf auf einem frischen Runner bestand in
+  4:07 Minuten. App-, Compose-, Zustands- und Geometriefehler lagen nicht vor.
+- Das Debug-Gate von 10 MiB und das Font-Gate von 1,6 MiB existieren bereits; der Roadmapvertrag
+  für das unsigned Release-APK von 8 MiB fehlt noch. 2c ergänzt dieses Gate und verschärft auch
+  das Metadatenlimit für den signierten Produktionskandidaten auf 8 MiB. Änderungen am R8-Modus
+  bleiben ausgeschlossen.
+- Die breite Neuinstallationsmatrix erhält neben API 26/35 einen Canary-Lauf auf API 37.0. Die
+  Produktionsmatrix prüft den signierten Kandidaten zunächst als saubere Neuinstallation,
+  entfernt ihn wieder und führt anschließend das bisherige echte Upgrade mit Datenreadback auf
+  API 26, 35 und 37.0 aus. Damit werden Debug-Neuinstallation, Produktions-Neuinstallation und
+  Produktionsupgrade nicht miteinander verwechselt.
+- Die für minor-versionierte Preview-Systemabbilder nötige SDK-Werkzeugvorbereitung wird aus dem
+  bisherigen einzelnen Workflowblock in ein gemeinsames, fail-fast CI-Skript extrahiert und von
+  breiter Instrumentierung, Animations- und Upgradematrix wiederverwendet. Vertragstests sichern
+  Matrix, Aufrufreihenfolge, Größenwerte und Release-Scope. `release_tool.py` wird als
+  release-relevanter Buildinput klassifiziert, damit der Merge die verschärfte Produktionskette
+  tatsächlich ausführt statt nur statisch zu beschreiben.
+
+2c bleibt ein zusammenhängender Abschluss der Buildgrundlage und wird nicht weiter geteilt. Der
+Nachweis umfasst CI-/Release-Harnesstests, Shell-Syntax, vollständige lokale App-Suite, alle drei
+Remote-Instrumentierungsmatrizen, signierten Kandidaten, Neuinstallation und Upgrade auf API 37
+sowie die Veröffentlichung desselben `main`-Commits. Produktcode, sichtbare UI, Schema, App-ID,
+`minSdk 26`, `targetSdk 35` und JVM 17 bleiben unverändert.
+
+### Phase 2c – Implementation und lokale Nachweise
+
+- Quality begrenzt nun neben Debug und Fonts auch das unsigned Release-APK strikt auf weniger als
+  8 MiB. Der Releasevertrag akzeptiert auch den signierten, veröffentlichten Kandidaten nur bis
+  8 MiB; eine Grenzwertüberschreitung ist durch einen eigenen Negativtest belegt.
+- Breite Instrumentierung und Produktionsupgrade führen API 37.0 mit Canary-Systemabbild zusätzlich
+  zu API 26/35 aus. Die bereits grüne API-37-Animationsmatrix bleibt bestehen. Alle drei Matrizen
+  verwenden dasselbe geprüfte Skript zur Aktualisierung der für minor-versionierte Preview-Pakete
+  nötigen SDK-Werkzeuge; die duplizierte Workflow-Implementierung wurde entfernt.
+- Der Produktionsrunner beweist auf jedem Upgradegerät zuerst, dass kein App-Paket vorhanden ist,
+  installiert und startet den exakt signierten Kandidaten, prüft dessen Version und entfernt ihn
+  vollständig. Erst danach installiert er die festgelegte frühere Produktion, erzeugt Altdaten und
+  prüft beim Update auf denselben Kandidaten deren Readback. Installationen, beide Starts,
+  Paketabwesenheit und Kandidatenversionen sind jeweils fail-fast geprüft.
+- Änderungen am ausführenden Releasevertrag werden jetzt als Release-Buildinput klassifiziert.
+  Dadurch muss der Merge dieser Phase die Paket-, Neuinstallations-, Upgrade- und
+  Veröffentlichungskette tatsächlich durchlaufen; ein nur statisch grüner PR kann sie nicht
+  umgehen.
+- Lokal bestanden 13 CI-Harnesstests und 22 Release-/Workflow-Vertragstests, Shell-Syntax und
+  Diff-Whitespace-Prüfung. Der vollständige Java-21-Build bestand mit 426 App-Tests (ein bewusst
+  übersprungener Test), Lint, Debug-, Android-Test- und Release-APK. Die gemessenen Größen sind
+  8.530.338 Byte Debug, 653.541 Byte Android-Test, 6.340.450 Byte unsigned Release und 1.478.008
+  Byte Fonts.
+
+### Phase 2c – Roadmap-Abgleich und Nachtarbeit
+
+Der negative Abgleich bestätigt unveränderten Produktcode, UI, Navigation, Persistenzschema,
+App-ID, SDK-Zielvertrag und R8-Modus. Er fand jedoch eine Beweislücke im ersten Entwurf: Ein
+ausgeführtes `am start` hätte allein noch keinen erfolgreichen Start des Produktionskandidaten
+bewiesen. Die Nachtarbeit ergänzt deshalb die explizite Prüfung auf `Status: ok` sowie die
+Paketabwesenheit vor der Neuinstallation und nach der Deinstallation; der Harnesstest sichert
+Reihenfolge und beide Prüfungen. Weitere lokale Abkürzungen oder Scope-Vereinfachungen wurden
+nicht gefunden. Der Phasenabschluss bleibt bis zu grünen Remote-Matrizen, signierter
+API-37-Neuinstallation und -Upgrade, Veröffentlichung und Squash-Merge auf `main` offen.
