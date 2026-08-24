@@ -81,6 +81,104 @@ class InstrumentationRunnerTest(unittest.TestCase):
             self.assertEqual(0, result.returncode)
             self.assertFalse(report_root.exists())
 
+    def test_requested_animation_scale_is_set_and_verified_before_gradle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = pathlib.Path(directory)
+            gradle_marker = temporary / "gradle-ran.txt"
+            gradle = self._executable(
+                temporary / "gradle",
+                "#!/usr/bin/env bash\nprintf 'yes\\n' > \"$GRADLE_MARKER\"\n",
+            )
+            adb_log = temporary / "adb-calls.txt"
+            self._executable(
+                temporary / "adb",
+                textwrap.dedent(
+                    """\
+                    #!/usr/bin/env bash
+                    printf '%s\n' "$*" >> "$ADB_CALL_LOG"
+                    if [ "$1 $2 $3" = "shell settings get" ]; then
+                      printf '%s\n' "$EXPECTED_SCALE"
+                    fi
+                    """
+                ),
+            )
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "ADB_CALL_LOG": str(adb_log),
+                    "EXPECTED_SCALE": "1.0",
+                    "GRADLE_MARKER": str(gradle_marker),
+                    "INSTRUMENTATION_ANIMATION_SCALE": "1.0",
+                    "INSTRUMENTATION_PREPARE_INTERACTION_DEVICE": "true",
+                    "INSTRUMENTATION_GRADLE_EXECUTABLE": str(gradle),
+                    "PATH": str(temporary) + os.pathsep + environment["PATH"],
+                }
+            )
+
+            result = subprocess.run([str(RUNNER)], cwd=ROOT, env=environment, check=False)
+
+            self.assertEqual(0, result.returncode)
+            self.assertTrue(gradle_marker.is_file())
+            calls = adb_log.read_text()
+            for command in (
+                "shell input keyevent KEYCODE_WAKEUP",
+                "shell wm dismiss-keyguard",
+                "shell input keyevent 82",
+            ):
+                with self.subTest(command=command):
+                    self.assertIn(command, calls)
+            for setting in (
+                "window_animation_scale",
+                "transition_animation_scale",
+                "animator_duration_scale",
+            ):
+                with self.subTest(setting=setting):
+                    self.assertIn(f"shell settings put global {setting} 1.0", calls)
+                    self.assertIn(f"shell settings get global {setting}", calls)
+
+    def test_animation_scale_mismatch_fails_before_gradle_and_is_diagnosed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = pathlib.Path(directory)
+            gradle_marker = temporary / "gradle-ran.txt"
+            gradle = self._executable(
+                temporary / "gradle",
+                "#!/usr/bin/env bash\nprintf 'yes\\n' > \"$GRADLE_MARKER\"\n",
+            )
+            self._executable(
+                temporary / "adb",
+                textwrap.dedent(
+                    """\
+                    #!/usr/bin/env bash
+                    if [ "$1 $2 $3" = "shell settings get" ]; then
+                      printf '0.0\n'
+                    fi
+                    """
+                ),
+            )
+            report_root = temporary / "reports"
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "GRADLE_MARKER": str(gradle_marker),
+                    "INSTRUMENTATION_ANIMATION_SCALE": "1.0",
+                    "INSTRUMENTATION_API_LEVEL": "37",
+                    "INSTRUMENTATION_GRADLE_EXECUTABLE": str(gradle),
+                    "INSTRUMENTATION_REPORT_ROOT": str(report_root),
+                    "PATH": str(temporary) + os.pathsep + environment["PATH"],
+                }
+            )
+
+            result = subprocess.run([str(RUNNER)], cwd=ROOT, env=environment, check=False)
+
+            self.assertEqual(42, result.returncode)
+            self.assertFalse(gradle_marker.exists())
+            report = report_root / "api-37" / "attempt-1"
+            self.assertIn("animation_scale=1.0", (report / "run-context.txt").read_text())
+            self.assertIn(
+                "animator_duration_scale=0.0",
+                (report / "animation-scales.txt").read_text(),
+            )
+
     @staticmethod
     def _executable(path: pathlib.Path, contents: str) -> pathlib.Path:
         path.write_text(contents, encoding="utf-8")
