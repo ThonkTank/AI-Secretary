@@ -609,3 +609,80 @@ unverändert; lokal werden erneut alle CI- und Release-Vertragstests sowie der r
 geprüft. Der negative Abgleich findet danach keinen weiteren ausführenden Pfad der
 Produktionskette außerhalb des Release-Scope. Als Abschluss gelten nur ein eigener grüner Pull
 Request, Squash-Merge und ein veröffentlichender `main`-Lauf mit API-26/35/37-Upgrades.
+
+## Phase 3 – beobachtbare Daten und Invalidierung
+
+### Vorprüfung und Aufteilung
+
+- Ausgangspunkt ist der saubere, mit `origin/main` identische Squash-Commit `1e23c7a7`. Sein
+  Produktionslauf bestand Quality, breite und animationsaktive Instrumentierung sowie die
+  signierte Neuinstallation und das echte Upgrade auf API 26/35/37 und veröffentlichte exakt
+  diesen Commit als Release 0.2.116 (`forest-android-1011601`).
+- Room-Schema 16 und sämtliche Java-DAO-Reads bleiben synchron. `TaskViewModel` lädt Dashboard
+  nach eigenen Writes erneut und veröffentlicht `catalogChanges`; `AllTasksViewModel` lädt nach
+  eigenen Writes erneut und veröffentlicht `contentChanges`. `MainActivity` übersetzt beide
+  Signale wechselseitig in `reload()`/`load()` und stößt Widgetupdates zusätzlich direkt an.
+- Kalender und Anzeigepräferenzen besitzen bereits lifecycle-gebundene Callback-Beobachter, aber
+  noch keine Kotlin-Flows. Kalenderberechtigung, Vordergrund und ein Activity-eigener Minutentimer
+  erzeugen weitere explizite Refreshs. Widgetinvalidierung ist auf ViewModel, Activity,
+  Action-Receiver und Kalender-/Präferenzcallbacks verteilt.
+- Die bestehende Präsentation verhindert parallele Kommandos je `UiCommand`, aber ein laufender
+  Read kann durch eine neuere Invalidierung weder abgebrochen noch als veraltet verworfen werden.
+  Schreibende Use Cases und Room-Transaktionen dürfen bei der Umstellung nicht abgebrochen werden.
+
+Phase 3 ist in einem Sprint nicht kohärent reviewbar und wird vor Produktcode geteilt:
+
+- **Phase 3a** führt eine einzige Room-Invalidierungsquelle als kalten Kotlin-Flow über alle zehn
+  Schema-16-Tabellen ein. Reale In-Memory-Room-Tests sichern initiale Emission, Tabellennamen und
+  die Emission erst nach erfolgreichem Transaktionscommit. DAOs, Queries, Schema, ViewModels und
+  sichtbares Verhalten bleiben unverändert; die Quelle ist noch kein zweiter Screen-State.
+- **Phase 3b** adaptiert Kalenderänderungen, relevante UI-Präferenzen und Tages-/Zeitwechsel zu
+  lifecycle-unabhängigen Flows mit expliziter Start-/Stop-Verantwortung und deterministischen
+  Tests für Policywechsel, Tagesgrenze und Vordergrundmaterialisierung.
+- **Phase 3c** verbindet die Quellen mit cancellable latest-Read-Pipelines für Dashboard,
+  Alles-Katalog und Widgets. Schreibkommandos bleiben seriell und nicht abbrechbar. Erst wenn
+  Race-Tests neuere Reads gewinnen lassen, werden `catalogChanges`, `contentChanges`, Activity-
+  Broker-Reloads und verteilte Widgetinvalidierungen entfernt.
+
+### Phase 3a – Implementationsplan
+
+`RoomInvalidationSource` kapselt ausschließlich `AppDatabase.getInvalidationTracker()` und
+veröffentlicht `Flow<Set<String>>`. Die vollständige Tabelleliste wird an einer Stelle fixiert;
+`emitInitialState=true` garantiert neuen Sammlern einen ersten Ladeimpuls, `conflate()` begrenzt
+Invalidierungsbursts, ohne Schreibtransaktionen anzutasten. Ein Robolectric-Test verwendet eine
+reale In-Memory-`AppDatabase`: Er prüft die exakte Initialmenge, eine gezielte Tabellenänderung
+und dass mehrere Writes innerhalb einer erfolgreichen Room-Transaktion erst nach dem Commit als
+Invalidierung sichtbar werden. Ein Rollback darf keinen erfolgreichen Änderungsimpuls erzeugen.
+Die Klasse wird in 3a noch nicht im `AppContainer` gemountet; dadurch existieren weder ein
+ungenutzter Application-Lifetime-Collector noch parallele Reloadpfade. Nachweise sind der neue
+Room-Test, die vollständige App-Suite, Lint/APKs, unverändertes Schema 16 und die bestehende
+Remote-Matrix.
+
+### Phase 3a – Implementation und Roadmap-Abgleich
+
+- `RoomInvalidationSource` stellt den Invalidation Tracker als kalten, conflated Flow bereit. Der
+  erste Impuls umfasst exakt alle zehn Tabellen von Schema 16; spätere Impulse benennen die von
+  Room invalidierten Tabellen. Die synchronen Java-DAOs und `RoomTaskRepository` bleiben die
+  einzigen Leser und Schreiber.
+- Die Quelle ist absichtlich noch nicht im `AppContainer` verdrahtet. Damit entstehen in dieser
+  Grundlagenphase weder ein Application-langer Sammler noch ein zweiter Reloadpfad neben den
+  bestehenden ViewModels. UI, Navigation, Widgetaktualisierung, Queries, Transaktionen und
+  Persistenzschema sind unverändert.
+- Drei Tests gegen eine echte In-Memory-`AppDatabase` sichern den vollständigen initialen
+  Tabellenvertrag, genau eine `stats`-Invalidierung für zwei Writes in derselben erfolgreich
+  abgeschlossenen Transaktion und keinerlei Invalidierung beziehungsweise Persistenz nach einem
+  Rollback. Die erwartete Tabellenmenge ist im Test unabhängig vom Produktionsarray festgehalten.
+- Lokal bestanden 14 CI-Harnesstests, 22 Release-/Workflow-Vertragstests und die vollständige
+  Java-21-App-Suite mit 429 Tests ohne Fehler (ein bewusst übersprungener Test), Lint sowie Debug-,
+  Android-Test- und unsigned Release-APK. Die Größen betragen 8.581.179 Byte Debug, 653.541 Byte
+  Android-Test, 6.340.450 Byte Release und 1.478.008 Byte Fonts und liegen unter den verbindlichen
+  Grenzen.
+
+Der negative Gegencheck fand im ersten Testentwurf zwei Scheinsicherheiten: Die erwartete
+Tabellenmenge wurde zunächst aus derselben Produktionskonstante gelesen, und die Abwesenheit einer
+Invalidierung wurde über ein 250-ms-Zeitfenster angenähert. Die Nachtarbeit ersetzt beides durch
+einen unabhängigen Schema-16-Vertrag und den synchron ausgewerteten Room-Observer nach expliziter
+Tracker-Aktualisierung. Nur das erwartete positive Flow-Ereignis besitzt noch eine großzügige
+Fehlergrenze gegen einen tatsächlich hängenden Test. Weitere Scope-Vereinfachungen wurden nicht
+gefunden. Phase 3a ist lokal vollständig; ihr Abschluss bleibt der eigene grüne Pull Request, der
+Squash-Merge auf `main` und der daraus resultierende grüne Produktionslauf.
