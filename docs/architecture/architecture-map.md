@@ -1,6 +1,12 @@
 # Architekturkarte nach der Today-/Fokus-Bereinigung
 
-Stand: 2026-08-21, Datenbankschema 14
+Stand der beschriebenen Today-/Fokus-Bereinigung: 2026-08-21, damals Datenbankschema 14.
+Aktueller Persistenzstand: Datenbankschema 16.
+
+Schema 15 ergänzte den Editorvertrag, Schema 16 persistente Rhythmusanker. Diese Erweiterungen
+ändern die hier beschriebenen Compiler-, Today- und Capability-Port-Grenzen nicht. Die aktuelle
+Präsentationsbaseline und ihre weitere Migration stehen in der
+[Frontend-Modernisierungsroadmap](frontend-modernization-roadmap.md).
 
 ## Compilergrenzen
 
@@ -68,7 +74,7 @@ Room-Implementierung. Fachcode hängt von kleinen Fähigkeiten ab:
 
 Schrittausführung liegt in `StepExecutionService`, Occurrence-Abschluss, Ernte und Undo in
 `OccurrenceCompletionService`. Reorder schreibt nur geänderte Positionsspalten innerhalb einer
-Transaktion; Schema 14 bleibt unverändert.
+Transaktion; diese Invariante gilt auch unter Schema 16 unverändert.
 
 ## Autoritative Zustände
 
