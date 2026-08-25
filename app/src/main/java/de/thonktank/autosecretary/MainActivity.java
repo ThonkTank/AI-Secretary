@@ -380,6 +380,12 @@ public class MainActivity extends ComponentActivity {
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName())));
             acknowledgeOptionsRequest(request.id);
+        } else if (request.kind == OptionsRequest.Kind.OPEN_FLOW_SETUP) {
+            startActivity(new Intent(this, FlowSetupActivity.class));
+            acknowledgeOptionsRequest(request.id);
+        } else if (request.kind == OptionsRequest.Kind.OPEN_FLOW_RUNS) {
+            startActivity(new Intent(this, FlowRunsActivity.class));
+            acknowledgeOptionsRequest(request.id);
         } else if (request.kind == OptionsRequest.Kind.UPDATE_AVAILABLE
                 && request.update != null) {
             updateDialogs.showAvailable(request.update,

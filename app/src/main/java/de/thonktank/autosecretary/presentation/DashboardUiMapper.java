@@ -12,6 +12,7 @@ import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.Dashboard;
 import de.thonktank.autosecretary.domain.model.DashboardTask;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RewardBreakdown;
 import de.thonktank.autosecretary.domain.model.RewardPolicy;
@@ -19,6 +20,8 @@ import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
+import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
+import de.thonktank.autosecretary.domain.model.FlowRunSummary;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
@@ -52,16 +55,21 @@ public final class DashboardUiMapper {
 
     public TodayUiModel map(Dashboard dashboard, LocalDate today) {
         DashboardTask focusSource = null;
-        Set<String> openIds = new LinkedHashSet<>();
+        DashboardTask fallbackFocus = null;
+        Set<String> actionableIds = new LinkedHashSet<>();
         for (DashboardTask item : dashboard.tasks) {
             if (!item.done) {
-                openIds.add(stableId(item));
-                if (focusSource == null) focusSource = item;
+                if (fallbackFocus == null) fallbackFocus = item;
+                if (canOwnFocus(item)) {
+                    actionableIds.add(stableId(item));
+                    if (focusSource == null) focusSource = item;
+                }
             }
         }
+        if (focusSource == null) focusSource = fallbackFocus;
 
         FocusTaskUiModel focus = focusSource == null ? null
-                : focus(focusSource, today, dashboard, openIds.size() > 1);
+                : focus(focusSource, today, dashboard, actionableIds.size() > 1);
         String focusId = focusSource == null ? null : stableId(focusSource);
         List<TimelineItemUiModel> timeline = new ArrayList<>();
         List<CompletedTaskUiModel> completed = new ArrayList<>();
@@ -75,7 +83,14 @@ public final class DashboardUiMapper {
             }
         }
         return new TodayUiModel(new XpProgress(dashboard.xp), focus,
-                timeline, completed);
+                timeline, completed, dashboard.flowRuns);
+    }
+
+    private static boolean canOwnFocus(DashboardTask item) {
+        if (item.occurrence == null || item.occurrence.kind != OccurrenceKind.FLOW_SHEET)
+            return true;
+        for (OccurrenceStep step : item.steps) if (!step.done) return true;
+        return false;
     }
 
     private FocusTaskUiModel focus(DashboardTask item, LocalDate today, Dashboard dashboard,
@@ -130,6 +145,7 @@ public final class DashboardUiMapper {
     private List<FocusStepUiModel> focusSteps(DashboardTask item, Dashboard dashboard) {
         List<FocusStepUiModel> steps = new ArrayList<>();
         boolean activeAssigned = false;
+        FlowRunSummary flow = flowFor(item, dashboard);
         for (OccurrenceStep step : item.steps) {
             if (item.done && !step.done) continue;
             boolean done = item.done || step.done;
@@ -144,6 +160,10 @@ public final class DashboardUiMapper {
                 action = StepExecutionUiAction.advancePlannedRepetitions(step.id);
             else if (repetition != null)
                 action = StepExecutionUiAction.submitRepetition(step.id);
+            else if (flow != null && flow.delayAfter != null
+                    && flow.delayAfter.mode == FlowDelayPolicy.Mode.REMEMBER_LAST)
+                action = StepExecutionUiAction.toggleWithDelay(step.id,
+                        flow.delayAfter.proposedDelayMillis());
             else action = StepExecutionUiAction.toggle(step.id);
             int earnedXp = item.earnedXp(step.id);
             int plannedXp = item.plannedXp(step.id,
@@ -158,6 +178,13 @@ public final class DashboardUiMapper {
             if (!done) activeAssigned = true;
         }
         return steps;
+    }
+
+    private static FlowRunSummary flowFor(DashboardTask item, Dashboard dashboard) {
+        if (item.occurrence == null) return null;
+        for (FlowRunSummary flow : dashboard.flowRuns)
+            if (item.occurrence.id.equals(flow.currentSheetOccurrenceId)) return flow;
+        return null;
     }
 
     private static RepetitionProgressUiModel repetition(OccurrenceStep step) {

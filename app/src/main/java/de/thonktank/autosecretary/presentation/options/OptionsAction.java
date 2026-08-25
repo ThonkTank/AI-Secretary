@@ -39,6 +39,12 @@ public abstract class OptionsAction {
     public static final class CalendarPermissionSelected extends OptionsAction {
         private CalendarPermissionSelected() { }
     }
+    public static final class OpenFlowSetupSelected extends OptionsAction {
+        private OpenFlowSetupSelected() { }
+    }
+    public static final class OpenFlowRunsSelected extends OptionsAction {
+        private OpenFlowRunsSelected() { }
+    }
     public static final class Resumed extends OptionsAction { private Resumed() { } }
     public static final class ManualUpdateSelected extends OptionsAction {
         private ManualUpdateSelected() { }
@@ -90,6 +96,8 @@ public abstract class OptionsAction {
     public static OptionsAction calendarPermissionSelected() {
         return new CalendarPermissionSelected();
     }
+    public static OptionsAction openFlowSetupSelected() { return new OpenFlowSetupSelected(); }
+    public static OptionsAction openFlowRunsSelected() { return new OpenFlowRunsSelected(); }
     public static OptionsAction resumed() { return new Resumed(); }
     public static OptionsAction manualUpdateSelected() { return new ManualUpdateSelected(); }
     public static OptionsAction updateAccepted(String requestId, UpdateInfo update) {

@@ -40,6 +40,8 @@ public final class TaskUseCases {
     public final SwapTaskSteps swapTaskSteps;
     public final SaveCapacityResource saveCapacityResource;
     public final SaveStepFlowDefinition saveStepFlowDefinition;
+    public final LoadStepFlowSetup loadStepFlowSetup;
+    public final SaveStepFlowSetup saveStepFlowSetup;
     public final ActivateReadyFlows activateReadyFlows;
     public final DeferFlowRun deferFlowRun;
     public final CancelFlowRun cancelFlowRun;
@@ -93,8 +95,10 @@ public final class TaskUseCases {
         moveScheduleEntry = new MoveScheduleEntry(repository);
         moveTaskStep = new MoveTaskStep(repository);
         swapTaskSteps = new SwapTaskSteps(repository);
-        saveCapacityResource = new SaveCapacityResource(repository, ids);
+        saveCapacityResource = new SaveCapacityResource(repository, repository, ids);
         saveStepFlowDefinition = new SaveStepFlowDefinition(repository, repository);
+        loadStepFlowSetup = new LoadStepFlowSetup(repository, repository);
+        saveStepFlowSetup = new SaveStepFlowSetup(repository, repository);
         activateReadyFlows = new ActivateReadyFlows(flowRuntime);
         deferFlowRun = new DeferFlowRun(flowRuntime);
         cancelFlowRun = new CancelFlowRun(flowRuntime);

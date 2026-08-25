@@ -5,6 +5,7 @@ import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 import androidx.room.Update;
+import androidx.room.Upsert;
 
 import java.util.List;
 
@@ -16,7 +17,7 @@ public interface TaskDao {
     @Query("SELECT * FROM tasks") List<TaskEntity> allTasks();
     @Query("SELECT * FROM tasks WHERE id = :id LIMIT 1") TaskEntity task(String id);
     @Query("DELETE FROM tasks WHERE id = :id") void deleteTask(String id);
-    @Insert(onConflict = OnConflictStrategy.REPLACE) void insertTemplates(List<TaskStepEntity> steps);
+    @Upsert void insertTemplates(List<TaskStepEntity> steps);
     @Query("DELETE FROM task_steps WHERE id = :id") void deleteTemplate(String id);
     @Query("DELETE FROM task_steps WHERE taskId = :taskId") void deleteTemplates(String taskId);
     @Query("SELECT * FROM task_steps WHERE taskId = :taskId ORDER BY position") List<TaskStepEntity> templates(String taskId);

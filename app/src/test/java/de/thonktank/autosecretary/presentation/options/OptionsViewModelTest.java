@@ -130,6 +130,21 @@ public final class OptionsViewModelTest {
         assertEquals(2, repository.checks.get());
     }
 
+    @Test public void flowNavigationUsesTheRestorableOptionsRequestBoundary() {
+        viewModel.dispatch(OptionsAction.openFlowSetupSelected());
+        OptionsRequest request = state().firstRequest();
+        assertNotNull(request);
+        assertEquals(OptionsRequest.Kind.OPEN_FLOW_SETUP, request.kind);
+
+        viewModel.onCleared();
+        viewModel = create(savedState);
+        assertEquals(OptionsRequest.Kind.OPEN_FLOW_SETUP, state().firstRequest().kind);
+
+        viewModel.dispatch(OptionsAction.acknowledgeRequest(state().firstRequest().id));
+        viewModel.dispatch(OptionsAction.openFlowRunsSelected());
+        assertEquals(OptionsRequest.Kind.OPEN_FLOW_RUNS, state().firstRequest().kind);
+    }
+
     @Test public void acceptedOfferBecomesStableRestorableInstallRequest() throws Exception {
         repository.available = updateInfo(1_000_201L, "0.2.2", 1024L);
         viewModel.dispatch(OptionsAction.manualUpdateSelected());

@@ -171,6 +171,34 @@ public final class StepFlowDefinition {
                 throw new FlowDefinitionException("Freigabeschritt muss nach dem Belegungsschritt "
                         + "erreichbar sein: " + acquire.text);
         }
+        validatePathCapacity(resourceById);
+    }
+
+    private void validatePathCapacity(Map<String, CapacityResource> resourceById) {
+        for (TaskStepTemplate seed : steps) {
+            if (seed.activationKind != StepActivationKind.SCHEDULED) continue;
+            List<TaskStepTemplate> path = resolvedPath(seed.id);
+            List<StepResourceLease> pathLeases = leasesForPath(path);
+            Map<String, Integer> positionByStep = new HashMap<>();
+            for (int index = 0; index < path.size(); index++)
+                positionByStep.put(path.get(index).id, index);
+            Map<String, Integer> held = new HashMap<>();
+            for (int position = 0; position < path.size(); position++) {
+                for (StepResourceLease lease : pathLeases)
+                    if (Integer.valueOf(position).equals(positionByStep.get(lease.acquireStepId))) {
+                        int next = held.getOrDefault(lease.resourceId, 0) + lease.units;
+                        CapacityResource resource = resourceById.get(lease.resourceId);
+                        if (next > resource.capacity)
+                            throw new FlowDefinitionException("Ein Durchgang braucht gleichzeitig "
+                                    + "mehr Plätze als vorhanden: " + resource.name);
+                        held.put(lease.resourceId, next);
+                    }
+                for (StepResourceLease lease : pathLeases)
+                    if (Integer.valueOf(position).equals(positionByStep.get(lease.releaseStepId)))
+                        held.put(lease.resourceId,
+                                held.getOrDefault(lease.resourceId, 0) - lease.units);
+            }
+        }
     }
 
     private static <T> List<T> immutable(List<T> values) {

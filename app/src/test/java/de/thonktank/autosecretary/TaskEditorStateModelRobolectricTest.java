@@ -18,13 +18,30 @@ import java.util.Collections;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class TaskEditorStateModelRobolectricTest {
+    @Test public void normalEditorRoundTripPreservesAutomaticFollowUpRole() {
+        TaskStepTemplate template = new TaskStepTemplate("hang", TaskId.of("laundry"), 0,
+                "Aufhängen", 0, 0, StepAmount.none(), "", StepActivationKind.FOLLOW_UP);
+
+        EditorStepState restored = EditorStepState.fromBundle(
+                EditorStepState.from(template).toBundle());
+
+        assertEquals(StepActivationKind.FOLLOW_UP, restored.activationKind);
+        assertEquals(StepActivationKind.FOLLOW_UP,
+                restored.definition(0, false).activationKind);
+        assertEquals(0, restored.definition(0, false).weekdayMask);
+        assertEquals(0, restored.definition(0, false).intervalDays);
+    }
+
     @Test public void currentBundleIsVersionedNestedAndRestoresAllThreeStateParts() {
         EditorStepState step = new EditorStepState("draft:1", "Laufen",
                 StepCadenceMode.INTERVAL, 0, 3, StepAmount.duration(600), "locker");

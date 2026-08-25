@@ -39,6 +39,7 @@ import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.widget.WidgetDashboardMapper;
 import de.thonktank.autosecretary.widget.WidgetDashboardUiModel;
 
@@ -278,7 +279,7 @@ public final class StepFlowRuntimeRobolectricTest {
         StepFlowRun preferred = repository.activeFlowRuns().stream()
                 .filter(value -> value.state == StepFlowRunState.WAITING_RESOURCE)
                 .reduce((left, right) -> right).orElseThrow(AssertionError::new);
-        assertTrue(tasks.reorderFlowRun.execute(preferred.id, 0L));
+        assertTrue(tasks.reorderFlowRun.execute(preferred.id, first.id));
         tasks.defer.execute(first.currentSheetOccurrenceId);
         assertEquals(preferred.id, offeredRun().id);
 
@@ -302,9 +303,15 @@ public final class StepFlowRuntimeRobolectricTest {
         assertTrue(presenter.prepare());
         TodayUiModel today = presenter.load();
         assertEquals(1, wakeSchedules.get());
+        assertEquals(4, today.flowRuns.size());
+        assertEquals(4, today.withCalendar(java.util.Collections.emptyList()).flowRuns.size());
         assertNotNull(today.focus);
         assertEquals("Wäsche waschen", today.focus.title());
         assertEquals("Buntwäsche", today.focus.steps.get(0).title);
+        assertEquals(StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY,
+                today.focus.steps.get(0).executionAction.kind);
+        assertEquals(TWO_HOURS, today.focus.steps.get(0).executionAction
+                .proposedDelayMillis);
 
         WidgetDashboardUiModel widget = new WidgetDashboardMapper(
                 new AndroidUiTextProvider(ApplicationProvider.getApplicationContext()))
@@ -312,6 +319,42 @@ public final class StepFlowRuntimeRobolectricTest {
         assertNotNull(widget.focus);
         assertEquals("Wäsche waschen", widget.focus.title);
         assertEquals("Buntwäsche", widget.focus.steps.get(0).title);
+    }
+
+    @Test public void waitingHarvestSheetNeverDisplacesExecutableNormalWork() {
+        tasks.create.execute(TaskDefinition.basic("Abwasch", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, java.util.Collections.singletonList("Spülen")));
+        tasks.materializeDue.execute();
+        tasks.activateReadyFlows.execute();
+        StepFlowRun flow = offeredRun();
+        tasks.toggleStep.execute(openStep(flow).id);
+
+        TodayUiModel today = new DashboardUiMapper(new AndroidUiTextProvider(
+                ApplicationProvider.getApplicationContext())).map(
+                tasks.loadDashboard.execute(TODAY), TODAY);
+
+        assertNotNull(today.focus);
+        assertEquals("Abwasch", today.focus.title());
+        assertFalse(today.timeline.stream().anyMatch(item -> item.task != null
+                && item.task.title.equals("Wäsche waschen")));
+        assertTrue(today.flowRuns.stream().anyMatch(run -> run.seedTitle.equals("Buntwäsche")));
+        WidgetDashboardUiModel widget = new WidgetDashboardMapper(
+                new AndroidUiTextProvider(ApplicationProvider.getApplicationContext()))
+                .map(tasks.loadDashboard.execute(TODAY), TODAY);
+        assertEquals("Abwasch", widget.focus.title);
+    }
+
+    @Test public void completeRemainingOnlyCompletesIdsPresentBeforeFlowProgression() {
+        tasks.activateReadyFlows.execute();
+        StepFlowRun run = offeredRun();
+        String sheetId = run.currentSheetOccurrenceId;
+
+        tasks.completeRemainingSteps.execute(sheetId);
+
+        run = repository.findFlowRun(run.id);
+        assertEquals(StepFlowRunState.WAITING_TIME, run.state);
+        assertEquals(1, repository.occurrenceSteps(sheetId).size());
+        assertTrue(repository.occurrenceSteps(sheetId).get(0).done);
     }
 
     private StepFlowRun offeredRun() {

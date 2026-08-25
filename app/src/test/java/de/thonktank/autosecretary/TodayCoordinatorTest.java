@@ -34,6 +34,18 @@ public final class TodayCoordinatorTest {
         assertEquals("a", commands.get(0).id);
     }
 
+    @Test public void chosenFlowDelayCrossesTheClosedTodayCommandBoundary() {
+        List<TodayCommand> commands = new ArrayList<>();
+        TodayCoordinator coordinator = new TodayCoordinator(today(), commands::add, state -> { });
+
+        coordinator.emit(TodayAction.toggleStep("a", 7_200_000L));
+
+        assertEquals(1, commands.size());
+        assertEquals(TodayCommand.Kind.TOGGLE_STEP_WITH_DELAY, commands.get(0).kind);
+        assertEquals("a", commands.get(0).id);
+        assertEquals(7_200_000L, commands.get(0).longValue);
+    }
+
     @Test public void screenOwnerAndCoreDispatcherContainEveryActionKind() throws Exception {
         String coordinator = new String(Files.readAllBytes(Path.of(
                 "../today-core/src/main/java/de/thonktank/autosecretary/presentation/today/TodayCoordinator.java")),

@@ -59,10 +59,11 @@ public final class LoadFlowRuns {
             for (FlowRunResourceSnapshot value : resourcesByRun.getOrDefault(run.id,
                     java.util.Collections.emptyList()))
                 resources.add(new FlowRunSummary.Resource(value.resourceId, value.resourceName,
-                        value.units, value.state));
+                        value.units, value.acquirePosition, value.releasePosition, value.state));
             result.add(new FlowRunSummary(run.id, run.taskId, task.title, run.seedStepId,
                     seed.text, current.text, run.state, run.readyAtEpochMillis,
-                    run.currentSheetOccurrenceId, run.queueOrder, resources));
+                    run.currentSheetOccurrenceId, run.queueOrder, run.currentPosition,
+                    steps.size(), current.delayAfter, resources));
         }
         return result;
     }

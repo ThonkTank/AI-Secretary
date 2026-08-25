@@ -64,6 +64,11 @@ public final class StepFlowDefinitionTest {
         assertThrows(FlowDefinitionException.class, () -> new StepFlowDefinition(TASK, steps(),
                 transitions, Collections.singletonList(new StepResourceLease("backwards", TASK,
                 "hang", "colors", "washer", 1)), Collections.singletonList(washer)));
+        assertThrows(FlowDefinitionException.class, () -> new StepFlowDefinition(TASK, steps(),
+                transitions, Arrays.asList(
+                new StepResourceLease("one", TASK, "colors", "hang", "washer", 1),
+                new StepResourceLease("two", TASK, "colors", "take-down", "washer", 1)),
+                Collections.singletonList(washer)));
     }
 
     @Test public void runSnapshotKeepsResolvedTextDelayAndCapacityAfterDefinitionEdits() {

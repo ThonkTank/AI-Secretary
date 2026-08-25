@@ -10,6 +10,7 @@ public final class TodayCommand {
         HARVEST,
         DEFER,
         TOGGLE_STEP,
+        TOGGLE_STEP_WITH_DELAY,
         FINISH_STEP,
         ADVANCE_STEP,
         UNDO_OCCURRENCE,
@@ -30,20 +31,27 @@ public final class TodayCommand {
     public final String text;
     public final String commandId;
     public final int value;
+    public final long longValue;
 
     TodayCommand(Kind kind, String id, String relatedId, String text,
                  String commandId, int value) {
+        this(kind, id, relatedId, text, commandId, value, 0L);
+    }
+
+    TodayCommand(Kind kind, String id, String relatedId, String text,
+                 String commandId, int value, long longValue) {
         this.kind = kind;
         this.id = id;
         this.relatedId = relatedId;
         this.text = text;
         this.commandId = commandId;
         this.value = value;
+        this.longValue = longValue;
     }
 
     static TodayCommand action(Kind kind, TodayAction action) {
         return new TodayCommand(kind, action.id, action.relatedId, action.text, null,
-                action.value);
+                action.value, action.longValue);
     }
 
     static TodayCommand reorder(String commandId, String stepId,

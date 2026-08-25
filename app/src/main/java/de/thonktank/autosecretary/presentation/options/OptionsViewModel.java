@@ -164,6 +164,10 @@ public final class OptionsViewModel extends ViewModel {
             observePermission((OptionsAction.PermissionObserved) action);
         else if (action instanceof OptionsAction.CalendarPermissionSelected)
             requestCalendarPermission();
+        else if (action instanceof OptionsAction.OpenFlowSetupSelected)
+            enqueue(OptionsRequest.system(nextRequestId(), OptionsRequest.Kind.OPEN_FLOW_SETUP));
+        else if (action instanceof OptionsAction.OpenFlowRunsSelected)
+            enqueue(OptionsRequest.system(nextRequestId(), OptionsRequest.Kind.OPEN_FLOW_RUNS));
         else if (action instanceof OptionsAction.Resumed) {
             if (automaticChecks) automaticCheck();
         } else if (action instanceof OptionsAction.ManualUpdateSelected)

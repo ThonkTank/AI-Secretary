@@ -9,7 +9,10 @@ import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.StepFlowDefinition;
 import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
 import de.thonktank.autosecretary.domain.schedule.TaskScheduleRepository;
 
 import java.time.LocalDate;
@@ -47,10 +50,30 @@ public final class UpdateTask {
             }
             repository.updateTask(current.editDefinition(definition, current.catalogOrder, nextDue));
             syncTemplates(id, definition.steps);
+            validateRetainedFlow(id);
             new TaskScheduleService(schedules, ids).sync(
                     repository.findTask(id), definition);
             return null;
         });
+    }
+
+    private void validateRetainedFlow(TaskId taskId) {
+        if (!(repository instanceof StepFlowDefinitionRepository)) return;
+        StepFlowDefinitionRepository flows = (StepFlowDefinitionRepository) repository;
+        List<TaskStepTemplate> templates = repository.templates(taskId);
+        boolean hasFollowUp = false;
+        for (TaskStepTemplate template : templates)
+            if (template.activationKind == StepActivationKind.FOLLOW_UP) {
+                hasFollowUp = true;
+                break;
+            }
+        List<de.thonktank.autosecretary.domain.model.StepTransition> transitions =
+                flows.stepTransitions(taskId);
+        List<de.thonktank.autosecretary.domain.model.StepResourceLease> leases =
+                flows.stepResourceLeases(taskId);
+        if (!hasFollowUp && transitions.isEmpty() && leases.isEmpty()) return;
+        new StepFlowDefinition(taskId, templates, transitions, leases,
+                flows.capacityResources());
     }
 
     private void syncTemplates(TaskId taskId, List<TaskStepDefinition> definitions) {

@@ -61,7 +61,9 @@ final class OptionsRequestSavedStateAdapter {
                 String id = item.getString(ID);
                 OptionsRequest.Kind kind = OptionsRequest.Kind.valueOf(item.getString(KIND));
                 if (kind == OptionsRequest.Kind.REQUEST_CALENDAR_PERMISSION
-                        || kind == OptionsRequest.Kind.OPEN_APP_SETTINGS) {
+                        || kind == OptionsRequest.Kind.OPEN_APP_SETTINGS
+                        || kind == OptionsRequest.Kind.OPEN_FLOW_SETUP
+                        || kind == OptionsRequest.Kind.OPEN_FLOW_RUNS) {
                     result.add(OptionsRequest.system(id, kind));
                 } else if (kind == OptionsRequest.Kind.UPDATE_AVAILABLE) {
                     result.add(OptionsRequest.available(id, decodeUpdate(item)));

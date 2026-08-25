@@ -119,6 +119,39 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
         });
     }
 
+    public boolean reorderBefore(String runId, String beforeRunId) {
+        return repository.inTransaction(() -> {
+            List<StepFlowRun> active = new ArrayList<>(repository.activeFlowRuns());
+            StepFlowRun moving = null;
+            for (StepFlowRun run : active) if (run.id.equals(runId)) moving = run;
+            if (moving == null) return false;
+            active.remove(moving);
+            int target = active.size();
+            if (beforeRunId != null) {
+                target = -1;
+                for (int index = 0; index < active.size(); index++)
+                    if (active.get(index).id.equals(beforeRunId)) {
+                        target = index;
+                        break;
+                    }
+                if (target < 0) return false;
+            }
+            active.add(target, moving);
+            long now = moments.nowEpochMillis();
+            boolean changed = false;
+            for (int index = 0; index < active.size(); index++) {
+                long order = (index + 1L) * REQUEUE_GAP;
+                StepFlowRun run = active.get(index);
+                if (run.queueOrder != order) {
+                    repository.updateFlowRun(run.reorder(order, now));
+                    changed = true;
+                }
+            }
+            activateReadyInside(now);
+            return changed;
+        });
+    }
+
     @Override public void onStepCompleted(Occurrence occurrence, OccurrenceStep step,
                                           Long chosenDelayMillis) {
         if (!flowSheet(occurrence) || step == null) return;

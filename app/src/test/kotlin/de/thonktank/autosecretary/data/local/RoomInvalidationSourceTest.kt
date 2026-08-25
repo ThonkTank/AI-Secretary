@@ -24,7 +24,7 @@ import java.util.concurrent.Executor
 @Config(sdk = [35])
 class RoomInvalidationSourceTest {
     private val directExecutor = Executor { command -> command.run() }
-    private val schema16Tables = setOf(
+    private val schema20Tables = setOf(
         "tasks",
         "task_steps",
         "task_schedule_entries",
@@ -35,6 +35,12 @@ class RoomInvalidationSourceTest {
         "combo_progress",
         "reward_bookings",
         "reward_assignments",
+        "capacity_resources",
+        "step_transitions",
+        "step_resource_leases",
+        "step_flow_runs",
+        "flow_run_steps",
+        "flow_run_resources",
     )
     private lateinit var database: AppDatabase
 
@@ -54,10 +60,10 @@ class RoomInvalidationSourceTest {
     }
 
     @Test
-    fun initialEmissionContainsTheCompleteSchema16TableContract() = runBlocking {
+    fun initialEmissionContainsTheCompleteSchema20TableContract() = runBlocking {
         val emissions = RoomInvalidationSource(database).changes.produceIn(this)
 
-        assertEquals(schema16Tables, emissions.next())
+        assertEquals(schema20Tables, emissions.next())
         emissions.cancel()
     }
 

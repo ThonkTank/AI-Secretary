@@ -25,6 +25,7 @@ public final class OptionsView extends LinearLayout {
     private final OptionLeaf focusSteps;
     private final OptionLeaf restTimers;
     private final OptionLeaf combos;
+    private final OptionLeaf flows;
     private final OptionLeaf calendar;
     private final OptionLeaf updates;
     private final TextView[] themeButtons = new TextView[3];
@@ -40,6 +41,8 @@ public final class OptionsView extends LinearLayout {
     private final TextView comboDecayValue;
     private final TextView comboDecayMore;
     private final TextView[] comboTriggerButtons = new TextView[ComboDecayTrigger.values().length];
+    private final TextView flowSetupButton;
+    private final TextView flowRunsButton;
     private final TextView updateButton;
     private final OptionsActionSink actions;
 
@@ -155,6 +158,21 @@ public final class OptionsView extends LinearLayout {
                 R.string.options_combos_description, comboActions);
         addLeaf(combos);
 
+        flowSetupButton = outlineButton(context.getString(R.string.flow_setup_open));
+        flowSetupButton.setOnClickListener(view ->
+                actions.emit(OptionsAction.openFlowSetupSelected()));
+        flowRunsButton = outlineButton(context.getString(R.string.flow_runs_manage));
+        flowRunsButton.setOnClickListener(view ->
+                actions.emit(OptionsAction.openFlowRunsSelected()));
+        EditorFlowLayout flowActions = new EditorFlowLayout(context);
+        flowActions.addView(flowSetupButton,
+                new android.view.ViewGroup.LayoutParams(-2, style.dp(48)));
+        flowActions.addView(flowRunsButton,
+                new android.view.ViewGroup.LayoutParams(-2, style.dp(48)));
+        flows = new OptionLeaf(context, R.string.flow_setup_options_title,
+                R.string.flow_setup_options_description, flowActions);
+        addLeaf(flows);
+
         calendarButton = outlineButton(context.getString(R.string.calendar_grant));
         calendarButton.setOnClickListener(view ->
                 actions.emit(OptionsAction.calendarPermissionSelected()));
@@ -226,6 +244,9 @@ public final class OptionsView extends LinearLayout {
         bindOutline(restTimerLess, palette);
         bindOutline(restTimerMore, palette);
         bindCombos(palette, comboPolicy);
+        flows.bind(palette, getContext().getString(R.string.flow_setup_options_description));
+        bindOutline(flowSetupButton, palette);
+        bindOutline(flowRunsButton, palette);
         boolean granted = permission == CalendarPermissionStatus.GRANTED;
         boolean settings = permission == CalendarPermissionStatus.DENIED_TO_SETTINGS;
         int calendarDescription = granted ? R.string.calendar_granted : R.string.calendar_missing;
