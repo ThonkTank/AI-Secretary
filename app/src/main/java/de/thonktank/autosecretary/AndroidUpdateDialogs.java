@@ -16,7 +16,8 @@ final class AndroidUpdateDialogs implements UpdateDialogs {
         this.activity = activity;
     }
 
-    @Override public void showAvailable(UpdateInfo update, Runnable postpone, Runnable accept) {
+    @Override public void showAvailable(UpdateInfo update, Runnable postpone, Runnable accept,
+                                        Runnable dismiss) {
         if (update == null || activity.isFinishing()) return;
         new AlertDialog.Builder(activity)
                 .setTitle(activity.getString(R.string.update_available_title, update.versionName))
@@ -24,26 +25,29 @@ final class AndroidUpdateDialogs implements UpdateDialogs {
                         readableSize(update.sizeBytes)))
                 .setNegativeButton(R.string.update_later, (dialog, which) -> postpone.run())
                 .setPositiveButton(R.string.update_now, (dialog, which) -> accept.run())
+                .setOnCancelListener(dialog -> dismiss.run())
                 .show();
     }
 
-    @Override public void showInstallPermission(Runnable openSettings) {
+    @Override public void showInstallPermission(Runnable openSettings, Runnable dismiss) {
         if (activity.isFinishing()) return;
         new AlertDialog.Builder(activity).setTitle(R.string.unknown_sources_title)
                 .setMessage(R.string.unknown_sources_message)
-                .setNegativeButton(R.string.cancel, null)
+                .setNegativeButton(R.string.cancel, (dialog, which) -> dismiss.run())
                 .setPositiveButton(R.string.open_install_settings,
                         (dialog, which) -> openSettings.run())
+                .setOnCancelListener(dialog -> dismiss.run())
                 .show();
     }
 
-    @Override public void showError(String message, Runnable openReleases) {
+    @Override public void showError(String message, Runnable openReleases, Runnable dismiss) {
         if (activity.isFinishing()) return;
         new AlertDialog.Builder(activity).setTitle(R.string.error_title)
                 .setMessage(message)
-                .setNegativeButton(R.string.cancel, null)
+                .setNegativeButton(R.string.cancel, (dialog, which) -> dismiss.run())
                 .setPositiveButton(R.string.open_github,
                         (dialog, which) -> openReleases.run())
+                .setOnCancelListener(dialog -> dismiss.run())
                 .show();
     }
 

@@ -73,6 +73,28 @@ class DashboardInvalidationRoutingTest {
     }
 
     @Test
+    fun optionsRoutingExcludesDatabaseWorkAndSeparatesAppearanceFromCalendar() = runBlocking {
+        val initial = event(PresentationInvalidationCause.INITIAL)
+        val database = event(PresentationInvalidationCause.DATABASE)
+        val display = displayEvent()
+        val clock = clockEvent(day, ClockInvalidationReason.MINUTE_TICK)
+        val calendar = event(PresentationInvalidationCause.CALENDAR)
+        val policy = event(PresentationInvalidationCause.CALENDAR_POLICY)
+        val routing = OptionsInvalidationRouting(
+            listOf(initial, database, display, clock, calendar, policy).asFlow(),
+        )
+
+        assertEquals(
+            listOf(initial, display, clock),
+            routing.appearanceChanges.toList(),
+        )
+        assertEquals(
+            listOf(initial, calendar, policy),
+            routing.calendarChanges.toList(),
+        )
+    }
+
+    @Test
     fun missingClockPayloadAndUnknownLoadedDateFailSafeToContentRead() {
         val missingPayload = event(PresentationInvalidationCause.CLOCK)
         val sameDayTick = clockEvent(day, ClockInvalidationReason.MINUTE_TICK)

@@ -5,7 +5,7 @@ import de.thonktank.autosecretary.update.application.UpdateExecutor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** Production serial queue owned by one UpdateViewModel. */
+/** Production serial queue owned by one options state-owner lifecycle. */
 public final class SerialUpdateExecutor implements UpdateExecutor {
     private final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "auto-secretary-update");
@@ -18,6 +18,7 @@ public final class SerialUpdateExecutor implements UpdateExecutor {
     }
 
     @Override public void close() {
-        executor.shutdownNow();
+        // A verified update write must be allowed to finish after a host recreation/close.
+        executor.shutdown();
     }
 }

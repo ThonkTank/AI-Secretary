@@ -4,6 +4,8 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
+import de.thonktank.autosecretary.presentation.options.OptionsActionSink;
+import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
 import de.thonktank.autosecretary.ui.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
@@ -32,6 +34,7 @@ public final class DashboardRenderer {
     private final UiStyle style;
     private final DashboardEventSink events;
     private final TodayActionSink todayActions;
+    private final OptionsActionSink optionsActions;
     private final String version;
     private final RewardAnchorRegistry rewardAnchors;
     private final AllTasksView.Listener allTasksListener;
@@ -47,6 +50,7 @@ public final class DashboardRenderer {
 
     public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
                              DashboardEventSink events, TodayActionSink todayActions,
+                             OptionsActionSink optionsActions,
                              String version,
                              RewardAnchorRegistry rewardAnchors,
                              AllTasksView.Listener allTasksListener) {
@@ -55,21 +59,21 @@ public final class DashboardRenderer {
         this.content = content;
         this.events = events;
         this.todayActions = todayActions;
+        this.optionsActions = optionsActions;
         this.version = version;
         this.rewardAnchors = rewardAnchors;
         this.allTasksListener = allTasksListener;
         style = new UiStyle(context);
     }
 
-    public void render(DashboardUiState state, AllTasksUiState allTasksState) {
+    public void render(DashboardUiState state, AllTasksUiState allTasksState,
+                       OptionsScreenState optionsState) {
         if (mounted != state.navigation) mount(state.navigation);
         if (state.navigation == NavigationDestination.TODAY)
             bindToday(state, state.focusStepLimit);
         else if (state.navigation == NavigationDestination.ALL_TASKS)
             allTasks.bind(allTasksState, state.palette);
-        else options.bind(state.palette, state.themeMode, state.focusStepLimit,
-                    state.restTimerDefaultSeconds, state.calendarPermission, state.calendar,
-                    version, state.update);
+        else options.bind(optionsState, version);
     }
 
     public void animateEditorTransition(Runnable finished) {
@@ -153,7 +157,7 @@ public final class DashboardRenderer {
             ViewGroupParent.mountBesideScroll(scroll, content, allTasks);
         } else {
             content.setPadding(0, 0, 0, 0);
-            if (options == null) options = new OptionsView(context, events);
+            if (options == null) options = new OptionsView(context, optionsActions);
             content.addView(options, new LinearLayout.LayoutParams(-1, -2));
         }
         if (destination != NavigationDestination.ALL_TASKS)

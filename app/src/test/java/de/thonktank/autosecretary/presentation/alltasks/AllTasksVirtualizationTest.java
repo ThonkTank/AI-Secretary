@@ -20,6 +20,7 @@ import android.widget.ImageButton;
 import android.widget.ScrollView;
 
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -32,6 +33,8 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 
 import org.junit.Test;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
@@ -47,9 +50,12 @@ import java.util.List;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class AllTasksVirtualizationTest {
+    @Rule public final TestRule instantListDiffs = new InstantTaskExecutorRule();
+
     @Test public void contentRebindReusesTheExistingHolderChildHierarchy() {
         Context context = ApplicationProvider.getApplicationContext();
         AllTasksView view = new AllTasksView(context, new Recorder());
+        view.recyclerForTest().setItemAnimator(null);
         AllTasksUiState state = AllTasksUiState.from(catalog(2),
                 AllTasksPresentationState.defaults());
         view.bind(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
@@ -297,13 +303,19 @@ public final class AllTasksVirtualizationTest {
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         shell.addView(new View(context), new LinearLayout.LayoutParams(-1, 80));
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, action -> { }, "test", new RewardAnchorRegistry(), new Recorder());
+                event -> { }, action -> { }, action -> { }, "test",
+                new RewardAnchorRegistry(), new Recorder());
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT);
 
         renderer.render(new DashboardUiState(NavigationDestination.ALL_TASKS,
-                        TodayUiModel.empty(), CalendarUiState.empty(), palette,
-                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet()),
-                AllTasksUiState.from(catalog(120), AllTasksPresentationState.defaults()));
+                        TodayUiModel.empty(), palette, false, Collections.emptySet()),
+                AllTasksUiState.from(catalog(120), AllTasksPresentationState.defaults()),
+                new de.thonktank.autosecretary.presentation.options.OptionsScreenState(palette,
+                        de.thonktank.autosecretary.data.preferences.UiThemeMode.AUTO,
+                        de.thonktank.autosecretary.data.preferences.FocusStepLimit.AUTO,
+                        60, CalendarPermissionStatus.GRANTED, CalendarUiState.empty(),
+                        de.thonktank.autosecretary.update.presentation.UpdateUiState.idle(),
+                        Collections.emptyList()));
 
         assertEquals(View.GONE, scroll.getVisibility());
         AllTasksView management = null;

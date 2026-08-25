@@ -31,7 +31,7 @@ public final class AndroidUpdateDialogsRobolectricTest {
                      Robolectric.buildActivity(TestActivity.class).setup()) {
             AtomicInteger accepted = new AtomicInteger();
             new AndroidUpdateDialogs(activity.get()).showAvailable(updateInfo(),
-                    () -> { }, accepted::incrementAndGet);
+                    () -> { }, accepted::incrementAndGet, () -> { });
 
             AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
             ShadowAlertDialog shadowDialog = Shadow.extract(dialog);
@@ -46,7 +46,8 @@ public final class AndroidUpdateDialogsRobolectricTest {
         try (ActivityController<TestActivity> activity =
                      Robolectric.buildActivity(TestActivity.class).setup()) {
             AtomicInteger releases = new AtomicInteger();
-            new AndroidUpdateDialogs(activity.get()).showError("Fehler", releases::incrementAndGet);
+            new AndroidUpdateDialogs(activity.get()).showError("Fehler",
+                    releases::incrementAndGet, () -> { });
 
             AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
             ShadowAlertDialog shadowDialog = Shadow.extract(dialog);

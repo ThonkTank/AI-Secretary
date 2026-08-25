@@ -102,7 +102,7 @@ public final class DashboardCharacterizationTest {
         scroll.addView(content);
         DashboardEventRecorder recorded = new DashboardEventRecorder();
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                recorded, recorded, "test", new RewardAnchorRegistry(),
+                recorded, recorded, action -> { }, "test", new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
@@ -116,10 +116,8 @@ public final class DashboardCharacterizationTest {
                 Collections.singletonList(DashboardFixtures.completedTodayTask()));
         DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.AUTO);
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        TodayUiModel.compose(dashboardState, events),
-                        CalendarUiState.from(new CalendarResult.Success(events)), palette,
-                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet()),
-                AllTasksUiState.empty());
+                        TodayUiModel.compose(dashboardState, events), palette, false,
+                        Collections.emptySet()), AllTasksUiState.empty(), options(palette));
 
         LinearLayout timeline = content.findViewById(R.id.dashboard_timeline);
         List<String> text = new ArrayList<>();
@@ -158,7 +156,7 @@ public final class DashboardCharacterizationTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, action -> { }, "test", new RewardAnchorRegistry(),
+                event -> { }, action -> { }, action -> { }, "test", new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         TodayUiModel today = new TodayUiModel(new XpProgress(10), null,
                 Collections.emptyList(),
@@ -166,16 +164,24 @@ public final class DashboardCharacterizationTest {
         DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.AUTO);
 
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        today.withCalendar(Collections.emptyList()), CalendarUiState.empty(),
-                        palette, CalendarPermissionStatus.GRANTED, false,
-                        Collections.emptySet()),
-                AllTasksUiState.empty());
+                        today.withCalendar(Collections.emptyList()), palette, false,
+                        Collections.emptySet()), AllTasksUiState.empty(), options(palette));
 
         View empty = findDirectChild(content, EmptyStateView.class);
         CompletedTodayView completed = content.findViewById(R.id.dashboard_completed_today);
         assertEquals(View.VISIBLE, empty.getVisibility());
         assertEquals(View.VISIBLE, completed.getVisibility());
         assertTrue(content.indexOfChild(completed) > content.indexOfChild(empty));
+    }
+
+    private static de.thonktank.autosecretary.presentation.options.OptionsScreenState options(
+            DayPalette palette) {
+        return new de.thonktank.autosecretary.presentation.options.OptionsScreenState(palette,
+                de.thonktank.autosecretary.data.preferences.UiThemeMode.AUTO,
+                de.thonktank.autosecretary.data.preferences.FocusStepLimit.AUTO,
+                60, CalendarPermissionStatus.GRANTED, CalendarUiState.empty(),
+                de.thonktank.autosecretary.update.presentation.UpdateUiState.idle(),
+                Collections.emptyList());
     }
 
     private static View findDirectChild(ViewGroup parent, Class<? extends View> type) {

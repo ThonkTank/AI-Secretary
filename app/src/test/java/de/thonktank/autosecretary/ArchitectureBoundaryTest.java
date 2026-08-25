@@ -59,6 +59,7 @@ public final class ArchitectureBoundaryTest {
         String activity = read(main("MainActivity.java"));
         String dashboard = read(main("TaskViewModel.java"));
         String catalog = read(main("presentation/alltasks/AllTasksViewModel.java"));
+        String options = read(main("presentation/options/OptionsViewModel.java"));
         String container = read(main("AppContainer.java"));
         String widgets = read(main("WidgetUpdateCoordinator.java"));
         String widgetProvider = read(main("TaskWidgetProvider.java"));
@@ -82,7 +83,8 @@ public final class ArchitectureBoundaryTest {
         assertTrue(widgetProvider.contains("reconcileInstalledWidgets()"));
         assertTrue(widgetProvider.contains("stopObserving()"));
         assertTrue(activity.contains("clockInvalidations.materializeForeground()"));
-        assertTrue(activity.contains("calendarInvalidations.materializeExternalChange()"));
+        assertFalse(activity.contains("calendarInvalidations.materializeExternalChange()"));
+        assertTrue(options.contains("calendarInvalidated.run()"));
         assertFalse(catalog.contains("current.withCatalog(catalog.execute())"));
         assertTrue(dashboard.indexOf("contentReads.close()")
                 < dashboard.indexOf("worker.shutdown()"));
@@ -123,7 +125,7 @@ public final class ArchitectureBoundaryTest {
     @Test public void motionCallbacksCannotOwnEditorNavigation() throws Exception {
         String activity = read(main("MainActivity.java"));
         String open = activity.substring(activity.indexOf("private void openEditorWithFlight()"),
-                activity.indexOf("private void renderUpdate("));
+                activity.indexOf("private void completeOrConfirm("));
         String navigator = read(main("presentation/navigation/TaskEditorNavigator.java"));
         assertTrue(open.contains("appNavigator.navigate(AppDestination.newTaskFromHeader())"));
         assertTrue(open.contains("editorCoordinator.deferNextOpen()"));

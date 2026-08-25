@@ -1491,3 +1491,137 @@ Optionen/Updater eigene StateFlow-Owner besitzen und die verbleibenden `UiEvent`
 Brokerpfade entfernt sind. Der Abschluss von 4c erfordert nun den eigenen grünen Pull Request,
 Squash-Merge und den veröffentlichenden `main`-Lauf; die physische In-App-Update- und Sichtabnahme
 bleibt gemäß Owner-Entscheidung offen.
+
+### Phase 4c – Remote-Abschluss
+
+Pull Request #273 bestand Quality sowie normale und animationsaktive Instrumentierung auf API
+26/35/37 und wurde als `81930552` per Squash nach `main` übernommen. Der Produktionslauf
+`32853006805` bestand dieselbe Matrix, signierte Paketierung sowie echtes Upgrade vom vorherigen
+Produktionsstand auf allen drei API-Stufen. Release 0.2.125 (`forest-android-1012501`)
+veröffentlicht `AutoSecretary.apk` und `release-metadata.json` exakt aus
+`819305526fb17576fc88cd64555a057b5056bc60`. Die automatisierte Unterphase 4c ist damit
+abgeschlossen; die physische In-App-Update- und Sichtabnahme bleibt gemäß Owner-Entscheidung
+offen.
+
+### Phase 4d – Vorprüfung und Implementationsplan für den Optionen-State-Owner
+
+Roadmap, ADR-022, der veröffentlichte 4c-Stand, `TaskViewModel`, `DashboardUiState`,
+`OptionsView`, `UpdateViewModel`, `UpdateUiController`, Android-Dialog-/Plattformadapter und die
+zugehörigen Options-, Update-, Activity- und Architekturtests wurden vor Produktänderungen erneut
+gelesen. Der Optionenbildschirm besitzt aktuell drei konkurrierende Zustandswege: Darstellungs-
+und Kalenderzustand im Dashboardowner, einen separaten LiveData-Updaterowner und einen
+Activity-Controller mit verbrauchbaren `UpdateEvent`s. Eine Unterphase nur für Preferences oder
+nur für Updateevents würde diese Mehrfachwahrheit konservieren. Phase 4d schneidet deshalb den
+vollständigen Optionen-/Updaterbildschirm als ein kohärentes Review-Ergebnis aus; Today bleibt
+danach als letzte große Phase-4-Unterphase im alten Dashboardowner.
+
+`OptionsViewModel` veröffentlicht genau einen `StateFlow<OptionsScreenState>` mit Theme,
+Fokusschrittlimit, Kalenderberechtigungs-/Kalenderstatus, Palette, Updatestatus und einer
+geordneten Menge bestätigbarer Hostrequests. `OptionsAction` ist der einzige serielle Eingang für
+Preferenceauswahl, beobachteten Berechtigungsstand, Berechtigungsaktion, manuellen/automatischen
+Updatecheck, Downloadannahme/-aufschub, Installationswiederaufnahme und Requestquittierung.
+Preferences und Kalender werden über die bestehenden Invalidierungsquellen beobachtet; der
+Todayowner darf dieselben dauerhaften Quellen für seine eigene Projektion weiter lesen, enthält
+aber keinen Optionen- oder Updatestatus mehr.
+
+Update-Verfügbarkeit, Fehler, Installationsberechtigung und Installerstart werden nicht mehr als
+verbrauchbare Events transportiert. Sie werden zu stabil identifizierten `OptionsRequest`s im
+Screen State. Die Activity rendert nur den ersten Request über die bestehenden Androidadapter und
+bestätigt ihn explizit; sie entscheidet weder Updatefachlogik noch schreibt sie Optionen in einen
+anderen Owner zurück. Ein gestarteter Download wird nicht abgebrochen. Doppelte Checks,
+Downloads und Installationsrequests werden dedupliziert; verspätete Ergebnisse dürfen keinen
+neueren Workflowzustand überschreiben. Zu prüfen sind Activity-Recreation mit offenem Prompt,
+Kalenderpermission samt Rückkehr aus Settings, automatischer Check-Rate-Limit, Downloadfortschritt,
+Installationspermission und -retry, Fehlerpfade, Preferenceinvalidierung ohne Contentreload sowie
+die Entfernung von `UpdateEvent`, `UpdateUiController` und Optionsfeldern aus `DashboardUiState`.
+Visuelle Optionsdarstellung, Android-Systemnavigation, Updatetrust/-transport, Schema, SDK-
+Grenzen und Releasevertrag bleiben unverändert.
+
+Während der lokalen Prüfung wurde auf `main` zusätzlich Phase #274 mit dauerhaften Task- und
+Pausentimern veröffentlicht. Vor dem Rebase wurde deshalb der neue Produktionsstand erneut
+gesichtet und der Implementationsplan erweitert: Die globale Pausentimer-Vorgabe gehört wie die
+übrigen editierbaren Preferences in `OptionsScreenState`/`OptionsAction`; laufende Timer,
+Timeraktionen und die einmalige Systemberechtigungswarnung bleiben dagegen Today-Verhalten.
+
+### Phase 4d – Implementation und Roadmap-Abgleich
+
+- `OptionsViewModel` ist nun der einzige State-Owner des Optionenbildschirms. Sein
+  `StateFlow<OptionsScreenState>` bündelt Theme, Fokusschrittlimit, globale Pausentimer-Vorgabe,
+  Kalenderberechtigung, Kalenderprojektion, Palette, Updatezustand und eine unveränderliche
+  geordnete Requestmenge. `OptionsView` sendet ausschließlich abgeschlossene `OptionsAction`s
+  und bindet ausschließlich diesen Screen State.
+- Appearance- und Kalenderreads laufen über getrennte Latest-read-Pipelines mit eigenen
+  Invalidierungsrouten. Appearance-, Kalender- und Policyänderungen laden nur ihre Projektion;
+  Datenbankinvalidierungen lösen im Optionenowner bewusst keinen Read aus. Der verbleibende
+  Dashboardowner liest Fokusschrittlimit und Palette weiterhin aus denselben dauerhaften
+  Präferenzen für seine Today-Projektion und die Pausentimer-Vorgabe erst beim tatsächlichen
+  Timerstart. Er besitzt aber weder die Vorgabe als Renderzustand noch Kalenderberechtigungs-,
+  Kalender- oder Updatestatus des Optionenbildschirms; nur der laufende Timer-Snapshot bleibt
+  Today-Zustand.
+- Updateangebot, Kalenderpermission, Systemeinstellungen, Installerstart und Fehler sind stabile
+  `OptionsRequest`s mit ID und expliziter Bestätigung. Ihr Saved-State-Adapter persistiert nur
+  vollständig validierte Releasemetadaten, HTTPS-Quelle, verifizierten Dateipfad und typisierten
+  Fehler. Nach Activity-Recreation wird der erste offene Request erneut dargestellt; veraltete
+  Dialog-, Installer- und Downloadcallbacks können einen bereits ersetzten Request oder einen
+  neueren Workflowzustand nicht verändern.
+- `MainActivity` bleibt Android-Host für Permission-, Settings-, Dialog- und Installeradapter,
+  enthält aber keine Updateentscheidung und schreibt keinen Optionszustand in den Dashboardowner
+  zurück. `UpdateEvent`, `UpdateFlow`, `UpdateUiController` und der separate `UpdateViewModel`
+  wurden entfernt. ADR-023 ersetzt den bisherigen Mehrfachownervertrag; ADR-006, ADR-007,
+  ADR-008 und ADR-013 verweisen auf die neue Grenze.
+
+Der negative Roadmap-Abgleich fand im ersten Schnitt zwei blockierende Lifecycle-Schwächen.
+Ein verspäteter Accept-, Postpone- oder Installercallback hätte noch I/O auslösen können, nachdem
+sein Request bereits verschwunden war. Die Nachtarbeitskorrektur konsumiert deshalb atomar exakt
+die bestätigte Request-ID und verwirft jede alte Callbackinstanz. Außerdem hatte `onCleared()` den
+Updateexecutor mit `shutdownNow()` beendet und damit einen bereits gestarteten Download entgegen
+dem Roadmapvertrag unterbrechen können. Der Executor fährt nun geordnet herunter; eine
+Ownergeneration verhindert weiterhin jede Publication in den entfernten State. Tests decken
+beide Racegrenzen einschließlich eines spät abgeschlossenen Checks nach Owner-Clear ab.
+
+Der erste Gesamtsuite-Abgleich machte zusätzlich einen reihenfolgeabhängigen Legacy-Test sichtbar:
+Der Alles-Virtualisierungstest für Holder-Wiederverwendung übernahm den globalen Animator- und
+AsyncListDiffer-Zustand vorheriger Robolectric-Tests. Fünf isolierte Läufe waren grün, mehrere
+Vollsuiten scheiterten jedoch an derselben Identitätsassertion. Die Nachtarbeit bindet Listdiffs
+im Test synchron und deaktiviert ausschließlich für diese Identitätsprüfung den ItemAnimator;
+Animationsverhalten bleibt separat getestet. Danach bestanden sowohl die vollständige Suite als
+auch fünf vollständig frische Wiederholungen der neuen Options-, Recreation-, Routing- und
+Architekturverträge.
+
+Der Rebase auf den inzwischen veröffentlichten Timerstand fand eine weitere blockierende
+Integrationsschwäche: `PreferenceInvalidationSource` nahm die neue Pausentimer-Vorgabe zwar vom
+SharedPreferences-Listener entgegen, ihr `distinctUntilChanged` verglich jedoch weiterhin nur
+Theme und Fokuslimit. Eine reine Timeränderung wurde dadurch als identisch verworfen und die
+sichtbare Optionsprojektion blieb bei 60 Sekunden. Die Integrations-Nachtarbeit nimmt den Wert in
+den typisierten Vergleich auf, führt ihn durch `OptionsAction` und `OptionsScreenState` und sichert
+sowohl den Flow als auch Minus-/Plus-Aktionen und die Ownerpublication. Der Todayowner behält
+seinen laufenden `TimerManager.Snapshot` und den noch bis Phase 4e zulässigen
+`REQUEST_TIMER_PERMISSIONS`-Hostpfad; Optionen- und Updaterbroker kehren dadurch nicht zurück.
+Auf dem nach der Timerintegration rebasierten Stand bestanden die Options-, Preference-,
+Recreation-, Architektur- und Timerverträge anschließend fünf vollständig frische
+Wiederholungsläufe. Vor der Veröffentlichung rückte `main` mit dem terminbewussten Kombo-Schnitt
+#275 erneut vor. Der zweite Rebase war konfliktfrei und veränderte keine Datei dieses
+Options-/Timer-Schnitts; der exakte Schema-18-Endstand bestand danach erneut die vollständige
+Suite. Ein erster zusammenhängender Versuch wurde während der Tests ohne Failure-XML extern mit
+Signal 15 beendet und nicht als Ergebnis gewertet. Die vollständige Testtask sowie Lint und alle
+APKs bestanden anschließend in zwei ressourcenbegrenzten Einmal-Gradleprozessen mit Exitcode 0.
+
+Unter Java 21 bestanden lokal 479 Tests ohne Fehler (ein bewusst übersprungener Test), Lint sowie
+Debug-, Android-Test- und unsigned Release-APK. Die 14 CI-Harnesstests und 22 Release-/Workflow-
+Vertragstests sind ebenfalls grün. Die APK-Größen betragen 8.843.276 Byte Debug, 680.309 Byte
+Android-Test und 6.436.450 Byte unsigned Release; der Fontbestand bleibt bei 1.478.008 Byte.
+Der aus `main` übernommene Termin-Kombo-Stand verwendet Schema 18; `minSdk 26`, `targetSdk 35`,
+Update-Trust/-Transport, Timer-/Kombodomainverhalten und visuelle Verträge wurden durch Phase 4d
+nicht verändert.
+
+Der abschließende statische Gegencheck findet im Produktionscode keinen `UpdateEvent`, keinen
+`UpdateUiController`, keinen separaten `UpdateViewModel`, keinen verbrauchbaren Options-Eventpfad
+und keinen zweiten Kalender-/Update-/Pausentimer-Vorgabestatus im Dashboard-State. Die
+verbleibenden Palette- und Fokusschrittlimitreads sowie der Pausentimerwert beim tatsächlichen
+Timerstart sind die explizit erlaubte Today-Nutzung gemeinsamer dauerhafter Präferenzen. Für
+Phase 4d ist nach der Nachtarbeit keine weitere lokale Nacharbeitsphase nötig.
+Phase 4 insgesamt bleibt offen, bis Today in der folgenden Unterphase einen eigenen
+`TodayScreenState`-Owner erhält und die letzten Dashboard-/`UiEvent`-Brokerpfade entfallen. Der
+Abschluss von 4d erfordert nun den eigenen grünen Pull Request, Squash-Merge und den
+veröffentlichenden `main`-Lauf; die physische In-App-Update- und Sichtabnahme bleibt gemäß
+Owner-Entscheidung ausdrücklich offen.
