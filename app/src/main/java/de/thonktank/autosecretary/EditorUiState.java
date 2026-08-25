@@ -17,6 +17,7 @@ import de.thonktank.autosecretary.domain.model.TaskDetails;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 
 /** Immutable editor state facade with separated draft, navigation and feedback components. */
 public final class EditorUiState {
@@ -48,6 +49,7 @@ public final class EditorUiState {
     public final Integer remainingCount;
     public final LocalDate deadlineOn;
     public final String note;
+    public final MissedOccurrenceMode missedOccurrenceMode;
     public final List<EditorStepState> stepStates;
     public final int nextDraftIdentity;
     public final String expandedStepId;
@@ -72,6 +74,7 @@ public final class EditorUiState {
         boundKind = draft.boundKind; boundUntilOn = draft.boundUntilOn;
         boundWeeks = draft.boundWeeks; remainingCount = draft.remainingCount;
         deadlineOn = draft.deadlineOn; note = draft.note; stepStates = draft.steps;
+        missedOccurrenceMode = draft.missedOccurrenceMode;
         nextDraftIdentity = draft.nextDraftIdentity;
         expandedStepId = navigation.expandedStepId; page = navigation.page;
         returnToSummary = navigation.returnToSummary;
@@ -110,7 +113,7 @@ public final class EditorUiState {
                 details.estimatedMinutes, details.recurrence, details.intervalDays,
                 details.weekdayMask, details.timeOfDayMask, details.boundKind,
                 details.boundUntilOn, details.boundWeeks, details.remainingCount,
-                details.deadlineOn, details.note, steps, 1);
+                details.deadlineOn, details.note, details.missedOccurrenceMode, steps, 1);
         return new EditorUiState(true, false, false, details.id.value, draft,
                 new TaskEditorNavigation(Page.SUMMARY, false, null),
                 TaskEditorFeedback.empty(), null);
@@ -173,6 +176,11 @@ public final class EditorUiState {
 
     public EditorUiState withSaving(boolean value) {
         return new EditorUiState(open, loading, value, taskId, draft, navigation, feedback, baseline);
+    }
+
+    public EditorUiState withMissedOccurrenceMode(MissedOccurrenceMode value) {
+        return new EditorUiState(open, loading, saving, taskId,
+                draft.withMissedOccurrenceMode(value), navigation, feedback, baseline);
     }
 
     public EditorUiState withPage(Page value, boolean returnValue) {
@@ -291,6 +299,7 @@ public final class EditorUiState {
                 + draft.timeOfDayMask + '|' + draft.boundKind + '|' + draft.boundUntilOn
                 + '|' + draft.boundWeeks + '|' + draft.remainingCount + '|'
                 + draft.deadlineOn + '|' + draft.note);
+        result.append('|').append(draft.missedOccurrenceMode);
         for (EditorStepState step : draft.steps)
             result.append('|').append(step.id).append(':').append(step.text).append(':')
                     .append(step.cadenceMode).append(':').append(step.weekdayMask).append(':')

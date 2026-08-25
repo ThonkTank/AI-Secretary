@@ -102,6 +102,7 @@ public final class DashboardUiMapper {
                 .steps(steps, remaining)
                 .ongoing(task.ongoing)
                 .overdue(overdue(item, today))
+                .backlogCount(item.backlogCount)
                 .allowDefer(allowDefer)
                 .harvestReady(!steps.isEmpty() && collected > 0)
                 .reward(reward, XpVesselUiModel.of(reward, done, steps.size(),

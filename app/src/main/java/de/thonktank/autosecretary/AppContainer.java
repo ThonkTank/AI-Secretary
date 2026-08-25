@@ -77,8 +77,8 @@ public final class AppContainer {
         this.database = databases.create(app);
         this.databaseInvalidations = new RoomInvalidationSource(database);
         this.taskRepository = new RoomTaskRepository(database);
-        this.tasks = new TaskUseCases(taskRepository, clock, ids);
         this.uiPreferences = new UiPreferences(app, logger);
+        this.tasks = new TaskUseCases(taskRepository, clock, ids, uiPreferences);
         this.texts = new AndroidUiTextProvider(app);
         this.calendar = new CalendarRepository(app, clock, zones,
                 uiPreferences::calendarPolicy, logger, texts);

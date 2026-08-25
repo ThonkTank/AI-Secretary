@@ -8,8 +8,11 @@ import java.util.function.Consumer;
 
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.calendar.CalendarPolicy;
+import de.thonktank.autosecretary.domain.model.ComboDecayTrigger;
+import de.thonktank.autosecretary.domain.model.ComboPolicy;
+import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 
-public final class UiPreferences {
+public final class UiPreferences implements ComboPolicySource {
     public interface Subscription extends AutoCloseable {
         @Override void close();
     }
@@ -21,6 +24,9 @@ public final class UiPreferences {
     private static final String CALENDAR_POLICY = "calendar_policy";
     private static final String FOCUS_STEP_LIMIT = "focus_step_limit";
     private static final String REST_TIMER_DEFAULT_SECONDS = "rest_timer_default_seconds";
+    private static final String COMBO_GAIN_POINTS = "combo_gain_points";
+    private static final String COMBO_DECAY_POINTS = "combo_decay_points";
+    private static final String COMBO_DECAY_TRIGGER = "combo_decay_trigger";
     public static final int DEFAULT_REST_TIMER_SECONDS = 60;
 
     private final SharedPreferences preferences;
@@ -71,14 +77,43 @@ public final class UiPreferences {
     }
 
     public DisplayPreferences displayPreferences() {
-        return new DisplayPreferences(themeMode(), focusStepLimit(), restTimerDefaultSeconds());
+        return new DisplayPreferences(themeMode(), focusStepLimit(), restTimerDefaultSeconds(),
+                current());
+    }
+
+    @Override public ComboPolicy current() {
+        int gain = Math.max(0, preferences.getInt(COMBO_GAIN_POINTS,
+                ComboPolicy.DEFAULT_GAIN_POINTS));
+        int decay = Math.max(0, preferences.getInt(COMBO_DECAY_POINTS,
+                ComboPolicy.DEFAULT_DECAY_POINTS));
+        String stored = preferences.getString(COMBO_DECAY_TRIGGER,
+                ComboDecayTrigger.DAILY_OVERDUE.name());
+        ComboDecayTrigger trigger;
+        try {
+            trigger = ComboDecayTrigger.valueOf(stored);
+        } catch (IllegalArgumentException error) {
+            logger.error(TAG, "Ignoring unsupported combo decay trigger: " + stored, error);
+            trigger = ComboDecayTrigger.DAILY_OVERDUE;
+        }
+        return new ComboPolicy(gain, decay, trigger);
+    }
+
+    public void setComboPolicy(ComboPolicy policy) {
+        if (policy == null) throw new IllegalArgumentException("Combo policy is required");
+        preferences.edit()
+                .putInt(COMBO_GAIN_POINTS, policy.gainPoints)
+                .putInt(COMBO_DECAY_POINTS, policy.decayPoints)
+                .putString(COMBO_DECAY_TRIGGER, policy.trigger.name())
+                .apply();
     }
 
     public Subscription observeDisplayPreferences(Consumer<DisplayPreferences> observer) {
         if (observer == null) throw new IllegalArgumentException("Observer is required");
         SharedPreferences.OnSharedPreferenceChangeListener listener = (source, key) -> {
             if (THEME_MODE.equals(key) || FOCUS_STEP_LIMIT.equals(key)
-                    || REST_TIMER_DEFAULT_SECONDS.equals(key))
+                    || REST_TIMER_DEFAULT_SECONDS.equals(key)
+                    || COMBO_GAIN_POINTS.equals(key) || COMBO_DECAY_POINTS.equals(key)
+                    || COMBO_DECAY_TRIGGER.equals(key))
                 observer.accept(displayPreferences());
         };
         preferences.registerOnSharedPreferenceChangeListener(listener);

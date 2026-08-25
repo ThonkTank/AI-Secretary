@@ -14,6 +14,8 @@ import de.thonktank.autosecretary.presentation.options.OptionsAction;
 import de.thonktank.autosecretary.presentation.options.OptionsActionSink;
 import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
+import de.thonktank.autosecretary.domain.model.ComboDecayTrigger;
+import de.thonktank.autosecretary.domain.model.ComboPolicy;
 
 @SuppressLint("ViewConstructor")
 public final class OptionsView extends LinearLayout {
@@ -22,6 +24,7 @@ public final class OptionsView extends LinearLayout {
     private final OptionLeaf appearance;
     private final OptionLeaf focusSteps;
     private final OptionLeaf restTimers;
+    private final OptionLeaf combos;
     private final OptionLeaf calendar;
     private final OptionLeaf updates;
     private final TextView[] themeButtons = new TextView[3];
@@ -30,6 +33,13 @@ public final class OptionsView extends LinearLayout {
     private final TextView restTimerLess;
     private final TextView restTimerValue;
     private final TextView restTimerMore;
+    private final TextView comboGainLess;
+    private final TextView comboGainValue;
+    private final TextView comboGainMore;
+    private final TextView comboDecayLess;
+    private final TextView comboDecayValue;
+    private final TextView comboDecayMore;
+    private final TextView[] comboTriggerButtons = new TextView[ComboDecayTrigger.values().length];
     private final TextView updateButton;
     private final OptionsActionSink actions;
 
@@ -101,6 +111,50 @@ public final class OptionsView extends LinearLayout {
                 R.string.options_rest_timer_description, restTimerActions);
         addLeaf(restTimers);
 
+        LinearLayout comboActions = new LinearLayout(context);
+        comboActions.setOrientation(VERTICAL);
+        LinearLayout gainRow = new LinearLayout(context);
+        gainRow.setGravity(Gravity.CENTER_VERTICAL);
+        comboGainLess = outlineButton("−");
+        comboGainValue = style.sans("+2", 17, 0, true);
+        comboGainValue.setGravity(Gravity.CENTER);
+        comboGainMore = outlineButton("+");
+        gainRow.addView(style.sans(context.getString(R.string.combo_gain), 15, 0, true),
+                new LayoutParams(0, -2, 1));
+        gainRow.addView(comboGainLess, new LayoutParams(style.dp(48), style.dp(48)));
+        gainRow.addView(comboGainValue, new LayoutParams(style.dp(58), style.dp(48)));
+        gainRow.addView(comboGainMore, new LayoutParams(style.dp(48), style.dp(48)));
+        comboActions.addView(gainRow, new LayoutParams(-1, -2));
+        LinearLayout decayRow = new LinearLayout(context);
+        decayRow.setGravity(Gravity.CENTER_VERTICAL);
+        comboDecayLess = outlineButton("−");
+        comboDecayValue = style.sans("−1", 17, 0, true);
+        comboDecayValue.setGravity(Gravity.CENTER);
+        comboDecayMore = outlineButton("+");
+        decayRow.addView(style.sans(context.getString(R.string.combo_decay), 15, 0, true),
+                new LayoutParams(0, -2, 1));
+        decayRow.addView(comboDecayLess, new LayoutParams(style.dp(48), style.dp(48)));
+        decayRow.addView(comboDecayValue, new LayoutParams(style.dp(58), style.dp(48)));
+        decayRow.addView(comboDecayMore, new LayoutParams(style.dp(48), style.dp(48)));
+        LayoutParams decayParams = new LayoutParams(-1, -2);
+        decayParams.setMargins(0, style.dp(6), 0, style.dp(10));
+        comboActions.addView(decayRow, decayParams);
+        EditorFlowLayout triggers = new EditorFlowLayout(context);
+        int[] triggerLabels = {R.string.combo_trigger_missed,
+                R.string.combo_trigger_daily, R.string.combo_trigger_next};
+        for (int i = 0; i < ComboDecayTrigger.values().length; i++) {
+            TextView button = style.sans(context.getString(triggerLabels[i]), 14, 0, true);
+            button.setGravity(Gravity.CENTER);
+            button.setPadding(style.dp(14), 0, style.dp(14), 0);
+            button.setMinHeight(style.dp(48));
+            triggers.addView(button, new android.view.ViewGroup.LayoutParams(-2, style.dp(48)));
+            comboTriggerButtons[i] = button;
+        }
+        comboActions.addView(triggers, new LayoutParams(-1, -2));
+        combos = new OptionLeaf(context, R.string.options_combos,
+                R.string.options_combos_description, comboActions);
+        addLeaf(combos);
+
         calendarButton = outlineButton(context.getString(R.string.calendar_grant));
         calendarButton.setOnClickListener(view ->
                 actions.emit(OptionsAction.calendarPermissionSelected()));
@@ -131,6 +185,7 @@ public final class OptionsView extends LinearLayout {
         UiThemeMode mode = state.themeMode;
         FocusStepLimit focusStepLimit = state.focusStepLimit;
         int restTimerDefaultSeconds = state.restTimerDefaultSeconds;
+        ComboPolicy comboPolicy = state.comboPolicy;
         CalendarPermissionStatus permission = state.calendarPermission;
         CalendarUiState calendarState = state.calendar;
         UpdateUiState updateState = state.update;
@@ -170,6 +225,7 @@ public final class OptionsView extends LinearLayout {
                 OptionsAction.restTimerDefaultChanged(restTimerDefaultSeconds + 15)));
         bindOutline(restTimerLess, palette);
         bindOutline(restTimerMore, palette);
+        bindCombos(palette, comboPolicy);
         boolean granted = permission == CalendarPermissionStatus.GRANTED;
         boolean settings = permission == CalendarPermissionStatus.DENIED_TO_SETTINGS;
         int calendarDescription = granted ? R.string.calendar_granted : R.string.calendar_missing;
@@ -186,6 +242,45 @@ public final class OptionsView extends LinearLayout {
         updateButton.setTextColor(palette.accentText);
         updateButton.setBackground(style.pill(palette.accent, 26));
         updateButton.setElevation(style.dp(5));
+    }
+
+    private void bindCombos(DayPalette palette, ComboPolicy policy) {
+        combos.bind(palette, getContext().getString(R.string.options_combos_description));
+        comboGainValue.setText("+" + policy.gainPoints);
+        comboDecayValue.setText("−" + policy.decayPoints);
+        comboGainValue.setTextColor(palette.ink);
+        comboDecayValue.setTextColor(palette.ink);
+        comboGainLess.setEnabled(policy.gainPoints > 0);
+        comboDecayLess.setEnabled(policy.decayPoints > 0);
+        comboGainLess.setAlpha(policy.gainPoints > 0 ? 1f : .45f);
+        comboDecayLess.setAlpha(policy.decayPoints > 0 ? 1f : .45f);
+        comboGainLess.setOnClickListener(view -> emitPolicy(
+                Math.max(0, policy.gainPoints - 1), policy.decayPoints, policy.trigger));
+        comboGainMore.setOnClickListener(view -> emitPolicy(
+                policy.gainPoints + 1, policy.decayPoints, policy.trigger));
+        comboDecayLess.setOnClickListener(view -> emitPolicy(
+                policy.gainPoints, Math.max(0, policy.decayPoints - 1), policy.trigger));
+        comboDecayMore.setOnClickListener(view -> emitPolicy(
+                policy.gainPoints, policy.decayPoints + 1, policy.trigger));
+        bindOutline(comboGainLess, palette); bindOutline(comboGainMore, palette);
+        bindOutline(comboDecayLess, palette); bindOutline(comboDecayMore, palette);
+        ComboDecayTrigger[] values = ComboDecayTrigger.values();
+        for (int i = 0; i < values.length; i++) {
+            ComboDecayTrigger trigger = values[i];
+            boolean selected = trigger == policy.trigger;
+            TextView button = comboTriggerButtons[i];
+            button.setTextColor(selected ? palette.accentText : palette.ink2);
+            GradientDrawable background = style.pill(
+                    selected ? palette.accent : Color.TRANSPARENT, 24);
+            if (!selected) background.setStroke(style.dp(1), palette.dot);
+            button.setBackground(background);
+            button.setOnClickListener(view -> emitPolicy(
+                    policy.gainPoints, policy.decayPoints, trigger));
+        }
+    }
+
+    private void emitPolicy(int gain, int decay, ComboDecayTrigger trigger) {
+        actions.emit(OptionsAction.comboPolicySelected(new ComboPolicy(gain, decay, trigger)));
     }
 
     private String updateDescription(String installed, UpdateUiState state) {

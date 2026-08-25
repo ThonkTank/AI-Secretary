@@ -12,6 +12,7 @@ import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 
 /** Immutable collection of the task fields edited by the wizard. */
 public final class TaskEditorDraft {
@@ -28,6 +29,7 @@ public final class TaskEditorDraft {
     public final Integer remainingCount;
     public final LocalDate deadlineOn;
     public final String note;
+    public final MissedOccurrenceMode missedOccurrenceMode;
     public final List<EditorStepState> steps;
     public final int nextDraftIdentity;
 
@@ -36,6 +38,17 @@ public final class TaskEditorDraft {
                            int timeOfDayMask, TaskBoundKind boundKind, LocalDate boundUntilOn,
                            Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn,
                            String note, List<EditorStepState> steps, int nextDraftIdentity) {
+        this(title, slot, estimatedMinutes, recurrence, intervalDays, weekdayMask,
+                timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn,
+                note, MissedOccurrenceMode.COLLAPSE, steps, nextDraftIdentity);
+    }
+
+    public TaskEditorDraft(String title, TaskSlot slot, Integer estimatedMinutes,
+                           Recurrence recurrence, int intervalDays, int weekdayMask,
+                           int timeOfDayMask, TaskBoundKind boundKind, LocalDate boundUntilOn,
+                           Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn,
+                           String note, MissedOccurrenceMode missedOccurrenceMode,
+                           List<EditorStepState> steps, int nextDraftIdentity) {
         this.title = title == null ? "" : title;
         this.slot = slot == null ? TaskSlot.MORNING : slot;
         this.estimatedMinutes = estimatedMinutes;
@@ -49,6 +62,8 @@ public final class TaskEditorDraft {
         this.remainingCount = remainingCount;
         this.deadlineOn = deadlineOn;
         this.note = note == null ? "" : note;
+        this.missedOccurrenceMode = missedOccurrenceMode == null
+                ? MissedOccurrenceMode.COLLAPSE : missedOccurrenceMode;
         this.steps = Collections.unmodifiableList(new ArrayList<>(steps));
         this.nextDraftIdentity = nextDraftIdentity;
     }
@@ -61,7 +76,14 @@ public final class TaskEditorDraft {
                                       List<EditorStepState> steps, int nextDraftIdentity) {
         return new TaskEditorDraft(title, slot, estimatedMinutes, recurrence, intervalDays,
                 weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
-                remainingCount, deadlineOn, note, steps, nextDraftIdentity);
+                remainingCount, deadlineOn, note, missedOccurrenceMode, steps,
+                nextDraftIdentity);
+    }
+
+    public TaskEditorDraft withMissedOccurrenceMode(MissedOccurrenceMode value) {
+        return new TaskEditorDraft(title, slot, estimatedMinutes, recurrence, intervalDays,
+                weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
+                remainingCount, deadlineOn, note, value, steps, nextDraftIdentity);
     }
 
     public TaskDraftSnapshot snapshot() { return TaskDraftSnapshot.from(this); }
@@ -72,7 +94,7 @@ public final class TaskEditorDraft {
             definitions.add(steps.get(index).definition(index, recurrence == Recurrence.ONCE));
         return new TaskDefinition(title, estimatedMinutes, slot, recurrence, intervalDays,
                 weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
-                remainingCount, deadlineOn, note, definitions);
+                remainingCount, deadlineOn, note, missedOccurrenceMode, definitions);
     }
 
     Bundle toBundle() {
@@ -85,6 +107,7 @@ public final class TaskEditorDraft {
         BundleValues.putInteger(bundle, "weeks", boundWeeks);
         BundleValues.putInteger(bundle, "count", remainingCount);
         BundleValues.putDate(bundle, "deadline", deadlineOn); bundle.putString("note", note);
+        bundle.putString("missed_mode", missedOccurrenceMode.name());
         ArrayList<Bundle> values = new ArrayList<>();
         for (EditorStepState value : steps) values.add(value.toBundle());
         bundle.putParcelableArrayList("steps", values);
@@ -104,6 +127,8 @@ public final class TaskEditorDraft {
                 BundleValues.enumValue(TaskBoundKind.class, bundle.getString("bound"), TaskBoundKind.FOREVER),
                 BundleValues.date(bundle, "until"), BundleValues.integer(bundle, "weeks"),
                 BundleValues.integer(bundle, "count"), BundleValues.date(bundle, "deadline"),
-                bundle.getString("note", ""), steps, bundle.getInt("next_id", 1));
+                bundle.getString("note", ""), BundleValues.enumValue(MissedOccurrenceMode.class,
+                bundle.getString("missed_mode"), MissedOccurrenceMode.COLLAPSE), steps,
+                bundle.getInt("next_id", 1));
     }
 }

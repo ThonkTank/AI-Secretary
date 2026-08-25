@@ -12,12 +12,16 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
+import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.usecase.ApplyComboDecay;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
+import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.testing.InMemoryExecutionRepository;
 
 import org.junit.Test;
@@ -116,6 +120,34 @@ public final class ScheduleAwareComboDecayTest {
         assertTrue(new CompleteOccurrence(fixture.repository, fixture.clock)
                 .execute(carried.id).xp > 0);
         assertEquals(11, fixture.repository.combo(ComboProgress.taskOwner(first.taskId)).points);
+    }
+
+    @Test public void accumulateKeepsEveryDueDateButDashboardAdvancesOneAtATime() {
+        Fixture fixture = new Fixture(ComboPolicy.defaults());
+        new CreateTask(fixture.repository, fixture.repository, fixture.clock, fixture.ids).execute(
+                new TaskDefinition("Gym", null, TaskSlot.EVENING, Recurrence.DAILY,
+                        1, 0, TimeOfDay.EVENING.bit, TaskBoundKind.FOREVER,
+                        null, null, null, null, "", MissedOccurrenceMode.ACCUMULATE,
+                        Collections.emptyList()));
+        fixture.materialize.execute();
+        fixture.clock.date = MONDAY.plusDays(2);
+        fixture.materialize.execute();
+
+        assertEquals(3, fixture.repository.openOccurrences().size());
+        de.thonktank.autosecretary.domain.model.Dashboard first =
+                new LoadDashboard(fixture.repository).execute(fixture.clock.today());
+        assertEquals(1, first.tasks.size());
+        assertEquals(MONDAY, first.tasks.get(0).occurrence.scheduledOn);
+        assertEquals(2, first.tasks.get(0).backlogCount);
+
+        new CompleteOccurrence(fixture.repository, fixture.clock)
+                .execute(first.tasks.get(0).occurrence.id);
+        de.thonktank.autosecretary.domain.model.Dashboard next =
+                new LoadDashboard(fixture.repository).execute(fixture.clock.today());
+        assertEquals(MONDAY.plusDays(1), next.tasks.stream().filter(value -> !value.done)
+                .findFirst().orElseThrow().occurrence.scheduledOn);
+        assertEquals(1, next.tasks.stream().filter(value -> !value.done)
+                .findFirst().orElseThrow().backlogCount);
     }
 
     private static final class Fixture {

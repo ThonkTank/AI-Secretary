@@ -23,6 +23,7 @@ public final class TaskDetails {
     public final Integer remainingCount;
     public final java.time.LocalDate deadlineOn;
     public final String note;
+    public final MissedOccurrenceMode missedOccurrenceMode;
 
     public TaskDetails(Task task, List<TaskStepTemplate> templates, TaskSchedule schedule) {
         id = task.id;
@@ -44,6 +45,7 @@ public final class TaskDetails {
         remainingCount = task.remainingCount;
         deadlineOn = task.deadlineOn;
         note = task.note;
+        missedOccurrenceMode = task.missedOccurrenceMode;
         stepTemplates = Collections.unmodifiableList(new ArrayList<>(templates));
         List<String> values = new ArrayList<>();
         for (TaskStepTemplate template : templates) values.add(template.text);

@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.presentation.options;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.update.domain.UpdateInfo;
+import de.thonktank.autosecretary.domain.model.ComboPolicy;
 
 /** Closed input boundary for options, permissions and the update workflow. */
 public abstract class OptionsAction {
@@ -22,6 +23,10 @@ public abstract class OptionsAction {
             if (seconds < 1) throw new IllegalArgumentException("Rest timer must be positive");
             this.seconds = seconds;
         }
+    }
+    public static final class ComboPolicySelected extends OptionsAction {
+        public final ComboPolicy policy;
+        private ComboPolicySelected(ComboPolicy policy) { this.policy = required(policy); }
     }
     public static final class PermissionObserved extends OptionsAction {
         public final boolean granted;
@@ -75,6 +80,9 @@ public abstract class OptionsAction {
     }
     public static OptionsAction restTimerDefaultChanged(int seconds) {
         return new RestTimerDefaultChanged(seconds);
+    }
+    public static OptionsAction comboPolicySelected(ComboPolicy policy) {
+        return new ComboPolicySelected(policy);
     }
     public static OptionsAction permissionObserved(boolean granted, boolean showRationale) {
         return new PermissionObserved(granted, showRationale);

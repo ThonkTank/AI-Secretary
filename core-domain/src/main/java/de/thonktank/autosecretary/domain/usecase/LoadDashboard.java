@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 
 public final class LoadDashboard {
     private final DashboardReadRepository repository;
@@ -44,10 +45,23 @@ public final class LoadDashboard {
 
         List<DashboardTask> result = new ArrayList<>();
         Set<TaskId> included = new HashSet<>();
+        open.sort(Comparator.comparing((Occurrence value) -> value.scheduledOn)
+                .thenComparingInt(value -> value.sortOrder).thenComparing(value -> value.id));
+        Map<String, Integer> openCounts = new HashMap<>();
+        for (Occurrence occurrence : open) {
+            String key = occurrence.taskId.value + '|' + occurrence.slot.name();
+            openCounts.put(key, openCounts.getOrDefault(key, 0) + 1);
+        }
+        Set<String> accumulatedSlots = new HashSet<>();
         for (Occurrence occurrence : open) {
             Task task = tasks.get(occurrence.taskId);
             if (task == null || task.archived || task.conditionDone) continue;
-            result.add(item(task, occurrence, steps, rewards, false));
+            String key = occurrence.taskId.value + '|' + occurrence.slot.name();
+            if (task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE
+                    && !accumulatedSlots.add(key)) continue;
+            int backlog = task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE
+                    ? Math.max(0, openCounts.getOrDefault(key, 1) - 1) : 0;
+            result.add(item(task, occurrence, steps, rewards, false, backlog));
             included.add(task.id);
         }
         for (Task task : tasks.values())
@@ -60,7 +74,7 @@ public final class LoadDashboard {
         for (Occurrence occurrence : completed) {
             Task task = tasks.get(occurrence.taskId);
             if (task == null) continue;
-            result.add(item(task, occurrence, steps, rewards, true));
+            result.add(item(task, occurrence, steps, rewards, true, 0));
             included.add(task.id);
         }
         for (Task task : tasks.values())
@@ -82,7 +96,8 @@ public final class LoadDashboard {
 
     private static DashboardTask item(Task task, Occurrence occurrence,
                                       Map<String, List<OccurrenceStep>> steps,
-                                      Map<String, List<RewardBooking>> rewards, boolean done) {
+                                      Map<String, List<RewardBooking>> rewards, boolean done,
+                                      int backlogCount) {
         List<OccurrenceStep> values = steps.get(occurrence.id);
         Map<String, Integer> stepXp = new HashMap<>();
         int awardedXp = 0;
@@ -93,7 +108,7 @@ public final class LoadDashboard {
                     stepXp.getOrDefault(booking.occurrenceStepId, 0) + booking.xpDelta);
         }
         return new DashboardTask(task, occurrence, values == null ? new ArrayList<>() : values,
-                done, stepXp, awardedXp, occurrence.slot);
+                done, stepXp, awardedXp, occurrence.slot, backlogCount);
     }
 
     private static Map<String, List<OccurrenceStep>> groupSteps(List<OccurrenceStep> values) {
