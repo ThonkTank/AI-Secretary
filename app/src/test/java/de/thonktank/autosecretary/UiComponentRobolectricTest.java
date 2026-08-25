@@ -3,8 +3,10 @@ package de.thonktank.autosecretary;
 import de.thonktank.autosecretary.ui.today.*;
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksAction;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 
@@ -32,10 +34,12 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 
 import androidx.test.core.app.ApplicationProvider;
+import androidx.lifecycle.ViewModelProvider;
 
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.ui.leaf.LeafShape;
 import de.thonktank.autosecretary.ui.leaf.LeafSurface;
@@ -89,6 +93,35 @@ public final class UiComponentRobolectricTest {
             controller.recreate();
 
             assertNull(ShadowAlertDialog.getLatestAlertDialog());
+        }
+    }
+
+    @Test public void managementConfirmationRemainsVisibleAcrossRecreationUntilAcknowledged() {
+        try (ActivityController<MainActivity> controller =
+                     Robolectric.buildActivity(MainActivity.class)) {
+            MainActivity activity = controller.setup().get();
+            AppContainer container = AutoSecretaryApplication.from(activity).container();
+            AllTasksViewModel management = new ViewModelProvider(activity,
+                    new AllTasksViewModel.Factory(container)).get(AllTasksViewModel.class);
+
+            management.dispatch(AllTasksAction.deleteRequested(
+                    TaskId.of("pending-delete"), "Offene Aufgabe"));
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+            AlertDialog first = ShadowAlertDialog.getLatestAlertDialog();
+            assertNotNull(first);
+            assertNotNull(management.state().getValue().firstRequest());
+
+            ShadowAlertDialog.reset();
+            activity = controller.recreate().get();
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+            AlertDialog recreated = ShadowAlertDialog.getLatestAlertDialog();
+            assertNotNull(recreated);
+            assertFalse(first == recreated);
+            recreated.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+            assertNull(management.state().getValue().firstRequest());
         }
     }
 

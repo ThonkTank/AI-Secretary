@@ -1219,3 +1219,92 @@ Gesamtlauf; der 3c3-Diff berührt weder Alles-Adapter noch dessen View-Hierarchi
 wird daher als nicht reproduzierbare Lastinteraktion festgehalten, nicht als übergangener
 Produktfehler. Der Abschluss von 3c3 erfordert nun den eigenen grünen Pull Request, Squash-Merge
 und den veröffentlichenden `main`-Lauf.
+
+### Phase 3c3 – Remote-Abschluss
+
+Pull Request #270 bestand Quality sowie normale und animationsaktive Instrumentierung auf API
+26/35/37 und wurde als `ebe9d62f` per Squash nach `main` übernommen. Der Produktionslauf
+`32832276640` bestand dieselbe Matrix, signierte Paketierung sowie Neuinstallation und echtes
+Upgrade auf allen drei API-Stufen. Release 0.2.122 (`forest-android-1012201`) veröffentlicht
+`AutoSecretary.apk` und `release-metadata.json` exakt aus
+`ebe9d62fe9d3b246eeec6defe86d0fa6ada3e2c6`. Die automatisierte Phase 3 ist damit abgeschlossen;
+die vom Owner übergangene physische In-App-Update- und Sichtabnahme bleibt ausdrücklich offen.
+
+### Phase 4a – Vorprüfung und Implementationsplan für den Alles-State-Owner
+
+Roadmap, ADR-022, der veröffentlichte Phase-3-Stand und die betroffenen Produkt- und Testpfade
+wurden vor Produktänderungen erneut gelesen. Phase 4 ist mit dem 749 Zeilen breiten
+`TaskViewModel`, dem Editor-, Today-, Optionen-/Updater- und Alles-Schnitt nicht als ein einzelner
+reviewbarer Sprint abschließbar. Sie wird daher vorab geteilt. Phase 4a schließt zunächst den
+bereits fachlich unabhängigen Alles-Tab vollständig als einen Screen-State-Owner; Editor, Today
+und Optionen folgen auf jeweils eigenen Branches. Phase 4 ist erst nach Entfernung der letzten
+ViewModel-zu-ViewModel- und Activity-Brokerpfade insgesamt abgeschlossen.
+
+Der konkrete 4a-Schnitt besitzt genau eine Wahrheit: `AllTasksViewModel` veröffentlicht einen
+`StateFlow<AllTasksScreenState>`. Dieser atomare Zustand enthält die bestehende reine
+Katalogprojektion und eine geordnete Menge bestätigbarer Hostrequests. Jede Vieweingabe wird im
+`AllTasksCoordinator` in einen abgeschlossenen `AllTasksAction`-Typ übersetzt und über genau einen
+seriellen `dispatch`-Eingang verarbeitet. Fehler, Hinweise, Editor-Navigation und
+Löschbestätigung verlassen damit `UiEvent` und den direkten Coordinator-Hostcallback; Requests
+erhalten stabile IDs, bleiben bis zur expliziten Bestätigung im State und werden bei
+Prozesswiederherstellung aus dem `SavedStateHandle` rekonstruiert.
+
+Die bestehende Java-View bleibt bis Phase 6 produktiv und liest den StateFlow ausschließlich über
+eine kleine lifecyclegebundene Legacy-Bindergrenze. Weder View noch Activity halten einen zweiten
+mutierbaren Alles-Zustand. Room bleibt alleinige Kataloginvalidierung; Schreibtransaktionen
+werden weiterhin nicht abgebrochen. Besonders zu prüfen sind die Reihenfolge schnell
+aufeinanderfolgender Filteractions, höchstens eine gleichzeitige Darstellung desselben Requests,
+Dialog-Recreation vor Bestätigung, Request-Quittierung ohne fremden Zustandsverlust,
+Managementwrites ohne Cross-Signal sowie sauberes Schließen der Read-Pipeline. Produktverhalten,
+visuelle Baselines, Schema, SDK-Grenzen und Releasevertrag bleiben unverändert.
+
+### Phase 4a – Implementation und Roadmap-Abgleich
+
+- `AllTasksViewModel` besitzt nun genau einen `MutableStateFlow<AllTasksScreenState>` und gibt ihn
+  nur als `StateFlow` heraus. Der atomare State koppelt die unveränderte reine
+  `AllTasksUiState`-Projektion mit einer geordneten, unveränderlichen Requestliste; LiveData und
+  `UiEvent` sind aus diesem Screen-Owner entfernt.
+- `AllTasksAction` bildet Filter, Modus, Expansion, Editorziele, Löschanfrage und -bestätigung,
+  Reordercommands sowie Requestquittierung als geschlossene Typen ab. `dispatch` ist der einzige
+  öffentliche Eingabepfad und reduziert konkurrierende Aufrufe seriell. Katalogpublication,
+  Actions und Requests verändern den gemeinsamen State jeweils unter derselben atomaren
+  Zustandsgrenze.
+- Fehler, Hinweise, Editorziele und Löschbestätigungen tragen stabile IDs im Screen State. Eine
+  explizite Quittierung entfernt nur den adressierten Request. Presentation- und Requestzustand
+  werden getrennt und typisiert im `SavedStateHandle` gespeichert; Pending Work überlebt damit
+  Activity- und Prozesswiederherstellung.
+- `AllTasksCoordinator` ist nur noch ein dünner Übersetzer von Legacy-Viewcallbacks in Actions.
+  Sein direkter `Host`-Callback ist entfernt. `MainActivity` bindet den StateFlow über den kleinen
+  `LegacyStateFlowBinder`, rendert ausschließlich `state.content` und erfüllt den jeweils ersten
+  Hostrequest. Der noch bestehende Aufruf in den breiten Legacy-Editorowner ist eine klar
+  begrenzte Übergangsnaht bis zu dessen eigener Phase-4-Unterphase, keine zweite Alles-Wahrheit.
+- Roominvalidierung bleibt alleiniger Reprojektionspfad nach Managementwrites. Pipeline-Close,
+  Worker-Shutdown, Domainports, Transaktionsgrenzen und visuelle View-Hierarchie wurden nicht
+  verändert.
+
+Der negative Roadmap-Abgleich fand zwei relevante Schwächen im ersten Entwurf. Identische schnelle
+Doppeltipps konnten denselben Dialog- oder Navigationsauftrag mehrfach einreihen. Außerdem hätte
+ein fehlender oder zurückgesetzter Sequenzwert bei vorhandenen restaurierten Requests eine
+bereits verwendete ID erneut vergeben können. Die Nachtarbeitskorrektur dedupliziert semantisch
+gleiches noch offenes Hostwork und leitet den Sequenzboden zusätzlich aus allen tatsächlich
+restaurierten IDs ab. Beschädigte Requestbundles werden nur noch rekonstruiert, wenn die für ihren
+Typ nötigen Werte vollständig sind.
+
+Ein echter Robolectric-Activity-Test öffnet einen Management-Löschdialog, recreatet die Activity
+vor einer Antwort, sieht denselben stabilen Request erneut und entfernt ihn erst nach der
+Negativbestätigung. Weitere Zustandsverträge prüfen Prozesswiederherstellung mit absichtlich
+zurückgesetztem Sequenzwert, Doppeltipp-Deduplizierung, Quittierung ohne Änderung derselben
+Renderprojektion und Reprojektion eines Managementwrites ausschließlich über Room.
+
+Lokal bestanden unter Java 21 die vollständige Suite mit 460 Tests ohne Fehler (ein bewusst
+übersprungener Test), Lint sowie Debug-, Android-Test- und unsigned Release-APK. Die 14
+CI-Harnesstests und 22 Release-/Workflow-Vertragstests sind ebenfalls grün. Die APK-Größen
+betragen 8.778.889 Byte Debug, 653.541 Byte Android-Test und 6.373.418 Byte unsigned Release; der
+Fontbestand bleibt mit 1.478.008 Byte unverändert. Schema 16, `minSdk 26`, `targetSdk 35`,
+Signatur-, Upgrade- und visuelle Verträge wurden nicht geändert. Der Phasenabschluss erfordert
+nun noch den eigenen grünen Pull Request, Squash-Merge und den veröffentlichenden `main`-Lauf;
+die physische Geräteabnahme bleibt gemäß Owner-Entscheidung offen.
+
+Die StateFlow-, Action-, Request-, Activity-Recreation-, Room-Routing- und Architekturverträge
+bestanden danach fünf vollständig frische Wiederholungsläufe ohne Race-Ausfall oder verbliebenen
+Lifecycle-Collector.

@@ -2,9 +2,13 @@ package de.thonktank.autosecretary;
 
 import de.thonktank.autosecretary.ui.today.HeaderView;
 
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksAction;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksCoordinator;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksRequest;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksScreenState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
+import de.thonktank.autosecretary.presentation.legacy.LegacyStateFlowBinder;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
@@ -37,8 +41,6 @@ import androidx.lifecycle.ViewModelProvider;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.model.TaskId;
-import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.update.presentation.UpdateUiController;
 import de.thonktank.autosecretary.update.presentation.UpdateViewModel;
@@ -62,6 +64,7 @@ public class MainActivity extends ComponentActivity {
     private LinearLayout dashboardScreen;
     private LinearLayout dashboardContent;
     private AllTasksUiState allTasksState = AllTasksUiState.empty();
+    private String handledAllTasksRequestId;
     private TaskEditorCoordinator editorCoordinator;
     private int systemTopInset;
     private final RewardAnchorRegistry rewardAnchors = new RewardAnchorRegistry();
@@ -88,18 +91,7 @@ public class MainActivity extends ComponentActivity {
                 new TaskViewModel.Factory(container)).get(TaskViewModel.class);
         allTasksViewModel = new ViewModelProvider(this,
                 new AllTasksViewModel.Factory(container)).get(AllTasksViewModel.class);
-        AllTasksCoordinator allTasks = new AllTasksCoordinator(allTasksViewModel,
-                new AllTasksCoordinator.Host() {
-                    @Override public void openEditor(TaskId taskId,
-                                                     java.util.Optional<TaskStepId> stepId,
-                                                     boolean addStep) {
-                        viewModel.openEditorForStep(taskId.value,
-                                stepId.map(value -> value.value).orElse(null), addStep);
-                    }
-                    @Override public void confirmDelete(TaskId taskId, String title) {
-                        confirmManagementDelete(taskId, title);
-                    }
-                });
+        AllTasksCoordinator allTasks = new AllTasksCoordinator(allTasksViewModel);
         renderer = new DashboardRenderer(this, scroll, dashboardContent,
                 this::handleDashboardEvent, viewModel::dispatchToday, versionName(),
                 rewardAnchors, allTasks);
@@ -128,11 +120,8 @@ public class MainActivity extends ComponentActivity {
                 container.texts, container.updateConfiguration.automaticChecksEnabled);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
-        allTasksViewModel.state().observe(this, value -> {
-            allTasksState = value;
-            if (uiState != null) render(uiState);
-        });
-        allTasksViewModel.events().observe(this, this::handleEvent);
+        LegacyStateFlowBinder.observe(this, allTasksViewModel.state(),
+                this::renderAllTasksState);
         viewModel.rewardEffects().observe(this, this::handleRewardEffects);
         updates.state().observe(this, this::renderUpdate);
         updates.effects().observe(this, updates::handleEffect);
@@ -307,11 +296,46 @@ public class MainActivity extends ComponentActivity {
                         (dialog, which) -> viewModel.delete(taskId)).show();
     }
 
-    private void confirmManagementDelete(TaskId taskId, String title) {
-        new AlertDialog.Builder(this).setTitle(getString(R.string.delete_task_title, title))
-                .setMessage(R.string.delete_task_loss).setNegativeButton(R.string.keep, null)
-                .setPositiveButton(R.string.delete,
-                        (dialog, which) -> allTasksViewModel.delete(taskId)).show();
+    private void renderAllTasksState(AllTasksScreenState state) {
+        if (state == null) return;
+        allTasksState = state.content;
+        if (uiState != null) render(uiState);
+        handleAllTasksRequest(state.firstRequest());
+    }
+
+    private void handleAllTasksRequest(AllTasksRequest request) {
+        if (request == null || request.id.equals(handledAllTasksRequestId)) return;
+        handledAllTasksRequestId = request.id;
+        if (request.kind == AllTasksRequest.Kind.ERROR) {
+            new AlertDialog.Builder(this).setTitle(R.string.error_title)
+                    .setMessage(request.message).setPositiveButton(R.string.okay,
+                            (dialog, which) -> acknowledgeAllTasksRequest(request.id))
+                    .setOnCancelListener(dialog -> acknowledgeAllTasksRequest(request.id)).show();
+        } else if (request.kind == AllTasksRequest.Kind.INFO) {
+            Toast.makeText(this, request.message, Toast.LENGTH_LONG).show();
+            acknowledgeAllTasksRequest(request.id);
+        } else if (request.kind == AllTasksRequest.Kind.OPEN_EDITOR && request.taskId != null) {
+            viewModel.openEditorForStep(request.taskId.value,
+                    request.stepId == null ? null : request.stepId.value, request.addStep);
+            acknowledgeAllTasksRequest(request.id);
+        } else if (request.kind == AllTasksRequest.Kind.CONFIRM_DELETE
+                && request.taskId != null) {
+            new AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.delete_task_title, request.title))
+                    .setMessage(R.string.delete_task_loss)
+                    .setNegativeButton(R.string.keep,
+                            (dialog, which) -> acknowledgeAllTasksRequest(request.id))
+                    .setPositiveButton(R.string.delete, (dialog, which) -> {
+                        handledAllTasksRequestId = null;
+                        allTasksViewModel.dispatch(AllTasksAction.confirmDelete(request.id));
+                    }).setOnCancelListener(
+                            dialog -> acknowledgeAllTasksRequest(request.id)).show();
+        } else acknowledgeAllTasksRequest(request.id);
+    }
+
+    private void acknowledgeAllTasksRequest(String requestId) {
+        if (requestId.equals(handledAllTasksRequestId)) handledAllTasksRequestId = null;
+        allTasksViewModel.dispatch(AllTasksAction.acknowledgeRequest(requestId));
     }
 
     private void confirmClose(String taskId, String title) {
