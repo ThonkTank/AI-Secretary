@@ -1,8 +1,6 @@
 package de.thonktank.autosecretary.presentation.alltasks;
 
 import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.SavedStateHandleSupport;
 import androidx.lifecycle.ViewModel;
@@ -12,12 +10,9 @@ import androidx.lifecycle.viewmodel.CreationExtras;
 import de.thonktank.autosecretary.AppContainer;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.UiCommand;
-import de.thonktank.autosecretary.UiEvent;
 
-import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskCatalog;
 import de.thonktank.autosecretary.domain.model.TaskId;
-import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.TaskCatalogQuery;
 import de.thonktank.autosecretary.domain.usecase.DeleteTask;
 import de.thonktank.autosecretary.domain.schedule.MoveScheduleEntry;
@@ -34,16 +29,23 @@ import de.thonktank.autosecretary.presentation.observable.PresentationInvalidati
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
+import kotlinx.coroutines.flow.MutableStateFlow;
+import kotlinx.coroutines.flow.StateFlow;
+import kotlinx.coroutines.flow.StateFlowKt;
+
 /** Independent state owner and command boundary for the management tab. */
 public final class AllTasksViewModel extends ViewModel {
     /** Keep the registry key stable; the stored value is now the complete presentation state. */
     private static final String SAVED_PRESENTATION = "all_tasks_filter";
+    private static final String SAVED_REQUESTS = "all_tasks_requests";
+    private static final String SAVED_REQUEST_SEQUENCE = "all_tasks_request_sequence";
 
     private final TaskCatalogQuery catalog;
     private final MoveScheduleEntry moveSchedule;
@@ -55,11 +57,14 @@ public final class AllTasksViewModel extends ViewModel {
     private final ExecutorService worker;
     private final LatestReadPipeline<PresentationInvalidation, TaskCatalog> reads;
     private final AllTasksSavedStateAdapter savedStateAdapter = new AllTasksSavedStateAdapter();
-    private final MutableLiveData<AllTasksUiState> state = new MutableLiveData<>();
-    private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
+    private final AllTasksRequestSavedStateAdapter requestStateAdapter =
+            new AllTasksRequestSavedStateAdapter();
+    private final MutableStateFlow<AllTasksScreenState> state;
     private final Set<UiCommand> running = new LinkedHashSet<>();
     private final Object lock = new Object();
-    private AllTasksUiState current;
+    private final Object actionLock = new Object();
+    private AllTasksScreenState current;
+    private long requestSequence;
 
     public AllTasksViewModel(TaskCatalogQuery catalog, MoveScheduleEntry moveSchedule,
                       MoveTaskStep moveStep, SwapTaskSteps swapSteps, DeleteTask deleteTask,
@@ -76,64 +81,101 @@ public final class AllTasksViewModel extends ViewModel {
         this.worker = worker;
         AllTasksPresentationState presentation = savedStateAdapter.decode(
                 savedState.get(SAVED_PRESENTATION));
-        current = AllTasksUiState.from(null, presentation);
-        state.setValue(current);
+        List<AllTasksRequest> requests = requestStateAdapter.decode(
+                savedState.get(SAVED_REQUESTS));
+        Long restoredSequence = savedState.get(SAVED_REQUEST_SEQUENCE);
+        requestSequence = restoredSequence == null ? 0L : restoredSequence;
+        for (AllTasksRequest request : requests)
+            requestSequence = Math.max(requestSequence, sequenceOf(request.id));
+        current = new AllTasksScreenState(AllTasksUiState.from(null, presentation), requests);
+        state = StateFlowKt.MutableStateFlow(current);
         if (collectionExecutor == null)
             reads = LatestReadPipeline.reading(invalidations.getCatalogChanges(), worker,
                     ignored -> catalog.execute(), this::publishCatalog,
-                    ignored -> events.postValue(UiEvent.error(
-                            texts.text(R.string.error_catalog_load))));
+                    ignored -> enqueueMessage(AllTasksRequest.Kind.ERROR,
+                            texts.text(R.string.error_catalog_load)));
         else
             reads = LatestReadPipeline.reading(invalidations.getCatalogChanges(), worker,
                     collectionExecutor, ignored -> catalog.execute(), this::publishCatalog,
-                    ignored -> events.postValue(UiEvent.error(
-                            texts.text(R.string.error_catalog_load))));
+                    ignored -> enqueueMessage(AllTasksRequest.Kind.ERROR,
+                            texts.text(R.string.error_catalog_load)));
     }
 
-    public LiveData<AllTasksUiState> state() { return state; }
-    public LiveData<UiEvent> events() { return events; }
+    public StateFlow<AllTasksScreenState> state() { return state; }
 
-    public void updateQuery(String value) {
-        updateFilter(filter -> filter.withQuery(value));
-    }
-    public void updateStatus(AllTasksUiState.Status value) {
-        updateFilter(filter -> filter.withStatus(value));
-    }
-    public void updateSlots(Set<TaskSlot> value) { updateFilter(filter -> filter.withSlots(value)); }
-    public void updateRecurrences(Set<Recurrence> value) {
-        updateFilter(filter -> filter.withRecurrences(value));
-    }
-    public void updateWeekday(int value) { updateFilter(filter -> filter.withWeekday(value)); }
-    public void updateMode(AllTasksUiState.Mode value) {
-        updatePresentation(presentation -> presentation.withMode(value));
-    }
-    public void resetVisibleFilters() {
-        updateFilter(AllTasksFilter::resetVisibleFilters);
-    }
-    public void toggleCard(String cardKey) {
-        updatePresentation(presentation -> presentation.toggleExpanded(cardKey));
-    }
-    public void updateFiltersExpanded(boolean value) {
-        updatePresentation(presentation -> presentation.withFiltersExpanded(value));
+    /** The only screen input. Synchronization makes reduction serial across all callers. */
+    public void dispatch(AllTasksAction action) {
+        if (action == null) throw new IllegalArgumentException("Action is required");
+        synchronized (actionLock) { reduce(action); }
     }
 
-    public void moveSchedule(ScheduleMoveRequest request) {
+    private void reduce(AllTasksAction action) {
+        if (action instanceof AllTasksAction.QueryChanged)
+            updateFilter(filter -> filter.withQuery(((AllTasksAction.QueryChanged) action).value));
+        else if (action instanceof AllTasksAction.StatusChanged)
+            updateFilter(filter -> filter.withStatus(((AllTasksAction.StatusChanged) action).value));
+        else if (action instanceof AllTasksAction.SlotsChanged)
+            updateFilter(filter -> filter.withSlots(((AllTasksAction.SlotsChanged) action).value));
+        else if (action instanceof AllTasksAction.RecurrencesChanged)
+            updateFilter(filter -> filter.withRecurrences(
+                    ((AllTasksAction.RecurrencesChanged) action).value));
+        else if (action instanceof AllTasksAction.WeekdayChanged)
+            updateFilter(filter -> filter.withWeekday(((AllTasksAction.WeekdayChanged) action).value));
+        else if (action instanceof AllTasksAction.ModeChanged)
+            updatePresentation(presentation -> presentation.withMode(
+                    ((AllTasksAction.ModeChanged) action).value));
+        else if (action instanceof AllTasksAction.FiltersExpandedChanged)
+            updatePresentation(presentation -> presentation.withFiltersExpanded(
+                    ((AllTasksAction.FiltersExpandedChanged) action).value));
+        else if (action instanceof AllTasksAction.ResetFilters)
+            updateFilter(AllTasksFilter::resetVisibleFilters);
+        else if (action instanceof AllTasksAction.CardToggled)
+            updatePresentation(presentation -> presentation.toggleExpanded(
+                    ((AllTasksAction.CardToggled) action).cardKey));
+        else if (action instanceof AllTasksAction.EditTask) {
+            AllTasksAction.EditTask edit = (AllTasksAction.EditTask) action;
+            enqueueRequest(AllTasksRequest.openEditor(nextRequestId(), edit.taskId, null, false));
+        } else if (action instanceof AllTasksAction.EditStep) {
+            AllTasksAction.EditStep edit = (AllTasksAction.EditStep) action;
+            enqueueRequest(AllTasksRequest.openEditor(nextRequestId(), edit.taskId,
+                    edit.stepId, false));
+        } else if (action instanceof AllTasksAction.AddStep) {
+            AllTasksAction.AddStep edit = (AllTasksAction.AddStep) action;
+            enqueueRequest(AllTasksRequest.openEditor(nextRequestId(), edit.taskId, null, true));
+        } else if (action instanceof AllTasksAction.DeleteRequested) {
+            AllTasksAction.DeleteRequested delete = (AllTasksAction.DeleteRequested) action;
+            enqueueRequest(AllTasksRequest.confirmDelete(nextRequestId(), delete.taskId,
+                    delete.title));
+        } else if (action instanceof AllTasksAction.RequestAcknowledged)
+            acknowledgeRequest(((AllTasksAction.RequestAcknowledged) action).requestId);
+        else if (action instanceof AllTasksAction.DeleteConfirmed)
+            confirmDelete(((AllTasksAction.DeleteConfirmed) action).requestId);
+        else if (action instanceof AllTasksAction.ScheduleMoved)
+            moveSchedule(((AllTasksAction.ScheduleMoved) action).request);
+        else if (action instanceof AllTasksAction.StepMoved)
+            moveStep(((AllTasksAction.StepMoved) action).request);
+        else if (action instanceof AllTasksAction.StepsSwapped)
+            swapSteps(((AllTasksAction.StepsSwapped) action).request);
+        else throw new IllegalArgumentException("Unsupported action " + action.getClass());
+    }
+
+    private void moveSchedule(ScheduleMoveRequest request) {
         UiCommand key = new UiCommand(UiCommand.Kind.ORGANIZE,
                 "schedule:" + request.entryId.value);
         run(key, () -> scheduleError(moveSchedule.execute(request)));
     }
 
-    public void moveStep(StepMoveRequest request) {
+    private void moveStep(StepMoveRequest request) {
         UiCommand key = new UiCommand(UiCommand.Kind.ORGANIZE, "step:" + request.stepId.value);
         run(key, () -> stepError(moveStep.execute(request)));
     }
 
-    public void swapSteps(StepSwapRequest request) {
+    private void swapSteps(StepSwapRequest request) {
         UiCommand key = new UiCommand(UiCommand.Kind.ORGANIZE, "step:" + request.stepId.value);
         run(key, () -> stepError(swapSteps.execute(request)));
     }
 
-    public void delete(TaskId taskId) {
+    private void delete(TaskId taskId) {
         UiCommand key = new UiCommand(UiCommand.Kind.DELETE, taskId.value);
         run(key, () -> {
             deleteTask.execute(taskId);
@@ -173,7 +215,8 @@ public final class AllTasksViewModel extends ViewModel {
         switch (result) {
             case DEFINITION_AND_TODAY_MOVED: case STEPS_SWAPPED: case UNCHANGED: return 0;
             case DEFINITION_ONLY_FOR_FUTURE:
-                events.postValue(UiEvent.info(texts.text(R.string.step_effective_next_occurrence)));
+                enqueueMessage(AllTasksRequest.Kind.INFO,
+                        texts.text(R.string.step_effective_next_occurrence));
                 return 0;
             case REJECTED_ARCHIVED_TASK: return R.string.error_management_inactive;
             case REJECTED_OCCUPIED_TARGET: return R.string.error_step_target_occupied;
@@ -191,13 +234,13 @@ public final class AllTasksViewModel extends ViewModel {
 
     private void fail(UiCommand key, String message) {
         synchronized (lock) { running.remove(key); }
-        events.postValue(UiEvent.error(message));
+        enqueueMessage(AllTasksRequest.Kind.ERROR, message);
     }
 
     private void publishCatalog(TaskCatalog value) {
         synchronized (lock) {
-            current = current.withCatalog(value);
-            state.postValue(current);
+            current = current.withContent(current.content.withCatalog(value));
+            state.setValue(current);
         }
     }
 
@@ -208,10 +251,70 @@ public final class AllTasksViewModel extends ViewModel {
 
     private void updatePresentation(PresentationChange change) {
         synchronized (lock) {
-            AllTasksPresentationState presentation = change.apply(current.presentation);
-            current = AllTasksUiState.from(current.catalog, presentation);
+            AllTasksPresentationState presentation = change.apply(current.content.presentation);
+            current = current.withContent(AllTasksUiState.from(current.content.catalog,
+                    presentation));
             savedState.set(SAVED_PRESENTATION, savedStateAdapter.encode(presentation));
             state.setValue(current);
+        }
+    }
+
+    private String nextRequestId() {
+        synchronized (lock) {
+            requestSequence++;
+            savedState.set(SAVED_REQUEST_SEQUENCE, requestSequence);
+            return "all-tasks:" + requestSequence;
+        }
+    }
+
+    private void enqueueMessage(AllTasksRequest.Kind kind, String message) {
+        enqueueRequest(AllTasksRequest.message(nextRequestId(), kind, message));
+    }
+
+    private void enqueueRequest(AllTasksRequest request) {
+        synchronized (lock) {
+            AllTasksScreenState next = current.enqueue(request);
+            if (next == current) return;
+            current = next;
+            persistRequests();
+            state.setValue(current);
+        }
+    }
+
+    private void acknowledgeRequest(String requestId) {
+        synchronized (lock) {
+            AllTasksScreenState next = current.acknowledge(requestId);
+            if (next == current) return;
+            current = next;
+            persistRequests();
+            state.setValue(current);
+        }
+    }
+
+    private void confirmDelete(String requestId) {
+        TaskId taskId;
+        synchronized (lock) {
+            AllTasksRequest request = current.request(requestId);
+            if (request == null || request.kind != AllTasksRequest.Kind.CONFIRM_DELETE
+                    || request.taskId == null) return;
+            taskId = request.taskId;
+            current = current.acknowledge(requestId);
+            persistRequests();
+            state.setValue(current);
+        }
+        delete(taskId);
+    }
+
+    private void persistRequests() {
+        savedState.set(SAVED_REQUESTS, requestStateAdapter.encode(current.requests));
+    }
+
+    private static long sequenceOf(String requestId) {
+        if (requestId == null || !requestId.startsWith("all-tasks:")) return 0L;
+        try {
+            return Long.parseLong(requestId.substring("all-tasks:".length()));
+        } catch (NumberFormatException ignored) {
+            return 0L;
         }
     }
 

@@ -89,6 +89,28 @@ public final class ArchitectureBoundaryTest {
         assertTrue(catalog.indexOf("reads.close()") < catalog.indexOf("worker.shutdown()"));
     }
 
+    @Test public void managementScreenHasOneStateFlowOwnerAndOneTypedActionBoundary()
+            throws Exception {
+        String viewModel = read(main("presentation/alltasks/AllTasksViewModel.java"));
+        String coordinator = read(main("presentation/alltasks/AllTasksCoordinator.java"));
+        String activity = read(main("MainActivity.java"));
+
+        assertTrue(viewModel.contains("StateFlow<AllTasksScreenState> state()"));
+        assertTrue(viewModel.contains("void dispatch(AllTasksAction action)"));
+        assertFalse(viewModel.contains("LiveData"));
+        assertFalse(viewModel.contains("MutableLiveData"));
+        assertFalse(viewModel.contains("UiEvent"));
+        assertFalse(viewModel.contains("events()"));
+        assertFalse(coordinator.contains("interface Host"));
+        assertTrue(coordinator.contains("viewModel.dispatch(AllTasksAction"));
+        assertFalse(coordinator.contains("viewModel.update"));
+        assertTrue(activity.contains("LegacyStateFlowBinder.observe"));
+        assertFalse(activity.contains("allTasksViewModel.events()"));
+        assertTrue(Files.exists(Path.of(
+                "src/main/kotlin/de/thonktank/autosecretary/presentation/legacy/"
+                        + "LegacyStateFlowBinder.kt")));
+    }
+
     @Test public void motionCallbacksCannotOwnEditorNavigation() throws Exception {
         String activity = read(main("MainActivity.java"));
         String open = activity.substring(activity.indexOf("private void openEditorWithFlight()"),

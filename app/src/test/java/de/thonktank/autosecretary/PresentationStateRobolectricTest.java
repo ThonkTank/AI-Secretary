@@ -1,6 +1,8 @@
 package de.thonktank.autosecretary;
 
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksAction;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksPresentationState;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksRequest;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksSavedStateAdapter;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
@@ -357,15 +359,17 @@ public final class PresentationStateRobolectricTest {
         SavedStateHandle handle = new SavedStateHandle();
         AllTasksViewModel management = newAllTasksViewModel(handle);
 
-        management.updateQuery("Gym");
-        management.updateStatus(AllTasksUiState.Status.ALL);
-        management.updateSlots(java.util.EnumSet.of(TaskSlot.EVENING));
-        management.updateRecurrences(java.util.EnumSet.of(Recurrence.WEEKDAYS));
-        management.updateWeekday(4);
-        management.updateMode(AllTasksUiState.Mode.SORT);
+        management.dispatch(AllTasksAction.queryChanged("Gym"));
+        management.dispatch(AllTasksAction.statusChanged(AllTasksUiState.Status.ALL));
+        management.dispatch(AllTasksAction.slotsChanged(
+                java.util.EnumSet.of(TaskSlot.EVENING)));
+        management.dispatch(AllTasksAction.recurrencesChanged(
+                java.util.EnumSet.of(Recurrence.WEEKDAYS)));
+        management.dispatch(AllTasksAction.weekdayChanged(4));
+        management.dispatch(AllTasksAction.modeChanged(AllTasksUiState.Mode.SORT));
         String cardKey = AllTasksUiState.cardKey("rotation-task", TaskSlot.MORNING);
-        management.toggleCard(cardKey);
-        management.updateFiltersExpanded(false);
+        management.dispatch(AllTasksAction.cardToggled(cardKey));
+        management.dispatch(AllTasksAction.filtersExpandedChanged(false));
 
         android.os.Bundle stored = handle.get("all_tasks_filter");
         AllTasksPresentationState restored = new AllTasksSavedStateAdapter().decode(stored);
@@ -381,10 +385,10 @@ public final class PresentationStateRobolectricTest {
         management.onCleared();
 
         AllTasksViewModel afterRotation = newAllTasksViewModel(handle);
-        assertEquals("Gym", afterRotation.state().getValue().query);
-        assertEquals(AllTasksUiState.Mode.SORT, afterRotation.state().getValue().mode);
-        assertTrue(afterRotation.state().getValue().expandedCardKeys.contains(cardKey));
-        assertFalse(afterRotation.state().getValue().filtersExpanded);
+        assertEquals("Gym", afterRotation.state().getValue().content.query);
+        assertEquals(AllTasksUiState.Mode.SORT, afterRotation.state().getValue().content.mode);
+        assertTrue(afterRotation.state().getValue().content.expandedCardKeys.contains(cardKey));
+        assertFalse(afterRotation.state().getValue().content.filtersExpanded);
         afterRotation.onCleared();
     }
 
@@ -395,11 +399,64 @@ public final class PresentationStateRobolectricTest {
         String entryId = repository.scheduleEntries(task.id).get(0).id;
         AllTasksViewModel management = newAllTasksViewModel(new SavedStateHandle());
 
-        management.moveSchedule(new ScheduleMoveRequest(ScheduleEntryId.of(entryId),
-                TaskSlot.EVENING, java.util.Optional.empty()));
+        management.dispatch(AllTasksAction.scheduleMoved(new ScheduleMoveRequest(
+                ScheduleEntryId.of(entryId), TaskSlot.EVENING, java.util.Optional.empty())));
 
         assertEquals(TaskSlot.EVENING, repository.scheduleEntries(task.id).get(0).slot);
-        assertEquals(TaskSlot.EVENING, management.state().getValue().schedule.get(0).slot);
+        assertEquals(TaskSlot.EVENING,
+                management.state().getValue().content.schedule.get(0).slot);
+        management.onCleared();
+    }
+
+    @Test public void managementRequestSurvivesRecreationUntilExplicitConfirmation() {
+        tasks.create.execute(TaskDefinition.basic("Löschen", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, Collections.emptyList()));
+        Task task = repository.allTasks().get(0);
+        SavedStateHandle handle = new SavedStateHandle();
+        AllTasksViewModel management = newAllTasksViewModel(handle);
+
+        management.dispatch(AllTasksAction.deleteRequested(task.id, task.title));
+
+        AllTasksRequest pending = management.state().getValue().firstRequest();
+        assertNotNull(pending);
+        assertEquals(AllTasksRequest.Kind.CONFIRM_DELETE, pending.kind);
+        assertNotNull(handle.get("all_tasks_requests"));
+        handle.set("all_tasks_request_sequence", 0L);
+        management.onCleared();
+
+        AllTasksViewModel recreated = newAllTasksViewModel(handle);
+        AllTasksRequest restored = recreated.state().getValue().firstRequest();
+        assertNotNull(restored);
+        assertEquals(pending.id, restored.id);
+        assertEquals(task.id, restored.taskId);
+
+        recreated.dispatch(AllTasksAction.editTask(task.id));
+        assertEquals(2, recreated.state().getValue().requests.size());
+        assertFalse(pending.id.equals(recreated.state().getValue().requests.get(1).id));
+
+        recreated.dispatch(AllTasksAction.confirmDelete(restored.id));
+
+        assertEquals(AllTasksRequest.Kind.OPEN_EDITOR,
+                recreated.state().getValue().firstRequest().kind);
+        assertTrue(repository.allTasks().stream().noneMatch(value -> value.id.equals(task.id)));
+        recreated.onCleared();
+    }
+
+    @Test public void acknowledgingHostRequestPreservesTheExactRenderProjection() {
+        AllTasksViewModel management = newAllTasksViewModel(new SavedStateHandle());
+        AllTasksUiState content = management.state().getValue().content;
+
+        management.dispatch(AllTasksAction.editTask(TaskId.of("request-task")));
+        management.dispatch(AllTasksAction.editTask(TaskId.of("request-task")));
+        AllTasksRequest request = management.state().getValue().firstRequest();
+        assertNotNull(request);
+        assertEquals(1, management.state().getValue().requests.size());
+        assertSame(content, management.state().getValue().content);
+
+        management.dispatch(AllTasksAction.acknowledgeRequest(request.id));
+
+        assertNull(management.state().getValue().firstRequest());
+        assertSame(content, management.state().getValue().content);
         management.onCleared();
     }
 
@@ -415,7 +472,7 @@ public final class PresentationStateRobolectricTest {
                         && "Gemeinsame Wahrheit".equals(value().dashboard.focus.title()))
                 || value().dashboard.timeline.stream().anyMatch(item -> item.task != null
                         && "Gemeinsame Wahrheit".equals(item.task.title)));
-        assertTrue(management.state().getValue().tasks.stream()
+        assertTrue(management.state().getValue().content.tasks.stream()
                 .anyMatch(item -> "Gemeinsame Wahrheit".equals(item.task.title)));
         management.onCleared();
     }
