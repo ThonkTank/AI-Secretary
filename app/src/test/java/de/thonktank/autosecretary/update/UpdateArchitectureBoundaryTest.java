@@ -39,15 +39,22 @@ public final class UpdateArchitectureBoundaryTest {
         assertTrue(Files.isDirectory(root.resolve("presentation")));
     }
 
-    @Test public void mainActivityOnlyObservesAndDelegatesUpdatePresentation() throws Exception {
+    @Test public void optionsOwnerCarriesStableRequestsWithoutLegacyEventController()
+            throws Exception {
         Path source = updateSources().getParent().resolve("MainActivity.java");
         String text = new String(Files.readAllBytes(source), StandardCharsets.UTF_8);
-        assertTrue(text.contains("UpdateUiController"));
-        for (String forbidden : List.of("UpdateEvent", "UpdateInfo", "VerifiedUpdate",
-                "canInstallPackages", "installerIntent", "settingsIntent", "releasesIntent",
+        assertTrue(text.contains("OptionsViewModel"));
+        assertTrue(text.contains("OptionsRequest"));
+        assertTrue(text.contains("LegacyStateFlowBinder.observe(this, optionsViewModel.state()"));
+        for (String forbidden : List.of("UpdateEvent", "UpdateUiController", "UpdateViewModel",
+                "UpdateFlow", "installerIntent", "settingsIntent", "releasesIntent",
                 "showUpdateAvailable", "showUpdateError", "readableSize"))
-            assertFalse("MainActivity must delegate update concern " + forbidden,
+            assertFalse("MainActivity must not retain legacy update concern " + forbidden,
                     text.contains(forbidden));
+        Path presentation = updateSources().resolve("presentation");
+        for (String removed : List.of("UpdateEvent.java", "UpdateUiController.java",
+                "UpdateViewModel.java", "UpdateFlow.java"))
+            assertFalse(Files.exists(presentation.resolve(removed)));
     }
 
     @Test public void updateUnitTestsDoNotPollOrSleep() throws Exception {

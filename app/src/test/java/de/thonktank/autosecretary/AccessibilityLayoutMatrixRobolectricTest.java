@@ -145,18 +145,27 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, action -> { }, "test", new RewardAnchorRegistry(),
+                event -> { }, action -> { }, action -> { }, "test", new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        DashboardFixtures.fullDashboard(), CalendarUiState.empty(), palette,
-                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet()),
-                AllTasksUiState.empty());
+                        DashboardFixtures.fullDashboard(), palette, false,
+                        Collections.emptySet()), AllTasksUiState.empty(), options(palette));
         measure(scroll, dp(context, widthDp), dp(context, 8_000));
         View focus = content.findViewById(R.id.dashboard_focus);
         assertNotNull(label(widthDp, fontScale), focus);
         assertTrue(label(widthDp, fontScale), focus.getMeasuredWidth() > 0);
         assertTrue(label(widthDp, fontScale), focus.getMeasuredHeight() > 0);
         assertHorizontalBounds(content, label(widthDp, fontScale));
+    }
+
+    private static de.thonktank.autosecretary.presentation.options.OptionsScreenState options(
+            DayPalette palette) {
+        return new de.thonktank.autosecretary.presentation.options.OptionsScreenState(palette,
+                de.thonktank.autosecretary.data.preferences.UiThemeMode.AUTO,
+                FocusStepLimit.AUTO, 60, CalendarPermissionStatus.GRANTED,
+                CalendarUiState.empty(),
+                de.thonktank.autosecretary.update.presentation.UpdateUiState.idle(),
+                Collections.emptyList());
     }
 
     private static void renderRepetitionControls(Context context, int widthDp, float fontScale,

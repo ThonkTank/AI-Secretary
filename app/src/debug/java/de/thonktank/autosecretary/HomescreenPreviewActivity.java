@@ -6,6 +6,10 @@ import de.thonktank.autosecretary.ui.today.HeaderView;
 
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
+import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
+import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
+import de.thonktank.autosecretary.data.preferences.UiThemeMode;
+import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 
 import android.os.Bundle;
@@ -72,14 +76,17 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         screen.addView(footer, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
         DashboardRenderer renderer = new DashboardRenderer(this, scroll, content,
-                event -> { }, action -> { }, "preview", new RewardAnchorRegistry(),
+                event -> { }, action -> { }, action -> { }, "preview",
+                new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         java.util.List<CalendarEventSnapshot> events = DebugPreviewFixtures.referenceCalendar(preview);
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        TodayUiModel.compose(dashboard, events),
-                        CalendarUiState.from(new CalendarResult.Success(events)), palette,
-                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet()),
-                AllTasksUiState.empty());
+                        TodayUiModel.compose(dashboard, events), palette, false,
+                        Collections.emptySet()),
+                AllTasksUiState.empty(), new OptionsScreenState(palette, UiThemeMode.AUTO,
+                        FocusStepLimit.AUTO, 60, CalendarPermissionStatus.GRANTED,
+                        CalendarUiState.from(new CalendarResult.Success(events)),
+                        UpdateUiState.idle(), Collections.emptyList()));
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             screen.setPadding(0, bars.top, 0, 0);

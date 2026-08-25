@@ -22,7 +22,7 @@ Der Updatebereich besteht aus vier expliziten Paketen mit nach innen gerichteten
 | Domain | `update.domain` | Releasevertrag, Paketbelege, Prüfvorschriften, Ergebnis- und Fehlertypen |
 | Application | `update.application` | Ports für Prüfung, Download, Präferenzen und Fehlerbericht sowie verifiziertes Installationsartefakt |
 | Infrastructure | `update.infrastructure` | GitHub-JSON, HTTPS, Cache-Dateien, Android-Paketmanager und Systeminstaller |
-| Presentation | `update.presentation` | `UpdateViewModel`, sichtbarer Zustand und einmalige UI-Effekte |
+| Presentation | `update.presentation` und `presentation.options` | Update-Renderzustand und Android-Ports; der Optionen-State-Owner führt Workflow und bestätigbare Requests zusammen |
 
 Erlaubt sind `presentation → application → domain` und `infrastructure → application/domain`.
 Domain und Application kennen weder Android noch JSON oder konkrete Infrastruktur. Der
@@ -43,7 +43,8 @@ Fehler verlassen Application-Ports ausschließlich als `UpdateFailure` mit einem
 - lokaler Speicherfehler
 - Abbruch
 
-Presentation-Zustand und UI-Effekt tragen den Fehlerfall zusätzlich zur lokalisierten Nachricht.
+Presentation-Zustand und bestätigbarer Hostrequest tragen den Fehlerfall zusätzlich zur
+lokalisierten Nachricht.
 Das sichtbare Verhalten bleibt zunächst gleich; differenzierte Aktionen pro Fehlerfall können
 darauf aufbauen, ohne Fehlermeldungstexte parsen zu müssen.
 
@@ -55,7 +56,8 @@ Infrastruktur, die `MainActivity` noch direkt aufruft. Seine Kapselung hinter ei
 Plattform- und Effektschnittstelle ist Gegenstand der folgenden Activity-Phase.
 
 Die in dieser Entscheidung noch offene Kapselung des Systeminstallers und der UI-Effekte wurde
-mit [ADR-007](adr-007-update-praesentation-und-systemnavigation.md) umgesetzt. Die
-Die physische Trennung der Updatepräferenzen sowie kontrollierte Executor-, HTTP- und
+zunächst mit [ADR-007](adr-007-update-praesentation-und-systemnavigation.md) umgesetzt und später
+durch [ADR-023](adr-023-optionen-state-owner.md) auf stabile Requests umgestellt. Die physische
+Trennung der Updatepräferenzen sowie kontrollierte Executor-, HTTP- und
 Zeitabhängigkeiten wurden mit
 [ADR-008](adr-008-deterministische-update-abhaengigkeiten.md) umgesetzt.

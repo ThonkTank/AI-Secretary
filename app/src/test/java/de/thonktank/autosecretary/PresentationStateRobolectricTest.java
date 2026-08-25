@@ -60,7 +60,6 @@ import de.thonktank.autosecretary.presentation.observable.PresentationInvalidati
 import de.thonktank.autosecretary.presentation.navigation.AppDestination;
 import de.thonktank.autosecretary.presentation.navigation.AppNavigator;
 import de.thonktank.autosecretary.presentation.navigation.TaskEditorNavigator;
-import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import org.junit.After;
 import org.junit.Before;
@@ -347,7 +346,7 @@ public final class PresentationStateRobolectricTest {
                 repository.findOccurrenceStep(stepId).repetitionProgress.actualRepetitions);
     }
 
-    @Test public void displayPreferencesAndUpdateStatusJoinStateWithoutReloadingContent() {
+    @Test public void displayPreferencesReprojectDashboardWithoutReloadingContent() {
         viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor());
 
         calendarInvalidations.materializeExternalChange();
@@ -359,13 +358,8 @@ public final class PresentationStateRobolectricTest {
         assertSame(dashboardBefore, value().dashboard);
 
         preferences.setThemeMode(UiThemeMode.DARK);
-        assertEquals(UiThemeMode.DARK, value().themeMode);
         assertEquals(DayPalette.at(clock.time(), DayPalette.Mode.DARK).background,
                 value().palette.background);
-        assertSame(dashboardBefore, value().dashboard);
-
-        viewModel.updateUpdateState(UpdateUiState.checking());
-        assertEquals(UpdateUiState.Status.CHECKING, value().update.status);
         assertSame(dashboardBefore, value().dashboard);
     }
 
@@ -420,7 +414,6 @@ public final class PresentationStateRobolectricTest {
         refreshDatabase();
         editorViewModel.dispatch(TaskEditorAction.openNew());
         preferences.setFocusStepLimit(FocusStepLimit.THREE);
-        CalendarUiState calendarBefore = value().calendar;
         EditorUiState editorBefore = editorValue();
         String occurrenceId = value().dashboard.focus.occurrenceId();
         calendarLoads.set(0);
@@ -428,7 +421,6 @@ public final class PresentationStateRobolectricTest {
         viewModel.complete(occurrenceId);
 
         assertEquals(0, calendarLoads.get());
-        assertSame(calendarBefore, value().calendar);
         assertSame(editorBefore, editorValue());
         assertEquals(FocusStepLimit.THREE, value().focusStepLimit);
         assertTrue(value().dashboard.completedToday.stream()

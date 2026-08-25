@@ -86,12 +86,15 @@ class EnvironmentInvalidationSourcesTest {
         val initialDisplay = displays.next()
         assertEquals(UiThemeMode.AUTO, initialDisplay.themeMode)
         assertEquals(FocusStepLimit.AUTO, initialDisplay.focusStepLimit)
+        assertEquals(60, initialDisplay.restTimerDefaultSeconds)
         assertEquals(CalendarPolicy.ALL_VISIBLE, policies.next())
 
         preferences.setThemeMode(UiThemeMode.DARK)
         assertEquals(UiThemeMode.DARK, displays.next().themeMode)
         preferences.setFocusStepLimit(FocusStepLimit.THREE)
         assertEquals(FocusStepLimit.THREE, displays.next().focusStepLimit)
+        preferences.setRestTimerDefaultSeconds(75)
+        assertEquals(75, displays.next().restTimerDefaultSeconds)
         preferences.setCalendarPolicy(CalendarPolicy.GOOGLE_ONLY)
         assertEquals(CalendarPolicy.GOOGLE_ONLY, policies.next())
 

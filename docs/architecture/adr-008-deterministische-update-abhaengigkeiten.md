@@ -5,7 +5,7 @@
 
 ## Kontext
 
-Das Update-ViewModel erzeugte seinen Threadpool selbst und erhielt Zeit als unbenannten
+Der frühere Update-State-Owner erzeugte seinen Threadpool selbst und erhielt Zeit als unbenannten
 `LongSupplier`. Seine Tests mussten deshalb nebenläufige Ergebnisse pollen und verwendeten
 `Thread.sleep`. Der Produktionsadapter erzeugte seinen HTTP-Transport intern. Debug-Builds
 unterdrückten zwar automatische Prüfungen in der `MainActivity`, konnten bei manueller Bedienung
@@ -18,7 +18,7 @@ Alle veränderlichen Laufzeitabhängigkeiten besitzen explizite Ports und werden
 Root verbunden:
 
 - `UpdateClock` liefert die Zeit für tägliche Prüfung und Verschiebung.
-- `UpdateExecutorFactory` erzeugt pro `UpdateViewModel` genau einen lifecycle-eigenen
+- `UpdateExecutorFactory` erzeugt pro `OptionsViewModel` genau einen lifecycle-eigenen
   `UpdateExecutor`; Produktion verwendet `SerialUpdateExecutor`, Tests einen direkten Executor.
 - `GitHubUpdateRepository` erhält seinen `HttpTransport` im Konstruktor.
 - `UpdateRepository`, `UpdatePreferences` und `UpdateInstaller` bleiben injizierte
@@ -41,8 +41,9 @@ prüft diese Migration von der vorherigen Produktionsversion.
 
 Updateabläufe laufen in Unit-Tests vollständig synchron und benötigen weder Polling noch
 Wartezeiten. Eine ViewModel-Recreation erzeugt keinen ungenutzten Threadpool, weil der Factory-Port
-den Executor erst in `ViewModelProvider.Factory.create` anlegt; `onCleared` beendet genau diese
-Instanz. Debug- und Robolectric-Anwendungsstarts bleiben garantiert offline, während der
+den Executor erst in `ViewModelProvider.Factory.create` anlegt; `onCleared` schließt genau diese
+Instanz geordnet, ohne bereits gestartete Update-I/O hart abzubrechen. Veraltete Resultate werden
+durch die Workflowgeneration des Owners verworfen. Debug- und Robolectric-Anwendungsstarts bleiben garantiert offline, während der
 Release-Build unverändert den produktiven GitHub-Kanal verwendet.
 
 Die Sicherheitsgrenze des injizierten Netzwerkadapters, einschließlich Host-Trust-Policy,

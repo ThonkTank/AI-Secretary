@@ -1,7 +1,10 @@
 # ADR-013: Beobachtbare Präferenzen und vollständiger Renderzustand
 
-- Status: angenommen
+- Status: ersetzt durch ADR-023
 - Datum: 2026-08-20
+
+Die hier beschriebene Zwischenlösung mit Options- und Updatestatus im Dashboardzustand wurde
+durch [ADR-023](adr-023-optionen-state-owner.md) ersetzt.
 
 ## Kontext
 

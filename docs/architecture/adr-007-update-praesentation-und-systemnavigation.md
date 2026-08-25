@@ -1,7 +1,10 @@
 # ADR-007: Update-Präsentation und Android-Systemnavigation
 
-- Status: angenommen
+- Status: ersetzt durch ADR-023
 - Datum: 2026-08-16
+
+Die hier dokumentierte Event-/Controllerlösung ist historisch. Der aktuelle Vertrag steht in
+[ADR-023](adr-023-optionen-state-owner.md).
 
 ## Kontext
 

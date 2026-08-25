@@ -188,18 +188,18 @@ public final class UiComponentRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, action -> { }, "1.0", new RewardAnchorRegistry(),
+                event -> { }, action -> { }, action -> { }, "1.0", new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         DayPalette morning = DayPalette.at(LocalTime.of(8, 0), DayPalette.Mode.AUTO);
         DashboardUiState first = state(morning);
 
-        renderer.render(first, AllTasksUiState.empty());
+        renderer.render(first, AllTasksUiState.empty(), options(morning));
         View focus = content.findViewById(R.id.dashboard_focus);
         focus.setFocusableInTouchMode(true);
         focus.requestFocus();
 
         renderer.render(state(DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)),
-                AllTasksUiState.empty());
+                AllTasksUiState.empty(), options(morning));
 
         assertSame(focus, content.findViewById(R.id.dashboard_focus));
         assertSame(focus, content.findFocus());
@@ -502,7 +502,16 @@ public final class UiComponentRobolectricTest {
         TodayUiModel dashboard = TodayUiModel.compose(
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
         return new DashboardUiState(NavigationDestination.TODAY, dashboard,
-                CalendarUiState.from(new CalendarResult.Success(DashboardFixtures.calendarEvents())), palette,
-                CalendarPermissionStatus.GRANTED, false, Collections.emptySet());
+                palette, false, Collections.emptySet());
+    }
+
+    private static de.thonktank.autosecretary.presentation.options.OptionsScreenState options(
+            DayPalette palette) {
+        return new de.thonktank.autosecretary.presentation.options.OptionsScreenState(palette,
+                de.thonktank.autosecretary.data.preferences.UiThemeMode.AUTO,
+                de.thonktank.autosecretary.data.preferences.FocusStepLimit.AUTO,
+                60, CalendarPermissionStatus.GRANTED, CalendarUiState.empty(),
+                de.thonktank.autosecretary.update.presentation.UpdateUiState.idle(),
+                Collections.emptyList());
     }
 }

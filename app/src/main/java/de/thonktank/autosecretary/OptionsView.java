@@ -10,7 +10,9 @@ import android.widget.TextView;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
-import de.thonktank.autosecretary.data.preferences.UiPreferences;
+import de.thonktank.autosecretary.presentation.options.OptionsAction;
+import de.thonktank.autosecretary.presentation.options.OptionsActionSink;
+import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 @SuppressLint("ViewConstructor")
@@ -29,11 +31,11 @@ public final class OptionsView extends LinearLayout {
     private final TextView restTimerValue;
     private final TextView restTimerMore;
     private final TextView updateButton;
-    private final DashboardEventSink events;
+    private final OptionsActionSink actions;
 
-    public OptionsView(Context context, DashboardEventSink events) {
+    public OptionsView(Context context, OptionsActionSink actions) {
         super(context);
-        this.events = events;
+        this.actions = actions;
         style = new UiStyle(context);
         setOrientation(VERTICAL);
         setPadding(style.dp(60), style.dp(18), style.dp(22), style.dp(26));
@@ -50,7 +52,7 @@ public final class OptionsView extends LinearLayout {
             button.setPadding(style.dp(14), 0, style.dp(14), 0);
             UiThemeMode mode = modes[i];
             button.setOnClickListener(view ->
-                    events.emit(DashboardEvent.themeSelected(mode)));
+                    actions.emit(OptionsAction.themeSelected(mode)));
             LayoutParams params = new LayoutParams(-2, style.dp(48));
             params.setMargins(0, 0, style.dp(8), 0);
             themes.addView(button, params);
@@ -74,7 +76,7 @@ public final class OptionsView extends LinearLayout {
             button.setTag(limit);
             AccessibilityRoles.button(button);
             button.setOnClickListener(view ->
-                    events.emit(DashboardEvent.focusStepLimitSelected(limit)));
+                    actions.emit(OptionsAction.focusStepLimitSelected(limit)));
             focusLimits.addView(button, new android.view.ViewGroup.LayoutParams(
                     -2, style.dp(48)));
             focusStepButtons[i] = button;
@@ -101,7 +103,7 @@ public final class OptionsView extends LinearLayout {
 
         calendarButton = outlineButton(context.getString(R.string.calendar_grant));
         calendarButton.setOnClickListener(view ->
-                events.emit(DashboardEvent.calendarPermission()));
+                actions.emit(OptionsAction.calendarPermissionSelected()));
         LinearLayout calendarActions = new LinearLayout(context);
         calendarActions.addView(calendarButton, new LayoutParams(-2, style.dp(48)));
         calendar = new OptionLeaf(context, R.string.options_calendar,
@@ -115,7 +117,8 @@ public final class OptionsView extends LinearLayout {
         updateButton.setPadding(style.dp(28), 0, style.dp(28), 0);
         updateButton.setTypeface(style.sansBold);
         updateButton.setTextSize(17);
-        updateButton.setOnClickListener(view -> events.emit(DashboardEvent.checkUpdates()));
+        updateButton.setOnClickListener(view ->
+                actions.emit(OptionsAction.manualUpdateSelected()));
         LinearLayout updateActions = new LinearLayout(context);
         updateActions.addView(updateButton, new LayoutParams(-2, style.dp(52)));
         updates = new OptionLeaf(context, R.string.options_updates,
@@ -123,17 +126,14 @@ public final class OptionsView extends LinearLayout {
         addLeaf(updates);
     }
 
-    public void bind(DayPalette palette, UiThemeMode mode, FocusStepLimit focusStepLimit,
-                     CalendarPermissionStatus permission, CalendarUiState calendarState,
-                     String version, UpdateUiState updateState) {
-        bind(palette, mode, focusStepLimit, UiPreferences.DEFAULT_REST_TIMER_SECONDS,
-                permission, calendarState, version, updateState);
-    }
-
-    public void bind(DayPalette palette, UiThemeMode mode, FocusStepLimit focusStepLimit,
-                     int restTimerDefaultSeconds,
-                     CalendarPermissionStatus permission, CalendarUiState calendarState,
-                     String version, UpdateUiState updateState) {
+    public void bind(OptionsScreenState state, String version) {
+        DayPalette palette = state.palette;
+        UiThemeMode mode = state.themeMode;
+        FocusStepLimit focusStepLimit = state.focusStepLimit;
+        int restTimerDefaultSeconds = state.restTimerDefaultSeconds;
+        CalendarPermissionStatus permission = state.calendarPermission;
+        CalendarUiState calendarState = state.calendar;
+        UpdateUiState updateState = state.update;
         heading.setTextColor(palette.accent);
         appearance.bind(palette, getContext().getString(R.string.options_appearance_description));
         UiThemeMode[] modes = UiThemeMode.values();
@@ -163,11 +163,11 @@ public final class OptionsView extends LinearLayout {
         restTimerValue.setTextColor(palette.ink);
         restTimerLess.setEnabled(restTimerDefaultSeconds > 15);
         restTimerLess.setAlpha(restTimerDefaultSeconds > 15 ? 1f : .45f);
-        restTimerLess.setOnClickListener(view -> events.emit(
-                DashboardEvent.restTimerDefaultChanged(
+        restTimerLess.setOnClickListener(view -> actions.emit(
+                OptionsAction.restTimerDefaultChanged(
                         Math.max(1, restTimerDefaultSeconds - 15))));
-        restTimerMore.setOnClickListener(view -> events.emit(
-                DashboardEvent.restTimerDefaultChanged(restTimerDefaultSeconds + 15)));
+        restTimerMore.setOnClickListener(view -> actions.emit(
+                OptionsAction.restTimerDefaultChanged(restTimerDefaultSeconds + 15)));
         bindOutline(restTimerLess, palette);
         bindOutline(restTimerMore, palette);
         boolean granted = permission == CalendarPermissionStatus.GRANTED;

@@ -16,7 +16,8 @@ class PreferenceInvalidationSource(private val preferences: UiPreferences) {
         awaitClose { subscription.close() }
     }.distinctUntilChanged { previous, current ->
         previous.themeMode == current.themeMode &&
-            previous.focusStepLimit == current.focusStepLimit
+            previous.focusStepLimit == current.focusStepLimit &&
+            previous.restTimerDefaultSeconds == current.restTimerDefaultSeconds
     }.conflate()
 
     val calendarPolicy: Flow<CalendarPolicy> = callbackFlow {

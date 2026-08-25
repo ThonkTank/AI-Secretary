@@ -40,7 +40,6 @@ import de.thonktank.autosecretary.presentation.observable.PresentationInvalidati
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationCause;
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
 import de.thonktank.autosecretary.data.observable.ClockSnapshot;
-import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.timer.TimerManager;
 import de.thonktank.autosecretary.timer.TimerSession;
 
@@ -81,6 +80,7 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     private boolean timerPermissionWarningShown;
     private DashboardUiState current;
     private LocalDate loadedDate;
+    private List<CalendarEventSnapshot> calendarEvents = Collections.emptyList();
 
     TaskViewModel(AppContainer container, SavedStateHandle savedState, ExecutorService worker) {
         this(container.tasks, container.dashboardPresenter, container.calendar,
@@ -115,10 +115,8 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
         DisplayPreferences display = preferences.displayPreferences();
         current = new DashboardUiState(navigation, TodayUiModel.empty(),
-                CalendarUiState.empty(), palette(display.themeMode),
-                CalendarPermissionStatus.UNKNOWN, true, Collections.emptySet(),
-                RepetitionInputState.idle(), display.themeMode, display.focusStepLimit,
-                UpdateUiState.idle());
+                palette(display.themeMode), true, Collections.emptySet(),
+                RepetitionInputState.idle(), display.focusStepLimit);
         todayCoordinator = new TodayCoordinator(current.dashboard,
                 new TodayCommandDispatcher(this), this::publishTodayFeatureState);
         state.setValue(current);
@@ -150,10 +148,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         rewardEffects.setValue(rewardQueue.acknowledge(id));
     }
 
-    void updateUpdateState(UpdateUiState updateState) {
-        update(value -> value.withUpdate(updateState));
-    }
-
     private void reduceRepetitionInput(TodayAction action) {
         if (action.kind == TodayAction.Kind.SUBMIT_REPETITION
                 && restTimerBlocks(action.id)) {
@@ -180,32 +174,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     void navigate(NavigationDestination destination) {
         savedState.set(NAVIGATION, destination.name());
         update(value -> value.withNavigation(destination));
-    }
-
-    boolean updateCalendarPermission(boolean granted, boolean showRationale) {
-        CalendarPermissionStatus permission;
-        if (granted) permission = CalendarPermissionStatus.GRANTED;
-        else if (!preferences.calendarPermissionAsked() || showRationale)
-            permission = CalendarPermissionStatus.REQUESTABLE;
-        else permission = CalendarPermissionStatus.DENIED_TO_SETTINGS;
-        boolean changed;
-        synchronized (stateLock) {
-            changed = current.calendarPermission != permission;
-        }
-        update(value -> value.withPermission(permission));
-        return changed;
-    }
-
-    void onCalendarPermissionAction() {
-        CalendarPermissionStatus permission;
-        synchronized (stateLock) { permission = current.calendarPermission; }
-        if (permission == CalendarPermissionStatus.GRANTED
-                || permission == CalendarPermissionStatus.DENIED_TO_SETTINGS) {
-            events.setValue(UiEvent.action(UiEvent.Type.OPEN_APP_SETTINGS));
-        } else {
-            preferences.markCalendarPermissionAsked();
-            events.setValue(UiEvent.action(UiEvent.Type.REQUEST_CALENDAR_PERMISSION));
-        }
     }
 
     void requestDelete(String taskId, String title) {
@@ -530,17 +498,17 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         List<CalendarEventSnapshot> eventsSnapshot;
         synchronized (stateLock) {
             eventsSnapshot = content.calendar == null
-                    ? current.calendar.events : content.calendar.events();
+                    ? calendarEvents : content.calendar.events();
+            if (content.calendar != null)
+                calendarEvents = Collections.unmodifiableList(
+                        new java.util.ArrayList<>(eventsSnapshot));
         }
         TodayUiModel composed = content.dashboard.withCalendar(eventsSnapshot);
         todayCoordinator.rebind(composed);
         TodayFeatureState todayFeature = todayCoordinator.state();
         synchronized (stateLock) {
-            if (content.calendar == null)
-                current = current.withToday(composed).withTodayFeature(todayFeature);
-            else
-                current = current.withContent(composed, CalendarUiState.from(content.calendar))
-                        .withTodayFeature(todayFeature);
+            current = (content.calendar == null ? current.withToday(composed)
+                    : current.withContent(composed)).withTodayFeature(todayFeature);
             loadedDate = content.date;
             state.postValue(current);
         }
@@ -583,8 +551,9 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
 
     private void publishAppearance(Appearance appearance) {
         synchronized (stateLock) {
-            current = current.withDisplayPreferences(appearance.preferences,
-                    palette(appearance.preferences.themeMode, appearance.time));
+            current = current.withAppearance(
+                    palette(appearance.preferences.themeMode, appearance.time),
+                    appearance.preferences.focusStepLimit);
             state.postValue(current);
         }
     }

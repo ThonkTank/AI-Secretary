@@ -12,6 +12,10 @@ import de.thonktank.autosecretary.presentation.legacy.LegacyStateFlowBinder;
 import de.thonktank.autosecretary.presentation.navigation.AppDestination;
 import de.thonktank.autosecretary.presentation.navigation.AppNavigator;
 import de.thonktank.autosecretary.presentation.navigation.TaskEditorNavigator;
+import de.thonktank.autosecretary.presentation.options.OptionsAction;
+import de.thonktank.autosecretary.presentation.options.OptionsRequest;
+import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
+import de.thonktank.autosecretary.presentation.options.OptionsViewModel;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
@@ -44,12 +48,10 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.lifecycle.ViewModelProvider;
 
-import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskId;
-import de.thonktank.autosecretary.update.presentation.UpdateUiState;
-import de.thonktank.autosecretary.update.presentation.UpdateUiController;
-import de.thonktank.autosecretary.update.presentation.UpdateViewModel;
+import de.thonktank.autosecretary.update.presentation.UpdateDialogs;
+import de.thonktank.autosecretary.update.presentation.UpdatePlatform;
 
 /** Lifecycle host for the state-driven dashboard view hierarchy. */
 public class MainActivity extends ComponentActivity {
@@ -60,9 +62,12 @@ public class MainActivity extends ComponentActivity {
     private TaskViewModel viewModel;
     private TaskEditorViewModel editorViewModel;
     private AllTasksViewModel allTasksViewModel;
+    private OptionsViewModel optionsViewModel;
     private AppNavigator appNavigator;
-    private UpdateUiController updates;
+    private UpdateDialogs updateDialogs;
+    private UpdatePlatform updatePlatform;
     private DashboardUiState uiState;
+    private OptionsScreenState optionsState;
     private ForestBackdropView forest;
     private HeaderView header;
     private FooterNavigationView footer;
@@ -76,6 +81,7 @@ public class MainActivity extends ComponentActivity {
             EditorUiState.closed(), java.util.Collections.emptyList());
     private String handledAllTasksRequestId;
     private String handledEditorRequestId;
+    private String handledOptionsRequestId;
     private TaskEditorCoordinator editorCoordinator;
     private int systemTopInset;
     private final RewardAnchorRegistry rewardAnchors = new RewardAnchorRegistry();
@@ -92,7 +98,11 @@ public class MainActivity extends ComponentActivity {
 
     private final ActivityResultLauncher<Intent> installPermission = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (updates != null) updates.onInstallPermissionResult();
+                if (optionsViewModel != null && updatePlatform != null) {
+                    handledOptionsRequestId = null;
+                    optionsViewModel.dispatch(OptionsAction.installPermissionResult(
+                            updatePlatform.canInstallPackages()));
+                }
             });
 
     @Override public void onCreate(Bundle savedInstanceState) {
@@ -110,9 +120,13 @@ public class MainActivity extends ComponentActivity {
         appNavigator = new TaskEditorNavigator(editorViewModel, this::prepareEditorFlight);
         allTasksViewModel = new ViewModelProvider(this,
                 new AllTasksViewModel.Factory(container, appNavigator)).get(AllTasksViewModel.class);
+        optionsViewModel = new ViewModelProvider(this,
+                new OptionsViewModel.Factory(container)).get(OptionsViewModel.class);
+        optionsState = optionsViewModel.state().getValue();
         AllTasksCoordinator allTasks = new AllTasksCoordinator(allTasksViewModel);
         renderer = new DashboardRenderer(this, scroll, dashboardContent,
-                this::handleDashboardEvent, viewModel::dispatchToday, versionName(),
+                this::handleDashboardEvent, viewModel::dispatchToday,
+                optionsViewModel::dispatch, versionName(),
                 rewardAnchors, allTasks);
         editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
                 new TaskEditorView.Listener() {
@@ -129,24 +143,18 @@ public class MainActivity extends ComponentActivity {
                         editorViewModel.dispatch(TaskEditorAction.dismiss());
                     }
                 });
-        UpdateViewModel updateViewModel = new ViewModelProvider(this, new UpdateViewModel.Factory(
-                container.updates, container.updatePreferences,
-                failure -> container.logger.error("Updater", failure.getMessage(), failure),
-                container.texts, container.updateClock,
-                container.updateExecutors)).get(UpdateViewModel.class);
-        updates = new UpdateUiController(updateViewModel, new AndroidUpdateDialogs(this),
-                new AndroidUpdatePlatform(this, installPermission, container.updateInstaller,
-                        container.logger, container.updateConfiguration.repositoryOwner,
-                        container.updateConfiguration.repositoryName),
-                container.texts, container.updateConfiguration.automaticChecksEnabled);
+        updateDialogs = new AndroidUpdateDialogs(this);
+        updatePlatform = new AndroidUpdatePlatform(this, installPermission,
+                container.updateInstaller, container.logger,
+                container.updateConfiguration.repositoryOwner,
+                container.updateConfiguration.repositoryName);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
         LegacyStateFlowBinder.observe(this, editorViewModel.state(), this::renderEditorState);
         LegacyStateFlowBinder.observe(this, allTasksViewModel.state(),
                 this::renderAllTasksState);
+        LegacyStateFlowBinder.observe(this, optionsViewModel.state(), this::renderOptionsState);
         viewModel.rewardEffects().observe(this, this::handleRewardEffects);
-        updates.state().observe(this, this::renderUpdate);
-        updates.effects().observe(this, updates::handleEffect);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {
                 if (editorCoordinator != null && editorCoordinator.handleBack()) return;
@@ -166,7 +174,7 @@ public class MainActivity extends ComponentActivity {
             syncCalendarPermission();
             container.clockInvalidations.materializeForeground();
         }
-        if (updates != null) updates.onResume();
+        if (optionsViewModel != null) optionsViewModel.dispatch(OptionsAction.resumed());
         if (container != null) container.timers.refreshCapabilities();
     }
 
@@ -237,19 +245,6 @@ public class MainActivity extends ComponentActivity {
             openEditorWithFlight();
         } else if (event instanceof DashboardEvent.TimelineMenu) {
             showTaskMenu(((DashboardEvent.TimelineMenu) event).target);
-        } else if (event instanceof DashboardEvent.ThemeSelected) {
-            UiThemeMode mode = ((DashboardEvent.ThemeSelected) event).mode;
-            container.uiPreferences.setThemeMode(mode);
-        } else if (event instanceof DashboardEvent.FocusStepLimitSelected) {
-            container.uiPreferences.setFocusStepLimit(
-                    ((DashboardEvent.FocusStepLimitSelected) event).limit);
-        } else if (event instanceof DashboardEvent.RestTimerDefaultChanged) {
-            container.uiPreferences.setRestTimerDefaultSeconds(
-                    ((DashboardEvent.RestTimerDefaultChanged) event).seconds);
-        } else if (event instanceof DashboardEvent.CalendarPermission) {
-            viewModel.onCalendarPermissionAction();
-        } else if (event instanceof DashboardEvent.CheckUpdates) {
-            updates.onManualAction();
         }
     }
 
@@ -261,7 +256,7 @@ public class MainActivity extends ComponentActivity {
         forest.setPalette(state.palette);
         header.bind(container.clock.time(), state.palette, state.dashboard.xpProgress);
         footer.bind(state.navigation, state.palette);
-        renderer.render(state, allTasksState);
+        renderer.render(state, allTasksState, optionsState);
         boolean light = luminance(state.palette.background) > .55;
         WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(),
                 getWindow().getDecorView());
@@ -279,11 +274,6 @@ public class MainActivity extends ComponentActivity {
                 || uiState.navigation != NavigationDestination.TODAY) return;
         editorCoordinator.deferNextOpen();
         renderer.animateEditorTransition(editorCoordinator::completeDeferredOpen);
-    }
-
-    private void renderUpdate(UpdateUiState state) {
-        if (viewModel != null)
-            viewModel.updateUpdateState(state == null ? UpdateUiState.idle() : state);
     }
 
     private void completeOrConfirm(TaskActionTarget target) {
@@ -383,6 +373,58 @@ public class MainActivity extends ComponentActivity {
         editorViewModel.dispatch(TaskEditorAction.acknowledgeRequest(requestId));
     }
 
+    private void renderOptionsState(OptionsScreenState state) {
+        if (state == null) return;
+        optionsState = state;
+        if (uiState != null) render(uiState);
+        handleOptionsRequest(state.firstRequest());
+    }
+
+    private void handleOptionsRequest(OptionsRequest request) {
+        if (request == null) {
+            handledOptionsRequestId = null;
+            return;
+        }
+        if (request.id.equals(handledOptionsRequestId)) return;
+        handledOptionsRequestId = request.id;
+        if (request.kind == OptionsRequest.Kind.REQUEST_CALENDAR_PERMISSION) {
+            calendarPermission.launch(Manifest.permission.READ_CALENDAR);
+            acknowledgeOptionsRequest(request.id);
+        } else if (request.kind == OptionsRequest.Kind.OPEN_APP_SETTINGS) {
+            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName())));
+            acknowledgeOptionsRequest(request.id);
+        } else if (request.kind == OptionsRequest.Kind.UPDATE_AVAILABLE
+                && request.update != null) {
+            updateDialogs.showAvailable(request.update,
+                    () -> optionsViewModel.dispatch(OptionsAction.updatePostponed(
+                            request.id, request.update)),
+                    () -> optionsViewModel.dispatch(OptionsAction.updateAccepted(
+                            request.id, request.update)),
+                    () -> acknowledgeOptionsRequest(request.id));
+        } else if (request.kind == OptionsRequest.Kind.INSTALL_UPDATE
+                && request.verified != null) {
+            if (updatePlatform.canInstallPackages()) {
+                if (updatePlatform.openInstaller(request.verified))
+                    acknowledgeOptionsRequest(request.id);
+                else optionsViewModel.dispatch(OptionsAction.installerFailed(request.id));
+            } else {
+                updateDialogs.showInstallPermission(updatePlatform::openInstallSettings,
+                        () -> acknowledgeOptionsRequest(request.id));
+            }
+        } else if (request.kind == OptionsRequest.Kind.UPDATE_ERROR) {
+            updateDialogs.showError(request.message, () -> {
+                updatePlatform.openReleases();
+                acknowledgeOptionsRequest(request.id);
+            }, () -> acknowledgeOptionsRequest(request.id));
+        } else acknowledgeOptionsRequest(request.id);
+    }
+
+    private void acknowledgeOptionsRequest(String requestId) {
+        if (requestId.equals(handledOptionsRequestId)) handledOptionsRequestId = null;
+        optionsViewModel.dispatch(OptionsAction.acknowledgeRequest(requestId));
+    }
+
     private void confirmClose(String taskId, String title) {
         new AlertDialog.Builder(this).setTitle(R.string.close_task_title)
                 .setMessage(getString(R.string.close_task_message, title))
@@ -402,13 +444,8 @@ public class MainActivity extends ComponentActivity {
             confirmDelete(event.taskId, event.taskTitle, false);
         } else if (event.type == UiEvent.Type.CONFIRM_CLOSE)
             confirmClose(event.taskId, event.taskTitle);
-        else if (event.type == UiEvent.Type.REQUEST_CALENDAR_PERMISSION)
-            calendarPermission.launch(Manifest.permission.READ_CALENDAR);
         else if (event.type == UiEvent.Type.REQUEST_TIMER_PERMISSIONS)
             showTimerPermissionWarning();
-        else if (event.type == UiEvent.Type.OPEN_APP_SETTINGS)
-            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:" + getPackageName())));
     }
 
     private void showTimerPermissionWarning() {
@@ -447,14 +484,11 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void syncCalendarPermission() {
-        if (viewModel == null) return;
+        if (optionsViewModel == null) return;
         boolean granted = checkSelfPermission(Manifest.permission.READ_CALENDAR)
                 == PackageManager.PERMISSION_GRANTED;
-        boolean changed = viewModel.updateCalendarPermission(granted,
-                shouldShowRequestPermissionRationale(Manifest.permission.READ_CALENDAR));
-        if (changed) {
-            container.calendarInvalidations.materializeExternalChange();
-        }
+        optionsViewModel.dispatch(OptionsAction.permissionObserved(granted,
+                shouldShowRequestPermissionRationale(Manifest.permission.READ_CALENDAR)));
     }
 
     private void handleLaunchIntent() {
