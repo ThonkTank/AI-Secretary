@@ -857,13 +857,13 @@ public final class TaskEditorView extends FrameLayout {
         if (mustRender) prepareViewport(previous, validated);
         if (rerender && dependentUiChanged(previous, validated)
                 && animateDependentExit(validated)) return;
+        listener.onDraftChanged(validated);
         state = validated;
         traceState("state", validated);
         if (rerender && dependentKey(validated) != 0 && dependentKey(previous) == 0)
             pendingDependentEnter = true;
         if (mustRender) render();
         lastEmitted = validated;
-        listener.onDraftChanged(validated);
     }
 
     private static void traceState(String kind, EditorUiState value) {
@@ -887,9 +887,9 @@ public final class TaskEditorView extends FrameLayout {
         View dependent = findViewWithTag(DEPENDENT_TAG);
         if (dependent == null || !TaskEditorMotion.enabled()) return false;
         int generation = ++dependentTransitionGeneration;
+        listener.onDraftChanged(validated);
         state = validated;
         lastEmitted = validated;
-        listener.onDraftChanged(validated);
         TaskEditorMotion.fadeOut(dependent, palette, () -> {
             if (generation != dependentTransitionGeneration) return;
             pendingDependentEnter = dependentKey(validated) != 0;

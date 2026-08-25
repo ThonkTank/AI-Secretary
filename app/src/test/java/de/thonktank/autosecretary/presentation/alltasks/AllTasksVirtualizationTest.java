@@ -302,8 +302,7 @@ public final class AllTasksVirtualizationTest {
 
         renderer.render(new DashboardUiState(NavigationDestination.ALL_TASKS,
                         TodayUiModel.empty(), CalendarUiState.empty(), palette,
-                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
-                        EditorUiState.closed()),
+                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet()),
                 AllTasksUiState.from(catalog(120), AllTasksPresentationState.defaults()));
 
         assertEquals(View.GONE, scroll.getVisibility());

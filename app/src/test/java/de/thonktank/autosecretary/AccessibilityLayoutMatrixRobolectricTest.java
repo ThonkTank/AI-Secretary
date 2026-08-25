@@ -149,8 +149,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
                 new AllTasksView.Listener() { });
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         DashboardFixtures.fullDashboard(), CalendarUiState.empty(), palette,
-                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
-                        EditorUiState.closed()), AllTasksUiState.empty());
+                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet()),
+                AllTasksUiState.empty());
         measure(scroll, dp(context, widthDp), dp(context, 8_000));
         View focus = content.findViewById(R.id.dashboard_focus);
         assertNotNull(label(widthDp, fontScale), focus);

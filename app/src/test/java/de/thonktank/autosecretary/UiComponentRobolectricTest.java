@@ -71,6 +71,25 @@ public final class UiComponentRobolectricTest {
         }
     }
 
+    @Test public void editorLaunchIntentTargetsTheDedicatedStateOwner() {
+        Context context = ApplicationProvider.getApplicationContext();
+        Intent launch = new Intent(context, MainActivity.class)
+                .putExtra(MainActivity.OPEN_EDITOR, true);
+
+        try (ActivityController<MainActivity> controller =
+                     Robolectric.buildActivity(MainActivity.class, launch)) {
+            MainActivity activity = controller.setup().get();
+            AppContainer container = AutoSecretaryApplication.from(activity).container();
+            TaskEditorViewModel editor = new ViewModelProvider(activity,
+                    new TaskEditorViewModel.Factory(container)).get(TaskEditorViewModel.class);
+
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+            assertTrue(editor.state().getValue().content.open);
+            assertFalse(activity.getIntent().hasExtra(MainActivity.OPEN_EDITOR));
+        }
+    }
+
     @Test public void recreationDoesNotRepeatAConsumedConfirmationIntent() {
         Context context = ApplicationProvider.getApplicationContext();
         Intent launch = new Intent(context, MainActivity.class)
@@ -461,7 +480,6 @@ public final class UiComponentRobolectricTest {
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
         return new DashboardUiState(NavigationDestination.TODAY, dashboard,
                 CalendarUiState.from(new CalendarResult.Success(DashboardFixtures.calendarEvents())), palette,
-                CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
-                EditorUiState.closed());
+                CalendarPermissionStatus.GRANTED, false, Collections.emptySet());
     }
 }

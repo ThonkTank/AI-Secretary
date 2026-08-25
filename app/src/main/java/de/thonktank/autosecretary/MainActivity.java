@@ -52,6 +52,7 @@ public class MainActivity extends ComponentActivity {
     public static final String OPEN_EDITOR = "open_editor";
     private AppContainer container;
     private TaskViewModel viewModel;
+    private TaskEditorViewModel editorViewModel;
     private AllTasksViewModel allTasksViewModel;
     private UpdateUiController updates;
     private DashboardUiState uiState;
@@ -64,7 +65,10 @@ public class MainActivity extends ComponentActivity {
     private LinearLayout dashboardScreen;
     private LinearLayout dashboardContent;
     private AllTasksUiState allTasksState = AllTasksUiState.empty();
+    private TaskEditorScreenState editorState = new TaskEditorScreenState(
+            EditorUiState.closed(), java.util.Collections.emptyList());
     private String handledAllTasksRequestId;
+    private String handledEditorRequestId;
     private TaskEditorCoordinator editorCoordinator;
     private int systemTopInset;
     private final RewardAnchorRegistry rewardAnchors = new RewardAnchorRegistry();
@@ -89,6 +93,8 @@ public class MainActivity extends ComponentActivity {
         buildShell();
         viewModel = new ViewModelProvider(this,
                 new TaskViewModel.Factory(container)).get(TaskViewModel.class);
+        editorViewModel = new ViewModelProvider(this,
+                new TaskEditorViewModel.Factory(container)).get(TaskEditorViewModel.class);
         allTasksViewModel = new ViewModelProvider(this,
                 new AllTasksViewModel.Factory(container)).get(AllTasksViewModel.class);
         AllTasksCoordinator allTasks = new AllTasksCoordinator(allTasksViewModel);
@@ -98,15 +104,17 @@ public class MainActivity extends ComponentActivity {
         editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
                 new TaskEditorView.Listener() {
                     @Override public void onDraftChanged(EditorUiState draft) {
-                        viewModel.updateEditorDraft(draft);
+                        editorViewModel.dispatch(TaskEditorAction.draftChanged(draft));
                     }
                     @Override public void onSave(EditorUiState draft) {
-                        viewModel.saveEditor(draft);
+                        editorViewModel.dispatch(TaskEditorAction.save(draft));
                     }
                     @Override public void onDelete(String taskId) {
-                        viewModel.deleteFromEditor(taskId);
+                        editorViewModel.dispatch(TaskEditorAction.delete(taskId));
                     }
-                    @Override public void onDismiss() { viewModel.dismissEditor(); }
+                    @Override public void onDismiss() {
+                        editorViewModel.dispatch(TaskEditorAction.dismiss());
+                    }
                 });
         UpdateViewModel updateViewModel = new ViewModelProvider(this, new UpdateViewModel.Factory(
                 container.updates, container.updatePreferences,
@@ -120,6 +128,7 @@ public class MainActivity extends ComponentActivity {
                 container.texts, container.updateConfiguration.automaticChecksEnabled);
         viewModel.state().observe(this, this::render);
         viewModel.events().observe(this, this::handleEvent);
+        LegacyStateFlowBinder.observe(this, editorViewModel.state(), this::renderEditorState);
         LegacyStateFlowBinder.observe(this, allTasksViewModel.state(),
                 this::renderAllTasksState);
         viewModel.rewardEffects().observe(this, this::handleRewardEffects);
@@ -230,7 +239,7 @@ public class MainActivity extends ComponentActivity {
     private void render(DashboardUiState state) {
         if (PresentationTrace.enabled()) PresentationTrace.emit("dashboard", "render",
                 "navigation=" + state.navigation + " loading=" + state.loading
-                        + " editorOpen=" + state.editor.open);
+                        + " editorOpen=" + editorState.content.open);
         uiState = state;
         forest.setPalette(state.palette);
         header.bind(container.clock.time(), state.palette, state.dashboard.xpProgress);
@@ -241,20 +250,20 @@ public class MainActivity extends ComponentActivity {
                 getWindow().getDecorView());
         controller.setAppearanceLightStatusBars(light);
         controller.setAppearanceLightNavigationBars(light);
-        editorCoordinator.render(state.editor, state.palette, container.clock.today());
+        editorCoordinator.render(editorState.content, state.palette, container.clock.today());
     }
 
     private void openEditorWithFlight() {
-        if (viewModel == null) return;
-        if (uiState != null && uiState.editor.open) return;
+        if (editorViewModel == null) return;
+        if (editorState.content.open) return;
         if (renderer == null || uiState == null
                 || uiState.navigation != NavigationDestination.TODAY) {
-            viewModel.openEditor(null);
+            editorViewModel.dispatch(TaskEditorAction.openNew());
             return;
         }
         editorCoordinator.deferNextOpen();
         renderer.animateEditorTransition(editorCoordinator::completeDeferredOpen);
-        viewModel.openEditor(null);
+        editorViewModel.dispatch(TaskEditorAction.openNew());
     }
 
     private void renderUpdate(UpdateUiState state) {
@@ -272,7 +281,8 @@ public class MainActivity extends ComponentActivity {
         new AlertDialog.Builder(this).setTitle(target.title)
                 .setItems(new String[]{getString(R.string.task_edit), getString(R.string.task_move),
                         getString(R.string.task_delete)}, (dialog, which) -> {
-                    if (which == 0) viewModel.openEditor(target.taskId);
+                    if (which == 0)
+                        editorViewModel.dispatch(TaskEditorAction.open(target.taskId));
                     else if (which == 1) showMoveDialog(target);
                     else confirmDelete(target.taskId, target.title, target.routine);
                 }).show();
@@ -315,8 +325,8 @@ public class MainActivity extends ComponentActivity {
             Toast.makeText(this, request.message, Toast.LENGTH_LONG).show();
             acknowledgeAllTasksRequest(request.id);
         } else if (request.kind == AllTasksRequest.Kind.OPEN_EDITOR && request.taskId != null) {
-            viewModel.openEditorForStep(request.taskId.value,
-                    request.stepId == null ? null : request.stepId.value, request.addStep);
+            editorViewModel.dispatch(TaskEditorAction.open(request.taskId.value,
+                    request.stepId == null ? null : request.stepId.value, request.addStep));
             acknowledgeAllTasksRequest(request.id);
         } else if (request.kind == AllTasksRequest.Kind.CONFIRM_DELETE
                 && request.taskId != null) {
@@ -336,6 +346,29 @@ public class MainActivity extends ComponentActivity {
     private void acknowledgeAllTasksRequest(String requestId) {
         if (requestId.equals(handledAllTasksRequestId)) handledAllTasksRequestId = null;
         allTasksViewModel.dispatch(AllTasksAction.acknowledgeRequest(requestId));
+    }
+
+    private void renderEditorState(TaskEditorScreenState state) {
+        if (state == null) return;
+        editorState = state;
+        if (uiState != null)
+            editorCoordinator.render(state.content, uiState.palette, container.clock.today());
+        TaskEditorRequest request = state.firstRequest();
+        if (request == null) {
+            handledEditorRequestId = null;
+            return;
+        }
+        if (request.id.equals(handledEditorRequestId)) return;
+        handledEditorRequestId = request.id;
+        new AlertDialog.Builder(this).setTitle(R.string.error_title)
+                .setMessage(request.message).setPositiveButton(R.string.okay,
+                        (dialog, which) -> acknowledgeEditorRequest(request.id))
+                .setOnCancelListener(dialog -> acknowledgeEditorRequest(request.id)).show();
+    }
+
+    private void acknowledgeEditorRequest(String requestId) {
+        if (requestId.equals(handledEditorRequestId)) handledEditorRequestId = null;
+        editorViewModel.dispatch(TaskEditorAction.acknowledgeRequest(requestId));
     }
 
     private void confirmClose(String taskId, String title) {
@@ -392,7 +425,7 @@ public class MainActivity extends ComponentActivity {
                     confirmTitle == null ? getString(R.string.this_project) : confirmTitle);
         boolean openEditor = getIntent().getBooleanExtra(OPEN_EDITOR, false);
         getIntent().removeExtra(OPEN_EDITOR);
-        if (openEditor) viewModel.openEditor(null);
+        if (openEditor) editorViewModel.dispatch(TaskEditorAction.openNew());
     }
 
     private String versionName() {

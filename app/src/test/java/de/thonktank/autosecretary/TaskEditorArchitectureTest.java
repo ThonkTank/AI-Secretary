@@ -25,11 +25,35 @@ public final class TaskEditorArchitectureTest {
         assertFalse(editor.contains("state.draft("));
         assertFalse(editor.contains("state.withFeedback("));
         assertFalse(steps.contains("state.draft("));
-        String viewModel = source("TaskViewModel.java");
+        String editorApply = editor.substring(editor.indexOf("private void apply(EditorUiState"),
+                editor.indexOf("private static void traceState"));
+        assertTrue(editorApply.indexOf("listener.onDraftChanged(validated)")
+                < editorApply.indexOf("state = validated"));
+        String stepsApply = steps.substring(steps.indexOf("private void apply(EditorUiState"),
+                steps.indexOf("private static LayoutParams params"));
+        assertTrue(stepsApply.indexOf("listener.onStateChanged(next, rerender)")
+                < stepsApply.indexOf("state = next"));
+        String viewModel = source("TaskEditorViewModel.java");
         assertTrue(viewModel.contains("TaskEditorStateReducer."));
         assertFalse(viewModel.contains("draft.withSaving("));
         assertFalse(viewModel.contains("draft.withFeedback("));
         assertFalse(viewModel.contains("draft.withAllValidationAttempted("));
+    }
+
+    @Test public void editorHasOneStateFlowOwnerOutsideDashboardState() throws IOException {
+        String editorOwner = source("TaskEditorViewModel.java");
+        String dashboardOwner = source("TaskViewModel.java");
+        String dashboardState = source("DashboardUiState.java");
+        String activity = source("MainActivity.java");
+
+        assertTrue(editorOwner.contains("StateFlow<TaskEditorScreenState> state()"));
+        assertTrue(editorOwner.contains("void dispatch(TaskEditorAction action)"));
+        assertFalse(editorOwner.contains("LiveData"));
+        assertFalse(dashboardOwner.contains("EditorUiState"));
+        assertFalse(dashboardOwner.contains("TaskEditorStateReducer"));
+        assertFalse(dashboardState.contains("EditorUiState"));
+        assertTrue(activity.contains("LegacyStateFlowBinder.observe(this,"
+                + " editorViewModel.state()"));
     }
 
     @Test public void editorStateUsesSeparatedModelsAndVersionedBundle() throws IOException {

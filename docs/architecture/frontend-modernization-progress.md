@@ -1308,3 +1308,94 @@ die physische Geräteabnahme bleibt gemäß Owner-Entscheidung offen.
 Die StateFlow-, Action-, Request-, Activity-Recreation-, Room-Routing- und Architekturverträge
 bestanden danach fünf vollständig frische Wiederholungsläufe ohne Race-Ausfall oder verbliebenen
 Lifecycle-Collector.
+
+### Phase 4a – Remote-Abschluss
+
+Pull Request #271 bestand Quality sowie normale und animationsaktive Instrumentierung auf API
+26/35/37 und wurde als `8f6c42de` per Squash nach `main` übernommen. Der Produktionslauf
+`32837858316` bestand dieselbe Matrix, signierte Paketierung sowie Neuinstallation und echtes
+Upgrade auf allen drei API-Stufen. Release 0.2.123 (`forest-android-1012301`) veröffentlicht
+`AutoSecretary.apk` und `release-metadata.json` exakt aus
+`8f6c42dee9672a60df5527392b079978ff063ed5`. Die automatisierte Unterphase 4a ist damit
+abgeschlossen; die physische In-App-Update- und Sichtabnahme bleibt gemäß Owner-Entscheidung
+offen.
+
+### Phase 4b – Vorprüfung und Implementationsplan für den Editor-State-Owner
+
+Roadmap, ADR-022, der veröffentlichte 4a-Stand, `TaskViewModel`, `DashboardUiState`,
+`TaskEditorCoordinator`, `TaskEditorView`, Editor-Reducer und die Editor-Recreation-, Golden- und
+Instrumentierungsverträge wurden vor Produktänderungen erneut gelesen. Der Editor lässt sich als
+eine kohärente Unterphase aus dem weiterhin 749 Zeilen breiten Dashboardowner schneiden:
+`TaskEditorViewModel` übernimmt Laden, Draft, Validierung, Speichern, Löschen und Schließen und
+veröffentlicht genau einen `StateFlow<TaskEditorScreenState>`. `DashboardUiState` und
+`TaskViewModel` verlieren Editorzustand und Editorcommands vollständig; Roominvalidierung bleibt
+nach Save/Delete der einzige Rückfluss in Today und Alles.
+
+Alle Editor-Viewcallbacks werden als geschlossene `TaskEditorAction`-Typen seriell verarbeitet.
+Der atomare Screen State enthält `EditorUiState` und geordnete, bestätigbare Fehlerrequests mit
+stabilen IDs. Draft und Requests werden im `SavedStateHandle` rekonstruiert. Ein gestarteter Save-
+oder Delete-Write wird nicht abgebrochen; doppelte Actions werden weiterhin über stabile
+Commandkeys abgewiesen. `MainActivity` liest den StateFlow über denselben dünnen Legacy-Binder und
+reicht an `TaskEditorCoordinator` nur den aktuellen Editorinhalt, Palette und Tag weiter.
+
+Die bestehende Activity öffnet den neuen Owner in 4b noch aus Header-, Today-, Intent- und dem in
+4a typisierten Alles-Navigationsrequest. Diese klar markierte Routingnaht mutiert keinen zweiten
+Editorzustand, erfüllt aber noch nicht das Phase-4-Ziel einer brokerfreien Navigation. Sie wird
+deshalb als unmittelbar folgende Phase-4-Nacharbeit über eine explizite App-Navigationsschnittstelle
+entfernt und nicht bis Phase 9 aufgeschoben. Besonders zu prüfen sind Laden versus Recreation,
+Draftverlust bei paralleler Dashboardpublication, doppelte Save/Delete-Actions, Fehlerrequest-
+Recreation, Animation-Cancel beim Öffnen, Rücknavigation sowie identische Golden- und
+Accessibility-Verträge. Schema, SDK-Grenzen, Domainports, visuelle Baselines und Releasevertrag
+bleiben unverändert.
+
+### Phase 4b – Implementation und Roadmap-Abgleich
+
+- `TaskEditorViewModel` ist nun der einzige Editor-State-Owner. Sein
+  `StateFlow<TaskEditorScreenState>` veröffentlicht Editorinhalt und eine geordnete, unveränderliche
+  Requestliste atomar; `dispatch(TaskEditorAction)` ist der einzige öffentliche Eingabepfad und
+  serialisiert Open, Draft, Save, Delete, Dismiss und Requestquittierung.
+- `TaskViewModel` enthält weder `EditorUiState` noch Editorcommands oder den Editorreducer.
+  `DashboardUiState` enthält ebenfalls keine Editorprojektion mehr. Today- und Alles-Zustand werden
+  nach Editorwrites ausschließlich durch Roominvalidierung neu projiziert; es gibt kein
+  ViewModel-zu-ViewModel-Signal und keinen manuellen Reload.
+- Draft und geordnete Fehlerrequests werden getrennt im `SavedStateHandle` gespeichert. Requests
+  besitzen stabile IDs, werden bis zur expliziten Bestätigung erhalten, semantisch dedupliziert und
+  leiten ihren Sequenzboden zusätzlich aus restauriertem Pending Work ab.
+- Asynchrone Loads, Saves und Deletes tragen eine Editorgeneration. Dismiss oder ein neuer Open
+  verhindern damit, dass ein verspätetes Ergebnis einen neueren Editor wieder öffnet oder schließt.
+  Commandkeys weisen schnelle identische Save-/Delete-Doppelausführung weiterhin ab; ein bereits
+  gestarteter Write wird beim normalen ViewModel-Clear geordnet beendet.
+- `MainActivity` bindet den Editor-StateFlow über `LegacyStateFlowBinder`, rendert nur dessen
+  `content` und bestätigt Hostrequests explizit. Ein Activity-Test beweist, dass auch der externe
+  Open-Intent im dedizierten Owner landet und nur einmal verbraucht wird. `TaskEditorCoordinator`
+  bleibt bis zum Compose-Cutover ein reiner View-Binder.
+
+Der negative Abgleich fand drei Schwächen im ersten Schnitt. Erstens konnte ein vor Dismiss oder
+einem neuen Open gestartetes Workerresultat den neueren Zustand überschreiben; die Generationen
+und gezielte Race-Tests schließen diese stale Publication. Zweitens schrieben `TaskEditorView` und
+`TaskStepsEditorView` ihre lokale Renderkopie vor dem Ownercallback und waren damit für einen kurzen
+Moment selbst die Wahrheit. Die Nachtarbeitskorrektur veröffentlicht jetzt immer zuerst in den
+Owner; ein Architekturtest hält die Reihenfolge fest. Drittens hätte ein bei Prozessverlust
+persistierter `saving=true`-Snapshot dauerhaft einen nicht mehr laufenden Write angezeigt. Ein
+unterbrochener Write wird deshalb nicht blind wiederholt, sondern als vollständiger, entsperrter
+Entwurf mit Speicherhinweis rekonstruiert. Die echte idempotente Wiederaufnahme bleibt wie in der
+Original-Roadmap vorgesehen Phase 5 vorbehalten.
+
+Tests decken zusätzlich Dismiss gegen verspäteten Load, Saveabschluss gegen einen neueren Editor,
+Requestwiederherstellung bis zur Quittierung, den unterbrochenen Write, parallele
+Dashboardpublication und den realen Activity-Einstieg ab. Lokal bestanden unter Java 21 die
+vollständige Suite mit 466 Tests ohne Fehler (ein bewusst übersprungener Test), Lint sowie Debug-,
+Android-Test- und unsigned Release-APK. Die 14 CI-Harnesstests und 22 Release-/Workflow-
+Vertragstests sind ebenfalls grün. Die APK-Größen betragen 8.783.881 Byte Debug, 653.541 Byte
+Android-Test und 6.373.418 Byte unsigned Release; der Fontbestand bleibt bei 1.478.008 Byte.
+Schema 16, `minSdk 26`, `targetSdk 35`, Domain- und visuelle Verträge wurden nicht verändert.
+
+Die StateFlow-, Action-, Generation-, Recreation-, Activity-, Legacy-Binder- und
+Architekturverträge bestanden anschließend fünf vollständig frische Wiederholungsläufe ohne
+Race-Ausfall, Draftverlust oder verbliebenen Lifecycle-Collector.
+
+Die bewusst verbliebene Activity-Routingnaht ist keine zweite Editorwahrheit, erfüllt aber den
+vollständigen Phase-4-Satz „Activity-Brokerlogik entfällt“ noch nicht. Sie ist daher keine
+stillschweigende Scope-Vereinfachung: Nach dem eigenen PR-/Merge-/Produktionsabschluss von 4b folgt
+unmittelbar die bereits geplante Routing-Nacharbeit, bevor weitere Screen-Owner extrahiert werden.
+Die physische In-App-Update- und Sichtabnahme bleibt gemäß Owner-Entscheidung offen.

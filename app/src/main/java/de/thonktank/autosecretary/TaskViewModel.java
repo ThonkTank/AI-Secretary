@@ -41,7 +41,6 @@ import de.thonktank.autosecretary.presentation.observable.PresentationInvalidati
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
 import de.thonktank.autosecretary.data.observable.ClockSnapshot;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
-import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 
 import java.time.LocalTime;
 import java.time.LocalDate;
@@ -56,7 +55,6 @@ import java.util.function.Supplier;
 
 public final class TaskViewModel extends ViewModel implements TodayCommandDispatcher.Handlers {
     private static final String NAVIGATION = "navigation";
-    private static final String EDITOR = "editor";
     private final TaskUseCases tasks;
     private final DashboardPresenter dashboard;
     private final CalendarDataSource calendar;
@@ -100,11 +98,10 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         this.savedState = savedState;
         this.worker = worker;
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
-        EditorUiState editor = EditorUiState.fromBundle(savedState.get(EDITOR));
         DisplayPreferences display = preferences.displayPreferences();
         current = new DashboardUiState(navigation, TodayUiModel.empty(),
                 CalendarUiState.empty(), palette(display.themeMode),
-                CalendarPermissionStatus.UNKNOWN, true, Collections.emptySet(), editor,
+                CalendarPermissionStatus.UNKNOWN, true, Collections.emptySet(),
                 RepetitionInputState.idle(), display.themeMode, display.focusStepLimit,
                 UpdateUiState.idle());
         todayCoordinator = new TodayCoordinator(current.dashboard,
@@ -127,7 +124,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                     collectionExecutor, this::loadAppearance, this::publishAppearance,
                     this::appearanceReadFailed);
         }
-        if (editor.open && editor.loading && editor.taskId != null) openEditor(editor.taskId);
     }
 
     LiveData<DashboardUiState> state() { return state; }
@@ -163,130 +159,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     void navigate(NavigationDestination destination) {
         savedState.set(NAVIGATION, destination.name());
         update(value -> value.withNavigation(destination));
-    }
-
-    void openEditor(@Nullable String taskId) {
-        openEditor(taskId, null, false);
-    }
-
-    void openEditorForStep(String taskId, @Nullable String stepId, boolean addStep) {
-        openEditor(taskId, stepId, addStep);
-    }
-
-    private void openEditor(@Nullable String taskId, @Nullable String stepId, boolean addStep) {
-        if (taskId == null) {
-            setEditor(EditorUiState.create(defaultEditorSlot(clock.time())));
-            return;
-        }
-        UiCommand key = command(UiCommand.Kind.LOAD_EDITOR, taskId);
-        setEditor(EditorUiState.loading(taskId));
-        if (!begin(key, false)) return;
-        worker.execute(() -> {
-            try {
-                de.thonktank.autosecretary.domain.model.TaskDetails details =
-                        tasks.loadTaskDetails.execute(TaskId.of(taskId));
-                if (details == null) {
-                    setEditor(EditorUiState.closed());
-                    fail(key, texts.text(R.string.error_task_missing),
-                            new IllegalArgumentException("Missing task " + taskId));
-                    return;
-                }
-                EditorUiState loaded = EditorUiState.edit(details);
-                if (addStep) loaded = TaskEditorStateReducer.addStep(loaded);
-                else if (stepId != null)
-                    loaded = TaskEditorStateReducer.expandStep(loaded, stepId);
-                savedState.set(EDITOR, loaded.toBundle());
-                synchronized (stateLock) {
-                    Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
-                    actions.remove(key);
-                    current = current.withEditor(loaded).withRunningActions(actions);
-                    state.postValue(current);
-                }
-            } catch (RuntimeException error) {
-                setEditor(EditorUiState.closed());
-                fail(key, texts.text(R.string.error_editor_load), error);
-            }
-        });
-    }
-
-    static TaskSlot defaultEditorSlot(LocalTime time) {
-        if (time.isBefore(LocalTime.of(11, 0))) return TaskSlot.MORNING;
-        if (time.isBefore(LocalTime.of(17, 0))) return TaskSlot.MIDDAY;
-        if (time.isBefore(LocalTime.of(21, 0))) return TaskSlot.EVENING;
-        return TaskSlot.LATER;
-    }
-
-    void dismissEditor() {
-        savedState.set(EDITOR, null);
-        update(value -> value.withEditor(EditorUiState.closed()));
-    }
-
-    void updateEditorDraft(EditorUiState draft) {
-        if (!draft.open || draft.loading) return;
-        setEditor(draft);
-    }
-
-    void saveEditor(EditorUiState draft) {
-        Set<ValidationIssue> issues = new TaskEditorValidator().issues(draft, clock.today());
-        if (!issues.isEmpty()) {
-            setEditor(TaskEditorStateReducer.allValidationAttempted(draft, issues));
-            return;
-        }
-        UiCommand key = command(draft.taskId == null ? UiCommand.Kind.CREATE
-                : UiCommand.Kind.UPDATE, draft.taskId == null ? "new" : draft.taskId);
-        if (!begin(key, false)) return;
-        setEditor(TaskEditorStateReducer.saving(draft, true));
-        worker.execute(() -> {
-            try {
-                if (draft.taskId == null) tasks.create.execute(draft.definition());
-                else tasks.update.execute(TaskId.of(draft.taskId), draft.definition());
-                savedState.set(EDITOR, null);
-                synchronized (stateLock) {
-                    Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
-                    actions.remove(key);
-                    current = current.withRunningActions(actions).withEditor(EditorUiState.closed());
-                    state.postValue(current);
-                }
-            } catch (RuntimeException error) {
-                logger.error("TaskViewModel", "Editor save failed", error);
-                synchronized (stateLock) {
-                    Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
-                    actions.remove(key);
-                    EditorUiState failed = TaskEditorStateReducer.feedback(
-                            TaskEditorStateReducer.saving(draft, false), Collections.emptySet(),
-                            EditorUiState.Prompt.NONE, texts.text(R.string.error_change_save));
-                    current = current.withRunningActions(actions).withEditor(failed);
-                    savedState.set(EDITOR, failed.toBundle());
-                    state.postValue(current);
-                }
-            }
-        });
-    }
-
-    void deleteFromEditor(String taskId) {
-        if (taskId == null) return;
-        UiCommand key = command(UiCommand.Kind.DELETE, taskId);
-        if (!begin(key, false)) return;
-        EditorUiState draft;
-        synchronized (stateLock) { draft = current.editor; }
-        setEditor(TaskEditorStateReducer.saving(draft, true));
-        worker.execute(() -> {
-            try {
-                tasks.delete.execute(TaskId.of(taskId));
-                savedState.set(EDITOR, null);
-                synchronized (stateLock) {
-                    Set<UiCommand> actions = new LinkedHashSet<>(current.runningActions);
-                    actions.remove(key);
-                    current = current.withRunningActions(actions).withEditor(EditorUiState.closed());
-                    state.postValue(current);
-                }
-            } catch (RuntimeException error) {
-                logger.error("TaskViewModel", "Editor delete failed", error);
-                setEditor(TaskEditorStateReducer.feedback(
-                        TaskEditorStateReducer.saving(draft, false), Collections.emptySet(),
-                        EditorUiState.Prompt.NONE, texts.text(R.string.error_change_save)));
-            }
-        });
     }
 
     boolean updateCalendarPermission(boolean granted, boolean showRationale) {
@@ -675,11 +547,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         } catch (IllegalArgumentException error) {
             return NavigationDestination.TODAY;
         }
-    }
-
-    private void setEditor(EditorUiState editor) {
-        savedState.set(EDITOR, editor.open ? editor.toBundle() : null);
-        update(value -> value.withEditor(editor));
     }
 
     private String scheduleMoveMessage(ScheduleMoveResult result) {
