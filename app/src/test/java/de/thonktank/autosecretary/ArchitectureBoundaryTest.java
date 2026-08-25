@@ -60,6 +60,9 @@ public final class ArchitectureBoundaryTest {
         String dashboard = read(main("TaskViewModel.java"));
         String catalog = read(main("presentation/alltasks/AllTasksViewModel.java"));
         String container = read(main("AppContainer.java"));
+        String widgets = read(main("WidgetUpdateCoordinator.java"));
+        String widgetProvider = read(main("TaskWidgetProvider.java"));
+        String widgetReceiver = read(main("TaskActionReceiver.java"));
 
         for (String removed : new String[]{"catalogChanges()", "contentChanges()",
                 "minuteHandler", "allTasksViewModel.reload()", "viewModel.load()",
@@ -69,7 +72,15 @@ public final class ArchitectureBoundaryTest {
         assertFalse(dashboard.contains("calendar.observeChanges("));
         assertFalse(dashboard.contains("shutdownNow()"));
         assertFalse(catalog.contains("shutdownNow()"));
+        assertFalse(dashboard.contains("invalidateWidgets"));
+        assertFalse(read(main("presentation/DashboardPresenter.java"))
+                .contains("refreshDomain"));
+        assertFalse(widgetReceiver.contains("widgetUpdates.updateAll"));
         assertTrue(container.contains("PresentationInvalidationSource presentationInvalidations"));
+        assertTrue(widgets.contains("source.getWidgetChanges()"));
+        assertTrue(widgets.contains("LatestReadPipeline.prepared"));
+        assertTrue(widgetProvider.contains("reconcileInstalledWidgets()"));
+        assertTrue(widgetProvider.contains("stopObserving()"));
         assertTrue(activity.contains("clockInvalidations.materializeForeground()"));
         assertTrue(activity.contains("calendarInvalidations.materializeExternalChange()"));
         assertFalse(catalog.contains("current.withCatalog(catalog.execute())"));

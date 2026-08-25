@@ -143,6 +143,33 @@ class PresentationInvalidationSourceTest {
         }
     }
 
+    @Test
+    fun widgetHostMaterializationTargetsOnlyActiveWidgetCollectors() = runBlocking {
+        val dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+        val inputs = Inputs()
+        val source = inputs.source(dispatcher)
+        try {
+            val dashboard = source.dashboardChanges.produceIn(this)
+            val widgets = source.widgetChanges.produceIn(this)
+            assertInitial(dashboard.receive(), PresentationInvalidationTarget.DASHBOARD)
+            assertInitial(widgets.receive(), PresentationInvalidationTarget.WIDGETS)
+            await { inputs.allStarts(1) }
+            repeat(5) { dashboard.receive() }
+            repeat(5) { widgets.receive() }
+
+            source.materializeWidgetHostChange()
+
+            assertEquals(PresentationInvalidationCause.WIDGET_HOST, widgets.receive().cause)
+            yield()
+            assertTrue(dashboard.tryReceive().isFailure)
+            dashboard.cancel()
+            widgets.cancel()
+        } finally {
+            source.close()
+            dispatcher.close()
+        }
+    }
+
     private fun assertInitial(
         event: PresentationInvalidation,
         target: PresentationInvalidationTarget,

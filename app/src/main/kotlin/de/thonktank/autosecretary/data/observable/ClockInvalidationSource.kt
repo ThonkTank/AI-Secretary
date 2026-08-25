@@ -98,9 +98,12 @@ class ClockInvalidationSource(
         foregroundSignals.tryEmit(Unit)
     }
 
-    private fun snapshot(reason: ClockInvalidationReason) = ClockSnapshot(
-        date = clock.today(),
-        time = clock.time(),
-        reason = reason,
-    )
+    private fun snapshot(reason: ClockInvalidationReason): ClockSnapshot {
+        val now = clock.now()
+        return ClockSnapshot(
+            date = now.toLocalDate(),
+            time = now.toLocalTime(),
+            reason = reason,
+        )
+    }
 }

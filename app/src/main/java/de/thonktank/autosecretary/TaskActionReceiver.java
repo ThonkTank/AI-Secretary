@@ -27,14 +27,7 @@ public final class TaskActionReceiver extends BroadcastReceiver {
                                     ? null : stableIntent.getAction()),
                             error);
                 } finally {
-                    try {
-                        container.widgetUpdates.updateAll();
-                    } catch (RuntimeException refreshError) {
-                        container.logger.error("TaskActionReceiver",
-                                "Could not refresh widgets after action", refreshError);
-                    } finally {
-                        pending.finish();
-                    }
+                    pending.finish();
                 }
             });
         } catch (RuntimeException error) {

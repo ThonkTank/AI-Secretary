@@ -1132,3 +1132,90 @@ Gerät. Dieser fehlende externe Nachweis wird nicht durch Emulator-, Upgrade- od
 ersetzt. Phase 3c3 wartet deshalb; vor ihrer Vorprüfung muss ein entsperrtes, autorisiertes
 Android-Gerät erreichbar sein und Release 0.2.121 über den echten Updatepfad installiert und
 abgenommen werden.
+
+### Phase 3c3 – Owner-Fortsetzungsentscheidung, Vorprüfung und Implementationsplan
+
+Der Owner hat am 25. August 2026 ausdrücklich angewiesen, ohne verfügbares Handy fortzufahren.
+Die physische In-App-Update- und Sichtabnahme von 3c2b bleibt damit offen und wird nicht als
+bestanden umgedeutet; sie blockiert auf Owner-Entscheidung aber die nachfolgende technische
+Migration nicht mehr. Der Stand vor 3c3 war der saubere Remote-`main`-Commit `a874617b`, während
+der letzte veröffentlichte Produktstand weiterhin Release 0.2.121 aus `a83584aa` war.
+
+Die erneute Sichtung von Roadmap und Produktcode bestätigt 3c3 als kohärenten letzten Teil von
+Phase 3. Eine weitere Teilung würde entweder den neuen Widgetstrom ungemountet lassen oder
+weiterhin direkte Widgetinvalidierungen parallel betreiben. Der gemeinsame Cutover bleibt deshalb
+in einem Themenbranch: `WidgetUpdateCoordinator` wird alleiniger Consumer des Widget-Zielstroms,
+besitzt genau eine Latest-Read-Pipeline und sammelt nur bei mindestens einem installierten Widget.
+Provider-Update und Größenänderung materialisieren einen typisierten Hostimpuls im selben Strom;
+Room, Kalender, Kalenderpolicy, Displaypräferenzen und Uhr bleiben dessen übrige Ursachen.
+
+Die nicht abbrechbare Fachvorbereitung wird vom reinen, interruptiblen Widget-Read getrennt.
+Überlappende Ursachen verwerfen dadurch alte Reads, niemals aber gestartete Materialisierung.
+Provider-Broadcasts erhalten einen Abschluss erst nach der neuesten Publication oder einem echten
+Readfehler. `onEnabled`, `onUpdate`, `onAppWidgetOptionsChanged`, `onDeleted` und `onDisabled`
+bilden Start, Refresh und Stop ab; ein Prozessstart gleicht bereits installierte Widgets nach der
+vollständigen Container-Erzeugung ab. Erst danach entfallen `WidgetInvalidator`, die temporäre
+ViewModel-Umgebungsbrücke und alle direkten Widgetaufrufe nach Screen- oder Receiver-Writes.
+
+### Phase 3c3 – Implementation und Roadmap-Abgleich
+
+- `PresentationInvalidationSource` führt `WIDGET_HOST` als reinen Widgetgrund. Der kalte
+  Widget-Zielflow besitzt weiterhin seinen unabhängigen Initialimpuls und teilt Room-, Kalender-,
+  Policy-, Präferenz- und Uhrquellen mit den aktiven Screen-Consumern. Die provisorische
+  `widgetEnvironmentChanges`-Brücke ist entfernt.
+- `WidgetUpdateCoordinator` startet genau eine vorbereitete Latest-Read-Pipeline, wenn der
+  Launcher mindestens eine Widget-ID meldet. Initial-, Provider-, Daten-, Kalender-, Präferenz-
+  und Uhrimpulse laufen durch denselben Pfad. Eine neue Generation interruptet den alten Read,
+  während `WidgetPresenter.prepare()` nicht abbrechbar materialisiert. Ein erfolgreicher Zyklus
+  lädt einmal und projiziert daraus alle installierten Größen; einzelne fehlerhafte Launcher-IDs
+  blockieren die übrigen nicht.
+- Provider-Abschlüsse werden bis zur neuesten Publication oder einem Readfehler gesammelt und
+  genau einmal beendet. Beim letzten entfernten Widget wird die Pipeline geschlossen und damit
+  der Widget-Collector abgemeldet. Ein App-Prozessstart reaktiviert bereits installierte Widgets
+  erst nach vollständigem Aufbau des `AppContainer`.
+- `TaskViewModel` und `TaskActionReceiver` führen nach Writes keine Widgetinvalidierung mehr aus.
+  Room ist nun auch für RemoteViews die einzige Datenbankwahrheit. Der Übergangsport
+  `WidgetInvalidator`, Theme-Sonderzustand und alle verteilten Aufrufe sind gelöscht; Vordergrund
+  und Permission materialisieren unverändert nur ihre beobachtbaren Clock-/Kalenderquellen.
+- Die ungenutzten kombinierten Presenter-Methoden `refreshDomain`, `refreshWithChanges` und
+  `refresh` sind entfernt. Fachvorbereitung und reine Projektion können dadurch nicht versehentlich
+  wieder zu einem manuellen Reloadpfad zusammengezogen werden.
+- `Clock.now()` erlaubt ein gemeinsames Datum-/Zeit-Sample. `SystemClock`, die Clockquelle und der
+  Widget-Read verwenden dieses kohärente Sample; ein Tagesgrenzimpuls reicht seinen bereits
+  aufgenommenen `ClockSnapshot` unverändert bis zur Projektion weiter. Auch Dashboard-Content und
+  -Appearance verwenden bei Uhrereignissen exakt den Snapshot, auf dessen Datum das Routing seine
+  Readentscheidung getroffen hat.
+
+Der negative Gegencheck fand zwei relevante Schwächen im ersten Entwurf. Zunächst startete der
+Widgetabgleich noch im Konstruktor von `AppContainer` und konnte damit einen nur teilweise
+aufgebauten Composition Root an die asynchrone Pipeline verlieren. Die finale Fassung startet
+erst in `AutoSecretaryApplication`, nachdem der Container vollständig zugewiesen wurde. Außerdem
+las der Widget-Presenter Datum und Uhrzeit getrennt; ein Mitternachtswechsel zwischen beiden
+Abfragen hätte fachlichen Tag und Palette widersprüchlich gemacht. Der neue kohärente Clock-Read
+und die unveränderte Weitergabe des Tagesgrenzsnapshots schließen diese Race-Lücke. Diese beiden
+Korrekturen bilden die Nachtarbeitsphase von 3c3.
+
+Deterministische Tests sichern Inaktivität ohne installierte Widgets, genau einen Start beim
+ersten Widget, Stop beim letzten, Provider-Abschluss nach Publication, Abbruch eines blockierten
+alten Reads ohne Fehlerpublication sowie den unveränderten Tagesgrenzsnapshot. Quellen- und
+Architekturtests belegen die Zieltrennung und Abwesenheit der alten manuellen Pfade. Die physische
+Geräteabnahme bleibt gemäß Owner-Fortsetzungsentscheidung ausdrücklich offen und ist kein Teil
+dieses automatisierten Nachweises.
+
+Lokal bestanden unter Java 21 die vollständige Suite mit 456 Tests ohne Fehler (ein bewusst
+übersprungener Test), Lint sowie Debug-, Android-Test- und unsigned Release-APK. Die 14
+CI-Harnesstests und 22 Release-/Workflow-Vertragstests sind ebenfalls grün. Die APK-Größen
+betragen 8.777.753 Byte Debug, 653.541 Byte Android-Test und 6.373.218 Byte unsigned Release; der
+Fontbestand bleibt mit 1.478.008 Byte unverändert. Schema 16, `minSdk 26`, `targetSdk 35`,
+Signatur-, Upgrade- und visuelle Verträge wurden nicht geändert.
+
+Die neuen Widget-, Quellen-, Clock-, Pipeline-, Screen- und Architekturverträge bestanden danach
+fünf vollständig frische Wiederholungsläufe ohne Timeout oder Race-Ausfall.
+
+Ein erster Volltestlauf meldete einmalig im unveränderten Alles-Tab den bestehenden
+RecyclerView-Vertrag zur Wiederverwendung derselben Holder-Hierarchie rot. Der Test bestand
+anschließend fünf vollständig frische isolierte Läufe sowie den maßgeblichen erneuten 456-Test-
+Gesamtlauf; der 3c3-Diff berührt weder Alles-Adapter noch dessen View-Hierarchie. Die Abweichung
+wird daher als nicht reproduzierbare Lastinteraktion festgehalten, nicht als übergangener
+Produktfehler. Der Abschluss von 3c3 erfordert nun den eigenen grünen Pull Request, Squash-Merge
+und den veröffentlichenden `main`-Lauf.

@@ -7,6 +7,10 @@ import android.os.Bundle;
 
 /** Thin RemoteViews lifecycle adapter; all loading and rendering lives in the coordinator. */
 public final class TaskWidgetProvider extends AppWidgetProvider {
+    @Override public void onEnabled(Context context) {
+        coordinator(context).reconcileInstalledWidgets();
+    }
+
     @Override public void onUpdate(Context context, AppWidgetManager manager, int[] ids) {
         PendingResult pending = goAsync();
         try {
@@ -28,12 +32,12 @@ public final class TaskWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    static void updateAll(Context context) {
-        try {
-            coordinator(context).updateAll();
-        } catch (RuntimeException error) {
-            log(context, "Could not start widget refresh", error);
-        }
+    @Override public void onDeleted(Context context, int[] appWidgetIds) {
+        coordinator(context).reconcileInstalledWidgets();
+    }
+
+    @Override public void onDisabled(Context context) {
+        coordinator(context).stopObserving();
     }
 
     private static WidgetUpdateCoordinator coordinator(Context context) {

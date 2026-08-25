@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 public final class SystemClock implements Clock {
@@ -20,5 +21,9 @@ public final class SystemClock implements Clock {
 
     @Override public LocalTime time() {
         return LocalTime.now(zones.zoneId());
+    }
+
+    @Override public LocalDateTime now() {
+        return LocalDateTime.now(zones.zoneId());
     }
 }

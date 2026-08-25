@@ -3,12 +3,15 @@ package de.thonktank.autosecretary.widget;
 import android.content.Context;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import de.thonktank.autosecretary.calendar.CalendarResult;
 import de.thonktank.autosecretary.AppContainer;
+import de.thonktank.autosecretary.data.observable.ClockSnapshot;
+import de.thonktank.autosecretary.presentation.observable.PresentationInvalidation;
 import de.thonktank.autosecretary.presentation.today.CalendarEventSnapshot;
 import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.R;
@@ -42,13 +45,25 @@ public final class WidgetPresenter {
         this(context, null);
     }
 
+    public void prepare() {
+        container.dashboardPresenter.prepare();
+    }
+
     public CycleData load() {
+        return load(null);
+    }
+
+    public CycleData load(PresentationInvalidation invalidation) {
+        ClockSnapshot clockSnapshot = invalidation == null ? null : invalidation.getClock();
         DayPalette.Mode mode = DayPalette.Mode.valueOf(container.uiPreferences.themeMode().name());
-        LocalDate today = container.clock.today();
+        LocalDateTime now = clockSnapshot == null ? container.clock.now() : null;
+        LocalDate today = clockSnapshot == null ? now.toLocalDate() : clockSnapshot.getDate();
+        java.time.LocalTime time = clockSnapshot == null
+                ? now.toLocalTime() : clockSnapshot.getTime();
         WidgetDashboardUiModel dashboard = dashboardMapper.map(
-                container.dashboardPresenter.refreshDomain(today), today);
+                container.dashboardPresenter.loadDomain(today), today);
         return new CycleData(dashboard, container.calendar.loadToday(),
-                DayPalette.at(container.clock.time(), mode));
+                DayPalette.at(time, mode));
     }
 
     public WidgetUiModel present(CycleData data, WidgetSizeClassifier.Size size) {
