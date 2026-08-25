@@ -29,15 +29,18 @@ public final class RewardBookingEntity {
     public final int comboPointDelta;
     @NonNull public final String bookedOn;
     @Nullable public final String reversesBookingId;
+    @Nullable public final Integer plannedXp;
 
     public RewardBookingEntity(@NonNull String id, @NonNull String transactionId,
                                @NonNull String occurrenceId, @Nullable String occurrenceStepId,
                                @NonNull String ownerId, @NonNull String kind,
                                @NonNull String target, int xpDelta, int comboPointDelta,
-                               @NonNull String bookedOn, @Nullable String reversesBookingId) {
+                               @NonNull String bookedOn, @Nullable String reversesBookingId,
+                               @Nullable Integer plannedXp) {
         this.id = id; this.transactionId = transactionId; this.occurrenceId = occurrenceId;
         this.occurrenceStepId = occurrenceStepId; this.ownerId = ownerId; this.kind = kind;
         this.target = target; this.xpDelta = xpDelta; this.comboPointDelta = comboPointDelta;
         this.bookedOn = bookedOn; this.reversesBookingId = reversesBookingId;
+        this.plannedXp = plannedXp;
     }
 }

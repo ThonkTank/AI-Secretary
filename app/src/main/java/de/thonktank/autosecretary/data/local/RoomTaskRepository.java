@@ -301,7 +301,8 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
         dao.insertRewardBooking(new RewardBookingEntity(booking.id, booking.transactionId,
                 booking.occurrenceId, booking.occurrenceStepId, booking.ownerId,
                 booking.kind.name(), booking.target.name(), booking.xpDelta,
-                booking.comboPointDelta, booking.bookedOn.toString(), booking.reversesBookingId));
+                booking.comboPointDelta, booking.bookedOn.toString(), booking.reversesBookingId,
+                booking.plannedXp));
     }
 
     @Override public List<RewardBooking> rewardBookings(String occurrenceId) {
@@ -359,7 +360,7 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
                     value.occurrenceStepId, value.ownerId, RewardBooking.Kind.valueOf(value.kind),
                     RewardBooking.Target.valueOf(value.target), value.xpDelta,
                     value.comboPointDelta, LocalDate.parse(value.bookedOn),
-                    value.reversesBookingId));
+                    value.reversesBookingId, value.plannedXp));
         return result;
     }
 

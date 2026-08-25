@@ -34,6 +34,8 @@
     <string name="action_complete">erledigen</string>
     <string name="action_complete_all">Alle erledigen</string>
     <string name="action_complete_rest">Rest erledigen</string>
+    <string name="action_finish_today">Für heute abschließen</string>
+    <string name="content_step_actions">Weitere Aktionen für %1$s</string>
     <string name="action_undo">Rückgängig</string>
     <string name="content_undo_task">%1$s rückgängig machen, %2$d XP zurücknehmen</string>
     <string name="completed_today_expand">Heute erledigte Aufgaben anzeigen</string>

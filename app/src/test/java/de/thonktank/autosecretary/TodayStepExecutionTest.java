@@ -59,7 +59,7 @@ public final class TodayStepExecutionTest {
         assertEquals(AdvanceTodayStepResult.Status.PROGRESS_RECORDED, firstAdvance.status);
         assertEquals(Integer.valueOf(12), firstAdvance.recordedPlanValue);
         assertEquals(Arrays.asList("sets", "first", "last"), firstAdvance.openStepIds);
-        assertEquals(0, firstAdvance.xp);
+        assertEquals(4, firstAdvance.xp);
 
         OccurrenceStep changed = repository.findOccurrenceStep("sets");
         assertFalse(changed.done);
@@ -73,7 +73,10 @@ public final class TodayStepExecutionTest {
         assertEquals(AdvanceTodayStepResult.Status.STEP_COMPLETED, completed.status);
         assertEquals(Integer.valueOf(12), completed.recordedPlanValue);
         assertEquals(Arrays.asList("first", "last"), completed.openStepIds);
-        assertEquals(10, completed.xp);
+        assertEquals(3, completed.xp);
+        assertEquals(10, repository.rewardBookings("today").stream()
+                .filter(value -> "sets".equals(value.occurrenceStepId))
+                .mapToInt(value -> value.xpDelta).sum());
         assertTrue(repository.findOccurrenceStep("sets").done);
         assertEquals(Arrays.asList(12, 12, 12), repository.findOccurrenceStep("sets")
                 .repetitionProgress.actualRepetitions);
@@ -128,7 +131,7 @@ public final class TodayStepExecutionTest {
         assertTrue(repository.findOccurrenceStep("last").done);
     }
 
-    @Test public void incompleteRepetitionWriteHasAnExplicitChangedResultWithoutFakeReward() {
+    @Test public void incompleteRepetitionWriteImmediatelyRewardsTheActualRatio() {
         StepExecutionResult result = new RecordRepetitionResult(repository, clock)
                 .execute("sets", 11);
 
@@ -136,8 +139,8 @@ public final class TodayStepExecutionTest {
         assertTrue(result.changed());
         assertEquals(Collections.singletonList(11),
                 result.step.repetitionProgress.actualRepetitions);
-        assertEquals(0, result.rewardReceipt.xp);
-        assertTrue(result.rewardReceipt.transactionId.isEmpty());
+        assertEquals(4, result.rewardReceipt.xp);
+        assertFalse(result.rewardReceipt.transactionId.isEmpty());
     }
 
     private OccurrenceStep step(String id, int position, String text, boolean done,

@@ -253,7 +253,7 @@ public final class TaskEditorFeatureRobolectricTest {
         new CompleteOccurrence(repository, clock).execute(occurrence.id);
     }
 
-    @Test public void repetitionResultsSurviveReloadAndCorrectionsPreserveRewards() {
+    @Test public void repetitionResultsSurviveReloadAndCorrectionsAdjustRewards() {
         int monday = 1;
         TaskStepDefinition mondayStep = new TaskStepDefinition(null, 0, "Beinpresse", monday,
                 StepAmount.setsReps(3, 12), "23 kg, Sitz 5");
@@ -271,21 +271,21 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(Arrays.asList(10, 11), restored.repetitionProgress.actualRepetitions);
         assertFalse(restored.done);
         CorrectRepetitionResult correct = new CorrectRepetitionResult(repository);
-        assertEquals(0, correct.execute(step.id, 0, 0).xp);
+        assertEquals(-2, correct.execute(step.id, 0, 0).xp);
         assertEquals(Arrays.asList(0, 11),
                 repository.findOccurrenceStep(step.id).repetitionProgress.actualRepetitions);
         assertThrows(IllegalArgumentException.class,
                 () -> correct.execute(step.id, 0, 1_000));
-        assertEquals(10, record.execute(step.id, 12).xp);
+        assertEquals(3, record.execute(step.id, 12).xp);
         assertTrue(repository.findOccurrenceStep(step.id).done);
         assertEquals(2, repository.combo(step.comboOwnerId).points);
 
-        assertEquals(0, correct.execute(step.id, 0, 9).xp);
+        assertEquals(2, correct.execute(step.id, 0, 9).xp);
         OccurrenceStep editedDone = repository.findOccurrenceStep(step.id);
         assertTrue(editedDone.done);
         assertEquals(Arrays.asList(9, 11, 12),
                 editedDone.repetitionProgress.actualRepetitions);
-        assertEquals(10, vesselXp(occurrence.id));
+        assertEquals(9, vesselXp(occurrence.id));
 
         assertTrue(repository.findOccurrenceStep(step.id).done);
         assertEquals(2, repository.combo(step.comboOwnerId).points);
@@ -298,7 +298,7 @@ public final class TaskEditorFeatureRobolectricTest {
                 .mapToInt(value -> value.xpDelta).sum();
     }
 
-    @Test public void completeRemainingExplicitlyClosesWithoutAllResultsAndNextStartsEmpty() {
+    @Test public void completeRemainingFillsMissingPlansAndNextStartsEmpty() {
         TaskStepDefinition exercise = new TaskStepDefinition(null, 0, "Kniebeugen", 0,
                 StepAmount.setsReps(3, 15), "");
         new CreateTask(repository, repository, clock, ids).execute(definition(
@@ -309,10 +309,10 @@ public final class TaskEditorFeatureRobolectricTest {
         new RecordRepetitionResult(repository).execute(step.id, 13);
         new CompleteRemainingSteps(repository, clock).execute(step.occurrenceId);
         assertTrue(repository.findOccurrenceStep(step.id).done);
-        assertEquals(Collections.singletonList(13), repository.findOccurrenceStep(step.id)
+        assertEquals(Arrays.asList(13, 15, 15), repository.findOccurrenceStep(step.id)
                 .repetitionProgress.actualRepetitions);
         assertEquals(de.thonktank.autosecretary.domain.model.RepetitionProgress.Completion
-                        .COMPLETED_WITHOUT_RESULTS,
+                        .RESULTS_COMPLETE,
                 repository.findOccurrenceStep(step.id).repetitionProgress.completion);
 
         new CompleteOccurrence(repository, clock).execute(step.occurrenceId);
@@ -323,7 +323,7 @@ public final class TaskEditorFeatureRobolectricTest {
         assertFalse(next.done);
     }
 
-    @Test public void singleRepetitionValuePersistsAndCompletesWithOneReward() {
+    @Test public void explicitZeroPersistsAndCompletesWithoutRewardOrCombo() {
         TaskStepDefinition exercise = new TaskStepDefinition(null, 0, "Liegestütze", 0,
                 StepAmount.repetitions(12), "auf Fäusten");
         new CreateTask(repository, repository, clock, ids).execute(definition(
@@ -333,18 +333,17 @@ public final class TaskEditorFeatureRobolectricTest {
         OccurrenceStep step = repository.occurrenceSteps(
                 repository.openOccurrences().get(0).id).get(0);
 
-        assertEquals(10, new RecordRepetitionResult(repository, clock).execute(step.id, 0).xp);
+        assertEquals(0, new RecordRepetitionResult(repository, clock).execute(step.id, 0).xp);
 
         OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
         assertTrue(restored.done);
         assertEquals(Collections.singletonList(0), restored.repetitionProgress.actualRepetitions);
-        assertEquals(2, repository.combo(step.comboOwnerId).points);
+        assertEquals(0, repository.combo(step.comboOwnerId).points);
         assertEquals(0, new RecordRepetitionResult(repository, clock).execute(step.id, 1).xp);
 
-        assertEquals(-10, new ToggleStep(repository, clock).execute(step.id).xp);
-        OccurrenceStep reopened = repository.findOccurrenceStep(step.id);
-        assertFalse(reopened.done);
-        assertTrue(reopened.repetitionProgress.actualRepetitions.isEmpty());
+        assertEquals(0, new ToggleStep(repository, clock).execute(step.id).xp);
+        assertTrue(repository.findOccurrenceStep(step.id).done);
+        assertTrue(repository.rewardBookings(step.occurrenceId).isEmpty());
     }
 
     @Test public void editorBundleKeepsDirtyExpandedStepsAndErrors() {

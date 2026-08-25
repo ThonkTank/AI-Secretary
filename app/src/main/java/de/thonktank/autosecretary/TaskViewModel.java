@@ -267,6 +267,15 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                 });
     }
 
+    @Override public void handleFinishStep(String stepId) {
+        runTodayReward(command(UiCommand.Kind.FINISH_STEP, stepId),
+                () -> {
+                    RewardReceipt receipt = tasks.finishStepForToday.execute(stepId);
+                    if (timers != null) timers.resetForStep(stepId);
+                    return receipt;
+                });
+    }
+
     @Override public void handleAdvanceStep(String stepId) {
         runTodayAdvance(command(UiCommand.Kind.ADVANCE_TODAY_STEP, stepId), stepId);
     }

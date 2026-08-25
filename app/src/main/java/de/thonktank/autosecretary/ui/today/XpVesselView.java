@@ -48,8 +48,8 @@ public final class XpVesselView extends View {
         this.base = model.reward.baseXp;
         multiplierLabel = model.multiplierLabel;
         breakdownLabel = model.breakdownLabel;
-        float nextFill = model.total == 0 || base == 0 ? 0f
-                : model.done / (float) model.total;
+        float nextFill = model.plannedXp == 0 ? 0f
+                : Math.min(1f, model.earnedXp / (float) model.plannedXp);
         this.fill = nextFill;
         this.ready = model.ready;
         this.comboStage = model.reward.comboStage;

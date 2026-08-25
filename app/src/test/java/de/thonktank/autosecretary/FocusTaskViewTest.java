@@ -29,6 +29,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadow.api.Shadow;
+import org.robolectric.shadows.ShadowPopupMenu;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -88,6 +90,29 @@ public final class FocusTaskViewTest {
         TodayAction adjustment = events.lastToday(TodayAction.Kind.ADJUST_REPETITION);
         assertEquals("step-1", adjustment.id);
         assertEquals(1, adjustment.value);
+    }
+
+    @Test public void quantitativeStepOffersTheTrailingFinishForTodayMenu() {
+        Context context = ApplicationProvider.getApplicationContext();
+        FocusStepUiModel step = FocusTaskFixtures.step("step-1", "Beinpresse")
+                .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.singletonList(10))).build();
+        DashboardEventRecorder events = new DashboardEventRecorder();
+        FocusStepRowView row = new FocusStepRowView(context);
+        row.bind(step, true, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+                RepetitionInputState.idle(), events);
+
+        View menu = findByContentDescription(row,
+                context.getString(R.string.content_step_actions, "Beinpresse"));
+        assertTrue(menu != null);
+        assertTrue(menu.getLayoutParams().width >= new UiStyle(context).dp(48));
+        assertTrue(menu.performClick());
+        android.widget.PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
+        assertTrue(popup != null);
+        assertEquals("Für heute abschließen", popup.getMenu().getItem(0).getTitle().toString());
+        assertTrue(((ShadowPopupMenu) Shadow.extract(popup)).getOnMenuItemClickListener()
+                .onMenuItemClick(popup.getMenu().getItem(0)));
+        assertEquals("step-1", events.lastToday(TodayAction.Kind.FINISH_STEP).id);
     }
 
     @Test public void singleRepetitionsConfirmOnceWhileDurationCompletesDirectly() {

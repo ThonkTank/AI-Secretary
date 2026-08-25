@@ -339,7 +339,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
     private static RewardBooking project(RewardBooking value, String occurrenceId) {
         return new RewardBooking(value.id, value.transactionId, occurrenceId,
                 value.occurrenceStepId, value.ownerId, value.kind, value.target,
-                value.xpDelta, value.comboPointDelta, value.bookedOn, value.reversesBookingId);
+                value.xpDelta, value.comboPointDelta, value.bookedOn, value.reversesBookingId,
+                value.plannedXp);
     }
 
     private static Comparator<TaskScheduleEntry> scheduleOrder() {

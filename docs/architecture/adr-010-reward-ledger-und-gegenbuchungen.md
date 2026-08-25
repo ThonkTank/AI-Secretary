@@ -47,6 +47,10 @@ in `combo_decay_events`, damit auch eine Auswertung bei bereits null Punkten ide
 Welche echten Termine eine Auswertung erlauben, definiert
 [ADR-024](adr-024-terminbewusste-kombos.md).
 
+Schema 19 ergänzt den optionalen eingefrorenen vollen Planwert `plannedXp` und die Buchungsart
+`STEP_ADJUSTMENT`. Mengen- und Korrektureingaben hängen damit vorzeichenbehaftete Differenzen an,
+ohne frühere Buchungen oder nachträglich geänderte Komborichtlinien neu zu bewerten.
+
 `RewardReceipt` enthält eine Transaktions-ID und die zugehörigen Buchungen. Seine XP- und
 Kombowerte sind vorzeichenbehaftet; Animation und Darstellung leiten die Richtung aus dem
 Vorzeichen ab. Ein separates Reverse-Flag existiert nicht mehr.

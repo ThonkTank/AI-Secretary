@@ -541,6 +541,13 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Freezes the full planned step XP on the first quantitative ledger booking. */
+    public static final Migration MIGRATION_18_19 = new Migration(18, 19) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE reward_bookings ADD COLUMN plannedXp INTEGER");
+        }
+    };
+
     /** Complete historical graph for migration fixtures and archive tests. */
     public static Migration[] all() {
         return from(1);
@@ -552,7 +559,7 @@ public final class DatabaseMigrations {
                 MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
                 MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                 MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-                MIGRATION_16_17, MIGRATION_17_18};
+                MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

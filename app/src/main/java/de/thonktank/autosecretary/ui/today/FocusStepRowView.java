@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ public final class FocusStepRowView extends LinearLayout {
     private final DewDotView reward;
     private final TextView title;
     private final TextView amount;
+    private final TextView menu;
     private final TextView note;
     private final LinearLayout controls;
     private final RepStepperView stepper;
@@ -79,6 +81,12 @@ public final class FocusStepRowView extends LinearLayout {
         amount.setSingleLine(true);
         amount.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         header.addView(amount, new LinearLayout.LayoutParams(-2, -2));
+        menu = style.sans("⋮", 24, 0, true);
+        menu.setGravity(Gravity.CENTER);
+        menu.setMinWidth(style.dp(48));
+        menu.setMinHeight(style.dp(48));
+        AccessibilityRoles.button(menu);
+        header.addView(menu, new LinearLayout.LayoutParams(style.dp(48), style.dp(48)));
         body.addView(header, new LinearLayout.LayoutParams(-1, -2));
 
         note = style.sans("", 15, 0, false);
@@ -147,6 +155,12 @@ public final class FocusStepRowView extends LinearLayout {
         amount.setText(step.amountLabel);
         amount.setTextColor(palette.muted);
         amount.setVisibility(!active && !step.amountLabel.isEmpty() ? VISIBLE : GONE);
+        boolean hasMenu = step.repetitionProgress != null && !step.isDone();
+        menu.setVisibility(hasMenu ? VISIBLE : GONE);
+        menu.setTextColor(palette.muted);
+        menu.setContentDescription(getContext().getString(
+                R.string.content_step_actions, step.title));
+        menu.setOnClickListener(hasMenu ? view -> showStepMenu(view, step, events) : null);
         note.setText(step.note);
         note.setTextColor(palette.hint);
         note.setVisibility(step.note.isEmpty() ? GONE : VISIBLE);
@@ -279,6 +293,16 @@ public final class FocusStepRowView extends LinearLayout {
                 return;
         }
         throw new AssertionError("Unhandled step action " + action.kind);
+    }
+
+    private void showStepMenu(View anchor, FocusStepUiModel step, TodayActionSink events) {
+        PopupMenu popup = new PopupMenu(getContext(), anchor);
+        popup.getMenu().add(R.string.action_finish_today);
+        popup.setOnMenuItemClickListener(item -> {
+            events.emit(TodayAction.finishStep(step.id));
+            return true;
+        });
+        popup.show();
     }
 
     void setOnStepLongClickListener(OnLongClickListener listener) {

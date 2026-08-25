@@ -94,6 +94,7 @@ public final class DashboardUiMapper {
             next = texts.text(steps.isEmpty() ? R.string.next_mark_done : R.string.next_all_done);
         ComboProgress taskCombo = dashboard.combos.get(ComboProgress.taskOwner(task.id));
         int collected = collectedXp(steps);
+        int planned = plannedXp(steps);
         RewardBreakdown reward = taskReward(item, today, taskCombo, steps, collected);
         int done = steps.size() - remaining;
         TaskActionTarget target = actionTarget(item);
@@ -105,8 +106,8 @@ public final class DashboardUiMapper {
                 .backlogCount(item.backlogCount)
                 .allowDefer(allowDefer)
                 .harvestReady(!steps.isEmpty() && collected > 0)
-                .reward(reward, XpVesselUiModel.of(reward, done, steps.size(),
-                        !steps.isEmpty() && collected > 0, rewardTexts))
+                .reward(reward, XpVesselUiModel.quantitative(reward, done, steps.size(),
+                        collected, planned, !steps.isEmpty() && collected > 0, rewardTexts))
                 .build();
     }
 
@@ -144,9 +145,12 @@ public final class DashboardUiMapper {
             else if (repetition != null)
                 action = StepExecutionUiAction.submitRepetition(step.id);
             else action = StepExecutionUiAction.toggle(step.id);
+            int earnedXp = item.earnedXp(step.id);
+            int plannedXp = item.plannedXp(step.id,
+                    earnedXp > 0 ? earnedXp : reward.resultXp);
             FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, step.text,
                     stepTexts.compactAmount(step.amount), step.note, status, action, repetition,
-                    reward, item.earnedXp(step.id));
+                    reward, earnedXp, plannedXp);
             if (step.amount instanceof StepAmount.Duration)
                 mapped = mapped.withDurationSeconds(
                         ((StepAmount.Duration) step.amount).seconds);
@@ -184,6 +188,12 @@ public final class DashboardUiMapper {
         int collected = 0;
         for (FocusStepUiModel step : steps) collected += step.earnedXp;
         return collected;
+    }
+
+    private static int plannedXp(List<FocusStepUiModel> steps) {
+        int planned = 0;
+        for (FocusStepUiModel step : steps) planned += step.plannedXp;
+        return planned;
     }
 
     private static String stableId(DashboardTask item) {

@@ -4,7 +4,7 @@ import java.time.LocalDate;
 
 /** Immutable ledger entry for one signed XP/combo change. */
 public final class RewardBooking {
-    public enum Kind { STEP_EARNED, ROUTINE_HARVEST, SINGLE_COMPLETION, CONDITION_COMPLETION,
+    public enum Kind { STEP_EARNED, STEP_ADJUSTMENT, ROUTINE_HARVEST, SINGLE_COMPLETION, CONDITION_COMPLETION,
         COMBO_DECAY, LEGACY_STEP, LEGACY_COMPLETION, REVERSAL }
     public enum Target { VESSEL, HEAD }
 
@@ -19,11 +19,20 @@ public final class RewardBooking {
     public final int comboPointDelta;
     public final LocalDate bookedOn;
     public final String reversesBookingId;
+    public final Integer plannedXp;
 
     public RewardBooking(String id, String transactionId, String occurrenceId,
                          String occurrenceStepId, String ownerId, Kind kind, Target target,
                          int xpDelta, int comboPointDelta, LocalDate bookedOn,
                          String reversesBookingId) {
+        this(id, transactionId, occurrenceId, occurrenceStepId, ownerId, kind, target,
+                xpDelta, comboPointDelta, bookedOn, reversesBookingId, null);
+    }
+
+    public RewardBooking(String id, String transactionId, String occurrenceId,
+                         String occurrenceStepId, String ownerId, Kind kind, Target target,
+                         int xpDelta, int comboPointDelta, LocalDate bookedOn,
+                         String reversesBookingId, Integer plannedXp) {
         if (blank(id) || blank(transactionId) || blank(occurrenceId) || blank(ownerId)
                 || kind == null || target == null || bookedOn == null)
             throw new IllegalArgumentException("Reward booking identity and classification are required");
@@ -44,13 +53,14 @@ public final class RewardBooking {
         this.comboPointDelta = comboPointDelta;
         this.bookedOn = bookedOn;
         this.reversesBookingId = blank(reversesBookingId) ? null : reversesBookingId;
+        this.plannedXp = plannedXp == null ? null : Math.max(0, plannedXp);
     }
 
     public RewardBooking reverse(String reversalId, String reversalTransactionId, LocalDate date) {
         if (kind == Kind.REVERSAL) throw new IllegalStateException("A reversal cannot be reversed");
         return new RewardBooking(reversalId, reversalTransactionId, occurrenceId,
                 occurrenceStepId, ownerId, Kind.REVERSAL, target, -xpDelta,
-                -comboPointDelta, date, id);
+                -comboPointDelta, date, id, plannedXp);
     }
 
     private static boolean blank(String value) { return value == null || value.trim().isEmpty(); }

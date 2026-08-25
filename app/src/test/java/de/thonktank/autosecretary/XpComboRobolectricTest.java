@@ -13,6 +13,8 @@ import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
+import de.thonktank.autosecretary.domain.model.ComboPolicy;
+import de.thonktank.autosecretary.domain.model.ComboDecayTrigger;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
@@ -21,7 +23,11 @@ import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
+import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
+import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
@@ -30,6 +36,11 @@ import de.thonktank.autosecretary.domain.usecase.HarvestOccurrence;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
+import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
+import de.thonktank.autosecretary.domain.usecase.CorrectRepetitionResult;
+import de.thonktank.autosecretary.domain.usecase.FinishStepForToday;
+import de.thonktank.autosecretary.domain.usecase.SettlePreviousPartialOccurrences;
+import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 
 import org.junit.After;
 import org.junit.Before;
@@ -209,6 +220,157 @@ public final class XpComboRobolectricTest {
         assertEquals(10, receipt.xp);
         assertEquals(2, receipt.comboPointDelta);
         assertEquals(2, repository.combo(ComboProgress.taskOwner(occurrence.taskId)).points);
+    }
+
+    @Test public void repetitionXpTracksActualRatioAndCorrectionsAgainstFrozenPlan() {
+        de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
+        createQuantitativeTask(ids, StepAmount.repetitions(10));
+        Occurrence occurrence = repository.openOccurrences().get(0);
+        OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
+        RecordRepetitionResult record = new RecordRepetitionResult(repository, clock);
+        CorrectRepetitionResult correct = new CorrectRepetitionResult(repository, clock);
+
+        assertEquals(5, record.execute(step.id, 5).xp);
+        assertEquals(2, repository.combo(step.comboOwnerId).points);
+        assertEquals(10, repository.rewardBookings(occurrence.id).get(0).plannedXp.intValue());
+
+        assertEquals(10, correct.execute(step.id, 0, 15).xp);
+        assertEquals(15, vesselXp(occurrence.id, step.id));
+        assertTrue(repository.rewardBookings(occurrence.id).stream()
+                .anyMatch(value -> value.kind == RewardBooking.Kind.STEP_ADJUSTMENT));
+
+        assertEquals(-15, correct.execute(step.id, 0, 0).xp);
+        assertEquals(0, vesselXp(occurrence.id, step.id));
+        assertEquals(0, repository.combo(step.comboOwnerId).points);
+    }
+
+    @Test public void setXpUsesSumOfActualsAndMayExceedFullPlan() {
+        de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
+        createQuantitativeTask(ids, StepAmount.setsReps(3, 10));
+        Occurrence occurrence = repository.openOccurrences().get(0);
+        OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
+        RecordRepetitionResult record = new RecordRepetitionResult(repository, clock);
+
+        assertEquals(2, record.execute(step.id, 5).xp);
+        assertEquals(3, record.execute(step.id, 10).xp);
+        assertEquals(7, record.execute(step.id, 20).xp);
+        assertEquals(12, vesselXp(occurrence.id, step.id));
+        assertTrue(repository.findOccurrenceStep(step.id).done);
+        de.thonktank.autosecretary.presentation.today.FocusTaskUiModel focus =
+                new de.thonktank.autosecretary.presentation.DashboardUiMapper(
+                        new de.thonktank.autosecretary.presentation.AndroidUiTextProvider(
+                                ApplicationProvider.getApplicationContext()))
+                        .map(new de.thonktank.autosecretary.domain.usecase.LoadDashboard(repository)
+                                .execute(today), today).focus;
+        assertEquals(12, focus.reward.resultXp);
+        assertEquals(12, focus.vessel.earnedXp);
+        assertEquals(10, focus.vessel.plannedXp);
+    }
+
+    @Test public void correctionKeepsTheComboPolicyOfTheFirstPositiveBooking() {
+        de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
+        createQuantitativeTask(ids, StepAmount.repetitions(10));
+        Occurrence occurrence = repository.openOccurrences().get(0);
+        OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
+        ComboPolicy[] selected = {new ComboPolicy(0, 1,
+                ComboDecayTrigger.DAILY_OVERDUE)};
+        ComboPolicySource source = () -> selected[0];
+
+        assertEquals(5, new RecordRepetitionResult(repository, clock, source)
+                .execute(step.id, 5).xp);
+        selected[0] = new ComboPolicy(4, 1, ComboDecayTrigger.DAILY_OVERDUE);
+        assertEquals(1, new CorrectRepetitionResult(repository, clock, source)
+                .execute(step.id, 0, 6).xp);
+        assertEquals(0, repository.combo(step.comboOwnerId).points);
+        assertEquals(6, vesselXp(occurrence.id, step.id));
+    }
+
+    @Test public void explicitZeroCompletesWithoutXpButResolvesTheScheduledObligation() {
+        de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
+        createQuantitativeTask(ids, StepAmount.repetitions(10));
+        Occurrence occurrence = repository.openOccurrences().get(0);
+        OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
+
+        assertEquals(0, new RecordRepetitionResult(repository, clock).execute(step.id, 0).xp);
+        assertTrue(repository.findOccurrenceStep(step.id).done);
+        assertEquals(OccurrenceState.COMPLETED,
+                repository.findOccurrence(occurrence.id).state);
+        assertTrue(repository.rewardBookings(occurrence.id).isEmpty());
+        assertEquals(0, repository.combo(step.comboOwnerId).points);
+        assertTrue(repository.comboObligations().stream()
+                .anyMatch(value -> step.comboOwnerId.equals(value.ownerId)
+                        && value.resolvedOn != null));
+        assertTrue(repository.comboObligations().stream()
+                .anyMatch(value -> ComboProgress.taskOwner(occurrence.taskId).equals(value.ownerId)
+                        && value.resolvedOn != null));
+    }
+
+    @Test public void finishForTodayPreservesPartialActualsAndRestFillsOnlyMissingSlots() {
+        de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
+        createQuantitativeTask(ids, StepAmount.setsReps(3, 10));
+        Occurrence occurrence = repository.openOccurrences().get(0);
+        OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
+        new RecordRepetitionResult(repository, clock).execute(step.id, 5);
+
+        new FinishStepForToday(repository, clock, ComboPolicySource.defaults()).execute(step.id);
+        OccurrenceStep early = repository.findOccurrenceStep(step.id);
+        assertTrue(early.done);
+        assertEquals(Collections.singletonList(5),
+                early.repetitionProgress.actualRepetitions);
+
+        new CorrectRepetitionResult(repository, clock).execute(step.id, 0, 6);
+        assertEquals(2, vesselXp(occurrence.id, step.id));
+
+        // A fresh occurrence proves that "Rest erledigen" retains real input and fills the rest.
+        new HarvestOccurrence(repository, clock).execute(occurrence.id);
+        clock.date = today.plusDays(1);
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        Occurrence next = repository.openOccurrences().stream()
+                .filter(value -> value.scheduledOn.equals(clock.date)).findFirst().get();
+        OccurrenceStep nextStep = repository.occurrenceSteps(next.id).get(0);
+        new RecordRepetitionResult(repository, clock).execute(nextStep.id, 5);
+        new CompleteRemainingSteps(repository, clock).execute(next.id);
+        assertEquals(Arrays.asList(5, 10, 10), repository.findOccurrenceStep(nextStep.id)
+                .repetitionProgress.actualRepetitions);
+        assertEquals(13, vesselXp(next.id, nextStep.id));
+    }
+
+    @Test public void nextDayAutoHarvestsPositivePartialWorkExactlyOnce() {
+        de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
+        clock.date = today.minusDays(1);
+        createQuantitativeTask(ids, StepAmount.setsReps(3, 10));
+        Occurrence occurrence = repository.openOccurrences().get(0);
+        OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
+        new RecordRepetitionResult(repository, clock).execute(step.id, 5);
+        assertEquals(0, repository.xp());
+
+        clock.date = today;
+        SettlePreviousPartialOccurrences settle = new SettlePreviousPartialOccurrences(
+                repository, clock, ComboPolicySource.defaults());
+        assertTrue(settle.execute());
+        assertEquals(2, repository.xp());
+        assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(occurrence.id).state);
+        assertEquals(Collections.singletonList(5), repository.findOccurrenceStep(step.id)
+                .repetitionProgress.actualRepetitions);
+        assertFalse(settle.execute());
+        assertEquals(2, repository.xp());
+    }
+
+    private void createQuantitativeTask(
+            de.thonktank.autosecretary.domain.usecase.IdGenerator ids, StepAmount amount) {
+        TaskStepDefinition step = new TaskStepDefinition(null, 0, "Menge", 0, amount, "");
+        TaskDefinition task = new TaskDefinition("Quantitativ", 10, TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
+                null, null, null, null, "", Collections.singletonList(step));
+        new CreateTask(repository, repository, clock, ids).execute(task);
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+    }
+
+    private int vesselXp(String occurrenceId, String stepId) {
+        return repository.rewardBookings(occurrenceId).stream()
+                .filter(value -> stepId.equals(value.occurrenceStepId)
+                        && value.target == RewardBooking.Target.VESSEL)
+                .mapToInt(value -> value.xpDelta).sum();
     }
 
     private static final class MutableClock implements Clock {

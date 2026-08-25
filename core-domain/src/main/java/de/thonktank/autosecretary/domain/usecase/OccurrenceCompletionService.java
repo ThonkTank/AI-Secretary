@@ -69,7 +69,8 @@ public final class OccurrenceCompletionService {
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
             for (OccurrenceStep step : occurrences.occurrenceSteps(occurrenceId))
-                if (!step.done) bookings.addAll(stepExecution.completeStep(occurrence, step,
+                if (!step.done) bookings.addAll(stepExecution.completeWithPlannedResults(
+                        occurrence, step,
                         transactionId).bookings);
             return RewardReceipt.of(transactionId, bookings, RewardReceipt.Target.VESSEL);
         });
@@ -86,7 +87,8 @@ public final class OccurrenceCompletionService {
             String transactionId = newId();
             List<RewardBooking> bookings = new ArrayList<>();
             for (OccurrenceStep step : occurrences.occurrenceSteps(occurrenceId))
-                if (!step.done) bookings.addAll(stepExecution.completeStep(occurrence, step,
+                if (!step.done) bookings.addAll(stepExecution.completeWithPlannedResults(
+                        occurrence, step,
                         transactionId).bookings);
             bookings.addAll(harvest(occurrences.findOccurrence(occurrenceId), task,
                     transactionId).bookings);
