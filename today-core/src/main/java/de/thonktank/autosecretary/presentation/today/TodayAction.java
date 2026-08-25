@@ -14,6 +14,7 @@ public final class TodayAction {
         HARVEST,
         DEFER,
         TOGGLE_STEP,
+        FINISH_STEP,
         ADVANCE_STEP,
         UNDO_OCCURRENCE,
         ADJUST_REPETITION,
@@ -72,6 +73,10 @@ public final class TodayAction {
 
     public static TodayAction toggleStep(String stepId) {
         return identified(Kind.TOGGLE_STEP, stepId);
+    }
+
+    public static TodayAction finishStep(String stepId) {
+        return identified(Kind.FINISH_STEP, stepId);
     }
 
     public static TodayAction advanceStep(String stepId) {

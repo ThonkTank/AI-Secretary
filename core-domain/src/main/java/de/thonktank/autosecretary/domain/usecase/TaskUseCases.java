@@ -21,11 +21,13 @@ public final class TaskUseCases {
     public final MoveTodayStep moveTodayStep;
     public final RecordRepetitionResult recordRepetitionResult;
     public final CorrectRepetitionResult correctRepetitionResult;
+    public final FinishStepForToday finishStepForToday;
     public final CompleteOccurrence complete;
     public final CompleteRemainingSteps completeRemainingSteps;
     public final HarvestOccurrence harvest;
     public final UndoOccurrence undoOccurrence;
     public final ApplyComboDecay applyComboDecay;
+    public final SettlePreviousPartialOccurrences settlePreviousPartialOccurrences;
     public final CloseOngoingTask closeOngoing;
     public final MaterializeDueOccurrences materializeDue;
     public final LoadDashboard loadDashboard;
@@ -53,11 +55,14 @@ public final class TaskUseCases {
         moveTodayStep = new MoveTodayStep(repository);
         recordRepetitionResult = new RecordRepetitionResult(repository, clock, policies);
         correctRepetitionResult = new CorrectRepetitionResult(repository, clock, policies);
+        finishStepForToday = new FinishStepForToday(repository, clock, policies);
         complete = new CompleteOccurrence(repository, clock, policies);
         completeRemainingSteps = new CompleteRemainingSteps(repository, clock, policies);
         harvest = new HarvestOccurrence(repository, clock, policies);
         undoOccurrence = new UndoOccurrence(repository, clock, policies);
         applyComboDecay = new ApplyComboDecay(repository, clock, policies);
+        settlePreviousPartialOccurrences = new SettlePreviousPartialOccurrences(
+                repository, clock, policies);
         closeOngoing = new CloseOngoingTask(repository, clock);
         loadTaskDetails = new LoadTaskDetails(repository);
         loadTaskCatalog = new LoadTaskCatalog(repository);

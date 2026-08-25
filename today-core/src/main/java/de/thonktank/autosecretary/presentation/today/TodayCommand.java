@@ -10,6 +10,7 @@ public final class TodayCommand {
         HARVEST,
         DEFER,
         TOGGLE_STEP,
+        FINISH_STEP,
         ADVANCE_STEP,
         UNDO_OCCURRENCE,
         ADJUST_REPETITION,

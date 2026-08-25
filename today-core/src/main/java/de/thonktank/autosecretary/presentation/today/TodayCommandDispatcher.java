@@ -10,6 +10,7 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
         void handleHarvest(String occurrenceId);
         void handleDefer(String occurrenceId);
         void handleToggleStep(String stepId);
+        void handleFinishStep(String stepId);
         void handleAdvanceStep(String stepId);
         void handleUndoOccurrence(String occurrenceId);
         void handleAdjustRepetition(String stepId, int delta);
@@ -52,6 +53,9 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
                 return;
             case TOGGLE_STEP:
                 handlers.handleToggleStep(command.id);
+                return;
+            case FINISH_STEP:
+                handlers.handleFinishStep(command.id);
                 return;
             case ADVANCE_STEP:
                 handlers.handleAdvanceStep(command.id);

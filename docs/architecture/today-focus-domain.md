@@ -48,12 +48,13 @@ und Writes verwenden ihn nicht mehr. Details stehen in
 Die produktiven Befehle heißen jetzt nach ihrem tatsächlichen Verhalten:
 
 - `RecordRepetitionResult` erfasst den nächsten Ist-Wert für Satz- und Einzelwiederholungen.
-- `CorrectRepetitionResult` korrigiert einen vorhandenen Wert, ohne Rewardbuchungen zu ändern.
+- `CorrectRepetitionResult` korrigiert einen vorhandenen Wert und bucht nur die signierte
+  Differenz zum mengenbasierten XP-Ziel.
 
 Die nicht mehr aus einem Produktions-UI-Pfad erreichbaren Altbefehle `ConfirmSet`,
 `EditStepProgress`, `FinishExercise` und `ReopenExercise` wurden entfernt. Vorzeitiges
-Abschließen bleibt über den sichtbaren Befehl „Rest erledigen“ erhalten und ist nun als
-`COMPLETED_WITHOUT_RESULTS` modelliert.
+Abschließen bleibt pro Mengenschritt über „Für heute abschließen“ erhalten und ist als
+`COMPLETED_WITHOUT_RESULTS` modelliert. „Rest erledigen“ ergänzt dagegen fehlende Planwerte.
 
 ## Verbleibende Schulden
 

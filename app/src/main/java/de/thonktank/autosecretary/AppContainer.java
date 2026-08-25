@@ -88,7 +88,8 @@ public final class AppContainer {
         this.presentationInvalidations = new PresentationInvalidationSource(databaseInvalidations,
                 calendarInvalidations, preferenceInvalidations, clockInvalidations);
         this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
-                tasks.materializeDue, new DashboardUiMapper(texts), tasks.applyComboDecay);
+                tasks.materializeDue, new DashboardUiMapper(texts), tasks.applyComboDecay,
+                tasks.settlePreviousPartialOccurrences);
         this.executors = new AppExecutors();
         this.timers = new TimerManager(new RoomTimerSessionStore(database.timers()),
                 new AndroidTimerScheduler(app), new TimerNotificationPublisher(app),

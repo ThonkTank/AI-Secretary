@@ -100,15 +100,18 @@ public final class LoadDashboard {
                                       int backlogCount) {
         List<OccurrenceStep> values = steps.get(occurrence.id);
         Map<String, Integer> stepXp = new HashMap<>();
+        Map<String, Integer> stepPlanXp = new HashMap<>();
         int awardedXp = 0;
         List<RewardBooking> bookings = rewards.get(occurrence.id);
         if (bookings != null) for (RewardBooking booking : bookings) {
             if (booking.target == RewardBooking.Target.HEAD) awardedXp += booking.xpDelta;
             else if (booking.occurrenceStepId != null) stepXp.put(booking.occurrenceStepId,
                     stepXp.getOrDefault(booking.occurrenceStepId, 0) + booking.xpDelta);
+            if (booking.occurrenceStepId != null && booking.plannedXp != null)
+                stepPlanXp.put(booking.occurrenceStepId, booking.plannedXp);
         }
         return new DashboardTask(task, occurrence, values == null ? new ArrayList<>() : values,
-                done, stepXp, awardedXp, occurrence.slot, backlogCount);
+                done, stepXp, awardedXp, occurrence.slot, backlogCount, stepPlanXp);
     }
 
     private static Map<String, List<OccurrenceStep>> groupSteps(List<OccurrenceStep> values) {

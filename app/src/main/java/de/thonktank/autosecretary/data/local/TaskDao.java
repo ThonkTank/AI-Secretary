@@ -99,7 +99,7 @@ public interface TaskDao {
     @Query("SELECT rb.id,rb.transactionId,"
             + "COALESCE(ra.occurrenceId,rb.occurrenceId) AS occurrenceId,"
             + "rb.occurrenceStepId,rb.ownerId,rb.kind,rb.target,rb.xpDelta,"
-            + "rb.comboPointDelta,rb.bookedOn,rb.reversesBookingId FROM reward_bookings rb "
+            + "rb.comboPointDelta,rb.bookedOn,rb.reversesBookingId,rb.plannedXp FROM reward_bookings rb "
             + "LEFT JOIN reward_assignments ra ON ra.bookingId=rb.id "
             + "WHERE COALESCE(ra.occurrenceId,rb.occurrenceId)=:occurrenceId "
             + "ORDER BY rb.bookedOn,rb.id")
@@ -107,7 +107,7 @@ public interface TaskDao {
     @Query("SELECT rb.id,rb.transactionId,"
             + "COALESCE(ra.occurrenceId,rb.occurrenceId) AS occurrenceId,"
             + "rb.occurrenceStepId,rb.ownerId,rb.kind,rb.target,rb.xpDelta,"
-            + "rb.comboPointDelta,rb.bookedOn,rb.reversesBookingId FROM reward_bookings rb "
+            + "rb.comboPointDelta,rb.bookedOn,rb.reversesBookingId,rb.plannedXp FROM reward_bookings rb "
             + "LEFT JOIN reward_assignments ra ON ra.bookingId=rb.id "
             + "WHERE COALESCE(ra.occurrenceId,rb.occurrenceId) IN (:occurrenceIds) "
             + "ORDER BY rb.bookedOn,rb.id")
