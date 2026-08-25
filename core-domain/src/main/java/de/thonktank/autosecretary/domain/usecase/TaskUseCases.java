@@ -40,6 +40,12 @@ public final class TaskUseCases {
     public final SwapTaskSteps swapTaskSteps;
     public final SaveCapacityResource saveCapacityResource;
     public final SaveStepFlowDefinition saveStepFlowDefinition;
+    public final ActivateReadyFlows activateReadyFlows;
+    public final DeferFlowRun deferFlowRun;
+    public final CancelFlowRun cancelFlowRun;
+    public final AdjustFlowRunReadyAt adjustFlowRunReadyAt;
+    public final ReorderFlowRun reorderFlowRun;
+    public final LoadFlowRuns loadFlowRuns;
 
     public TaskUseCases(ApplicationTaskRepository repository, Clock clock, IdGenerator ids) {
         this(repository, clock, new SystemMomentSource(), ids, ComboPolicySource.defaults());
@@ -57,23 +63,27 @@ public final class TaskUseCases {
 
     public TaskUseCases(ApplicationTaskRepository repository, Clock clock,
                         MomentSource moments, IdGenerator ids, ComboPolicySource policies) {
+        FlowRuntimeCoordinator flowRuntime = new FlowRuntimeCoordinator(repository, clock,
+                moments, ids);
         loadDashboard = new LoadDashboard(repository);
         materializeDue = new MaterializeDueOccurrences(repository, clock, moments, ids);
         create = new CreateTask(repository, repository, clock, ids);
         update = new UpdateTask(repository, repository, ids, clock);
         moveTaskPlacement = new MoveTaskPlacement(repository);
         delete = new DeleteTask(repository);
-        defer = new DeferTask(repository, repository);
-        toggleStep = new ToggleStep(repository, clock, policies);
-        advanceTodayStep = new AdvanceTodayStep(repository, clock, policies);
+        defer = new DeferTask(repository, repository, flowRuntime);
+        toggleStep = new ToggleStep(repository, clock, policies, flowRuntime);
+        advanceTodayStep = new AdvanceTodayStep(repository, clock, policies, flowRuntime);
         moveTodayStep = new MoveTodayStep(repository);
-        recordRepetitionResult = new RecordRepetitionResult(repository, clock, policies);
+        recordRepetitionResult = new RecordRepetitionResult(repository, clock, policies,
+                flowRuntime);
         correctRepetitionResult = new CorrectRepetitionResult(repository, clock, policies);
         finishStepForToday = new FinishStepForToday(repository, clock, policies);
-        complete = new CompleteOccurrence(repository, clock, policies);
-        completeRemainingSteps = new CompleteRemainingSteps(repository, clock, policies);
-        harvest = new HarvestOccurrence(repository, clock, policies);
-        undoOccurrence = new UndoOccurrence(repository, clock, policies);
+        complete = new CompleteOccurrence(repository, clock, policies, flowRuntime);
+        completeRemainingSteps = new CompleteRemainingSteps(repository, clock, policies,
+                flowRuntime);
+        harvest = new HarvestOccurrence(repository, clock, policies, flowRuntime);
+        undoOccurrence = new UndoOccurrence(repository, clock, policies, flowRuntime);
         applyComboDecay = new ApplyComboDecay(repository, clock, policies);
         settlePreviousPartialOccurrences = new SettlePreviousPartialOccurrences(
                 repository, clock, policies);
@@ -85,5 +95,11 @@ public final class TaskUseCases {
         swapTaskSteps = new SwapTaskSteps(repository);
         saveCapacityResource = new SaveCapacityResource(repository, ids);
         saveStepFlowDefinition = new SaveStepFlowDefinition(repository, repository);
+        activateReadyFlows = new ActivateReadyFlows(flowRuntime);
+        deferFlowRun = new DeferFlowRun(flowRuntime);
+        cancelFlowRun = new CancelFlowRun(flowRuntime);
+        adjustFlowRunReadyAt = new AdjustFlowRunReadyAt(flowRuntime);
+        reorderFlowRun = new ReorderFlowRun(flowRuntime);
+        loadFlowRuns = new LoadFlowRuns(repository, repository);
     }
 }

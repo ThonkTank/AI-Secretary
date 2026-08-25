@@ -61,11 +61,37 @@ public final class StepFlowRun {
                 sheetSequence + 1, createdAtEpochMillis, now);
     }
 
+    public StepFlowRun offerOnExistingSheet(String occurrenceId, long now) {
+        return new StepFlowRun(id, taskId, seedStepId, sourceKey, scheduledOn, slot,
+                StepFlowRunState.OFFERED, currentPosition, null, occurrenceId, queueOrder,
+                nextSheetSequence, createdAtEpochMillis, now);
+    }
+
     public StepFlowRun advance(int position, StepFlowRunState next, Long readyAt, long now) {
         if (position <= currentPosition)
             throw new IllegalArgumentException("Flow run must advance to a later step");
         return new StepFlowRun(id, taskId, seedStepId, sourceKey, scheduledOn, slot, next,
-                position, readyAt, null, queueOrder, nextSheetSequence,
+                position, readyAt, currentSheetOccurrenceId, queueOrder, nextSheetSequence,
+                createdAtEpochMillis, now);
+    }
+
+    public StepFlowRun rewind(int position, String sheetOccurrenceId, long now) {
+        if (position < 0 || position >= currentPosition)
+            throw new IllegalArgumentException("Flow run must rewind to an earlier step");
+        return new StepFlowRun(id, taskId, seedStepId, sourceKey, scheduledOn, slot,
+                StepFlowRunState.OFFERED, position, null, sheetOccurrenceId, queueOrder,
+                nextSheetSequence, createdAtEpochMillis, now);
+    }
+
+    public StepFlowRun clearCurrentSheet(long now) {
+        return new StepFlowRun(id, taskId, seedStepId, sourceKey, scheduledOn, slot, state,
+                currentPosition, readyAtEpochMillis, null, queueOrder, nextSheetSequence,
+                createdAtEpochMillis, now);
+    }
+
+    public StepFlowRun withCurrentSheet(String occurrenceId, long now) {
+        return new StepFlowRun(id, taskId, seedStepId, sourceKey, scheduledOn, slot, state,
+                currentPosition, readyAtEpochMillis, occurrenceId, queueOrder, nextSheetSequence,
                 createdAtEpochMillis, now);
     }
 

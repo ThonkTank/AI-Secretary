@@ -26,10 +26,16 @@ public interface OccurrenceExecutionRepository extends TransactionalRepository {
     Occurrence earliestOpenOccurrence(TaskId taskId);
     Occurrence latestCompletedOccurrence(TaskId taskId);
     void updateOccurrence(Occurrence occurrence);
+    default void deleteOccurrence(String id) {
+        throw new UnsupportedOperationException("Occurrence deletion is not supported");
+    }
     void insertOccurrenceSteps(List<OccurrenceStep> steps);
     OccurrenceStep findOccurrenceStep(String id);
     List<OccurrenceStep> occurrenceSteps(String occurrenceId);
     void updateOccurrenceStep(OccurrenceStep step);
+    default void deleteOccurrenceStep(String id) {
+        throw new UnsupportedOperationException("Occurrence step deletion is not supported");
+    }
     void updateOccurrenceStepPositions(List<TodayStepPositionUpdate> updates);
     List<TaskScheduleEntry> scheduleEntries(TaskId taskId);
 }

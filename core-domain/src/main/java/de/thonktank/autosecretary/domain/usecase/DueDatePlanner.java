@@ -9,6 +9,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -33,7 +34,8 @@ final class DueDatePlanner {
             return new Plan(result, dues, null, 0, !same(task.planningCursor(), null));
         Set<String> existingDates = new HashSet<>();
         for (Occurrence occurrence : history)
-            existingDates.add(key(occurrence.taskId, occurrence.scheduledOn, occurrence.slot));
+            if (occurrence.kind != OccurrenceKind.FLOW_SHEET)
+                existingDates.add(key(occurrence.taskId, occurrence.scheduledOn, occurrence.slot));
         List<TaskSlot> slots = schedule.slots(task.id);
         if (slots.isEmpty())
             throw new IllegalStateException("Active task has no schedule: " + task.id.value);

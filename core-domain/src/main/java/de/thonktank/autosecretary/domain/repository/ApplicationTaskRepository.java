@@ -11,5 +11,5 @@ public interface ApplicationTaskRepository extends TaskDefinitionRepository,
         DashboardReadRepository, OccurrenceExecutionRepository, RewardLedgerRepository,
         MaterializationRepository, TodayStepOrderRepository, TaskScheduleRepository,
         StepOrganizationRepository, ComboObligationRepository,
-        StepFlowDefinitionRepository, StepFlowRunRepository {
+        FlowExecutionRepository {
 }

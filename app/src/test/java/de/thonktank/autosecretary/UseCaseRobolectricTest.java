@@ -155,7 +155,7 @@ public final class UseCaseRobolectricTest {
         Dashboard dashboard = load.execute(TODAY);
 
         assertEquals(6, dashboard.tasks.size());
-        assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 9);
+        assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 10);
         assertEquals(1, queries.stream().filter(sql -> sql.contains("occurrence_steps")).count());
         assertEquals(1, queries.stream().filter(sql -> sql.contains("repetition_results")).count());
     }

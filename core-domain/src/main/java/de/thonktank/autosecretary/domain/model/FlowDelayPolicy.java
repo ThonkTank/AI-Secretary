@@ -34,7 +34,8 @@ public final class FlowDelayPolicy {
     }
 
     public long choose(Long enteredDelayMillis) {
-        long chosen = enteredDelayMillis == null ? proposedDelayMillis() : enteredDelayMillis;
+        long chosen = mode == Mode.FIXED || enteredDelayMillis == null
+                ? proposedDelayMillis() : enteredDelayMillis;
         requireDelay(chosen);
         return chosen;
     }

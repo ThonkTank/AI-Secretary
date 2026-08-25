@@ -174,8 +174,8 @@ public final class MaterializeDueOccurrences {
                 if (flowRuns.findFlowRunBySourceKey(sourceKey) != null) continue;
                 long rank = scheduleRanks.getOrDefault(
                         task.id.value + '|' + due.slot.name(), 0);
-                long queueOrder = due.scheduledOn.toEpochDay() * 1_000_000L
-                        + rank * 1_000L + template.position;
+                long queueOrder = rank * 1_000_000_000L
+                        + due.scheduledOn.toEpochDay() * 1_000L + template.position;
                 FlowRunSnapshot snapshot = new CreateFlowRunSnapshot(ids).execute(definition,
                         template.id, sourceKey, due.scheduledOn, due.slot, queueOrder,
                         moments.nowEpochMillis());

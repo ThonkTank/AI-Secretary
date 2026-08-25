@@ -38,16 +38,21 @@ public interface TaskDao {
     List<TaskScheduleEntity> scheduleEntriesFor(List<String> taskIds);
     @Insert(onConflict = OnConflictStrategy.IGNORE) void insertOccurrence(OccurrenceEntity occurrence);
     @Update void updateOccurrence(OccurrenceEntity occurrence);
-    @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state LIMIT 1") OccurrenceEntity openForTask(String taskId, String state);
+    @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state "
+            + "AND kind != 'FLOW_SHEET' LIMIT 1")
+    OccurrenceEntity openForTask(String taskId, String state);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND slot = :slot "
-            + "AND state = :state ORDER BY scheduledOn LIMIT 1")
+            + "AND state = :state AND kind != 'FLOW_SHEET' ORDER BY scheduledOn LIMIT 1")
     OccurrenceEntity openForTaskSlot(String taskId, String slot, String state);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state "
+            + "AND kind != 'FLOW_SHEET' "
             + "ORDER BY scheduledOn, slot")
     List<OccurrenceEntity> openOccurrencesForTask(String taskId, String state);
     @Query("SELECT * FROM occurrences WHERE id = :id LIMIT 1") OccurrenceEntity occurrence(String id);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND scheduledOn = :scheduledOn AND slot = :slot LIMIT 1") OccurrenceEntity occurrence(String taskId, String scheduledOn, String slot);
-    @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND scheduledOn = :scheduledOn AND state = :state") List<OccurrenceEntity> occurrences(String taskId, String scheduledOn, String state);
+    @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND scheduledOn = :scheduledOn "
+            + "AND state = :state AND kind != 'FLOW_SHEET'")
+    List<OccurrenceEntity> occurrences(String taskId, String scheduledOn, String state);
     @Query("SELECT * FROM occurrences WHERE state = :state") List<OccurrenceEntity> occurrencesByState(String state);
     @Query("SELECT * FROM occurrences WHERE state = :state AND slot = :slot "
             + "ORDER BY sortOrder, scheduledOn, id")
@@ -55,12 +60,15 @@ public interface TaskDao {
     @Query("SELECT * FROM occurrences") List<OccurrenceEntity> allOccurrences();
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId") List<OccurrenceEntity> occurrencesForTask(String taskId);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state "
+            + "AND kind != 'FLOW_SHEET' "
             + "ORDER BY scheduledOn ASC LIMIT 1")
     OccurrenceEntity earliestOccurrence(String taskId, String state);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state "
+            + "AND kind != 'FLOW_SHEET' "
             + "ORDER BY completedOn DESC, scheduledOn DESC LIMIT 1")
     OccurrenceEntity latestCompletedOccurrence(String taskId, String state);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state IN (:states) "
+            + "AND kind != 'FLOW_SHEET' "
             + "ORDER BY completedOn DESC, scheduledOn DESC LIMIT 1")
     OccurrenceEntity latestCompletedOccurrence(String taskId, List<String> states);
     @Query("SELECT * FROM occurrences WHERE state = :state AND completedOn = :date") List<OccurrenceEntity> completedOccurrences(String state, String date);
@@ -71,6 +79,8 @@ public interface TaskDao {
     @Query("SELECT * FROM occurrence_steps WHERE occurrenceId IN (:occurrenceIds) ORDER BY occurrenceId, position") List<OccurrenceStepEntity> occurrenceStepsFor(List<String> occurrenceIds);
     @Query("SELECT * FROM occurrence_steps WHERE id = :id LIMIT 1") OccurrenceStepEntity occurrenceStep(String id);
     @Update void updateOccurrenceStep(OccurrenceStepEntity step);
+    @Query("DELETE FROM occurrence_steps WHERE id = :id") void deleteOccurrenceStep(String id);
+    @Query("DELETE FROM occurrences WHERE id = :id") void deleteOccurrence(String id);
     @Query("UPDATE occurrence_steps SET position = :position WHERE id = :stepId")
     int updateOccurrenceStepPosition(String stepId, int position);
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -170,12 +180,17 @@ public interface TaskDao {
     void insertFlowRunSteps(List<FlowRunStepEntity> steps);
     @Query("SELECT * FROM flow_run_steps WHERE runId = :runId ORDER BY position")
     List<FlowRunStepEntity> flowRunSteps(String runId);
+    @Query("SELECT * FROM flow_run_steps WHERE runId IN (:runIds) ORDER BY runId, position")
+    List<FlowRunStepEntity> flowRunStepsFor(List<String> runIds);
     @Update void updateFlowRunStep(FlowRunStepEntity step);
     @Insert(onConflict = OnConflictStrategy.ABORT)
     void insertFlowRunResources(List<FlowRunResourceEntity> resources);
     @Query("SELECT * FROM flow_run_resources WHERE runId = :runId "
             + "ORDER BY acquirePosition, releasePosition, id")
     List<FlowRunResourceEntity> flowRunResources(String runId);
+    @Query("SELECT * FROM flow_run_resources WHERE runId IN (:runIds) "
+            + "ORDER BY runId, acquirePosition, releasePosition, id")
+    List<FlowRunResourceEntity> flowRunResourcesFor(List<String> runIds);
     @Query("SELECT * FROM flow_run_resources WHERE state IN ('RESERVED','ACTIVE') "
             + "ORDER BY resourceId, id")
     List<FlowRunResourceEntity> consumingFlowResources();

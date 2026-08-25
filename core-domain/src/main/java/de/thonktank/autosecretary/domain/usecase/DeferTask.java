@@ -4,6 +4,7 @@ import de.thonktank.autosecretary.domain.schedule.ScheduleMoveRequest;
 import de.thonktank.autosecretary.domain.schedule.TaskScheduleService;
 
 import de.thonktank.autosecretary.domain.model.Occurrence;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
@@ -12,16 +13,28 @@ import de.thonktank.autosecretary.domain.schedule.TaskScheduleRepository;
 public final class DeferTask {
     private final OccurrenceExecutionRepository repository;
     private final TaskScheduleRepository schedules;
+    private final FlowRuntimeCoordinator flows;
 
     public DeferTask(OccurrenceExecutionRepository repository,
                      TaskScheduleRepository schedules) {
+        this(repository, schedules, null);
+    }
+
+    public DeferTask(OccurrenceExecutionRepository repository,
+                     TaskScheduleRepository schedules, FlowRuntimeCoordinator flows) {
         this.repository = repository;
         this.schedules = schedules;
+        this.flows = flows;
     }
 
     public void execute(String occurrenceOrTaskId) {
         Occurrence selected = repository.findOccurrence(occurrenceOrTaskId);
         if (selected != null) {
+            if (selected.kind == OccurrenceKind.FLOW_SHEET && selected.flowRunId != null
+                    && flows != null) {
+                flows.defer(selected.flowRunId);
+                return;
+            }
             repository.inTransaction(() -> {
                 Occurrence current = repository.findOccurrence(occurrenceOrTaskId);
                 if (current == null) return null;

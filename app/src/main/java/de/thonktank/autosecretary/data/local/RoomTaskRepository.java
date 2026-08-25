@@ -158,6 +158,8 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
         dao.updateOccurrence(mapper.toEntity(occurrence));
     }
 
+    @Override public void deleteOccurrence(String id) { dao.deleteOccurrence(id); }
+
     @Override public Occurrence findOccurrence(String id) {
         OccurrenceEntity entity = dao.occurrence(id);
         return entity == null ? null : mapper.toDomain(entity);
@@ -268,6 +270,8 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
             syncRepetitionResults(step);
         });
     }
+
+    @Override public void deleteOccurrenceStep(String id) { dao.deleteOccurrenceStep(id); }
 
     @Override public void updateOccurrenceStepPositions(List<TodayStepPositionUpdate> updates) {
         for (TodayStepPositionUpdate update : updates)
@@ -419,6 +423,14 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
         return result;
     }
 
+    @Override public List<FlowRunStepSnapshot> flowRunStepsFor(List<String> runIds) {
+        if (runIds.isEmpty()) return new ArrayList<>();
+        List<FlowRunStepSnapshot> result = new ArrayList<>();
+        for (FlowRunStepEntity value : dao.flowRunStepsFor(runIds))
+            result.add(flowMapper.toDomain(value));
+        return result;
+    }
+
     @Override public void updateFlowRunStep(FlowRunStepSnapshot step) {
         dao.updateFlowRunStep(flowMapper.toEntity(step));
     }
@@ -426,6 +438,14 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
     @Override public List<FlowRunResourceSnapshot> flowRunResources(String runId) {
         List<FlowRunResourceSnapshot> result = new ArrayList<>();
         for (FlowRunResourceEntity value : dao.flowRunResources(runId))
+            result.add(flowMapper.toDomain(value));
+        return result;
+    }
+
+    @Override public List<FlowRunResourceSnapshot> flowRunResourcesFor(List<String> runIds) {
+        if (runIds.isEmpty()) return new ArrayList<>();
+        List<FlowRunResourceSnapshot> result = new ArrayList<>();
+        for (FlowRunResourceEntity value : dao.flowRunResourcesFor(runIds))
             result.add(flowMapper.toDomain(value));
         return result;
     }

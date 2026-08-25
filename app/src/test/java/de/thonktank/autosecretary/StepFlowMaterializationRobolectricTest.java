@@ -96,6 +96,28 @@ public final class StepFlowMaterializationRobolectricTest {
                 .filter(value -> value.activationKind == StepActivationKind.FOLLOW_UP).count());
     }
 
+    @Test public void overdueFlowSeedsQueueEachDueInsteadOfDroppingBlockedLoads() {
+        Clock startedEarlier = new Clock() {
+            @Override public LocalDate today() { return TODAY.minusDays(2); }
+            @Override public LocalTime time() { return LocalTime.NOON; }
+        };
+        new CreateTask(repository, repository, startedEarlier, ids).execute(laundryTask());
+        Task task = repository.allTasks().get(0);
+        SaveCapacityResource resources = new SaveCapacityResource(repository, ids);
+        resources.execute("washer", "Waschmaschine", 1);
+        resources.execute("dry", "Trockenplatz", 2);
+        new SaveStepFlowDefinition(repository, repository).execute(task.id,
+                transitions(), leases(task));
+
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, clock,
+                () -> 1_777_000L, ids);
+
+        assertTrue(materialize.execute());
+        assertEquals(12, repository.activeFlowRuns(task.id).size());
+        assertTrue(repository.openOccurrences().isEmpty());
+        assertFalse(materialize.execute());
+    }
+
     private static TaskDefinition laundryTask() {
         List<TaskStepDefinition> steps = new ArrayList<>();
         steps.add(step("colors", "Buntwäsche", StepActivationKind.SCHEDULED, 0));

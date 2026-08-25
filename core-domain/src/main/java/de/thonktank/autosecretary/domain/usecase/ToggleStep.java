@@ -22,5 +22,13 @@ public final class ToggleStep {
     ToggleStep(T repository, Clock clock, ComboPolicySource policies) {
         completion = new StepExecutionService(repository, clock, policies);
     }
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    ToggleStep(T repository, Clock clock, ComboPolicySource policies,
+               FlowRuntimeCoordinator flows) {
+        completion = new StepExecutionService(repository, clock, policies, flows);
+    }
     public RewardReceipt execute(String stepId) { return completion.toggleStep(stepId); }
+    public RewardReceipt execute(String stepId, Long chosenDelayMillis) {
+        return completion.toggleStep(stepId, chosenDelayMillis);
+    }
 }

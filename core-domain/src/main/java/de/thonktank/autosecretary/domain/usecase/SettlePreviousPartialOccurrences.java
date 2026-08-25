@@ -2,6 +2,7 @@ package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.model.Occurrence;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
@@ -26,6 +27,7 @@ public final class SettlePreviousPartialOccurrences {
     public boolean execute() {
         boolean changed = false;
         for (Occurrence occurrence : repository.openOccurrences()) {
+            if (occurrence.kind == OccurrenceKind.FLOW_SHEET) continue;
             if (!occurrence.scheduledOn.isBefore(clock.today())) continue;
             for (OccurrenceStep step : repository.occurrenceSteps(occurrence.id)) {
                 if (!step.done && positivePartial(step)) {

@@ -24,11 +24,21 @@ public interface StepFlowRunRepository extends TransactionalRepository {
     default List<FlowRunStepSnapshot> flowRunSteps(String runId) {
         return Collections.emptyList();
     }
+    default List<FlowRunStepSnapshot> flowRunStepsFor(List<String> runIds) {
+        List<FlowRunStepSnapshot> result = new java.util.ArrayList<>();
+        for (String runId : runIds) result.addAll(flowRunSteps(runId));
+        return result;
+    }
     default void updateFlowRunStep(FlowRunStepSnapshot step) {
         throw new UnsupportedOperationException("Step flows are not supported by this store");
     }
     default List<FlowRunResourceSnapshot> flowRunResources(String runId) {
         return Collections.emptyList();
+    }
+    default List<FlowRunResourceSnapshot> flowRunResourcesFor(List<String> runIds) {
+        List<FlowRunResourceSnapshot> result = new java.util.ArrayList<>();
+        for (String runId : runIds) result.addAll(flowRunResources(runId));
+        return result;
     }
     default List<FlowRunResourceSnapshot> consumingFlowResources() {
         return Collections.emptyList();

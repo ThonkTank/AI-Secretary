@@ -22,6 +22,12 @@ class RoomInvalidationSource(database: AppDatabase) {
             "combo_progress",
             "reward_bookings",
             "reward_assignments",
+            "capacity_resources",
+            "step_transitions",
+            "step_resource_leases",
+            "step_flow_runs",
+            "flow_run_steps",
+            "flow_run_resources",
         )
     }
 }
