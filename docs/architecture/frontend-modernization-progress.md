@@ -1850,6 +1850,20 @@ Viertens besaßen die zunächst verwendeten Golden-Helfer trotz Vergleichscharak
 lokalen Schreibschalter auf die freigegebenen Legacy-Dateien. Eine eigene Read-only-Schnittstelle
 entfernt diesen Pfad; der Architekturtest verbietet Compose-Updatevariablen.
 
+Der erste entfernte Gerätematrixlauf `32909863594` deckte eine fünfte, gemeinsame Paketgrenze auf:
+Alle sechs API-/Animationsjobs installierten beide APKs, starteten aber null Tests, weil
+`AndroidJUnitRunner` bereits beim Aufbau seines Testverzeichnisses mit fehlendem
+`kotlin.LazyKt` abstürzte. Der nachfolgende Nullfehler im Android-Gradle-Testreport war nur ein
+Sekundärfehler beim Einlesen dieses abgebrochenen Laufs. Ziel- und Test-APK werden getrennt
+minifiziert; der aus der Test-APK kommende Aufruf ist für R8 beim Schrumpfen der Ziel-APK nicht
+sichtbar. Die Nachtarbeit erhält deshalb gezielt nur die extern erreichte Kotlin-`LazyKt`-Fassade
+und deren tatsächlich aufgerufene einparametrige `lazy`-Methode über einen winzigen Debug-Anker
+im Zielcode. Der Anker benennt die vom Java-Runner aufgelöste Fassade und übt denselben
+Kotlin-Aufruf aus. Ein zunächst erprobter Proguard-Keep hätte durch die Kotlin-Fassadenvererbung rund
+3,8 MiB unnötig erhalten und wurde verworfen. Der Releasevertrag sichert stattdessen die exakte,
+vom normalen Erreichbarkeitsgraphen geschrumpfte Cross-APK-Kante. Produkt-Release und
+Editorzustand bleiben davon unberührt.
+
 Die Nachtarbeit verschiebt deshalb den gesamten 5a-Renderer samt Foundation und Animation in den
 Debug-Quellsatz. Release enthält weder diese Bibliotheken noch UI-Testcode und ist bytegleich zum
 Produktumfang vor 5a; erst 5b verschiebt den Renderer beim echten Cutover in den

@@ -53,6 +53,17 @@ COMPOSE_SMOKE_TEST = (
     / "ComposeSmokeInstrumentationTest.kt"
 ).read_text(encoding="utf-8")
 DEBUG_PROGUARD = (ROOT / "app" / "proguard-debug.pro").read_text(encoding="utf-8")
+INSTRUMENTATION_RUNTIME_ANCHOR = (
+    ROOT
+    / "app"
+    / "src"
+    / "debug"
+    / "kotlin"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "InstrumentationRuntimeAnchor.kt"
+).read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
 SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").read_text(
     encoding="utf-8"
@@ -211,6 +222,11 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn('testProguardFiles("proguard-debug.pro")', APP_BUILD)
         self.assertNotIn("ui-test-manifest", APP_BUILD)
         self.assertIn("-keep class de.thonktank.autosecretary.** { *; }", DEBUG_PROGUARD)
+        self.assertIn('Class.forName("kotlin.LazyKt")', INSTRUMENTATION_RUNTIME_ANCHOR)
+        self.assertIn(
+            "runnerLazyDependency: Lazy<Unit> = lazy { Unit }",
+            INSTRUMENTATION_RUNTIME_ANCHOR,
+        )
         self.assertIn("-keepattributes SourceFile,LineNumberTable", DEBUG_PROGUARD)
 
     def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):
