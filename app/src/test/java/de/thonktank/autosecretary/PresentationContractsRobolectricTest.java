@@ -23,6 +23,8 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.LooperMode;
+import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowValueAnimator;
 
 import java.time.LocalDate;
@@ -67,6 +69,30 @@ public final class PresentationContractsRobolectricTest {
         assertEquals(1, root.getChildCount());
         Settings.Global.putFloat(activity.getContentResolver(),
                 Settings.Global.ANIMATOR_DURATION_SCALE, 1f);
+        ShadowValueAnimator.reset();
+    }
+
+    @Test @LooperMode(LooperMode.Mode.PAUSED)
+    public void disposedRewardAnimatorCannotAcknowledgeFromDestroyedHost() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        FrameLayout root = new FrameLayout(activity);
+        HeaderView header = new HeaderView(activity, () -> { });
+        root.addView(header);
+        activity.setContentView(root);
+        RewardAnchorRegistry anchors = new RewardAnchorRegistry();
+        anchors.register(RewardAnchorKey.head(), header.rewardAnchor());
+        AtomicBoolean acknowledged = new AtomicBoolean();
+        Settings.Global.putFloat(activity.getContentResolver(),
+                Settings.Global.ANIMATOR_DURATION_SCALE, 1f);
+        RewardAnimator animator = new RewardAnimator(root, header, anchors);
+
+        animator.play(effect(), DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), 0,
+                () -> acknowledged.set(true));
+        animator.dispose();
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        assertFalse(acknowledged.get());
+        assertEquals(1, root.getChildCount());
         ShadowValueAnimator.reset();
     }
 

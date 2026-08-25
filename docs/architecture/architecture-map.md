@@ -1,9 +1,10 @@
 # Architekturkarte nach der Today-/Fokus-Bereinigung
 
 Stand der beschriebenen Today-/Fokus-Bereinigung: 2026-08-21, damals Datenbankschema 14.
-Aktueller Persistenzstand: Datenbankschema 16.
+Aktueller Persistenzstand: Datenbankschema 19.
 
-Schema 15 ergänzte den Editorvertrag, Schema 16 persistente Rhythmusanker. Diese Erweiterungen
+Schema 15 ergänzte den Editorvertrag, Schema 16 persistente Rhythmusanker, Schema 17/18 Timer-
+und Kombozustand und Schema 19 den eingefrorenen Planwert quantitativer Rewards. Diese Erweiterungen
 ändern die hier beschriebenen Compiler-, Today- und Capability-Port-Grenzen nicht. Die aktuelle
 Präsentationsbaseline und ihre weitere Migration stehen in der
 [Frontend-Modernisierungsroadmap](frontend-modernization-roadmap.md).
@@ -32,19 +33,22 @@ Kalenderzugriff, Widgetcode und Views verbleiben in `app`.
 ```text
 ui.today View
   → TodayActionSink
+  → TodayViewModel                                  (:app)
   → TodayCoordinator / TodayReducer                 (:today-core)
   → TodayCommandDispatcher
-  → fokussierter Handler im TaskViewModel           (:app)
+  → fokussierter Handler im TodayViewModel          (:app)
   → Use Case → Capability-Port                      (:core-domain)
   → RoomTaskRepository / DAO                        (:app)
   → DashboardPresenter / DashboardUiMapper          (:app)
-  → TodayUiModel + TodayFeatureState                (:today-core)
+  → StateFlow<TodayScreenState>                     (:app)
   → DashboardRenderer → ui.today View               (:app)
 ```
 
 `MainActivity` verdrahtet den Sink, verarbeitet aber keine Step-, Repetition-, Reorder-,
-Harvest- oder Undo-Fachverzweigung. `DashboardEvent` ist auf Navigation, Einstellungen,
-Berechtigungen und Systemaktionen begrenzt.
+Harvest-, Undo-, Verschiebe- oder Löschfachverzweigung. Dialoge und Systemanfragen liegen als
+stabile `TodayRequest`s im Screen State. Top-Level-Auswahl und globale Legacy-Palette besitzt
+bis zum Navigation-3-Cutover ein eigener `AppShellViewModel`; `DashboardEvent` und
+verbrauchbare `UiEvent`s existieren nicht mehr.
 
 ## UI-Pakete
 
@@ -53,6 +57,9 @@ Berechtigungen und Systemaktionen begrenzt.
 | `app/ui/leaf` | `LeafShape`, `LeafSurface`, `GrainSpec`, Clip und asynchrone Grain-Pipeline |
 | `app/ui/today` | Header, Fokuskarte, Timelineblätter, Tageshistorie, Gesten und Accessibility |
 | `app/presentation/alltasks` | Verwaltungszustand, virtuelle Liste und Managementaktionen |
+| `app/presentation/options` | Optionen-, Kalender-, Updaterzustand und stabile Hostrequests |
+| `app/presentation/today` | Android-State-Owner, Today-Screen-State und Hostrequests |
+| `app/presentation/shell` | temporäre Top-Level-Auswahl und globale Legacy-Palette |
 | `today-core/presentation/today` | Android-freie Today-Modelle, Actions und Zustandsautomat |
 
 `LeafSurface` ist der Owner von Form, Clip, Transformation und lokaler Anchor-Geometrie. Views
@@ -74,7 +81,7 @@ Room-Implementierung. Fachcode hängt von kleinen Fähigkeiten ab:
 
 Schrittausführung liegt in `StepExecutionService`, Occurrence-Abschluss, Ernte und Undo in
 `OccurrenceCompletionService`. Reorder schreibt nur geänderte Positionsspalten innerhalb einer
-Transaktion; diese Invariante gilt auch unter Schema 16 unverändert.
+Transaktion; diese Invariante gilt auch unter Schema 19 unverändert.
 
 ## Autoritative Zustände
 
@@ -85,9 +92,11 @@ Transaktion; diese Invariante gilt auch unter Schema 16 unverändert.
 | Rewardbuchungen | unveränderliches Ledger | ja |
 | Today-Fokus/Timeline/History | `TodayUiModel` | nein, Projektion |
 | Reorder `IDLE/DRAGGING/PERSISTING` | `TodayCoordinator` | nur Commandresultat |
+| Today-Renderzustand, Requests, Timer und Rewards | `TodayScreenState` im `TodayViewModel` | Requests im `SavedStateHandle` |
+| Top-Level-Auswahl und globale Legacy-Palette | `AppShellScreenState` im `AppShellViewModel` | Auswahl im `SavedStateHandle` |
 | Alles-Filter, Modus, Karten- und Filterbereich | `AllTasksPresentationState` im `AllTasksViewModel` | ja, `SavedStateHandle` |
 | Alles-Dropdown und aktiver Drag | `AllTasksView` | nein, bei Abbruch/Detach/Recreation geschlossen |
-| Wiederholungsdraft | `RepetitionInputState` im ViewModel | nein |
+| Wiederholungsdraft | `RepetitionInputState` im `TodayViewModel` | nein |
 | Blatt-/Grain-Geometrie | `LeafSurface` | nein |
 
 ## Dauerhafte Gates
@@ -96,7 +105,8 @@ Transaktion; diese Invariante gilt auch unter Schema 16 unverändert.
 - Hosttests prüfen Fachregeln, Reducer, Room, Migrationen, Views, Accessibility und Goldens.
 - Die Android-Test-APK enthält Today-Long-Press/Drag/Drop, Randscrollen,
   Accessibilityaktionen und Recreation eines nicht persistierten Reorders.
-- CI führt Instrumentation auf API 26 und API 35 aus; lokal wird ohne verbundenes Ziel nur der
-  Buildstatus berichtet.
+- CI führt normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie echte
+  Upgradeprüfungen des signierten Produktionskandidaten aus; lokal wird ohne verbundenes Ziel nur
+  der Buildstatus berichtet.
 - Golden-Baselines und Datenbankschema dürfen durch reine Architekturrefactors nicht geändert
   werden.

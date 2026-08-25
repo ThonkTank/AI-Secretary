@@ -112,7 +112,7 @@ public final class UiComponentRobolectricTest {
         }
     }
 
-    @Test public void recreationDoesNotRepeatAConsumedConfirmationIntent() {
+    @Test public void confirmationIntentBecomesAStableRequestUntilAcknowledged() {
         Context context = ApplicationProvider.getApplicationContext();
         Intent launch = new Intent(context, MainActivity.class)
                 .putExtra(MainActivity.CONFIRM_TASK, "ongoing")
@@ -131,8 +131,18 @@ public final class UiComponentRobolectricTest {
             assertFalse(activity.getIntent().hasExtra(MainActivity.CONFIRM_TASK_TITLE));
 
             ShadowAlertDialog.reset();
-            controller.recreate();
+            activity = controller.recreate().get();
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
+            AlertDialog recreated = ShadowAlertDialog.getLatestAlertDialog();
+            assertNotNull(recreated);
+            assertFalse(confirmation == recreated);
+            recreated.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+            ShadowAlertDialog.reset();
+            controller.recreate();
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
             assertNull(ShadowAlertDialog.getLatestAlertDialog());
         }
     }
@@ -188,18 +198,20 @@ public final class UiComponentRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, action -> { }, action -> { }, "1.0", new RewardAnchorRegistry(),
+                action -> { }, action -> { }, "1.0", new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         DayPalette morning = DayPalette.at(LocalTime.of(8, 0), DayPalette.Mode.AUTO);
-        DashboardUiState first = state(morning);
+        de.thonktank.autosecretary.presentation.today.TodayScreenState first = state();
 
-        renderer.render(first, AllTasksUiState.empty(), options(morning));
+        renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.TODAY, morning),
+                first, AllTasksUiState.empty(), options(morning));
         View focus = content.findViewById(R.id.dashboard_focus);
         focus.setFocusableInTouchMode(true);
         focus.requestFocus();
 
-        renderer.render(state(DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)),
-                AllTasksUiState.empty(), options(morning));
+        renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.TODAY,
+                        DayPalette.at(LocalTime.of(8, 1), DayPalette.Mode.AUTO)),
+                state(), AllTasksUiState.empty(), options(morning));
 
         assertSame(focus, content.findViewById(R.id.dashboard_focus));
         assertSame(focus, content.findFocus());
@@ -498,11 +510,10 @@ public final class UiComponentRobolectricTest {
         return result;
     }
 
-    private static DashboardUiState state(DayPalette palette) {
+    private static de.thonktank.autosecretary.presentation.today.TodayScreenState state() {
         TodayUiModel dashboard = TodayUiModel.compose(
                 DashboardFixtures.fullDashboard(), DashboardFixtures.calendarEvents());
-        return new DashboardUiState(NavigationDestination.TODAY, dashboard,
-                palette, false, Collections.emptySet());
+        return TodayScreenStateFixtures.today(dashboard);
     }
 
     private static de.thonktank.autosecretary.presentation.options.OptionsScreenState options(

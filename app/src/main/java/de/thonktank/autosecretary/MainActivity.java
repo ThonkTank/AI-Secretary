@@ -16,9 +16,15 @@ import de.thonktank.autosecretary.presentation.options.OptionsAction;
 import de.thonktank.autosecretary.presentation.options.OptionsRequest;
 import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
 import de.thonktank.autosecretary.presentation.options.OptionsViewModel;
+import de.thonktank.autosecretary.presentation.shell.AppShellAction;
+import de.thonktank.autosecretary.presentation.shell.AppShellScreenState;
+import de.thonktank.autosecretary.presentation.shell.AppShellViewModel;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayRequest;
+import de.thonktank.autosecretary.presentation.today.TodayScreenState;
+import de.thonktank.autosecretary.presentation.today.TodayViewModel;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
-import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
 
 import android.Manifest;
 import android.animation.LayoutTransition;
@@ -49,7 +55,6 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.lifecycle.ViewModelProvider;
 
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.update.presentation.UpdateDialogs;
 import de.thonktank.autosecretary.update.presentation.UpdatePlatform;
 
@@ -59,14 +64,16 @@ public class MainActivity extends ComponentActivity {
     public static final String CONFIRM_TASK_TITLE = "confirm_task_title";
     public static final String OPEN_EDITOR = "open_editor";
     private AppContainer container;
-    private TaskViewModel viewModel;
+    private TodayViewModel todayViewModel;
+    private AppShellViewModel shellViewModel;
     private TaskEditorViewModel editorViewModel;
     private AllTasksViewModel allTasksViewModel;
     private OptionsViewModel optionsViewModel;
     private AppNavigator appNavigator;
     private UpdateDialogs updateDialogs;
     private UpdatePlatform updatePlatform;
-    private DashboardUiState uiState;
+    private AppShellScreenState shellState;
+    private TodayScreenState todayState;
     private OptionsScreenState optionsState;
     private ForestBackdropView forest;
     private HeaderView header;
@@ -82,6 +89,8 @@ public class MainActivity extends ComponentActivity {
     private String handledAllTasksRequestId;
     private String handledEditorRequestId;
     private String handledOptionsRequestId;
+    private String handledTodayRequestId;
+    private String handledRewardEffectId;
     private TaskEditorCoordinator editorCoordinator;
     private int systemTopInset;
     private final RewardAnchorRegistry rewardAnchors = new RewardAnchorRegistry();
@@ -113,19 +122,23 @@ public class MainActivity extends ComponentActivity {
         container.timers.reconcile();
         EdgeToEdge.enable(this);
         buildShell();
-        viewModel = new ViewModelProvider(this,
-                new TaskViewModel.Factory(container)).get(TaskViewModel.class);
         editorViewModel = new ViewModelProvider(this,
                 new TaskEditorViewModel.Factory(container)).get(TaskEditorViewModel.class);
         appNavigator = new TaskEditorNavigator(editorViewModel, this::prepareEditorFlight);
+        shellViewModel = new ViewModelProvider(this,
+                new AppShellViewModel.Factory(container)).get(AppShellViewModel.class);
+        todayViewModel = new ViewModelProvider(this,
+                new TodayViewModel.Factory(container, appNavigator)).get(TodayViewModel.class);
         allTasksViewModel = new ViewModelProvider(this,
                 new AllTasksViewModel.Factory(container, appNavigator)).get(AllTasksViewModel.class);
         optionsViewModel = new ViewModelProvider(this,
                 new OptionsViewModel.Factory(container)).get(OptionsViewModel.class);
+        shellState = shellViewModel.state().getValue();
+        todayState = todayViewModel.state().getValue();
         optionsState = optionsViewModel.state().getValue();
         AllTasksCoordinator allTasks = new AllTasksCoordinator(allTasksViewModel);
         renderer = new DashboardRenderer(this, scroll, dashboardContent,
-                this::handleDashboardEvent, viewModel::dispatchToday,
+                todayViewModel::dispatch,
                 optionsViewModel::dispatch, versionName(),
                 rewardAnchors, allTasks);
         editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
@@ -148,13 +161,12 @@ public class MainActivity extends ComponentActivity {
                 container.updateInstaller, container.logger,
                 container.updateConfiguration.repositoryOwner,
                 container.updateConfiguration.repositoryName);
-        viewModel.state().observe(this, this::render);
-        viewModel.events().observe(this, this::handleEvent);
+        LegacyStateFlowBinder.observe(this, shellViewModel.state(), this::renderShellState);
+        LegacyStateFlowBinder.observe(this, todayViewModel.state(), this::renderTodayState);
         LegacyStateFlowBinder.observe(this, editorViewModel.state(), this::renderEditorState);
         LegacyStateFlowBinder.observe(this, allTasksViewModel.state(),
                 this::renderAllTasksState);
         LegacyStateFlowBinder.observe(this, optionsViewModel.state(), this::renderOptionsState);
-        viewModel.rewardEffects().observe(this, this::handleRewardEffects);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {
                 if (editorCoordinator != null && editorCoordinator.handleBack()) return;
@@ -170,7 +182,7 @@ public class MainActivity extends ComponentActivity {
     @Override protected void onResume() {
         super.onResume();
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "resume", "");
-        if (viewModel != null) {
+        if (todayViewModel != null) {
             syncCalendarPermission();
             container.clockInvalidations.materializeForeground();
         }
@@ -191,6 +203,7 @@ public class MainActivity extends ComponentActivity {
 
     @Override protected void onDestroy() {
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "destroy", "");
+        if (rewardAnimator != null) rewardAnimator.dispose();
         if (editorCoordinator != null) editorCoordinator.dispose();
         super.onDestroy();
     }
@@ -221,7 +234,10 @@ public class MainActivity extends ComponentActivity {
         content.getLayoutTransition().setDuration(MotionTokens.standard().stateChangeDurationMs);
         scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         screen.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        footer = new FooterNavigationView(this, destination -> viewModel.navigate(destination));
+        footer = new FooterNavigationView(this, destination -> {
+            if (shellViewModel != null)
+                shellViewModel.dispatch(AppShellAction.destinationSelected(destination));
+        });
         screen.addView(footer, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
         rewardAnimator = new RewardAnimator(root, header, rewardAnchors);
@@ -240,29 +256,36 @@ public class MainActivity extends ComponentActivity {
         footer.bind(NavigationDestination.TODAY, initial);
     }
 
-    private void handleDashboardEvent(DashboardEvent event) {
-        if (event instanceof DashboardEvent.AddTask) {
-            openEditorWithFlight();
-        } else if (event instanceof DashboardEvent.TimelineMenu) {
-            showTaskMenu(((DashboardEvent.TimelineMenu) event).target);
-        }
+    private void renderShellState(AppShellScreenState state) {
+        if (state == null) return;
+        shellState = state;
+        render();
     }
 
-    private void render(DashboardUiState state) {
+    private void renderTodayState(TodayScreenState state) {
+        if (state == null) return;
+        todayState = state;
+        render();
+        handleTodayRequest(state.firstRequest());
+        handleRewardEffects(state.rewards);
+    }
+
+    private void render() {
+        if (shellState == null || todayState == null || optionsState == null) return;
         if (PresentationTrace.enabled()) PresentationTrace.emit("dashboard", "render",
-                "navigation=" + state.navigation + " loading=" + state.loading
+                "navigation=" + shellState.navigation + " loading=" + todayState.loading
                         + " editorOpen=" + editorState.content.open);
-        uiState = state;
-        forest.setPalette(state.palette);
-        header.bind(container.clock.time(), state.palette, state.dashboard.xpProgress);
-        footer.bind(state.navigation, state.palette);
-        renderer.render(state, allTasksState, optionsState);
-        boolean light = luminance(state.palette.background) > .55;
+        forest.setPalette(shellState.palette);
+        header.bind(container.clock.time(), shellState.palette, todayState.today().xpProgress);
+        footer.bind(shellState.navigation, shellState.palette);
+        renderer.render(shellState, todayState, allTasksState, optionsState);
+        boolean light = luminance(shellState.palette.background) > .55;
         WindowInsetsControllerCompat controller = new WindowInsetsControllerCompat(getWindow(),
                 getWindow().getDecorView());
         controller.setAppearanceLightStatusBars(light);
         controller.setAppearanceLightNavigationBars(light);
-        editorCoordinator.render(editorState.content, state.palette, container.clock.today());
+        editorCoordinator.render(editorState.content, shellState.palette,
+                container.clock.today());
     }
 
     private void openEditorWithFlight() {
@@ -270,52 +293,16 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void prepareEditorFlight() {
-        if (renderer == null || uiState == null
-                || uiState.navigation != NavigationDestination.TODAY) return;
+        if (renderer == null || shellState == null
+                || shellState.navigation != NavigationDestination.TODAY) return;
         editorCoordinator.deferNextOpen();
         renderer.animateEditorTransition(editorCoordinator::completeDeferredOpen);
-    }
-
-    private void completeOrConfirm(TaskActionTarget target) {
-        if (target.terminalCondition)
-            viewModel.requestClose(target.taskId, target.title);
-        else viewModel.complete(target.occurrenceId);
-    }
-
-    private void showTaskMenu(TaskActionTarget target) {
-        new AlertDialog.Builder(this).setTitle(target.title)
-                .setItems(new String[]{getString(R.string.task_edit), getString(R.string.task_move),
-                        getString(R.string.task_delete)}, (dialog, which) -> {
-                    if (which == 0)
-                        appNavigator.navigate(AppDestination.editTask(
-                                TaskId.of(target.taskId)));
-                    else if (which == 1) showMoveDialog(target);
-                    else confirmDelete(target.taskId, target.title, target.routine);
-                }).show();
-    }
-
-    private void showMoveDialog(TaskActionTarget task) {
-        TaskSlot[] slots = TaskSlot.values();
-        new AlertDialog.Builder(this).setTitle(R.string.task_move)
-                .setSingleChoiceItems(slotLabels(), task.slot.ordinal(), (dialog, which) -> {
-                    viewModel.move(task.taskId, task.slot, slots[which]);
-                    dialog.dismiss();
-                }).setNegativeButton(R.string.cancel, null).show();
-    }
-
-    private void confirmDelete(String taskId, String title, boolean routine) {
-        String loss = routine ? getString(R.string.delete_routine_loss)
-                : getString(R.string.delete_task_loss);
-        new AlertDialog.Builder(this).setTitle(getString(R.string.delete_task_title, title))
-                .setMessage(loss).setNegativeButton(R.string.keep, null)
-                .setPositiveButton(R.string.delete,
-                        (dialog, which) -> viewModel.delete(taskId)).show();
     }
 
     private void renderAllTasksState(AllTasksScreenState state) {
         if (state == null) return;
         allTasksState = state.content;
-        if (uiState != null) render(uiState);
+        render();
         handleAllTasksRequest(state.firstRequest());
     }
 
@@ -353,8 +340,8 @@ public class MainActivity extends ComponentActivity {
     private void renderEditorState(TaskEditorScreenState state) {
         if (state == null) return;
         editorState = state;
-        if (uiState != null)
-            editorCoordinator.render(state.content, uiState.palette, container.clock.today());
+        if (shellState != null)
+            editorCoordinator.render(state.content, shellState.palette, container.clock.today());
         TaskEditorRequest request = state.firstRequest();
         if (request == null) {
             handledEditorRequestId = null;
@@ -376,7 +363,7 @@ public class MainActivity extends ComponentActivity {
     private void renderOptionsState(OptionsScreenState state) {
         if (state == null) return;
         optionsState = state;
-        if (uiState != null) render(uiState);
+        render();
         handleOptionsRequest(state.firstRequest());
     }
 
@@ -425,37 +412,93 @@ public class MainActivity extends ComponentActivity {
         optionsViewModel.dispatch(OptionsAction.acknowledgeRequest(requestId));
     }
 
-    private void confirmClose(String taskId, String title) {
-        new AlertDialog.Builder(this).setTitle(R.string.close_task_title)
-                .setMessage(getString(R.string.close_task_message, title))
-                .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(R.string.condition_met,
-                        (dialog, which) -> viewModel.close(taskId)).show();
+    private void handleTodayRequest(TodayRequest request) {
+        if (request == null) {
+            handledTodayRequestId = null;
+            return;
+        }
+        if (request.id.equals(handledTodayRequestId)) return;
+        handledTodayRequestId = request.id;
+        if (request.kind == TodayRequest.Kind.ERROR) {
+            new AlertDialog.Builder(this).setTitle(R.string.error_title)
+                    .setMessage(request.message)
+                    .setPositiveButton(R.string.okay,
+                            (dialog, which) -> acknowledgeTodayRequest(request.id))
+                    .setOnCancelListener(dialog -> acknowledgeTodayRequest(request.id)).show();
+        } else if (request.kind == TodayRequest.Kind.INFO) {
+            Toast.makeText(this, request.message, Toast.LENGTH_LONG).show();
+            acknowledgeTodayRequest(request.id);
+        } else if (request.kind == TodayRequest.Kind.TASK_MENU) {
+            new AlertDialog.Builder(this).setTitle(request.title)
+                    .setItems(new String[]{getString(R.string.task_edit),
+                            getString(R.string.task_move), getString(R.string.task_delete)},
+                            (dialog, which) -> {
+                                if (which == 0) todayViewModel.dispatch(
+                                        TodayAction.editTask(request.id));
+                                else if (which == 1) todayViewModel.dispatch(
+                                        TodayAction.requestMoveTask(request.id));
+                                else todayViewModel.dispatch(
+                                        TodayAction.requestDeleteTask(request.id));
+                            })
+                    .setOnCancelListener(dialog -> acknowledgeTodayRequest(request.id)).show();
+        } else if (request.kind == TodayRequest.Kind.CHOOSE_MOVE) {
+            TaskSlot[] slots = TaskSlot.values();
+            new AlertDialog.Builder(this).setTitle(R.string.task_move)
+                    .setSingleChoiceItems(slotLabels(), request.target.slot.ordinal(),
+                            (dialog, which) -> {
+                                todayViewModel.dispatch(TodayAction.moveTask(
+                                        request.id, slots[which]));
+                                dialog.dismiss();
+                            })
+                    .setNegativeButton(R.string.cancel,
+                            (dialog, which) -> acknowledgeTodayRequest(request.id))
+                    .setOnCancelListener(dialog -> acknowledgeTodayRequest(request.id)).show();
+        } else if (request.kind == TodayRequest.Kind.CONFIRM_DELETE) {
+            String loss = request.routine ? getString(R.string.delete_routine_loss)
+                    : getString(R.string.delete_task_loss);
+            new AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.delete_task_title, request.title))
+                    .setMessage(loss)
+                    .setNegativeButton(R.string.keep,
+                            (dialog, which) -> acknowledgeTodayRequest(request.id))
+                    .setPositiveButton(R.string.delete, (dialog, which) ->
+                            todayViewModel.dispatch(
+                                    TodayAction.confirmDeleteTask(request.id)))
+                    .setOnCancelListener(dialog -> acknowledgeTodayRequest(request.id)).show();
+        } else if (request.kind == TodayRequest.Kind.CONFIRM_CLOSE) {
+            new AlertDialog.Builder(this).setTitle(R.string.close_task_title)
+                    .setMessage(getString(R.string.close_task_message, request.title))
+                    .setNegativeButton(R.string.cancel,
+                            (dialog, which) -> acknowledgeTodayRequest(request.id))
+                    .setPositiveButton(R.string.condition_met, (dialog, which) ->
+                            todayViewModel.dispatch(
+                                    TodayAction.confirmCloseTask(request.id)))
+                    .setOnCancelListener(dialog -> acknowledgeTodayRequest(request.id)).show();
+        } else if (request.kind == TodayRequest.Kind.REQUEST_TIMER_PERMISSIONS) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.timer_permission_title)
+                    .setMessage(R.string.timer_permission_message)
+                    .setNegativeButton(R.string.continue_action,
+                            (dialog, which) -> acknowledgeTodayRequest(request.id))
+                    .setPositiveButton(R.string.timer_permission_open, (dialog, which) -> {
+                        if (consumeTodayRequest(request.id,
+                                TodayRequest.Kind.REQUEST_TIMER_PERMISSIONS))
+                            requestTimerPermissions();
+                    })
+                    .setOnCancelListener(dialog -> acknowledgeTodayRequest(request.id)).show();
+        } else acknowledgeTodayRequest(request.id);
     }
 
-    private void handleEvent(UiEvent event) {
-        if (event == null || !event.consume()) return;
-        if (event.type == UiEvent.Type.ERROR)
-            new AlertDialog.Builder(this).setTitle(R.string.error_title).setMessage(event.message)
-                    .setPositiveButton(R.string.okay, null).show();
-        else if (event.type == UiEvent.Type.INFO)
-            Toast.makeText(this, event.message, Toast.LENGTH_LONG).show();
-        else if (event.type == UiEvent.Type.CONFIRM_DELETE) {
-            confirmDelete(event.taskId, event.taskTitle, false);
-        } else if (event.type == UiEvent.Type.CONFIRM_CLOSE)
-            confirmClose(event.taskId, event.taskTitle);
-        else if (event.type == UiEvent.Type.REQUEST_TIMER_PERMISSIONS)
-            showTimerPermissionWarning();
+    private void acknowledgeTodayRequest(String requestId) {
+        if (requestId.equals(handledTodayRequestId)) handledTodayRequestId = null;
+        todayViewModel.dispatch(TodayAction.acknowledgeRequest(requestId));
     }
 
-    private void showTimerPermissionWarning() {
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.timer_permission_title)
-                .setMessage(R.string.timer_permission_message)
-                .setNegativeButton(R.string.continue_action, null)
-                .setPositiveButton(R.string.timer_permission_open,
-                        (dialog, which) -> requestTimerPermissions())
-                .show();
+    private boolean consumeTodayRequest(String requestId, TodayRequest.Kind kind) {
+        TodayRequest pending = todayViewModel.state().getValue().request(requestId);
+        if (pending == null || pending.kind != kind) return false;
+        acknowledgeTodayRequest(requestId);
+        return true;
     }
 
     private void requestTimerPermissions() {
@@ -477,10 +520,18 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void handleRewardEffects(RewardEffectQueue.Snapshot snapshot) {
-        if (snapshot == null || uiState == null || rewardAnimator == null) return;
+        if (snapshot == null || shellState == null || rewardAnimator == null) return;
         RewardEffect effect = snapshot.first();
-        if (effect != null) rewardAnimator.play(effect, uiState.palette, systemTopInset,
-                () -> viewModel.acknowledgeRewardEffect(effect.id));
+        if (effect == null) {
+            handledRewardEffectId = null;
+            return;
+        }
+        if (effect.id.equals(handledRewardEffectId)) return;
+        handledRewardEffectId = effect.id;
+        rewardAnimator.play(effect, shellState.palette, systemTopInset, () -> {
+            handledRewardEffectId = null;
+            todayViewModel.dispatch(TodayAction.acknowledgeReward(effect.id));
+        });
     }
 
     private void syncCalendarPermission() {
@@ -497,8 +548,8 @@ public class MainActivity extends ComponentActivity {
         getIntent().removeExtra(CONFIRM_TASK);
         getIntent().removeExtra(CONFIRM_TASK_TITLE);
         if (confirmTask != null)
-            viewModel.requestClose(confirmTask,
-                    confirmTitle == null ? getString(R.string.this_project) : confirmTitle);
+            todayViewModel.dispatch(TodayAction.requestClose(confirmTask,
+                    confirmTitle == null ? getString(R.string.this_project) : confirmTitle));
         boolean openEditor = getIntent().getBooleanExtra(OPEN_EDITOR, false);
         getIntent().removeExtra(OPEN_EDITOR);
         if (openEditor) appNavigator.navigate(AppDestination.newTask());

@@ -7,10 +7,14 @@ import de.thonktank.autosecretary.ui.today.HeaderView;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
+import de.thonktank.autosecretary.presentation.shell.AppShellScreenState;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
+import de.thonktank.autosecretary.presentation.today.TodayScreenState;
+import de.thonktank.autosecretary.timer.TimerManager;
 
 import android.os.Bundle;
 import android.view.Gravity;
@@ -76,13 +80,16 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         screen.addView(footer, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.footer_height)));
         DashboardRenderer renderer = new DashboardRenderer(this, scroll, content,
-                event -> { }, action -> { }, action -> { }, "preview",
+                action -> { }, action -> { }, "preview",
                 new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         java.util.List<CalendarEventSnapshot> events = DebugPreviewFixtures.referenceCalendar(preview);
-        renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        TodayUiModel.compose(dashboard, events), palette, false,
-                        Collections.emptySet()),
+        TodayUiModel today = TodayUiModel.compose(dashboard, events);
+        renderer.render(new AppShellScreenState(NavigationDestination.TODAY, palette),
+                new TodayScreenState(TodayFeatureState.idle(today), false,
+                        Collections.emptySet(), RepetitionInputState.idle(),
+                        FocusStepLimit.AUTO, TimerManager.Snapshot.empty(),
+                        new RewardEffectQueue().snapshot(), Collections.emptyList()),
                 AllTasksUiState.empty(), new OptionsScreenState(palette, UiThemeMode.AUTO,
                         FocusStepLimit.AUTO, 60, CalendarPermissionStatus.GRANTED,
                         CalendarUiState.from(new CalendarResult.Success(events)),

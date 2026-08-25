@@ -16,8 +16,7 @@ public final class OptionsArchitectureBoundaryTest {
         String owner = read(root.resolve("presentation/options/OptionsViewModel.java"));
         String state = read(root.resolve("presentation/options/OptionsScreenState.java"));
         String view = read(root.resolve("OptionsView.java"));
-        String dashboard = read(root.resolve("DashboardUiState.java"));
-        String dashboardOwner = read(root.resolve("TaskViewModel.java"));
+        String dashboardOwner = read(root.resolve("presentation/today/TodayViewModel.java"));
         String activity = read(root.resolve("MainActivity.java"));
 
         assertTrue(owner.contains("MutableStateFlow<OptionsScreenState>"));
@@ -25,10 +24,7 @@ public final class OptionsArchitectureBoundaryTest {
         assertTrue(state.contains("List<OptionsRequest> requests"));
         assertTrue(view.contains("OptionsActionSink"));
         assertTrue(activity.contains("optionsViewModel::dispatch"));
-        for (String forbidden : List.of("CalendarUiState", "CalendarPermissionStatus",
-                "UiThemeMode", "UpdateUiState", "restTimerDefaultSeconds"))
-            assertFalse("Dashboard state retained options field " + forbidden,
-                    dashboard.contains(forbidden));
+        assertFalse(Files.exists(root.resolve("DashboardUiState.java")));
         for (String forbidden : List.of("updateUpdateState", "updateCalendarPermission",
                 "onCalendarPermissionAction"))
             assertFalse("Dashboard owner retained options broker " + forbidden,

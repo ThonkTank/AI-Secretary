@@ -1625,3 +1625,141 @@ Phase 4 insgesamt bleibt offen, bis Today in der folgenden Unterphase einen eige
 Abschluss von 4d erfordert nun den eigenen grünen Pull Request, Squash-Merge und den
 veröffentlichenden `main`-Lauf; die physische In-App-Update- und Sichtabnahme bleibt gemäß
 Owner-Entscheidung ausdrücklich offen.
+
+### Phase 4d – Remote-Abschluss
+
+Pull Request #276 bestand Quality sowie normale und animationsaktive Instrumentierung auf API
+26/35/37 und wurde als `3718e38c` per Squash nach `main` übernommen. Der Produktionslauf
+`32878950109` bestand dieselbe Matrix, signierte Paketierung und echtes Upgrade vom vorherigen
+Produktionsstand auf allen drei API-Stufen. Release 0.2.128 (`forest-android-1012801`)
+veröffentlicht `AutoSecretary.apk` und `release-metadata.json` exakt aus
+`3718e38cce2ab4147974a4ab5795a165945cfb11`; Tag und Remote-`main` zeigen auf denselben Commit,
+und der heruntergeladene APK-Hash `2646578e421d5aa42bf331493227a3e15c60855a586cdf25fa1f5591edc2af52`
+stimmt bytegenau mit Asset und Metadaten überein. Die automatisierte Unterphase 4d ist damit
+abgeschlossen; die physische In-App-Update- und Sichtabnahme bleibt gemäß Owner-Entscheidung
+offen.
+
+### Phase 4e – Vorprüfung und Implementationsplan für den Today-State-Owner
+
+Roadmap, ADR-022, der veröffentlichte 4d-Stand, `TaskViewModel`, `DashboardUiState`,
+`DashboardRenderer`, `MainActivity`, Today-Reducer/-Coordinator, Timer- und Rewardpfade sowie die
+zugehörigen Recreation-, Architektur- und Interaktionstests wurden vor Produktänderungen erneut
+gelesen. Als letzte Phase-4-Mehrfachwahrheit verbleibt ein 681 Zeilen breiter
+`TaskViewModel`: Er veröffentlicht Today und Shellnavigation gemeinsam als LiveData, hält
+Reorderzustand und Todayprojektion doppelt, transportiert Dialoge und Timerberechtigung über
+verbrauchbare `UiEvent`s und veröffentlicht Rewards über einen zweiten LiveData-Kanal. Leerer
+Today-Zustand und Timeline-Menü umgehen den Action-Owner zusätzlich über `DashboardEvent` und
+lassen die Activity Fachcommands direkt aufrufen.
+
+Phase 4e entfernt diesen Rest in einem kohärenten Schnitt. `TodayViewModel` veröffentlicht genau
+einen `StateFlow<TodayScreenState>`. Der atomare Zustand enthält genau eine Todayprojektion im
+bestehenden `TodayFeatureState`, Loading und laufende Command-IDs, Wiederholungseingabe,
+Fokusschrittlimit, laufende Timer, die bestätigbare Rewardfolge sowie eine geordnete Menge
+stabiler `TodayRequest`s. `TodayAction` bleibt der einzige serielle Eingang und wird um
+leeren-Zustand-Navigation, Timeline-Menüauswahl, Verschieben, Löschen, Requestquittierung und
+Rewardquittierung ergänzt. Fehler, Hinweise, Menü, Lösch-/Schließbestätigung und
+Timerberechtigungswarnung bleiben mit stabiler ID bis zur expliziten Antwort im State und werden
+über den `SavedStateHandle` rekonstruiert. Fachwrites bleiben seriell und werden nach Start nicht
+abgebrochen; neuere Reads dürfen weiterhin ältere Reads verdrängen.
+
+Shellnavigation und globale Palette sind keine Today-Verantwortung. Ein kleiner
+`AppShellViewModel` veröffentlicht dafür `StateFlow<AppShellScreenState>`, persistiert die
+Tab-Auswahl und beobachtet ausschließlich die gemeinsame Darstellungsquelle. Die Activity bindet
+Shell und vier Screen-Owner lifecyclegebunden, aggregiert sie nur für die bestehende
+View-Hierarchie und führt keine Today-Fachoperation aus. `DashboardRenderer` nimmt Shell- und
+Today-State getrennt entgegen und sendet aus dem Today-Baum ausschließlich `TodayAction`s;
+`TaskViewModel`, `DashboardUiState`, `DashboardEvent` und `UiEvent` werden entfernt. Der direkte
+Headerflug bleibt der in 4c beschlossene rein visuelle Navigator-Hook und wird nicht zu einem
+zweiten Zustandskanal.
+
+Zu prüfen sind Activity- und Prozesswiederherstellung mit offenem Menü, Bestätigungs- und
+Timerrequest, semantische Deduplizierung und monoton restaurierte Request-IDs, atomarer Übergang
+vom Menü zur Bestätigung, verspätete Dialogcallbacks, Rewardquittierung ohne fremden
+Zustandsverlust, Reorder während Recreation, Timerpublication, Tageswechsel sowie die statische
+Abwesenheit aller alten LiveData-/Dashboardbroker. Visuelle Baselines, Domainverhalten, Room-
+Schema 18, `minSdk 26`, `targetSdk 35`, Updatevertrag und die späteren Compose-Cutover-Phasen
+bleiben unverändert. Die vom Owner erlaubte Fortsetzung ohne Handy betrifft nur das Gate: Die
+physische Geräteabnahme bleibt offen und wird nicht als bestanden gewertet.
+
+Während der Implementation rückte `origin/main` mit dem konfigurierbaren Kombo-/Backlog-Schnitt
+#277 vor. Vor dem Abschluss wurde der Branch deshalb auf diesen Stand aktualisiert und die
+Roadmap sowie der neue Präsentations- und Preferenceumfang erneut gegengeprüft. Der Rebase war
+konfliktfrei. Kombopolicy, Editor-Backlogwahl, Schema 18 und die zugehörigen Optionsfelder bleiben
+unverändert erhalten; Today und Shell lesen daraus keine neue fachfremde Zustandswahrheit.
+
+Unmittelbar vor Commit rückte `origin/main` erneut vor. Der veröffentlichte Mengenreward- und
+Tagesabschluss-Schnitt #278 ergänzt `FINISH_STEP`, den zugehörigen Use Case, quantitative
+Rewardprojektionen und Schema 19 und verwendet bereits ADR-025. Phase 4e wurde deshalb nochmals
+auf den exakten Remote-Stand aktualisiert: Der neue Handler liegt nun im `TodayViewModel`, die
+neuen Actions durchlaufen unverändert Coordinator und Dispatcher, und diese ADR wurde
+konfliktfrei als ADR-026 nummeriert. Die vollständigen lokalen Nachweise wurden erst nach dieser
+Integration erneut ausgeführt.
+
+Der erste Integrationslauf fand genau eine mechanische Reststelle: Der in #278 neu hinzugekommene
+Viewtest instanziierte noch den gleichzeitig entfernten `DashboardEventRecorder`. Er verwendet
+nun ebenfalls den reinen `TodayActionRecorder`; produktiver Code war davon nicht betroffen.
+
+### Phase 4e – Implementation und Roadmap-Abgleich
+
+- `TodayViewModel` besitzt nun den einzigen `StateFlow<TodayScreenState>` des Today-Bildschirms.
+  Der Zustand führt `TodayFeatureState`, Loading und laufende Commands, den
+  Wiederholungseingabezustand, Fokusschrittlimit, Timer-Snapshot, Rewardfolge und geordnete
+  `TodayRequest`s in einer unveränderlichen Publication zusammen. `TodayAction` ist der einzige
+  Eingangsweg für View-, Dialog- und Hostaktionen; Fachwrites laufen seriell auf dem bestehenden
+  Worker und werden beim Ownerende nur geordnet heruntergefahren.
+- Menü, Verschiebeauswahl, Lösch-/Schließbestätigung, Hinweise, Fehler und
+  Timerberechtigungswarnung besitzen stabile IDs und explizite Quittierung. Der
+  Saved-State-Adapter rekonstruiert nur validierte Requests, leitet die nächste Sequenz auch aus
+  restaurierten IDs ab und verwirft beschädigten oder veralteten Zustand. Menüfolgeschritte
+  ersetzen den Ausgangsrequest atomar mit neuer ID; ein verspäteter Callback der alten
+  Dialoginstanz kann weder den Nachfolger entfernen noch einen Write starten.
+- `AppShellViewModel` besitzt Top-Level-Auswahl und globale Legacy-Palette in einem eigenen
+  `StateFlow<AppShellScreenState>`. Die Auswahl wird restauriert, Palette und Uhr werden aus der
+  gemeinsamen Invalidierungsquelle projiziert. Today beobachtet bei Darstellungsänderungen nur
+  sein Fokusschrittlimit; reine Minutenticks führen dort keinen überflüssigen Preference-Read
+  mehr aus.
+- `DashboardRenderer` bindet Shell- und Today-State getrennt und emittiert auch aus leerem Today
+  und Timeline-Menüs ausschließlich `TodayAction`. `MainActivity` verdrahtet die fünf Owner,
+  rendert Views und hostet Android-Dialoge, Permissions und Animationen, führt aber keine
+  Today-Use-Cases aus. `TaskViewModel`, `DashboardUiState`, `DashboardEvent`,
+  `DashboardEventSink` und `UiEvent` samt zweitem Event-/Reward-LiveData-Kanal wurden entfernt.
+  ADR-026 dokumentiert diese Zwischenarchitektur bis zu den Compose- und Navigation-3-Cutovern.
+
+Der negative Roadmap-Abgleich fand drei relevante Schwächen im ersten Schnitt. Erstens hätte der
+positive Callback eines bereits ersetzten Timerberechtigungsdialogs noch Android-System-I/O
+starten können. Die Nachtarbeitskorrektur prüft und konsumiert deshalb unmittelbar vor dem
+Permissionaufruf exakt die noch offene Request-ID. Zweitens hätte eine während des Rewardflugs
+zerstörte Activity über den alten Animationscallback den vom neuen Host erneut dargestellten
+Reward quittieren können. `RewardAnimator.dispose()` invalidiert nun die Generation, bricht die
+alte Viewanimation ab und unterdrückt sowohl Quittierung als auch Glint des zerstörten Hosts;
+der Reward verbleibt dadurch für die neue Activity im Ownerzustand. Drittens las Today über die
+alte Appearance-Route bei jedem Minutentick die Preferences neu. Eine eigene
+`todayPreferenceChanges`-Route beschränkt diesen Read auf echte Displayänderungen, während der
+Shellowner die zeitabhängige Palette weiter aktualisiert.
+
+Der Gesamtsuite-Abgleich fand außerdem einen veralteten Metatest: Er verlangte, dass der
+Android-freie `TodayCoordinator` auch die neuen Screen-/Hostactions behandelt. Der Vertrag prüft
+nun bewusst die vollständige Vereinigung aus `TodayViewModel` und Kern-Dispatcher, während der
+Kern für direkt fehlgeleitete Actionarten weiterhin hart fehlschlägt. Zusätzliche Tests sichern
+die Recreation eines offenen Bestätigungsintents, Requestrestauration und monotone
+Menütransition, wirkungslose alte IDs, voneinander unabhängige Reward-/Requestquittierung,
+restaurierte Shellnavigation, getrennte Preferenceprojektion und die Abwesenheit der alten
+Brokerklassen.
+
+Unter Java 21 bestanden lokal 492 Tests ohne Fehler (ein bewusst übersprungener Test), Lint sowie
+Debug-, Android-Test- und unsigned Release-APK. Die 14 CI-Harnesstests und 22
+Release-/Workflow-Vertragstests sind ebenfalls grün. Die APK-Größen betragen 8.849.272 Byte
+Debug, 680.410 Byte Android-Test und 6.458.826 Byte unsigned Release; der Fontbestand bleibt bei
+1.478.008 Byte. Der aus #278 übernommene Stand verwendet Schema 19; `minSdk 26`, `targetSdk 35`,
+Domain-, Kombo-, Mengenreward-, Updater-, Signatur- und visuelle Verträge wurden durch Phase 4e
+nicht verändert.
+
+Die kritischen Request-, Reward-, `FINISH_STEP`-, Recreation-, Shell-, Routing- und Architekturverträge
+bestanden anschließend fünf vollständig frische Wiederholungsläufe. Der statische Gegencheck
+findet in produktivem Today-/Shell-Code kein LiveData, keinen alten Dashboard-/Eventbroker,
+keinen direkten Today-Use-Case-Aufruf der Activity und keinen zweiten Navigations- oder
+Palettezustand. Nach der Nachtarbeit ist keine weitere lokale Nacharbeitsphase für 4e nötig.
+Phase 4 erfüllt damit lokal ihren Architekturumfang; ihr automatisierter Abschluss erfordert nun
+den eigenen grünen Pull Request, Squash-Merge und den veröffentlichenden `main`-Lauf. Die
+physische In-App-Update- und Sichtabnahme bleibt gemäß Owner-Entscheidung ausdrücklich offen und
+wird nicht als bestanden gewertet.

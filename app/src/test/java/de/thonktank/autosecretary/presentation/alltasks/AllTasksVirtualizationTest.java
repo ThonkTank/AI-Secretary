@@ -303,12 +303,13 @@ public final class AllTasksVirtualizationTest {
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         shell.addView(new View(context), new LinearLayout.LayoutParams(-1, 80));
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, action -> { }, action -> { }, "test",
+                action -> { }, action -> { }, "test",
                 new RewardAnchorRegistry(), new Recorder());
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT);
 
-        renderer.render(new DashboardUiState(NavigationDestination.ALL_TASKS,
-                        TodayUiModel.empty(), palette, false, Collections.emptySet()),
+        renderer.render(TodayScreenStateFixtures.shell(
+                        NavigationDestination.ALL_TASKS, palette),
+                TodayScreenStateFixtures.today(TodayUiModel.empty()),
                 AllTasksUiState.from(catalog(120), AllTasksPresentationState.defaults()),
                 new de.thonktank.autosecretary.presentation.options.OptionsScreenState(palette,
                         de.thonktank.autosecretary.data.preferences.UiThemeMode.AUTO,

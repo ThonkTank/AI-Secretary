@@ -72,7 +72,7 @@ public final class FocusTaskViewTest {
                 .amount("3 × 12").note("23 kg")
                 .repetition(RepetitionProgressUiModel.sets(
                         3, 12, Collections.emptyList())).combo(1).build();
-        DashboardEventRecorder events = new DashboardEventRecorder();
+        TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
         row.bind(step, true, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
@@ -97,7 +97,7 @@ public final class FocusTaskViewTest {
         FocusStepUiModel step = FocusTaskFixtures.step("step-1", "Beinpresse")
                 .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
                         3, 12, Collections.singletonList(10))).build();
-        DashboardEventRecorder events = new DashboardEventRecorder();
+        TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
         row.bind(step, true, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
                 RepetitionInputState.idle(), events);
@@ -121,7 +121,7 @@ public final class FocusTaskViewTest {
         FocusStepUiModel repetitions = FocusTaskFixtures.step("reps", "Liegestütze")
                 .amount("20 Wdh.").repetition(RepetitionProgressUiModel.single(
                         20, Collections.emptyList())).build();
-        DashboardEventRecorder events = new DashboardEventRecorder();
+        TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
         row.bind(repetitions, true, palette,
@@ -145,7 +145,7 @@ public final class FocusTaskViewTest {
     @Test public void durationStartsExplicitlyAndRunningRestCanBeSkipped() {
         Context context = ApplicationProvider.getApplicationContext();
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
-        DashboardEventRecorder events = new DashboardEventRecorder();
+        TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
         FocusStepUiModel duration = FocusTaskFixtures.step("duration", "Laufen")
                 .amount("10 Min.").build().withDurationSeconds(600);
@@ -183,7 +183,7 @@ public final class FocusTaskViewTest {
         FocusStepUiModel future = FocusTaskFixtures.step("future", "Später")
                 .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
                         3, 12, Collections.emptyList())).available().build();
-        DashboardEventRecorder events = new DashboardEventRecorder();
+        TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
         row.bind(active, true, palette, RepetitionInputState.idle(), events);
@@ -253,7 +253,7 @@ public final class FocusTaskViewTest {
                 FocusStepUiModel.of("fourth", "Vier", false));
         FocusTaskUiModel task = FocusTaskFixtures.task("routine", "Routine")
                 .occurrence("today").recurrence(Recurrence.DAILY).steps(models).build();
-        DashboardEventRecorder events = new DashboardEventRecorder();
+        TodayActionRecorder events = new TodayActionRecorder();
         FocusTaskView view = new FocusTaskView(context);
         TodayUiModel today = new TodayUiModel(
                 new de.thonktank.autosecretary.domain.model.XpProgress(0), task,
@@ -287,7 +287,7 @@ public final class FocusTaskViewTest {
                 FocusStepUiModel.of("fourth", "Vier", false));
         FocusTaskUiModel task = FocusTaskFixtures.task("routine", "Routine")
                 .occurrence("today").recurrence(Recurrence.DAILY).steps(models).build();
-        DashboardEventRecorder events = new DashboardEventRecorder();
+        TodayActionRecorder events = new TodayActionRecorder();
         TodayUiModel today = new TodayUiModel(new de.thonktank.autosecretary.domain.model.XpProgress(0),
                 task, Collections.emptyList(), Collections.emptyList());
         TodayReducer reducer = new TodayReducer();
@@ -408,7 +408,7 @@ public final class FocusTaskViewTest {
         return false;
     }
 
-    private static void assertMove(View body, int actionId, DashboardEventRecorder events,
+    private static void assertMove(View body, int actionId, TodayActionRecorder events,
                                    String stepId, String beforeStepId) {
         int beforeCount = events.todayActions().size();
         assertTrue(body.performAccessibilityAction(actionId, null));

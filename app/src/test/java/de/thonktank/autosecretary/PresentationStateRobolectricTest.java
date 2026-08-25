@@ -8,6 +8,13 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TodayScreenState;
+import de.thonktank.autosecretary.presentation.today.TodayRequest;
+import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
+import de.thonktank.autosecretary.presentation.today.TodayViewModel;
+import de.thonktank.autosecretary.presentation.legacy.LegacyStateFlowBinder;
+import de.thonktank.autosecretary.presentation.shell.AppShellAction;
+import de.thonktank.autosecretary.presentation.shell.AppShellViewModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -97,7 +104,7 @@ public final class PresentationStateRobolectricTest {
     private final FixedClock clock = new FixedClock();
     private final RecordingLogger logger = new RecordingLogger();
     private final AtomicInteger ids = new AtomicInteger();
-    private TaskViewModel viewModel;
+    private TodayViewModel viewModel;
     private TaskEditorViewModel editorViewModel;
     private PresentationInvalidationSource invalidationSource;
     private CalendarInvalidationSource calendarInvalidations;
@@ -160,9 +167,10 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void navigationAndOpenEditorRestoreFromTheirOwnSavedStates() throws Exception {
-        SavedStateHandle dashboardHandle = new SavedStateHandle();
+        SavedStateHandle shellHandle = new SavedStateHandle();
+        SavedStateHandle todayHandle = new SavedStateHandle();
         SavedStateHandle editorHandle = new SavedStateHandle();
-        viewModel = newViewModel(dashboardHandle);
+        viewModel = newViewModel(todayHandle);
         editorViewModel = newEditorViewModel(editorHandle, new DirectExecutor());
         assertFalse(value().loading);
 
@@ -181,22 +189,48 @@ public final class PresentationStateRobolectricTest {
                         "ongoing-schedule", migratedId, TaskSlot.EVENING, 1_024L)));
         String taskId = repository.allTasks().get(0).id.value;
 
-        viewModel.navigate(NavigationDestination.OPTIONS);
+        AppShellViewModel shell = newShellViewModel(shellHandle);
+        shell.dispatch(AppShellAction.destinationSelected(NavigationDestination.OPTIONS));
         editorViewModel.dispatch(TaskEditorAction.open(taskId));
         assertTrue(editorValue().open && !editorValue().loading);
         assertEquals("Bearbeitbar", editorValue().title);
         assertEquals(4, editorValue().intervalDays);
         assertEquals(2, editorValue().stepStates.size());
         viewModel.onCleared();
+        shell.onCleared();
         editorViewModel.onCleared();
         viewModel = null;
         editorViewModel = null;
 
-        viewModel = newViewModel(dashboardHandle);
+        viewModel = newViewModel(todayHandle);
+        shell = newShellViewModel(shellHandle);
         editorViewModel = newEditorViewModel(editorHandle, new DirectExecutor());
-        assertEquals(NavigationDestination.OPTIONS, value().navigation);
+        assertEquals(NavigationDestination.OPTIONS, shell.state().getValue().navigation);
         assertTrue(editorValue().open);
         assertEquals(taskId, editorValue().taskId);
+        shell.onCleared();
+    }
+
+    @Test public void shellOwnsRestoredNavigationAndAppearanceWithoutTodayMutation() {
+        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor());
+        SavedStateHandle handle = new SavedStateHandle();
+        AppShellViewModel shell = newShellViewModel(handle);
+        TodayUiModel todayBefore = value().today();
+
+        shell.dispatch(AppShellAction.destinationSelected(NavigationDestination.OPTIONS));
+        preferences.setThemeMode(UiThemeMode.DARK);
+
+        assertEquals(NavigationDestination.OPTIONS, shell.state().getValue().navigation);
+        assertEquals(DayPalette.at(clock.time(), DayPalette.Mode.DARK).background,
+                shell.state().getValue().palette.background);
+        assertSame(todayBefore, value().today());
+        shell.onCleared();
+
+        shell = newShellViewModel(handle);
+        assertEquals(NavigationDestination.OPTIONS, shell.state().getValue().navigation);
+        assertEquals(DayPalette.at(clock.time(), DayPalette.Mode.DARK).background,
+                shell.state().getValue().palette.background);
+        shell.onCleared();
     }
 
     @Test public void duplicateCommandsAreIgnoredWhileTheFirstIsRunning() throws Exception {
@@ -222,13 +256,15 @@ public final class PresentationStateRobolectricTest {
 
         RecordingLifecycleOwner first = new RecordingLifecycleOwner();
         List<Boolean> firstStates = new ArrayList<>();
-        viewModel.state().observe(first, state -> firstStates.add(state.loading));
+        LegacyStateFlowBinder.observe(first, viewModel.state(),
+                state -> firstStates.add(state.loading));
         assertEquals(Collections.singletonList(true), firstStates);
 
         first.destroy();
         RecordingLifecycleOwner recreated = new RecordingLifecycleOwner();
         List<Boolean> recreatedStates = new ArrayList<>();
-        viewModel.state().observe(recreated, state -> recreatedStates.add(state.loading));
+        LegacyStateFlowBinder.observe(recreated, viewModel.state(),
+                state -> recreatedStates.add(state.loading));
 
         worker.runAll();
 
@@ -330,37 +366,70 @@ public final class PresentationStateRobolectricTest {
                                 StepAmount.setsReps(3, 12), "")));
         tasks.create.execute(definition);
         refreshDatabase();
-        String stepId = value().dashboard.focus.steps.get(0).id;
+        String stepId = value().today().focus.steps.get(0).id;
 
-        viewModel.dispatchToday(TodayAction.adjustRepetition(stepId, 1));
-        viewModel.dispatchToday(TodayAction.adjustRepetition(stepId, 1));
+        viewModel.dispatch(TodayAction.adjustRepetition(stepId, 1));
+        viewModel.dispatch(TodayAction.adjustRepetition(stepId, 1));
 
         assertEquals(14, value().repetitionInput.value);
         assertTrue(repository.findOccurrenceStep(stepId).repetitionProgress.actualRepetitions
                 .isEmpty());
 
-        viewModel.dispatchToday(TodayAction.submitRepetition(stepId));
+        viewModel.dispatch(TodayAction.submitRepetition(stepId));
 
         assertNull(value().repetitionInput.stepId);
         assertEquals(Collections.singletonList(14),
                 repository.findOccurrenceStep(stepId).repetitionProgress.actualRepetitions);
     }
 
+    @Test public void todayMenuRequestRestoresAndTransitionsAtomically() {
+        SavedStateHandle handle = new SavedStateHandle();
+        viewModel = newViewModel(handle, new DirectExecutor());
+        TaskActionTarget target = TaskActionTarget.of("menu-task", "menu-occurrence",
+                "Menüaufgabe", TaskSlot.MIDDAY, false, false);
+
+        viewModel.dispatch(TodayAction.openTaskMenu(target));
+        viewModel.dispatch(TodayAction.openTaskMenu(target));
+
+        assertEquals(1, value().requests.size());
+        TodayRequest menu = value().firstRequest();
+        assertNotNull(menu);
+        assertEquals(TodayRequest.Kind.TASK_MENU, menu.kind);
+        viewModel.onCleared();
+        viewModel = newViewModel(handle, new DirectExecutor());
+        assertEquals(menu.id, value().firstRequest().id);
+
+        viewModel.dispatch(TodayAction.requestDeleteTask(menu.id));
+
+        assertEquals(1, value().requests.size());
+        TodayRequest confirmation = value().firstRequest();
+        assertEquals(TodayRequest.Kind.CONFIRM_DELETE, confirmation.kind);
+        assertFalse(menu.id.equals(confirmation.id));
+        assertNull(value().request(menu.id));
+        viewModel.dispatch(TodayAction.acknowledgeRequest(menu.id));
+        assertEquals(confirmation.id, value().firstRequest().id);
+        viewModel.onCleared();
+        viewModel = newViewModel(handle, new DirectExecutor());
+        assertEquals(confirmation.id, value().firstRequest().id);
+
+        viewModel.dispatch(TodayAction.acknowledgeRequest(confirmation.id));
+
+        assertNull(value().firstRequest());
+    }
+
     @Test public void displayPreferencesReprojectDashboardWithoutReloadingContent() {
         viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor());
 
         calendarInvalidations.materializeExternalChange();
-        TodayUiModel dashboardBefore = value().dashboard;
+        TodayUiModel dashboardBefore = value().today();
 
         preferences.setFocusStepLimit(FocusStepLimit.THREE);
 
         assertEquals(FocusStepLimit.THREE, value().focusStepLimit);
-        assertSame(dashboardBefore, value().dashboard);
+        assertSame(dashboardBefore, value().today());
 
         preferences.setThemeMode(UiThemeMode.DARK);
-        assertEquals(DayPalette.at(clock.time(), DayPalette.Mode.DARK).background,
-                value().palette.background);
-        assertSame(dashboardBefore, value().dashboard);
+        assertSame(dashboardBefore, value().today());
     }
 
     @Test public void todayRefreshDoesNotExecuteTheManagementCatalogQuery() {
@@ -389,15 +458,15 @@ public final class PresentationStateRobolectricTest {
                 new TaskStepDefinition(null, 2, "C", 0, StepAmount.none(), ""))));
         refreshDatabase();
         List<de.thonktank.autosecretary.presentation.today.FocusStepUiModel> steps =
-                value().dashboard.focus.steps;
+                value().today().focus.steps;
         String first = steps.get(0).id;
         databaseQueries.clear();
         calendarLoads.set(0);
 
-        viewModel.moveTodayStep(first, null);
+        viewModel.dispatch(TodayAction.moveStep(first, null));
 
         assertEquals(0, calendarLoads.get());
-        assertEquals(first, value().dashboard.focus.steps.get(2).id);
+        assertEquals(first, value().today().focus.steps.get(2).id);
         long dashboardReads = databaseQueries.stream()
                 .map(sql -> sql.trim().toLowerCase(java.util.Locale.ROOT))
                 .filter(sql -> sql.equals("select * from tasks"))
@@ -415,16 +484,29 @@ public final class PresentationStateRobolectricTest {
         editorViewModel.dispatch(TaskEditorAction.openNew());
         preferences.setFocusStepLimit(FocusStepLimit.THREE);
         EditorUiState editorBefore = editorValue();
-        String occurrenceId = value().dashboard.focus.occurrenceId();
+        String occurrenceId = value().today().focus.occurrenceId();
         calendarLoads.set(0);
 
-        viewModel.complete(occurrenceId);
+        viewModel.dispatch(TodayAction.completeOccurrence(occurrenceId));
 
         assertEquals(0, calendarLoads.get());
         assertSame(editorBefore, editorValue());
         assertEquals(FocusStepLimit.THREE, value().focusStepLimit);
-        assertTrue(value().dashboard.completedToday.stream()
+        assertTrue(value().today().completedToday.stream()
                 .anyMatch(done -> done.occurrenceId.equals(occurrenceId)));
+        RewardEffect reward = value().rewards.first();
+        assertNotNull(reward);
+        viewModel.dispatch(TodayAction.openTaskMenu(TaskActionTarget.of(
+                "parallel-task", "parallel-occurrence", "Parallel",
+                TaskSlot.MIDDAY, false, false)));
+        TodayUiModel afterCompletion = value().today();
+        String requestId = value().firstRequest().id;
+
+        viewModel.dispatch(TodayAction.acknowledgeReward(reward.id));
+
+        assertNull(value().rewards.first());
+        assertSame(afterCompletion, value().today());
+        assertEquals(requestId, value().firstRequest().id);
     }
 
     @Test public void managementViewModelOwnsCatalogAndRestoresOnlyThroughSavedStateAdapter() {
@@ -596,25 +678,25 @@ public final class PresentationStateRobolectricTest {
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
         refreshDatabase();
 
-        assertTrue((value().dashboard.focus != null
-                        && "Gemeinsame Wahrheit".equals(value().dashboard.focus.title()))
-                || value().dashboard.timeline.stream().anyMatch(item -> item.task != null
+        assertTrue((value().today().focus != null
+                        && "Gemeinsame Wahrheit".equals(value().today().focus.title()))
+                || value().today().timeline.stream().anyMatch(item -> item.task != null
                         && "Gemeinsame Wahrheit".equals(item.task.title)));
         assertTrue(management.state().getValue().content.tasks.stream()
                 .anyMatch(item -> "Gemeinsame Wahrheit".equals(item.task.title)));
         management.onCleared();
     }
 
-    private TaskViewModel newViewModel(SavedStateHandle handle) {
+    private TodayViewModel newViewModel(SavedStateHandle handle) {
         return newViewModel(handle, new DirectExecutor());
     }
 
-    private TaskViewModel newViewModel(SavedStateHandle handle,
+    private TodayViewModel newViewModel(SavedStateHandle handle,
                                        AbstractExecutorService worker) {
         return newViewModel(handle, worker, new AtomicInteger());
     }
 
-    private TaskViewModel newViewModel(SavedStateHandle handle,
+    private TodayViewModel newViewModel(SavedStateHandle handle,
                                        AbstractExecutorService worker,
                                        AtomicInteger calendarLoads) {
         CalendarDataSource calendar = new CalendarDataSource() {
@@ -633,13 +715,20 @@ public final class PresentationStateRobolectricTest {
                 new RoomInvalidationSource(database), calendarInvalidations,
                 new PreferenceInvalidationSource(preferences),
                 new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
-        return new TaskViewModel(tasks, presenter, calendar, preferences, clock, logger,
+        return new TodayViewModel(tasks, presenter, calendar, preferences, clock, logger,
                 new AndroidUiTextProvider(context), invalidationSource, handle, worker,
                 Runnable::run);
     }
 
     private AllTasksViewModel newAllTasksViewModel(SavedStateHandle handle) {
         return newAllTasksViewModel(handle, destination -> { });
+    }
+
+    private AppShellViewModel newShellViewModel(SavedStateHandle handle) {
+        if (invalidationSource == null)
+            throw new IllegalStateException("Today invalidation source must exist first");
+        return new AppShellViewModel(preferences, clock, logger, invalidationSource,
+                handle, new DirectExecutor(), Runnable::run);
     }
 
     private AllTasksViewModel newAllTasksViewModel(SavedStateHandle handle,
@@ -675,7 +764,7 @@ public final class PresentationStateRobolectricTest {
         database.getInvalidationTracker().refreshVersionsSync();
     }
 
-    private DashboardUiState value() {
+    private TodayScreenState value() {
         return viewModel.state().getValue();
     }
 

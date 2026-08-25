@@ -6,12 +6,14 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.options.OptionsActionSink;
 import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
+import de.thonktank.autosecretary.presentation.shell.AppShellScreenState;
 import de.thonktank.autosecretary.ui.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
+import de.thonktank.autosecretary.presentation.today.TodayScreenState;
 import de.thonktank.autosecretary.ui.today.*;
 
 import android.content.Context;
@@ -32,7 +34,6 @@ public final class DashboardRenderer {
     private final ScrollView scroll;
     private final LinearLayout content;
     private final UiStyle style;
-    private final DashboardEventSink events;
     private final TodayActionSink todayActions;
     private final OptionsActionSink optionsActions;
     private final String version;
@@ -49,7 +50,7 @@ public final class DashboardRenderer {
     private final Map<String, View> timelineViews = new LinkedHashMap<>();
 
     public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
-                             DashboardEventSink events, TodayActionSink todayActions,
+                             TodayActionSink todayActions,
                              OptionsActionSink optionsActions,
                              String version,
                              RewardAnchorRegistry rewardAnchors,
@@ -57,7 +58,6 @@ public final class DashboardRenderer {
         this.context = context;
         this.scroll = scroll;
         this.content = content;
-        this.events = events;
         this.todayActions = todayActions;
         this.optionsActions = optionsActions;
         this.version = version;
@@ -66,13 +66,14 @@ public final class DashboardRenderer {
         style = new UiStyle(context);
     }
 
-    public void render(DashboardUiState state, AllTasksUiState allTasksState,
+    public void render(AppShellScreenState shell, TodayScreenState todayState,
+                       AllTasksUiState allTasksState,
                        OptionsScreenState optionsState) {
-        if (mounted != state.navigation) mount(state.navigation);
-        if (state.navigation == NavigationDestination.TODAY)
-            bindToday(state, state.focusStepLimit);
-        else if (state.navigation == NavigationDestination.ALL_TASKS)
-            allTasks.bind(allTasksState, state.palette);
+        if (mounted != shell.navigation) mount(shell.navigation);
+        if (shell.navigation == NavigationDestination.TODAY)
+            bindToday(todayState, shell.palette, todayState.focusStepLimit);
+        else if (shell.navigation == NavigationDestination.ALL_TASKS)
+            allTasks.bind(allTasksState, shell.palette);
         else options.bind(optionsState, version);
     }
 
@@ -197,7 +198,7 @@ public final class DashboardRenderer {
         LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(-1, -2);
         moreParams.setMargins(0, style.dp(16), 0, 0);
         content.addView(more, moreParams);
-        empty = new EmptyStateView(context, () -> events.emit(DashboardEvent.addTask()));
+        empty = new EmptyStateView(context, () -> todayActions.emit(TodayAction.addTask()));
         content.addView(empty, new LinearLayout.LayoutParams(-1, -2));
         completedToday = new CompletedTodayView(context, todayActions);
         LinearLayout.LayoutParams completedParams = new LinearLayout.LayoutParams(-1, -2);
@@ -205,9 +206,9 @@ public final class DashboardRenderer {
         content.addView(completedToday, completedParams);
     }
 
-    private void bindToday(DashboardUiState state, FocusStepLimit focusStepLimit) {
-        TodayUiModel dashboard = state.dashboard;
-        DayPalette palette = state.palette;
+    private void bindToday(TodayScreenState state, DayPalette palette,
+                           FocusStepLimit focusStepLimit) {
+        TodayUiModel dashboard = state.today();
         rewardAnchors.clearDynamic();
         FocusTaskUiModel focusTask = dashboard.focus;
         boolean hasFocus = focusTask != null;
@@ -225,7 +226,7 @@ public final class DashboardRenderer {
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
         focus.bind(focusTask, dashboard.timeline.size() > 0, palette,
-                focusStepLimit, state.repetitionInput, state.todayFeature.reorder,
+                focusStepLimit, state.repetitionInput, state.feature.reorder,
                 state.timers, todayActions);
         bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
@@ -269,7 +270,7 @@ public final class DashboardRenderer {
                         task -> todayActions.emit(task.terminalCondition
                                 ? TodayAction.requestClose(task.taskId, task.title)
                                 : TodayAction.completeOccurrence(task.occurrenceId)),
-                        task -> events.emit(DashboardEvent.timelineMenu(task.actionTarget)));
+                        task -> todayActions.emit(TodayAction.openTaskMenu(task.actionTarget)));
                 RewardAnchorKey.Kind kind = item.task.terminalCondition
                         ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE;
                 rewardAnchors.register(new RewardAnchorKey(kind, item.task.terminalCondition

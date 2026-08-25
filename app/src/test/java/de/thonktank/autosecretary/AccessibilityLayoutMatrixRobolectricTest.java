@@ -75,7 +75,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
 
     @Test public void talkBackOrderRolesStatesAndKeyboardFollowTheVisualFlow() {
         Context context = configuredContext(412, 1f);
-        DashboardEventRecorder events = new DashboardEventRecorder();
+        TodayActionRecorder events = new TodayActionRecorder();
         FocusTaskView focus = new FocusTaskView(context);
         FocusTaskUiModel task = setTask(false);
         focus.bind(task, false, palette(), FocusStepLimit.AUTO,
@@ -145,11 +145,11 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, action -> { }, action -> { }, "test", new RewardAnchorRegistry(),
+                action -> { }, action -> { }, "test", new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
-        renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        DashboardFixtures.fullDashboard(), palette, false,
-                        Collections.emptySet()), AllTasksUiState.empty(), options(palette));
+        renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.TODAY, palette),
+                TodayScreenStateFixtures.today(DashboardFixtures.fullDashboard()),
+                AllTasksUiState.empty(), options(palette));
         measure(scroll, dp(context, widthDp), dp(context, 8_000));
         View focus = content.findViewById(R.id.dashboard_focus);
         assertNotNull(label(widthDp, fontScale), focus);

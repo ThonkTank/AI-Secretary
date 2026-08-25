@@ -100,9 +100,9 @@ public final class DashboardCharacterizationTest {
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
-        DashboardEventRecorder recorded = new DashboardEventRecorder();
+        TodayActionRecorder recorded = new TodayActionRecorder();
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                recorded, recorded, action -> { }, "test", new RewardAnchorRegistry(),
+                recorded, action -> { }, "test", new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
@@ -115,9 +115,9 @@ public final class DashboardCharacterizationTest {
                                 DashboardFixtures.ongoingTask(), "", 3))),
                 Collections.singletonList(DashboardFixtures.completedTodayTask()));
         DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.AUTO);
-        renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        TodayUiModel.compose(dashboardState, events), palette, false,
-                        Collections.emptySet()), AllTasksUiState.empty(), options(palette));
+        renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.TODAY, palette),
+                TodayScreenStateFixtures.today(TodayUiModel.compose(dashboardState, events)),
+                AllTasksUiState.empty(), options(palette));
 
         LinearLayout timeline = content.findViewById(R.id.dashboard_timeline);
         List<String> text = new ArrayList<>();
@@ -156,16 +156,16 @@ public final class DashboardCharacterizationTest {
         content.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
-                event -> { }, action -> { }, action -> { }, "test", new RewardAnchorRegistry(),
+                action -> { }, action -> { }, "test", new RewardAnchorRegistry(),
                 new AllTasksView.Listener() { });
         TodayUiModel today = new TodayUiModel(new XpProgress(10), null,
                 Collections.emptyList(),
                 Collections.singletonList(DashboardFixtures.completedTodayTask()));
         DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.AUTO);
 
-        renderer.render(new DashboardUiState(NavigationDestination.TODAY,
-                        today.withCalendar(Collections.emptyList()), palette, false,
-                        Collections.emptySet()), AllTasksUiState.empty(), options(palette));
+        renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.TODAY, palette),
+                TodayScreenStateFixtures.today(today.withCalendar(Collections.emptyList())),
+                AllTasksUiState.empty(), options(palette));
 
         View empty = findDirectChild(content, EmptyStateView.class);
         CompletedTodayView completed = content.findViewById(R.id.dashboard_completed_today);
