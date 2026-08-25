@@ -1763,3 +1763,107 @@ Phase 4 erfüllt damit lokal ihren Architekturumfang; ihr automatisierter Abschl
 den eigenen grünen Pull Request, Squash-Merge und den veröffentlichenden `main`-Lauf. Die
 physische In-App-Update- und Sichtabnahme bleibt gemäß Owner-Entscheidung ausdrücklich offen und
 wird nicht als bestanden gewertet.
+
+### Phase 4e – Remote-Abschluss
+
+Pull Request #279 bestand Quality sowie normale und animationsaktive Instrumentierung auf API
+26/35/37 und wurde als `10e1777e` per Squash nach `main` übernommen. Der Produktionslauf
+`32893632832` bestand zusätzlich Paketbau und Upgradeprüfungen auf API 26/35/37 und veröffentlichte
+Release 0.2.131 mit Tag `forest-android-1013101`. Remote-`main`, Tag, Releaseziel und
+`release-metadata.json` zeigen auf den vollständigen Merge-Commit
+`10e1777e481a1091e5dcd60d6b5905fb40f14a67`. Die separat heruntergeladene APK hat 6.467.018 Byte
+und den sowohl vom Release-Asset als auch von den Metadaten deklarierten SHA-256
+`75d479bd3d35a5a9bd598e8edf9d103b74b77e9d9a3f9b4306c7114ec2b634c8`. Phase 4e ist damit
+automatisiert abgeschlossen. Die physische In-App-Update- und Sichtabnahme bleibt offen.
+
+### Phase 5a – Vorprüfung und Implementationsplan für den Compose-Editor
+
+Roadmap, ADR-022, der veröffentlichte 4e-Stand, der autoritative Editor-Referenzvertrag,
+`TaskEditorViewModel`, `EditorUiState`, Reducer, Formatter, `TaskEditorCoordinator`, die 1.003
+Zeilen breite `TaskEditorView`, die separate Schrittansicht sowie Golden-, Adaptive-, Acceptance-
+und Instrumentierungsverträge wurden vor Produktänderungen erneut gelesen. Phase 5 ist als ein
+einziger reviewbarer Schnitt zu groß: Wizard, Schrittdetail, Prompts, Fokus-/Scrollrestauration,
+adaptive Geometrie, Barrierefreiheit, produktiver Cutover und Entfernen der Legacy-Orchestrierung
+würden sonst gleichzeitig zwei Renderer und zu viele Nachweisarten berühren.
+
+Phase 5 wird deshalb vor dem ersten Produktcode geteilt. 5a implementiert den vollständigen
+Compose-Renderer gegen den bestehenden einzigen `EditorUiState` und dessen Reducer. Er führt
+keinen eigenen Draft und keinen zweiten State Owner ein; Texteingaben und Navigation publizieren
+stets zuerst einen neuen autoritativen Zustand über den vorhandenen Actionpfad. Der Renderer wird
+zunächst nur über einen Test-/Vergleichshost montiert, während der produktive Editor unverändert
+bleibt. Kanonische und adaptive Szenarien, Semantik, Mindestzielgrößen, Fokus, Scrollposition,
+Promptdarstellung und Actiongleichheit werden Side-by-Side gegen die vorhandenen Verträge
+geprüft. Compose Foundation wird ohne Material oder allgemeines Design-System ergänzt; Palette,
+Typografie, Formatter, Reducer, Motiontoken und visuelle Baselines bleiben autoritativ.
+
+5b übernimmt danach auf einem eigenen Branch das produktive Mounting, die vollständigen
+Interaktions-, Recreation-, Save-/Delete-/Close- und Animationsnachweise und entfernt nach dem
+automatisierten Cutover `TaskEditorView`, `TaskStepsEditorView` und ihre reine View-Orchestrierung.
+Ein Screen besitzt auch während der Migration nur einen mutierenden State Owner; Side-by-Side
+bedeutet ausschließlich zwei Renderer desselben unveränderlichen Testzustands. Schema 19,
+Domainverhalten, SDK-Grenzen, Updatevertrag und Produktgestaltung bleiben unverändert. Gemäß
+Owner-Anweisung wird ohne verfügbares Handy fortgefahren; die physische Geräteabnahme bleibt
+ausdrücklich offen und wird nicht als bestanden gewertet.
+
+### Phase 5a – Implementation und lokale Nachweise
+
+Der vollständige Editor liegt nun als fünf getrennte Compose-Bausteine im Debug-Quellsatz:
+Hostgrenze, Screen-/Prompt-/Footer-Orchestrierung, Primitive, Wizardseiten und Schritteditor. Alle
+vier Seiten, das Schrittdetail, Rhythmus-, Zeit-, Mengen-, Pausen- und Begrenzungsfelder,
+Zusammenfassung, Löschen/Verwerfen, Validierungsfokus, seitenbezogene Scrollrestauration und die
+kompakte 4+3-/Zweizeilen-Geometrie werden aus dem bestehenden `EditorUiState` gerendert. Jede
+Eingabe läuft zuerst über `TaskEditorComposeDispatcher`, vorhandenen Reducer und Listener zum
+`TaskEditorViewModel`; der Host hält lediglich die zuletzt vom Owner zurückgebundene Renderkopie.
+System-Zurück bleibt Hostverantwortung und verwendet denselben Dispatcherpfad.
+
+Ein nicht exportierter `TaskEditorComposeHarnessActivity` speichert und restauriert exakt den
+autoritativen Bundlezustand. Der reale Compose-Instrumentierungsvertrag prüft Texteingabe und
+Wizardnavigation, Recreation, einen über Recreation stabilen Prompt mit verborgener
+Hintergrundsemantik, Host-Zurück, Mindestzielgrößen und Schrittaktionen. Der native
+Robolectric-Vergleich rendert alle zehn kanonischen und fünf adaptiven Szenarien gegen die
+unveränderten freigegebenen Legacy-Baselines; die Compose-spezifische Grenze beträgt höchstens
+25 Prozent geänderte Pixel bei einer Kanaltoleranz von 64. Dieser Vergleich ist strikt
+schreibgeschützt und kann nur Ist-/Diff-Artefakte, nie eine neue Legacy-Baseline erzeugen.
+Material, unabhängige Farben, ein zweiter Draft und ein produktives Mounting werden durch
+Architekturverträge ausgeschlossen.
+
+Lokal bestanden unter Java 21 alle 499 Tests ohne Fehler bei einem bewusst übersprungenen Test,
+darunter alle 15 Compose-Bildvergleiche, außerdem Lint, Debug-, Android-Test- und unsigned
+Release-Paketierung. Der neue Instrumentierungstest kompiliert und ist Bestandteil der
+Gerätematrix; ohne verbundenes Gerät wurde er lokal nicht als ausgeführt gewertet. Die 14
+CI-Harnesstests und nun 23 Release-/Workflow-Vertragstests sind ebenfalls grün. Aus einem sauberen
+Paketbuild messen Debug 5.104.140 Byte, Android-Test 1.350.328 Byte und unsigned Release
+6.458.826 Byte; die Fonts bleiben bei 1.478.008 Byte. Ein zusätzlich mit dem lokalen Testschlüssel
+signierter Release-Kandidat misst 6.467.018 Byte und bleibt damit klar unter 8 MiB.
+
+### Phase 5a – Roadmap-Abgleich und Nachtarbeit
+
+Der negative Abgleich fand vier substanziellere Fehler im ersten Schnitt. Erstens verwendete die
+Seitenanimation den `AnimatedContent`-Zielzustand nicht und hätte während des Übergangs zweimal
+den neuen Seiteninhalt zeichnen können. Sie rekonstruiert nun für alten und neuen Schlüssel je
+den passenden Navigationszustand und dessen eigene Scrollposition. Zweitens leitete die adaptive
+Breite sich aus gerundeten Konfigurationswerten statt aus der wirklichen Fensterfläche ab; sie
+verwendet nun die Containergröße und bleibt damit bei Insets und Mehrfensterbetrieb stabil.
+Drittens waren Renderer und Foundation zunächst bereits Produktionsinputs. Das war trotz
+fehlendem Mounting weder ein sauberer Strangler-Schnitt noch nachhaltig für das Releasebudget.
+Viertens besaßen die zunächst verwendeten Golden-Helfer trotz Vergleichscharakter einen expliziten
+lokalen Schreibschalter auf die freigegebenen Legacy-Dateien. Eine eigene Read-only-Schnittstelle
+entfernt diesen Pfad; der Architekturtest verbietet Compose-Updatevariablen.
+
+Die Nachtarbeit verschiebt deshalb den gesamten 5a-Renderer samt Foundation und Animation in den
+Debug-Quellsatz. Release enthält weder diese Bibliotheken noch UI-Testcode und ist bytegleich zum
+Produktumfang vor 5a; erst 5b verschiebt den Renderer beim echten Cutover in den
+Produktions-Quellsatz und entfernt gleichzeitig die Legacy-Orchestrierung. Für Debug entfernt R8
+ausschließlich unbenutzte
+Abhängigkeitsklassen; alle eigenen App- und Harnessklassen sowie Quelldatei-/Zeileninformationen
+bleiben explizit erhalten. Das hält das 10-MiB-Gate ein, verlängert einen vollständig sauberen
+Paket-/Lintlauf jedoch auf rund zwölf Minuten. Normales Kompilieren und die Unit-/Golden-Schleife
+bleiben davon getrennt; die Remote-Gerätematrix muss den geschrumpften Debug- und Testkandidaten
+vor Abschluss belegen.
+
+Der abschließende statische Gegencheck findet kein Material, keine unabhängige Farbkonstante,
+keinen zweiten mutierenden Editorzustand, kein Compose-Mounting im produktiven Coordinator und
+keine Foundation-, Animation- oder UI-Test-Abhängigkeit im Release-Laufzeitpfad. Eine weitere
+lokale Nachtarbeitsphase ist damit nicht begründet. Phase 5a bleibt bis zum eigenen grünen Pull
+Request, Squash-Merge und veröffentlichenden `main`-Lauf offen. Die physische Sicht- und
+In-App-Update-Abnahme bleibt gemäß Owner-Anweisung offen und wird nicht als bestanden gewertet.

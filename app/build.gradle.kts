@@ -68,6 +68,16 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // Keep the debuggable product surface readable while trimming unused library code.
+            // Compose Foundation otherwise pushes the unshrunk APK beyond the roadmap budget.
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-debug.pro",
+            )
+            testProguardFiles("proguard-debug.pro")
+        }
         getByName("release") {
             // CI supplies this signing configuration. A local release stays unsigned for testing.
             if (signingReady) signingConfig = signingConfigs.getByName("release")
@@ -124,6 +134,8 @@ dependencies {
     implementation(platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:1.8.1"))
     implementation(platform("androidx.compose:compose-bom:2026.08.00"))
     implementation("androidx.compose.ui:ui")
+    debugImplementation("androidx.compose.foundation:foundation")
+    debugImplementation("androidx.compose.animation:animation")
     implementation("androidx.activity:activity:1.13.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     testImplementation("junit:junit:4.13.2")
@@ -133,4 +145,6 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.room:room-testing:2.8.4")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.08.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }

@@ -19,6 +19,21 @@ public final class GoldenAssertions {
                                double maximumChangedRatio,
                                String updateEnvironment) throws Exception {
         boolean update = "1".equals(System.getenv(updateEnvironment));
+        compare(owner, resource, baseline, reportStem, actual, channelTolerance,
+                maximumChangedRatio, updateEnvironment, update);
+    }
+
+    public static void compareReadOnly(Class<?> owner, String resource, File baseline,
+                                       File reportStem, Bitmap actual, int channelTolerance,
+                                       double maximumChangedRatio) throws Exception {
+        compare(owner, resource, baseline, reportStem, actual, channelTolerance,
+                maximumChangedRatio, "read-only golden", false);
+    }
+
+    private static void compare(Class<?> owner, String resource, File baseline, File reportStem,
+                                Bitmap actual, int channelTolerance,
+                                double maximumChangedRatio,
+                                String updateEnvironment, boolean update) throws Exception {
         InputStream resourceStream = owner.getResourceAsStream(resource);
         if (resourceStream == null) {
             reviewNewBaseline(resource, baseline, reportStem, actual, update,

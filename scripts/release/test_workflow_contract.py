@@ -52,6 +52,7 @@ COMPOSE_SMOKE_TEST = (
     / "autosecretary"
     / "ComposeSmokeInstrumentationTest.kt"
 ).read_text(encoding="utf-8")
+DEBUG_PROGUARD = (ROOT / "app" / "proguard-debug.pro").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
 SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").read_text(
     encoding="utf-8"
@@ -202,6 +203,15 @@ class WorkflowContractTest(unittest.TestCase):
             'test "$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)" -lt 10485760',
             WORKFLOW,
         )
+
+    def test_phase_5a_compose_foundation_keeps_both_apk_budgets_without_test_leakage(self):
+        self.assertIn('debugImplementation("androidx.compose.foundation:foundation")', APP_BUILD)
+        self.assertIn('debugImplementation("androidx.compose.animation:animation")', APP_BUILD)
+        self.assertIn("isMinifyEnabled = true", APP_BUILD)
+        self.assertIn('testProguardFiles("proguard-debug.pro")', APP_BUILD)
+        self.assertNotIn("ui-test-manifest", APP_BUILD)
+        self.assertIn("-keep class de.thonktank.autosecretary.** { *; }", DEBUG_PROGUARD)
+        self.assertIn("-keepattributes SourceFile,LineNumberTable", DEBUG_PROGUARD)
 
     def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):
         quality = WORKFLOW.split("\n  quality:", 1)[1].split(

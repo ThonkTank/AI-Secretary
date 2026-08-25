@@ -8,6 +8,9 @@ und Kombozustand und Schema 19 den eingefrorenen Planwert quantitativer Rewards.
 ändern die hier beschriebenen Compiler-, Today- und Capability-Port-Grenzen nicht. Die aktuelle
 Präsentationsbaseline und ihre weitere Migration stehen in der
 [Frontend-Modernisierungsroadmap](frontend-modernization-roadmap.md).
+Phase 5a ergänzt einen vollständigen Compose-Vergleichsrenderer für den Aufgabeneditor. Bis zum
+produktiven Cutover in 5b bleibt `TaskEditorView` der aktive Renderer; beide Grenzen erhalten
+ausschließlich denselben vom `TaskEditorViewModel` veröffentlichten `EditorUiState`.
 
 ## Compilergrenzen
 
@@ -57,6 +60,7 @@ verbrauchbare `UiEvent`s existieren nicht mehr.
 | `app/ui/leaf` | `LeafShape`, `LeafSurface`, `GrainSpec`, Clip und asynchrone Grain-Pipeline |
 | `app/ui/today` | Header, Fokuskarte, Timelineblätter, Tageshistorie, Gesten und Accessibility |
 | `app/presentation/alltasks` | Verwaltungszustand, virtuelle Liste und Managementaktionen |
+| `app/presentation/editor` | zustandsloser Compose-Editor, Hostgrenze und Reducer-Dispatcher; in 5a nur Vergleichsrenderer |
 | `app/presentation/options` | Optionen-, Kalender-, Updaterzustand und stabile Hostrequests |
 | `app/presentation/today` | Android-State-Owner, Today-Screen-State und Hostrequests |
 | `app/presentation/shell` | temporäre Top-Level-Auswahl und globale Legacy-Palette |
@@ -96,6 +100,7 @@ Transaktion; diese Invariante gilt auch unter Schema 19 unverändert.
 | Top-Level-Auswahl und globale Legacy-Palette | `AppShellScreenState` im `AppShellViewModel` | Auswahl im `SavedStateHandle` |
 | Alles-Filter, Modus, Karten- und Filterbereich | `AllTasksPresentationState` im `AllTasksViewModel` | ja, `SavedStateHandle` |
 | Alles-Dropdown und aktiver Drag | `AllTasksView` | nein, bei Abbruch/Detach/Recreation geschlossen |
+| Editor-Draft, Wizardnavigation, Feedback und Prompt | `EditorUiState` im `TaskEditorViewModel` | Recreation über `SavedStateHandle` |
 | Wiederholungsdraft | `RepetitionInputState` im `TodayViewModel` | nein |
 | Blatt-/Grain-Geometrie | `LeafSurface` | nein |
 
@@ -103,6 +108,9 @@ Transaktion; diese Invariante gilt auch unter Schema 19 unverändert.
 
 - Java-Module verhindern Android- und App-Rückimporte in Domain und Today-Kern.
 - Hosttests prüfen Fachregeln, Reducer, Room, Migrationen, Views, Accessibility und Goldens.
+- Der Compose-Editor wird gegen alle zehn kanonischen und fünf adaptiven Legacy-Baselines sowie
+  über Semantik-, Fokus-, Recreation-, Host-Back- und Actionverträge geprüft; 5a darf den
+  produktiven `TaskEditorCoordinator` nicht auf den Vergleichsrenderer umschalten.
 - Die Android-Test-APK enthält Today-Long-Press/Drag/Drop, Randscrollen,
   Accessibilityaktionen und Recreation eines nicht persistierten Reorders.
 - CI führt normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie echte
