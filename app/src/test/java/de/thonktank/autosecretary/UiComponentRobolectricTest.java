@@ -90,6 +90,28 @@ public final class UiComponentRobolectricTest {
         }
     }
 
+    @Test public void laterLaunchIntentCannotReplaceAnAlreadyOpenEditorDraft() {
+        try (ActivityController<MainActivity> controller =
+                     Robolectric.buildActivity(MainActivity.class)) {
+            MainActivity activity = controller.setup().get();
+            AppContainer container = AutoSecretaryApplication.from(activity).container();
+            TaskEditorViewModel editor = new ViewModelProvider(activity,
+                    new TaskEditorViewModel.Factory(container)).get(TaskEditorViewModel.class);
+            editor.dispatch(TaskEditorAction.openNew());
+            editor.dispatch(TaskEditorAction.draftChanged(
+                    de.thonktank.autosecretary.editor.TaskEditorStateReducer.updateTitle(
+                            editor.state().getValue().content, "Erhaltener Entwurf")));
+            activity.getIntent().putExtra(MainActivity.OPEN_EDITOR, true);
+
+            activity = controller.recreate().get();
+            editor = new ViewModelProvider(activity, new TaskEditorViewModel.Factory(container))
+                    .get(TaskEditorViewModel.class);
+
+            assertEquals("Erhaltener Entwurf", editor.state().getValue().content.title);
+            assertFalse(activity.getIntent().hasExtra(MainActivity.OPEN_EDITOR));
+        }
+    }
+
     @Test public void recreationDoesNotRepeatAConsumedConfirmationIntent() {
         Context context = ApplicationProvider.getApplicationContext();
         Intent launch = new Intent(context, MainActivity.class)
@@ -121,7 +143,8 @@ public final class UiComponentRobolectricTest {
             MainActivity activity = controller.setup().get();
             AppContainer container = AutoSecretaryApplication.from(activity).container();
             AllTasksViewModel management = new ViewModelProvider(activity,
-                    new AllTasksViewModel.Factory(container)).get(AllTasksViewModel.class);
+                    new AllTasksViewModel.Factory(container, destination -> { }))
+                    .get(AllTasksViewModel.class);
 
             management.dispatch(AllTasksAction.deleteRequested(
                     TaskId.of("pending-delete"), "Offene Aufgabe"));

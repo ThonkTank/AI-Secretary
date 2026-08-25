@@ -27,6 +27,8 @@ import de.thonktank.autosecretary.presentation.UiTextProvider;
 import de.thonktank.autosecretary.presentation.observable.LatestReadPipeline;
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidation;
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
+import de.thonktank.autosecretary.presentation.navigation.AppDestination;
+import de.thonktank.autosecretary.presentation.navigation.AppNavigator;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -53,6 +55,7 @@ public final class AllTasksViewModel extends ViewModel {
     private final SwapTaskSteps swapSteps;
     private final DeleteTask deleteTask;
     private final UiTextProvider texts;
+    private final AppNavigator navigator;
     private final SavedStateHandle savedState;
     private final ExecutorService worker;
     private final LatestReadPipeline<PresentationInvalidation, TaskCatalog> reads;
@@ -70,25 +73,33 @@ public final class AllTasksViewModel extends ViewModel {
                       MoveTaskStep moveStep, SwapTaskSteps swapSteps, DeleteTask deleteTask,
                       UiTextProvider texts, SavedStateHandle savedState,
                       ExecutorService worker, PresentationInvalidationSource invalidations,
-                      Executor collectionExecutor) {
+                      Executor collectionExecutor, AppNavigator navigator) {
         this.catalog = catalog;
         this.moveSchedule = moveSchedule;
         this.moveStep = moveStep;
         this.swapSteps = swapSteps;
         this.deleteTask = deleteTask;
         this.texts = texts;
+        if (navigator == null) throw new IllegalArgumentException("Navigator is required");
+        this.navigator = navigator;
         this.savedState = savedState;
         this.worker = worker;
         AllTasksPresentationState presentation = savedStateAdapter.decode(
                 savedState.get(SAVED_PRESENTATION));
-        List<AllTasksRequest> requests = requestStateAdapter.decode(
+        AllTasksRequestSavedStateAdapter.Restored restoredRequests = requestStateAdapter.decode(
                 savedState.get(SAVED_REQUESTS));
+        List<AllTasksRequest> requests = restoredRequests.requests;
         Long restoredSequence = savedState.get(SAVED_REQUEST_SEQUENCE);
         requestSequence = restoredSequence == null ? 0L : restoredSequence;
         for (AllTasksRequest request : requests)
             requestSequence = Math.max(requestSequence, sequenceOf(request.id));
         current = new AllTasksScreenState(AllTasksUiState.from(null, presentation), requests);
         state = StateFlowKt.MutableStateFlow(current);
+        if (!restoredRequests.legacyDestinations.isEmpty()) {
+            persistRequests();
+            for (AppDestination destination : restoredRequests.legacyDestinations)
+                navigator.navigate(destination);
+        }
         if (collectionExecutor == null)
             reads = LatestReadPipeline.reading(invalidations.getCatalogChanges(), worker,
                     ignored -> catalog.execute(), this::publishCatalog,
@@ -134,14 +145,13 @@ public final class AllTasksViewModel extends ViewModel {
                     ((AllTasksAction.CardToggled) action).cardKey));
         else if (action instanceof AllTasksAction.EditTask) {
             AllTasksAction.EditTask edit = (AllTasksAction.EditTask) action;
-            enqueueRequest(AllTasksRequest.openEditor(nextRequestId(), edit.taskId, null, false));
+            navigator.navigate(AppDestination.editTask(edit.taskId));
         } else if (action instanceof AllTasksAction.EditStep) {
             AllTasksAction.EditStep edit = (AllTasksAction.EditStep) action;
-            enqueueRequest(AllTasksRequest.openEditor(nextRequestId(), edit.taskId,
-                    edit.stepId, false));
+            navigator.navigate(AppDestination.editStep(edit.taskId, edit.stepId));
         } else if (action instanceof AllTasksAction.AddStep) {
             AllTasksAction.AddStep edit = (AllTasksAction.AddStep) action;
-            enqueueRequest(AllTasksRequest.openEditor(nextRequestId(), edit.taskId, null, true));
+            navigator.navigate(AppDestination.addStep(edit.taskId));
         } else if (action instanceof AllTasksAction.DeleteRequested) {
             AllTasksAction.DeleteRequested delete = (AllTasksAction.DeleteRequested) action;
             enqueueRequest(AllTasksRequest.confirmDelete(nextRequestId(), delete.taskId,
@@ -331,14 +341,17 @@ public final class AllTasksViewModel extends ViewModel {
 
     public static final class Factory implements ViewModelProvider.Factory {
         private final AppContainer container;
+        private final AppNavigator navigator;
         private final Supplier<ExecutorService> workers;
 
-        public Factory(AppContainer container) {
-            this(container, Executors::newSingleThreadExecutor);
+        public Factory(AppContainer container, AppNavigator navigator) {
+            this(container, navigator, Executors::newSingleThreadExecutor);
         }
 
-        Factory(AppContainer container, Supplier<ExecutorService> workers) {
+        Factory(AppContainer container, AppNavigator navigator,
+                Supplier<ExecutorService> workers) {
             this.container = container;
+            this.navigator = navigator;
             this.workers = workers;
         }
 
@@ -351,7 +364,7 @@ public final class AllTasksViewModel extends ViewModel {
                     container.tasks.moveScheduleEntry, container.tasks.moveTaskStep,
                     container.tasks.swapTaskSteps, container.tasks.delete, container.texts,
                     SavedStateHandleSupport.createSavedStateHandle(extras), workers.get(),
-                    container.presentationInvalidations, null);
+                    container.presentationInvalidations, null, navigator);
         }
     }
 }
