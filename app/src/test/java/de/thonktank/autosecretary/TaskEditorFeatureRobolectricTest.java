@@ -116,10 +116,10 @@ public final class TaskEditorFeatureRobolectricTest {
     }
 
     @Test public void newEditorChoosesAContextualDaySlot() {
-        assertEquals(TaskSlot.MORNING, TaskViewModel.defaultEditorSlot(LocalTime.of(7, 30)));
-        assertEquals(TaskSlot.MIDDAY, TaskViewModel.defaultEditorSlot(LocalTime.of(12, 0)));
-        assertEquals(TaskSlot.EVENING, TaskViewModel.defaultEditorSlot(LocalTime.of(18, 0)));
-        assertEquals(TaskSlot.LATER, TaskViewModel.defaultEditorSlot(LocalTime.of(22, 0)));
+        assertEquals(TaskSlot.MORNING, TaskEditorViewModel.defaultSlot(LocalTime.of(7, 30)));
+        assertEquals(TaskSlot.MIDDAY, TaskEditorViewModel.defaultSlot(LocalTime.of(12, 0)));
+        assertEquals(TaskSlot.EVENING, TaskEditorViewModel.defaultSlot(LocalTime.of(18, 0)));
+        assertEquals(TaskSlot.LATER, TaskEditorViewModel.defaultSlot(LocalTime.of(22, 0)));
     }
 
     @Test public void templateUpdateKeepsIdentityAndDoesNotMutateOpenSnapshot() {

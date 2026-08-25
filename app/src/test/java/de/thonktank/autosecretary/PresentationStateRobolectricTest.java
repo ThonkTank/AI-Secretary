@@ -95,6 +95,7 @@ public final class PresentationStateRobolectricTest {
     private final RecordingLogger logger = new RecordingLogger();
     private final AtomicInteger ids = new AtomicInteger();
     private TaskViewModel viewModel;
+    private TaskEditorViewModel editorViewModel;
     private PresentationInvalidationSource invalidationSource;
     private CalendarInvalidationSource calendarInvalidations;
     private final List<String> databaseQueries = new CopyOnWriteArrayList<>();
@@ -118,6 +119,7 @@ public final class PresentationStateRobolectricTest {
 
     @After public void tearDown() {
         if (viewModel != null) viewModel.onCleared();
+        if (editorViewModel != null) editorViewModel.onCleared();
         if (invalidationSource != null) invalidationSource.close();
         database.close();
         context.deleteSharedPreferences("forest_ui");
@@ -154,9 +156,11 @@ public final class PresentationStateRobolectricTest {
         }
     }
 
-    @Test public void navigationAndOpenEditorRestoreFromSavedState() throws Exception {
-        SavedStateHandle handle = new SavedStateHandle();
-        viewModel = newViewModel(handle);
+    @Test public void navigationAndOpenEditorRestoreFromTheirOwnSavedStates() throws Exception {
+        SavedStateHandle dashboardHandle = new SavedStateHandle();
+        SavedStateHandle editorHandle = new SavedStateHandle();
+        viewModel = newViewModel(dashboardHandle);
+        editorViewModel = newEditorViewModel(editorHandle, new DirectExecutor());
         assertFalse(value().loading);
 
         TaskId migratedId = TaskId.of("migrated-ongoing");
@@ -175,32 +179,34 @@ public final class PresentationStateRobolectricTest {
         String taskId = repository.allTasks().get(0).id.value;
 
         viewModel.navigate(NavigationDestination.OPTIONS);
-        viewModel.openEditor(taskId);
-        assertTrue(value().editor.open && !value().editor.loading);
-        assertEquals("Bearbeitbar", value().editor.title);
-        assertEquals(4, value().editor.intervalDays);
-        assertEquals(2, value().editor.stepStates.size());
+        editorViewModel.dispatch(TaskEditorAction.open(taskId));
+        assertTrue(editorValue().open && !editorValue().loading);
+        assertEquals("Bearbeitbar", editorValue().title);
+        assertEquals(4, editorValue().intervalDays);
+        assertEquals(2, editorValue().stepStates.size());
         viewModel.onCleared();
+        editorViewModel.onCleared();
+        viewModel = null;
+        editorViewModel = null;
 
-        viewModel = newViewModel(handle);
+        viewModel = newViewModel(dashboardHandle);
+        editorViewModel = newEditorViewModel(editorHandle, new DirectExecutor());
         assertEquals(NavigationDestination.OPTIONS, value().navigation);
-        assertTrue(value().editor.open);
-        assertEquals(taskId, value().editor.taskId);
+        assertTrue(editorValue().open);
+        assertEquals(taskId, editorValue().taskId);
     }
 
     @Test public void duplicateCommandsAreIgnoredWhileTheFirstIsRunning() throws Exception {
         ManualExecutor worker = new ManualExecutor();
-        viewModel = newViewModel(new SavedStateHandle(), worker);
-        worker.runAll();
-        assertFalse(value().loading);
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), worker);
 
         EditorUiState draft = EditorUiState.create().withDraft("Einmal", TaskSlot.MORNING,
                 Recurrence.ONCE, 1, 0, Collections.emptyList());
-        viewModel.saveEditor(draft);
-        viewModel.saveEditor(draft);
+        editorViewModel.dispatch(TaskEditorAction.save(draft));
+        editorViewModel.dispatch(TaskEditorAction.save(draft));
 
         worker.runAll();
-        assertFalse(value().isRunning(new UiCommand(UiCommand.Kind.CREATE, "new")));
+        assertFalse(editorValue().saving);
         assertEquals(1, repository.allTasks().size());
     }
 
@@ -234,13 +240,82 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void editorValidationErrorsStayInTypedEditorState() throws Exception {
-        viewModel = newViewModel(new SavedStateHandle());
-        assertFalse(value().loading);
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
 
-        viewModel.saveEditor(EditorUiState.create());
+        editorViewModel.dispatch(TaskEditorAction.save(EditorUiState.create()));
 
-        assertFalse(value().editor.issues.isEmpty());
-        assertFalse(value().editor.saving);
+        assertFalse(editorValue().issues.isEmpty());
+        assertFalse(editorValue().saving);
+    }
+
+    @Test public void dismissingAStillLoadingEditorPreventsStaleReopen() {
+        TaskId id = TaskId.of("slow-editor");
+        repository.insertTask(Task.restore(id, "Langsam", Recurrence.DAILY,
+                1, 0, false, "", false, false, clock.today(), null, null,
+                clock.today(), 1_024L, false, null, TaskBoundKind.FOREVER, null, null,
+                null, null, ""));
+        ManualExecutor worker = new ManualExecutor();
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), worker);
+
+        editorViewModel.dispatch(TaskEditorAction.open(id.value));
+        assertTrue(editorValue().loading);
+        editorViewModel.dispatch(TaskEditorAction.dismiss());
+        worker.runAll();
+
+        assertFalse(editorValue().open);
+    }
+
+    @Test public void completedSaveCannotCloseANewerEditorGeneration() {
+        ManualExecutor worker = new ManualExecutor();
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), worker);
+        EditorUiState draft = EditorUiState.create().withDraft("Gespeichert",
+                TaskSlot.MORNING, Recurrence.DAILY, 1, 0, Collections.emptyList());
+
+        editorViewModel.dispatch(TaskEditorAction.save(draft));
+        editorViewModel.dispatch(TaskEditorAction.openNew());
+        EditorUiState newer = editorValue();
+        worker.runAll();
+
+        assertEquals(1, repository.allTasks().size());
+        assertSame(newer, editorValue());
+        assertTrue(editorValue().open);
+    }
+
+    @Test public void interruptedWriteRestoresAsRetryableDraftInsteadOfPermanentSaving() {
+        SavedStateHandle handle = new SavedStateHandle();
+        ManualExecutor interruptedWorker = new ManualExecutor();
+        editorViewModel = newEditorViewModel(handle, interruptedWorker);
+        EditorUiState draft = EditorUiState.create().withDraft("Nicht verloren",
+                TaskSlot.MORNING, Recurrence.DAILY, 1, 0, Collections.emptyList());
+
+        editorViewModel.dispatch(TaskEditorAction.save(draft));
+        assertTrue(editorValue().saving);
+        editorViewModel.onCleared();
+
+        editorViewModel = newEditorViewModel(handle, new DirectExecutor());
+
+        assertTrue(editorValue().open);
+        assertFalse(editorValue().saving);
+        assertEquals("Nicht verloren", editorValue().title);
+        assertFalse(editorValue().storageError.isEmpty());
+    }
+
+    @Test public void editorErrorRequestSurvivesProcessStateUntilAcknowledged() {
+        SavedStateHandle handle = new SavedStateHandle();
+        editorViewModel = newEditorViewModel(handle, new DirectExecutor());
+
+        editorViewModel.dispatch(TaskEditorAction.open("missing-editor"));
+
+        TaskEditorRequest pending = editorViewModel.state().getValue().firstRequest();
+        assertNotNull(pending);
+        editorViewModel.onCleared();
+        editorViewModel = newEditorViewModel(handle, new DirectExecutor());
+        assertEquals(pending.id, editorViewModel.state().getValue().firstRequest().id);
+
+        editorViewModel.dispatch(TaskEditorAction.acknowledgeRequest(pending.id));
+
+        assertNull(editorViewModel.state().getValue().firstRequest());
+        assertFalse(editorValue().open);
     }
 
     @Test public void repetitionDraftsStayLocalUntilSubmissionPersistsThem() {
@@ -335,13 +410,14 @@ public final class PresentationStateRobolectricTest {
     @Test public void completionReloadsOnlyTodayAndPreservesSiblingPresentationState() {
         AtomicInteger calendarLoads = new AtomicInteger();
         viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(), calendarLoads);
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
         tasks.create.execute(TaskDefinition.basic("Abschließen", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
         refreshDatabase();
-        viewModel.openEditor(null);
+        editorViewModel.dispatch(TaskEditorAction.openNew());
         preferences.setFocusStepLimit(FocusStepLimit.THREE);
         CalendarUiState calendarBefore = value().calendar;
-        EditorUiState editorBefore = value().editor;
+        EditorUiState editorBefore = editorValue();
         String occurrenceId = value().dashboard.focus.occurrenceId();
         calendarLoads.set(0);
 
@@ -349,7 +425,7 @@ public final class PresentationStateRobolectricTest {
 
         assertEquals(0, calendarLoads.get());
         assertSame(calendarBefore, value().calendar);
-        assertSame(editorBefore, value().editor);
+        assertSame(editorBefore, editorValue());
         assertEquals(FocusStepLimit.THREE, value().focusStepLimit);
         assertTrue(value().dashboard.completedToday.stream()
                 .anyMatch(done -> done.occurrenceId.equals(occurrenceId)));
@@ -532,12 +608,22 @@ public final class PresentationStateRobolectricTest {
                 invalidationSource, Runnable::run);
     }
 
+    private TaskEditorViewModel newEditorViewModel(SavedStateHandle handle,
+                                                    AbstractExecutorService worker) {
+        return new TaskEditorViewModel(tasks, clock, logger,
+                new AndroidUiTextProvider(context), handle, worker);
+    }
+
     private void refreshDatabase() {
         database.getInvalidationTracker().refreshVersionsSync();
     }
 
     private DashboardUiState value() {
         return viewModel.state().getValue();
+    }
+
+    private EditorUiState editorValue() {
+        return editorViewModel.state().getValue().content;
     }
 
     private static class DirectExecutor extends AbstractExecutorService {

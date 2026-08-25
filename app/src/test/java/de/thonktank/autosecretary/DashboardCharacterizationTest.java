@@ -118,8 +118,8 @@ public final class DashboardCharacterizationTest {
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         TodayUiModel.compose(dashboardState, events),
                         CalendarUiState.from(new CalendarResult.Success(events)), palette,
-                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
-                        EditorUiState.closed()), AllTasksUiState.empty());
+                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet()),
+                AllTasksUiState.empty());
 
         LinearLayout timeline = content.findViewById(R.id.dashboard_timeline);
         List<String> text = new ArrayList<>();
@@ -168,7 +168,7 @@ public final class DashboardCharacterizationTest {
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         today.withCalendar(Collections.emptyList()), CalendarUiState.empty(),
                         palette, CalendarPermissionStatus.GRANTED, false,
-                        Collections.emptySet(), EditorUiState.closed()),
+                        Collections.emptySet()),
                 AllTasksUiState.empty());
 
         View empty = findDirectChild(content, EmptyStateView.class);

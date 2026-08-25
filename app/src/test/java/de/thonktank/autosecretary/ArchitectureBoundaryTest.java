@@ -117,9 +117,9 @@ public final class ArchitectureBoundaryTest {
                 activity.indexOf("private void renderUpdate("));
         assertTrue(open.contains("editorCoordinator.deferNextOpen()"));
         assertTrue(open.contains("editorCoordinator::completeDeferredOpen"));
-        assertFalse(open.contains("() -> viewModel.openEditor"));
+        assertFalse(open.contains("() -> editorViewModel.dispatch"));
         assertTrue(open.indexOf("animateEditorTransition")
-                < open.lastIndexOf("viewModel.openEditor(null)"));
+                < open.lastIndexOf("editorViewModel.dispatch(TaskEditorAction.openNew())"));
 
         String renderer = read(main("DashboardRenderer.java"));
         assertTrue(renderer.contains("onAnimationCancel"));

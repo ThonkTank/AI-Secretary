@@ -340,8 +340,8 @@ final class TaskStepsEditorView extends LinearLayout {
         apply(TaskEditorStateReducer.expandStep(state, id), true);
     }
     private void apply(EditorUiState next, boolean rerender) {
-        state = next;
         listener.onStateChanged(next, rerender);
+        state = next;
     }
 
     private static LayoutParams params(int width, int height, int left, int top,

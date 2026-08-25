@@ -78,8 +78,8 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         renderer.render(new DashboardUiState(NavigationDestination.TODAY,
                         TodayUiModel.compose(dashboard, events),
                         CalendarUiState.from(new CalendarResult.Success(events)), palette,
-                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet(),
-                        EditorUiState.closed()), AllTasksUiState.empty());
+                        CalendarPermissionStatus.GRANTED, false, Collections.emptySet()),
+                AllTasksUiState.empty());
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             screen.setPadding(0, bars.top, 0, 0);
