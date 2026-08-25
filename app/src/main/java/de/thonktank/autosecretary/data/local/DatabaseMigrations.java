@@ -548,6 +548,113 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Adds generic step-flow definitions, capacity leases and durable runtime snapshots. */
+    public static final Migration MIGRATION_19_20 = new Migration(19, 20) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN activationKind TEXT "
+                    + "NOT NULL DEFAULT 'SCHEDULED'");
+
+            database.execSQL("ALTER TABLE occurrences ADD COLUMN kind TEXT "
+                    + "NOT NULL DEFAULT 'SCHEDULED'");
+            database.execSQL("ALTER TABLE occurrences ADD COLUMN sourceKey TEXT "
+                    + "NOT NULL DEFAULT ''");
+            database.execSQL("ALTER TABLE occurrences ADD COLUMN flowRunId TEXT");
+            database.execSQL("ALTER TABLE occurrences ADD COLUMN flowSheetSequence INTEGER "
+                    + "NOT NULL DEFAULT 0");
+            database.execSQL("UPDATE occurrences SET kind = CASE WHEN id LIKE 'condition:%' "
+                    + "THEN 'CONDITION' ELSE 'SCHEDULED' END");
+            database.execSQL("UPDATE occurrences SET sourceKey = CASE WHEN kind='CONDITION' "
+                    + "THEN 'condition:' || taskId ELSE 'scheduled:' || taskId || ':' || "
+                    + "scheduledOn || ':' || slot END");
+            database.execSQL("DROP INDEX index_occurrences_taskId_scheduledOn_slot");
+            database.execSQL("CREATE UNIQUE INDEX index_occurrences_sourceKey "
+                    + "ON occurrences(sourceKey)");
+            database.execSQL("CREATE INDEX index_occurrences_flowRunId "
+                    + "ON occurrences(flowRunId)");
+
+            database.execSQL("CREATE TABLE capacity_resources (id TEXT NOT NULL, "
+                    + "name TEXT NOT NULL, normalizedName TEXT NOT NULL, capacity INTEGER NOT NULL, "
+                    + "PRIMARY KEY(id))");
+            database.execSQL("CREATE UNIQUE INDEX index_capacity_resources_normalizedName "
+                    + "ON capacity_resources(normalizedName)");
+
+            database.execSQL("CREATE TABLE step_transitions (sourceStepId TEXT NOT NULL, "
+                    + "targetStepId TEXT NOT NULL, delayMode TEXT NOT NULL, "
+                    + "defaultDelayMillis INTEGER NOT NULL, lastUsedDelayMillis INTEGER, "
+                    + "PRIMARY KEY(sourceStepId), FOREIGN KEY(sourceStepId) REFERENCES "
+                    + "task_steps(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
+                    + "FOREIGN KEY(targetStepId) REFERENCES task_steps(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_step_transitions_targetStepId "
+                    + "ON step_transitions(targetStepId)");
+
+            database.execSQL("CREATE TABLE step_resource_leases (id TEXT NOT NULL, "
+                    + "taskId TEXT NOT NULL, acquireStepId TEXT NOT NULL, releaseStepId TEXT NOT NULL, "
+                    + "resourceId TEXT NOT NULL, units INTEGER NOT NULL, PRIMARY KEY(id), "
+                    + "FOREIGN KEY(taskId) REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
+                    + "FOREIGN KEY(acquireStepId) REFERENCES task_steps(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(releaseStepId) "
+                    + "REFERENCES task_steps(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
+                    + "FOREIGN KEY(resourceId) REFERENCES capacity_resources(id) "
+                    + "ON UPDATE NO ACTION ON DELETE RESTRICT)");
+            database.execSQL("CREATE INDEX index_step_resource_leases_taskId "
+                    + "ON step_resource_leases(taskId)");
+            database.execSQL("CREATE INDEX index_step_resource_leases_acquireStepId "
+                    + "ON step_resource_leases(acquireStepId)");
+            database.execSQL("CREATE INDEX index_step_resource_leases_releaseStepId "
+                    + "ON step_resource_leases(releaseStepId)");
+            database.execSQL("CREATE INDEX index_step_resource_leases_resourceId "
+                    + "ON step_resource_leases(resourceId)");
+
+            database.execSQL("CREATE TABLE step_flow_runs (id TEXT NOT NULL, taskId TEXT NOT NULL, "
+                    + "seedStepId TEXT NOT NULL, sourceKey TEXT NOT NULL, scheduledOn TEXT NOT NULL, "
+                    + "slot TEXT NOT NULL, state TEXT NOT NULL, currentPosition INTEGER NOT NULL, "
+                    + "readyAtEpochMillis INTEGER, currentSheetOccurrenceId TEXT, "
+                    + "queueOrder INTEGER NOT NULL, nextSheetSequence INTEGER NOT NULL, "
+                    + "createdAtEpochMillis INTEGER NOT NULL, updatedAtEpochMillis INTEGER NOT NULL, "
+                    + "PRIMARY KEY(id), FOREIGN KEY(taskId) REFERENCES tasks(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_step_flow_runs_taskId ON step_flow_runs(taskId)");
+            database.execSQL("CREATE INDEX index_step_flow_runs_seedStepId "
+                    + "ON step_flow_runs(seedStepId)");
+            database.execSQL("CREATE UNIQUE INDEX index_step_flow_runs_sourceKey "
+                    + "ON step_flow_runs(sourceKey)");
+            database.execSQL("CREATE INDEX index_step_flow_runs_state_readyAtEpochMillis "
+                    + "ON step_flow_runs(state,readyAtEpochMillis)");
+            database.execSQL("CREATE INDEX index_step_flow_runs_state_queueOrder_createdAtEpochMillis "
+                    + "ON step_flow_runs(state,queueOrder,createdAtEpochMillis)");
+
+            database.execSQL("CREATE TABLE flow_run_steps (id TEXT NOT NULL, runId TEXT NOT NULL, "
+                    + "position INTEGER NOT NULL, sourceTemplateId TEXT NOT NULL, text TEXT NOT NULL, "
+                    + "amountKind TEXT NOT NULL, plannedSets INTEGER, plannedReps INTEGER, "
+                    + "plannedDurationSeconds INTEGER, restTimerMode TEXT NOT NULL, "
+                    + "restTimerSeconds INTEGER, note TEXT NOT NULL, delayMode TEXT, "
+                    + "defaultDelayMillis INTEGER, lastUsedDelayMillis INTEGER, "
+                    + "chosenDelayMillis INTEGER, PRIMARY KEY(id), FOREIGN KEY(runId) "
+                    + "REFERENCES step_flow_runs(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_flow_run_steps_runId ON flow_run_steps(runId)");
+            database.execSQL("CREATE UNIQUE INDEX index_flow_run_steps_runId_position "
+                    + "ON flow_run_steps(runId,position)");
+            database.execSQL("CREATE INDEX index_flow_run_steps_sourceTemplateId "
+                    + "ON flow_run_steps(sourceTemplateId)");
+
+            database.execSQL("CREATE TABLE flow_run_resources (id TEXT NOT NULL, "
+                    + "runId TEXT NOT NULL, sourceLeaseId TEXT NOT NULL, resourceId TEXT NOT NULL, "
+                    + "resourceName TEXT NOT NULL, capacityAtCreation INTEGER NOT NULL, "
+                    + "units INTEGER NOT NULL, acquirePosition INTEGER NOT NULL, "
+                    + "releasePosition INTEGER NOT NULL, state TEXT NOT NULL, "
+                    + "reservedAtEpochMillis INTEGER, activatedAtEpochMillis INTEGER, "
+                    + "releasedAtEpochMillis INTEGER, PRIMARY KEY(id), FOREIGN KEY(runId) "
+                    + "REFERENCES step_flow_runs(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_flow_run_resources_runId "
+                    + "ON flow_run_resources(runId)");
+            database.execSQL("CREATE INDEX index_flow_run_resources_resourceId_state "
+                    + "ON flow_run_resources(resourceId,state)");
+            database.execSQL("CREATE INDEX index_flow_run_resources_runId_acquirePosition "
+                    + "ON flow_run_resources(runId,acquirePosition)");
+        }
+    };
+
     /** Complete historical graph for migration fixtures and archive tests. */
     public static Migration[] all() {
         return from(1);
@@ -559,7 +666,7 @@ public final class DatabaseMigrations {
                 MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
                 MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                 MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-                MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19};
+                MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

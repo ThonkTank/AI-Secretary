@@ -6,6 +6,8 @@ import de.thonktank.autosecretary.domain.steps.MoveTaskStep;
 import de.thonktank.autosecretary.domain.steps.SwapTaskSteps;
 
 import de.thonktank.autosecretary.Clock;
+import de.thonktank.autosecretary.MomentSource;
+import de.thonktank.autosecretary.SystemMomentSource;
 import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.repository.TaskCatalogQuery;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
@@ -36,15 +38,27 @@ public final class TaskUseCases {
     public final MoveScheduleEntry moveScheduleEntry;
     public final MoveTaskStep moveTaskStep;
     public final SwapTaskSteps swapTaskSteps;
+    public final SaveCapacityResource saveCapacityResource;
+    public final SaveStepFlowDefinition saveStepFlowDefinition;
 
     public TaskUseCases(ApplicationTaskRepository repository, Clock clock, IdGenerator ids) {
-        this(repository, clock, ids, ComboPolicySource.defaults());
+        this(repository, clock, new SystemMomentSource(), ids, ComboPolicySource.defaults());
     }
 
     public TaskUseCases(ApplicationTaskRepository repository, Clock clock, IdGenerator ids,
                         ComboPolicySource policies) {
+        this(repository, clock, new SystemMomentSource(), ids, policies);
+    }
+
+    public TaskUseCases(ApplicationTaskRepository repository, Clock clock,
+                        MomentSource moments, IdGenerator ids) {
+        this(repository, clock, moments, ids, ComboPolicySource.defaults());
+    }
+
+    public TaskUseCases(ApplicationTaskRepository repository, Clock clock,
+                        MomentSource moments, IdGenerator ids, ComboPolicySource policies) {
         loadDashboard = new LoadDashboard(repository);
-        materializeDue = new MaterializeDueOccurrences(repository, clock, ids);
+        materializeDue = new MaterializeDueOccurrences(repository, clock, moments, ids);
         create = new CreateTask(repository, repository, clock, ids);
         update = new UpdateTask(repository, repository, ids, clock);
         moveTaskPlacement = new MoveTaskPlacement(repository);
@@ -69,5 +83,7 @@ public final class TaskUseCases {
         moveScheduleEntry = new MoveScheduleEntry(repository);
         moveTaskStep = new MoveTaskStep(repository);
         swapTaskSteps = new SwapTaskSteps(repository);
+        saveCapacityResource = new SaveCapacityResource(repository, ids);
+        saveStepFlowDefinition = new SaveStepFlowDefinition(repository, repository);
     }
 }

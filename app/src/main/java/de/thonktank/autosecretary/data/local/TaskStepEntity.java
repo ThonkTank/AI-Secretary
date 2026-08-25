@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary.data.local;
 
 import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
@@ -22,6 +23,7 @@ public class TaskStepEntity {
     @NonNull public String restTimerMode;
     public Integer restTimerSeconds;
     @NonNull public String note;
+    @ColumnInfo(defaultValue = "'SCHEDULED'") @NonNull public String activationKind;
     @Ignore public TaskStepEntity(@NonNull String id, @NonNull String taskId, int position,
                           @NonNull String text) {
         this(id, taskId, position, text, 0, 0, "NONE", null, null, null,
@@ -44,11 +46,35 @@ public class TaskStepEntity {
                 plannedReps, plannedDurationSeconds,
                 "SETS_REPS".equals(amountKind) ? "INHERIT" : "OFF", null, note);
     }
+    @Ignore
     public TaskStepEntity(@NonNull String id, @NonNull String taskId, int position,
                           @NonNull String text, int weekdayMask, int intervalDays,
                           @NonNull String amountKind, Integer plannedSets, Integer plannedReps,
                           Integer plannedDurationSeconds, @NonNull String restTimerMode,
                           Integer restTimerSeconds, @NonNull String note) {
+        this(id, taskId, position, text, weekdayMask, intervalDays, amountKind, plannedSets,
+                plannedReps, plannedDurationSeconds, restTimerMode, restTimerSeconds, note,
+                "SCHEDULED");
+    }
+
+    @Ignore
+    public TaskStepEntity(@NonNull String id, @NonNull String taskId, int position,
+                          @NonNull String text, int weekdayMask, int intervalDays,
+                          @NonNull String amountKind, Integer plannedSets, Integer plannedReps,
+                          Integer plannedDurationSeconds, @NonNull String note,
+                          @NonNull String activationKind) {
+        this(id, taskId, position, text, weekdayMask, intervalDays, amountKind, plannedSets,
+                plannedReps, plannedDurationSeconds,
+                "SETS_REPS".equals(amountKind) ? "INHERIT" : "OFF", null, note,
+                activationKind);
+    }
+
+    public TaskStepEntity(@NonNull String id, @NonNull String taskId, int position,
+                          @NonNull String text, int weekdayMask, int intervalDays,
+                          @NonNull String amountKind, Integer plannedSets, Integer plannedReps,
+                          Integer plannedDurationSeconds, @NonNull String restTimerMode,
+                          Integer restTimerSeconds, @NonNull String note,
+                          @NonNull String activationKind) {
         this.id = id; this.taskId = taskId; this.position = position; this.text = text;
         this.weekdayMask = weekdayMask; this.intervalDays = intervalDays;
         this.amountKind = amountKind;
@@ -56,5 +82,6 @@ public class TaskStepEntity {
         this.plannedDurationSeconds = plannedDurationSeconds;
         this.restTimerMode = restTimerMode; this.restTimerSeconds = restTimerSeconds;
         this.note = note;
+        this.activationKind = activationKind;
     }
 }

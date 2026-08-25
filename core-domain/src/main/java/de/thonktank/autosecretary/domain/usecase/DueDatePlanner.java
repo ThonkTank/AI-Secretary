@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -98,6 +99,7 @@ final class DueDatePlanner {
 
     private static boolean appliesOn(TaskStepTemplate template, LocalDate date,
                                      LocalDate intervalAnchor) {
+        if (template.activationKind == StepActivationKind.FOLLOW_UP) return false;
         if (!ScheduleCalculator.appliesOn(template.weekdayMask, date)) return false;
         if (template.intervalDays == 0) return true;
         long elapsed = ChronoUnit.DAYS.between(intervalAnchor, date);

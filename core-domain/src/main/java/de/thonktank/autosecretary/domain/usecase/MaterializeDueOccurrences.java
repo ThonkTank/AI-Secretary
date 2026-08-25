@@ -1,6 +1,13 @@
 package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.Clock;
+import de.thonktank.autosecretary.MomentSource;
+import de.thonktank.autosecretary.SystemMomentSource;
+import de.thonktank.autosecretary.domain.model.FlowRunSnapshot;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.StepFlowDefinition;
+import de.thonktank.autosecretary.domain.model.StepResourceLease;
+import de.thonktank.autosecretary.domain.model.StepTransition;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -11,6 +18,8 @@ import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.repository.MaterializationRepository;
+import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.StepFlowRunRepository;
 import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
 import de.thonktank.autosecretary.domain.model.ComboObligation;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
@@ -21,6 +30,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,14 +45,27 @@ public final class MaterializeDueOccurrences {
     private final ComboObligationRepository obligations;
     private final Clock clock;
     private final IdGenerator ids;
+    private final MomentSource moments;
+    private final StepFlowDefinitionRepository flowDefinitions;
+    private final StepFlowRunRepository flowRuns;
     private final DueDatePlanner planner = new DueDatePlanner();
 
     public <T extends MaterializationRepository & ComboObligationRepository>
     MaterializeDueOccurrences(T repository, Clock clock, IdGenerator ids) {
+        this(repository, clock, new SystemMomentSource(), ids);
+    }
+
+    public <T extends MaterializationRepository & ComboObligationRepository>
+    MaterializeDueOccurrences(T repository, Clock clock, MomentSource moments, IdGenerator ids) {
         this.repository = repository;
         this.obligations = repository;
         this.clock = clock;
+        this.moments = moments;
         this.ids = ids;
+        this.flowDefinitions = repository instanceof StepFlowDefinitionRepository
+                ? (StepFlowDefinitionRepository) repository : null;
+        this.flowRuns = repository instanceof StepFlowRunRepository
+                ? (StepFlowRunRepository) repository : null;
     }
 
     public boolean execute() {
@@ -80,19 +103,22 @@ public final class MaterializeDueOccurrences {
                                 Map<String, Integer> scheduleRanks) {
         DueDatePlanner.Plan planned = planner.throughToday(
                 task, schedule, today, history, templates);
-        boolean changed;
+        FlowMaterialization flowMaterialization = materializeFlowRuns(task, templates, planned,
+                scheduleRanks);
+        planned = flowMaterialization.ordinaryPlan;
+        boolean changed = flowMaterialization.changed;
         boolean hasOpen;
         if (task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE) {
             AccumulatingOccurrenceAssembler.Result assembled =
                     new AccumulatingOccurrenceAssembler(repository, ids).assemble(task, planned,
                             globalNextOrders, scheduleRanks);
-            changed = assembled.changed;
+            changed |= assembled.changed;
             changed |= materializeAccumulatedObligations(task, planned, assembled.byDue);
             hasOpen = hasOpen(history) || assembled.changed;
         } else {
             OccurrenceCarryForward.Result carry = new OccurrenceCarryForward()
                     .collect(repository, today, history, stepsByOccurrence);
-            changed = carry.changed;
+            changed |= carry.changed;
             OccurrenceAssembler.Result assembled = new OccurrenceAssembler(repository, ids).assemble(
                     task, today, history, globalNextOrders, carry, planned, schedule, scheduleRanks);
             changed |= assembled.changed;
@@ -109,6 +135,94 @@ public final class MaterializeDueOccurrences {
             changed = true;
         }
         return changed;
+    }
+
+    private FlowMaterialization materializeFlowRuns(Task task,
+                                                    List<TaskStepTemplate> templates,
+                                                    DueDatePlanner.Plan planned,
+                                                    Map<String, Integer> scheduleRanks) {
+        if (flowDefinitions == null || flowRuns == null)
+            return new FlowMaterialization(planned, false);
+        boolean hasFollowUp = false;
+        for (TaskStepTemplate template : templates)
+            if (template.activationKind == StepActivationKind.FOLLOW_UP) {
+                hasFollowUp = true;
+                break;
+            }
+        if (!hasFollowUp) return new FlowMaterialization(planned, false);
+        List<StepTransition> transitions = flowDefinitions.stepTransitions(task.id);
+        List<StepResourceLease> leases = flowDefinitions.stepResourceLeases(task.id);
+        if (transitions.isEmpty() && leases.isEmpty())
+            return new FlowMaterialization(planned, false);
+
+        StepFlowDefinition definition = new StepFlowDefinition(task.id, templates, transitions,
+                leases, flowDefinitions.capacityResources());
+        Map<TaskSlot, List<TaskStepTemplate>> ordinaryBySlot = new LinkedHashMap<>();
+        List<DueDatePlanner.PlannedDue> ordinaryDues = new ArrayList<>();
+        boolean changed = false;
+        for (DueDatePlanner.PlannedDue due : planned.dues) {
+            List<TaskStepTemplate> ordinary = new ArrayList<>();
+            boolean containedFlow = false;
+            for (TaskStepTemplate template : due.templates) {
+                if (!definition.participates(template.id)) {
+                    ordinary.add(template);
+                    continue;
+                }
+                containedFlow = true;
+                String sourceKey = "flow:" + task.id.value + ':' + template.id + ':'
+                        + due.scheduledOn + ':' + due.slot.storageCode;
+                if (flowRuns.findFlowRunBySourceKey(sourceKey) != null) continue;
+                long rank = scheduleRanks.getOrDefault(
+                        task.id.value + '|' + due.slot.name(), 0);
+                long queueOrder = due.scheduledOn.toEpochDay() * 1_000_000L
+                        + rank * 1_000L + template.position;
+                FlowRunSnapshot snapshot = new CreateFlowRunSnapshot(ids).execute(definition,
+                        template.id, sourceKey, due.scheduledOn, due.slot, queueOrder,
+                        moments.nowEpochMillis());
+                changed |= flowRuns.insertFlowRun(snapshot);
+            }
+            if (!containedFlow || !ordinary.isEmpty()) {
+                ordinaryDues.add(new DueDatePlanner.PlannedDue(
+                        due.scheduledOn, due.slot, ordinary));
+                addPlannedTemplates(ordinaryBySlot, due.slot, ordinary);
+            }
+        }
+        DueDatePlanner.Plan ordinaryPlan = new DueDatePlanner.Plan(ordinaryBySlot, ordinaryDues,
+                planned.nextDue, planned.materializedCount, planned.nextDueChanged);
+        return new FlowMaterialization(ordinaryPlan, changed);
+    }
+
+    private static void addPlannedTemplates(Map<TaskSlot, List<TaskStepTemplate>> bySlot,
+                                            TaskSlot slot,
+                                            List<TaskStepTemplate> templates) {
+        if (templates.isEmpty()) {
+            if (!bySlot.containsKey(slot)) bySlot.put(slot, null);
+            return;
+        }
+        List<TaskStepTemplate> selected = bySlot.get(slot);
+        if (selected == null) {
+            selected = new ArrayList<>();
+            bySlot.put(slot, selected);
+        }
+        for (TaskStepTemplate template : templates) {
+            boolean present = false;
+            for (TaskStepTemplate existing : selected)
+                if (existing.id.equals(template.id)) {
+                    present = true;
+                    break;
+                }
+            if (!present) selected.add(template);
+        }
+    }
+
+    private static final class FlowMaterialization {
+        final DueDatePlanner.Plan ordinaryPlan;
+        final boolean changed;
+
+        FlowMaterialization(DueDatePlanner.Plan ordinaryPlan, boolean changed) {
+            this.ordinaryPlan = ordinaryPlan;
+            this.changed = changed;
+        }
     }
 
     private boolean materializeAccumulatedObligations(Task task, DueDatePlanner.Plan planned,

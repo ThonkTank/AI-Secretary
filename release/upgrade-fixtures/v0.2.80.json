@@ -5,7 +5,7 @@
     "versionCode": 1008001,
     "databaseVersion": 8
   },
-  "targetDatabaseVersion": 19,
+  "targetDatabaseVersion": 20,
   "tables": {
     "tasks": {
       "id": "upgrade-e2e-task",

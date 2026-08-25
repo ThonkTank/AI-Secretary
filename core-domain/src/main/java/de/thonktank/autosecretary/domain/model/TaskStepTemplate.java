@@ -10,6 +10,7 @@ public final class TaskStepTemplate {
     public final StepAmount amount;
     public final RestTimerPolicy restTimerPolicy;
     public final String note;
+    public final StepActivationKind activationKind;
 
     public TaskStepTemplate(String id, TaskId taskId, int position, String text) {
         this(id, taskId, position, text, 0, StepAmount.none(), "");
@@ -29,10 +30,25 @@ public final class TaskStepTemplate {
     public TaskStepTemplate(String id, TaskId taskId, int position, String text,
                             int weekdayMask, int intervalDays, StepAmount amount,
                             RestTimerPolicy restTimerPolicy, String note) {
+        this(id, taskId, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
+                note, StepActivationKind.SCHEDULED);
+    }
+
+    public TaskStepTemplate(String id, TaskId taskId, int position, String text,
+                            int weekdayMask, int intervalDays, StepAmount amount, String note,
+                            StepActivationKind activationKind) {
+        this(id, taskId, position, text, weekdayMask, intervalDays, amount,
+                RestTimerPolicy.forAmount(amount), note, activationKind);
+    }
+
+    public TaskStepTemplate(String id, TaskId taskId, int position, String text,
+                            int weekdayMask, int intervalDays, StepAmount amount,
+                            RestTimerPolicy restTimerPolicy, String note,
+                            StepActivationKind activationKind) {
         if (id == null || id.isEmpty() || taskId == null || text == null || text.trim().isEmpty())
             throw new IllegalArgumentException("Step template identity, task and text are required");
         TaskStepDefinition checked = new TaskStepDefinition(id, position, text, weekdayMask,
-                intervalDays, amount, restTimerPolicy, note);
+                intervalDays, amount, restTimerPolicy, note, activationKind);
         this.id = id;
         this.taskId = taskId;
         this.position = checked.position;
@@ -42,10 +58,11 @@ public final class TaskStepTemplate {
         this.amount = checked.amount;
         this.restTimerPolicy = checked.restTimerPolicy;
         this.note = checked.note;
+        this.activationKind = checked.activationKind;
     }
 
     public TaskStepDefinition definition() {
         return new TaskStepDefinition(id, position, text, weekdayMask, intervalDays, amount,
-                restTimerPolicy, note);
+                restTimerPolicy, note, activationKind);
     }
 }

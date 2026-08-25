@@ -1,12 +1,13 @@
 package de.thonktank.autosecretary.domain.model;
 
-/** Explicitly distinguishes calendar work, a condition completion and a flow work sheet. */
-public enum OccurrenceKind {
+/** Determines whether a template is scheduled by its cadence or unlocked by another step. */
+public enum StepActivationKind {
     SCHEDULED,
-    CONDITION,
-    FLOW_SHEET;
+    FOLLOW_UP;
 
-    public static OccurrenceKind fromStorage(String value) {
+    public String storageCode() { return name(); }
+
+    public static StepActivationKind fromStorage(String value) {
         if (value == null) return SCHEDULED;
         try {
             return valueOf(value);
