@@ -39,6 +39,8 @@ import java.util.List;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
+import de.thonktank.autosecretary.timer.TimerManager;
+import de.thonktank.autosecretary.timer.TimerSession;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
@@ -113,6 +115,38 @@ public final class FocusTaskViewTest {
         assertEquals(View.GONE, ((View) barsScrollParent(row)).getVisibility());
         row.rewardAnchor().performClick();
         assertEquals("duration", events.lastToday(TodayAction.Kind.TOGGLE_STEP).id);
+    }
+
+    @Test public void durationStartsExplicitlyAndRunningRestCanBeSkipped() {
+        Context context = ApplicationProvider.getApplicationContext();
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        DashboardEventRecorder events = new DashboardEventRecorder();
+        FocusStepRowView row = new FocusStepRowView(context);
+        FocusStepUiModel duration = FocusTaskFixtures.step("duration", "Laufen")
+                .amount("10 Min.").build().withDurationSeconds(600);
+
+        row.bind(duration, true, palette, RepetitionInputState.idle(),
+                TimerManager.Snapshot.empty(), events);
+        assertTrue(visibleTexts(row).contains("10:00"));
+        assertTrue(firstText(row, "Start").performClick());
+        TodayAction start = events.lastToday(TodayAction.Kind.START_DURATION_TIMER);
+        assertEquals("duration", start.id);
+        assertEquals(600, start.value);
+
+        FocusStepUiModel sets = FocusTaskFixtures.step("sets", "Liegestütze")
+                .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.singletonList(12))).build();
+        TimerSession rest = new TimerSession("rest:sets", "sets", "Liegestütze",
+                TimerSession.Kind.REST, TimerSession.State.RUNNING, 60, 60_000,
+                160_000, 260_000, 123, false);
+        row.bind(sets, true, palette, RepetitionInputState.idle(),
+                TimerManager.Snapshot.of(Collections.singletonList(rest), 100_000,
+                        true, true), events);
+
+        assertFalse(row.rewardAnchor().isClickable());
+        assertTrue(visibleTexts(row).contains("1:00"));
+        assertTrue(firstText(row, "Pause überspringen").performClick());
+        assertEquals("rest:sets", events.lastToday(TodayAction.Kind.RESET_TIMER).id);
     }
 
     @Test public void reboundFutureRowAdvancesWithItsPlannedValueWithoutShowingEditor() {

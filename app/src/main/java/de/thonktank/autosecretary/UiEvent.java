@@ -9,6 +9,7 @@ public final class UiEvent {
         CONFIRM_DELETE,
         CONFIRM_CLOSE,
         REQUEST_CALENDAR_PERMISSION,
+        REQUEST_TIMER_PERMISSIONS,
         OPEN_APP_SETTINGS
     }
 

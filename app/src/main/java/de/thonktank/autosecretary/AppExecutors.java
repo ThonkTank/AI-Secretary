@@ -10,4 +10,9 @@ public final class AppExecutors {
         thread.setDaemon(true);
         return thread;
     });
+    public final ExecutorService timerSerial = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "auto-secretary-timers");
+        thread.setDaemon(true);
+        return thread;
+    });
 }

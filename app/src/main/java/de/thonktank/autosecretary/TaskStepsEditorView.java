@@ -10,6 +10,7 @@ import android.widget.TextView;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.TaskEditorTextFormatter;
@@ -87,6 +88,7 @@ final class TaskStepsEditorView extends LinearLayout {
         addAmountChip(amounts, R.string.amount_duration, StepAmountKind.DURATION, step, index);
         addView(amounts);
         addAmountInputs(step, index);
+        if (step.amount instanceof StepAmount.SetsReps) addRestTimerInputs(step, index);
         if (hasIssue(ValidationIssue.Field.STEP_AMOUNT, step.id))
             addView(errorView(R.string.err_amount_zero));
 
@@ -241,13 +243,63 @@ final class TaskStepsEditorView extends LinearLayout {
                             false), focusTag("repetitions", step.id)),
                     new LayoutParams(0, -2, 1));
         } else {
-            row.addView(numberInput(((StepAmount.Duration) step.amount).seconds,
-                    R.string.amount_seconds_unit, value -> updateStep(index,
-                            currentStep(index).withAmount(StepAmount.duration(orZero(value))),
-                            false), focusTag("duration", step.id)),
+            int duration = ((StepAmount.Duration) step.amount).seconds;
+            row.addView(numberInput(duration / 60,
+                    R.string.amount_minutes_unit, value -> updateDuration(index, value, true),
+                    focusTag("duration-minutes", step.id)),
+                    new LayoutParams(0, -2, 1));
+            row.addView(numberInput(duration % 60,
+                    R.string.amount_seconds_unit, value -> updateDuration(index, value, false),
+                    focusTag("duration-seconds", step.id)),
                     new LayoutParams(0, -2, 1));
         }
         addView(row, params(-1, -2, 0, 12, 0, 0));
+    }
+
+    private void addRestTimerInputs(EditorStepState step, int index) {
+        addLabel(R.string.step_rest_timer_label, 20, 10);
+        EditorFlowLayout choices = controls.flow();
+        addChip(choices, R.string.rest_timer_inherit,
+                step.restTimerPolicy.mode == RestTimerPolicy.Mode.INHERIT,
+                () -> updateStep(index, currentStep(index).withRestTimerPolicy(
+                        RestTimerPolicy.inherit()), true));
+        addChip(choices, R.string.rest_timer_custom,
+                step.restTimerPolicy.mode == RestTimerPolicy.Mode.CUSTOM,
+                () -> updateStep(index, currentStep(index).withRestTimerPolicy(
+                        RestTimerPolicy.custom(60)), true));
+        addChip(choices, R.string.rest_timer_off,
+                step.restTimerPolicy.mode == RestTimerPolicy.Mode.OFF,
+                () -> updateStep(index, currentStep(index).withRestTimerPolicy(
+                        RestTimerPolicy.off()), true));
+        addView(choices);
+        if (step.restTimerPolicy.mode != RestTimerPolicy.Mode.CUSTOM) return;
+        int seconds = step.restTimerPolicy.customSeconds;
+        LinearLayout row = new LinearLayout(getContext());
+        row.setGravity(Gravity.BOTTOM);
+        row.addView(numberInput(seconds / 60, R.string.amount_minutes_unit,
+                value -> updateRestDuration(index, value, true),
+                focusTag("rest-minutes", step.id)), new LayoutParams(0, -2, 1));
+        row.addView(numberInput(seconds % 60, R.string.amount_seconds_unit,
+                value -> updateRestDuration(index, value, false),
+                focusTag("rest-seconds", step.id)), new LayoutParams(0, -2, 1));
+        addView(row, params(-1, -2, 0, 12, 0, 0));
+    }
+
+    private void updateDuration(int index, Integer value, boolean minutes) {
+        EditorStepState current = currentStep(index);
+        int seconds = ((StepAmount.Duration) current.amount).seconds;
+        int total = minutes ? Math.max(0, orZero(value)) * 60 + seconds % 60
+                : seconds / 60 * 60 + Math.min(59, Math.max(0, orZero(value)));
+        updateStep(index, current.withAmount(StepAmount.duration(total)), false);
+    }
+
+    private void updateRestDuration(int index, Integer value, boolean minutes) {
+        EditorStepState current = currentStep(index);
+        int seconds = current.restTimerPolicy.customSeconds;
+        int total = minutes ? Math.max(0, orZero(value)) * 60 + seconds % 60
+                : seconds / 60 * 60 + Math.min(59, Math.max(0, orZero(value)));
+        if (total > 0) updateStep(index, current.withRestTimerPolicy(
+                RestTimerPolicy.custom(total)), false);
     }
 
     private void updateSets(int index, Integer value, boolean sets) {

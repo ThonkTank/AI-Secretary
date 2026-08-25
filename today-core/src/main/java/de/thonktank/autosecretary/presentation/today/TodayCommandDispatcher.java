@@ -15,6 +15,11 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
         void handleAdjustRepetition(String stepId, int delta);
         void handleEditRepetition(String stepId, int index);
         void handleSubmitRepetition(String stepId);
+        void handleStartDurationTimer(String stepId, String title, int seconds);
+        void handlePauseTimer(String timerId);
+        void handleResumeTimer(String timerId);
+        void handleResetTimer(String timerId);
+        void handleObserveTimer(String timerId);
         void handlePersistReorder(String commandId, String stepId,
                             String beforeStepId);
     }
@@ -62,6 +67,22 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
                 return;
             case SUBMIT_REPETITION:
                 handlers.handleSubmitRepetition(command.id);
+                return;
+            case START_DURATION_TIMER:
+                handlers.handleStartDurationTimer(command.id,
+                        command.text == null ? "" : command.text, command.value);
+                return;
+            case PAUSE_TIMER:
+                handlers.handlePauseTimer(command.id);
+                return;
+            case RESUME_TIMER:
+                handlers.handleResumeTimer(command.id);
+                return;
+            case RESET_TIMER:
+                handlers.handleResetTimer(command.id);
+                return;
+            case OBSERVE_TIMER:
+                handlers.handleObserveTimer(command.id);
                 return;
             case PERSIST_REORDER:
                 handlers.handlePersistReorder(required(command.commandId), command.id,

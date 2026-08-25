@@ -101,6 +101,22 @@ public final class TodayCoordinator implements TodayActionSink {
                 commands.execute(TodayCommand.action(TodayCommand.Kind.SUBMIT_REPETITION,
                         action));
                 return;
+            case START_DURATION_TIMER:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.START_DURATION_TIMER,
+                        action));
+                return;
+            case PAUSE_TIMER:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.PAUSE_TIMER, action));
+                return;
+            case RESUME_TIMER:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.RESUME_TIMER, action));
+                return;
+            case RESET_TIMER:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.RESET_TIMER, action));
+                return;
+            case OBSERVE_TIMER:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.OBSERVE_TIMER, action));
+                return;
         }
         throw new AssertionError("Unhandled Today action " + action.kind);
     }

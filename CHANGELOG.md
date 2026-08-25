@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Dauer-Schritte können in Today als eigenständige Countdown-Timer gestartet, pausiert und
+  zurückgesetzt werden, ohne den Schritt automatisch abzuhaken.
+- Gym-Schritte mit Sätzen und Wiederholungen unterstützen automatische, pro Schritt konfigurierbare
+  Satzpausen mit einer globalen 60-Sekunden-Vorgabe.
+- Timer laufen parallel, überstehen Prozessende und Geräteneustart und melden ihr Ende per
+  Benachrichtigung, Ton/Vibration und Schrittanimation.
+
 ## Nächster automatischer 0.2-Build
 
 - Neuer „Alles“-Tab zum Suchen, Filtern und Bearbeiten aktiver sowie archivierter Aufgaben.

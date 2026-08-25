@@ -24,6 +24,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-015: Virtuelle Accessibility-Knoten für Satzkorrekturen](adr-015-virtuelle-satzaktionen.md)
 - [ADR-016: Normalisierte Persistenz von Wiederholungsergebnissen](adr-016-normalisierte-wiederholungsergebnisse.md)
 - [ADR-017: Aufgabenverwaltung, Zeitplatzierungen und Schritttransfers](adr-017-aufgabenverwaltung.md)
+- [ADR-019: Dauer-Schritte und Satzpausen](adr-019-schritt-timer-und-satzpausen.md)
 - [ADR-018: Gemeinsame Blattoberfläche und lokale Grain-Geometrie](adr-018-leaf-surface-und-grain-geometrie.md)
 - [ADR-019: Eindeutige Today-Projektion, Rewards und Interaktionszustände](adr-019-today-zustand-rewards-und-aktionen.md)
 - [ADR-020: Compilergrenzen für Domain und Today-Kern](adr-020-compilergrenzen.md)

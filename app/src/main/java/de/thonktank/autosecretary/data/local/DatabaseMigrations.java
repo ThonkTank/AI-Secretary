@@ -479,6 +479,30 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Adds per-step rest policies and durable user-started countdown sessions. */
+    public static final Migration MIGRATION_16_17 = new Migration(16, 17) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN restTimerMode "
+                    + "TEXT NOT NULL DEFAULT 'INHERIT'");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN restTimerSeconds INTEGER");
+            database.execSQL("UPDATE task_steps SET restTimerMode = 'OFF' "
+                    + "WHERE amountKind <> 'SETS_REPS'");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN restTimerMode "
+                    + "TEXT NOT NULL DEFAULT 'INHERIT'");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN restTimerSeconds INTEGER");
+            database.execSQL("UPDATE occurrence_steps SET restTimerMode = 'OFF' "
+                    + "WHERE amountKind <> 'SETS_REPS'");
+            database.execSQL("CREATE TABLE timer_sessions (id TEXT NOT NULL, stepId TEXT NOT NULL, "
+                    + "title TEXT NOT NULL, kind TEXT NOT NULL, state TEXT NOT NULL, "
+                    + "totalSeconds INTEGER NOT NULL, remainingMillis INTEGER NOT NULL, "
+                    + "targetElapsedRealtime INTEGER NOT NULL, targetEpochMillis INTEGER NOT NULL, "
+                    + "notificationId INTEGER NOT NULL, completionObserved INTEGER NOT NULL, "
+                    + "PRIMARY KEY(id), FOREIGN KEY(stepId) REFERENCES occurrence_steps(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_timer_sessions_stepId ON timer_sessions(stepId)");
+        }
+    };
+
     /** Complete historical graph for migration fixtures and archive tests. */
     public static Migration[] all() {
         return from(1);
@@ -489,7 +513,8 @@ public final class DatabaseMigrations {
         Migration[] migrations = {MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
                 MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
                 MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
-                MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16};
+                MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
+                MIGRATION_16_17};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

@@ -41,6 +41,8 @@ import de.thonktank.autosecretary.presentation.observable.PresentationInvalidati
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
 import de.thonktank.autosecretary.data.observable.ClockSnapshot;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
+import de.thonktank.autosecretary.timer.TimerManager;
+import de.thonktank.autosecretary.timer.TimerSession;
 
 import java.time.LocalTime;
 import java.time.LocalDate;
@@ -74,13 +76,16 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
             new MutableLiveData<>(rewardQueue.snapshot());
     private final Object stateLock = new Object();
     private final TodayCoordinator todayCoordinator;
+    @Nullable private final TimerManager timers;
+    private final TimerManager.Listener timerListener = this::publishTimers;
+    private boolean timerPermissionWarningShown;
     private DashboardUiState current;
     private LocalDate loadedDate;
 
     TaskViewModel(AppContainer container, SavedStateHandle savedState, ExecutorService worker) {
         this(container.tasks, container.dashboardPresenter, container.calendar,
                 container.uiPreferences, container.clock, container.logger, container.texts,
-                container.presentationInvalidations, savedState, worker, null);
+                container.presentationInvalidations, container.timers, savedState, worker, null);
     }
 
     TaskViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
@@ -88,6 +93,15 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                   UiTextProvider texts, PresentationInvalidationSource invalidations,
                   SavedStateHandle savedState, ExecutorService worker,
                   @Nullable Executor collectionExecutor) {
+        this(tasks, dashboard, calendar, preferences, clock, logger, texts, invalidations,
+                null, savedState, worker, collectionExecutor);
+    }
+
+    TaskViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
+                  UiPreferences preferences, Clock clock, AppLogger logger,
+                  UiTextProvider texts, PresentationInvalidationSource invalidations,
+                  @Nullable TimerManager timers, SavedStateHandle savedState,
+                  ExecutorService worker, @Nullable Executor collectionExecutor) {
         this.tasks = tasks;
         this.dashboard = dashboard;
         this.calendar = calendar;
@@ -97,6 +111,7 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         this.texts = texts;
         this.savedState = savedState;
         this.worker = worker;
+        this.timers = timers;
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
         DisplayPreferences display = preferences.displayPreferences();
         current = new DashboardUiState(navigation, TodayUiModel.empty(),
@@ -107,6 +122,7 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         todayCoordinator = new TodayCoordinator(current.dashboard,
                 new TodayCommandDispatcher(this), this::publishTodayFeatureState);
         state.setValue(current);
+        if (timers != null) timers.addListener(timerListener);
         DashboardInvalidationRouting routing = new DashboardInvalidationRouting(
                 invalidations, this::loadedDashboardDate);
         if (collectionExecutor == null) {
@@ -139,6 +155,11 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     }
 
     private void reduceRepetitionInput(TodayAction action) {
+        if (action.kind == TodayAction.Kind.SUBMIT_REPETITION
+                && restTimerBlocks(action.id)) {
+            events.setValue(UiEvent.info(texts.text(R.string.rest_timer_still_running)));
+            return;
+        }
         RepetitionInputReducer.Submission submission;
         synchronized (stateLock) {
             RepetitionInputReducer.Result result = repetitionInputReducer.reduce(
@@ -249,8 +270,14 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     }
 
     @Override public void handleCompleteRemaining(String occurrenceId) {
+        Set<String> timerStepIds = focusStepIds();
         runTodayReward(command(UiCommand.Kind.COMPLETE_REMAINING, occurrenceId),
-                () -> tasks.completeRemainingSteps.execute(occurrenceId));
+                () -> {
+                    RewardReceipt receipt = tasks.completeRemainingSteps.execute(occurrenceId);
+                    if (timers != null)
+                        for (String stepId : timerStepIds) timers.resetForStep(stepId);
+                    return receipt;
+                });
     }
 
     @Override public void handleHarvest(String occurrenceId) {
@@ -265,7 +292,11 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
 
     @Override public void handleToggleStep(String stepId) {
         runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, stepId),
-                () -> tasks.toggleStep.execute(stepId));
+                () -> {
+                    RewardReceipt receipt = tasks.toggleStep.execute(stepId);
+                    if (timers != null) timers.resetForStep(stepId);
+                    return receipt;
+                });
     }
 
     @Override public void handleAdvanceStep(String stepId) {
@@ -287,6 +318,31 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
 
     @Override public void handleSubmitRepetition(String stepId) {
         reduceRepetitionInput(TodayAction.submitRepetition(stepId));
+    }
+
+    @Override public void handleStartDurationTimer(String stepId, String title, int seconds) {
+        if (timers == null) return;
+        timers.start(stepId, title, TimerSession.Kind.DURATION, seconds);
+        warnAboutTimerPermissions();
+    }
+
+    @Override public void handlePauseTimer(String timerId) {
+        if (timers != null) timers.pause(timerId);
+    }
+
+    @Override public void handleResumeTimer(String timerId) {
+        if (timers != null) {
+            timers.resume(timerId);
+            warnAboutTimerPermissions();
+        }
+    }
+
+    @Override public void handleResetTimer(String timerId) {
+        if (timers != null) timers.reset(timerId);
+    }
+
+    @Override public void handleObserveTimer(String timerId) {
+        if (timers != null) timers.observeCompletion(timerId);
     }
 
     @Override public void handlePersistReorder(String commandId, String stepId,
@@ -377,6 +433,7 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         worker.execute(() -> {
             try {
                 StepExecutionResult result = action.run();
+                startRestTimerAfterRecordedSet(result);
                 finishTodayCommand(key);
                 enqueueReward(result.rewardReceipt, key);
             } catch (IllegalArgumentException error) {
@@ -532,6 +589,44 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         }
     }
 
+    private void publishTimers(TimerManager.Snapshot snapshot) {
+        update(value -> value.withTimers(snapshot));
+    }
+
+    private Set<String> focusStepIds() {
+        Set<String> stepIds = new LinkedHashSet<>();
+        TodayUiModel today;
+        synchronized (stateLock) { today = current.dashboard; }
+        if (today.focus != null)
+            for (de.thonktank.autosecretary.presentation.today.FocusStepUiModel step
+                    : today.focus.steps) stepIds.add(step.id);
+        return stepIds;
+    }
+
+    private void startRestTimerAfterRecordedSet(StepExecutionResult result) {
+        if (timers == null || result.status != StepExecutionResult.Status.RECORDED
+                || result.step == null) return;
+        int seconds = result.step.restTimerPolicy.effectiveSeconds(
+                preferences.restTimerDefaultSeconds());
+        if (seconds < 1) return;
+        timers.start(result.step.id, result.step.text, TimerSession.Kind.REST, seconds);
+        warnAboutTimerPermissions();
+    }
+
+    private boolean restTimerBlocks(String stepId) {
+        if (timers == null) return false;
+        TimerSession session = timers.snapshot().forStep(stepId);
+        return session != null && session.kind == TimerSession.Kind.REST
+                && (session.state == TimerSession.State.RUNNING
+                || session.state == TimerSession.State.PAUSED);
+    }
+
+    private void warnAboutTimerPermissions() {
+        if (timers == null || timerPermissionWarningShown || !timers.snapshot().degraded()) return;
+        timerPermissionWarningShown = true;
+        events.postValue(UiEvent.action(UiEvent.Type.REQUEST_TIMER_PERMISSIONS));
+    }
+
     private DayPalette palette(UiThemeMode mode) {
         return palette(mode, clock.time());
     }
@@ -562,6 +657,7 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     @Override protected void onCleared() {
         contentReads.close();
         appearanceReads.close();
+        if (timers != null) timers.removeListener(timerListener);
         worker.shutdown();
     }
 

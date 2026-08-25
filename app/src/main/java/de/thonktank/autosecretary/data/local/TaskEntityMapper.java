@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -59,14 +60,17 @@ public final class TaskEntityMapper {
         return new TaskStepTemplate(entity.id, TaskId.of(entity.taskId), entity.position, entity.text,
                 entity.weekdayMask, entity.intervalDays, StepAmount.fromStorage(
                         StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
-                        entity.plannedReps, entity.plannedDurationSeconds), entity.note);
+                        entity.plannedReps, entity.plannedDurationSeconds),
+                RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
+                entity.note);
     }
 
     public TaskStepEntity toEntity(TaskStepTemplate step) {
         StoredAmount amount = stored(step.amount);
         return new TaskStepEntity(step.id, step.taskId.value, step.position, step.text,
                 step.weekdayMask, step.intervalDays, amount.kind.storageCode(), amount.sets,
-                amount.repetitions, amount.durationSeconds, step.note);
+                amount.repetitions, amount.durationSeconds, step.restTimerPolicy.mode.name(),
+                step.restTimerPolicy.customSeconds, step.note);
     }
 
     public TaskScheduleEntry toDomain(TaskScheduleEntity entity) {
@@ -83,7 +87,9 @@ public final class TaskEntityMapper {
         return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text,
                 entity.done, StepAmount.fromStorage(StepAmountKind.fromStorage(entity.amountKind),
                         entity.plannedSets, entity.plannedReps,
-                        entity.plannedDurationSeconds), entity.note,
+                        entity.plannedDurationSeconds),
+                RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
+                entity.note,
                 repetitions,
                 entity.sourceTemplateId, entity.comboOwnerId,
                 entity.originOccurrenceId,
@@ -94,7 +100,8 @@ public final class TaskEntityMapper {
         StoredAmount amount = stored(step.amount);
         return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
                 step.done, amount.kind.storageCode(), amount.sets, amount.repetitions,
-                amount.durationSeconds, step.note, "", step.sourceTemplateId,
+                amount.durationSeconds, step.restTimerPolicy.mode.name(),
+                step.restTimerPolicy.customSeconds, step.note, "", step.sourceTemplateId,
                 step.comboOwnerId, step.originOccurrenceId,
                 step.carryForwardReason.storageCode());
     }

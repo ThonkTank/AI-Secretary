@@ -21,6 +21,8 @@ import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
+import de.thonktank.autosecretary.timer.TimerManager;
+import de.thonktank.autosecretary.timer.TimerSession;
 
 /** Modular focus-card row for the running step and compact following steps. */
 public final class FocusStepRowView extends LinearLayout {
@@ -38,6 +40,11 @@ public final class FocusStepRowView extends LinearLayout {
     private final HorizontalScrollView barsScroll;
     private final SetBarsView bars;
     private final LinearLayout.LayoutParams controlsParams;
+    private final LinearLayout timerControls;
+    private final TextView timerLabel;
+    private final TextLinkView timerPrimary;
+    private final TextLinkView timerSecondary;
+    private String lastAnimatedTimerId;
     private int grainLevel;
 
     interface ReorderAction {
@@ -97,10 +104,34 @@ public final class FocusStepRowView extends LinearLayout {
         controlsParams = new LinearLayout.LayoutParams(-1, style.dp(44));
         controlsParams.setMargins(style.dp(52), style.dp(10), 0, 0);
         body.addView(controls, controlsParams);
+
+        timerControls = new LinearLayout(context);
+        timerControls.setGravity(Gravity.CENTER_VERTICAL);
+        timerLabel = style.sans("", 18, 0, true);
+        timerLabel.setGravity(Gravity.CENTER_VERTICAL);
+        timerControls.addView(timerLabel, new LinearLayout.LayoutParams(0, style.dp(44), 1));
+        timerPrimary = new TextLinkView(context);
+        AccessibilityRoles.button(timerPrimary);
+        timerControls.addView(timerPrimary, new LinearLayout.LayoutParams(-2, style.dp(44)));
+        timerSecondary = new TextLinkView(context);
+        AccessibilityRoles.button(timerSecondary);
+        LinearLayout.LayoutParams secondaryParams = new LinearLayout.LayoutParams(
+                -2, style.dp(44));
+        secondaryParams.leftMargin = style.dp(12);
+        timerControls.addView(timerSecondary, secondaryParams);
+        LinearLayout.LayoutParams timerParams = new LinearLayout.LayoutParams(-1, style.dp(44));
+        timerParams.setMargins(style.dp(52), style.dp(8), 0, 0);
+        body.addView(timerControls, timerParams);
     }
 
     public void bind(FocusStepUiModel step, boolean active, DayPalette palette,
                      RepetitionInputState input, TodayActionSink events) {
+        bind(step, active, palette, input, TimerManager.Snapshot.empty(), events);
+    }
+
+    public void bind(FocusStepUiModel step, boolean active, DayPalette palette,
+                     RepetitionInputState input, TimerManager.Snapshot timers,
+                     TodayActionSink events) {
         topLine.setVisibility(active ? VISIBLE : GONE);
         bottomLine.setVisibility(active ? VISIBLE : GONE);
         int divider = UiStyle.alpha(palette.dot, .45f);
@@ -124,9 +155,13 @@ public final class FocusStepRowView extends LinearLayout {
         WoodGrainView.applyTextHalo(note, palette.leaf1);
 
         RepetitionProgressUiModel progress = step.repetitionProgress;
+        TimerSession timer = timers.forStep(step.id);
+        boolean restBlocks = timer != null && timer.kind == TimerSession.Kind.REST
+                && (timer.state == TimerSession.State.RUNNING
+                || timer.state == TimerSession.State.PAUSED);
         boolean editsRepetitions = step.executionAction.kind
                 == StepExecutionUiAction.Kind.SUBMIT_REPETITION;
-        controls.setVisibility(editsRepetitions ? VISIBLE : GONE);
+        controls.setVisibility(editsRepetitions && !restBlocks ? VISIBLE : GONE);
         if (editsRepetitions) {
             int current = input.valueFor(step);
             int editingIndex = input.editingIndexFor(step);
@@ -157,8 +192,76 @@ public final class FocusStepRowView extends LinearLayout {
             reward.setContentDescription(description.toString());
         }
         reward.setOnClickListener(step.executionAction.kind == StepExecutionUiAction.Kind.NONE
+                || restBlocks
                 ? null : view -> emitExecution(step.executionAction, events));
-        reward.setActionEnabled(step.executionAction.kind != StepExecutionUiAction.Kind.NONE);
+        reward.setActionEnabled(step.executionAction.kind != StepExecutionUiAction.Kind.NONE
+                && !restBlocks);
+        bindTimer(step, timer, timers.elapsedRealtime, palette, events);
+    }
+
+    private void bindTimer(FocusStepUiModel step, TimerSession timer, long elapsedRealtime,
+                           DayPalette palette, TodayActionSink events) {
+        boolean durationAvailable = timer == null && step.durationSeconds > 0;
+        timerControls.setVisibility(durationAvailable || timer != null ? VISIBLE : GONE);
+        if (timerControls.getVisibility() == GONE) return;
+        timerLabel.setTextColor(palette.ink);
+        timerPrimary.bind(palette.hint, palette.dot);
+        timerSecondary.bind(palette.hint, palette.dot);
+        WoodGrainView.applyTextHalo(timerLabel, palette.leaf1);
+        if (durationAvailable) {
+            timerLabel.setText(formatSeconds(step.durationSeconds));
+            timerPrimary.setVisibility(VISIBLE);
+            timerPrimary.setText(R.string.timer_start);
+            timerPrimary.setOnClickListener(view -> events.emit(TodayAction.startDurationTimer(
+                    step.id, step.title, step.durationSeconds)));
+            timerSecondary.setVisibility(GONE);
+            return;
+        }
+        timerSecondary.setVisibility(VISIBLE);
+        if (timer.state == TimerSession.State.FINISHED) {
+            timerLabel.setText(timer.kind == TimerSession.Kind.REST
+                    ? R.string.rest_timer_finished : R.string.duration_timer_finished);
+            timerPrimary.setVisibility(GONE);
+            if (timer.kind == TimerSession.Kind.REST) {
+                timerSecondary.setVisibility(GONE);
+            } else {
+                timerSecondary.setText(R.string.timer_reset);
+                timerSecondary.setOnClickListener(view ->
+                        events.emit(TodayAction.resetTimer(timer.id)));
+            }
+            animateTimerFinished(timer, events);
+            return;
+        }
+        timerPrimary.setVisibility(VISIBLE);
+        timerLabel.setText(formatMillis(timer.remainingAt(elapsedRealtime)));
+        timerPrimary.setText(timer.state == TimerSession.State.RUNNING
+                ? R.string.timer_pause : R.string.timer_resume);
+        timerPrimary.setOnClickListener(view -> events.emit(
+                timer.state == TimerSession.State.RUNNING
+                        ? TodayAction.pauseTimer(timer.id) : TodayAction.resumeTimer(timer.id)));
+        timerSecondary.setText(timer.kind == TimerSession.Kind.REST
+                ? R.string.timer_skip_rest : R.string.timer_reset);
+        timerSecondary.setOnClickListener(view -> events.emit(TodayAction.resetTimer(timer.id)));
+    }
+
+    private void animateTimerFinished(TimerSession timer, TodayActionSink events) {
+        if (timer.completionObserved || timer.id.equals(lastAnimatedTimerId)) return;
+        lastAnimatedTimerId = timer.id;
+        post(() -> body.animate().cancel());
+        post(() -> body.animate().scaleX(1.025f).scaleY(1.025f).setDuration(160)
+                .withEndAction(() -> body.animate().scaleX(1f).scaleY(1f).setDuration(220).start())
+                .start());
+        events.emit(TodayAction.observeTimer(timer.id));
+    }
+
+    private static String formatMillis(long millis) {
+        return formatSeconds((int) Math.ceil(millis / 1000d));
+    }
+
+    private static String formatSeconds(int totalSeconds) {
+        int seconds = Math.max(0, totalSeconds);
+        return String.format(java.util.Locale.getDefault(), "%d:%02d", seconds / 60,
+                seconds % 60);
     }
 
     private static void emitExecution(StepExecutionUiAction action, TodayActionSink events) {
@@ -234,6 +337,11 @@ public final class FocusStepRowView extends LinearLayout {
         if (controls.getVisibility() == VISIBLE) {
             views.addAll(stepper.grainTextViews());
             if (barsScroll.getVisibility() == VISIBLE) views.add(bars);
+        }
+        if (timerControls.getVisibility() == VISIBLE) {
+            views.add(timerLabel);
+            if (timerPrimary.getVisibility() == VISIBLE) views.add(timerPrimary);
+            if (timerSecondary.getVisibility() == VISIBLE) views.add(timerSecondary);
         }
         return views;
     }
