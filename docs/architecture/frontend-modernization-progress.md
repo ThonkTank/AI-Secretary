@@ -1399,3 +1399,95 @@ vollständigen Phase-4-Satz „Activity-Brokerlogik entfällt“ noch nicht. Sie
 stillschweigende Scope-Vereinfachung: Nach dem eigenen PR-/Merge-/Produktionsabschluss von 4b folgt
 unmittelbar die bereits geplante Routing-Nacharbeit, bevor weitere Screen-Owner extrahiert werden.
 Die physische In-App-Update- und Sichtabnahme bleibt gemäß Owner-Entscheidung offen.
+
+### Phase 4b – Remote-Abschluss
+
+Pull Request #272 bestand Quality sowie normale und animationsaktive Instrumentierung auf API
+26/35/37 und wurde als `52b6fbe3` per Squash nach `main` übernommen. Der erste Produktionsversuch
+hing im unveränderten `LatestReadPipelineTest` auf dem Runner und wurde erst nach mehr als 30
+Minuten ohne Testabschluss abgebrochen. Die identische zweite Ausführung desselben Workflows und
+Commits bestand den Quality-Lauf in 3:29 Minuten; auch alle Geräte-, Paket- und Upgradejobs waren
+grün. Der Produktionslauf `32844177135` veröffentlichte Release 0.2.124
+(`forest-android-1012401`) mit `AutoSecretary.apk` und `release-metadata.json` exakt aus
+`52b6fbe337dcf0a14f4bfb006580b82f27bfe973`. Der einmalige Runner-Hänger war damit nicht
+reproduzierbar und begründet keine fachfremde Produktänderung. Die automatisierte Unterphase 4b
+ist abgeschlossen; die physische In-App-Update- und Sichtabnahme bleibt gemäß Owner-Entscheidung
+offen.
+
+### Phase 4c – Vorprüfung und Implementationsplan für die App-Navigationsgrenze
+
+Roadmap, ADR-022, der veröffentlichte 4b-Stand, `MainActivity`, `AllTasksViewModel`,
+`AllTasksCoordinator`, Editorowner, Launch-Intent und die zugehörigen Recreation- und
+Architekturtests wurden vor Produktänderungen erneut gelesen. Die unmittelbar angekündigte
+Nacharbeit bleibt ein eigener, reviewbarer Schnitt: Sie führt noch nicht Navigation 3 oder eine
+neue Shell ein, sondern entfernt ausschließlich die verbliebene Editor-Routingkette
+`AllTasksViewModel -> AllTasksRequest -> MainActivity -> TaskEditorViewModel`.
+
+Eine kleine typisierte `AppNavigator`-Schnittstelle mit unveränderlichen `AppDestination`-Werten
+bildet neuen Task, Taskbearbeitung, Schrittbearbeitung und Schrittanlage ab. Alle
+Alles-Viewcallbacks bleiben `AllTasksAction` und werden weiterhin seriell durch ihren State Owner
+verarbeitet; für die Navigation ruft der Owner jedoch die injizierte App-Schnittstelle auf, statt
+einen Hostrequest in seinem Screen State abzulegen. Eine Editoradapter-Implementierung übergibt
+das Ziel synchron an `TaskEditorViewModel`, dessen bereits persistierter atomarer Zustand den
+Routeabschluss bildet. Header, Today-Menü und Widget-Intent verwenden dieselbe Schnittstelle.
+`MainActivity` verdrahtet die Abhängigkeiten nur am Composition Root und übersetzt keine
+Screenowner-Nachricht mehr in eine Nachricht an einen anderen Owner.
+
+Der Headerflug bleibt ein rein visueller, vor der synchronen Zielübergabe ausgeführter
+Host-Hook. Er darf weiterhin weder fachliche Aktion noch Navigation auslösen; Abbruch und Ende
+führen nur den bereits vorhandenen visuellen Abschluss aus. Der Navigator verwirft eine zweite
+Öffnung, solange bereits ein Editor geöffnet ist, damit Doppeltipps, Recreation oder ein später
+Launch-Intent keinen bestehenden Draft ersetzen. Zu prüfen sind direkte Alles-Navigation ohne
+pending Request, identische Task-/Schrittparameter, Doppeltipp-Deduplizierung, restaurierter
+Editor versus Launch-Intent, Header-Animationsreihenfolge und die vollständige Abwesenheit von
+`OPEN_EDITOR` im Alles-State und seiner Saved-State-Codierung. Fehler-, Info- und
+Löschbestätigungsrequests bleiben unverändert im jeweiligen Screen State. Produktverhalten,
+visuelle Baselines, Schema, SDK-Grenzen und Releasevertrag bleiben unverändert.
+
+### Phase 4c – Implementation und Roadmap-Abgleich
+
+- `AppNavigator` ist nun die explizite screenübergreifende Navigationsgrenze;
+  `AppDestination.TaskEditor` trägt Task-, Schritt- und Anlageziel sowie die rein visuelle
+  Eintrittsart typisiert und unveränderlich. `TaskEditorNavigator` übernimmt diese Ziele synchron
+  in den bereits persistierenden Editorowner.
+- `AllTasksViewModel` verarbeitet Edit- und Add-Step-Actions weiterhin seriell, ruft dafür aber
+  nur noch den injizierten Navigator auf. `AllTasksRequest`, dessen Saved-State-Adapter und
+  `MainActivity` enthalten keinen produktiven `OPEN_EDITOR`-Request und keine Activity-
+  Übersetzung zum Editorowner mehr. Renderzustand und übrige bestätigbare Hostrequests bleiben
+  davon unberührt.
+- Header, Today-Menü und externer Widget-/Launch-Intent verwenden dieselbe Zielgrenze. Eine
+  Öffnung wird abgewiesen, wenn der autoritative Editor-State bereits offen ist; dadurch ersetzen
+  Doppeltipps und spätere Intents keinen aktuellen oder restaurierten Draft. Der Headerflug wird
+  vor der synchronen Zielübergabe vorbereitet, sein Abschlusscallback enthält weiterhin keine
+  Navigation.
+- `MainActivity` bleibt Composition Root und Host für Views, Dialoge und Animationen, vermittelt
+  aber keine Alles-Owner-Nachricht mehr an den Editorowner. Navigation 3 und der Top-Level-Stack
+  bleiben unverändert Phase 9; Phase 4c baut dafür nur den typisierten Anwendungsport auf.
+
+Der negative Roadmap-Abgleich fand eine Upgrade-Schwäche im ersten Schnitt: Ein unter 0.2.124
+gespeicherter, noch nicht dargestellter Alles-`OPEN_EDITOR`-Request wäre von der neuen Codierung
+als unbekannt verworfen worden. Die Nachtarbeitskorrektur liest ausschließlich diesen alten
+Snapshottyp, wandelt Task-, Schritt- oder Add-Step-Ziel einmalig in `AppDestination` um und
+schreibt unmittelbar den bereinigten Alles-Requestzustand zurück. Mehrere alte Ziele werden
+geordnet angeboten; der Navigator akzeptiert wegen des dann offenen Editorzustands nur das erste.
+Damit geht der pending Einstieg nicht verloren und kann nach späterem Schließen auch nicht erneut
+aufleben. Neue Navigation wird weiterhin nie im Alles-State gespeichert.
+
+Tests sichern alle drei Alles-Ziele ohne Änderung oder Request im Screen State, Headerhook vor
+Ownerpublication, Doppeltippschutz, den echten Launch-Intent, Draftschutz über Activity-Recreation,
+die einmalige Alt-Snapshotmigration und die Abwesenheit des Activity-Brokers. Lokal bestanden
+unter Java 21 die vollständige Suite mit 469 Tests ohne Fehler (ein bewusst übersprungener Test),
+Lint sowie Debug-, Android-Test- und unsigned Release-APK. Die 14 CI-Harnesstests und 22
+Release-/Workflow-Vertragstests sind ebenfalls grün. Die APK-Größen betragen 8.733.154 Byte
+Debug, 653.541 Byte Android-Test und 6.373.418 Byte unsigned Release; der Fontbestand bleibt bei
+1.478.008 Byte. Schema 16, `minSdk 26`, `targetSdk 35`, Domain- und visuelle Verträge wurden nicht
+verändert.
+
+Die neuen Routing-, Parameter-, Migrations-, Recreation- und Architekturverträge bestanden
+anschließend fünf vollständig frische Wiederholungsläufe. Nach der Nachtarbeitskorrektur wurden
+keine blockierende Diskrepanz, kein paralleler Navigationszustand und keine weitere notwendige
+Nacharbeitsphase für diesen Schnitt gefunden. Phase 4 insgesamt bleibt offen, bis Today sowie
+Optionen/Updater eigene StateFlow-Owner besitzen und die verbleibenden `UiEvent`-/Activity-
+Brokerpfade entfernt sind. Der Abschluss von 4c erfordert nun den eigenen grünen Pull Request,
+Squash-Merge und den veröffentlichenden `main`-Lauf; die physische In-App-Update- und Sichtabnahme
+bleibt gemäß Owner-Entscheidung offen.

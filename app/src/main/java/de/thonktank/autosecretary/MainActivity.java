@@ -9,6 +9,9 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksScreenState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
 import de.thonktank.autosecretary.presentation.legacy.LegacyStateFlowBinder;
+import de.thonktank.autosecretary.presentation.navigation.AppDestination;
+import de.thonktank.autosecretary.presentation.navigation.AppNavigator;
+import de.thonktank.autosecretary.presentation.navigation.TaskEditorNavigator;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
@@ -41,6 +44,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.update.presentation.UpdateUiController;
 import de.thonktank.autosecretary.update.presentation.UpdateViewModel;
@@ -54,6 +58,7 @@ public class MainActivity extends ComponentActivity {
     private TaskViewModel viewModel;
     private TaskEditorViewModel editorViewModel;
     private AllTasksViewModel allTasksViewModel;
+    private AppNavigator appNavigator;
     private UpdateUiController updates;
     private DashboardUiState uiState;
     private ForestBackdropView forest;
@@ -95,8 +100,9 @@ public class MainActivity extends ComponentActivity {
                 new TaskViewModel.Factory(container)).get(TaskViewModel.class);
         editorViewModel = new ViewModelProvider(this,
                 new TaskEditorViewModel.Factory(container)).get(TaskEditorViewModel.class);
+        appNavigator = new TaskEditorNavigator(editorViewModel, this::prepareEditorFlight);
         allTasksViewModel = new ViewModelProvider(this,
-                new AllTasksViewModel.Factory(container)).get(AllTasksViewModel.class);
+                new AllTasksViewModel.Factory(container, appNavigator)).get(AllTasksViewModel.class);
         AllTasksCoordinator allTasks = new AllTasksCoordinator(allTasksViewModel);
         renderer = new DashboardRenderer(this, scroll, dashboardContent,
                 this::handleDashboardEvent, viewModel::dispatchToday, versionName(),
@@ -254,16 +260,14 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void openEditorWithFlight() {
-        if (editorViewModel == null) return;
-        if (editorState.content.open) return;
+        if (appNavigator != null) appNavigator.navigate(AppDestination.newTaskFromHeader());
+    }
+
+    private void prepareEditorFlight() {
         if (renderer == null || uiState == null
-                || uiState.navigation != NavigationDestination.TODAY) {
-            editorViewModel.dispatch(TaskEditorAction.openNew());
-            return;
-        }
+                || uiState.navigation != NavigationDestination.TODAY) return;
         editorCoordinator.deferNextOpen();
         renderer.animateEditorTransition(editorCoordinator::completeDeferredOpen);
-        editorViewModel.dispatch(TaskEditorAction.openNew());
     }
 
     private void renderUpdate(UpdateUiState state) {
@@ -282,7 +286,8 @@ public class MainActivity extends ComponentActivity {
                 .setItems(new String[]{getString(R.string.task_edit), getString(R.string.task_move),
                         getString(R.string.task_delete)}, (dialog, which) -> {
                     if (which == 0)
-                        editorViewModel.dispatch(TaskEditorAction.open(target.taskId));
+                        appNavigator.navigate(AppDestination.editTask(
+                                TaskId.of(target.taskId)));
                     else if (which == 1) showMoveDialog(target);
                     else confirmDelete(target.taskId, target.title, target.routine);
                 }).show();
@@ -323,10 +328,6 @@ public class MainActivity extends ComponentActivity {
                     .setOnCancelListener(dialog -> acknowledgeAllTasksRequest(request.id)).show();
         } else if (request.kind == AllTasksRequest.Kind.INFO) {
             Toast.makeText(this, request.message, Toast.LENGTH_LONG).show();
-            acknowledgeAllTasksRequest(request.id);
-        } else if (request.kind == AllTasksRequest.Kind.OPEN_EDITOR && request.taskId != null) {
-            editorViewModel.dispatch(TaskEditorAction.open(request.taskId.value,
-                    request.stepId == null ? null : request.stepId.value, request.addStep));
             acknowledgeAllTasksRequest(request.id);
         } else if (request.kind == AllTasksRequest.Kind.CONFIRM_DELETE
                 && request.taskId != null) {
@@ -425,7 +426,7 @@ public class MainActivity extends ComponentActivity {
                     confirmTitle == null ? getString(R.string.this_project) : confirmTitle);
         boolean openEditor = getIntent().getBooleanExtra(OPEN_EDITOR, false);
         getIntent().removeExtra(OPEN_EDITOR);
-        if (openEditor) editorViewModel.dispatch(TaskEditorAction.openNew());
+        if (openEditor) appNavigator.navigate(AppDestination.newTask());
     }
 
     private String versionName() {

@@ -92,6 +92,9 @@ public final class ArchitectureBoundaryTest {
     @Test public void managementScreenHasOneStateFlowOwnerAndOneTypedActionBoundary()
             throws Exception {
         String viewModel = read(main("presentation/alltasks/AllTasksViewModel.java"));
+        String request = read(main("presentation/alltasks/AllTasksRequest.java"));
+        String requestState = read(main(
+                "presentation/alltasks/AllTasksRequestSavedStateAdapter.java"));
         String coordinator = read(main("presentation/alltasks/AllTasksCoordinator.java"));
         String activity = read(main("MainActivity.java"));
 
@@ -106,6 +109,12 @@ public final class ArchitectureBoundaryTest {
         assertFalse(coordinator.contains("viewModel.update"));
         assertTrue(activity.contains("LegacyStateFlowBinder.observe"));
         assertFalse(activity.contains("allTasksViewModel.events()"));
+        assertTrue(viewModel.contains("navigator.navigate(AppDestination."));
+        assertFalse(request.contains("OPEN_EDITOR"));
+        assertFalse(requestState.contains("putString(LEGACY_STEP_ID"));
+        assertFalse(requestState.contains("putBoolean(LEGACY_ADD_STEP"));
+        assertFalse(activity.contains("AllTasksRequest.Kind.OPEN_EDITOR"));
+        assertFalse(activity.contains("editorViewModel.dispatch(TaskEditorAction.open"));
         assertTrue(Files.exists(Path.of(
                 "src/main/kotlin/de/thonktank/autosecretary/presentation/legacy/"
                         + "LegacyStateFlowBinder.kt")));
@@ -115,11 +124,13 @@ public final class ArchitectureBoundaryTest {
         String activity = read(main("MainActivity.java"));
         String open = activity.substring(activity.indexOf("private void openEditorWithFlight()"),
                 activity.indexOf("private void renderUpdate("));
+        String navigator = read(main("presentation/navigation/TaskEditorNavigator.java"));
+        assertTrue(open.contains("appNavigator.navigate(AppDestination.newTaskFromHeader())"));
         assertTrue(open.contains("editorCoordinator.deferNextOpen()"));
         assertTrue(open.contains("editorCoordinator::completeDeferredOpen"));
-        assertFalse(open.contains("() -> editorViewModel.dispatch"));
-        assertTrue(open.indexOf("animateEditorTransition")
-                < open.lastIndexOf("editorViewModel.dispatch(TaskEditorAction.openNew())"));
+        assertFalse(open.contains("editorViewModel.dispatch"));
+        assertTrue(navigator.indexOf("prepareHeaderEntrance.run()")
+                < navigator.indexOf("editor.dispatch(TaskEditorAction.openNew())"));
 
         String renderer = read(main("DashboardRenderer.java"));
         assertTrue(renderer.contains("onAnimationCancel"));

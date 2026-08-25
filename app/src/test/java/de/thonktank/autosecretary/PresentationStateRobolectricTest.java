@@ -45,6 +45,7 @@ import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
+import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
@@ -56,6 +57,9 @@ import de.thonktank.autosecretary.presentation.DashboardPresenter;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
+import de.thonktank.autosecretary.presentation.navigation.AppDestination;
+import de.thonktank.autosecretary.presentation.navigation.AppNavigator;
+import de.thonktank.autosecretary.presentation.navigation.TaskEditorNavigator;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 import org.junit.After;
@@ -506,33 +510,89 @@ public final class PresentationStateRobolectricTest {
         assertEquals(pending.id, restored.id);
         assertEquals(task.id, restored.taskId);
 
+        java.util.List<AppDestination> destinations = new java.util.ArrayList<>();
+        recreated.onCleared();
+        recreated = newAllTasksViewModel(handle, destinations::add);
         recreated.dispatch(AllTasksAction.editTask(task.id));
-        assertEquals(2, recreated.state().getValue().requests.size());
-        assertFalse(pending.id.equals(recreated.state().getValue().requests.get(1).id));
+        assertEquals(1, destinations.size());
+        assertEquals(1, recreated.state().getValue().requests.size());
 
         recreated.dispatch(AllTasksAction.confirmDelete(restored.id));
 
-        assertEquals(AllTasksRequest.Kind.OPEN_EDITOR,
-                recreated.state().getValue().firstRequest().kind);
+        assertNull(recreated.state().getValue().firstRequest());
         assertTrue(repository.allTasks().stream().noneMatch(value -> value.id.equals(task.id)));
         recreated.onCleared();
     }
 
-    @Test public void acknowledgingHostRequestPreservesTheExactRenderProjection() {
-        AllTasksViewModel management = newAllTasksViewModel(new SavedStateHandle());
+    @Test public void managementNavigationUsesAppBoundaryWithoutPollutingScreenState() {
+        java.util.List<AppDestination> destinations = new java.util.ArrayList<>();
+        AllTasksViewModel management = newAllTasksViewModel(
+                new SavedStateHandle(), destinations::add);
         AllTasksUiState content = management.state().getValue().content;
 
         management.dispatch(AllTasksAction.editTask(TaskId.of("request-task")));
-        management.dispatch(AllTasksAction.editTask(TaskId.of("request-task")));
-        AllTasksRequest request = management.state().getValue().firstRequest();
-        assertNotNull(request);
-        assertEquals(1, management.state().getValue().requests.size());
-        assertSame(content, management.state().getValue().content);
+        management.dispatch(AllTasksAction.editStep(TaskId.of("request-task"),
+                TaskStepId.of("request-step")));
+        management.dispatch(AllTasksAction.addStep(TaskId.of("request-task")));
 
-        management.dispatch(AllTasksAction.acknowledgeRequest(request.id));
-
+        assertEquals(3, destinations.size());
+        AppDestination.TaskEditor target = (AppDestination.TaskEditor) destinations.get(0);
+        assertEquals(TaskId.of("request-task"), target.taskId);
+        assertNull(target.stepId);
+        assertFalse(target.addStep);
+        AppDestination.TaskEditor step = (AppDestination.TaskEditor) destinations.get(1);
+        assertEquals("request-step", step.stepId.value);
+        assertFalse(step.addStep);
+        AppDestination.TaskEditor add = (AppDestination.TaskEditor) destinations.get(2);
+        assertNull(add.stepId);
+        assertTrue(add.addStep);
         assertNull(management.state().getValue().firstRequest());
         assertSame(content, management.state().getValue().content);
+        management.onCleared();
+    }
+
+    @Test public void appNavigatorPreparesHeaderMotionBeforeOpenAndProtectsAnOpenDraft() {
+        AtomicInteger entrances = new AtomicInteger();
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
+        TaskEditorNavigator navigator = new TaskEditorNavigator(
+                editorViewModel, entrances::incrementAndGet);
+
+        navigator.navigate(AppDestination.newTaskFromHeader());
+
+        assertEquals(1, entrances.get());
+        EditorUiState opened = editorValue();
+        assertTrue(opened.open);
+
+        navigator.navigate(AppDestination.newTask());
+
+        assertSame(opened, editorValue());
+        assertEquals(1, entrances.get());
+    }
+
+    @SuppressWarnings("deprecation")
+    @Test public void legacyPendingEditorRouteMigratesOnceOutOfManagementSavedState() {
+        android.os.Bundle item = new android.os.Bundle();
+        item.putString("id", "all-tasks:7");
+        item.putString("kind", "OPEN_EDITOR");
+        item.putString("task_id", "legacy-task");
+        item.putString("step_id", "legacy-step");
+        android.os.Bundle stored = new android.os.Bundle();
+        stored.putParcelableArrayList("items", new java.util.ArrayList<>(
+                java.util.Collections.singletonList(item)));
+        SavedStateHandle handle = new SavedStateHandle();
+        handle.set("all_tasks_requests", stored);
+        java.util.List<AppDestination> destinations = new java.util.ArrayList<>();
+
+        AllTasksViewModel management = newAllTasksViewModel(handle, destinations::add);
+
+        assertEquals(1, destinations.size());
+        AppDestination.TaskEditor target = (AppDestination.TaskEditor) destinations.get(0);
+        assertEquals(TaskId.of("legacy-task"), target.taskId);
+        assertEquals("legacy-step", target.stepId.value);
+        assertFalse(target.addStep);
+        assertNull(management.state().getValue().firstRequest());
+        android.os.Bundle rewritten = handle.get("all_tasks_requests");
+        assertTrue(rewritten.getParcelableArrayList("items").isEmpty());
         management.onCleared();
     }
 
@@ -587,6 +647,11 @@ public final class PresentationStateRobolectricTest {
     }
 
     private AllTasksViewModel newAllTasksViewModel(SavedStateHandle handle) {
+        return newAllTasksViewModel(handle, destination -> { });
+    }
+
+    private AllTasksViewModel newAllTasksViewModel(SavedStateHandle handle,
+                                                    AppNavigator navigator) {
         if (invalidationSource == null) {
             CalendarDataSource calendar = new CalendarDataSource() {
                 @Override public CalendarResult loadToday() {
@@ -605,7 +670,7 @@ public final class PresentationStateRobolectricTest {
         return new AllTasksViewModel(tasks.loadTaskCatalog, tasks.moveScheduleEntry,
                 tasks.moveTaskStep, tasks.swapTaskSteps, tasks.delete,
                 new AndroidUiTextProvider(context), handle, new DirectExecutor(),
-                invalidationSource, Runnable::run);
+                invalidationSource, Runnable::run, navigator);
     }
 
     private TaskEditorViewModel newEditorViewModel(SavedStateHandle handle,
