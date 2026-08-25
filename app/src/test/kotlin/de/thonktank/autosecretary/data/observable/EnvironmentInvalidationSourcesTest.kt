@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.data.preferences.UiThemeMode
 import de.thonktank.autosecretary.infrastructure.AppLogger
 import java.time.Duration
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.produceIn
@@ -145,6 +146,24 @@ class EnvironmentInvalidationSourcesTest {
         source.materializeForeground()
 
         assertEquals(0, ticker.observerCount)
+    }
+
+    @Test
+    fun clockSnapshotUsesOneCoherentWallClockReading() = runBlocking {
+        val expected = LocalDateTime.of(2026, 8, 25, 0, 0)
+        val clock = object : Clock {
+            override fun today(): LocalDate = error("split date read")
+            override fun time(): LocalTime = error("split time read")
+            override fun now(): LocalDateTime = expected
+        }
+        val emissions = ClockInvalidationSource(clock, ManualMinuteTicker()).changes.produceIn(this)
+
+        assertEquals(
+            ClockSnapshot(expected.toLocalDate(), expected.toLocalTime(),
+                ClockInvalidationReason.INITIAL),
+            emissions.next(),
+        )
+        emissions.cancel()
     }
 
     @Test

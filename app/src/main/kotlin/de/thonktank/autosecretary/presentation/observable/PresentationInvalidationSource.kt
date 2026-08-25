@@ -20,6 +20,8 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
@@ -41,6 +43,7 @@ enum class PresentationInvalidationCause {
     DISPLAY_PREFERENCES,
     CALENDAR_POLICY,
     CLOCK,
+    WIDGET_HOST,
 }
 
 /** One typed reason to recompute one or more presentation projections. */
@@ -106,6 +109,10 @@ class PresentationInvalidationSource internal constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + sharingDispatcher)
     private val closed = CompletableDeferred<Unit>()
+    private val widgetHostChanges = MutableSharedFlow<PresentationInvalidation>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
     private val shared = merge(
         databaseChanges.map { tables ->
             PresentationInvalidation(
@@ -141,6 +148,7 @@ class PresentationInvalidationSource internal constructor(
                 clock = snapshot,
             )
         },
+        widgetHostChanges,
     ).shareIn(
         scope = scope,
         started = SharingStarted.WhileSubscribed(
@@ -159,11 +167,15 @@ class PresentationInvalidationSource internal constructor(
     val widgetChanges: Flow<PresentationInvalidation> = forTarget(
         PresentationInvalidationTarget.WIDGETS,
     )
-    /** Temporary 3c2b bridge; widget reads themselves move to this stream in 3c3. */
-    val widgetEnvironmentChanges: Flow<PresentationInvalidation> = widgetChanges.filter { event ->
-        event.cause == PresentationInvalidationCause.CALENDAR ||
-            event.cause == PresentationInvalidationCause.CALENDAR_POLICY ||
-            event.cause == PresentationInvalidationCause.DISPLAY_PREFERENCES
+
+    /** Requests a fresh widget projection for provider lifecycle or size changes. */
+    fun materializeWidgetHostChange() {
+        widgetHostChanges.tryEmit(
+            PresentationInvalidation(
+                cause = PresentationInvalidationCause.WIDGET_HOST,
+                targets = setOf(PresentationInvalidationTarget.WIDGETS),
+            ),
+        )
     }
 
     private fun forTarget(

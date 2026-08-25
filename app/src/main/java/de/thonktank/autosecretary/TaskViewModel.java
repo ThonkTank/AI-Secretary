@@ -39,6 +39,7 @@ import de.thonktank.autosecretary.presentation.observable.LatestReadPipeline;
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidation;
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationCause;
 import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationSource;
+import de.thonktank.autosecretary.data.observable.ClockSnapshot;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 
@@ -63,13 +64,10 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     private final Clock clock;
     private final AppLogger logger;
     private final UiTextProvider texts;
-    private final WidgetInvalidator widgets;
     private final SavedStateHandle savedState;
     private final ExecutorService worker;
     private final LatestReadPipeline<PresentationInvalidation, Content> contentReads;
     private final LatestReadPipeline<PresentationInvalidation, Appearance> appearanceReads;
-    private final LatestReadPipeline<PresentationInvalidation, PresentationInvalidation>
-            widgetEnvironmentChanges;
     private final MutableLiveData<DashboardUiState> state = new MutableLiveData<>();
     private final MutableLiveData<UiEvent> events = new MutableLiveData<>();
     private final RewardEffectQueue rewardQueue = new RewardEffectQueue();
@@ -80,19 +78,17 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     private final TodayCoordinator todayCoordinator;
     private DashboardUiState current;
     private LocalDate loadedDate;
-    private UiThemeMode widgetThemeMode;
 
     TaskViewModel(AppContainer container, SavedStateHandle savedState, ExecutorService worker) {
         this(container.tasks, container.dashboardPresenter, container.calendar,
                 container.uiPreferences, container.clock, container.logger, container.texts,
-                container.presentationInvalidations, savedState, worker,
-                container.widgetUpdates::updateAll, null);
+                container.presentationInvalidations, savedState, worker, null);
     }
 
     TaskViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
                   UiPreferences preferences, Clock clock, AppLogger logger,
                   UiTextProvider texts, PresentationInvalidationSource invalidations,
-                  SavedStateHandle savedState, ExecutorService worker, WidgetInvalidator widgets,
+                  SavedStateHandle savedState, ExecutorService worker,
                   @Nullable Executor collectionExecutor) {
         this.tasks = tasks;
         this.dashboard = dashboard;
@@ -101,13 +97,11 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         this.clock = clock;
         this.logger = logger;
         this.texts = texts;
-        this.widgets = widgets;
         this.savedState = savedState;
         this.worker = worker;
         NavigationDestination navigation = restoredNavigation(savedState.get(NAVIGATION));
         EditorUiState editor = EditorUiState.fromBundle(savedState.get(EDITOR));
         DisplayPreferences display = preferences.displayPreferences();
-        widgetThemeMode = display.themeMode;
         current = new DashboardUiState(navigation, TodayUiModel.empty(),
                 CalendarUiState.empty(), palette(display.themeMode),
                 CalendarPermissionStatus.UNKNOWN, true, Collections.emptySet(), editor,
@@ -123,22 +117,15 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                     ignored -> prepareContent(), this::loadContent, this::publishContent,
                     this::contentReadFailed);
             appearanceReads = LatestReadPipeline.reading(routing.getAppearanceChanges(), worker,
-                    ignored -> loadAppearance(), this::publishAppearance,
+                    this::loadAppearance, this::publishAppearance,
                     this::appearanceReadFailed);
-            widgetEnvironmentChanges = LatestReadPipeline.reading(
-                    invalidations.getWidgetEnvironmentChanges(), worker, value -> value,
-                    this::publishWidgetEnvironmentChange, this::widgetEnvironmentChangeFailed);
         } else {
             contentReads = LatestReadPipeline.prepared(routing.getContentChanges(), worker,
                     collectionExecutor, ignored -> prepareContent(), this::loadContent,
                     this::publishContent, this::contentReadFailed);
             appearanceReads = LatestReadPipeline.reading(routing.getAppearanceChanges(), worker,
-                    collectionExecutor, ignored -> loadAppearance(), this::publishAppearance,
+                    collectionExecutor, this::loadAppearance, this::publishAppearance,
                     this::appearanceReadFailed);
-            widgetEnvironmentChanges = LatestReadPipeline.reading(
-                    invalidations.getWidgetEnvironmentChanges(), worker, collectionExecutor,
-                    value -> value, this::publishWidgetEnvironmentChange,
-                    this::widgetEnvironmentChangeFailed);
         }
         if (editor.open && editor.loading && editor.taskId != null) openEditor(editor.taskId);
     }
@@ -260,7 +247,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                     current = current.withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
                 }
-                invalidateWidgets();
             } catch (RuntimeException error) {
                 logger.error("TaskViewModel", "Editor save failed", error);
                 synchronized (stateLock) {
@@ -294,7 +280,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                     current = current.withRunningActions(actions).withEditor(EditorUiState.closed());
                     state.postValue(current);
                 }
-                invalidateWidgets();
             } catch (RuntimeException error) {
                 logger.error("TaskViewModel", "Editor delete failed", error);
                 setEditor(TaskEditorStateReducer.feedback(
@@ -447,7 +432,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
             try {
                 action.run();
                 finishCommand(key);
-                invalidateWidgets();
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
             } catch (RuntimeException error) {
@@ -462,7 +446,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
             try {
                 RewardReceipt result = action.run();
                 finishCommand(key);
-                invalidateWidgets();
                 RewardEffect effect = RewardEffect.from(result, key);
                 if (effect != null) rewardEffects.postValue(rewardQueue.enqueue(effect));
             } catch (IllegalArgumentException error) {
@@ -479,7 +462,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
             try {
                 action.run();
                 finishTodayCommand(key);
-                invalidateWidgets();
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
             } catch (RuntimeException error) {
@@ -494,7 +476,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
             try {
                 RewardReceipt receipt = action.run();
                 finishTodayCommand(key);
-                invalidateWidgets();
                 enqueueReward(receipt, key);
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
@@ -512,7 +493,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                 boolean changed = result.status == AdvanceTodayStepResult.Status.PROGRESS_RECORDED
                         || result.status == AdvanceTodayStepResult.Status.STEP_COMPLETED;
                 finishTodayCommand(key);
-                if (changed) invalidateWidgets();
                 enqueueReward(result.rewardReceipt, key);
             } catch (RuntimeException error) {
                 fail(key, texts.text(R.string.error_change_save), error);
@@ -526,7 +506,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
             try {
                 StepExecutionResult result = action.run();
                 finishTodayCommand(key);
-                if (result.changed()) invalidateWidgets();
                 enqueueReward(result.rewardReceipt, key);
             } catch (IllegalArgumentException error) {
                 fail(key, error.getMessage(), error);
@@ -548,7 +527,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
                         || result.status == TodayStepMoveResult.Status.NO_CHANGE) {
                     todayCoordinator.reorderSucceeded(commandId, result);
                     finishTodayCommand(key);
-                    if (result.moved()) invalidateWidgets();
                 } else {
                     todayCoordinator.reorderFailed(commandId);
                     fail(key, texts.text(R.string.error_change_save),
@@ -586,18 +564,21 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     }
 
     private Content loadContent(PresentationInvalidation invalidation) {
-        LocalDate today = clock.today();
+        ClockSnapshot snapshot = invalidation.getClock();
+        LocalDate today = snapshot == null ? clock.now().toLocalDate() : snapshot.getDate();
         boolean dashboardOnly = invalidation.getCause() == PresentationInvalidationCause.DATABASE
                 && loadedDashboardDate() != null;
         return new Content(dashboard.load(today), dashboardOnly ? null : calendar.loadToday(), today);
     }
 
     private void prepareContent() {
-        if (dashboard.prepare()) invalidateWidgets();
+        dashboard.prepare();
     }
 
-    private Appearance loadAppearance() {
-        return new Appearance(preferences.displayPreferences(), clock.time());
+    private Appearance loadAppearance(PresentationInvalidation invalidation) {
+        ClockSnapshot snapshot = invalidation.getClock();
+        LocalTime time = snapshot == null ? clock.now().toLocalTime() : snapshot.getTime();
+        return new Appearance(preferences.displayPreferences(), time);
     }
 
     private LocalDate loadedDashboardDate() {
@@ -657,22 +638,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         logger.error("TaskViewModel", "Dashboard appearance projection failed", error);
     }
 
-    private void publishWidgetEnvironmentChange(PresentationInvalidation change) {
-        if (change.getCause() == PresentationInvalidationCause.DISPLAY_PREFERENCES) {
-            DisplayPreferences display = change.getDisplayPreferences();
-            if (display == null) return;
-            synchronized (stateLock) {
-                if (widgetThemeMode == display.themeMode) return;
-                widgetThemeMode = display.themeMode;
-            }
-        }
-        invalidateWidgets();
-    }
-
-    private void widgetEnvironmentChangeFailed(Throwable error) {
-        logger.error("TaskViewModel", "Widget environment invalidation failed", error);
-    }
-
     private void update(StateChange change) {
         synchronized (stateLock) {
             current = change.apply(current);
@@ -684,14 +649,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
         synchronized (stateLock) {
             current = current.withTodayFeature(feature);
             state.postValue(current);
-        }
-    }
-
-    private void invalidateWidgets() {
-        try {
-            widgets.invalidate();
-        } catch (RuntimeException error) {
-            logger.error("TaskViewModel", "Could not invalidate widgets", error);
         }
     }
 
@@ -738,7 +695,6 @@ public final class TaskViewModel extends ViewModel implements TodayCommandDispat
     @Override protected void onCleared() {
         contentReads.close();
         appearanceReads.close();
-        widgetEnvironmentChanges.close();
         worker.shutdown();
     }
 

@@ -205,7 +205,7 @@ public final class PresentationStateRobolectricTest {
     @Test public void refreshCompletesForTheRecreatedLifecycleOwnerWithoutDuplicateWork() {
         ManualExecutor worker = new ManualExecutor();
         AtomicInteger calendarLoads = new AtomicInteger();
-        viewModel = newViewModel(new SavedStateHandle(), worker, () -> { }, calendarLoads);
+        viewModel = newViewModel(new SavedStateHandle(), worker, calendarLoads);
         assertTrue(value().loading);
         assertEquals(1, worker.pendingCount());
 
@@ -241,10 +241,8 @@ public final class PresentationStateRobolectricTest {
         assertFalse(value().editor.saving);
     }
 
-    @Test public void repetitionDraftsDoNotInvalidateWidgetsButSubmissionDoes() {
-        AtomicInteger invalidations = new AtomicInteger();
-        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(),
-                invalidations::incrementAndGet);
+    @Test public void repetitionDraftsStayLocalUntilSubmissionPersistsThem() {
+        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor());
         TaskDefinition definition = new TaskDefinition("Gym", null, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", Collections.singletonList(
@@ -252,47 +250,38 @@ public final class PresentationStateRobolectricTest {
                                 StepAmount.setsReps(3, 12), "")));
         tasks.create.execute(definition);
         refreshDatabase();
-        invalidations.set(0);
-        assertEquals(0, invalidations.get());
         String stepId = value().dashboard.focus.steps.get(0).id;
 
         viewModel.dispatchToday(TodayAction.adjustRepetition(stepId, 1));
         viewModel.dispatchToday(TodayAction.adjustRepetition(stepId, 1));
 
         assertEquals(14, value().repetitionInput.value);
-        assertEquals(0, invalidations.get());
+        assertTrue(repository.findOccurrenceStep(stepId).repetitionProgress.actualRepetitions
+                .isEmpty());
 
         viewModel.dispatchToday(TodayAction.submitRepetition(stepId));
 
-        assertEquals(1, invalidations.get());
         assertNull(value().repetitionInput.stepId);
         assertEquals(Collections.singletonList(14),
                 repository.findOccurrenceStep(stepId).repetitionProgress.actualRepetitions);
     }
 
     @Test public void displayPreferencesAndUpdateStatusJoinStateWithoutReloadingContent() {
-        AtomicInteger invalidations = new AtomicInteger();
-        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(),
-                invalidations::incrementAndGet);
-        invalidations.set(0);
+        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor());
 
         calendarInvalidations.materializeExternalChange();
-        assertEquals(1, invalidations.get());
-        invalidations.set(0);
         TodayUiModel dashboardBefore = value().dashboard;
 
         preferences.setFocusStepLimit(FocusStepLimit.THREE);
 
         assertEquals(FocusStepLimit.THREE, value().focusStepLimit);
         assertSame(dashboardBefore, value().dashboard);
-        assertEquals(0, invalidations.get());
 
         preferences.setThemeMode(UiThemeMode.DARK);
         assertEquals(UiThemeMode.DARK, value().themeMode);
         assertEquals(DayPalette.at(clock.time(), DayPalette.Mode.DARK).background,
                 value().palette.background);
         assertSame(dashboardBefore, value().dashboard);
-        assertEquals(1, invalidations.get());
 
         viewModel.updateUpdateState(UpdateUiState.checking());
         assertEquals(UpdateUiState.Status.CHECKING, value().update.status);
@@ -315,9 +304,8 @@ public final class PresentationStateRobolectricTest {
 
     @Test public void todayReorderUsesOneRoomDrivenDashboardReadAndSkipsCalendar() {
         AtomicInteger calendarLoads = new AtomicInteger();
-        AtomicInteger invalidations = new AtomicInteger();
         viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(),
-                invalidations::incrementAndGet, calendarLoads);
+                calendarLoads);
         tasks.create.execute(new TaskDefinition("Reihenfolge", null, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", java.util.Arrays.asList(
@@ -330,12 +318,10 @@ public final class PresentationStateRobolectricTest {
         String first = steps.get(0).id;
         databaseQueries.clear();
         calendarLoads.set(0);
-        invalidations.set(0);
 
         viewModel.moveTodayStep(first, null);
 
         assertEquals(0, calendarLoads.get());
-        assertEquals(1, invalidations.get());
         assertEquals(first, value().dashboard.focus.steps.get(2).id);
         long dashboardReads = databaseQueries.stream()
                 .map(sql -> sql.trim().toLowerCase(java.util.Locale.ROOT))
@@ -346,8 +332,7 @@ public final class PresentationStateRobolectricTest {
 
     @Test public void completionReloadsOnlyTodayAndPreservesSiblingPresentationState() {
         AtomicInteger calendarLoads = new AtomicInteger();
-        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(), () -> { },
-                calendarLoads);
+        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(), calendarLoads);
         tasks.create.execute(TaskDefinition.basic("Abschließen", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
         refreshDatabase();
@@ -441,18 +426,11 @@ public final class PresentationStateRobolectricTest {
 
     private TaskViewModel newViewModel(SavedStateHandle handle,
                                        AbstractExecutorService worker) {
-        return newViewModel(handle, worker, () -> { });
+        return newViewModel(handle, worker, new AtomicInteger());
     }
 
     private TaskViewModel newViewModel(SavedStateHandle handle,
                                        AbstractExecutorService worker,
-                                       WidgetInvalidator widgets) {
-        return newViewModel(handle, worker, widgets, new AtomicInteger());
-    }
-
-    private TaskViewModel newViewModel(SavedStateHandle handle,
-                                       AbstractExecutorService worker,
-                                       WidgetInvalidator widgets,
                                        AtomicInteger calendarLoads) {
         CalendarDataSource calendar = new CalendarDataSource() {
             @Override public CalendarResult loadToday() {
@@ -471,7 +449,7 @@ public final class PresentationStateRobolectricTest {
                 new PreferenceInvalidationSource(preferences),
                 new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
         return new TaskViewModel(tasks, presenter, calendar, preferences, clock, logger,
-                new AndroidUiTextProvider(context), invalidationSource, handle, worker, widgets,
+                new AndroidUiTextProvider(context), invalidationSource, handle, worker,
                 Runnable::run);
     }
 

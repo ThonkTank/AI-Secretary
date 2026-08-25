@@ -13,6 +13,7 @@ public final class AutoSecretaryApplication extends Application {
         super.onCreate();
         AppLogger logger = new AndroidAppLogger();
         container = AppContainer.create(this, logger);
+        container.widgetUpdates.reconcileInstalledWidgets();
     }
 
     public AppContainer container() {

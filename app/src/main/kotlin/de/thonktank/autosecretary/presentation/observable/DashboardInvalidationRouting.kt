@@ -39,6 +39,7 @@ class DashboardInvalidationRouting internal constructor(
             PresentationInvalidationCause.CALENDAR_POLICY,
             -> true
             PresentationInvalidationCause.DISPLAY_PREFERENCES -> false
+            PresentationInvalidationCause.WIDGET_HOST -> false
             PresentationInvalidationCause.CLOCK -> {
                 val snapshot = event.clock ?: return true
                 snapshot.reason != ClockInvalidationReason.MINUTE_TICK ||
