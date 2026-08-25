@@ -28,6 +28,7 @@ public final class Task {
     public final Integer remainingCount;
     public final LocalDate deadlineOn;
     public final String note;
+    public final MissedOccurrenceMode missedOccurrenceMode;
 
     private Task(TaskId id, String title, Recurrence recurrence, int intervalDays,
                  int weekdayMask, boolean ongoing, String conditionText, boolean conditionDone,
@@ -36,7 +37,22 @@ public final class Task {
                  LocalDate lastCompletedOn, long catalogOrder, boolean hasCompletedOccurrence,
                  Integer estimatedMinutes, TaskBoundKind boundKind, LocalDate boundUntilOn,
                  Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn, String note) {
-        if (id == null || recurrence == null || boundKind == null)
+        this(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
+                conditionDone, archived, nextDueOn, cadenceAnchorOn, lastScheduledOn,
+                lastCompletedOn, catalogOrder, hasCompletedOccurrence, estimatedMinutes,
+                boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note,
+                MissedOccurrenceMode.COLLAPSE);
+    }
+
+    private Task(TaskId id, String title, Recurrence recurrence, int intervalDays,
+                 int weekdayMask, boolean ongoing, String conditionText, boolean conditionDone,
+                 boolean archived, LocalDate nextDueOn, LocalDate cadenceAnchorOn,
+                 LocalDate lastScheduledOn, LocalDate lastCompletedOn, long catalogOrder,
+                 boolean hasCompletedOccurrence, Integer estimatedMinutes,
+                 TaskBoundKind boundKind, LocalDate boundUntilOn, Integer boundWeeks,
+                 Integer remainingCount, LocalDate deadlineOn, String note,
+                 MissedOccurrenceMode missedOccurrenceMode) {
+        if (id == null || recurrence == null || boundKind == null || missedOccurrenceMode == null)
             throw new IllegalArgumentException("Task identity, recurrence and bound are required");
         if (title == null || title.trim().isEmpty() || title.trim().length() > 120)
             throw new IllegalArgumentException("Task title must contain 1 to 120 characters");
@@ -68,6 +84,7 @@ public final class Task {
         this.remainingCount = this.boundKind == TaskBoundKind.N_TIMES ? remainingCount : null;
         this.deadlineOn = recurrence == Recurrence.ONCE ? deadlineOn : null;
         this.note = note == null ? "" : note;
+        this.missedOccurrenceMode = missedOccurrenceMode;
     }
 
     public static Task create(TaskId id, TaskDefinition definition, LocalDate firstDueOn,
@@ -76,7 +93,7 @@ public final class Task {
                 definition.weekdayMask, false, "", false, false, firstDueOn, null, null,
                 firstDueOn, catalogOrder, false, definition.estimatedMinutes, definition.boundKind,
                 definition.boundUntilOn, definition.boundWeeks, definition.remainingCount,
-                definition.deadlineOn, definition.note);
+                definition.deadlineOn, definition.note, definition.missedOccurrenceMode);
     }
 
     public static Task restore(TaskId id, String title, Recurrence recurrence, int intervalDays,
@@ -87,11 +104,27 @@ public final class Task {
                                boolean hasCompletedOccurrence, Integer estimatedMinutes,
                                TaskBoundKind boundKind, LocalDate boundUntilOn, Integer boundWeeks,
                                Integer remainingCount, LocalDate deadlineOn, String note) {
+        return restore(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
+                conditionDone, archived, nextDueOn, lastScheduledOn, lastCompletedOn,
+                cadenceAnchorOn, catalogOrder, hasCompletedOccurrence, estimatedMinutes,
+                boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note,
+                MissedOccurrenceMode.COLLAPSE);
+    }
+
+    public static Task restore(TaskId id, String title, Recurrence recurrence, int intervalDays,
+                               int weekdayMask, boolean ongoing, String conditionText,
+                               boolean conditionDone, boolean archived, LocalDate nextDueOn,
+                               LocalDate lastScheduledOn, LocalDate lastCompletedOn,
+                               LocalDate cadenceAnchorOn, long catalogOrder,
+                               boolean hasCompletedOccurrence, Integer estimatedMinutes,
+                               TaskBoundKind boundKind, LocalDate boundUntilOn, Integer boundWeeks,
+                               Integer remainingCount, LocalDate deadlineOn, String note,
+                               MissedOccurrenceMode missedOccurrenceMode) {
         return new Task(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
                 conditionDone, archived, nextDueOn, cadenceAnchorOn,
                 lastScheduledOn, lastCompletedOn,
                 catalogOrder, hasCompletedOccurrence, estimatedMinutes, boundKind, boundUntilOn,
-                boundWeeks, remainingCount, deadlineOn, note);
+                boundWeeks, remainingCount, deadlineOn, note, missedOccurrenceMode);
     }
 
     public Task edit(String newTitle, long newCatalogOrder) {
@@ -112,7 +145,7 @@ public final class Task {
                 lastScheduledOn, lastCompletedOn, newCatalogOrder, hasCompletedOccurrence,
                 definition.estimatedMinutes, definition.boundKind, definition.boundUntilOn,
                 definition.boundWeeks, definition.remainingCount, definition.deadlineOn,
-                definition.note);
+                definition.note, definition.missedOccurrenceMode);
     }
 
     public Task withCatalogOrder(long newCatalogOrder) { return edit(title, newCatalogOrder); }
@@ -161,10 +194,28 @@ public final class Task {
                       Integer newEstimatedMinutes, TaskBoundKind newBoundKind,
                       LocalDate newBoundUntilOn, Integer newBoundWeeks,
                       Integer newRemainingCount, LocalDate newDeadlineOn, String newNote) {
+        return copy(newTitle, newRecurrence, newIntervalDays, newWeekdayMask, newOngoing,
+                newConditionText, newConditionDone, newArchived, newNextDueOn,
+                newLastScheduledOn, newLastCompletedOn, newCatalogOrder,
+                newHasCompletedOccurrence, newEstimatedMinutes, newBoundKind,
+                newBoundUntilOn, newBoundWeeks, newRemainingCount, newDeadlineOn, newNote,
+                missedOccurrenceMode);
+    }
+
+    private Task copy(String newTitle, Recurrence newRecurrence, int newIntervalDays,
+                      int newWeekdayMask, boolean newOngoing, String newConditionText,
+                      boolean newConditionDone, boolean newArchived, LocalDate newNextDueOn,
+                      LocalDate newLastScheduledOn, LocalDate newLastCompletedOn,
+                      long newCatalogOrder, boolean newHasCompletedOccurrence,
+                      Integer newEstimatedMinutes, TaskBoundKind newBoundKind,
+                      LocalDate newBoundUntilOn, Integer newBoundWeeks,
+                      Integer newRemainingCount, LocalDate newDeadlineOn, String newNote,
+                      MissedOccurrenceMode newMissedOccurrenceMode) {
         return restore(id, newTitle, newRecurrence, newIntervalDays, newWeekdayMask, newOngoing,
                 newConditionText, newConditionDone, newArchived, newNextDueOn,
                 newLastScheduledOn, newLastCompletedOn, cadenceAnchorOn, newCatalogOrder,
                 newHasCompletedOccurrence, newEstimatedMinutes, newBoundKind,
-                newBoundUntilOn, newBoundWeeks, newRemainingCount, newDeadlineOn, newNote);
+                newBoundUntilOn, newBoundWeeks, newRemainingCount, newDeadlineOn, newNote,
+                newMissedOccurrenceMode);
     }
 }

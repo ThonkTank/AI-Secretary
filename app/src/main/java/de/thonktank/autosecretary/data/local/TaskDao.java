@@ -112,4 +112,14 @@ public interface TaskDao {
             + "WHERE COALESCE(ra.occurrenceId,rb.occurrenceId) IN (:occurrenceIds) "
             + "ORDER BY rb.bookedOn,rb.id")
     List<RewardBookingEntity> rewardBookings(List<String> occurrenceIds);
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void insertComboObligations(List<ComboObligationEntity> obligations);
+    @Update void updateComboObligation(ComboObligationEntity obligation);
+    @Query("SELECT * FROM combo_obligations ORDER BY scheduledOn,slot,ownerId")
+    List<ComboObligationEntity> comboObligations();
+    @Query("SELECT * FROM combo_decay_events WHERE ownerId = :ownerId "
+            + "AND eventOn = :eventOn LIMIT 1")
+    ComboDecayEventEntity comboDecayEvent(String ownerId, String eventOn);
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    void insertComboDecayEvent(ComboDecayEventEntity event);
 }

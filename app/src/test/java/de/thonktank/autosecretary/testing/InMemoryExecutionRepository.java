@@ -1,6 +1,8 @@
 package de.thonktank.autosecretary.testing;
 
 import de.thonktank.autosecretary.domain.model.ComboProgress;
+import de.thonktank.autosecretary.domain.model.ComboObligation;
+import de.thonktank.autosecretary.domain.model.ComboDecayEvent;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
@@ -35,6 +37,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
     private Map<String, ComboProgress> combos = new LinkedHashMap<>();
     private Map<String, RewardBooking> bookings = new LinkedHashMap<>();
     private Map<String, String> rewardAssignments = new LinkedHashMap<>();
+    private Map<String, ComboObligation> comboObligations = new LinkedHashMap<>();
+    private Map<String, ComboDecayEvent> comboDecayEvents = new LinkedHashMap<>();
     private int xp;
 
     @Override public synchronized <T> T inTransaction(Transaction<T> operation) {
@@ -71,6 +75,7 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
         rewardAssignments.entrySet().removeIf(value -> occurrenceIds.contains(value.getValue())
                 || !bookings.containsKey(value.getKey()));
         combos.values().removeIf(value -> value.taskId.equals(id));
+        comboObligations.values().removeIf(value -> value.taskId.equals(id));
     }
 
     @Override public synchronized void insertTemplates(List<TaskStepTemplate> values) {
@@ -293,6 +298,29 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
         return result;
     }
 
+    @Override public synchronized List<ComboObligation> comboObligations() {
+        return new ArrayList<>(comboObligations.values());
+    }
+
+    @Override public synchronized void insertComboObligations(List<ComboObligation> values) {
+        for (ComboObligation value : values) comboObligations.putIfAbsent(value.id, value);
+    }
+
+    @Override public synchronized void updateComboObligation(ComboObligation value) {
+        if (comboObligations.containsKey(value.id)) comboObligations.put(value.id, value);
+    }
+
+    @Override public synchronized ComboDecayEvent comboDecayEvent(String ownerId,
+                                                                   LocalDate eventOn) {
+        return comboDecayEvents.get(decayKey(ownerId, eventOn));
+    }
+
+    @Override public synchronized void insertComboDecayEvent(ComboDecayEvent event) {
+        String key = decayKey(event.ownerId, event.eventOn);
+        if (comboDecayEvents.putIfAbsent(key, event) != null)
+            throw new IllegalStateException("Duplicate combo decay event " + key);
+    }
+
     private List<Occurrence> byState(OccurrenceState state) {
         List<Occurrence> result = new ArrayList<>();
         for (Occurrence value : occurrences.values()) if (value.state == state) result.add(value);
@@ -324,7 +352,9 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
                 new LinkedHashMap<>(schedule), new LinkedHashMap<>(occurrences),
                 new LinkedHashMap<>(occurrenceSteps),
                 new LinkedHashMap<>(combos), new LinkedHashMap<>(bookings),
-                new LinkedHashMap<>(rewardAssignments), xp);
+                new LinkedHashMap<>(rewardAssignments),
+                new LinkedHashMap<>(comboObligations),
+                new LinkedHashMap<>(comboDecayEvents), xp);
     }
 
     private void restore(Snapshot value) {
@@ -336,6 +366,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
         combos = value.combos;
         bookings = value.bookings;
         rewardAssignments = value.rewardAssignments;
+        comboObligations = value.comboObligations;
+        comboDecayEvents = value.comboDecayEvents;
         xp = value.xp;
     }
 
@@ -348,6 +380,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
         final Map<String, ComboProgress> combos;
         final Map<String, RewardBooking> bookings;
         final Map<String, String> rewardAssignments;
+        final Map<String, ComboObligation> comboObligations;
+        final Map<String, ComboDecayEvent> comboDecayEvents;
         final int xp;
 
         Snapshot(Map<TaskId, Task> tasks, Map<String, TaskStepTemplate> templates,
@@ -355,7 +389,9 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
                  Map<String, Occurrence> occurrences,
                  Map<String, OccurrenceStep> occurrenceSteps,
                  Map<String, ComboProgress> combos, Map<String, RewardBooking> bookings,
-                 Map<String, String> rewardAssignments, int xp) {
+                 Map<String, String> rewardAssignments,
+                 Map<String, ComboObligation> comboObligations,
+                 Map<String, ComboDecayEvent> comboDecayEvents, int xp) {
             this.tasks = tasks;
             this.templates = templates;
             this.schedule = schedule;
@@ -364,7 +400,13 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
             this.combos = combos;
             this.bookings = bookings;
             this.rewardAssignments = rewardAssignments;
+            this.comboObligations = comboObligations;
+            this.comboDecayEvents = comboDecayEvents;
             this.xp = xp;
         }
+    }
+
+    private static String decayKey(String ownerId, LocalDate eventOn) {
+        return ownerId + '|' + eventOn;
     }
 }

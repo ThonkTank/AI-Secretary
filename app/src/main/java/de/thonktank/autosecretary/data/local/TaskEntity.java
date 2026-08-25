@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.room.Entity;
 import androidx.room.Index;
+import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
 @Entity(tableName = "tasks", indices = @Index(value = {"archived", "conditionDone", "catalogOrder"}))
@@ -30,7 +31,9 @@ public class TaskEntity {
     public Integer remainingCount;
     @Nullable public String deadlineOn;
     @NonNull public String note;
+    @NonNull public String missedOccurrenceMode;
 
+    @Ignore
     public TaskEntity(@NonNull String id, @NonNull String title,
                       @NonNull String recurrence, int intervalDays, int weekdayMask,
                       boolean ongoing, @NonNull String conditionText, boolean conditionDone,
@@ -42,6 +45,25 @@ public class TaskEntity {
                       @NonNull String boundKind, @Nullable String boundUntilOn,
                       Integer boundWeeks, Integer remainingCount,
                       @Nullable String deadlineOn, @NonNull String note) {
+        this(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
+                conditionDone, archived, nextDueOn, cadenceAnchorOn, lastScheduledOn,
+                lastCompletedOn, catalogOrder, hasCompletedOccurrence, estimatedMinutes,
+                boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note,
+                "COLLAPSE");
+    }
+
+    public TaskEntity(@NonNull String id, @NonNull String title,
+                      @NonNull String recurrence, int intervalDays, int weekdayMask,
+                      boolean ongoing, @NonNull String conditionText, boolean conditionDone,
+                      boolean archived, @NonNull String nextDueOn,
+                      @Nullable String cadenceAnchorOn,
+                      @Nullable String lastScheduledOn, @Nullable String lastCompletedOn,
+                      long catalogOrder, boolean hasCompletedOccurrence,
+                      Integer estimatedMinutes,
+                      @NonNull String boundKind, @Nullable String boundUntilOn,
+                      Integer boundWeeks, Integer remainingCount,
+                      @Nullable String deadlineOn, @NonNull String note,
+                      @NonNull String missedOccurrenceMode) {
         this.id = id;
         this.title = title;
         this.recurrence = recurrence;
@@ -64,5 +86,6 @@ public class TaskEntity {
         this.remainingCount = remainingCount;
         this.deadlineOn = deadlineOn;
         this.note = note;
+        this.missedOccurrenceMode = missedOccurrenceMode;
     }
 }

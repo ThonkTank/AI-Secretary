@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
+import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
@@ -30,10 +31,17 @@ public final class StepExecutionService {
     private final Clock clock;
     private final RewardCalculator rewards;
     private final CompletionStateMachine states;
+    private final ComboObligationResolver obligationResolver;
 
     public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
     StepExecutionService(T repository, Clock clock) {
         this(repository, repository, clock, new RewardCalculator(),
+                new CompletionStateMachine());
+    }
+
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    StepExecutionService(T repository, Clock clock, ComboPolicySource policies) {
+        this(repository, repository, clock, new RewardCalculator(policies),
                 new CompletionStateMachine());
     }
 
@@ -45,6 +53,7 @@ public final class StepExecutionService {
         this.clock = clock;
         this.rewards = rewards;
         this.states = states;
+        this.obligationResolver = new ComboObligationResolver(occurrences);
     }
 
     public RewardReceipt toggleStep(String stepId) {
@@ -143,7 +152,7 @@ public final class StepExecutionService {
                 || activeOriginal(occurrence.id, step.id, RewardBooking.Target.VESSEL) != null)
             return RewardReceipt.none();
         ComboProgress settled = combo(step.comboOwnerId, occurrence.taskId,
-                ComboProgress.Kind.STEP).settle(clock.today());
+                ComboProgress.Kind.STEP);
         RewardCalculator.StepReward calculated = rewards.step(settled,
                 occurrence.scheduledOn.equals(clock.today()));
         ComboProgress.Change change = settled.change(calculated.requestedComboDelta, clock.today());
@@ -153,6 +162,8 @@ public final class StepExecutionService {
         ledger.putCombo(change.progress);
         ledger.insertRewardBooking(booking);
         occurrences.updateOccurrenceStep(states.completeStep(occurrence, step));
+        obligationResolver.resolve(step.comboOwnerId, occurrences.findTask(occurrence.taskId),
+                occurrence, clock.today());
         return RewardReceipt.of(transactionId, Collections.singletonList(booking),
                 RewardReceipt.Target.VESSEL);
     }
@@ -169,6 +180,7 @@ public final class StepExecutionService {
         ledger.putCombo(current.undo(original.comboPointDelta, clock.today()));
         ledger.insertRewardBooking(reversal);
         occurrences.updateOccurrenceStep(states.reopenStep(occurrence, step));
+        obligationResolver.reopen(original.ownerId, occurrence, clock.today());
         return RewardReceipt.of(transactionId, Collections.singletonList(reversal),
                 RewardReceipt.Target.VESSEL);
     }

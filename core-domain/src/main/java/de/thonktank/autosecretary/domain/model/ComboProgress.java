@@ -1,7 +1,6 @@
 package de.thonktank.autosecretary.domain.model;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 
 /** Persistent, per-element combo account. The visible level is always derived. */
 public final class ComboProgress {
@@ -37,28 +36,17 @@ public final class ComboProgress {
 
     public double multiplier() { return 1d + level() * .5d; }
 
-    /** Settles fully elapsed local calendar days. A new account does not decay. */
-    public ComboProgress settle(LocalDate today) {
-        if (today == null || settledThroughOn == null) return this;
-        LocalDate target = today.minusDays(1);
-        if (!target.isAfter(settledThroughOn)) return this;
-        long days = ChronoUnit.DAYS.between(settledThroughOn, target);
-        return new ComboProgress(ownerId, taskId, kind,
-                Math.max(0, points - Math.toIntExact(Math.min(Integer.MAX_VALUE, days * 2L))),
-                target);
-    }
-
     public Change change(int requestedDelta, LocalDate today) {
-        ComboProgress settled = settle(today);
-        int next = Math.max(0, settled.points + requestedDelta);
-        int applied = next - settled.points;
+        long requested = (long) points + requestedDelta;
+        int next = (int) Math.max(0L, Math.min(Integer.MAX_VALUE, requested));
+        int applied = next - points;
         return new Change(new ComboProgress(ownerId, taskId, kind, next, today), applied);
     }
 
     public ComboProgress undo(int appliedDelta, LocalDate today) {
-        ComboProgress settled = settle(today);
+        long requested = (long) points - appliedDelta;
         return new ComboProgress(ownerId, taskId, kind,
-                Math.max(0, settled.points - appliedDelta), today);
+                (int) Math.max(0L, Math.min(Integer.MAX_VALUE, requested)), today);
     }
 
     public static final class Change {

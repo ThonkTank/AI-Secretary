@@ -20,6 +20,7 @@ public final class TaskDefinition {
     public final Integer remainingCount;
     public final LocalDate deadlineOn;
     public final String note;
+    public final MissedOccurrenceMode missedOccurrenceMode;
     public final List<TaskStepDefinition> steps;
 
     public TaskDefinition(String title, Integer estimatedMinutes, TaskSlot fallbackSlot,
@@ -27,11 +28,23 @@ public final class TaskDefinition {
                           int timeOfDayMask, TaskBoundKind boundKind, LocalDate boundUntilOn,
                           Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn,
                           String note, List<TaskStepDefinition> steps) {
+        this(title, estimatedMinutes, fallbackSlot, recurrence, intervalDays, weekdayMask,
+                timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn,
+                note, MissedOccurrenceMode.COLLAPSE, steps);
+    }
+
+    public TaskDefinition(String title, Integer estimatedMinutes, TaskSlot fallbackSlot,
+                          Recurrence recurrence, int intervalDays, int weekdayMask,
+                          int timeOfDayMask, TaskBoundKind boundKind, LocalDate boundUntilOn,
+                          Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn,
+                          String note, MissedOccurrenceMode missedOccurrenceMode,
+                          List<TaskStepDefinition> steps) {
         if (title == null || title.trim().isEmpty() || title.trim().length() > 120)
             throw new IllegalArgumentException("Task title must contain 1 to 120 characters");
         if (estimatedMinutes != null && estimatedMinutes < 1)
             throw new IllegalArgumentException("Estimated duration must be positive");
-        if (fallbackSlot == null || recurrence == null || boundKind == null || steps == null)
+        if (fallbackSlot == null || recurrence == null || boundKind == null
+                || missedOccurrenceMode == null || steps == null)
             throw new IllegalArgumentException("Task definition is incomplete");
         if (recurrence == Recurrence.WEEKDAYS && (weekdayMask & 0x7f) == 0)
             throw new IllegalArgumentException("Weekday recurrence needs a weekday");
@@ -81,6 +94,7 @@ public final class TaskDefinition {
         this.remainingCount = count;
         this.deadlineOn = deadline;
         this.note = note == null ? "" : note;
+        this.missedOccurrenceMode = missedOccurrenceMode;
         this.steps = Collections.unmodifiableList(copied);
     }
 

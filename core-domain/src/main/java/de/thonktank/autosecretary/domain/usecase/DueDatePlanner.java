@@ -24,11 +24,12 @@ final class DueDatePlanner {
     Plan throughToday(Task task, TaskSchedule schedule, LocalDate today, List<Occurrence> history,
                       List<TaskStepTemplate> templates) {
         Map<TaskSlot, List<TaskStepTemplate>> result = new LinkedHashMap<>();
+        List<PlannedDue> dues = new ArrayList<>();
         LocalDate cursor = task.planningCursor();
         int materialized = 0;
         if (task.boundKind == TaskBoundKind.N_TIMES
                 && (task.remainingCount == null || task.remainingCount <= 0))
-            return new Plan(result, null, 0, !same(task.planningCursor(), null));
+            return new Plan(result, dues, null, 0, !same(task.planningCursor(), null));
         Set<String> existingDates = new HashSet<>();
         for (Occurrence occurrence : history)
             existingDates.add(key(occurrence.taskId, occurrence.scheduledOn, occurrence.slot));
@@ -49,6 +50,7 @@ final class DueDatePlanner {
                 if (!alreadyMaterialized && allowed(task, materialized)) {
                     List<TaskStepTemplate> applicable = applicable(templates, cursor,
                             intervalAnchor);
+                    dues.add(new PlannedDue(cursor, slot, applicable));
                     List<TaskStepTemplate> selected = result.computeIfAbsent(slot,
                             ignored -> new ArrayList<>());
                     Set<String> seen = templateIds(selected);
@@ -70,7 +72,8 @@ final class DueDatePlanner {
                 && task.planningCursor().isAfter(today))
             cursor = task.planningCursor();
         if (cursor != null && !ScheduleCalculator.withinBound(task, cursor)) cursor = null;
-        return new Plan(result, cursor, materialized, !same(cursor, task.planningCursor()));
+        return new Plan(result, dues, cursor, materialized,
+                !same(cursor, task.planningCursor()));
     }
 
     private static boolean canPlan(Task task, LocalDate date) {
@@ -125,16 +128,31 @@ final class DueDatePlanner {
 
     static final class Plan {
         final Map<TaskSlot, List<TaskStepTemplate>> stepsBySlot;
+        final List<PlannedDue> dues;
         final LocalDate nextDue;
         final int materializedCount;
         final boolean nextDueChanged;
 
-        Plan(Map<TaskSlot, List<TaskStepTemplate>> stepsBySlot, LocalDate nextDue,
+        Plan(Map<TaskSlot, List<TaskStepTemplate>> stepsBySlot, List<PlannedDue> dues,
+             LocalDate nextDue,
              int materializedCount, boolean nextDueChanged) {
             this.stepsBySlot = stepsBySlot;
+            this.dues = Collections.unmodifiableList(new ArrayList<>(dues));
             this.nextDue = nextDue;
             this.materializedCount = materializedCount;
             this.nextDueChanged = nextDueChanged;
+        }
+    }
+
+    static final class PlannedDue {
+        final LocalDate scheduledOn;
+        final TaskSlot slot;
+        final List<TaskStepTemplate> templates;
+
+        PlannedDue(LocalDate scheduledOn, TaskSlot slot, List<TaskStepTemplate> templates) {
+            this.scheduledOn = scheduledOn;
+            this.slot = slot;
+            this.templates = Collections.unmodifiableList(new ArrayList<>(templates));
         }
     }
 }

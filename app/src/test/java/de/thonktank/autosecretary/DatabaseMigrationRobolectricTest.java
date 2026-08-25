@@ -6,7 +6,6 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteConstraintException;
 
 import androidx.room.Room;
 import androidx.room.migration.Migration;
@@ -622,13 +621,13 @@ public final class DatabaseMigrationRobolectricTest {
             assertTrue(cursor.moveToFirst());
             assertTrue(cursor.isNull(0));
         }
-        try {
-            database.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,sortOrder,"
-                    + "completedOn,slot) VALUES ('duplicate-open','morning','2026-08-19',"
-                    + "'OPEN',3,'','MORNING')");
-            fail("The database must reject a second open occurrence for one task and slot");
-        } catch (SQLiteConstraintException expected) {
-            // The migration trigger enforces the domain invariant at the persistence boundary.
+        database.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,sortOrder,"
+                + "completedOn,slot) VALUES ('queued-open','morning','2026-08-19',"
+                + "'OPEN',3,NULL,'MORNING')");
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM occurrences "
+                + "WHERE taskId='morning' AND slot='MORNING' AND state='OPEN'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(2, cursor.getInt(0));
         }
         RewardReceipt undo = new UndoOccurrence(new RoomTaskRepository(migrated), new Clock() {
             @Override public LocalDate today() { return LocalDate.of(2026, 8, 17); }

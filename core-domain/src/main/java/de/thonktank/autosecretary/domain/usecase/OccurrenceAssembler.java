@@ -29,12 +29,13 @@ final class OccurrenceAssembler {
         this.ids = ids;
     }
 
-    boolean assemble(Task task, LocalDate today, List<Occurrence> history,
+    Result assemble(Task task, LocalDate today, List<Occurrence> history,
                      Map<TaskSlot, Integer> globalNextOrders,
                      OccurrenceCarryForward.Result carry,
                      DueDatePlanner.Plan planned, TaskSchedule schedule,
                      Map<String, Integer> scheduleRanks) {
         Set<TaskSlot> targetSlots = new LinkedHashSet<>();
+        Map<TaskSlot, Occurrence> active = new java.util.HashMap<>(carry.open);
         List<TaskSlot> configuredSlots = schedule.slots(task.id);
         for (TaskSlot slot : configuredSlots)
             if (carry.carry.containsKey(slot) || planned.stepsBySlot.containsKey(slot))
@@ -70,6 +71,7 @@ final class OccurrenceAssembler {
             Occurrence occurrence = new Occurrence(ids.nextId(), task.id, today, slot,
                     OccurrenceState.OPEN, order, null);
             repository.insertOccurrence(occurrence);
+            active.put(slot, occurrence);
             globalNextOrders.put(slot, Math.max(globalNextOrders.getOrDefault(slot, 0), order));
             if (!steps.isEmpty()) {
                 List<OccurrenceStep> positioned = new ArrayList<>();
@@ -86,7 +88,7 @@ final class OccurrenceAssembler {
             }
             changed = true;
         }
-        return changed;
+        return new Result(changed, active);
     }
 
     private OccurrenceStep copyStep(OccurrenceStep step, String id, String comboOwner,
@@ -104,5 +106,16 @@ final class OccurrenceAssembler {
         return new OccurrenceStep(id, "pending", 0, template.text, false, template.amount,
                 template.restTimerPolicy, template.note, Collections.emptyList(), template.id,
                 "step:" + template.id);
+    }
+
+    static final class Result {
+        final boolean changed;
+        final Map<TaskSlot, Occurrence> activeBySlot;
+
+        Result(boolean changed, Map<TaskSlot, Occurrence> activeBySlot) {
+            this.changed = changed;
+            this.activeBySlot = Collections.unmodifiableMap(
+                    new java.util.HashMap<>(activeBySlot));
+        }
     }
 }

@@ -266,8 +266,8 @@ public final class UseCaseRobolectricTest {
 
         assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(occurrence.id).state);
         assertEquals(10, repository.xp());
-        assertEquals(3, repository.combo("task:" + occurrence.taskId.value).points);
-        assertEquals(1, repository.combo(repository.findOccurrenceStep(stepId).comboOwnerId).points);
+        assertEquals(2, repository.combo("task:" + occurrence.taskId.value).points);
+        assertEquals(2, repository.combo(repository.findOccurrenceStep(stepId).comboOwnerId).points);
     }
 
     @Test public void deferSwapsOnlyTheSelectedAndNextOpenTask() {
@@ -335,14 +335,14 @@ public final class UseCaseRobolectricTest {
         repository.insertOccurrence(older); repository.insertOccurrence(newer);
         CompleteOccurrence complete = new CompleteOccurrence(repository, clock);
         complete.execute(older.id); complete.execute(newer.id);
-        assertEquals(25, repository.xp());
+        assertEquals(30, repository.xp());
         assertEquals(TODAY.plusDays(1), repository.findTask(task.id).nextDueOn);
 
         queries.clear();
         RewardReceipt undo = new UndoOccurrence(repository, clock).execute(older.id);
 
         assertEquals(-15, undo.xp);
-        assertEquals(10, repository.xp());
+        assertEquals(15, repository.xp());
         assertEquals(OccurrenceState.OPEN, repository.findOccurrence(older.id).state);
         assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(newer.id).state);
         assertEquals(TODAY.plusDays(1), repository.findTask(task.id).nextDueOn);

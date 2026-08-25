@@ -111,7 +111,7 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(1, database.tasks().completedOccurrences("COMPLETED", TODAY.toString()).size());
         complete.execute(firstRound.get(1).id);
         assertEquals(2, new LoadDashboard(repository).execute(TODAY).tasks.size());
-        assertEquals(30, repository.xp());
+        assertEquals(25, repository.xp());
         assertEquals(TODAY.plusDays(1), repository.allTasks().get(0).nextDueOn);
     }
 
@@ -278,7 +278,7 @@ public final class TaskEditorFeatureRobolectricTest {
                 () -> correct.execute(step.id, 0, 1_000));
         assertEquals(10, record.execute(step.id, 12).xp);
         assertTrue(repository.findOccurrenceStep(step.id).done);
-        assertEquals(1, repository.combo(step.comboOwnerId).points);
+        assertEquals(2, repository.combo(step.comboOwnerId).points);
 
         assertEquals(0, correct.execute(step.id, 0, 9).xp);
         OccurrenceStep editedDone = repository.findOccurrenceStep(step.id);
@@ -288,7 +288,7 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(10, vesselXp(occurrence.id));
 
         assertTrue(repository.findOccurrenceStep(step.id).done);
-        assertEquals(1, repository.combo(step.comboOwnerId).points);
+        assertEquals(2, repository.combo(step.comboOwnerId).points);
     }
 
     private int vesselXp(String occurrenceId) {
@@ -338,7 +338,7 @@ public final class TaskEditorFeatureRobolectricTest {
         OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
         assertTrue(restored.done);
         assertEquals(Collections.singletonList(0), restored.repetitionProgress.actualRepetitions);
-        assertEquals(1, repository.combo(step.comboOwnerId).points);
+        assertEquals(2, repository.combo(step.comboOwnerId).points);
         assertEquals(0, new RecordRepetitionResult(repository, clock).execute(step.id, 1).xp);
 
         assertEquals(-10, new ToggleStep(repository, clock).execute(step.id).xp);

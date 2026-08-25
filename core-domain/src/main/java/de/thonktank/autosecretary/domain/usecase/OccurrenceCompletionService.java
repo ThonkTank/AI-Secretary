@@ -15,6 +15,7 @@ import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
+import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,10 +33,17 @@ public final class OccurrenceCompletionService {
     private final CompletionStateMachine states;
     private final ScheduleProjector schedules;
     private final StepExecutionService stepExecution;
+    private final ComboObligationResolver obligationResolver;
 
     public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
     OccurrenceCompletionService(T repository, Clock clock) {
         this(repository, repository, clock, new RewardCalculator(),
+                new CompletionStateMachine(), new ScheduleProjector());
+    }
+
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    OccurrenceCompletionService(T repository, Clock clock, ComboPolicySource policies) {
+        this(repository, repository, clock, new RewardCalculator(policies),
                 new CompletionStateMachine(), new ScheduleProjector());
     }
 
@@ -50,6 +58,7 @@ public final class OccurrenceCompletionService {
         this.schedules = schedules;
         this.stepExecution = new StepExecutionService(occurrences, ledger, clock,
                 rewards, states);
+        this.obligationResolver = new ComboObligationResolver(occurrences);
     }
 
     public RewardReceipt completeRemainingSteps(String occurrenceId) {
@@ -139,7 +148,7 @@ public final class OccurrenceCompletionService {
             break;
         }
         ComboProgress settled = combo(ComboProgress.taskOwner(task.id), task.id,
-                ComboProgress.Kind.TASK).settle(clock.today());
+                ComboProgress.Kind.TASK);
         RewardCalculator.HarvestReward calculated = rewards.harvest(task, occurrence, routine,
                 collected, settled, clock.today());
         ComboProgress.Change change = settled.change(calculated.requestedComboDelta, clock.today());
@@ -149,6 +158,8 @@ public final class OccurrenceCompletionService {
         ledger.putCombo(change.progress);
         ledger.setXp(ledger.xp() + booking.xpDelta);
         ledger.insertRewardBooking(booking);
+        obligationResolver.resolve(ComboProgress.taskOwner(task.id), task, occurrence,
+                clock.today());
         occurrences.updateOccurrence(hasMissedSteps
                 ? states.harvestWithMissedSteps(occurrence, clock.today())
                 : states.completeOccurrence(occurrence, clock.today()));
@@ -170,6 +181,7 @@ public final class OccurrenceCompletionService {
         ledger.putCombo(current.undo(original.comboPointDelta, clock.today()));
         ledger.setXp(ledger.xp() + reversal.xpDelta);
         ledger.insertRewardBooking(reversal);
+        obligationResolver.reopen(original.ownerId, occurrence, clock.today());
         occurrences.updateOccurrence(states.reopenOccurrence(occurrence));
         if (task.ongoing && task.conditionDone) occurrences.updateTask(task.reopenCondition());
         projectSchedule(task.id);
@@ -194,6 +206,7 @@ public final class OccurrenceCompletionService {
         RewardBooking match = null;
         for (RewardBooking booking : bookings) {
             if (booking.reversesBookingId != null || reversed.contains(booking.id)
+                    || booking.kind == RewardBooking.Kind.COMBO_DECAY
                     || booking.target != target || !same(stepId, booking.occurrenceStepId)) continue;
             match = booking;
         }

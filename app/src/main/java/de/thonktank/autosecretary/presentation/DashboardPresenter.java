@@ -45,7 +45,7 @@ public final class DashboardPresenter {
     }
 
     public boolean prepare() {
-        boolean changed = decay != null && decay.execute();
-        return materializeDue.execute() || changed;
+        boolean changed = materializeDue.execute();
+        return (decay != null && decay.execute()) || changed;
     }
 }
