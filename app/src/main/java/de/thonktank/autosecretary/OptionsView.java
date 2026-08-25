@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
+import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
 
 @SuppressLint("ViewConstructor")
@@ -18,11 +19,15 @@ public final class OptionsView extends LinearLayout {
     private final TextView heading;
     private final OptionLeaf appearance;
     private final OptionLeaf focusSteps;
+    private final OptionLeaf restTimers;
     private final OptionLeaf calendar;
     private final OptionLeaf updates;
     private final TextView[] themeButtons = new TextView[3];
     private final TextView[] focusStepButtons = new TextView[FocusStepLimit.values().length];
     private final TextView calendarButton;
+    private final TextView restTimerLess;
+    private final TextView restTimerValue;
+    private final TextView restTimerMore;
     private final TextView updateButton;
     private final DashboardEventSink events;
 
@@ -78,6 +83,22 @@ public final class OptionsView extends LinearLayout {
                 R.string.options_focus_steps_description, focusLimits);
         addLeaf(focusSteps);
 
+        LinearLayout restTimerActions = new LinearLayout(context);
+        restTimerActions.setGravity(Gravity.CENTER_VERTICAL);
+        restTimerLess = outlineButton(context.getString(R.string.timer_less));
+        restTimerLess.setContentDescription(context.getString(R.string.timer_less_description));
+        restTimerValue = style.sans("60 s", 17, 0, true);
+        restTimerValue.setGravity(Gravity.CENTER);
+        restTimerValue.setMinWidth(style.dp(96));
+        restTimerMore = outlineButton(context.getString(R.string.timer_more));
+        restTimerMore.setContentDescription(context.getString(R.string.timer_more_description));
+        restTimerActions.addView(restTimerLess, new LayoutParams(style.dp(56), style.dp(48)));
+        restTimerActions.addView(restTimerValue, new LayoutParams(style.dp(96), style.dp(48)));
+        restTimerActions.addView(restTimerMore, new LayoutParams(style.dp(56), style.dp(48)));
+        restTimers = new OptionLeaf(context, R.string.options_rest_timer,
+                R.string.options_rest_timer_description, restTimerActions);
+        addLeaf(restTimers);
+
         calendarButton = outlineButton(context.getString(R.string.calendar_grant));
         calendarButton.setOnClickListener(view ->
                 events.emit(DashboardEvent.calendarPermission()));
@@ -105,6 +126,14 @@ public final class OptionsView extends LinearLayout {
     public void bind(DayPalette palette, UiThemeMode mode, FocusStepLimit focusStepLimit,
                      CalendarPermissionStatus permission, CalendarUiState calendarState,
                      String version, UpdateUiState updateState) {
+        bind(palette, mode, focusStepLimit, UiPreferences.DEFAULT_REST_TIMER_SECONDS,
+                permission, calendarState, version, updateState);
+    }
+
+    public void bind(DayPalette palette, UiThemeMode mode, FocusStepLimit focusStepLimit,
+                     int restTimerDefaultSeconds,
+                     CalendarPermissionStatus permission, CalendarUiState calendarState,
+                     String version, UpdateUiState updateState) {
         heading.setTextColor(palette.accent);
         appearance.bind(palette, getContext().getString(R.string.options_appearance_description));
         UiThemeMode[] modes = UiThemeMode.values();
@@ -129,6 +158,18 @@ public final class OptionsView extends LinearLayout {
             if (!selected) background.setStroke(style.dp(1), palette.dot);
             button.setBackground(background);
         }
+        restTimers.bind(palette, getContext().getString(R.string.options_rest_timer_description));
+        restTimerValue.setText(formatSeconds(restTimerDefaultSeconds));
+        restTimerValue.setTextColor(palette.ink);
+        restTimerLess.setEnabled(restTimerDefaultSeconds > 15);
+        restTimerLess.setAlpha(restTimerDefaultSeconds > 15 ? 1f : .45f);
+        restTimerLess.setOnClickListener(view -> events.emit(
+                DashboardEvent.restTimerDefaultChanged(
+                        Math.max(1, restTimerDefaultSeconds - 15))));
+        restTimerMore.setOnClickListener(view -> events.emit(
+                DashboardEvent.restTimerDefaultChanged(restTimerDefaultSeconds + 15)));
+        bindOutline(restTimerLess, palette);
+        bindOutline(restTimerMore, palette);
         boolean granted = permission == CalendarPermissionStatus.GRANTED;
         boolean settings = permission == CalendarPermissionStatus.DENIED_TO_SETTINGS;
         int calendarDescription = granted ? R.string.calendar_granted : R.string.calendar_missing;
@@ -199,6 +240,14 @@ public final class OptionsView extends LinearLayout {
         GradientDrawable background = style.pill(Color.TRANSPARENT, 24);
         background.setStroke(style.dp(1), palette.dot);
         button.setBackground(background);
+    }
+
+    private static String formatSeconds(int seconds) {
+        int minutes = seconds / 60;
+        int remainder = seconds % 60;
+        return minutes == 0 ? seconds + " s"
+                : remainder == 0 ? minutes + " min"
+                : minutes + ":" + (remainder < 10 ? "0" : "") + remainder;
     }
 
     private final class OptionLeaf extends LinearLayout {

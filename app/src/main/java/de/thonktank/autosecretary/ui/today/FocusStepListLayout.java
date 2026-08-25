@@ -93,7 +93,7 @@ public final class FocusStepListLayout extends ViewGroup {
             }
             FocusStepUiModel step = openSteps.get(index);
             row.bind(step, step.status == FocusStepStatus.ACTIVE, model.palette,
-                    model.repetitionInput, actions);
+                    model.repetitionInput, model.timers, actions);
             row.setOnStepLongClickListener(view -> beginReorder(row, step.id));
             final int renderedIndex = index;
             row.configureReorderAccessibility(step.id, step.title, index > 0,

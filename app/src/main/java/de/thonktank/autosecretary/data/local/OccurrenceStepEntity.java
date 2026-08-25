@@ -23,6 +23,8 @@ public class OccurrenceStepEntity {
     public Integer plannedSets;
     public Integer plannedReps;
     public Integer plannedDurationSeconds;
+    @NonNull public String restTimerMode;
+    public Integer restTimerSeconds;
     @NonNull public String note;
     /** Transitional v4-v7 payload; v8 writes an empty value and reads structured rows only. */
     @ColumnInfo(name = "actualRepetitions") @NonNull
@@ -41,10 +43,12 @@ public class OccurrenceStepEntity {
                                 @Nullable String sourceTemplateId,
                                 @NonNull String comboOwnerId) {
         this(id, occurrenceId, position, text, done, amountKind, plannedSets, plannedReps,
-                plannedDurationSeconds, note, legacyActualRepetitions, sourceTemplateId,
+                plannedDurationSeconds, "SETS_REPS".equals(amountKind) ? "INHERIT" : "OFF",
+                null, note, legacyActualRepetitions, sourceTemplateId,
                 comboOwnerId, null, "NONE");
     }
 
+    @Ignore
     public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
                                 int position, @NonNull String text, boolean done,
                                 @NonNull String amountKind, Integer plannedSets,
@@ -55,10 +59,29 @@ public class OccurrenceStepEntity {
                                 @NonNull String comboOwnerId,
                                 @Nullable String originOccurrenceId,
                                 @NonNull String carryForwardReason) {
+        this(id, occurrenceId, position, text, done, amountKind, plannedSets, plannedReps,
+                plannedDurationSeconds, "SETS_REPS".equals(amountKind) ? "INHERIT" : "OFF",
+                null, note, legacyActualRepetitions, sourceTemplateId, comboOwnerId,
+                originOccurrenceId, carryForwardReason);
+    }
+
+    public OccurrenceStepEntity(@NonNull String id, @NonNull String occurrenceId,
+                                int position, @NonNull String text, boolean done,
+                                @NonNull String amountKind, Integer plannedSets,
+                                Integer plannedReps, Integer plannedDurationSeconds,
+                                @NonNull String restTimerMode, Integer restTimerSeconds,
+                                @NonNull String note,
+                                @NonNull String legacyActualRepetitions,
+                                @Nullable String sourceTemplateId,
+                                @NonNull String comboOwnerId,
+                                @Nullable String originOccurrenceId,
+                                @NonNull String carryForwardReason) {
         this.id = id; this.occurrenceId = occurrenceId; this.position = position;
         this.text = text; this.done = done; this.amountKind = amountKind;
         this.plannedSets = plannedSets; this.plannedReps = plannedReps;
-        this.plannedDurationSeconds = plannedDurationSeconds; this.note = note;
+        this.plannedDurationSeconds = plannedDurationSeconds;
+        this.restTimerMode = restTimerMode; this.restTimerSeconds = restTimerSeconds;
+        this.note = note;
         this.legacyActualRepetitions = legacyActualRepetitions;
         this.sourceTemplateId = sourceTemplateId;
         this.comboOwnerId = comboOwnerId;

@@ -20,6 +20,8 @@ public final class UiPreferences {
     private static final String CALENDAR_ASKED = "calendar_asked";
     private static final String CALENDAR_POLICY = "calendar_policy";
     private static final String FOCUS_STEP_LIMIT = "focus_step_limit";
+    private static final String REST_TIMER_DEFAULT_SECONDS = "rest_timer_default_seconds";
+    public static final int DEFAULT_REST_TIMER_SECONDS = 60;
 
     private final SharedPreferences preferences;
     private final AppLogger logger;
@@ -58,14 +60,25 @@ public final class UiPreferences {
         preferences.edit().putString(FOCUS_STEP_LIMIT, limit.name()).apply();
     }
 
+    public int restTimerDefaultSeconds() {
+        return Math.max(1, preferences.getInt(REST_TIMER_DEFAULT_SECONDS,
+                DEFAULT_REST_TIMER_SECONDS));
+    }
+
+    public void setRestTimerDefaultSeconds(int seconds) {
+        if (seconds < 1) throw new IllegalArgumentException("Rest timer must be positive");
+        preferences.edit().putInt(REST_TIMER_DEFAULT_SECONDS, seconds).apply();
+    }
+
     public DisplayPreferences displayPreferences() {
-        return new DisplayPreferences(themeMode(), focusStepLimit());
+        return new DisplayPreferences(themeMode(), focusStepLimit(), restTimerDefaultSeconds());
     }
 
     public Subscription observeDisplayPreferences(Consumer<DisplayPreferences> observer) {
         if (observer == null) throw new IllegalArgumentException("Observer is required");
         SharedPreferences.OnSharedPreferenceChangeListener listener = (source, key) -> {
-            if (THEME_MODE.equals(key) || FOCUS_STEP_LIMIT.equals(key))
+            if (THEME_MODE.equals(key) || FOCUS_STEP_LIMIT.equals(key)
+                    || REST_TIMER_DEFAULT_SECONDS.equals(key))
                 observer.accept(displayPreferences());
         };
         preferences.registerOnSharedPreferenceChangeListener(listener);

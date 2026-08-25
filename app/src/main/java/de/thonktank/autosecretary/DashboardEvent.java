@@ -25,6 +25,14 @@ public abstract class DashboardEvent {
         private FocusStepLimitSelected(FocusStepLimit limit) { this.limit = required(limit); }
     }
 
+    public static final class RestTimerDefaultChanged extends DashboardEvent {
+        public final int seconds;
+        private RestTimerDefaultChanged(int seconds) {
+            if (seconds < 1) throw new IllegalArgumentException("Rest timer must be positive");
+            this.seconds = seconds;
+        }
+    }
+
     public static final class CalendarPermission extends DashboardEvent {
         private CalendarPermission() { }
     }
@@ -40,6 +48,9 @@ public abstract class DashboardEvent {
     }
     public static DashboardEvent focusStepLimitSelected(FocusStepLimit limit) {
         return new FocusStepLimitSelected(limit);
+    }
+    public static DashboardEvent restTimerDefaultChanged(int seconds) {
+        return new RestTimerDefaultChanged(seconds);
     }
     public static DashboardEvent calendarPermission() { return new CalendarPermission(); }
     public static DashboardEvent checkUpdates() { return new CheckUpdates(); }

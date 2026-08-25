@@ -10,6 +10,7 @@ public final class OccurrenceStep {
     public final String text;
     public final boolean done;
     public final StepAmount amount;
+    public final RestTimerPolicy restTimerPolicy;
     public final String note;
     public final RepetitionProgress repetitionProgress;
     public final String sourceTemplateId;
@@ -43,15 +44,35 @@ public final class OccurrenceStep {
     }
 
     public OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
+                          StepAmount amount, RestTimerPolicy restTimerPolicy, String note,
+                          List<Integer> actualRepetitions, String sourceTemplateId,
+                          String comboOwnerId) {
+        this(id, occurrenceId, position, text, done, amount, restTimerPolicy, note,
+                actualRepetitions, sourceTemplateId, comboOwnerId, null,
+                CarryForwardReason.NONE);
+    }
+
+    public OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
                           StepAmount amount, String note, List<Integer> actualRepetitions,
                           String sourceTemplateId, String comboOwnerId,
                           String originOccurrenceId, CarryForwardReason carryForwardReason) {
+        this(id, occurrenceId, position, text, done, amount,
+                RestTimerPolicy.forAmount(amount), note, actualRepetitions, sourceTemplateId,
+                comboOwnerId, originOccurrenceId, carryForwardReason);
+    }
+
+    public OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
+                          StepAmount amount, RestTimerPolicy restTimerPolicy, String note,
+                          List<Integer> actualRepetitions, String sourceTemplateId,
+                          String comboOwnerId, String originOccurrenceId,
+                          CarryForwardReason carryForwardReason) {
         if (id == null || id.isEmpty() || occurrenceId == null || occurrenceId.isEmpty()
                 || text == null || text.trim().isEmpty() || actualRepetitions == null
                 || comboOwnerId == null)
             throw new IllegalArgumentException(
                     "Occurrence step identity, occurrence and text are required");
-        TaskStepDefinition checked = new TaskStepDefinition(id, position, text, 0, amount, note);
+        TaskStepDefinition checked = new TaskStepDefinition(id, position, text, 0, 0, amount,
+                restTimerPolicy, note);
         RepetitionProgress progress = RepetitionProgress.forAmount(
                 checked.amount, actualRepetitions, done);
         this.id = id;
@@ -59,6 +80,7 @@ public final class OccurrenceStep {
         this.position = checked.position;
         this.text = checked.text;
         this.amount = checked.amount;
+        this.restTimerPolicy = checked.restTimerPolicy;
         this.note = checked.note;
         this.repetitionProgress = progress;
         this.done = progress == null ? done : progress.completed();
@@ -75,7 +97,8 @@ public final class OccurrenceStep {
         if (done) return this;
         return repetitionProgress == null
                 ? new OccurrenceStep(id, occurrenceId, position, text, true,
-                        amount, note, Collections.emptyList(), sourceTemplateId, comboOwnerId,
+                        amount, restTimerPolicy, note, Collections.emptyList(), sourceTemplateId,
+                        comboOwnerId,
                         originOccurrenceId, carryForwardReason)
                 : withProgress(repetitionProgress.completeWithoutResults());
     }
@@ -84,7 +107,7 @@ public final class OccurrenceStep {
         if (!done) return this;
         return repetitionProgress == null
                 ? new OccurrenceStep(id, occurrenceId, position, text, false, amount,
-                        note, Collections.emptyList(), sourceTemplateId, comboOwnerId,
+                        restTimerPolicy, note, Collections.emptyList(), sourceTemplateId, comboOwnerId,
                         originOccurrenceId, carryForwardReason)
                 : withProgress(repetitionProgress.reopen());
     }
@@ -103,12 +126,13 @@ public final class OccurrenceStep {
 
     private OccurrenceStep withProgress(RepetitionProgress progress) {
         return new OccurrenceStep(id, occurrenceId, position, text, progress.completed(), amount,
-                note, progress.actualRepetitions, sourceTemplateId, comboOwnerId,
+                restTimerPolicy, note, progress.actualRepetitions, sourceTemplateId, comboOwnerId,
                 originOccurrenceId, carryForwardReason);
     }
 
     public OccurrenceStep withCarryOrigin(String originId, CarryForwardReason reason) {
-        return new OccurrenceStep(id, occurrenceId, position, text, done, amount, note,
+        return new OccurrenceStep(id, occurrenceId, position, text, done, amount,
+                restTimerPolicy, note,
                 repetitionProgress == null ? Collections.emptyList()
                         : repetitionProgress.actualRepetitions, sourceTemplateId, comboOwnerId,
                 originId, reason);
@@ -116,7 +140,7 @@ public final class OccurrenceStep {
 
     public OccurrenceStep relocate(String targetOccurrenceId, int targetPosition) {
         return new OccurrenceStep(id, targetOccurrenceId, targetPosition, text, done,
-                amount, note, repetitionProgress == null ? Collections.emptyList()
+                amount, restTimerPolicy, note, repetitionProgress == null ? Collections.emptyList()
                 : repetitionProgress.actualRepetitions, sourceTemplateId, comboOwnerId,
                 originOccurrenceId, carryForwardReason);
     }

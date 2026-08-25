@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.update.presentation.UpdateUiState;
+import de.thonktank.autosecretary.timer.TimerManager;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -24,7 +25,9 @@ public final class DashboardUiState {
     public final RepetitionInputState repetitionInput;
     public final UiThemeMode themeMode;
     public final FocusStepLimit focusStepLimit;
+    public final int restTimerDefaultSeconds;
     public final UpdateUiState update;
+    public final TimerManager.Snapshot timers;
 
     public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
                             CalendarUiState calendar, DayPalette palette,
@@ -32,7 +35,7 @@ public final class DashboardUiState {
                             Set<UiCommand> runningActions) {
         this(navigation, dashboard, calendar, palette, calendarPermission, loading,
                 runningActions, RepetitionInputState.idle(), UiThemeMode.AUTO,
-                FocusStepLimit.AUTO, UpdateUiState.idle());
+                FocusStepLimit.AUTO, 60, UpdateUiState.idle());
     }
 
     public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
@@ -42,7 +45,7 @@ public final class DashboardUiState {
                             RepetitionInputState repetitionInput) {
         this(navigation, dashboard, calendar, palette, calendarPermission, loading,
                 runningActions, repetitionInput, UiThemeMode.AUTO,
-                FocusStepLimit.AUTO, UpdateUiState.idle());
+                FocusStepLimit.AUTO, 60, UpdateUiState.idle());
     }
 
     public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
@@ -52,7 +55,19 @@ public final class DashboardUiState {
                             RepetitionInputState repetitionInput, UiThemeMode themeMode,
                             FocusStepLimit focusStepLimit, UpdateUiState update) {
         this(navigation, dashboard, calendar, palette, calendarPermission, loading,
-                runningActions, repetitionInput, themeMode, focusStepLimit, update,
+                runningActions, repetitionInput, themeMode, focusStepLimit, 60, update);
+    }
+
+    public DashboardUiState(NavigationDestination navigation, TodayUiModel dashboard,
+                            CalendarUiState calendar, DayPalette palette,
+                            CalendarPermissionStatus calendarPermission, boolean loading,
+                            Set<UiCommand> runningActions,
+                            RepetitionInputState repetitionInput, UiThemeMode themeMode,
+                            FocusStepLimit focusStepLimit, int restTimerDefaultSeconds,
+                            UpdateUiState update) {
+        this(navigation, dashboard, calendar, palette, calendarPermission, loading,
+                runningActions, repetitionInput, themeMode, focusStepLimit,
+                restTimerDefaultSeconds, update, TimerManager.Snapshot.empty(),
                 TodayFeatureState.idle(dashboard));
     }
 
@@ -61,9 +76,12 @@ public final class DashboardUiState {
                              CalendarPermissionStatus calendarPermission, boolean loading,
                              Set<UiCommand> runningActions,
                              RepetitionInputState repetitionInput, UiThemeMode themeMode,
-                             FocusStepLimit focusStepLimit, UpdateUiState update,
+                             FocusStepLimit focusStepLimit, int restTimerDefaultSeconds,
+                             UpdateUiState update,
+                             TimerManager.Snapshot timers,
                              TodayFeatureState todayFeature) {
-        if (themeMode == null || focusStepLimit == null || update == null)
+        if (themeMode == null || focusStepLimit == null || restTimerDefaultSeconds < 1
+                || update == null || timers == null)
             throw new IllegalArgumentException("Complete render preferences are required");
         this.navigation = navigation;
         this.dashboard = dashboard;
@@ -76,7 +94,9 @@ public final class DashboardUiState {
         this.repetitionInput = repetitionInput;
         this.themeMode = themeMode;
         this.focusStepLimit = focusStepLimit;
+        this.restTimerDefaultSeconds = restTimerDefaultSeconds;
         this.update = update;
+        this.timers = timers;
     }
 
     public DashboardUiState withNavigation(NavigationDestination value) {
@@ -105,7 +125,8 @@ public final class DashboardUiState {
         return new DashboardUiState(navigation, dashboardValue, calendarValue, palette,
                 calendarPermission, false, runningActions,
                 repetitionInput.reconcile(dashboardValue.focus), themeMode, focusStepLimit,
-                update, TodayFeatureState.idle(dashboardValue));
+                restTimerDefaultSeconds, update, timers,
+                TodayFeatureState.idle(dashboardValue));
     }
 
     public DashboardUiState withToday(TodayUiModel value) {
@@ -116,7 +137,7 @@ public final class DashboardUiState {
         return new DashboardUiState(navigation, value.today, calendar, palette,
                 calendarPermission, loading, runningActions,
                 repetitionInput.reconcile(value.today.focus), themeMode, focusStepLimit,
-                update, value);
+                restTimerDefaultSeconds, update, timers, value);
     }
 
     public DashboardUiState withRunningActions(Set<UiCommand> value) {
@@ -133,13 +154,20 @@ public final class DashboardUiState {
                                                    DayPalette paletteValue) {
         return new DashboardUiState(navigation, dashboard, calendar, paletteValue,
                 calendarPermission, loading, runningActions, repetitionInput,
-                value.themeMode, value.focusStepLimit, update, todayFeature);
+                value.themeMode, value.focusStepLimit, value.restTimerDefaultSeconds,
+                update, timers, todayFeature);
     }
 
     public DashboardUiState withUpdate(UpdateUiState value) {
         return new DashboardUiState(navigation, dashboard, calendar, palette,
                 calendarPermission, loading, runningActions, repetitionInput,
-                themeMode, focusStepLimit, value, todayFeature);
+                themeMode, focusStepLimit, restTimerDefaultSeconds, value, timers, todayFeature);
+    }
+
+    public DashboardUiState withTimers(TimerManager.Snapshot value) {
+        return new DashboardUiState(navigation, dashboard, calendar, palette,
+                calendarPermission, loading, runningActions, repetitionInput,
+                themeMode, focusStepLimit, restTimerDefaultSeconds, update, value, todayFeature);
     }
 
     public boolean isRunning(UiCommand key) { return runningActions.contains(key); }
@@ -152,6 +180,7 @@ public final class DashboardUiState {
                                   RepetitionInputState repetitionInputValue) {
         return new DashboardUiState(navigationValue, dashboardValue, calendarValue,
                 paletteValue, permissionValue, loadingValue, actionsValue,
-                repetitionInputValue, themeMode, focusStepLimit, update, todayFeature);
+                repetitionInputValue, themeMode, focusStepLimit, restTimerDefaultSeconds,
+                update, timers, todayFeature);
     }
 }

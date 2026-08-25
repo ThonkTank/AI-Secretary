@@ -12,6 +12,7 @@ import de.thonktank.autosecretary.StepCadenceMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 
 /** Localized task-editor summaries shared by the summary and step-list views. */
 public final class TaskEditorTextFormatter {
@@ -90,6 +91,12 @@ public final class TaskEditorTextFormatter {
             values.add(texts.text(R.string.rhythm_every_n_value, step.intervalDays));
         String amount = stepFormatter.format(step.amount, "");
         if (!amount.isEmpty()) values.add(amount);
+        if (step.restTimerPolicy.mode == RestTimerPolicy.Mode.INHERIT)
+            values.add(texts.text(R.string.rest_timer_inherit_summary));
+        else if (step.restTimerPolicy.mode == RestTimerPolicy.Mode.CUSTOM)
+            values.add(texts.text(R.string.rest_timer_custom_summary, stepFormatter.format(
+                    de.thonktank.autosecretary.domain.model.StepAmount.duration(
+                            step.restTimerPolicy.customSeconds), "")));
         return join(values);
     }
 

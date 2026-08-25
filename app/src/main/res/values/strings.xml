@@ -145,6 +145,12 @@
     <string name="options_appearance_description">Farben folgen der Uhr. Der Sonnenstand bleibt immer in Bewegung.</string>
     <string name="options_focus_steps">Folgeschritte im Fokusblatt</string>
     <string name="options_focus_steps_description">Automatisch nutzt den verfügbaren Platz. Eine Zahl setzt die maximale Anzahl sichtbarer Folgeschritte.</string>
+    <string name="options_rest_timer">Standard für Satzpausen</string>
+    <string name="options_rest_timer_description">Satzschritte erben diese Pause, solange sie keinen eigenen Wert verwenden.</string>
+    <string name="timer_less">−</string>
+    <string name="timer_more">+</string>
+    <string name="timer_less_description">Satzpause um 15 Sekunden verkürzen</string>
+    <string name="timer_more_description">Satzpause um 15 Sekunden verlängern</string>
     <string name="focus_steps_auto">automatisch</string>
     <string name="theme_auto">automatisch</string>
     <string name="theme_light">hell</string>
@@ -317,6 +323,13 @@
     <string name="amount_sets_unit">Sätze</string>
     <string name="amount_reps_unit">Wiederholungen</string>
     <string name="amount_seconds_unit">Sekunden</string>
+    <string name="amount_minutes_unit">Minuten</string>
+    <string name="step_rest_timer_label">Pause nach jedem Satz</string>
+    <string name="rest_timer_inherit">App-Standard</string>
+    <string name="rest_timer_custom">eigener Wert</string>
+    <string name="rest_timer_off">aus</string>
+    <string name="rest_timer_inherit_summary">Pause: App-Standard</string>
+    <string name="rest_timer_custom_summary">Pause: %1$s</string>
     <string name="step_amount_sets_reps_summary">%1$d × %2$d Wdh.</string>
     <string name="step_amount_sets_reps_compact">%1$d × %2$d</string>
     <string name="step_amount_reps_summary">%1$d Wdh.</string>
@@ -386,4 +399,22 @@
         <item quantity="other">%1$d von %2$d</item>
     </plurals>
     <string name="delete_routine_loss">Die Routine und ihre Kombo gehen verloren.</string>
+    <string name="timer_notification_channel">Aufgaben-Timer</string>
+    <string name="timer_notification_channel_description">Meldet abgelaufene Aufgaben- und Satzpausen-Timer.</string>
+    <string name="rest_timer_notification_title">Pause vorbei</string>
+    <string name="rest_timer_notification_text">Zeit für den nächsten Satz: %1$s</string>
+    <string name="duration_timer_notification_title">Timer beendet</string>
+    <string name="duration_timer_notification_text">%1$s wartet auf deinen Abschluss.</string>
+    <string name="rest_timer_still_running">Die Satzpause läuft noch. Du kannst sie überspringen.</string>
+    <string name="timer_permission_title">Timer nur eingeschränkt zuverlässig</string>
+    <string name="timer_permission_message">Ohne Benachrichtigungen oder exakte Alarme meldet Android das Ende möglicherweise verspätet. Der Timer läuft trotzdem weiter.</string>
+    <string name="timer_permission_open">Freigaben öffnen</string>
+    <string name="continue_action">Weiter</string>
+    <string name="timer_start">Start</string>
+    <string name="timer_pause">Pause</string>
+    <string name="timer_resume">Weiter</string>
+    <string name="timer_reset">Zurücksetzen</string>
+    <string name="timer_skip_rest">Pause überspringen</string>
+    <string name="rest_timer_finished">Zeit für den nächsten Satz</string>
+    <string name="duration_timer_finished">Zeit ist um</string>
 </resources>

@@ -5,7 +5,7 @@
     "versionCode": 1008001,
     "databaseVersion": 8
   },
-  "targetDatabaseVersion": 16,
+  "targetDatabaseVersion": 17,
   "tables": {
     "tasks": {
       "id": "upgrade-e2e-task",
@@ -103,7 +103,8 @@
       "id": "upgrade-e2e-template",
       "text": "Persistierten Schritt lesen",
       "intervalDays": 0,
-      "amountKind": "NONE"
+      "amountKind": "NONE",
+      "restTimerMode": "OFF"
     },
     "occurrences": {
       "id": "upgrade-e2e-occurrence",
@@ -116,6 +117,7 @@
       "text": "Persistierten Schritt lesen",
       "done": 1,
       "amountKind": "NONE",
+      "restTimerMode": "OFF",
       "actualRepetitions": "",
       "sourceTemplateId": "upgrade-e2e-template",
       "carryForwardReason": "NONE"

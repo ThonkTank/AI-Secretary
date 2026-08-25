@@ -19,10 +19,12 @@ import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
 import android.Manifest;
 import android.animation.LayoutTransition;
 import android.app.AlertDialog;
+import android.app.AlarmManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
@@ -84,6 +86,10 @@ public class MainActivity extends ComponentActivity {
                 syncCalendarPermission();
             });
 
+    private final ActivityResultLauncher<String> notificationPermission =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted ->
+                    openExactAlarmPermissionIfNeeded());
+
     private final ActivityResultLauncher<Intent> installPermission = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (updates != null) updates.onInstallPermissionResult();
@@ -94,6 +100,7 @@ public class MainActivity extends ComponentActivity {
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "create",
                 "saved=" + (savedInstanceState != null));
         container = AutoSecretaryApplication.from(this).container();
+        container.timers.reconcile();
         EdgeToEdge.enable(this);
         buildShell();
         viewModel = new ViewModelProvider(this,
@@ -160,6 +167,7 @@ public class MainActivity extends ComponentActivity {
             container.clockInvalidations.materializeForeground();
         }
         if (updates != null) updates.onResume();
+        if (container != null) container.timers.refreshCapabilities();
     }
 
     @Override protected void onPause() {
@@ -235,6 +243,9 @@ public class MainActivity extends ComponentActivity {
         } else if (event instanceof DashboardEvent.FocusStepLimitSelected) {
             container.uiPreferences.setFocusStepLimit(
                     ((DashboardEvent.FocusStepLimitSelected) event).limit);
+        } else if (event instanceof DashboardEvent.RestTimerDefaultChanged) {
+            container.uiPreferences.setRestTimerDefaultSeconds(
+                    ((DashboardEvent.RestTimerDefaultChanged) event).seconds);
         } else if (event instanceof DashboardEvent.CalendarPermission) {
             viewModel.onCalendarPermissionAction();
         } else if (event instanceof DashboardEvent.CheckUpdates) {
@@ -393,9 +404,39 @@ public class MainActivity extends ComponentActivity {
             confirmClose(event.taskId, event.taskTitle);
         else if (event.type == UiEvent.Type.REQUEST_CALENDAR_PERMISSION)
             calendarPermission.launch(Manifest.permission.READ_CALENDAR);
+        else if (event.type == UiEvent.Type.REQUEST_TIMER_PERMISSIONS)
+            showTimerPermissionWarning();
         else if (event.type == UiEvent.Type.OPEN_APP_SETTINGS)
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:" + getPackageName())));
+    }
+
+    private void showTimerPermissionWarning() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.timer_permission_title)
+                .setMessage(R.string.timer_permission_message)
+                .setNegativeButton(R.string.continue_action, null)
+                .setPositiveButton(R.string.timer_permission_open,
+                        (dialog, which) -> requestTimerPermissions())
+                .show();
+    }
+
+    private void requestTimerPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS);
+            return;
+        }
+        openExactAlarmPermissionIfNeeded();
+    }
+
+    private void openExactAlarmPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+        AlarmManager alarms = getSystemService(AlarmManager.class);
+        if (alarms.canScheduleExactAlarms()) return;
+        startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                Uri.parse("package:" + getPackageName())));
     }
 
     private void handleRewardEffects(RewardEffectQueue.Snapshot snapshot) {

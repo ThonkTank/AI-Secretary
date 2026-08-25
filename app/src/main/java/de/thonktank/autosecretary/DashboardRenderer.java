@@ -68,7 +68,8 @@ public final class DashboardRenderer {
         else if (state.navigation == NavigationDestination.ALL_TASKS)
             allTasks.bind(allTasksState, state.palette);
         else options.bind(state.palette, state.themeMode, state.focusStepLimit,
-                    state.calendarPermission, state.calendar, version, state.update);
+                    state.restTimerDefaultSeconds, state.calendarPermission, state.calendar,
+                    version, state.update);
     }
 
     public void animateEditorTransition(Runnable finished) {
@@ -220,7 +221,8 @@ public final class DashboardRenderer {
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
         focus.bind(focusTask, dashboard.timeline.size() > 0, palette,
-                focusStepLimit, state.repetitionInput, state.todayFeature.reorder, todayActions);
+                focusStepLimit, state.repetitionInput, state.todayFeature.reorder,
+                state.timers, todayActions);
         bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
         more.setText(context.getResources().getQuantityString(

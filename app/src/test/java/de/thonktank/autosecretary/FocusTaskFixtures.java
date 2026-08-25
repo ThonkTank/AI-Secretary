@@ -89,9 +89,12 @@ final class FocusTaskFixtures {
                             : step.repetitionProgress == null
                             ? StepExecutionUiAction.toggle(step.id)
                             : StepExecutionUiAction.submitRepetition(step.id);
-                    explicit.add(FocusStepUiModel.executable(step.id, step.title,
+                    FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, step.title,
                             step.amountLabel, step.note, status, action,
-                            step.repetitionProgress, step.reward, step.earnedXp));
+                            step.repetitionProgress, step.reward, step.earnedXp);
+                    if (step.durationSeconds > 0)
+                        mapped = mapped.withDurationSeconds(step.durationSeconds);
+                    explicit.add(mapped);
                     activeAssigned = true;
                     remaining++;
                 }

@@ -143,9 +143,13 @@ public final class DashboardUiMapper {
             else if (repetition != null)
                 action = StepExecutionUiAction.submitRepetition(step.id);
             else action = StepExecutionUiAction.toggle(step.id);
-            steps.add(FocusStepUiModel.executable(step.id, step.text,
+            FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, step.text,
                     stepTexts.compactAmount(step.amount), step.note, status, action, repetition,
-                    reward, item.earnedXp(step.id)));
+                    reward, item.earnedXp(step.id));
+            if (step.amount instanceof StepAmount.Duration)
+                mapped = mapped.withDurationSeconds(
+                        ((StepAmount.Duration) step.amount).seconds);
+            steps.add(mapped);
             if (!done) activeAssigned = true;
         }
         return steps;

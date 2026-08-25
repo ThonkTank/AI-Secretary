@@ -375,6 +375,49 @@ public final class DatabaseMigrationTest {
         database.close();
     }
 
+    @Test public void migration16To17AddsRestPoliciesAndDurableTimerSessions()
+            throws IOException {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 16);
+        database.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,weekdayMask,"
+                + "ongoing,conditionText,conditionDone,archived,nextDueOn,cadenceAnchorOn,"
+                + "lastScheduledOn,lastCompletedOn,catalogOrder,hasCompletedOccurrence,"
+                + "estimatedMinutes,boundKind,boundUntilOn,boundWeeks,remainingCount,deadlineOn,"
+                + "note) VALUES ('task','Gym','DAILY',1,0,0,'',0,0,'2026-08-25',"
+                + "'2026-08-25',NULL,NULL,1,0,NULL,'FOREVER',NULL,NULL,NULL,NULL,'')");
+        database.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,sortOrder,"
+                + "completedOn,slot) VALUES ('occ','task','2026-08-25','OPEN',1,NULL,'MORNING')");
+        database.execSQL("INSERT INTO task_steps(id,taskId,position,text,weekdayMask,"
+                + "intervalDays,amountKind,plannedSets,plannedReps,plannedDurationSeconds,note) "
+                + "VALUES ('sets','task',0,'Liegestütze',0,0,'SETS_REPS',3,12,NULL,''),"
+                + "('run','task',1,'Laufen',0,0,'DURATION',NULL,NULL,600,'')");
+        database.execSQL("INSERT INTO occurrence_steps(id,occurrenceId,position,text,done,"
+                + "amountKind,plannedSets,plannedReps,plannedDurationSeconds,note,"
+                + "actualRepetitions,sourceTemplateId,comboOwnerId,originOccurrenceId,"
+                + "carryForwardReason) VALUES ('occ-sets','occ',0,'Liegestütze',0,"
+                + "'SETS_REPS',3,12,NULL,'','','sets','step:sets',NULL,'NONE'),"
+                + "('occ-run','occ',1,'Laufen',0,'DURATION',NULL,NULL,600,'','',"
+                + "'run','step:run',NULL,'NONE')");
+        database.close();
+
+        database = helper.runMigrationsAndValidate(
+                DATABASE, 17, true, DatabaseMigrations.MIGRATION_16_17);
+        try (Cursor cursor = database.query("SELECT id,restTimerMode,restTimerSeconds "
+                + "FROM task_steps ORDER BY id")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("run", cursor.getString(0));
+            assertEquals("OFF", cursor.getString(1));
+            assertTrue(cursor.isNull(2));
+            assertTrue(cursor.moveToNext());
+            assertEquals("sets", cursor.getString(0));
+            assertEquals("INHERIT", cursor.getString(1));
+        }
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM timer_sessions")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(0, cursor.getInt(0));
+        }
+        database.close();
+    }
+
     private static void insertVersionFifteenTask(SupportSQLiteDatabase database, String id,
                                                   boolean archived, String nextDueOn) {
         database.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,weekdayMask,"

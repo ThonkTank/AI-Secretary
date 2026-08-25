@@ -34,6 +34,11 @@ import de.thonktank.autosecretary.update.infrastructure.SharedUpdatePreferences;
 import de.thonktank.autosecretary.update.infrastructure.UpdateInstaller;
 import de.thonktank.autosecretary.update.infrastructure.UrlConnectionHttpTransport;
 import de.thonktank.autosecretary.update.domain.UpdateTrustPolicy;
+import de.thonktank.autosecretary.timer.AndroidTimerClock;
+import de.thonktank.autosecretary.timer.AndroidTimerScheduler;
+import de.thonktank.autosecretary.timer.RoomTimerSessionStore;
+import de.thonktank.autosecretary.timer.TimerManager;
+import de.thonktank.autosecretary.timer.TimerNotificationPublisher;
 
 public final class AppContainer {
     public final AppDatabase database;
@@ -60,6 +65,7 @@ public final class AppContainer {
     public final UpdateClock updateClock;
     public final UpdateExecutorFactory updateExecutors;
     public final UpdateInstaller updateInstaller;
+    public final TimerManager timers;
 
     public AppContainer(Context context, Clock clock, ZoneIdProvider zones,
                         IdGenerator ids, AppLogger logger, DatabaseFactory databases) {
@@ -84,6 +90,9 @@ public final class AppContainer {
         this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
                 tasks.materializeDue, new DashboardUiMapper(texts), tasks.applyComboDecay);
         this.executors = new AppExecutors();
+        this.timers = new TimerManager(new RoomTimerSessionStore(database.timers()),
+                new AndroidTimerScheduler(app), new TimerNotificationPublisher(app),
+                new AndroidTimerClock(), executors.timerSerial, logger);
         this.widgetUpdates = WidgetUpdateCoordinator.create(app, this, executors.widgetSerial);
         this.updateConfiguration = BuildConfig.DEBUG
                 ? UpdateConfiguration.development(BuildConfig.UPDATE_REPOSITORY_OWNER,

@@ -19,6 +19,11 @@ public final class TodayAction {
         ADJUST_REPETITION,
         EDIT_REPETITION,
         SUBMIT_REPETITION,
+        START_DURATION_TIMER,
+        PAUSE_TIMER,
+        RESUME_TIMER,
+        RESET_TIMER,
+        OBSERVE_TIMER,
         BEGIN_REORDER,
         PREVIEW_REORDER,
         CANCEL_REORDER,
@@ -91,6 +96,28 @@ public final class TodayAction {
 
     public static TodayAction submitRepetition(String stepId) {
         return identified(Kind.SUBMIT_REPETITION, stepId);
+    }
+
+    public static TodayAction startDurationTimer(String stepId, String title, int seconds) {
+        if (seconds < 1) throw new IllegalArgumentException("Timer duration is required");
+        return new TodayAction(Kind.START_DURATION_TIMER, requiredId(stepId), null,
+                title == null ? "" : title, seconds, Collections.emptyList());
+    }
+
+    public static TodayAction pauseTimer(String timerId) {
+        return identified(Kind.PAUSE_TIMER, timerId);
+    }
+
+    public static TodayAction resumeTimer(String timerId) {
+        return identified(Kind.RESUME_TIMER, timerId);
+    }
+
+    public static TodayAction resetTimer(String timerId) {
+        return identified(Kind.RESET_TIMER, timerId);
+    }
+
+    public static TodayAction observeTimer(String timerId) {
+        return identified(Kind.OBSERVE_TIMER, timerId);
     }
 
     public static TodayAction beginReorder(String stepId, List<String> canonicalOrder) {

@@ -15,6 +15,11 @@ public final class TodayCommand {
         ADJUST_REPETITION,
         EDIT_REPETITION,
         SUBMIT_REPETITION,
+        START_DURATION_TIMER,
+        PAUSE_TIMER,
+        RESUME_TIMER,
+        RESET_TIMER,
+        OBSERVE_TIMER,
         PERSIST_REORDER
     }
 

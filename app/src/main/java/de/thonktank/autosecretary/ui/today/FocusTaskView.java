@@ -58,12 +58,22 @@ public final class FocusTaskView extends FrameLayout {
                      DayPalette palette, FocusStepLimit stepLimit,
                      RepetitionInputState inputState, TodayActionSink events) {
         bind(task, stacked, palette, stepLimit, inputState,
-                idleReorder(task), events);
+                idleReorder(task), de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty(),
+                events);
     }
 
     public void bind(FocusTaskUiModel task, boolean stacked,
                      DayPalette palette, FocusStepLimit stepLimit,
                      RepetitionInputState inputState, TodayFeatureState.Reorder reorder,
+                     TodayActionSink events) {
+        bind(task, stacked, palette, stepLimit, inputState, reorder,
+                de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty(), events);
+    }
+
+    public void bind(FocusTaskUiModel task, boolean stacked,
+                     DayPalette palette, FocusStepLimit stepLimit,
+                     RepetitionInputState inputState, TodayFeatureState.Reorder reorder,
+                     de.thonktank.autosecretary.timer.TimerManager.Snapshot timers,
                      TodayActionSink events) {
         actions = events == null ? action -> { } : events;
         boolean focusChanged = boundTaskId != null && !boundTaskId.equals(task.taskId());
@@ -76,7 +86,7 @@ public final class FocusTaskView extends FrameLayout {
         surface.setTranslationY(0f);
         surface.setAlpha(1f);
         FocusCardUiModel model = new FocusCardUiModel(task, palette,
-                stepLimit, inputState, reorder);
+                stepLimit, inputState, reorder, timers);
         card.bind(model, actions, () -> deferPending = true);
         decoration.bind(task, stacked, compact, palette, card);
         if (focusChanged) {

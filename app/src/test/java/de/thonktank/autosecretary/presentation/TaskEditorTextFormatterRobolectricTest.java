@@ -55,7 +55,8 @@ public final class TaskEditorTextFormatterRobolectricTest {
         EditorStepState interval = new EditorStepState("2", "Wiegen",
                 StepCadenceMode.INTERVAL, 0, 4, StepAmount.none(), "");
 
-        assertEquals("Mo · Mi · 3 × 12 Wdh.", formatter.stepMeta(weekdays));
+        assertEquals("Mo · Mi · 3 × 12 Wdh. · Pause: App-Standard",
+                formatter.stepMeta(weekdays));
         assertEquals("alle 4 Tage", formatter.stepMeta(interval));
         assertEquals("—", formatter.steps(EditorUiState.create().draft("", TaskSlot.MORNING,
                 null, Recurrence.ONCE, 1, 0, 0, TaskBoundKind.FOREVER, null, null,
