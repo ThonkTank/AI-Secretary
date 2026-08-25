@@ -11,6 +11,10 @@ import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.repository.MaterializationRepository;
+import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
+import de.thonktank.autosecretary.domain.model.ComboObligation;
+import de.thonktank.autosecretary.domain.model.ComboProgress;
+import de.thonktank.autosecretary.domain.model.OccurrenceState;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -27,13 +31,15 @@ import java.util.Map;
  */
 public final class MaterializeDueOccurrences {
     private final MaterializationRepository repository;
+    private final ComboObligationRepository obligations;
     private final Clock clock;
     private final IdGenerator ids;
     private final DueDatePlanner planner = new DueDatePlanner();
 
-    public MaterializeDueOccurrences(MaterializationRepository repository, Clock clock,
-                                     IdGenerator ids) {
+    public <T extends MaterializationRepository & ComboObligationRepository>
+    MaterializeDueOccurrences(T repository, Clock clock, IdGenerator ids) {
         this.repository = repository;
+        this.obligations = repository;
         this.clock = clock;
         this.ids = ids;
     }
@@ -76,8 +82,10 @@ public final class MaterializeDueOccurrences {
         DueDatePlanner.Plan planned = planner.throughToday(
                 task, schedule, today, history, templates);
         boolean changed = carry.changed;
-        changed |= new OccurrenceAssembler(repository, ids).assemble(task, today, history,
-                globalNextOrders, carry, planned, schedule, scheduleRanks);
+        OccurrenceAssembler.Result assembled = new OccurrenceAssembler(repository, ids).assemble(
+                task, today, history, globalNextOrders, carry, planned, schedule, scheduleRanks);
+        changed |= assembled.changed;
+        changed |= materializeObligations(task, planned, assembled.activeBySlot);
 
         if (planned.nextDueChanged || planned.materializedCount > 0) {
             repository.updateTask(task.afterPlanning(planned.nextDue, planned.materializedCount));
@@ -88,6 +96,23 @@ public final class MaterializeDueOccurrences {
             changed = true;
         }
         return changed;
+    }
+
+    private boolean materializeObligations(Task task, DueDatePlanner.Plan planned,
+                                           Map<TaskSlot, Occurrence> openBySlot) {
+        if (planned.dues.isEmpty()) return false;
+        List<ComboObligation> writes = new ArrayList<>();
+        for (DueDatePlanner.PlannedDue due : planned.dues) {
+            Occurrence occurrence = openBySlot.get(due.slot);
+            if (occurrence == null) continue;
+            writes.add(ComboObligation.open(ComboProgress.taskOwner(task.id), task.id,
+                    ComboProgress.Kind.TASK, due.slot, due.scheduledOn, occurrence.id));
+            for (TaskStepTemplate template : due.templates)
+                writes.add(ComboObligation.open(ComboProgress.stepOwner(template.id), task.id,
+                        ComboProgress.Kind.STEP, due.slot, due.scheduledOn, occurrence.id));
+        }
+        obligations.insertComboObligations(writes);
+        return !writes.isEmpty();
     }
 
     private static Map<TaskSlot, Integer> nextOrders(List<Occurrence> values) {

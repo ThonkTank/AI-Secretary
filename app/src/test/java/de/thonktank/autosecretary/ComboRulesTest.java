@@ -19,13 +19,11 @@ public final class ComboRulesTest {
         assertEquals(7d, value.multiplier(), 0d);
     }
 
-    @Test public void decayCountsOnlyFullyElapsedInactiveDaysAndIsIdempotent() {
+    @Test public void pointChangesNeverApplyHiddenCalendarDecay() {
         ComboProgress value = new ComboProgress("task:t", TaskId.of("t"),
                 ComboProgress.Kind.TASK, 20, LocalDate.of(2026, 8, 15));
-        assertEquals(20, value.settle(LocalDate.of(2026, 8, 16)).points);
-        ComboProgress settled = value.settle(LocalDate.of(2026, 8, 18));
-        assertEquals(16, settled.points);
-        assertEquals(16, settled.settle(LocalDate.of(2026, 8, 18)).points);
+        assertEquals(22, value.change(2, LocalDate.of(2026, 8, 18)).progress.points);
+        assertEquals(19, value.change(-1, LocalDate.of(2026, 8, 18)).progress.points);
     }
 
     @Test public void xpLevelResetsItsRingsAtEachThreshold() {
@@ -46,10 +44,11 @@ public final class ComboRulesTest {
         assertEquals(30, RewardPolicy.singleTaskBase(400));
     }
 
-    @Test public void aFreshComboDoesNotDecayBeforeItsFirstActivity() {
+    @Test public void aFreshComboOnlyChangesThroughExplicitEvents() {
         ComboProgress fresh = ComboProgress.fresh("task:t", TaskId.of("t"),
                 ComboProgress.Kind.TASK);
-        assertEquals(0, fresh.settle(LocalDate.of(2099, 1, 1)).points);
-        assertEquals(null, fresh.settle(LocalDate.of(2099, 1, 1)).settledThroughOn);
+        assertEquals(0, fresh.points);
+        assertEquals(0, fresh.change(-1, LocalDate.of(2099, 1, 1)).progress.points);
+        assertEquals(null, fresh.settledThroughOn);
     }
 }

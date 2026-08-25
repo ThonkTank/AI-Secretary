@@ -503,6 +503,44 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Adds genuine scheduled combo obligations and idempotent decay evaluation events. */
+    public static final Migration MIGRATION_17_18 = new Migration(17, 18) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE tasks ADD COLUMN missedOccurrenceMode TEXT "
+                    + "NOT NULL DEFAULT 'COLLAPSE'");
+            database.execSQL("DROP TRIGGER IF EXISTS occurrence_one_open_insert");
+            database.execSQL("DROP TRIGGER IF EXISTS occurrence_one_open_update");
+            database.execSQL("CREATE TABLE combo_obligations (id TEXT NOT NULL, "
+                    + "ownerId TEXT NOT NULL, taskId TEXT NOT NULL, kind TEXT NOT NULL, "
+                    + "slot TEXT NOT NULL, scheduledOn TEXT NOT NULL, occurrenceId TEXT NOT NULL, "
+                    + "state TEXT NOT NULL, resolvedOn TEXT, PRIMARY KEY(id), "
+                    + "FOREIGN KEY(taskId) REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
+                    + "FOREIGN KEY(occurrenceId) REFERENCES occurrences(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_combo_obligations_taskId "
+                    + "ON combo_obligations(taskId)");
+            database.execSQL("CREATE INDEX index_combo_obligations_occurrenceId "
+                    + "ON combo_obligations(occurrenceId)");
+            database.execSQL("CREATE INDEX index_combo_obligations_ownerId_state_scheduledOn "
+                    + "ON combo_obligations(ownerId,state,scheduledOn)");
+            database.execSQL("CREATE TABLE combo_decay_events (ownerId TEXT NOT NULL, "
+                    + "eventOn TEXT NOT NULL, bookingId TEXT, PRIMARY KEY(ownerId,eventOn))");
+            database.execSQL("CREATE INDEX index_combo_decay_events_bookingId "
+                    + "ON combo_decay_events(bookingId)");
+            database.execSQL("INSERT OR IGNORE INTO combo_obligations "
+                    + "SELECT 'task:' || o.taskId || '|' || o.slot || '|' || o.scheduledOn, "
+                    + "'task:' || o.taskId,o.taskId,'TASK',o.slot,o.scheduledOn,o.id,'OPEN',NULL "
+                    + "FROM occurrences o WHERE o.state='OPEN'");
+            database.execSQL("INSERT OR IGNORE INTO combo_obligations "
+                    + "SELECT os.comboOwnerId || '|' || o.slot || '|' || o.scheduledOn, "
+                    + "os.comboOwnerId,o.taskId,'STEP',o.slot,o.scheduledOn,o.id,"
+                    + "CASE WHEN os.done=1 THEN 'RESOLVED' ELSE 'OPEN' END,"
+                    + "CASE WHEN os.done=1 THEN o.scheduledOn ELSE NULL END "
+                    + "FROM occurrence_steps os JOIN occurrences o ON o.id=os.occurrenceId "
+                    + "WHERE o.state='OPEN'");
+        }
+    };
+
     /** Complete historical graph for migration fixtures and archive tests. */
     public static Migration[] all() {
         return from(1);
@@ -514,7 +552,7 @@ public final class DatabaseMigrations {
                 MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
                 MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                 MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-                MIGRATION_16_17};
+                MIGRATION_16_17, MIGRATION_17_18};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

@@ -53,10 +53,10 @@ public final class CompletionArchitectureTest {
                 0, combo, TODAY);
 
         assertEquals(20, step.xp);
-        assertEquals(1, step.requestedComboDelta);
+        assertEquals(2, step.requestedComboDelta);
         assertEquals(RewardBooking.Kind.CONDITION_COMPLETION, reward.kind);
         assertEquals(20, reward.xp);
-        assertEquals(3, reward.requestedComboDelta);
+        assertEquals(2, reward.requestedComboDelta);
         assertEquals(3, combo.points);
     }
 

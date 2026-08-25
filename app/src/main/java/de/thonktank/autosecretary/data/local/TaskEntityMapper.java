@@ -15,6 +15,7 @@ import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,7 +30,8 @@ public final class TaskEntityMapper {
                 entity.hasCompletedOccurrence, entity.estimatedMinutes,
                 TaskBoundKind.fromStorage(entity.boundKind),
                 date(entity.boundUntilOn), entity.boundWeeks, entity.remainingCount,
-                date(entity.deadlineOn), entity.note);
+                date(entity.deadlineOn), entity.note,
+                MissedOccurrenceMode.valueOf(entity.missedOccurrenceMode));
     }
 
     public TaskEntity toEntity(Task task) {
@@ -40,7 +42,8 @@ public final class TaskEntityMapper {
                 nullableText(task.lastCompletedOn),
                 task.catalogOrder, task.hasCompletedOccurrence, task.estimatedMinutes,
                 task.boundKind.storageCode(), nullableText(task.boundUntilOn), task.boundWeeks,
-                task.remainingCount, nullableText(task.deadlineOn), task.note);
+                task.remainingCount, nullableText(task.deadlineOn), task.note,
+                task.missedOccurrenceMode.name());
     }
 
     public Occurrence toDomain(OccurrenceEntity entity) {

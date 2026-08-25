@@ -4,8 +4,8 @@ import java.time.LocalDate;
 
 /** Immutable ledger entry for one signed XP/combo change. */
 public final class RewardBooking {
-    public enum Kind { STEP_EARNED, ROUTINE_HARVEST, SINGLE_COMPLETION, CONDITION_COMPLETION, LEGACY_STEP,
-        LEGACY_COMPLETION, REVERSAL }
+    public enum Kind { STEP_EARNED, ROUTINE_HARVEST, SINGLE_COMPLETION, CONDITION_COMPLETION,
+        COMBO_DECAY, LEGACY_STEP, LEGACY_COMPLETION, REVERSAL }
     public enum Target { VESSEL, HEAD }
 
     public final String id;

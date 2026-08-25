@@ -14,6 +14,8 @@ import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
+import de.thonktank.autosecretary.domain.model.ComboObligation;
+import de.thonktank.autosecretary.domain.model.ComboDecayEvent;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
 import java.time.LocalDate;
@@ -309,6 +311,45 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
     @Override public List<RewardBooking> rewardBookings(List<String> occurrenceIds) {
         if (occurrenceIds.isEmpty()) return new ArrayList<>();
         return mapBookings(dao.rewardBookings(occurrenceIds));
+    }
+
+    @Override public List<ComboObligation> comboObligations() {
+        List<ComboObligation> result = new ArrayList<>();
+        for (ComboObligationEntity value : dao.comboObligations())
+            result.add(new ComboObligation(value.id, value.ownerId, TaskId.of(value.taskId),
+                    ComboProgress.Kind.valueOf(value.kind), TaskSlot.fromStorage(value.slot),
+                    LocalDate.parse(value.scheduledOn), value.occurrenceId,
+                    ComboObligation.State.valueOf(value.state),
+                    value.resolvedOn == null ? null : LocalDate.parse(value.resolvedOn)));
+        return result;
+    }
+
+    @Override public void insertComboObligations(List<ComboObligation> obligations) {
+        List<ComboObligationEntity> entities = new ArrayList<>();
+        for (ComboObligation value : obligations) entities.add(obligation(value));
+        if (!entities.isEmpty()) dao.insertComboObligations(entities);
+    }
+
+    @Override public void updateComboObligation(ComboObligation obligation) {
+        dao.updateComboObligation(obligation(obligation));
+    }
+
+    @Override public ComboDecayEvent comboDecayEvent(String ownerId, LocalDate eventOn) {
+        ComboDecayEventEntity value = dao.comboDecayEvent(ownerId, eventOn.toString());
+        return value == null ? null : new ComboDecayEvent(value.ownerId,
+                LocalDate.parse(value.eventOn), value.bookingId);
+    }
+
+    @Override public void insertComboDecayEvent(ComboDecayEvent event) {
+        dao.insertComboDecayEvent(new ComboDecayEventEntity(event.ownerId,
+                event.eventOn.toString(), event.bookingId));
+    }
+
+    private static ComboObligationEntity obligation(ComboObligation value) {
+        return new ComboObligationEntity(value.id, value.ownerId, value.taskId.value,
+                value.kind.name(), value.slot.storageCode, value.scheduledOn.toString(),
+                value.occurrenceId, value.state.name(),
+                value.resolvedOn == null ? null : value.resolvedOn.toString());
     }
 
     private static List<RewardBooking> mapBookings(List<RewardBookingEntity> entities) {

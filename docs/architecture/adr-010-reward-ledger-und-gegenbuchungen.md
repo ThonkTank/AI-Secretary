@@ -41,6 +41,12 @@ effektive Occurrence mit `COALESCE(reward_assignments.occurrenceId,
 reward_bookings.occurrenceId)`. Ein Schritttransfer ändert ausschließlich diese Zuordnung und
 niemals Buchungs-ID, Transaktions-ID, Deltas, Owner oder ursprüngliche Occurrence der Ledgerzeile.
 
+Schema 18 ergänzt `COMBO_DECAY` als unveränderliche Ledgerart. Sie enthält nur das tatsächlich
+angewandte negative Kombodelta; die zugehörige Owner-/Datums-Auswertung liegt unabhängig davon
+in `combo_decay_events`, damit auch eine Auswertung bei bereits null Punkten idempotent bleibt.
+Welche echten Termine eine Auswertung erlauben, definiert
+[ADR-024](adr-024-terminbewusste-kombos.md).
+
 `RewardReceipt` enthält eine Transaktions-ID und die zugehörigen Buchungen. Seine XP- und
 Kombowerte sind vorzeichenbehaftet; Animation und Darstellung leiten die Richtung aus dem
 Vorzeichen ab. Ein separates Reverse-Flag existiert nicht mehr.

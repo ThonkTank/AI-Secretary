@@ -76,7 +76,7 @@ public final class XpComboRobolectricTest {
                 occurrence.taskId, ComboProgress.Kind.TASK, 3, today));
 
         RewardReceipt stepReceipt = new ToggleStep(repository, clock).execute(step.id);
-        assertEquals(1, stepReceipt.comboPointDelta);
+        assertEquals(2, stepReceipt.comboPointDelta);
         assertFalse(stepReceipt.transactionId.isEmpty());
         assertEquals(1, stepReceipt.bookings.size());
         assertEquals(RewardBooking.Target.VESSEL, stepReceipt.bookings.get(0).target);
@@ -84,14 +84,14 @@ public final class XpComboRobolectricTest {
                 .filter(value -> step.id.equals(value.occurrenceStepId))
                 .mapToInt(value -> value.xpDelta).sum());
         RewardReceipt harvest = new HarvestOccurrence(repository, clock).execute(occurrence.id);
-        assertEquals(3, harvest.comboPointDelta);
+        assertEquals(2, harvest.comboPointDelta);
         assertEquals(50, harvest.xp);
         assertEquals(50, repository.xp());
         assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(occurrence.id).state);
         assertEquals(today.plusDays(1), repository.findTask(occurrence.taskId).nextDueOn);
 
         RewardReceipt undo = new UndoOccurrence(repository, clock).execute(occurrence.id);
-        assertEquals(-3, undo.comboPointDelta);
+        assertEquals(-2, undo.comboPointDelta);
         assertEquals(-50, undo.xp);
         assertEquals(RewardBooking.Kind.REVERSAL, undo.bookings.get(0).kind);
         assertEquals(harvest.bookings.get(0).id, undo.bookings.get(0).reversesBookingId);
@@ -103,7 +103,7 @@ public final class XpComboRobolectricTest {
         assertEquals(0, new UndoOccurrence(repository, clock).execute(occurrence.id).xp);
         assertEquals(afterOccurrenceUndo, repository.rewardBookings(occurrence.id).size());
         RewardReceipt stepUndo = new ToggleStep(repository, clock).execute(step.id);
-        assertEquals(-1, stepUndo.comboPointDelta);
+        assertEquals(-2, stepUndo.comboPointDelta);
         assertEquals(-25, stepUndo.xp);
         assertEquals(false, repository.findOccurrenceStep(step.id).done);
         assertEquals(6, repository.combo(step.comboOwnerId).points);
@@ -159,7 +159,7 @@ public final class XpComboRobolectricTest {
         assertEquals(receipt.transactionId, receipt.bookings.get(0).transactionId);
     }
 
-    @Test public void lateStepAddsNoComboAndLateSingleUsesCapAndNegativeDelta() {
+    @Test public void lateCompletionKeepsXpPolicyAndEarnsTheSameComboGain() {
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
         clock.date = today.minusDays(6);
         new CreateTask(repository, repository, clock, ids).execute(
@@ -174,11 +174,11 @@ public final class XpComboRobolectricTest {
         RewardReceipt receipt = new CompleteOccurrence(repository, clock).execute(occurrence.id);
 
         assertEquals(60, receipt.xp);
-        assertEquals(-2, receipt.comboPointDelta);
-        assertEquals(3, repository.combo(ComboProgress.taskOwner(occurrence.taskId)).points);
+        assertEquals(2, receipt.comboPointDelta);
+        assertEquals(7, repository.combo(ComboProgress.taskOwner(occurrence.taskId)).points);
     }
 
-    @Test public void lateRoutineStepKeepsItsComboLevel() {
+    @Test public void lateRoutineStepEarnsTheSameComboGain() {
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
         clock.date = today.minusDays(1);
         new CreateTask(repository, repository, clock, ids).execute(
@@ -192,11 +192,11 @@ public final class XpComboRobolectricTest {
         RewardReceipt receipt = new ToggleStep(repository, clock).execute(step.id);
 
         assertEquals(10, receipt.xp);
-        assertEquals(0, receipt.comboPointDelta);
-        assertEquals(0, repository.combo(step.comboOwnerId).points);
+        assertEquals(2, receipt.comboPointDelta);
+        assertEquals(2, repository.combo(step.comboOwnerId).points);
     }
 
-    @Test public void onTimeSingleTaskUsesOneFactorAndAddsThreePoints() {
+    @Test public void onTimeSingleTaskUsesOneFactorAndConfiguredDefaultGain() {
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
         new CreateTask(repository, repository, clock, ids).execute(
                 TaskDefinition.basic("Heute", TaskSlot.MORNING, Recurrence.ONCE,
@@ -207,8 +207,8 @@ public final class XpComboRobolectricTest {
         RewardReceipt receipt = new CompleteOccurrence(repository, clock).execute(occurrence.id);
 
         assertEquals(10, receipt.xp);
-        assertEquals(3, receipt.comboPointDelta);
-        assertEquals(3, repository.combo(ComboProgress.taskOwner(occurrence.taskId)).points);
+        assertEquals(2, receipt.comboPointDelta);
+        assertEquals(2, repository.combo(ComboProgress.taskOwner(occurrence.taskId)).points);
     }
 
     private static final class MutableClock implements Clock {
