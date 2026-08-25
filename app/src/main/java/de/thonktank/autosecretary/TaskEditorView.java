@@ -34,6 +34,7 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.TaskEditorTextFormatter;
 
@@ -331,7 +332,23 @@ public final class TaskEditorView extends FrameLayout {
                 dependent.addView(errorView(R.string.err_interval_zero));
             leaf.addView(dependent, params(-1, -2, 0, 14, 0, 0));
         }
-        if (state.recurrence != Recurrence.ONCE) addTimes();
+        if (state.recurrence != Recurrence.ONCE) {
+            addTimes();
+            addLabel(R.string.field_backlog_label, 26, 8);
+            EditorFlowLayout backlog = flow();
+            addChip(backlog, R.string.backlog_collapse,
+                    state.missedOccurrenceMode == MissedOccurrenceMode.COLLAPSE,
+                    () -> apply(TaskEditorStateReducer.updateMissedOccurrenceMode(state,
+                            MissedOccurrenceMode.COLLAPSE), true));
+            addChip(backlog, R.string.backlog_accumulate,
+                    state.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE,
+                    () -> apply(TaskEditorStateReducer.updateMissedOccurrenceMode(state,
+                            MissedOccurrenceMode.ACCUMULATE), true));
+            leaf.addView(backlog, params(-1, -2, 0, 10, 0, 0));
+            TextView hint = style.sans(getContext().getString(
+                    R.string.field_backlog_description), 14, palette.muted, false);
+            leaf.addView(hint, params(-1, -2, 0, 7, 0, 0));
+        }
         addDuration();
     }
 

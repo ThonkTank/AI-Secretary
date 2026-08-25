@@ -14,21 +14,28 @@ public final class DashboardTask {
     public final Map<String, Integer> stepEarnedXp;
     public final int awardedXp;
     public final TaskSlot displaySlot;
+    public final int backlogCount;
 
     public DashboardTask(Task task, Occurrence occurrence, List<OccurrenceStep> steps, boolean done) {
         this(task, occurrence, steps, done, Collections.emptyMap(), 0,
-                occurrence == null ? null : occurrence.slot);
+                occurrence == null ? null : occurrence.slot, 0);
     }
 
     public DashboardTask(Task task, Occurrence occurrence, List<OccurrenceStep> steps, boolean done,
                          Map<String, Integer> stepEarnedXp, int awardedXp) {
         this(task, occurrence, steps, done, stepEarnedXp, awardedXp,
-                occurrence == null ? null : occurrence.slot);
+                occurrence == null ? null : occurrence.slot, 0);
     }
 
     public DashboardTask(Task task, Occurrence occurrence, List<OccurrenceStep> steps, boolean done,
                          Map<String, Integer> stepEarnedXp, int awardedXp,
                          TaskSlot displaySlot) {
+        this(task, occurrence, steps, done, stepEarnedXp, awardedXp, displaySlot, 0);
+    }
+
+    public DashboardTask(Task task, Occurrence occurrence, List<OccurrenceStep> steps, boolean done,
+                         Map<String, Integer> stepEarnedXp, int awardedXp,
+                         TaskSlot displaySlot, int backlogCount) {
         if (task == null) throw new IllegalArgumentException("Dashboard task needs a task");
         if (displaySlot == null)
             throw new IllegalArgumentException("Dashboard task needs its schedule placement");
@@ -39,6 +46,7 @@ public final class DashboardTask {
         this.stepEarnedXp = Collections.unmodifiableMap(new LinkedHashMap<>(stepEarnedXp));
         this.awardedXp = Math.max(0, awardedXp);
         this.displaySlot = displaySlot;
+        this.backlogCount = Math.max(0, backlogCount);
     }
 
     public int earnedXp(String stepId) { return Math.max(0, stepEarnedXp.getOrDefault(stepId, 0)); }

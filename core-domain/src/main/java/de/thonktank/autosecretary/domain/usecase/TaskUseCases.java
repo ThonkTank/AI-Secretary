@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.domain.steps.SwapTaskSteps;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.repository.TaskCatalogQuery;
+import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 
 public final class TaskUseCases {
     public final CreateTask create;
@@ -35,6 +36,11 @@ public final class TaskUseCases {
     public final SwapTaskSteps swapTaskSteps;
 
     public TaskUseCases(ApplicationTaskRepository repository, Clock clock, IdGenerator ids) {
+        this(repository, clock, ids, ComboPolicySource.defaults());
+    }
+
+    public TaskUseCases(ApplicationTaskRepository repository, Clock clock, IdGenerator ids,
+                        ComboPolicySource policies) {
         loadDashboard = new LoadDashboard(repository);
         materializeDue = new MaterializeDueOccurrences(repository, clock, ids);
         create = new CreateTask(repository, repository, clock, ids);
@@ -42,16 +48,16 @@ public final class TaskUseCases {
         moveTaskPlacement = new MoveTaskPlacement(repository);
         delete = new DeleteTask(repository);
         defer = new DeferTask(repository, repository);
-        toggleStep = new ToggleStep(repository, clock);
-        advanceTodayStep = new AdvanceTodayStep(repository, clock);
+        toggleStep = new ToggleStep(repository, clock, policies);
+        advanceTodayStep = new AdvanceTodayStep(repository, clock, policies);
         moveTodayStep = new MoveTodayStep(repository);
-        recordRepetitionResult = new RecordRepetitionResult(repository, clock);
-        correctRepetitionResult = new CorrectRepetitionResult(repository, clock);
-        complete = new CompleteOccurrence(repository, clock);
-        completeRemainingSteps = new CompleteRemainingSteps(repository, clock);
-        harvest = new HarvestOccurrence(repository, clock);
-        undoOccurrence = new UndoOccurrence(repository, clock);
-        applyComboDecay = new ApplyComboDecay(repository, clock);
+        recordRepetitionResult = new RecordRepetitionResult(repository, clock, policies);
+        correctRepetitionResult = new CorrectRepetitionResult(repository, clock, policies);
+        complete = new CompleteOccurrence(repository, clock, policies);
+        completeRemainingSteps = new CompleteRemainingSteps(repository, clock, policies);
+        harvest = new HarvestOccurrence(repository, clock, policies);
+        undoOccurrence = new UndoOccurrence(repository, clock, policies);
+        applyComboDecay = new ApplyComboDecay(repository, clock, policies);
         closeOngoing = new CloseOngoingTask(repository, clock);
         loadTaskDetails = new LoadTaskDetails(repository);
         loadTaskCatalog = new LoadTaskCatalog(repository);

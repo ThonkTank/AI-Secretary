@@ -7,6 +7,7 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -18,6 +19,11 @@ import java.util.Set;
 /** Pure transitions for the complete editor, independent from Android views and callbacks. */
 public final class TaskEditorStateReducer {
     private TaskEditorStateReducer() { }
+
+    public static EditorUiState updateMissedOccurrenceMode(EditorUiState state,
+                                                            MissedOccurrenceMode value) {
+        return state.withMissedOccurrenceMode(value);
+    }
 
     public static EditorUiState addStep(EditorUiState state) {
         List<EditorStepState> steps = new ArrayList<>(state.stepStates);

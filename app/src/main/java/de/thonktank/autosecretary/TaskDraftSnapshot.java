@@ -11,6 +11,7 @@ import java.util.Objects;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 
 /** Typed, semantic baseline used for dirty checking. */
 public final class TaskDraftSnapshot {
@@ -27,6 +28,7 @@ public final class TaskDraftSnapshot {
     private final Integer remainingCount;
     private final LocalDate deadlineOn;
     private final String note;
+    private final MissedOccurrenceMode missedOccurrenceMode;
     private final List<EditorStepState> steps;
     private final boolean legacyDifferent;
 
@@ -37,6 +39,7 @@ public final class TaskDraftSnapshot {
         boundKind = draft.boundKind; boundUntilOn = draft.boundUntilOn;
         boundWeeks = draft.boundWeeks; remainingCount = draft.remainingCount;
         deadlineOn = draft.deadlineOn; note = draft.note;
+        missedOccurrenceMode = draft.missedOccurrenceMode;
         steps = Collections.unmodifiableList(new ArrayList<>(draft.steps));
         this.legacyDifferent = legacyDifferent;
     }
@@ -53,7 +56,7 @@ public final class TaskDraftSnapshot {
         Bundle bundle = new Bundle();
         bundle.putBundle("draft", new TaskEditorDraft(title, slot, estimatedMinutes, recurrence,
                 intervalDays, weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
-                remainingCount, deadlineOn, note, steps, 1).toBundle());
+                remainingCount, deadlineOn, note, missedOccurrenceMode, steps, 1).toBundle());
         bundle.putBoolean("legacy_different", legacyDifferent);
         return bundle;
     }
@@ -76,12 +79,13 @@ public final class TaskDraftSnapshot {
                 && Objects.equals(boundWeeks, value.boundWeeks)
                 && Objects.equals(remainingCount, value.remainingCount)
                 && Objects.equals(deadlineOn, value.deadlineOn) && note.equals(value.note)
+                && missedOccurrenceMode == value.missedOccurrenceMode
                 && steps.equals(value.steps);
     }
 
     @Override public int hashCode() {
         return Objects.hash(title, slot, estimatedMinutes, recurrence, intervalDays, weekdayMask,
                 timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn,
-                note, steps, legacyDifferent);
+                note, missedOccurrenceMode, steps, legacyDifferent);
     }
 }

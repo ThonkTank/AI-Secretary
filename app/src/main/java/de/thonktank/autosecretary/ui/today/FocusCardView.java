@@ -27,6 +27,7 @@ public final class FocusCardView extends ViewGroup {
     private final UiStyle style;
     private final FrameLayout titleRow;
     private final TextView title;
+    private final TextView backlog;
     private final XpVesselView ring;
     private final DewDotView taskDew;
     private final FocusStepListLayout steps;
@@ -57,6 +58,8 @@ public final class FocusCardView extends ViewGroup {
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
         titleParams.topMargin = style.dp(4);
         titleBlock.addView(title, titleParams);
+        backlog = style.sans("", 14, 0, true);
+        titleBlock.addView(backlog, new LinearLayout.LayoutParams(-1, -2));
         titleRow.addView(titleBlock, new FrameLayout.LayoutParams(-1, -2));
         ring = new XpVesselView(context);
         titleRow.addView(ring, new FrameLayout.LayoutParams(style.dp(68), style.dp(68),
@@ -111,6 +114,10 @@ public final class FocusCardView extends ViewGroup {
 
         title.setText(task.title());
         title.setTextColor(model.palette.ink);
+        backlog.setText(task.backlogCount == 0 ? "" : getContext().getString(
+                R.string.today_backlog_count, task.backlogCount));
+        backlog.setTextColor(model.palette.hint);
+        backlog.setVisibility(task.backlogCount == 0 ? GONE : VISIBLE);
         WoodGrainView.applyTextHalo(title, model.palette.leaf1);
         boolean vessel = !task.steps.isEmpty();
         ring.setVisibility(vessel ? VISIBLE : GONE);

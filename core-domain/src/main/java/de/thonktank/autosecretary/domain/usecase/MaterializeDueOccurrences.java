@@ -15,6 +15,7 @@ import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
 import de.thonktank.autosecretary.domain.model.ComboObligation;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -77,25 +78,60 @@ public final class MaterializeDueOccurrences {
                                 Map<String, List<OccurrenceStep>> stepsByOccurrence,
                                 TaskSchedule schedule,
                                 Map<String, Integer> scheduleRanks) {
-        OccurrenceCarryForward.Result carry = new OccurrenceCarryForward()
-                .collect(repository, today, history, stepsByOccurrence);
         DueDatePlanner.Plan planned = planner.throughToday(
                 task, schedule, today, history, templates);
-        boolean changed = carry.changed;
-        OccurrenceAssembler.Result assembled = new OccurrenceAssembler(repository, ids).assemble(
-                task, today, history, globalNextOrders, carry, planned, schedule, scheduleRanks);
-        changed |= assembled.changed;
-        changed |= materializeObligations(task, planned, assembled.activeBySlot);
+        boolean changed;
+        boolean hasOpen;
+        if (task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE) {
+            AccumulatingOccurrenceAssembler.Result assembled =
+                    new AccumulatingOccurrenceAssembler(repository, ids).assemble(task, planned,
+                            globalNextOrders, scheduleRanks);
+            changed = assembled.changed;
+            changed |= materializeAccumulatedObligations(task, planned, assembled.byDue);
+            hasOpen = hasOpen(history) || assembled.changed;
+        } else {
+            OccurrenceCarryForward.Result carry = new OccurrenceCarryForward()
+                    .collect(repository, today, history, stepsByOccurrence);
+            changed = carry.changed;
+            OccurrenceAssembler.Result assembled = new OccurrenceAssembler(repository, ids).assemble(
+                    task, today, history, globalNextOrders, carry, planned, schedule, scheduleRanks);
+            changed |= assembled.changed;
+            changed |= materializeObligations(task, planned, assembled.activeBySlot);
+            hasOpen = !carry.open.isEmpty() || !assembled.activeBySlot.isEmpty();
+        }
 
         if (planned.nextDueChanged || planned.materializedCount > 0) {
             repository.updateTask(task.afterPlanning(planned.nextDue, planned.materializedCount));
             changed = true;
-        } else if (task.recurrence == Recurrence.ONCE && carry.open.isEmpty()) {
+        } else if (task.recurrence == Recurrence.ONCE && !hasOpen) {
             repository.updateTask(task.withOccurrenceState(true, null, task.lastScheduledOn,
                     task.lastCompletedOn, task.hasCompletedOccurrence));
             changed = true;
         }
         return changed;
+    }
+
+    private boolean materializeAccumulatedObligations(Task task, DueDatePlanner.Plan planned,
+                                                       Map<String, Occurrence> byDue) {
+        if (planned.dues.isEmpty()) return false;
+        List<ComboObligation> writes = new ArrayList<>();
+        for (DueDatePlanner.PlannedDue due : planned.dues) {
+            Occurrence occurrence = byDue.get(
+                    AccumulatingOccurrenceAssembler.key(due.scheduledOn, due.slot));
+            if (occurrence == null) continue;
+            writes.add(ComboObligation.open(ComboProgress.taskOwner(task.id), task.id,
+                    ComboProgress.Kind.TASK, due.slot, due.scheduledOn, occurrence.id));
+            for (TaskStepTemplate template : due.templates)
+                writes.add(ComboObligation.open(ComboProgress.stepOwner(template.id), task.id,
+                        ComboProgress.Kind.STEP, due.slot, due.scheduledOn, occurrence.id));
+        }
+        obligations.insertComboObligations(writes);
+        return !writes.isEmpty();
+    }
+
+    private static boolean hasOpen(List<Occurrence> history) {
+        for (Occurrence value : history) if (value.state == OccurrenceState.OPEN) return true;
+        return false;
     }
 
     private boolean materializeObligations(Task task, DueDatePlanner.Plan planned,

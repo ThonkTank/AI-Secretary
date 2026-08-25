@@ -11,6 +11,8 @@ import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.DisplayPreferences;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
+import de.thonktank.autosecretary.domain.model.ComboDecayTrigger;
+import de.thonktank.autosecretary.domain.model.ComboPolicy;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -42,6 +44,24 @@ public final class FocusStepLimitPreferencesTest {
             preferences.setFocusStepLimit(limit);
             assertEquals(limit, preferences.focusStepLimit());
         }
+    }
+
+    @Test public void comboPolicyDefaultsAndPersistsAllUserOwnedValues() {
+        ComboPolicy defaults = preferences.current();
+        assertEquals(2, defaults.gainPoints);
+        assertEquals(1, defaults.decayPoints);
+        assertEquals(ComboDecayTrigger.DAILY_OVERDUE, defaults.trigger);
+
+        preferences.setComboPolicy(new ComboPolicy(0, 4,
+                ComboDecayTrigger.NEXT_SCHEDULED_OCCURRENCE));
+        ComboPolicy restored = new UiPreferences(context, new AppLogger() {
+            @Override public void info(String tag, String message) { }
+            @Override public void error(String tag, String message, Throwable error) { }
+        }).current();
+
+        assertEquals(0, restored.gainPoints);
+        assertEquals(4, restored.decayPoints);
+        assertEquals(ComboDecayTrigger.NEXT_SCHEDULED_OCCURRENCE, restored.trigger);
     }
 
     @Test public void unsupportedStoredValueFallsBackToAutomatic() {

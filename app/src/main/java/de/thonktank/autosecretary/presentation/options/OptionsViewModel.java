@@ -120,7 +120,7 @@ public final class OptionsViewModel extends ViewModel {
             }
         }
         current = new OptionsScreenState(palette(display, clock.time()), display.themeMode,
-                display.focusStepLimit, display.restTimerDefaultSeconds,
+                display.focusStepLimit, display.restTimerDefaultSeconds, display.comboPolicy,
                 CalendarPermissionStatus.UNKNOWN,
                 CalendarUiState.empty(), update, restored);
         state = StateFlowKt.MutableStateFlow(current);
@@ -158,6 +158,8 @@ public final class OptionsViewModel extends ViewModel {
         else if (action instanceof OptionsAction.RestTimerDefaultChanged)
             preferences.setRestTimerDefaultSeconds(
                     ((OptionsAction.RestTimerDefaultChanged) action).seconds);
+        else if (action instanceof OptionsAction.ComboPolicySelected)
+            preferences.setComboPolicy(((OptionsAction.ComboPolicySelected) action).policy);
         else if (action instanceof OptionsAction.PermissionObserved)
             observePermission((OptionsAction.PermissionObserved) action);
         else if (action instanceof OptionsAction.CalendarPermissionSelected)
@@ -347,7 +349,8 @@ public final class OptionsViewModel extends ViewModel {
         synchronized (lock) {
             publish(current.withAppearance(palette(appearance.preferences, appearance.time),
                     appearance.preferences.themeMode, appearance.preferences.focusStepLimit,
-                    appearance.preferences.restTimerDefaultSeconds));
+                    appearance.preferences.restTimerDefaultSeconds,
+                    appearance.preferences.comboPolicy));
         }
     }
 

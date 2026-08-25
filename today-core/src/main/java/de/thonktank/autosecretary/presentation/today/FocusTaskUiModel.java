@@ -20,6 +20,7 @@ public final class FocusTaskUiModel {
     public final RewardBreakdown reward;
     public final int grainLevel;
     public final XpVesselUiModel vessel;
+    public final int backlogCount;
 
     private FocusTaskUiModel(Builder builder) {
         if (builder.actionTarget == null || builder.nextAction == null || builder.steps == null
@@ -39,6 +40,7 @@ public final class FocusTaskUiModel {
         this.grainLevel = builder.grainLevel == null
                 ? builder.reward.comboStage : Math.max(0, builder.grainLevel);
         this.vessel = builder.vessel;
+        this.backlogCount = Math.max(0, builder.backlogCount);
     }
 
     public String taskId() { return actionTarget.taskId; }
@@ -60,6 +62,7 @@ public final class FocusTaskUiModel {
         private RewardBreakdown reward;
         private XpVesselUiModel vessel;
         private Integer grainLevel;
+        private int backlogCount;
 
         private Builder(TaskActionTarget target) { this.actionTarget = target; }
 
@@ -75,6 +78,7 @@ public final class FocusTaskUiModel {
             reward = value; vessel = vesselModel; return this;
         }
         public Builder grainLevel(int value) { grainLevel = value; return this; }
+        public Builder backlogCount(int value) { backlogCount = value; return this; }
         public FocusTaskUiModel build() { return new FocusTaskUiModel(this); }
     }
 }

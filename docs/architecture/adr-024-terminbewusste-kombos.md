@@ -44,6 +44,13 @@ Verfallsauswertung erzeugen. Aufgaben verwenden standardmäßig `COLLAPSE`; `ACC
 jeden echten Termin als Queue. Deshalb entfernt Schema 18 die frühere Triggerregel, die mehrere
 offene Vorkommen eines Task-/Slot-Paars grundsätzlich verbot.
 
+Gewinn, Verfall und Trigger werden in den App-Optionen gespeichert und über `ComboPolicySource`
+in alle Reward- und Verfallspfade injiziert. Der Task-Editor bietet die Rückstandsmodi
+„Zusammenfassen“ (`COLLAPSE`) und „Einzeln nachholen“ (`ACCUMULATE`) an. Im zweiten Modus wird
+jeder fällige Termin mit seinem damaligen Schrittplan materialisiert. Today zeigt je Task und
+Slot nur den ältesten offenen Termin sowie `noch N offen`; nach dessen Abschluss rückt der
+nächste Termin nach. Mehrere tägliche Slots bleiben damit getrennte Queues.
+
 Der Today-Vorbereitungspfad materialisiert zunächst echte Termine und Verpflichtungen und wertet
 anschließend Verfall aus. Damit werden weder ein gerade erst fälliger Termin noch ein neutraler
 Carry-Tag vorzeitig bestraft.
@@ -73,3 +80,4 @@ Anpassung sind ein eigener Folgeschnitt und nicht Teil dieser Entscheidung.
 - Terminbewertung: `core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/ApplyComboDecay.java`
 - Persistenzmigration: `app/src/main/java/de/thonktank/autosecretary/data/local/DatabaseMigrations.java`
 - Akzeptanzfälle: `app/src/test/java/de/thonktank/autosecretary/ScheduleAwareComboDecayTest.java`
+- Benutzerrichtlinie: `app/src/main/java/de/thonktank/autosecretary/data/preferences/UiPreferences.java`
