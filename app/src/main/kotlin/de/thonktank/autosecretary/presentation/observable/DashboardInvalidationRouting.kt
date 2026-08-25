@@ -28,6 +28,10 @@ class DashboardInvalidationRouting internal constructor(
             event.cause == PresentationInvalidationCause.CLOCK
     }
 
+    val todayPreferenceChanges: Flow<PresentationInvalidation> = dashboardChanges.filter { event ->
+        event.cause == PresentationInvalidationCause.DISPLAY_PREFERENCES
+    }
+
     internal companion object {
         fun requiresContentRead(
             event: PresentationInvalidation,

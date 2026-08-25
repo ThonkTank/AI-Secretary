@@ -34,16 +34,21 @@ public final class TodayCoordinatorTest {
         assertEquals("a", commands.get(0).id);
     }
 
-    @Test public void centralDispatcherContainsEveryActionKind() throws Exception {
-        String source = new String(Files.readAllBytes(Path.of(
+    @Test public void screenOwnerAndCoreDispatcherContainEveryActionKind() throws Exception {
+        String coordinator = new String(Files.readAllBytes(Path.of(
                 "../today-core/src/main/java/de/thonktank/autosecretary/presentation/today/TodayCoordinator.java")),
+                StandardCharsets.UTF_8);
+        String owner = new String(Files.readAllBytes(Path.of(
+                "src/main/java/de/thonktank/autosecretary/presentation/today/TodayViewModel.java")),
                 StandardCharsets.UTF_8);
         EnumSet<TodayAction.Kind> handled = EnumSet.noneOf(TodayAction.Kind.class);
         for (TodayAction.Kind kind : TodayAction.Kind.values())
-            if (source.contains("case " + kind.name() + ":")) handled.add(kind);
+            if (coordinator.contains("case " + kind.name() + ":")
+                    || owner.contains("case " + kind.name() + ":")) handled.add(kind);
 
         assertEquals(EnumSet.allOf(TodayAction.Kind.class), handled);
-        assertTrue(source.contains("Unhandled Today action"));
+        assertTrue(coordinator.contains("Unhandled Today action"));
+        assertTrue(owner.contains("todayCoordinator.emit(action)"));
     }
 
     private static TodayUiModel today() {

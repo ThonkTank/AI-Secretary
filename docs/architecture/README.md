@@ -30,8 +30,10 @@ Migrationen und aktualisierte Tests.
 - [ADR-020: Compilergrenzen für Domain und Today-Kern](adr-020-compilergrenzen.md)
 - [ADR-021: Platzierungskarten und Archivbearbeitung im Alles-Tab](adr-021-alles-tab-platzierungskarten.md)
 - [ADR-022: schrittweise Compose-Präsentationsarchitektur](adr-022-compose-presentation.md)
+- [ADR-023: Ein State-Owner für Optionen, Berechtigung und Updater](adr-023-optionen-state-owner.md)
 - [ADR-024: Terminbewusste Kombos und echte Verpflichtungen](adr-024-terminbewusste-kombos.md)
 - [ADR-025: Mengenbasierte Schritt-Rewards und Tagesabschluss](adr-025-mengenbasierte-schritt-rewards.md)
+- [ADR-026: Getrennte State-Owner für Today und App-Shell](adr-026-today-und-shell-state-owner.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der

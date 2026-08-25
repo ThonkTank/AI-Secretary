@@ -21,11 +21,11 @@ Liste `OptionsRequest`. `dispatch(OptionsAction)` ist der einzige serielle Einga
 
 Preferences und Kalender werden aus den gemeinsamen typisierten Invalidierungsquellen
 projiziert. Datenbankänderungen lösen im Optionenowner keinen Read aus. Der Todayowner darf
-Palette, Kalenderereignisse und Fokuslimit weiterhin als eigene, aus denselben dauerhaften
-Quellen abgeleitete Projektion besitzen und die globale Pausentimer-Vorgabe beim Start eines
-Resttimers direkt aus der dauerhaften Quelle lesen; er enthält aber keinen Optionen- oder
-Updatestatus. Der laufende `TimerManager.Snapshot` bleibt Today-Laufzeitzustand und gehört nicht
-zum Optionenowner.
+Kalenderereignisse und Fokuslimit weiterhin als eigene, aus denselben dauerhaften Quellen
+abgeleitete Projektion besitzen und die globale Pausentimer-Vorgabe beim Start eines Resttimers
+direkt aus der dauerhaften Quelle lesen; die globale Legacy-Palette liegt seit ADR-026 im
+Shellowner. Today enthält keinen Optionen- oder Updatestatus. Der laufende
+`TimerManager.Snapshot` bleibt Today-Laufzeitzustand und gehört nicht zum Optionenowner.
 
 Updateangebot, Installation, Fehler und Android-Systemnavigation sind bestätigbare Requests mit
 stabilen IDs. Sie werden unmittelbar im `SavedStateHandle` gespeichert und erst nach einer

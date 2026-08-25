@@ -14,6 +14,9 @@ public final class RewardAnimator {
     private final HeaderView header;
     private final RewardAnchorRegistry anchors;
     private String activeId;
+    private View activeView;
+    private long generation;
+    private boolean disposed;
 
     public RewardAnimator(FrameLayout root, HeaderView header, RewardAnchorRegistry anchors) {
         this.root = root; this.header = header; this.anchors = anchors;
@@ -21,18 +24,19 @@ public final class RewardAnimator {
 
     public void play(RewardEffect effect, DayPalette palette, int topInset,
                      Runnable acknowledged) {
-        if (effect == null || effect.id.equals(activeId)) return;
+        if (disposed || effect == null || effect.id.equals(activeId)) return;
+        long playGeneration = ++generation;
         activeId = effect.id;
         boolean head = effect.target == RewardReceipt.Target.HEAD;
         if (!android.animation.ValueAnimator.areAnimatorsEnabled()) {
-            if (effect.signedXp > 0 && head) header.playRewardGlint(palette);
-            finish(acknowledged);
+            finish(playGeneration, effect.signedXp > 0 && head, palette, acknowledged);
             return;
         }
         UiStyle style = new UiStyle(root.getContext());
         TextView value = style.serif(effect.signedXp + " XP", 17, palette.light, true, 300);
         value.setSingleLine(true);
         root.addView(value, new FrameLayout.LayoutParams(-2, -2));
+        activeView = value;
         View sourceView = anchors.find(effect.source);
         View targetView = head ? anchors.find(RewardAnchorKey.head())
                 : anchors.firstVisible(RewardAnchorKey.Kind.VESSEL);
@@ -57,13 +61,30 @@ public final class RewardAnimator {
                 .setInterpolator(new android.view.animation.PathInterpolator(.2f, .7f, .3f, 1f))
                 .withEndAction(() -> {
                     root.removeView(value);
-                    if (effect.signedXp > 0 && head) header.playRewardGlint(palette);
-                    finish(acknowledged);
+                    finish(playGeneration, effect.signedXp > 0 && head, palette,
+                            acknowledged);
                 });
     }
 
-    private void finish(Runnable acknowledged) {
+    public void dispose() {
+        if (disposed) return;
+        disposed = true;
+        generation++;
+        View view = activeView;
+        activeView = null;
         activeId = null;
+        if (view != null) {
+            view.animate().cancel();
+            root.removeView(view);
+        }
+    }
+
+    private void finish(long playGeneration, boolean glint, DayPalette palette,
+                        Runnable acknowledged) {
+        if (disposed || generation != playGeneration) return;
+        activeView = null;
+        activeId = null;
+        if (glint) header.playRewardGlint(palette);
         acknowledged.run();
     }
 

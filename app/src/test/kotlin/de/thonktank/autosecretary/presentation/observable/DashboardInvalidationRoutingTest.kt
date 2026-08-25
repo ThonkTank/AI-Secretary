@@ -70,6 +70,7 @@ class DashboardInvalidationRoutingTest {
         )
 
         assertEquals(listOf(display, clock), routing.appearanceChanges.toList())
+        assertEquals(listOf(display), routing.todayPreferenceChanges.toList())
     }
 
     @Test

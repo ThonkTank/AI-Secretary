@@ -4,30 +4,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Small event fixture that keeps view tests coupled to the public dashboard contract. */
-final class DashboardEventRecorder implements DashboardEventSink,
+/** Small action fixture that keeps legacy view tests coupled to the Today contract. */
+final class TodayActionRecorder implements
         de.thonktank.autosecretary.presentation.today.TodayActionSink {
-    private final List<DashboardEvent> events = new ArrayList<>();
     private final List<de.thonktank.autosecretary.presentation.today.TodayAction> todayActions =
             new ArrayList<>();
-
-    @Override public void emit(DashboardEvent event) {
-        events.add(event);
-    }
 
     @Override public void emit(
             de.thonktank.autosecretary.presentation.today.TodayAction action) {
         todayActions.add(action);
-    }
-
-    List<DashboardEvent> events() {
-        return Collections.unmodifiableList(events);
-    }
-
-    <T extends DashboardEvent> T last(Class<T> type) {
-        for (int index = events.size() - 1; index >= 0; index--)
-            if (type.isInstance(events.get(index))) return type.cast(events.get(index));
-        return null;
     }
 
     List<de.thonktank.autosecretary.presentation.today.TodayAction> todayActions() {

@@ -1,6 +1,8 @@
 package de.thonktank.autosecretary.presentation.today;
 
 
+import de.thonktank.autosecretary.domain.model.TaskSlot;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +27,16 @@ public final class TodayAction {
         RESUME_TIMER,
         RESET_TIMER,
         OBSERVE_TIMER,
+        ADD_TASK,
+        OPEN_TASK_MENU,
+        EDIT_TASK,
+        REQUEST_MOVE_TASK,
+        MOVE_TASK,
+        REQUEST_DELETE_TASK,
+        CONFIRM_DELETE_TASK,
+        CONFIRM_CLOSE_TASK,
+        ACKNOWLEDGE_REQUEST,
+        ACKNOWLEDGE_REWARD,
         BEGIN_REORDER,
         PREVIEW_REORDER,
         CANCEL_REORDER,
@@ -38,9 +50,12 @@ public final class TodayAction {
     public final String text;
     public final int value;
     public final List<String> order;
+    public final TaskActionTarget target;
+    public final TaskSlot slot;
 
     private TodayAction(Kind kind, String id, String relatedId,
-                        String text, int value, List<String> order) {
+                        String text, int value, List<String> order,
+                        TaskActionTarget target, TaskSlot slot) {
         if (kind == null) throw new IllegalArgumentException("Today action kind is required");
         this.kind = kind;
         this.id = id == null ? "" : id;
@@ -48,6 +63,8 @@ public final class TodayAction {
         this.text = text;
         this.value = value;
         this.order = Collections.unmodifiableList(new ArrayList<>(order));
+        this.target = target;
+        this.slot = slot;
     }
 
     public static TodayAction completeOccurrence(String occurrenceId) {
@@ -56,7 +73,7 @@ public final class TodayAction {
 
     public static TodayAction requestClose(String taskId, String title) {
         return new TodayAction(Kind.REQUEST_CLOSE, requiredId(taskId), null,
-                title == null ? "" : title, 0, Collections.emptyList());
+                title == null ? "" : title, 0, Collections.emptyList(), null, null);
     }
 
     public static TodayAction completeRemaining(String occurrenceId) {
@@ -90,13 +107,13 @@ public final class TodayAction {
     public static TodayAction adjustRepetition(String stepId, int delta) {
         if (delta == 0) throw new IllegalArgumentException("Adjustment must not be zero");
         return new TodayAction(Kind.ADJUST_REPETITION, requiredId(stepId), null,
-                null, delta, Collections.emptyList());
+                null, delta, Collections.emptyList(), null, null);
     }
 
     public static TodayAction editRepetition(String stepId, int index) {
         if (index < 0) throw new IllegalArgumentException("Saved result index is required");
         return new TodayAction(Kind.EDIT_REPETITION, requiredId(stepId), null,
-                null, index, Collections.emptyList());
+                null, index, Collections.emptyList(), null, null);
     }
 
     public static TodayAction submitRepetition(String stepId) {
@@ -106,7 +123,7 @@ public final class TodayAction {
     public static TodayAction startDurationTimer(String stepId, String title, int seconds) {
         if (seconds < 1) throw new IllegalArgumentException("Timer duration is required");
         return new TodayAction(Kind.START_DURATION_TIMER, requiredId(stepId), null,
-                title == null ? "" : title, seconds, Collections.emptyList());
+                title == null ? "" : title, seconds, Collections.emptyList(), null, null);
     }
 
     public static TodayAction pauseTimer(String timerId) {
@@ -125,6 +142,51 @@ public final class TodayAction {
         return identified(Kind.OBSERVE_TIMER, timerId);
     }
 
+    public static TodayAction addTask() {
+        return new TodayAction(Kind.ADD_TASK, "", null, null, 0,
+                Collections.emptyList(), null, null);
+    }
+
+    public static TodayAction openTaskMenu(TaskActionTarget target) {
+        if (target == null) throw new IllegalArgumentException("Task menu target is required");
+        return new TodayAction(Kind.OPEN_TASK_MENU, target.taskId, null, null, 0,
+                Collections.emptyList(), target, null);
+    }
+
+    public static TodayAction editTask(String requestId) {
+        return identified(Kind.EDIT_TASK, requestId);
+    }
+
+    public static TodayAction requestMoveTask(String requestId) {
+        return identified(Kind.REQUEST_MOVE_TASK, requestId);
+    }
+
+    public static TodayAction moveTask(String requestId, TaskSlot slot) {
+        if (slot == null) throw new IllegalArgumentException("Task slot is required");
+        return new TodayAction(Kind.MOVE_TASK, requiredId(requestId), null, null, 0,
+                Collections.emptyList(), null, slot);
+    }
+
+    public static TodayAction requestDeleteTask(String requestId) {
+        return identified(Kind.REQUEST_DELETE_TASK, requestId);
+    }
+
+    public static TodayAction confirmDeleteTask(String requestId) {
+        return identified(Kind.CONFIRM_DELETE_TASK, requestId);
+    }
+
+    public static TodayAction confirmCloseTask(String requestId) {
+        return identified(Kind.CONFIRM_CLOSE_TASK, requestId);
+    }
+
+    public static TodayAction acknowledgeRequest(String requestId) {
+        return identified(Kind.ACKNOWLEDGE_REQUEST, requestId);
+    }
+
+    public static TodayAction acknowledgeReward(String rewardId) {
+        return identified(Kind.ACKNOWLEDGE_REWARD, rewardId);
+    }
+
     public static TodayAction beginReorder(String stepId, List<String> canonicalOrder) {
         return ordered(Kind.BEGIN_REORDER, stepId, null, canonicalOrder);
     }
@@ -139,17 +201,17 @@ public final class TodayAction {
 
     public static TodayAction dropReorder(String stepId, String beforeStepId) {
         return new TodayAction(Kind.DROP_REORDER, requiredId(stepId), beforeStepId,
-                null, 0, Collections.emptyList());
+                null, 0, Collections.emptyList(), null, null);
     }
 
     public static TodayAction moveStep(String stepId, String beforeStepId) {
         return new TodayAction(Kind.MOVE_STEP, requiredId(stepId), beforeStepId,
-                null, 0, Collections.emptyList());
+                null, 0, Collections.emptyList(), null, null);
     }
 
     private static TodayAction identified(Kind kind, String id) {
         return new TodayAction(kind, requiredId(id), null, null, 0,
-                Collections.emptyList());
+                Collections.emptyList(), null, null);
     }
 
     private static TodayAction ordered(Kind kind, String id, String relatedId,
@@ -157,7 +219,7 @@ public final class TodayAction {
         if (order == null) throw new IllegalArgumentException("Step order is required");
         List<String> copy = new ArrayList<>();
         for (String stepId : order) copy.add(requiredId(stepId));
-        return new TodayAction(kind, requiredId(id), relatedId, null, 0, copy);
+        return new TodayAction(kind, requiredId(id), relatedId, null, 0, copy, null, null);
     }
 
     private static String requiredId(String value) {

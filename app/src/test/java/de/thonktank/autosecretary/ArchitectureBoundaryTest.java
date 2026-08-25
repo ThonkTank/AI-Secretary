@@ -25,8 +25,7 @@ public final class ArchitectureBoundaryTest {
 
     @Test public void todayCoreHasOnlyTheDomainCompilerDependency() throws Exception {
         assertTrue(Files.isDirectory(Path.of("../today-core/src/main/java")));
-        assertFalse(hasJava(Path.of(
-                "src/main/java/de/thonktank/autosecretary/presentation/today")));
+        assertTrue(Files.exists(main("presentation/today/TodayViewModel.java")));
         String build = read(Path.of("../today-core/build.gradle.kts"));
         assertTrue(build.contains("`java-library`"));
         assertTrue(build.contains("api(project(\":core-domain\"))"));
@@ -45,19 +44,20 @@ public final class ArchitectureBoundaryTest {
                     Files.exists(main(view)));
     }
 
-    @Test public void activityOwnsNavigationButNotTodayUseCaseDispatch() throws Exception {
+    @Test public void activityHostsTodayRequestsButNotTodayUseCaseDispatch() throws Exception {
         String activity = read(main("MainActivity.java"));
         assertFalse(activity.contains("domain.usecase"));
-        assertFalse(activity.contains("TodayAction"));
         assertFalse(activity.contains("completeRemainingSteps.execute"));
         assertFalse(activity.contains("moveTodayStep.execute"));
-        assertTrue(activity.contains("viewModel::dispatchToday"));
+        assertFalse(activity.contains(".execute("));
+        assertTrue(activity.contains("todayViewModel::dispatch"));
+        assertTrue(activity.contains("TodayAction.acknowledgeRequest"));
     }
 
     @Test public void screensShareInvalidationsWithoutActivityBrokerOrManualReloads()
             throws Exception {
         String activity = read(main("MainActivity.java"));
-        String dashboard = read(main("TaskViewModel.java"));
+        String dashboard = read(main("presentation/today/TodayViewModel.java"));
         String catalog = read(main("presentation/alltasks/AllTasksViewModel.java"));
         String options = read(main("presentation/options/OptionsViewModel.java"));
         String container = read(main("AppContainer.java"));
@@ -125,7 +125,7 @@ public final class ArchitectureBoundaryTest {
     @Test public void motionCallbacksCannotOwnEditorNavigation() throws Exception {
         String activity = read(main("MainActivity.java"));
         String open = activity.substring(activity.indexOf("private void openEditorWithFlight()"),
-                activity.indexOf("private void completeOrConfirm("));
+                activity.indexOf("private void renderAllTasksState("));
         String navigator = read(main("presentation/navigation/TaskEditorNavigator.java"));
         assertTrue(open.contains("appNavigator.navigate(AppDestination.newTaskFromHeader())"));
         assertTrue(open.contains("editorCoordinator.deferNextOpen()"));
@@ -141,12 +141,38 @@ public final class ArchitectureBoundaryTest {
     }
 
     @Test public void viewModelDelegatesClosedTodayCommandRouting() throws Exception {
-        String viewModel = read(main("TaskViewModel.java"));
+        String viewModel = read(main("presentation/today/TodayViewModel.java"));
         String dispatcher = read(main("presentation/today/TodayCommandDispatcher.java"));
         assertTrue(viewModel.contains("new TodayCommandDispatcher(this)"));
         assertFalse(viewModel.contains("switch (value.kind)"));
         assertFalse(viewModel.contains("switch (command.kind)"));
         assertTrue(dispatcher.contains("switch (command.kind)"));
+    }
+
+    @Test public void todayAndShellHaveOneStateFlowOwnerWithoutLegacyBrokers()
+            throws Exception {
+        String today = read(main("presentation/today/TodayViewModel.java"));
+        String state = read(main("presentation/today/TodayScreenState.java"));
+        String shell = read(main("presentation/shell/AppShellViewModel.java"));
+        String renderer = read(main("DashboardRenderer.java"));
+        String activity = read(main("MainActivity.java"));
+
+        assertTrue(today.contains("StateFlow<TodayScreenState> state()"));
+        assertTrue(today.contains("public void dispatch(TodayAction action)"));
+        assertTrue(state.contains("List<TodayRequest> requests"));
+        assertTrue(state.contains("RewardEffectQueue.Snapshot rewards"));
+        assertFalse(today.contains("LiveData"));
+        assertFalse(today.contains("MutableLiveData"));
+        assertTrue(shell.contains("MutableStateFlow<AppShellScreenState>"));
+        assertTrue(renderer.contains("TodayAction.openTaskMenu"));
+        assertFalse(renderer.contains("DashboardEvent"));
+        assertFalse(activity.contains("TaskViewModel"));
+        assertFalse(activity.contains("DashboardUiState"));
+        assertFalse(activity.contains("UiEvent"));
+        assertFalse(Files.exists(main("TaskViewModel.java")));
+        assertFalse(Files.exists(main("DashboardUiState.java")));
+        assertFalse(Files.exists(main("DashboardEvent.java")));
+        assertFalse(Files.exists(main("UiEvent.java")));
     }
 
     @Test public void slicesAndFocusedPortsAreConcretePackageBoundaries() {
