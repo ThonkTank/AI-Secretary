@@ -25,6 +25,7 @@ class ChangeScopeTest(unittest.TestCase):
         for path in (
             "app/src/androidTest/java/example/DeviceTest.java",
             "app/schemas/de.example/14.json",
+            "app/proguard-debug.pro",
         ):
             with self.subTest(path=path):
                 self.assertEqual(
@@ -39,6 +40,7 @@ class ChangeScopeTest(unittest.TestCase):
             "core-domain/src/main/java/example/Rule.java",
             "today-core/src/main/java/example/State.java",
             "app/build.gradle.kts",
+            "app/proguard-release.pro",
             ".github/workflows/verify.yml",
             "gradle/wrapper/gradle-wrapper.properties",
             "release/release.properties",

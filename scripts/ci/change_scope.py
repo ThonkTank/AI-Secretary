@@ -12,6 +12,7 @@ from typing import Iterable
 BUILD_INPUTS = {
     ".github/workflows/verify.yml",
     "app/build.gradle.kts",
+    "app/proguard-release.pro",
     "build.gradle.kts",
     "core-domain/build.gradle.kts",
     "gradle.properties",
@@ -24,6 +25,9 @@ BUILD_INPUTS = {
     "scripts/release/release_tool.py",
     "settings.gradle.kts",
     "today-core/build.gradle.kts",
+}
+INSTRUMENTATION_INPUTS = {
+    "app/proguard-debug.pro",
 }
 INSTRUMENTATION_PREFIXES = (
     ".github/workflows/",
@@ -83,7 +87,11 @@ def _is_documentation(path: str) -> bool:
 
 
 def _requires_instrumentation(path: str) -> bool:
-    return path in BUILD_INPUTS or path.startswith(INSTRUMENTATION_PREFIXES)
+    return (
+        path in BUILD_INPUTS
+        or path in INSTRUMENTATION_INPUTS
+        or path.startswith(INSTRUMENTATION_PREFIXES)
+    )
 
 
 def _requires_release(path: str) -> bool:
