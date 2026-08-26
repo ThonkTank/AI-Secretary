@@ -2015,8 +2015,9 @@ Fokuswechsel weiterhin nur das neue Feld als Wiederherstellungsziel zurück. Dri
 Entfernung der View-spezifischen Acceptance-Suite mehrere Journey-
 Invarianten nur indirekt geschützt; der Dispatcher-Vertrag und die komplette Compose-Create-
 Journey schließen diese Abdeckungsdelle. Eine weitere lokale Nachtarbeitsphase ist nach grünem
-Abschlussgate und Remote-Gerätematrix nicht begründet. Die physische Sicht- und In-App-Update-
-Abnahme bleibt gemäß Owner-Anweisung offen und wird nicht als bestanden gewertet.
+lokalem Abschlussgate zunächst nicht begründet; die entfernte Gerätematrix bleibt als eigener
+Nacharbeitsauslöser verbindlich. Die physische Sicht- und In-App-Update-Abnahme bleibt gemäß
+Owner-Anweisung offen und wird nicht als bestanden gewertet.
 
 Der erste entfernte Gerätematrixlauf `32922319104` bestätigte Quality, Größenbudget sowie beide
 API-37-Jobs, fand aber auf API 26/35 zwei neue Testfehler. Der Delete-Vertrag hatte korrekt auf den
@@ -2026,3 +2027,24 @@ das per-Feld gespeicherte Fokusbit jedoch nicht. Die Assertion folgt nun dem wir
 Busy-Zustand; die produktive Fokusrestauration verwendet den oben beschriebenen einzigen
 Composition-State. Beide Korrekturen ändern weder Draft noch Domain und werden vor einem neuen
 Matrixlauf erneut lokal vollständig geprüft.
+
+Der zweite entfernte Lauf `32924509902` bestätigte diese beiden Reparaturen: Quality, die normalen
+API-26/35/37-Läufe, beide API-26/37-Animationsläufe und insbesondere alle zehn detaillierten
+Compose-Editor-Tests auf API 35 mit aktiven Animationen waren grün. Erst die danach ausgeführten
+Heute-Gestentests trafen auf API 35 auf einen fremden Systemzustand. Alle drei Aktivitäten waren
+erstellt, gebunden und `RESUMED`, erhielten aber keinen Fensterfokus. Das hochgeladene Bildschirm-
+und WindowManager-Artefakt zeigte als fokussiertes Fenster den Systemdialog „Pixel Launcher isn't
+responding“ über dem Launcher. Es lag damit weder ein Editorfehler noch ein fachlicher Heute-
+Fehler vor; der Emulator ließ einen Fehlerdialog einer fremden App die nachfolgenden Testfenster
+verdecken.
+
+Diese Beobachtung begründet eine vierte Nachtarbeitskorrektur im vorhandenen Testnetz. Der
+Instrumentierungsrunner setzt bei Interaktionsläufen nun `hide_error_dialogs=1` und liest den Wert
+vor dem Gradle-Start zurück. Eine abweichende Einstellung bricht mit eigenem Status und
+`interaction-settings.txt` ab, statt Produktfehler zu simulieren. Die Heute-Gestendiagnose nennt
+zusätzlich Fensterfokus, Attachment sowie sichtbare und gegen das Fenster geschnittene Geometrie.
+Der Runnervertrag erzwingt Setzen, Rücklesen, Fehlervorverlagerung und Diagnoseartefakt. Nach
+diesem Schnitt sind erneut alle 17 betroffenen Runner-/Workflowverträge sowie das vollständige
+lokale Quality-, Lint-, Debug-, Instrumentierungs-, Android-Test- und Release-Gate grün. Die
+Remote-Matrix muss die Härtung noch bestätigen; die physische Sicht- und In-App-Update-Abnahme
+bleibt offen.

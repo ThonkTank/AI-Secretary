@@ -389,6 +389,8 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("connectedInstrumentationAndroidTest", INSTRUMENTATION_RUNNER)
         self.assertIn("status=$?", INSTRUMENTATION_RUNNER)
         self.assertIn('exit "$status"', INSTRUMENTATION_RUNNER)
+        self.assertIn("hide_error_dialogs", INSTRUMENTATION_RUNNER)
+        self.assertIn("interaction-settings.txt", INSTRUMENTATION_RUNNER)
         for diagnostic in (
             "screencap -p",
             "uiautomator dump",
