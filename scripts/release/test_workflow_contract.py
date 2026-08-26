@@ -53,6 +53,7 @@ COMPOSE_SMOKE_TEST = (
     / "ComposeSmokeInstrumentationTest.kt"
 ).read_text(encoding="utf-8")
 DEBUG_PROGUARD = (ROOT / "app" / "proguard-debug.pro").read_text(encoding="utf-8")
+RELEASE_PROGUARD = (ROOT / "app" / "proguard-release.pro").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
 SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").read_text(
     encoding="utf-8"
@@ -223,6 +224,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("ui-test-manifest", APP_BUILD)
         self.assertIn("-keep class de.thonktank.autosecretary.** { *; }", DEBUG_PROGUARD)
         self.assertIn("-keepattributes SourceFile,LineNumberTable", DEBUG_PROGUARD)
+        self.assertIn("-keep class kotlin.jvm.internal.Intrinsics { *; }", RELEASE_PROGUARD)
         self.assertIn("assembleInstrumentationAndroidTest", WORKFLOW)
         self.assertNotIn("assembleDebugAndroidTest", WORKFLOW)
         self.assertIn("testInstrumentationUnitTest", WORKFLOW)
