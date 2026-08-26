@@ -1978,8 +1978,9 @@ nach der Rückbindung des Owners sichtbar. `MainActivity`, Schema 19, Domain-Use
 Produkttexte bleiben fachlich unverändert.
 
 Fokus und seitenbezogener Scrollzustand werden über den stabilen Saveable-State des Hosts
-restauriert. Dabei schützt ein eigener Restoration-Pending-Zustand den gespeicherten Fokus vor dem
-anfänglichen unfokussierten Compose-Callback. Save und bestätigtes Delete wechseln nach der
+restauriert. Ein einziges saveable Fokus-Tag pro Editor-Composition verhindert konkurrierende
+Feldwahrheiten; ein lokaler Restoration-Pending-Zustand schützt dieses Tag vor dem anfänglichen
+unfokussierten Compose-Callback. Save und bestätigtes Delete wechseln nach der
 Owner-Rückbindung in den nicht erneut auslösbaren Saving-Zustand; ein bestätigtes Close entfernt
 den Host. Die detaillierte Compose-Instrumentierung prüft zusätzlich die vollständige
 Create-Journey, Fokus und Scroll über Recreation sowie Save, Delete und Close. API 37 erhält
@@ -2007,10 +2008,21 @@ Der negative Abgleich nach dem ersten Schnitt führte zu drei Nachtarbeitskorrek
 verwendeten zwei alte Coordinator-Tests eine nackte `Activity`, obwohl der Compose-Host wie das
 Produkt einen Lifecycle- und Saved-State-Owner benötigt; sie laufen nun gegen dieselbe
 `ComponentActivity`-Grenze wie `MainActivity`, während `dispose()` Dashboard und Composition
-deterministisch bereinigt. Zweitens hätte der anfängliche Fokus-Restorer seinen gespeicherten Wert
-durch den ersten unfokussierten Callback verlieren können; der Pending-Zustand schließt dieses
-Fenster. Drittens waren nach Entfernung der View-spezifischen Acceptance-Suite mehrere Journey-
+deterministisch bereinigt. Zweitens hätte ein unabhängiger Fokus-Restorer je Feld seinen
+gespeicherten Wert durch den ersten unfokussierten Callback verlieren können. Das einzelne
+saveable Fokus-Tag plus Pending-Zustand schließt dieses Fenster und lässt bei einem echten
+Fokuswechsel weiterhin nur das neue Feld als Wiederherstellungsziel zurück. Drittens waren nach
+Entfernung der View-spezifischen Acceptance-Suite mehrere Journey-
 Invarianten nur indirekt geschützt; der Dispatcher-Vertrag und die komplette Compose-Create-
 Journey schließen diese Abdeckungsdelle. Eine weitere lokale Nachtarbeitsphase ist nach grünem
 Abschlussgate und Remote-Gerätematrix nicht begründet. Die physische Sicht- und In-App-Update-
 Abnahme bleibt gemäß Owner-Anweisung offen und wird nicht als bestanden gewertet.
+
+Der erste entfernte Gerätematrixlauf `32922319104` bestätigte Quality, Größenbudget sowie beide
+API-37-Jobs, fand aber auf API 26/35 zwei neue Testfehler. Der Delete-Vertrag hatte korrekt auf den
+Ownerzustand „Bitte kurz warten …“ zurückgebunden, während die Assertion weiter nach dem dadurch
+ersetzten Text „Löschen“ suchte. Außerdem blieb der eingegebene Notiztext über Recreation erhalten,
+das per-Feld gespeicherte Fokusbit jedoch nicht. Die Assertion folgt nun dem wirklichen
+Busy-Zustand; die produktive Fokusrestauration verwendet den oben beschriebenen einzigen
+Composition-State. Beide Korrekturen ändern weder Draft noch Domain und werden vor einem neuen
+Matrixlauf erneut lokal vollständig geprüft.

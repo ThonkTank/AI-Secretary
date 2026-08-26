@@ -204,7 +204,7 @@ class TaskEditorComposeInstrumentationTest {
         compose.onNodeWithTag("task-editor:prompt").assertExists()
         compose.onNodeWithText("Löschen").performClick()
         compose.waitUntil { compose.activity.deleteCount == 1 && compose.activity.state.saving }
-        compose.onNodeWithText("Löschen").assertIsNotEnabled()
+        compose.onNodeWithText("Bitte kurz warten …").assertIsNotEnabled()
 
         compose.runOnUiThread { compose.activity.render(taskEditorComposeReferenceState()) }
         compose.waitForIdle()
