@@ -136,9 +136,11 @@ class LatestReadPipelineTest {
         val publications = Channel<Int>(Channel.UNLIMITED)
         val failures = ConcurrentLinkedQueue<Throwable>()
         val preparationExecutor = Executors.newSingleThreadExecutor()
+        val collectionExecutor = Executors.newSingleThreadExecutor()
         val pipeline = LatestReadPipeline.prepared(
             inputs = inputs.receiveAsFlow(),
             preparationExecutor = preparationExecutor,
+            collectionExecutor = collectionExecutor,
             preparation = LatestReadPreparation { input ->
                 preparations.add(input)
                 if (input == 1) {
@@ -163,6 +165,9 @@ class LatestReadPipelineTest {
             withTimeout(5_000) { runInterruptible { firstPreparationStarted.await() } }
             assertTrue(inputs.trySend(2).isSuccess)
 
+            val secondInputReachedCollector = CountDownLatch(1)
+            collectionExecutor.execute(secondInputReachedCollector::countDown)
+            withTimeout(5_000) { runInterruptible { secondInputReachedCollector.await() } }
             releaseFirstPreparation.countDown()
 
             assertEquals(2, withTimeout(5_000) { publications.receive() })
@@ -173,6 +178,7 @@ class LatestReadPipelineTest {
         } finally {
             pipeline.close()
             preparationExecutor.shutdownNow()
+            collectionExecutor.shutdownNow()
         }
     }
 

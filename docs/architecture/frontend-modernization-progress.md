@@ -2048,3 +2048,23 @@ diesem Schnitt sind erneut alle 17 betroffenen Runner-/Workflowverträge sowie d
 lokale Quality-, Lint-, Debug-, Instrumentierungs-, Android-Test- und Release-Gate grün. Die
 Remote-Matrix muss die Härtung noch bestätigen; die physische Sicht- und In-App-Update-Abnahme
 bleibt offen.
+
+Der dritte Pull-Request-Lauf `32925657066` bestätigte anschließend Quality und alle sechs
+Emulatorjobs einschließlich des zuvor blockierten API-35-Animationslaufs. Pull Request `#281`
+wurde deshalb als `f7f1b1c7e38efbdecd47789d47811d7b228f860c` per Squash nach `main`
+übernommen. Der erste veröffentlichende Lauf `32926734783` fand jedoch in Quality eine ältere,
+vom Editor unabhängige Test-Race-Condition: `newerInputWaitsForStartedPreparationThenSkipsItsRead`
+legte den zweiten Impuls mit `trySend` nur in einen unbegrenzten Kanal und gab unmittelbar danach
+die erste Vorbereitung frei. Der getestete Collector konnte daher unter ungünstigem Scheduling
+noch Ergebnis 1 publizieren, bevor er Impuls 2 überhaupt erhalten hatte. Der Produktionsvertrag
+war nicht verletzt; die Testvorbedingung „newer input“ war noch nicht hergestellt.
+
+Die fünfte Nachtarbeitskorrektur verwendet für diesen Vertrag den bereits vorhandenen
+deterministischen `LatestReadPipeline.prepared`-Overload mit eigenem seriellen
+Collection-Executor. Nach dem zweiten `trySend` wird auf ein anschließend in genau diesen
+Executor eingereihtes Barriersignal gewartet; erst wenn der Collector den davor eingereihten
+Impuls verarbeitet und die alte Generation gecancelt hat, wird die blockierte Vorbereitung
+freigegeben. Damit testet die Assertion weiterhin ausschließlich „neue, bereits beobachtete
+Eingabe überspringt alten Read“, ohne Sleep, Negativzeitfenster oder Änderung am Produktcode.
+Diese Nacharbeit benötigt einen eigenen grünen Pull Request und einen neuen veröffentlichenden
+`main`-Lauf. Die physische Sicht- und In-App-Update-Abnahme bleibt offen.
