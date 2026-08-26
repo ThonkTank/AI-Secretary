@@ -33,6 +33,20 @@ class ChangeScopeTest(unittest.TestCase):
                     classify([path]),
                 )
 
+    def test_signed_upgrade_probe_and_fixtures_require_release(self):
+        for path in (
+            "app/src/androidTest/java/de/thonktank/autosecretary/"
+            "UpgradePersistenceProbe.java",
+            "app/src/androidTest/java/de/thonktank/autosecretary/"
+            "UpgradeProbeInstrumentation.java",
+            "release/upgrade-fixtures/v0.2.80.json",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(
+                    ChangeScope(True, True, True),
+                    classify([path]),
+                )
+
     def test_production_and_embedded_contract_changes_require_every_gate(self):
         for path in (
             "app/src/main/java/example/Main.java",
