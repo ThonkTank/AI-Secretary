@@ -274,6 +274,15 @@ class WorkflowContractTest(unittest.TestCase):
             self.assertNotIn(product_api, UPGRADE_PROBE)
         self.assertIn("SQLiteDatabase.OPEN_READONLY", UPGRADE_PROBE)
         self.assertIn("TARGET_DATABASE_VERSION = 19", UPGRADE_PROBE)
+        before_start = UPGRADE_PROBE.index("verifyMigratedPreferences(context)")
+        activity_start = UPGRADE_PROBE.index("instrumentation.startActivitySync")
+        after_start = UPGRADE_PROBE.index("verifyPreferencesAfterActivityStart(context)")
+        self.assertLess(before_start, activity_start)
+        self.assertLess(activity_start, after_start)
+        self.assertIn(
+            'updates.getLong("last_update_check", -1L) >= SEEDED_LAST_CHECK',
+            UPGRADE_PROBE,
+        )
         self.assertIn("OK (1 probe)", UPGRADE_INSTRUMENTATION)
 
     def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):
