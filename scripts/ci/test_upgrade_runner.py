@@ -36,14 +36,14 @@ class UpgradeRunnerTest(unittest.TestCase):
                   "shell pm path "*) exit 1 ;;
                   "shell am start "*) echo 'Status: ok' ;;
                   "shell dumpsys package de.example.autosecretary") echo '  versionCode=123 minSdk=26 targetSdk=35' ;;
-                  "shell am instrument "*currentVersionStartsAndReadsPreviousData*)
+                  "shell am instrument "*"-e upgradePhase verify"*)
                     if [ "${ADB_PROBE_CRASH:-false}" = true ]; then
                       echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
                       exit 1
                     fi
-                    echo 'OK (1 test)'
+                    echo 'OK (1 probe)'
                     ;;
-                  "shell am instrument "*) echo 'OK (1 test)' ;;
+                  "shell am instrument "*) echo 'OK (1 probe)' ;;
                   "logcat -d -v threadtime") echo 'FATAL EXCEPTION: InstrumentationThread' ;;
                   *) echo OK ;;
                 esac
@@ -91,6 +91,15 @@ class UpgradeRunnerTest(unittest.TestCase):
             2,
             sum(call.startswith("shell am instrument ") for call in calls),
         )
+        probe_calls = [call for call in calls if call.startswith("shell am instrument ")]
+        self.assertTrue(all(
+            call.endswith(
+                "de.example.autosecretary.test/"
+                "de.example.autosecretary.UpgradeProbeInstrumentation"
+            )
+            for call in probe_calls
+        ))
+        self.assertTrue(all(" -e class " not in call for call in probe_calls))
         self.assertEqual(
             2,
             sum(call.startswith("shell am start ") for call in calls),

@@ -2133,3 +2133,41 @@ Logcat-Zeilen aus, damit ein weiterer Lauf eine konkrete Runtimeursache statt nu
 `Process crashed` liefert. Alle 39 CI-/Release-Verträge, Shellsyntax sowie
 `testInstrumentationUnitTest`, `lintDebug`, Debug-, Instrumentierungs- und Release-Paketierung
 liefen lokal grün. Die physische Sicht- und In-App-Update-Abnahme bleibt offen.
+
+### Phase 5b – neunte Nachtarbeitsphase: eigenständiger Release-Upgrade-Probe
+
+Vor dieser Nacharbeit wurden Phase 5 der Original-Roadmap, der vollständige aktuelle
+Phase-5b-Fortschritt, der gemergte Stand `750b306a144ae74f4e2a5927426a2937b4b04dcb`, die beiden
+Upgrade-Proben, ihr Shellrunner, der Paketjob und die Release-Schrumpfregeln erneut gelesen. Der
+manuelle Vollmodus `32943941928` bestätigte Quality, Größenbudget, Paketierung und alle sechs
+normalen beziehungsweise animationsaktiven Emulatorpfade auf API 26/35/37. Alle drei Upgrades
+erreichten erneut Kandidatenstart, Vorversions-Fixture und `adb install -r`, scheiterten aber beim
+Start des externen Verify-Prozesses. Die nun verfügbare Logcat-Diagnose identifizierte auf API 26
+und 35 `androidx.test.runner.AndroidJUnitRunner.onCreate` mit
+`NoClassDefFoundError: androidx.tracing.Trace`; API 37 lieferte weiterhin nur den frühen
+Runnerabsturz. Damit lag kein Daten-, Schema- oder Editorfehler vor. Der allgemeine AndroidX-
+Testrunner erwartete nach dem Release-Cutover Bibliotheksklassen im gemeinsam geladenen,
+R8-minimierten Produkt-APK.
+
+Der negative Roadmap-Abgleich verwirft weitere Produkt-Keep-Regeln als falsche Systemgrenze. Die
+Nachtarbeit extrahiert die unveränderten Seed- und Verify-Assertions in
+`UpgradePersistenceProbe` und führt sie im Release-Upgradepfad über die kleine
+`UpgradeProbeInstrumentation` aus. Beide Klassen sind Java-basiert und verwenden nur Android-
+Plattformklassen, JSON sowie bereits ausgelieferten Produktcode; AndroidX und JUnit bleiben dem
+normalen Instrumentierungslauf vorbehalten. Da Android pro Test-APK nur einen Runner erzeugt,
+baut die Paketstufe das ohnehin ausschließlich für Upgrades signierte Test-APK mit der expliziten
+Eigenschaft `upgradeProbeRunner=true`. Normale Quality- und Gerätematrixbauten behalten den
+`AndroidJUnitRunner`. Der Shellrunner ruft nur die stabile Runnerkomponente und die typisierte
+Phase `seed` beziehungsweise `verify` auf und verlangt `OK (1 probe)`.
+
+Die zuvor allein für den fremden Testlaufzeitgraphen eingeführte vollständige Kotlin-Keep-Regel
+ist dadurch wieder entfernt. Das frisch optimierte unsigned Release misst erneut `2.569.278`
+Byte; das Upgrade-Test-APK misst `2.659.658` Byte. Der normale Manifestbau weist weiterhin
+`androidx.test.runner.AndroidJUnitRunner`, der explizite Upgrade-Bau ausschließlich
+`de.thonktank.autosecretary.UpgradeProbeInstrumentation` aus. 16 CI-Harness-Tests, 23
+Release-/Workflowverträge, Shellsyntax und Diffprüfung sind grün. Das vollständige lokale Gate
+bestand anschließend in 13:22 Minuten mit 157 Aufgaben: Unit-/Golden-Tests, Debug-Lint, Debug-,
+normaler Android-Test- und R8-Release-Bau. Der Remote-Abschluss erfordert weiterhin einen grünen
+Pull Request, die echte Upgrade-Matrix auf API 26/35/37, Squash-Merge und den veröffentlichenden
+`main`-Lauf. Die physische Sicht- und In-App-Update-Abnahme bleibt offen und wird ohne Handy nicht
+als bestanden gewertet.
