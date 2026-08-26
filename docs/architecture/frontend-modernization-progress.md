@@ -2203,3 +2203,22 @@ Upgrade-Testpaketbau sowie alle 23 Release-/Workflowverträge sind lokal grün. 
 folgen erneut die 16 CI-Harness-Tests und das vollständige lokale Android-Gate. Der Abschluss
 bleibt an eine neue grüne API-26/35/37-Upgradematrix, Veröffentlichung und Remote-`main` gebunden;
 die physische Sicht- und In-App-Update-Abnahme bleibt offen.
+
+### Phase 5b – elfte Nachtarbeitsphase: Release-Scope des signierten Probe
+
+Pull Request `#287` bestand Quality und alle sechs Gerätepfade und wurde als
+`ac240a22d78a9e7f1efea91d55b82e266a36ec0c` per Squash nach `main` übernommen. Der automatische
+Hauptlauf `32953816011` war für seinen erkannten Scope vollständig grün, übersprang Paket,
+Upgrade und Veröffentlichung jedoch korrekt. Der geänderte `UpgradePersistenceProbe` lag unter
+dem allgemeinen `androidTest`-Präfix, das normale Gerätetests absichtlich nicht als
+Releaseänderung einstuft. Für diese eine in das signierte Upgrade-Testpaket eingebaute
+Laufzeitklasse war die Klassifikation zu schwach; der grüne Lauf ist ausdrücklich kein
+Upgrade-Nachweis.
+
+Die elfte Nachtarbeit ergänzt deshalb eine eng begrenzte Release-Scope-Liste für
+`UpgradePersistenceProbe`, `UpgradeProbeInstrumentation` und die eingebetteten
+`release/upgrade-fixtures`. Gewöhnliche Android-Tests bleiben Instrumentierungs-Scope ohne
+Paketierung. Ein Regressionstest prüft beide Seiten der Grenze. Da `change_scope.py` selbst ein
+vollständiger Buildinput ist, muss der Folgemerge automatisch Quality, sechs Gerätepfade,
+signiertes Paket, API-26/35/37-Upgrades und Veröffentlichung ausführen. Die physische Sicht- und
+In-App-Update-Abnahme bleibt offen.

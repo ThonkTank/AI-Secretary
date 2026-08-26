@@ -29,6 +29,13 @@ BUILD_INPUTS = {
 INSTRUMENTATION_INPUTS = {
     "app/proguard-debug.pro",
 }
+RELEASE_UPGRADE_INPUTS = {
+    "app/src/androidTest/java/de/thonktank/autosecretary/UpgradePersistenceProbe.java",
+    "app/src/androidTest/java/de/thonktank/autosecretary/UpgradeProbeInstrumentation.java",
+}
+RELEASE_UPGRADE_PREFIXES = (
+    "release/upgrade-fixtures/",
+)
 INSTRUMENTATION_PREFIXES = (
     ".github/workflows/",
     "app/schemas/",
@@ -91,13 +98,16 @@ def _requires_instrumentation(path: str) -> bool:
         path in BUILD_INPUTS
         or path in INSTRUMENTATION_INPUTS
         or path.startswith(INSTRUMENTATION_PREFIXES)
+        or path.startswith(RELEASE_UPGRADE_PREFIXES)
     )
 
 
 def _requires_release(path: str) -> bool:
     return (
         path in BUILD_INPUTS
+        or path in RELEASE_UPGRADE_INPUTS
         or path.startswith(RELEASE_PREFIXES)
+        or path.startswith(RELEASE_UPGRADE_PREFIXES)
     )
 
 
