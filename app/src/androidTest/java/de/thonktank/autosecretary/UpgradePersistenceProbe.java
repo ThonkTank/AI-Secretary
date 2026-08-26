@@ -7,7 +7,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.SystemClock;
 
 import org.json.JSONObject;
 
@@ -16,19 +18,13 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
-import java.util.List;
-
-import de.thonktank.autosecretary.calendar.CalendarPolicy;
-import de.thonktank.autosecretary.data.local.OccurrenceEntity;
-import de.thonktank.autosecretary.data.local.OccurrenceStepEntity;
-import de.thonktank.autosecretary.data.local.TaskEntity;
-import de.thonktank.autosecretary.data.local.TaskScheduleEntity;
-import de.thonktank.autosecretary.data.local.TaskStepEntity;
-import de.thonktank.autosecretary.data.preferences.UiThemeMode;
 
 /** Product-upgrade assertions shared by the ordinary JUnit test and the release-safe runner. */
 final class UpgradePersistenceProbe {
     private static final String DATABASE = "auto_secretary.db";
+    private static final int SOURCE_DATABASE_VERSION = 8;
+    private static final int TARGET_DATABASE_VERSION = 19;
+    private static final long DATABASE_READY_TIMEOUT_MILLIS = 15_000L;
     private static final String TASK_ID = "upgrade-e2e-task";
     private static final String TEMPLATE_ID = "upgrade-e2e-template";
     private static final String OCCURRENCE_ID = "upgrade-e2e-occurrence";
@@ -51,7 +47,7 @@ final class UpgradePersistenceProbe {
 
         try (SQLiteDatabase database = SQLiteDatabase.openDatabase(
                 path.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE)) {
-            equal(DatabaseContract.PRODUCTION_UPGRADE_SOURCE_VERSION, database.getVersion(),
+            equal(SOURCE_DATABASE_VERSION, database.getVersion(),
                     "The rolling fixture must run against the supported 0.2.80 schema");
             database.beginTransaction();
             try {
@@ -64,8 +60,8 @@ final class UpgradePersistenceProbe {
 
         long previousVersion = installedVersion(targetContext);
         check(targetContext.getSharedPreferences("forest_ui", Context.MODE_PRIVATE).edit()
-                .putString("theme_mode", UiThemeMode.DARK.name())
-                .putString("calendar_policy", CalendarPolicy.GOOGLE_ONLY.name())
+                .putString("theme_mode", "DARK")
+                .putString("calendar_policy", "GOOGLE_ONLY")
                 .putLong("last_update_check", SEEDED_LAST_CHECK)
                 .putLong("postponed_update_code", SEEDED_POSTPONED_CODE)
                 .putLong("postponed_update_at", SEEDED_POSTPONED_AT)
@@ -90,63 +86,125 @@ final class UpgradePersistenceProbe {
         check(installedVersion(context) > previousVersion,
                 "adb install -r did not install a newer version");
 
-        AutoSecretaryApplication application = AutoSecretaryApplication.from(context);
-        AppDatabase database = application.container().database;
-        equal(DatabaseContract.VERSION,
-                database.getOpenHelper().getReadableDatabase().getVersion());
+        Intent launch = new Intent()
+                .setClassName(context.getPackageName(), context.getPackageName() + ".MainActivity")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Activity activity = instrumentation.startActivitySync(launch);
+        notNull(activity);
+        equal(context.getPackageName() + ".MainActivity", activity.getClass().getName());
+        try {
+            instrumentation.waitForIdleSync();
+            try (SQLiteDatabase database = awaitMigratedDatabase(context)) {
+                verifyRows(database);
+            }
+            verifyPreferences(context);
+        } finally {
+            instrumentation.runOnMainSync(activity::finish);
+        }
+    }
 
-        TaskEntity task = database.tasks().task(TASK_ID);
-        notNull(task);
-        equal(TITLE, task.title);
-        equal(4_001_024L, task.catalogOrder);
-        equal("FOREVER", task.boundKind);
-        equal("2999-12-31", task.cadenceAnchorOn);
+    private static SQLiteDatabase awaitMigratedDatabase(Context context) throws Exception {
+        File path = context.getDatabasePath(DATABASE);
+        long deadline = SystemClock.uptimeMillis() + DATABASE_READY_TIMEOUT_MILLIS;
+        int observedVersion = -1;
+        RuntimeException lastFailure = null;
+        while (SystemClock.uptimeMillis() < deadline) {
+            try {
+                SQLiteDatabase database = SQLiteDatabase.openDatabase(
+                        path.getAbsolutePath(), null, SQLiteDatabase.OPEN_READONLY);
+                observedVersion = database.getVersion();
+                if (observedVersion == TARGET_DATABASE_VERSION) return database;
+                database.close();
+                if (observedVersion > TARGET_DATABASE_VERSION) {
+                    throw new AssertionError("Unexpected future database version "
+                            + observedVersion);
+                }
+            } catch (RuntimeException failure) {
+                lastFailure = failure;
+            }
+            Thread.sleep(100L);
+        }
+        AssertionError timeout = new AssertionError("The product did not migrate its database to "
+                + TARGET_DATABASE_VERSION + "; last observed version was " + observedVersion);
+        if (lastFailure != null) timeout.initCause(lastFailure);
+        throw timeout;
+    }
 
-        List<TaskScheduleEntity> schedule = database.tasks().scheduleEntries(TASK_ID);
-        equal(1, schedule.size());
-        equal("LATER", schedule.get(0).slot);
+    private static void verifyRows(SQLiteDatabase database) {
+        try (Cursor row = row(database, "tasks",
+                new String[]{"title", "catalogOrder", "boundKind", "cadenceAnchorOn"},
+                "id", TASK_ID)) {
+            equal(TITLE, text(row, "title"));
+            equal(4_001_024L, number(row, "catalogOrder"));
+            equal("FOREVER", text(row, "boundKind"));
+            equal("2999-12-31", text(row, "cadenceAnchorOn"));
+        }
+        try (Cursor row = row(database, "task_schedule_entries",
+                new String[]{"slot"}, "taskId", TASK_ID)) {
+            equal("LATER", text(row, "slot"));
+        }
+        try (Cursor row = row(database, "task_steps",
+                new String[]{"text", "amountKind"}, "id", TEMPLATE_ID)) {
+            equal(STEP_TEXT, text(row, "text"));
+            equal("NONE", text(row, "amountKind"));
+        }
+        try (Cursor row = row(database, "occurrences",
+                new String[]{"taskId", "state", "slot"}, "id", OCCURRENCE_ID)) {
+            equal(TASK_ID, text(row, "taskId"));
+            equal("OPEN", text(row, "state"));
+            equal("LATER", text(row, "slot"));
+        }
+        try (Cursor row = row(database, "occurrence_steps",
+                new String[]{"text", "done", "amountKind", "actualRepetitions",
+                        "sourceTemplateId"}, "id", STEP_ID)) {
+            equal(STEP_TEXT, text(row, "text"));
+            equal(1L, number(row, "done"));
+            equal("NONE", text(row, "amountKind"));
+            equal("", text(row, "actualRepetitions"));
+            equal(TEMPLATE_ID, text(row, "sourceTemplateId"));
+        }
+        try (Cursor row = row(database, "reward_bookings",
+                new String[]{"xpDelta"}, "occurrenceId", OCCURRENCE_ID)) {
+            equal(10L, number(row, "xpDelta"));
+        }
+        try (Cursor row = row(database, "stats", new String[]{"xp"}, "id", "1")) {
+            equal(73L, number(row, "xp"));
+        }
+    }
 
-        List<TaskStepEntity> templates = database.tasks().templates(TASK_ID);
-        equal(1, templates.size());
-        equal(STEP_TEXT, templates.get(0).text);
-        equal("NONE", templates.get(0).amountKind);
+    private static Cursor row(SQLiteDatabase database, String table, String[] columns,
+                              String keyColumn, String keyValue) {
+        Cursor row = database.query(table, columns, keyColumn + " = ?",
+                new String[]{keyValue}, null, null, null);
+        if (row.getCount() != 1 || !row.moveToFirst()) {
+            int count = row.getCount();
+            row.close();
+            throw new AssertionError("Expected exactly one " + table + " row for "
+                    + keyColumn + "=" + keyValue + ", found " + count);
+        }
+        return row;
+    }
 
-        OccurrenceEntity occurrence = database.tasks().occurrence(OCCURRENCE_ID);
-        notNull(occurrence);
-        equal(TASK_ID, occurrence.taskId);
-        equal("OPEN", occurrence.state);
-        equal("LATER", occurrence.slot);
+    private static String text(Cursor row, String column) {
+        return row.getString(row.getColumnIndexOrThrow(column));
+    }
 
-        OccurrenceStepEntity occurrenceStep = database.tasks().occurrenceStep(STEP_ID);
-        notNull(occurrenceStep);
-        equal(STEP_TEXT, occurrenceStep.text);
-        check(occurrenceStep.done, "The persisted occurrence step is not done");
-        equal("NONE", occurrenceStep.amountKind);
-        equal("", occurrenceStep.legacyActualRepetitions);
-        equal(TEMPLATE_ID, occurrenceStep.sourceTemplateId);
-        equal(1, database.tasks().rewardBookings(OCCURRENCE_ID).size());
-        equal(10, database.tasks().rewardBookings(OCCURRENCE_ID).get(0).xpDelta);
-        equal(73, database.tasks().stats().xp);
+    private static long number(Cursor row, String column) {
+        return row.getLong(row.getColumnIndexOrThrow(column));
+    }
 
-        equal(UiThemeMode.DARK, application.container().uiPreferences.themeMode());
-        equal(CalendarPolicy.GOOGLE_ONLY,
-                application.container().uiPreferences.calendarPolicy());
+    private static void verifyPreferences(Context context) {
+        SharedPreferences ui = context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE);
+        equal("DARK", ui.getString("theme_mode", ""));
+        equal("GOOGLE_ONLY", ui.getString("calendar_policy", ""));
         SharedPreferences updates = context.getSharedPreferences(
                 "forest_updates", Context.MODE_PRIVATE);
         equal(SEEDED_LAST_CHECK, updates.getLong("last_update_check", -1L));
         equal(SEEDED_POSTPONED_CODE, updates.getLong("postponed_update_code", -1L));
         equal(SEEDED_POSTPONED_AT, updates.getLong("postponed_update_at", -1L));
-        SharedPreferences ui = context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE);
         check(!ui.contains("last_update_check"), "Legacy last-update check was not migrated");
         check(!ui.contains("postponed_update_code"), "Legacy postponed code was not migrated");
         check(!ui.contains("postponed_update_at"), "Legacy postponed time was not migrated");
-
-        Intent launch = new Intent(context, MainActivity.class)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        Activity activity = instrumentation.startActivitySync(launch);
-        notNull(activity);
-        equal(MainActivity.class, activity.getClass());
-        instrumentation.runOnMainSync(activity::finish);
     }
 
     @SuppressWarnings("deprecation")

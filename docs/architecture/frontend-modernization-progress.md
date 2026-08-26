@@ -2171,3 +2171,35 @@ normaler Android-Test- und R8-Release-Bau. Der Remote-Abschluss erfordert weiter
 Pull Request, die echte Upgrade-Matrix auf API 26/35/37, Squash-Merge und den veröffentlichenden
 `main`-Lauf. Die physische Sicht- und In-App-Update-Abnahme bleibt offen und wird ohne Handy nicht
 als bestanden gewertet.
+
+### Phase 5b – zehnte Nachtarbeitsphase: stabile Upgrade-Datengrenze
+
+Pull Request `#286` bestand Quality und alle sechs normalen beziehungsweise animationsaktiven
+Emulatorpfade und wurde als `faf4ab2e662165190f0100e7abeed6d4639597c2` per Squash nach `main`
+übernommen. Hauptlauf `32950310883` bestätigte erneut Quality, die gesamte Gerätematrix, das
+Instrumentierungs-Aggregat und die signierte Paketierung. Der neue plattformeigene Runner startete
+auf allen drei Upgrade-APIs und die Seed-Phase bestand. Verify erreichte damit erstmals die
+eigentliche Produktdatenprüfung, scheiterte aber einheitlich an
+`AutoSecretaryApplication.from(Context)`: R8 hatte diese im Produkt verwendete Hilfsmethode in
+ihre internen Aufrufer eingebettet und anschließend entfernt. Der externe Test-Aufruf behandelte
+eine optimierbare Implementationsmethode fälschlich als Release-ABI. Veröffentlichung blieb
+korrekt gesperrt; Release 0.2.132 blieb der aktuelle Produktionsstand.
+
+Vor dem Folgeschnitt wurden Original-Roadmap, aktuelle Phase-5b-Nachweise, App-Initialisierung,
+MainActivity-Einstieg, Room-Schema 19, Fixture und alle bisherigen Verify-Assertions erneut
+abgeglichen. Weitere Produkt-Keeps oder einzelne Umgehungen von `from()` werden verworfen, weil
+auch `container()`, DAO-Methoden und Entitykonstruktoren durch R8 eingebettet oder entfernt werden
+dürfen. Die zehnte Nachtarbeit legt deshalb die stabile Testgrenze an Androids Paket-, Activity-,
+SQLite- und SharedPreferences-APIs. Verify startet die echte MainActivity über ihren
+Manifestnamen, wartet begrenzt auf das vom Produkt auf Schema 19 migrierte Datenbankfile und liest
+danach dieselben Task-, Schedule-, Template-, Occurrence-, Step-, Reward-, Stats-, Theme-,
+Kalender- und Updatewerte direkt aus der persistenten Außengrenze. Die Probe führt keine Migration
+selbst aus und öffnet die Datenbank nur lesend; ein fehlender Produktstart, ein falsches Schema
+oder ein abweichender Wert bleibt ein harter Fehler.
+
+Ein negativer Workflowvertrag verbietet nun AndroidX, JUnit und sämtliche produktinternen
+Application-, Room-, Contract-, Entity- und Enum-APIs im eigenständigen Probe. Der explizite
+Upgrade-Testpaketbau sowie alle 23 Release-/Workflowverträge sind lokal grün. Vor dem Pull Request
+folgen erneut die 16 CI-Harness-Tests und das vollständige lokale Android-Gate. Der Abschluss
+bleibt an eine neue grüne API-26/35/37-Upgradematrix, Veröffentlichung und Remote-`main` gebunden;
+die physische Sicht- und In-App-Update-Abnahme bleibt offen.

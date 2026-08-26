@@ -263,6 +263,17 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("extends Instrumentation", UPGRADE_INSTRUMENTATION)
         self.assertNotIn("androidx.", UPGRADE_INSTRUMENTATION + UPGRADE_PROBE)
         self.assertNotIn("org.junit", UPGRADE_INSTRUMENTATION + UPGRADE_PROBE)
+        for product_api in (
+            "AutoSecretaryApplication",
+            "AppDatabase",
+            "DatabaseContract",
+            "data.local",
+            "UiThemeMode",
+            "CalendarPolicy",
+        ):
+            self.assertNotIn(product_api, UPGRADE_PROBE)
+        self.assertIn("SQLiteDatabase.OPEN_READONLY", UPGRADE_PROBE)
+        self.assertIn("TARGET_DATABASE_VERSION = 19", UPGRADE_PROBE)
         self.assertIn("OK (1 probe)", UPGRADE_INSTRUMENTATION)
 
     def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):
