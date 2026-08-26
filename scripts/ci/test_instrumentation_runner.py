@@ -97,7 +97,11 @@ class InstrumentationRunnerTest(unittest.TestCase):
                     #!/usr/bin/env bash
                     printf '%s\n' "$*" >> "$ADB_CALL_LOG"
                     if [ "$1 $2 $3" = "shell settings get" ]; then
-                      printf '%s\n' "$EXPECTED_SCALE"
+                      if [ "$5" = hide_error_dialogs ]; then
+                        printf '1\n'
+                      else
+                        printf '%s\n' "$EXPECTED_SCALE"
+                      fi
                     fi
                     """
                 ),
@@ -121,6 +125,8 @@ class InstrumentationRunnerTest(unittest.TestCase):
             self.assertTrue(gradle_marker.is_file())
             calls = adb_log.read_text()
             for command in (
+                "shell settings put global hide_error_dialogs 1",
+                "shell settings get global hide_error_dialogs",
                 "shell input keyevent KEYCODE_WAKEUP",
                 "shell wm dismiss-keyguard",
                 "shell input keyevent 82",
@@ -135,6 +141,48 @@ class InstrumentationRunnerTest(unittest.TestCase):
                 with self.subTest(setting=setting):
                     self.assertIn(f"shell settings put global {setting} 1.0", calls)
                     self.assertIn(f"shell settings get global {setting}", calls)
+
+    def test_error_dialog_suppression_mismatch_fails_before_gradle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = pathlib.Path(directory)
+            gradle_marker = temporary / "gradle-ran.txt"
+            gradle = self._executable(
+                temporary / "gradle",
+                "#!/usr/bin/env bash\nprintf 'yes\\n' > \"$GRADLE_MARKER\"\n",
+            )
+            self._executable(
+                temporary / "adb",
+                textwrap.dedent(
+                    """\
+                    #!/usr/bin/env bash
+                    if [ "$1 $2 $3" = "shell settings get" ]; then
+                      printf '0\n'
+                    fi
+                    """
+                ),
+            )
+            report_root = temporary / "reports"
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "GRADLE_MARKER": str(gradle_marker),
+                    "INSTRUMENTATION_API_LEVEL": "35",
+                    "INSTRUMENTATION_PREPARE_INTERACTION_DEVICE": "true",
+                    "INSTRUMENTATION_GRADLE_EXECUTABLE": str(gradle),
+                    "INSTRUMENTATION_REPORT_ROOT": str(report_root),
+                    "PATH": str(temporary) + os.pathsep + environment["PATH"],
+                }
+            )
+
+            result = subprocess.run([str(RUNNER)], cwd=ROOT, env=environment, check=False)
+
+            self.assertEqual(44, result.returncode)
+            self.assertFalse(gradle_marker.exists())
+            report = report_root / "api-35" / "attempt-1"
+            self.assertIn(
+                "hide_error_dialogs=0",
+                (report / "interaction-settings.txt").read_text(),
+            )
 
     def test_animation_scale_mismatch_fails_before_gradle_and_is_diagnosed(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -74,14 +74,14 @@ UPDATE_FOCUS_TASK_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests de.thonktank.autosecretary.FocusTaskViewGoldenRobolectricTest
 UPDATE_HOMESCREEN_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests de.thonktank.autosecretary.HomescreenGoldenRobolectricTest
-UPDATE_TASK_EDITOR_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
-  --tests de.thonktank.autosecretary.TaskEditorGoldenRobolectricTest
 UPDATE_ALL_TASKS_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests '*AllTasksRenderRobolectricTest'
 ```
 
-Es gibt bewusst keinen globalen Update-Schalter. Ein Fokusupdate kann dadurch Widget- oder
-Editor-Baselines nicht mitschreiben. `GoldenAssertions` übernimmt eine Baseline nur, wenn das
+Es gibt bewusst keinen globalen Update-Schalter. Die Editor-Baselines sind seit dem Compose-
+Cutover vollständig schreibgeschützt und werden mit
+`TaskEditorComposeGoldenRobolectricTest` nur noch gelesen. Ein Fokusupdate kann dadurch Widget-
+oder Editor-Baselines nicht mitschreiben. `GoldenAssertions` übernimmt eine andere Baseline nur, wenn das
 vorher erzeugte Triplet pixelgenau zum aktuellen Expected und Actual passt; ein fehlendes oder
 veraltetes Triplet bricht den Updateversuch ab. Für eine neue Baseline gilt derselbe Ablauf mit
 dem zuerst erzeugten Actual; ein Update ohne exakt passendes vorheriges Actual bricht ab. Unter

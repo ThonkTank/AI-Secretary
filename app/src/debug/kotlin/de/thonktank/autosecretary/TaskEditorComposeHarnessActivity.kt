@@ -34,7 +34,7 @@ class TaskEditorComposeHarnessActivity : ComponentActivity(), TaskEditorComposeH
         val root = FrameLayout(this)
         val forest = ForestBackdropView(this).also { it.setPalette(palette) }
         root.addView(forest, FrameLayout.LayoutParams(-1, -1))
-        editor = TaskEditorComposeHostView(this)
+        editor = TaskEditorComposeHostView(this).also { it.id = R.id.task_editor_compose_host }
         root.addView(editor, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
@@ -67,14 +67,20 @@ class TaskEditorComposeHarnessActivity : ComponentActivity(), TaskEditorComposeH
 
     override fun onSave(draft: EditorUiState) {
         saveCount++
+        state = de.thonktank.autosecretary.editor.TaskEditorStateReducer.saving(draft, true)
+        bind()
     }
 
     override fun onDelete(taskId: String) {
         deleteCount++
+        state = de.thonktank.autosecretary.editor.TaskEditorStateReducer.saving(state, true)
+        bind()
     }
 
     override fun onDismiss() {
         dismissCount++
+        state = EditorUiState.closed()
+        bind()
     }
 
     private fun bind() {

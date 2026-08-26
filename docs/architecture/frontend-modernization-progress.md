@@ -1919,3 +1919,132 @@ keine Foundation-, Animation- oder UI-Test-Abhängigkeit im Release-Laufzeitpfad
 lokale Nachtarbeitsphase ist damit nicht begründet. Phase 5a bleibt bis zum eigenen grünen Pull
 Request, Squash-Merge und veröffentlichenden `main`-Lauf offen. Die physische Sicht- und
 In-App-Update-Abnahme bleibt gemäß Owner-Anweisung offen und wird nicht als bestanden gewertet.
+
+PR `#280` bestand danach auf Commit `d71ba53c` das Quality-Gate sowie die normale und
+animationsaktive Gerätematrix auf API 26/35/37. Die normalen Läufe führten auf API 26/35 je 32
+Tests und auf API 37 nach dem treiberspezifischen Austausch 29 Tests ohne Fehler aus. Der PR wurde
+als `78ccd719b647522affa8f777d99bede7f2a81626` per Squash nach `main` übernommen. Im ersten
+Produktionsversuch verlor ausschließlich ein API-35-Emulator global seinen Eingabefokus: Acht
+fachlich unabhängige Editor-/Today-Tests sahen trotz `RESUMED` und `Displayed` kein fokussiertes
+Fenster, Diagnose und Screenshot zeigten den Launcher und `FocusedWindows: none`. Derselbe Commit
+war im PR auf API 35 grün, ebenso der parallele Animationsjob. Der gezielte Wiederholungsversuch
+auf einem frischen Emulator bestand. Der vollständige Produktionslauf `32916126233` baute danach
+Paket und Upgradepfade auf API 26/35/37 grün und veröffentlichte Release 0.2.132 mit Tag
+`forest-android-1013201`. Remote-`main`, Tag, Releaseziel und Metadaten zeigen auf den exakten
+Merge-Commit. Die separat geladene APK misst 6.467.018 Byte; ihr SHA-256
+`998f2aa21b7bc4fc35a7c2976c06e2224a096f1d7c99636b2712910c8bdcbdbb` stimmt mit Asset und
+Metadaten überein. Phase 5a ist damit automatisiert abgeschlossen; die physische Abnahme bleibt
+offen.
+
+### Phase 5b – Vorprüfung und Implementationsplan für den produktiven Cutover
+
+Vor dem neuen Branch wurden Original-Roadmap, ADR-022, der veröffentlichte 5a-Stand,
+Editor-Referenzvertrag, Compose-Renderer und -Dispatcher, `TaskEditorCoordinator`, `MainActivity`,
+`TaskEditorViewModel`, Legacy-Editor/-Schritteditor, deren XML und Helfer sowie lokale,
+Instrumentierungs-, Golden-, Adaptive- und Workflowverträge erneut gelesen. Der Schnitt bleibt
+ein einzelner kohärenter Screen-Cutover: Es wird kein zweiter State Owner und keine parallele
+Produktwahrheit eingeführt.
+
+Der unveränderte 5a-Renderer wandert in den Produktquellsatz; Foundation und Animation werden zu
+Produktabhängigkeiten. `TaskEditorCoordinator` bleibt alleinige Mount-, Inset-, Flight- und
+Host-Back-Grenze, erzeugt aber nur noch den Compose-Host und bindet weiterhin ausschließlich den
+vom `TaskEditorViewModel` veröffentlichten `EditorUiState`. Eine stabile Host-ID sichert den
+Compose-Saveable-State über Activity-Recreation. MainActivity dispatcht weiterhin dieselben vier
+typisierten Editor-Actions. Erst nach grünen Cutover-Verträgen entfallen `TaskEditorView`,
+`TaskStepsEditorView`, `TaskEditorControlFactory`, `TaskEditorLayoutPolicy`, `TaskEditorMotion`,
+das Legacy-Layout, der alte Debug-Harness und ihre implementationseigenen Tests.
+
+Die Nachweise werden nicht auf die 5a-Side-by-Side-Suite reduziert. Die reale Compose-
+Instrumentierung ergänzt Save, Delete und Close einschließlich Wiederholung, Prompt-Recreation,
+Fokus und seitenbezogener Scrollrestauration. Die Animationsmatrix führt auf API 26/35 den
+detaillierten Compose-Treiber und auf API 37 dessen UI-Automator-Ersatz aus. Coordinator- und
+Architekturtests sichern produktives Mounting, Composition-Entsorgung, fehlende Legacy-Dateien,
+einen Ownercallback vor sichtbarer Mutation und unveränderte Hostnavigation. Die autoritativen
+Legacy-Goldens bleiben schreibgeschützte Referenz und werden vom Compose-Renderer weiter
+verglichen. Da Compose nun im Release liegt, ist das 8-MiB-Releasegate ein eigener blockierender
+Cutover-Nachweis; eine nötige Schrumpfung darf weder Debug-Testgraph noch Stacktraces entwerten.
+Schema 19, Domainverhalten, SDK-Grenzen, Updatevertrag und Produktgestaltung bleiben unverändert.
+Ohne Handy wird gemäß Owner-Anweisung weitergearbeitet, die physische Sicht- und
+In-App-Update-Abnahme aber ausdrücklich nicht als bestanden gewertet.
+
+### Phase 5b – Implementation und lokaler Roadmap-Abgleich
+
+Der Editor-Renderer liegt nun im Produktquellsatz. `TaskEditorCoordinator` montiert ausschließlich
+den `TaskEditorComposeHostView`, setzt eine stabile Host-ID, reicht Systemleisten-Insetwerte weiter
+und entsorgt die Composition beim Schließen oder beim Ende des Activity-Lebenszyklus. Der Host
+bindet weiterhin nur den vom `TaskEditorViewModel` veröffentlichten `EditorUiState`; Draft-, Save-,
+Delete- und Dismiss-Aktionen verlassen Compose über denselben typisierten Listener und werden erst
+nach der Rückbindung des Owners sichtbar. `MainActivity`, Schema 19, Domain-Use-Cases und
+Produkttexte bleiben fachlich unverändert.
+
+Fokus und seitenbezogener Scrollzustand werden über den stabilen Saveable-State des Hosts
+restauriert. Ein einziges saveable Fokus-Tag pro Editor-Composition verhindert konkurrierende
+Feldwahrheiten; ein lokaler Restoration-Pending-Zustand schützt dieses Tag vor dem anfänglichen
+unfokussierten Compose-Callback. Save und bestätigtes Delete wechseln nach der
+Owner-Rückbindung in den nicht erneut auslösbaren Saving-Zustand; ein bestätigtes Close entfernt
+den Host. Die detaillierte Compose-Instrumentierung prüft zusätzlich die vollständige
+Create-Journey, Fokus und Scroll über Recreation sowie Save, Delete und Close. API 37 erhält
+dieselben kritischen Abschlussaktionen über die bereits in 5a etablierte UI-Automator-Grenze.
+
+Der alte `TaskEditorView`, `TaskStepsEditorView`, ihre Factory-, Layout- und Motionhelfer, das XML,
+der alte Debug-Harness sowie renderergebundene View-, Golden-, Adaptive- und Acceptance-Tests sind
+entfernt. Die freigegebenen zehn kanonischen und fünf adaptiven Bildstände bleiben dagegen als
+schreibgeschützter Referenzvertrag erhalten und werden vom produktiven Compose-Renderer gelesen.
+Ein neuer reiner Dispatcher-Vertrag bewahrt die früheren Journey-, Back-, Prompt-, Save- und
+Delete-Invarianten unabhängig von einem konkreten View-Typ; die reale Produktmontage wird
+zusätzlich über `MainActivity` und den Coordinator geprüft.
+
+Compose Foundation und Animation sind jetzt Produktabhängigkeiten. Der Release-Build wird mit R8
+optimiert und ressourcenbereinigt, bleibt aber absichtlich nicht obfuskiert und behält Quelldatei-
+und Zeilennummern für auswertbare Produktionsdiagnosen. Das lokale unsigned Release misst
+2.569.278 Byte, das ungeschrumpfte Instrumentierungsziel 11.445.777 Byte, die Android-Test-APK
+2.659.658 Byte und die Fonts 1.478.008 Byte. Damit bleibt das auslieferbare APK deutlich unter
+dem blockierenden 8-MiB-Vertrag, ohne den vollständigen Testlaufzeitgraphen zu schrumpfen.
+Das exakte lokale Quality-Kommando ist grün: 475 Host-/Robolectric-/Golden-Tests ohne Fehler bei
+einem bewussten Skip, Debug-Lint, Debug-, Instrumentierungs-, Android-Test- und unsigned
+Release-Paket. Zusätzlich bestehen alle 14 CI-Harness- und 23 Release-/Workflow-Verträge.
+
+Der negative Abgleich nach dem ersten Schnitt führte zu drei Nachtarbeitskorrekturen. Erstens
+verwendeten zwei alte Coordinator-Tests eine nackte `Activity`, obwohl der Compose-Host wie das
+Produkt einen Lifecycle- und Saved-State-Owner benötigt; sie laufen nun gegen dieselbe
+`ComponentActivity`-Grenze wie `MainActivity`, während `dispose()` Dashboard und Composition
+deterministisch bereinigt. Zweitens hätte ein unabhängiger Fokus-Restorer je Feld seinen
+gespeicherten Wert durch den ersten unfokussierten Callback verlieren können. Das einzelne
+saveable Fokus-Tag plus Pending-Zustand schließt dieses Fenster und lässt bei einem echten
+Fokuswechsel weiterhin nur das neue Feld als Wiederherstellungsziel zurück. Drittens waren nach
+Entfernung der View-spezifischen Acceptance-Suite mehrere Journey-
+Invarianten nur indirekt geschützt; der Dispatcher-Vertrag und die komplette Compose-Create-
+Journey schließen diese Abdeckungsdelle. Eine weitere lokale Nachtarbeitsphase ist nach grünem
+lokalem Abschlussgate zunächst nicht begründet; die entfernte Gerätematrix bleibt als eigener
+Nacharbeitsauslöser verbindlich. Die physische Sicht- und In-App-Update-Abnahme bleibt gemäß
+Owner-Anweisung offen und wird nicht als bestanden gewertet.
+
+Der erste entfernte Gerätematrixlauf `32922319104` bestätigte Quality, Größenbudget sowie beide
+API-37-Jobs, fand aber auf API 26/35 zwei neue Testfehler. Der Delete-Vertrag hatte korrekt auf den
+Ownerzustand „Bitte kurz warten …“ zurückgebunden, während die Assertion weiter nach dem dadurch
+ersetzten Text „Löschen“ suchte. Außerdem blieb der eingegebene Notiztext über Recreation erhalten,
+das per-Feld gespeicherte Fokusbit jedoch nicht. Die Assertion folgt nun dem wirklichen
+Busy-Zustand; die produktive Fokusrestauration verwendet den oben beschriebenen einzigen
+Composition-State. Beide Korrekturen ändern weder Draft noch Domain und werden vor einem neuen
+Matrixlauf erneut lokal vollständig geprüft.
+
+Der zweite entfernte Lauf `32924509902` bestätigte diese beiden Reparaturen: Quality, die normalen
+API-26/35/37-Läufe, beide API-26/37-Animationsläufe und insbesondere alle zehn detaillierten
+Compose-Editor-Tests auf API 35 mit aktiven Animationen waren grün. Erst die danach ausgeführten
+Heute-Gestentests trafen auf API 35 auf einen fremden Systemzustand. Alle drei Aktivitäten waren
+erstellt, gebunden und `RESUMED`, erhielten aber keinen Fensterfokus. Das hochgeladene Bildschirm-
+und WindowManager-Artefakt zeigte als fokussiertes Fenster den Systemdialog „Pixel Launcher isn't
+responding“ über dem Launcher. Es lag damit weder ein Editorfehler noch ein fachlicher Heute-
+Fehler vor; der Emulator ließ einen Fehlerdialog einer fremden App die nachfolgenden Testfenster
+verdecken.
+
+Diese Beobachtung begründet eine vierte Nachtarbeitskorrektur im vorhandenen Testnetz. Der
+Instrumentierungsrunner setzt bei Interaktionsläufen nun `hide_error_dialogs=1` und liest den Wert
+vor dem Gradle-Start zurück. Eine abweichende Einstellung bricht mit eigenem Status und
+`interaction-settings.txt` ab, statt Produktfehler zu simulieren. Die Heute-Gestendiagnose nennt
+zusätzlich Fensterfokus, Attachment sowie sichtbare und gegen das Fenster geschnittene Geometrie.
+Der Runnervertrag erzwingt Setzen, Rücklesen, Fehlervorverlagerung und Diagnoseartefakt. Nach
+diesem Schnitt sind erneut alle 17 betroffenen Runner-/Workflowverträge sowie das vollständige
+lokale Quality-, Lint-, Debug-, Instrumentierungs-, Android-Test- und Release-Gate grün. Die
+Remote-Matrix muss die Härtung noch bestätigen; die physische Sicht- und In-App-Update-Abnahme
+bleibt offen.

@@ -23,7 +23,13 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +38,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Shape
@@ -54,6 +61,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.R
 
@@ -65,6 +74,10 @@ internal val EditorSans = FontFamily(
     Font(R.font.alegreya_sans, FontWeight.Normal),
     Font(R.font.alegreya_sans_bold, FontWeight.Bold),
 )
+
+internal val LocalEditorFocusedInputTag = staticCompositionLocalOf<MutableState<String?>> {
+    error("Task editor focus registry is missing")
+}
 
 @Immutable
 internal data class EditorLayout(
@@ -258,13 +271,32 @@ internal fun EditorInput(
     focusRequester: FocusRequester? = null,
     tag: String? = null,
 ) {
-    val requestModifier = if (focusRequester == null) Modifier else Modifier.focusRequester(focusRequester)
+    val localFocusRequester = remember { FocusRequester() }
+    val activeFocusRequester = focusRequester ?: localFocusRequester
+    val focusedInputTag = LocalEditorFocusedInputTag.current
+    val lifecycle = (LocalContext.current as? LifecycleOwner)?.lifecycle
+    var restorationPending by remember(tag) {
+        mutableStateOf(tag != null && focusedInputTag.value == tag)
+    }
+    LaunchedEffect(restorationPending) {
+        if (restorationPending) activeFocusRequester.requestFocus()
+    }
     val underline = if (error) Color.argb(palette.bad) else Color.argb(palette.accent)
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier
-            .then(requestModifier)
+            .focusRequester(activeFocusRequester)
+            .onFocusChanged {
+                if (it.isFocused) {
+                    focusedInputTag.value = tag
+                    restorationPending = false
+                } else if (!restorationPending && focusedInputTag.value == tag &&
+                    lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) == true
+                ) {
+                    focusedInputTag.value = null
+                }
+            }
             .then(if (tag == null) Modifier else Modifier.testTag(tag))
             .defaultMinSize(minHeight = if (multiline) 56.dp else 48.dp)
             .drawBehind {

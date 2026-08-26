@@ -7,6 +7,7 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksAction;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
+import de.thonktank.autosecretary.presentation.editor.TaskEditorComposeHostView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 
@@ -86,6 +87,8 @@ public final class UiComponentRobolectricTest {
             ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
             assertTrue(editor.state().getValue().content.open);
+            assertTrue(activity.findViewById(R.id.task_editor_compose_host)
+                    instanceof TaskEditorComposeHostView);
             assertFalse(activity.getIntent().hasExtra(MainActivity.OPEN_EDITOR));
         }
     }

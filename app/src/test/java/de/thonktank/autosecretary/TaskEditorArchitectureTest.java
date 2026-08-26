@@ -12,27 +12,16 @@ import java.nio.file.Path;
 
 /** Guards the state/rendering boundaries introduced by the task-editor refactor. */
 public final class TaskEditorArchitectureTest {
-    @Test public void viewsDelegateStateChangesAndControlConstruction() throws IOException {
-        String editor = source("TaskEditorView.java");
-        String steps = source("TaskStepsEditorView.java");
+    @Test public void composeRendererDelegatesEveryDraftToTheExistingOwner() throws IOException {
+        String host = kotlinSource("presentation/editor/TaskEditorComposeHostView.kt");
+        String pages = kotlinSource("presentation/editor/TaskEditorComposePages.kt");
+        String steps = kotlinSource("presentation/editor/TaskEditorComposeSteps.kt");
 
-        assertTrue(editor.contains("TaskEditorStateReducer."));
+        assertTrue(pages.contains("TaskEditorStateReducer."));
         assertTrue(steps.contains("TaskEditorStateReducer."));
-        assertTrue(editor.contains("TaskEditorControlFactory"));
-        assertTrue(steps.contains("TaskEditorControlFactory"));
-        assertFalse(editor.contains("new EditText("));
-        assertFalse(steps.contains("new EditText("));
-        assertFalse(editor.contains("state.draft("));
-        assertFalse(editor.contains("state.withFeedback("));
-        assertFalse(steps.contains("state.draft("));
-        String editorApply = editor.substring(editor.indexOf("private void apply(EditorUiState"),
-                editor.indexOf("private static void traceState"));
-        assertTrue(editorApply.indexOf("listener.onDraftChanged(validated)")
-                < editorApply.indexOf("state = validated"));
-        String stepsApply = steps.substring(steps.indexOf("private void apply(EditorUiState"),
-                steps.indexOf("private static LayoutParams params"));
-        assertTrue(stepsApply.indexOf("listener.onStateChanged(next, rerender)")
-                < stepsApply.indexOf("state = next"));
+        assertTrue(host.contains("listener?.onDraftChanged(it)"));
+        assertFalse(host.contains("onDraftChanged = { editorState ="));
+        assertFalse(host.contains("MutableStateFlow"));
         String viewModel = source("TaskEditorViewModel.java");
         assertTrue(viewModel.contains("TaskEditorStateReducer."));
         assertFalse(viewModel.contains("draft.withSaving("));
@@ -66,17 +55,24 @@ public final class TaskEditorArchitectureTest {
     }
 
     @Test public void visibleSummaryCopyLivesOutsideViews() throws IOException {
-        String editor = source("TaskEditorView.java");
-        String steps = source("TaskStepsEditorView.java");
-        assertTrue(editor.contains("TaskEditorTextFormatter"));
-        assertTrue(steps.contains("TaskEditorTextFormatter"));
-        assertFalse(editor.contains("private String summaryLine"));
-        assertFalse(steps.contains("\"alle \" +"));
-        assertFalse(steps.contains("\", ausgewählt\""));
+        String renderer = kotlinSource("presentation/editor/TaskEditorComposeScreen.kt")
+                + kotlinSource("presentation/editor/TaskEditorComposePages.kt")
+                + kotlinSource("presentation/editor/TaskEditorComposeSteps.kt");
+        assertTrue(renderer.contains("TaskEditorTextFormatter"));
+        assertFalse(renderer.contains("private fun summaryLine"));
+        assertFalse(renderer.contains("\"alle \" +"));
+        assertFalse(renderer.contains("\", ausgewählt\""));
     }
 
     private static String source(String name) throws IOException {
         Path path = sourcePath(name);
+        return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+    }
+
+    private static String kotlinSource(String name) throws IOException {
+        Path module = Path.of("src/main/kotlin/de/thonktank/autosecretary", name);
+        Path path = Files.exists(module) ? module
+                : Path.of("app/src/main/kotlin/de/thonktank/autosecretary", name);
         return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
     }
 

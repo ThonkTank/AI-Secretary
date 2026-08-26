@@ -90,11 +90,11 @@ EDITOR_INTERACTION_TEST = (
     / "app"
     / "src"
     / "androidTest"
-    / "java"
+    / "kotlin"
     / "de"
     / "thonktank"
     / "autosecretary"
-    / "TaskEditorInteractionInstrumentationTest.java"
+    / "TaskEditorComposeInstrumentationTest.kt"
 ).read_text(encoding="utf-8")
 TOUCH_DRIVER = (
     ROOT
@@ -204,17 +204,18 @@ class WorkflowContractTest(unittest.TestCase):
             WORKFLOW,
         )
 
-    def test_phase_5a_compose_foundation_keeps_both_apk_budgets_without_test_leakage(self):
-        self.assertIn('debugImplementation("androidx.compose.foundation:foundation")', APP_BUILD)
-        self.assertIn('debugImplementation("androidx.compose.animation:animation")', APP_BUILD)
+    def test_phase_5b_product_compose_keeps_both_apk_budgets_without_test_leakage(self):
+        self.assertIn('implementation("androidx.compose.foundation:foundation")', APP_BUILD)
+        self.assertIn('implementation("androidx.compose.animation:animation")', APP_BUILD)
         self.assertIn("isMinifyEnabled = true", APP_BUILD)
+        release_build = APP_BUILD.split('getByName("release")', 1)[1].split(
+            "testBuildType", 1
+        )[0]
+        self.assertIn("isShrinkResources = true", release_build)
+        self.assertIn('"proguard-release.pro"', release_build)
         self.assertIn('create("instrumentation")', APP_BUILD)
         self.assertIn('testBuildType = "instrumentation"', APP_BUILD)
         self.assertIn('getByName("instrumentation").setRoot("src/debug")', APP_BUILD)
-        self.assertIn(
-            'add("instrumentationImplementation", "androidx.compose.foundation:foundation")',
-            APP_BUILD,
-        )
         instrumentation_build = APP_BUILD.split('create("instrumentation")', 1)[1].split(
             'getByName("release")', 1
         )[0]
@@ -355,7 +356,8 @@ class WorkflowContractTest(unittest.TestCase):
             'INSTRUMENTATION_PREPARE_INTERACTION_DEVICE: "true"',
             animation_instrumentation,
         )
-        self.assertIn("TaskEditorInteractionInstrumentationTest", animation_instrumentation)
+        self.assertIn("TaskEditorComposeInstrumentationTest", animation_instrumentation)
+        self.assertIn("TaskEditorComposeApi37InstrumentationTest", animation_instrumentation)
         self.assertIn("AllTasksInteractionTest", animation_instrumentation)
         self.assertIn("TodayInteractionInstrumentationTest", animation_instrumentation)
         self.assertNotIn("INSTRUMENTATION_RERUN_TASKS", animation_instrumentation)
@@ -387,6 +389,8 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("connectedInstrumentationAndroidTest", INSTRUMENTATION_RUNNER)
         self.assertIn("status=$?", INSTRUMENTATION_RUNNER)
         self.assertIn('exit "$status"', INSTRUMENTATION_RUNNER)
+        self.assertIn("hide_error_dialogs", INSTRUMENTATION_RUNNER)
+        self.assertIn("interaction-settings.txt", INSTRUMENTATION_RUNNER)
         for diagnostic in (
             "screencap -p",
             "uiautomator dump",
@@ -430,20 +434,21 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("scrollDistance=", TODAY_GESTURE_TEST)
 
     def test_critical_interaction_tests_use_signals_instead_of_polling(self):
-        for source in (EDITOR_INTERACTION_TEST, TODAY_GESTURE_TEST):
-            with self.subTest(source=source[:80]):
-                self.assertIn("PresentationAwaiter.await", source)
-                self.assertNotIn("SystemClock.sleep", source)
-                self.assertNotIn("UI_POLL_MILLIS", source)
+        self.assertIn("compose.waitUntil", EDITOR_INTERACTION_TEST)
+        self.assertNotIn("SystemClock.sleep", EDITOR_INTERACTION_TEST)
+        self.assertNotIn("UI_POLL_MILLIS", EDITOR_INTERACTION_TEST)
+        self.assertIn("PresentationAwaiter.await", TODAY_GESTURE_TEST)
+        self.assertNotIn("SystemClock.sleep", TODAY_GESTURE_TEST)
+        self.assertNotIn("UI_POLL_MILLIS", TODAY_GESTURE_TEST)
 
         self.assertIn("CountDownLatch", PRESENTATION_AWAITER)
         self.assertIn("TIMEOUT_MILLIS", PRESENTATION_AWAITER)
         self.assertNotIn("SystemClock.sleep", PRESENTATION_AWAITER)
         self.assertIn(
-            "recreationDuringTextInputRestoresTheLatestDraft", EDITOR_INTERACTION_TEST
+            "recreationKeepsTheAuthoritativeDraftAndCurrentPage", EDITOR_INTERACTION_TEST
         )
         self.assertIn(
-            "recreationDuringPageMotionRestoresThePublishedDestination",
+            "focusedInputAndPageScrollSurviveRecreation",
             EDITOR_INTERACTION_TEST,
         )
 

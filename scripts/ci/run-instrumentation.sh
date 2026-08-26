@@ -10,6 +10,7 @@ gradle_executable="${INSTRUMENTATION_GRADLE_EXECUTABLE:-./gradlew}"
 animation_scale="${INSTRUMENTATION_ANIMATION_SCALE:-}"
 prepare_interaction_device="${INSTRUMENTATION_PREPARE_INTERACTION_DEVICE:-false}"
 animation_settings=(window_animation_scale transition_animation_scale animator_duration_scale)
+error_dialog_setting=hide_error_dialogs
 
 gradle_arguments=(connectedInstrumentationAndroidTest --stacktrace)
 if [ -n "$test_class" ]; then
@@ -21,6 +22,12 @@ fi
 
 status=0
 if [ "$prepare_interaction_device" = true ]; then
+  adb shell settings put global "$error_dialog_setting" 1 || status=43
+  actual=$(adb shell settings get global "$error_dialog_setting") || status=43
+  if [ "$actual" != 1 ]; then
+    printf 'Expected %s=1, got %s\n' "$error_dialog_setting" "$actual" >&2
+    status=44
+  fi
   adb shell input keyevent KEYCODE_WAKEUP || status=43
   adb shell wm dismiss-keyguard || status=43
   adb shell input keyevent 82 || status=43
@@ -53,6 +60,9 @@ if [ "$status" -ne 0 ]; then
     printf '%s=%s\n' "$setting" "$(adb shell settings get global "$setting" 2>/dev/null \
       || printf unreadable)"
   done > "$report_dir/animation-scales.txt"
+  printf '%s=%s\n' "$error_dialog_setting" \
+    "$(adb shell settings get global "$error_dialog_setting" 2>/dev/null || printf unreadable)" \
+    > "$report_dir/interaction-settings.txt"
   adb devices -l > "$report_dir/adb-devices.txt" 2>&1 || true
   adb exec-out screencap -p > "$report_dir/screenshot.png" \
     2> "$report_dir/screenshot-error.txt" || true

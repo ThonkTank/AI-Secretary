@@ -14,9 +14,11 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 import androidx.test.core.app.ApplicationProvider;
+import androidx.activity.ComponentActivity;
 
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
+import de.thonktank.autosecretary.presentation.editor.TaskEditorComposeHostView;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -97,13 +99,13 @@ public final class PresentationContractsRobolectricTest {
     }
 
     @Test public void taskEditorCoordinatorOwnsMountingAndDashboardVisibility() {
-        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        Activity activity = Robolectric.buildActivity(ComponentActivity.class).setup().get();
         FrameLayout root = new FrameLayout(activity);
         View dashboard = new View(activity);
         root.addView(dashboard);
         activity.setContentView(root);
         TaskEditorCoordinator coordinator = new TaskEditorCoordinator(activity, root, dashboard,
-                new TaskEditorView.Listener() {
+                new TaskEditorComposeHostView.Listener() {
                     @Override public void onDraftChanged(EditorUiState draft) { }
                     @Override public void onSave(EditorUiState draft) { }
                     @Override public void onDelete(String taskId) { }
@@ -113,22 +115,33 @@ public final class PresentationContractsRobolectricTest {
 
         coordinator.render(EditorUiState.create(), palette, LocalDate.of(2026, 8, 19));
         assertEquals(View.INVISIBLE, dashboard.getVisibility());
-        assertTrue(root.getChildCount() > 1);
+        assertEquals(2, root.getChildCount());
+        assertTrue(root.getChildAt(1) instanceof TaskEditorComposeHostView);
+        assertEquals(R.id.task_editor_compose_host, root.getChildAt(1).getId());
 
         coordinator.render(EditorUiState.closed(), palette, LocalDate.of(2026, 8, 19));
+        assertEquals(View.VISIBLE, dashboard.getVisibility());
+        assertEquals(1, root.getChildCount());
+        assertFalse(coordinator.handleBack());
+
+        coordinator.render(EditorUiState.create(), palette, LocalDate.of(2026, 8, 19));
+        assertEquals(View.INVISIBLE, dashboard.getVisibility());
+        assertEquals(2, root.getChildCount());
+
+        coordinator.dispose();
         assertEquals(View.VISIBLE, dashboard.getVisibility());
         assertEquals(1, root.getChildCount());
         assertFalse(coordinator.handleBack());
     }
 
     @Test public void editorStateCanOpenBeforeItsPresentationTransitionCompletes() {
-        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        Activity activity = Robolectric.buildActivity(ComponentActivity.class).setup().get();
         FrameLayout root = new FrameLayout(activity);
         View dashboard = new View(activity);
         root.addView(dashboard);
         activity.setContentView(root);
         TaskEditorCoordinator coordinator = new TaskEditorCoordinator(activity, root, dashboard,
-                new TaskEditorView.Listener() {
+                new TaskEditorComposeHostView.Listener() {
                     @Override public void onDraftChanged(EditorUiState draft) { }
                     @Override public void onSave(EditorUiState draft) { }
                     @Override public void onDelete(String taskId) { }

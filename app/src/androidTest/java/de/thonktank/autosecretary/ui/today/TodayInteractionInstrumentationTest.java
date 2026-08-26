@@ -221,11 +221,19 @@ public final class TodayInteractionInstrumentationTest {
             Rect window = new Rect();
             View decor = activity.getWindow().getDecorView();
             decor.getWindowVisibleDisplayFrame(window);
+            boolean hasVisibleRect = view.getGlobalVisibleRect(visible);
+            Rect clipped = new Rect(visible);
+            boolean intersectsWindow = !window.isEmpty() && hasVisibleRect
+                    && clipped.intersect(window);
+            currentGeometry = "pending windowFocus=" + activity.hasWindowFocus()
+                    + " attached=" + view.isAttachedToWindow()
+                    + " shown=" + view.isShown()
+                    + " visible=" + visible + " window=" + window
+                    + " clipped=" + clipped;
             if (!activity.hasWindowFocus() || !view.isAttachedToWindow() || !view.isShown()
-                    || !view.getGlobalVisibleRect(visible)
-                    || window.isEmpty() || !visible.intersect(window)
-                    || visible.width() < 3 || visible.height() < 3) return false;
-            result.set(visible);
+                    || !hasVisibleRect || !intersectsWindow
+                    || clipped.width() < 3 || clipped.height() < 3) return false;
+            result.set(clipped);
             return true;
         });
         return result;

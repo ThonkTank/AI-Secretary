@@ -24,10 +24,9 @@ Regression-Baselines.
 ## Kontaktblatt
 
 [`contact-sheet-variant-2a.png`](contact-sheet-variant-2a.png) stellt für alle zehn Zustände links
-die HTML-Referenz und rechts das aktuelle Android-Rendering gegenüber. Der Golden-Test erzeugt
-dasselbe Blatt bei jedem Lauf zusätzlich unter
-`app/build/reports/goldens/task-editor/contact-sheet-variant-2a.png`; dadurch wird es im
-Quality-Artefakt jedes Pull Requests veröffentlicht.
+die HTML-Referenz und rechts den visuell freigegebenen Android-Referenzstand gegenüber. Seit dem
+Compose-Cutover bleibt dieses geprüfte Handoff-Dokument unverändert; aktuelle Renderings und
+Diffs werden zustandsweise in den Quality-Artefakten veröffentlicht.
 
 ## Verhaltensabdeckung
 
@@ -42,8 +41,8 @@ Die Acceptance-Suite prüft:
 - Routing von der Übersicht zuerst zum fehlerhaften Aufgabenfeld und anschließend zum
   fehlerhaften Schritt.
 
-CI darf die Baselines weiterhin nicht aktualisieren. `GoldenAssertionsTest` und der bestehende
-Updatevertrag bleiben dafür das Gate. `TaskEditorGoldenCatalogTest` verhindert neue verwaiste
+CI darf die Baselines nicht aktualisieren. Der produktive Compose-Vergleich ist ausschließlich
+lesend und besitzt keinen Updatepfad. `TaskEditorGoldenCatalogTest` verhindert neue verwaiste
 Editor-Baselines und erzwingt die Eins-zu-eins-Zuordnung von Szenario, Golden und HTML-Referenz.
 
 ## Menschliche Freigabe
@@ -73,24 +72,23 @@ mit der Kurve `(0.2, 0.7, 0.3, 1)`; bei ausgeschalteten Systemanimationen werden
 in den Endzustand versetzt. Ein Quelltext-Gate verhindert unabhängige hart codierte Farben in den
 Editor-Komponenten.
 
-Die neuen Baselines liegen unter `app/src/test/resources/golden/task-editor/adaptive`. Sie können
-nur mit den lokalen, expliziten Update-Schaltern
-`UPDATE_TASK_EDITOR_ADAPTIVE_GOLDENS=1` und
-`UPDATE_TASK_EDITOR_ADAPTIVE_CONTACT=1` geschrieben werden; CI darf sie nicht verändern.
+Die freigegebenen Baselines liegen unter
+`app/src/test/resources/golden/task-editor/adaptive`. Nach dem Compose-Cutover sind sie
+schreibgeschützt; eine Änderung erfordert einen gesonderten, menschlich geprüften Design-Handoff.
 
-## Compose-Vergleichsrenderer (Phase 5a)
+## Produktiver Compose-Renderer (Phase 5b)
 
-Der Compose-Editor rendert dieselben zehn kanonischen und fünf adaptiven Zustände gegen die
+Der produktive Compose-Editor rendert dieselben zehn kanonischen und fünf adaptiven Zustände gegen die
 unveränderten, bereits freigegebenen Android-Baselines. Der eigene Vergleich ist mit 64
 Farbkanalstufen und höchstens 25 Prozent abweichenden Pixeln enger als der allgemeine
 Editor-Migrationsvertrag. Jeder Lauf schreibt die tatsächlichen Compose-Bilder in die
 Quality-Artefakte. Der Vergleich ist strikt schreibgeschützt: Weder lokal noch in CI existiert
-über 5a ein Aktualisierungspfad für die autoritativen Legacy-Baselines.
+ein Aktualisierungspfad für die autoritativen Referenzbaselines.
 
-Phase 5a montiert diesen Renderer ausschließlich in einem nicht exportierten Debug-Harness.
-Produktiv bleibt bis Phase 5b der freigegebene View-Renderer aktiv. Die automatisierte
-Side-by-Side-Prüfung ist deshalb weder ein produktiver Cutover noch eine neue menschliche oder
-physische Gerätefreigabe.
+Phase 5b montiert diesen Renderer über den produktiven `TaskEditorCoordinator`; der frühere
+View-Renderer, sein XML und seine reine View-Orchestrierung sind entfernt. Dieselbe Hostgrenze
+trägt die bestehenden Save-/Delete-/Close-Actions zum einzigen `TaskEditorViewModel`. Die
+automatisierte Prüfung ist keine neue menschliche oder physische Gerätefreigabe.
 
 ### Erneute menschliche Freigabe
 

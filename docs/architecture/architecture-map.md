@@ -8,9 +8,9 @@ und Kombozustand und Schema 19 den eingefrorenen Planwert quantitativer Rewards.
 ändern die hier beschriebenen Compiler-, Today- und Capability-Port-Grenzen nicht. Die aktuelle
 Präsentationsbaseline und ihre weitere Migration stehen in der
 [Frontend-Modernisierungsroadmap](frontend-modernization-roadmap.md).
-Phase 5a ergänzt einen vollständigen Compose-Vergleichsrenderer für den Aufgabeneditor. Bis zum
-produktiven Cutover in 5b bleibt `TaskEditorView` der aktive Renderer; beide Grenzen erhalten
-ausschließlich denselben vom `TaskEditorViewModel` veröffentlichten `EditorUiState`.
+Phase 5b schaltet den Aufgabeneditor vollständig auf Compose um. Der produktive
+`TaskEditorComposeHostView` erhält ausschließlich den vom `TaskEditorViewModel` veröffentlichten
+`EditorUiState`; der frühere View-Renderer und seine lokale Orchestrierung sind entfernt.
 
 ## Compilergrenzen
 
@@ -108,9 +108,9 @@ Transaktion; diese Invariante gilt auch unter Schema 19 unverändert.
 
 - Java-Module verhindern Android- und App-Rückimporte in Domain und Today-Kern.
 - Hosttests prüfen Fachregeln, Reducer, Room, Migrationen, Views, Accessibility und Goldens.
-- Der Compose-Editor wird gegen alle zehn kanonischen und fünf adaptiven Legacy-Baselines sowie
-  über Semantik-, Fokus-, Recreation-, Host-Back- und Actionverträge geprüft; 5a darf den
-  produktiven `TaskEditorCoordinator` nicht auf den Vergleichsrenderer umschalten.
+- Der produktive Compose-Editor wird gegen alle zehn kanonischen und fünf adaptiven freigegebenen
+  Baselines sowie über Semantik-, Fokus-, Scroll-, Recreation-, Host-Back- und Actionverträge
+  geprüft. Architekturtests verbieten einen zweiten Draft und die entfernte View-Orchestrierung.
 - Die Android-Test-APK enthält Today-Long-Press/Drag/Drop, Randscrollen,
   Accessibilityaktionen und Recreation eines nicht persistierten Reorders.
 - CI führt normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie echte

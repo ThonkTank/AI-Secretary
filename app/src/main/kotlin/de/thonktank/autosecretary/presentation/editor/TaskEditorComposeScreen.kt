@@ -198,6 +198,7 @@ private fun EditorPageViewport(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scroll)
+                .testTag("task-editor:scroll:$animatedPageKey")
                 .padding(
                     start = layout.pageStart,
                     top = 8.dp,
@@ -439,13 +440,18 @@ private fun EditorPrompt(
                     )
                     Row(Modifier.padding(top = 20.dp), verticalAlignment = Alignment.CenterVertically) {
                         EditorButton(
-                            text = stringResource(if (deleting) R.string.ask_delete_confirm else R.string.ask_discard_confirm),
+                            text = stringResource(
+                                if (state.saving) R.string.update_busy
+                                else if (deleting) R.string.ask_delete_confirm
+                                else R.string.ask_discard_confirm,
+                            ),
                             palette = palette,
                             onClick = {
                                 if (deleting) dispatcher.delete() else dispatcher.dismiss()
                             },
                             primary = true,
                             destructive = deleting,
+                            enabled = !state.saving,
                             modifier = Modifier.height(52.dp),
                         )
                         Spacer(Modifier.width(16.dp))

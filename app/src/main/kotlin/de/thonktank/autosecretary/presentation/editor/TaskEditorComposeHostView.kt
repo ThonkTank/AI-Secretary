@@ -3,8 +3,11 @@ package de.thonktank.autosecretary.presentation.editor
 import android.content.Context
 import android.util.AttributeSet
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -79,14 +82,17 @@ class TaskEditorComposeHostView @JvmOverloads constructor(
     @Composable
     override fun Content() {
         val density = LocalDensity.current
-        TaskEditorComposeScreen(
-            editorState,
-            palette,
-            today,
-            callbacks(),
-            contentTopInset = with(density) { topInsetPx.toDp() },
-            contentBottomInset = with(density) { bottomInsetPx.toDp() },
-        )
+        val focusedInputTag = rememberSaveable { mutableStateOf<String?>(null) }
+        CompositionLocalProvider(LocalEditorFocusedInputTag provides focusedInputTag) {
+            TaskEditorComposeScreen(
+                editorState,
+                palette,
+                today,
+                remember(listener) { callbacks() },
+                contentTopInset = with(density) { topInsetPx.toDp() },
+                contentBottomInset = with(density) { bottomInsetPx.toDp() },
+            )
+        }
     }
 
     private fun callbacks() = TaskEditorComposeCallbacks(
