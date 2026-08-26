@@ -224,7 +224,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("ui-test-manifest", APP_BUILD)
         self.assertIn("-keep class de.thonktank.autosecretary.** { *; }", DEBUG_PROGUARD)
         self.assertIn("-keepattributes SourceFile,LineNumberTable", DEBUG_PROGUARD)
-        self.assertIn("-keep class kotlin.jvm.internal.Intrinsics { *; }", RELEASE_PROGUARD)
+        self.assertIn("-keep class kotlin.** { *; }", RELEASE_PROGUARD)
         self.assertIn("assembleInstrumentationAndroidTest", WORKFLOW)
         self.assertNotIn("assembleDebugAndroidTest", WORKFLOW)
         self.assertIn("testInstrumentationUnitTest", WORKFLOW)

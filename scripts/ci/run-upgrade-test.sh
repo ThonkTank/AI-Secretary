@@ -60,13 +60,19 @@ run_probe() {
   local phase=$1
   local method=$2
   local output
+  local status
+  set +e
   output=$(adb shell am instrument -w -r -e upgradePhase "$phase" \
-    -e class "${test_class}#${method}" "$runner")
+    -e class "${test_class}#${method}" "$runner" 2>&1)
+  status=$?
+  set -e
   printf '%s\n' "$output"
-  case "$output" in
-    *"OK (1 test)"*) ;;
-    *) exit 1 ;;
-  esac
+  if [ "$status" -eq 0 ] && [[ "$output" == *"OK (1 test)"* ]]; then
+    return
+  fi
+  echo "Upgrade probe '$phase' failed; recent device log follows" >&2
+  adb logcat -d -v threadtime 2>&1 | tail -400 >&2 || true
+  return 1
 }
 
 for artifact in "$previous_apk" "$candidate_apk" "$test_apk"; do
