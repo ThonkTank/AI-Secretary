@@ -2590,6 +2590,14 @@ für eine tatsächliche Randbewegung an. Der Randscrolltest friert während des 
 automatische Testuhr ein, fährt die benötigten Frames kontrolliert vor, löst den Pointer und prüft
 erst im danach wieder ruhigen Zustand den erzielten Scrollfortschritt.
 
+Der fünfte Lauf bestätigte, dass das Idling-Problem verschwunden ist, deckte aber zwei
+deterministische Schwächen im Nachweis auf. Die Zielkoordinate war noch vor dem Dragstart gelesen
+worden; der Drag blendet anschließend reale Dropzeilen ein und verschiebt damit genau diese
+Geometrie. Quelle und Ziel werden nun erst nach der sichtbaren Dragsemantik erneut vermessen. Der
+Randscrollvertrag fährt die eingefrorene Hauptuhr außerdem frameweise statt in einem Zeitsprung und
+verlangt neben dem Scrollwert explizite Traceereignisse für Dragstart und untere Randrichtung. Ein
+Fehler unterscheidet dadurch Gestenerkennung, Randaktivierung und tatsächlichen Scrollfortschritt.
+
 Der erneute Abgleich findet keine parallele Screen-Wahrheit, keinen fortbestehenden Recyclerpfad,
 keinen persistierten Transientzustand und keine Änderung an Domain-, Room-, Request-, Schema-,
 SDK-, Signatur-, Upgrade- oder Gestaltungskontrakten. Die automatisierte Implementation benötigt

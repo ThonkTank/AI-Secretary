@@ -124,11 +124,8 @@ class AllTasksComposeInstrumentationTest {
         val source = compose.onNodeWithTag(
             "all-tasks:row:step:morning|MORNING:morning-step-0",
         )
-        val sourceBounds = source.fetchSemanticsNode().boundsInRoot
-        val targetCenter = compose.onNodeWithTag(
-            "all-tasks:row:task:bed|MORNING",
-        ).fetchSemanticsNode().boundsInRoot.center
 
+        PresentationTrace.clear()
         source.performTouchInput { down(center) }
         compose.mainClock.advanceTimeBy(longPressDurationMillis())
         compose.waitForIdle()
@@ -137,6 +134,10 @@ class AllTasksComposeInstrumentationTest {
                 "Schritt an dieser Position ablegen.",
             ).fetchSemanticsNodes().isNotEmpty(),
         )
+        val sourceBounds = source.fetchSemanticsNode().boundsInRoot
+        val targetCenter = compose.onNodeWithTag(
+            "all-tasks:row:task:bed|MORNING",
+        ).fetchSemanticsNode().boundsInRoot.center
         source.performTouchInput {
             moveTo(Offset(
                 targetCenter.x - sourceBounds.left,
@@ -146,6 +147,9 @@ class AllTasksComposeInstrumentationTest {
         }
 
         compose.waitUntil(5_000) { compose.activity.lastMove != null }
+        val trace = PresentationTrace.describe()
+        assertTrue(trace, trace.contains("all-tasks-drag/start"))
+        assertTrue(trace, trace.contains("all-tasks-drag/drop"))
         assertEquals("step:morning-step-0:bed:null", compose.activity.lastMove)
     }
 
@@ -164,6 +168,7 @@ class AllTasksComposeInstrumentationTest {
             sourceCenter.x - rootBounds.left,
             listBounds.bottom - rootBounds.top - 2,
         )
+        PresentationTrace.clear()
         root.performTouchInput {
             down(Offset(
                 sourceCenter.x - rootBounds.left,
@@ -174,7 +179,7 @@ class AllTasksComposeInstrumentationTest {
             compose.mainClock.advanceTimeBy(longPressDurationMillis())
             compose.mainClock.autoAdvance = false
             root.performTouchInput { moveTo(edge, 100) }
-            compose.mainClock.advanceTimeBy(1_000)
+            repeat(120) { compose.mainClock.advanceTimeByFrame() }
         } finally {
             root.performTouchInput { up() }
             compose.mainClock.autoAdvance = true
@@ -183,7 +188,10 @@ class AllTasksComposeInstrumentationTest {
 
         val settled = compose.onNodeWithTag("all-tasks:list").fetchSemanticsNode()
             .config[SemanticsProperties.VerticalScrollAxisRange].value()
-        assertTrue(settled > 0f)
+        val trace = PresentationTrace.describe()
+        assertTrue(trace, trace.contains("all-tasks-drag/start"))
+        assertTrue(trace, trace.contains("all-tasks-drag/edge direction=1"))
+        assertTrue(trace, settled > 0f)
     }
 
     @Test
