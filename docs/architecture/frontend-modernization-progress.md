@@ -2100,3 +2100,14 @@ mit `2.569.278` Byte unter dem 8-MiB-Budget und enthält nachweislich
 `Intrinsics.checkNotNullParameter(Object,String)`. Alle 38 CI-/Release-Verträge sowie
 `testInstrumentationUnitTest`, `lintDebug`, Debug-, Instrumentierungs- und Release-Paketierung
 liefen lokal grün. Die physische Sicht- und In-App-Update-Abnahme bleibt offen.
+
+Pull Request `#283` bestand Quality und wurde als
+`54f8dd22b9f993659990473e7d4c8409508c34cc` per Squash nach `main` übernommen. Der zugehörige
+`main`-Lauf `32934891104` blieb zwar grün, deckte aber eine Lücke in seiner Scope-Erkennung auf:
+`app/proguard-release.pro` lag außerhalb aller bekannten Produkt- und Buildpfade. Deshalb wurden
+Gerätematrix, Paketierung, Upgrade und Veröffentlichung trotz der Release-Regeländerung
+übersprungen; dieser Lauf ist ausdrücklich kein Upgrade-Nachweis. Die siebte Nachtarbeitskorrektur
+klassifiziert Release-Proguard-Regeln künftig als vollständigen Produkt-/Release-Scope und
+Debug-Proguard-Regeln als Quality-/Instrumentierungs-Scope. Regressionstests sichern beide
+Zuordnungen. Da `scripts/ci/change_scope.py` selbst bereits alle Gates auslöst, muss ihr gemergter
+`main`-Stand anschließend automatisch die vollständige Release- und Upgrade-Matrix ausführen.
