@@ -2222,3 +2222,29 @@ Paketierung. Ein Regressionstest prüft beide Seiten der Grenze. Da `change_scop
 vollständiger Buildinput ist, muss der Folgemerge automatisch Quality, sechs Gerätepfade,
 signiertes Paket, API-26/35/37-Upgrades und Veröffentlichung ausführen. Die physische Sicht- und
 In-App-Update-Abnahme bleibt offen.
+
+### Phase 5b – zwölfte Nachtarbeitsphase: Updatepräferenzen über Activity-Start
+
+Pull Request `#288` bestand Quality und alle sechs Gerätepfade und wurde als
+`049edd829375c7e1e88bf7c158afbb8a80961d0a` per Squash nach `main` übernommen. Hauptlauf
+`32956360690` bestätigte, dass der korrigierte Scope Quality, Matrix, signierte Paketierung und
+alle drei Upgrades ausführte. Auf API 26/35/37 bestanden Runnerstart, Seed, Kandidateninstallation,
+MainActivity-Start, Schema-19-Migration sowie der vollständige Datenbankreadback. Die letzte
+Assertion erwartete jedoch weiterhin den gesäten `last_update_check`-Wert `123456789`, während
+der echte Activity-Start ihn auf allen APIs auf den aktuellen Zeitpunkt setzte. Veröffentlichung
+blieb korrekt gesperrt.
+
+Der Roadmap-Gegencheck zeigt hier kein Datenverlustproblem. `SharedUpdatePreferences` migriert die
+drei alten Updatewerte bereits bei Application-Initialisierung verlustfrei aus `forest_ui` nach
+`forest_updates`. Danach führt `OptionsViewModel.automaticCheck()` beim Activity-Start
+vertragsgemäß eine neue Prüfung aus, wenn der gespeicherte Check mehr als 24 Stunden alt ist, und
+aktualisiert nur diesen Zeitstempel. Der frühere Probe las alle Preferences vor dem Activity-Start
+und konnte diese reale Lifecycle-Wirkung deshalb nicht sehen.
+
+Die zwölfte Nachtarbeit prüft die Grenze nun in zwei Zeitpunkten: Vor dem Activity-Start müssen
+alle gesäten Updatewerte exakt im dedizierten Store liegen und alle Legacy-Keys entfernt sein.
+Nach dem echten Start darf `last_update_check` ausschließlich monoton fortgeschrieben sein;
+Postpone-Code, Postpone-Zeitpunkt, Theme und Kalenderpolitik müssen exakt erhalten bleiben und
+Legacy-Keys dürfen nicht wieder erscheinen. Ein Workflowvertrag sichert Reihenfolge und
+Monotonie. Produktcode, Updateverhalten und Release-Scope bleiben unverändert. Die physische
+Sicht- und In-App-Update-Abnahme bleibt offen.

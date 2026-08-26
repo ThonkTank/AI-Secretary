@@ -85,6 +85,7 @@ final class UpgradePersistenceProbe {
         check(previousVersion > 0L, "The previous-version marker is missing");
         check(installedVersion(context) > previousVersion,
                 "adb install -r did not install a newer version");
+        verifyMigratedPreferences(context);
 
         Intent launch = new Intent()
                 .setClassName(context.getPackageName(), context.getPackageName() + ".MainActivity")
@@ -97,7 +98,7 @@ final class UpgradePersistenceProbe {
             try (SQLiteDatabase database = awaitMigratedDatabase(context)) {
                 verifyRows(database);
             }
-            verifyPreferences(context);
+            verifyPreferencesAfterActivityStart(context);
         } finally {
             instrumentation.runOnMainSync(activity::finish);
         }
@@ -193,7 +194,7 @@ final class UpgradePersistenceProbe {
         return row.getLong(row.getColumnIndexOrThrow(column));
     }
 
-    private static void verifyPreferences(Context context) {
+    private static void verifyMigratedPreferences(Context context) {
         SharedPreferences ui = context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE);
         equal("DARK", ui.getString("theme_mode", ""));
         equal("GOOGLE_ONLY", ui.getString("calendar_policy", ""));
@@ -205,6 +206,21 @@ final class UpgradePersistenceProbe {
         check(!ui.contains("last_update_check"), "Legacy last-update check was not migrated");
         check(!ui.contains("postponed_update_code"), "Legacy postponed code was not migrated");
         check(!ui.contains("postponed_update_at"), "Legacy postponed time was not migrated");
+    }
+
+    private static void verifyPreferencesAfterActivityStart(Context context) {
+        SharedPreferences ui = context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE);
+        equal("DARK", ui.getString("theme_mode", ""));
+        equal("GOOGLE_ONLY", ui.getString("calendar_policy", ""));
+        SharedPreferences updates = context.getSharedPreferences(
+                "forest_updates", Context.MODE_PRIVATE);
+        check(updates.getLong("last_update_check", -1L) >= SEEDED_LAST_CHECK,
+                "Activity startup lost the migrated update-check timestamp");
+        equal(SEEDED_POSTPONED_CODE, updates.getLong("postponed_update_code", -1L));
+        equal(SEEDED_POSTPONED_AT, updates.getLong("postponed_update_at", -1L));
+        check(!ui.contains("last_update_check"), "Legacy last-update check reappeared");
+        check(!ui.contains("postponed_update_code"), "Legacy postponed code reappeared");
+        check(!ui.contains("postponed_update_at"), "Legacy postponed time reappeared");
     }
 
     @SuppressWarnings("deprecation")
