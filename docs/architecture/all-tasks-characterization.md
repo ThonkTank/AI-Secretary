@@ -41,13 +41,13 @@ Diff hinzu. Die Quality-Workflow-Artefakte machen diese Dateien im Pull Request 
 Neue und geänderte Baselines benötigen zwei getrennte Läufe:
 
 ```bash
-./gradlew testDebugUnitTest --tests '*AllTasksRenderRobolectricTest' \
+./gradlew testInstrumentationUnitTest --tests '*AllTasksRenderRobolectricTest' \
   --no-parallel --max-workers=1
 # Actual bzw. Expected/Actual/Diff prüfen
-UPDATE_ALL_TASKS_GOLDENS=1 ./gradlew testDebugUnitTest \
+UPDATE_ALL_TASKS_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests '*AllTasksRenderRobolectricTest' --no-parallel --max-workers=1
 # Freigabe wieder ohne Update-Schalter prüfen
-./gradlew testDebugUnitTest --tests '*AllTasksRenderRobolectricTest' \
+./gradlew testInstrumentationUnitTest --tests '*AllTasksRenderRobolectricTest' \
   --rerun-tasks --no-parallel --max-workers=1
 ```
 
@@ -55,4 +55,3 @@ UPDATE_ALL_TASKS_GOLDENS=1 ./gradlew testDebugUnitTest \
 erzeugtes, pixelidentisches Actual vorhanden ist. Unter `CI` oder `GITHUB_ACTIONS` ist jede
 Baselineänderung gesperrt. Ein fehlschlagender Golden-Test allein ist niemals eine Erlaubnis,
 eine Referenz zu überschreiben.
-

@@ -76,13 +76,21 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-debug.pro",
             )
-            testProguardFiles("proguard-debug.pro")
+        }
+        create("instrumentation") {
+            // Instrumented tests execute library code from a separate APK. Its complete runtime
+            // graph is deliberately not inferred while shrinking the compact debug product.
+            initWith(getByName("debug"))
+            isMinifyEnabled = false
+            matchingFallbacks += listOf("debug")
         }
         getByName("release") {
             // CI supplies this signing configuration. A local release stays unsigned for testing.
             if (signingReady) signingConfig = signingConfigs.getByName("release")
         }
     }
+
+    testBuildType = "instrumentation"
 
     buildFeatures {
         buildConfig = true
@@ -94,6 +102,8 @@ android {
     }
 
     sourceSets {
+        // The test target uses the exact debug-only renderer and harnesses without shrinking.
+        getByName("instrumentation").setRoot("src/debug")
         getByName("androidTest").assets.directories.add("$projectDir/schemas")
         getByName("androidTest").assets.directories.add(
             rootProject.file("release/upgrade-fixtures").absolutePath,
@@ -136,6 +146,8 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     debugImplementation("androidx.compose.foundation:foundation")
     debugImplementation("androidx.compose.animation:animation")
+    add("instrumentationImplementation", "androidx.compose.foundation:foundation")
+    add("instrumentationImplementation", "androidx.compose.animation:animation")
     implementation("androidx.activity:activity:1.13.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     testImplementation("junit:junit:4.13.2")

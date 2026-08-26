@@ -29,7 +29,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 Der vollständige lokale Quality-Gate ist:
 
 ```bash
-./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease
+./gradlew testInstrumentationUnitTest lintDebug assembleDebug assembleInstrumentationAndroidTest assembleRelease
 ```
 
 Deterministische Zustände für Layout Inspector und Preview-Werkzeuge liegen im Debug-Build

@@ -70,13 +70,13 @@ zu genau diesem Renderstand gehörende Expected-/Actual-/Diff-Triplet erzeugen. 
 Prüfung darf derselbe Test mit seiner Updatevariable erneut laufen:
 
 ```bash
-UPDATE_FOCUS_TASK_GOLDENS=1 ./gradlew testDebugUnitTest \
+UPDATE_FOCUS_TASK_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests de.thonktank.autosecretary.FocusTaskViewGoldenRobolectricTest
-UPDATE_HOMESCREEN_GOLDENS=1 ./gradlew testDebugUnitTest \
+UPDATE_HOMESCREEN_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests de.thonktank.autosecretary.HomescreenGoldenRobolectricTest
-UPDATE_TASK_EDITOR_GOLDENS=1 ./gradlew testDebugUnitTest \
+UPDATE_TASK_EDITOR_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests de.thonktank.autosecretary.TaskEditorGoldenRobolectricTest
-UPDATE_ALL_TASKS_GOLDENS=1 ./gradlew testDebugUnitTest \
+UPDATE_ALL_TASKS_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests '*AllTasksRenderRobolectricTest'
 ```
 
@@ -93,14 +93,14 @@ dem zuerst erzeugten Actual; ein Update ohne exakt passendes vorheriges Actual b
 Schnelle fachliche Rückmeldung:
 
 ```bash
-./gradlew testDebugUnitTest --tests '*RepetitionProgressTest' \
+./gradlew testInstrumentationUnitTest --tests '*RepetitionProgressTest' \
   --tests '*RepetitionInputReducerTest' --tests '*FocusStepLayoutPolicyTest'
 ```
 
 Betroffene Fokusoberfläche einschließlich Golden und Accessibility:
 
 ```bash
-./gradlew testDebugUnitTest \
+./gradlew testInstrumentationUnitTest \
   --tests '*FocusTaskViewTest' --tests '*FocusTaskViewGoldenRobolectricTest' \
   --tests '*AccessibilityLayoutMatrixRobolectricTest' --tests '*SetBarsViewTest'
 ```
@@ -109,8 +109,8 @@ Verbindliches Abschluss-Gate:
 
 ```bash
 ./gradlew :core-domain:compileJava :today-core:compileJava \
-  testDebugUnitTest --no-parallel --max-workers=1
-./gradlew assembleDebug assembleDebugAndroidTest --no-parallel --max-workers=1
+  testInstrumentationUnitTest --no-parallel --max-workers=1
+./gradlew assembleDebug assembleInstrumentationAndroidTest --no-parallel --max-workers=1
 ```
 
 Der serielle Modus ist die reproduzierbare Referenz auf speicherknappen Rechnern. Er ersetzt

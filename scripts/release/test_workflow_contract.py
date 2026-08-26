@@ -53,17 +53,6 @@ COMPOSE_SMOKE_TEST = (
     / "ComposeSmokeInstrumentationTest.kt"
 ).read_text(encoding="utf-8")
 DEBUG_PROGUARD = (ROOT / "app" / "proguard-debug.pro").read_text(encoding="utf-8")
-INSTRUMENTATION_RUNTIME_ANCHOR = (
-    ROOT
-    / "app"
-    / "src"
-    / "debug"
-    / "kotlin"
-    / "de"
-    / "thonktank"
-    / "autosecretary"
-    / "InstrumentationRuntimeAnchor.kt"
-).read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
 SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").read_text(
     encoding="utf-8"
@@ -219,15 +208,28 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn('debugImplementation("androidx.compose.foundation:foundation")', APP_BUILD)
         self.assertIn('debugImplementation("androidx.compose.animation:animation")', APP_BUILD)
         self.assertIn("isMinifyEnabled = true", APP_BUILD)
-        self.assertIn('testProguardFiles("proguard-debug.pro")', APP_BUILD)
+        self.assertIn('create("instrumentation")', APP_BUILD)
+        self.assertIn('testBuildType = "instrumentation"', APP_BUILD)
+        self.assertIn('getByName("instrumentation").setRoot("src/debug")', APP_BUILD)
+        self.assertIn(
+            'add("instrumentationImplementation", "androidx.compose.foundation:foundation")',
+            APP_BUILD,
+        )
+        instrumentation_build = APP_BUILD.split('create("instrumentation")', 1)[1].split(
+            'getByName("release")', 1
+        )[0]
+        self.assertIn("isMinifyEnabled = false", instrumentation_build)
         self.assertNotIn("ui-test-manifest", APP_BUILD)
         self.assertIn("-keep class de.thonktank.autosecretary.** { *; }", DEBUG_PROGUARD)
-        self.assertIn('Class.forName("kotlin.LazyKt")', INSTRUMENTATION_RUNTIME_ANCHOR)
-        self.assertIn(
-            "runnerLazyDependency: Lazy<Unit> = lazy { Unit }",
-            INSTRUMENTATION_RUNTIME_ANCHOR,
-        )
         self.assertIn("-keepattributes SourceFile,LineNumberTable", DEBUG_PROGUARD)
+        self.assertIn("assembleInstrumentationAndroidTest", WORKFLOW)
+        self.assertNotIn("assembleDebugAndroidTest", WORKFLOW)
+        self.assertIn("testInstrumentationUnitTest", WORKFLOW)
+        self.assertIn(
+            "app/build/outputs/apk/androidTest/instrumentation/"
+            "app-instrumentation-androidTest.apk",
+            WORKFLOW,
+        )
 
     def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):
         quality = WORKFLOW.split("\n  quality:", 1)[1].split(
@@ -382,7 +384,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("build/reports/instrumentation/", instrumentation)
         self.assertIn("androidTests/connected/", instrumentation)
         self.assertIn("./gradlew", INSTRUMENTATION_RUNNER)
-        self.assertIn("connectedDebugAndroidTest", INSTRUMENTATION_RUNNER)
+        self.assertIn("connectedInstrumentationAndroidTest", INSTRUMENTATION_RUNNER)
         self.assertIn("status=$?", INSTRUMENTATION_RUNNER)
         self.assertIn('exit "$status"', INSTRUMENTATION_RUNNER)
         for diagnostic in (

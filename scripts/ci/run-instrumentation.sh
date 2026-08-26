@@ -11,7 +11,7 @@ animation_scale="${INSTRUMENTATION_ANIMATION_SCALE:-}"
 prepare_interaction_device="${INSTRUMENTATION_PREPARE_INTERACTION_DEVICE:-false}"
 animation_settings=(window_animation_scale transition_animation_scale animator_duration_scale)
 
-gradle_arguments=(connectedDebugAndroidTest --stacktrace)
+gradle_arguments=(connectedInstrumentationAndroidTest --stacktrace)
 if [ -n "$test_class" ]; then
   gradle_arguments+=("-Pandroid.testInstrumentationRunnerArguments.class=$test_class")
 fi

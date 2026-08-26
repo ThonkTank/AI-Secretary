@@ -1856,13 +1856,30 @@ Alle sechs API-/Animationsjobs installierten beide APKs, starteten aber null Tes
 `kotlin.LazyKt` abstürzte. Der nachfolgende Nullfehler im Android-Gradle-Testreport war nur ein
 Sekundärfehler beim Einlesen dieses abgebrochenen Laufs. Ziel- und Test-APK werden getrennt
 minifiziert; der aus der Test-APK kommende Aufruf ist für R8 beim Schrumpfen der Ziel-APK nicht
-sichtbar. Die Nachtarbeit erhält deshalb gezielt nur die extern erreichte Kotlin-`LazyKt`-Fassade
-und deren tatsächlich aufgerufene einparametrige `lazy`-Methode über einen winzigen Debug-Anker
-im Zielcode. Der Anker benennt die vom Java-Runner aufgelöste Fassade und übt denselben
-Kotlin-Aufruf aus. Ein zunächst erprobter Proguard-Keep hätte durch die Kotlin-Fassadenvererbung rund
-3,8 MiB unnötig erhalten und wurde verworfen. Der Releasevertrag sichert stattdessen die exakte,
-vom normalen Erreichbarkeitsgraphen geschrumpfte Cross-APK-Kante. Produkt-Release und
-Editorzustand bleiben davon unberührt.
+sichtbar. Ein erster enger Debug-Anker stellte den Runnerstart wieder her, und alle drei
+Animationsjobs des zweiten Laufs `32912071533` waren grün. Die vollständigen Jobs fanden danach
+jedoch weitere unsichtbare Kanten: Room benötigte `kotlin.collections.CollectionsKt`, Compose-Test
+`CompletableJob.complete()`. Punktuelle Keeps oder weitere künstliche Anker wären damit ein
+fragiler, unvollständiger Parallelvertrag für fremde Testbibliotheken geworden.
+
+Die zweite Nachtarbeit ersetzt diesen verworfenen Ansatz durch einen eigenen, ungeschrumpften
+`instrumentation`-Buildtyp. Er verwendet exakt denselben Debug-Quellsatz mit Renderer und
+Harnesses, während nur das installierbare Debug-Produkt für sein 10-MiB-Budget geschrumpft wird.
+`androidTest` kompiliert und läuft ausschließlich gegen diesen vollständigen Zielgraphen;
+Instrumentierungsrunner, Quality-Bau, Release-Upgrade-Testpaket und Dokumentation verwenden den
+neuen Variantennamen. Da AGP 9.2 den Test-Buildtyp gemeinsam für Geräte- und lokale Tests wählt,
+läuft auch dieselbe Unit-/Golden-Suite nun als `testInstrumentationUnitTest`; Produkt-Lint und
+Größengate bleiben auf Debug. Der Releasevertrag verbietet die alte Debug-Testpaketierung.
+Produkt-Release und Editorzustand bleiben davon unberührt. Lokal kompiliert der neue Android-Testkandidat mit
+1.436.280 Byte; sein ungeschrumpftes, nicht auszulieferndes Instrumentierungsziel misst
+11.445.777 Byte und unterliegt bewusst nicht dem 10-MiB-Produktgate. Beide enthalten die im
+gescheiterten Lauf fehlenden Kotlin-/Coroutine-Klassen.
+
+Das vollständige lokale Quality-Gate lief anschließend in 11 Minuten 35 Sekunden grün: 499
+Unit-/Robolectric-/Golden-Tests ohne Fehler bei einem bewussten Skip, Debug-Lint, kompaktes
+Debug-APK, neuer Android-Testkandidat und unsigned Release. Die finalen Paketgrößen bleiben bei
+5.104.140, 1.436.280 und 6.458.826 Byte; zusätzlich sind alle 14 CI-Harness- und 23
+Release-/Workflow-Verträge grün.
 
 Die Nachtarbeit verschiebt deshalb den gesamten 5a-Renderer samt Foundation und Animation in den
 Debug-Quellsatz. Release enthält weder diese Bibliotheken noch UI-Testcode und ist bytegleich zum
@@ -1872,8 +1889,8 @@ ausschließlich unbenutzte
 Abhängigkeitsklassen; alle eigenen App- und Harnessklassen sowie Quelldatei-/Zeileninformationen
 bleiben explizit erhalten. Das hält das 10-MiB-Gate ein, verlängert einen vollständig sauberen
 Paket-/Lintlauf jedoch auf rund zwölf Minuten. Normales Kompilieren und die Unit-/Golden-Schleife
-bleiben davon getrennt; die Remote-Gerätematrix muss den geschrumpften Debug- und Testkandidaten
-vor Abschluss belegen.
+bleiben davon getrennt; die Remote-Gerätematrix muss nun den ungeschrumpften, debuggleichen
+Instrumentierungsziel- und Testkandidaten vor Abschluss belegen.
 
 Der abschließende statische Gegencheck findet kein Material, keine unabhängige Farbkonstante,
 keinen zweiten mutierenden Editorzustand, kein Compose-Mounting im produktiven Coordinator und

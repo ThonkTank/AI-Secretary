@@ -1,5 +1,5 @@
-# Instrumentation reaches debug harnesses and product seams from a separately compiled APK.
-# Keep this code readable and addressable; R8 may only remove unused dependency internals.
+# Keep the compact debug product's app-owned code readable and addressable; R8 may only remove
+# unused dependency internals. Instrumented tests use the separate unshrunk instrumentation type.
 -keep class de.thonktank.autosecretary.** { *; }
 -keepattributes SourceFile,LineNumberTable
 
