@@ -2068,3 +2068,13 @@ freigegeben. Damit testet die Assertion weiterhin ausschließlich „neue, berei
 Eingabe überspringt alten Read“, ohne Sleep, Negativzeitfenster oder Änderung am Produktcode.
 Diese Nacharbeit benötigt einen eigenen grünen Pull Request und einen neuen veröffentlichenden
 `main`-Lauf. Die physische Sicht- und In-App-Update-Abnahme bleibt offen.
+
+Der erste Quality-Lauf von Pull Request `#282` bestätigte den korrigierten Pipeline-Racetest,
+deckte aber dieselbe Fixtureklasse in einem Widgetvertrag auf: Der initiale Widget-Read konnte
+bereits blockieren, bevor der Fake-Invalidierungsflow nach seinem Initialimpuls den inneren
+`MutableSharedFlow` sammelte. Weil dieser bewusst kein Replay besitzt, konnte die unmittelbar
+gesendete Datenbankinvalidierung noch ohne Subscriber verloren gehen. Das Fixture veröffentlicht
+nun direkt vor `events.collect` ein `eventsSubscribed`-Latch; der Test sendet erst nach diesem
+Signal. Damit sind sowohl gestarteter alter Read als auch aktive Invalidierungssammlung bewiesen,
+bevor der neuere Impuls den Abbruchvertrag auslösen soll. Produktiver Flow, Widgetkoordinator und
+Timeoutgrenzen bleiben unverändert.
