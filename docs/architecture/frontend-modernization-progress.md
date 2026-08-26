@@ -2275,3 +2275,19 @@ damit weder von der internen Reihenfolge zwischen Instrumentation und Applicatio
 echten Netzwerkcheck ab. Produktcode, Updaterlogik, Schema und Release-Scope bleiben unverändert.
 Vor dem Remote-Abschluss folgen fokussierte Harnessverträge und erneut das vollständige lokale
 Android-Gate. Die physische Sicht- und In-App-Update-Abnahme bleibt offen.
+
+Pull Request `#290` bestand anschließend Quality und alle sechs normalen beziehungsweise
+animationsaktiven Gerätepfade und wurde als
+`e53a04fcb39935644a95fd867091a194f87da595` per Squash nach `main` übernommen. Der verbindliche
+Hauptlauf `32963443755` bestand Quality, Instrumentierungs- und Animationsmatrix auf API 26/35/37,
+signierte Paketierung sowie alle drei echten Produktionsupgrades. Dabei startete jede Vorversion
+mit Schema 8, der Kandidat migrierte auf Schema 19, und Datenbank- sowie Präferenzreadback waren
+vollständig grün. Der Publish-Job veröffentlichte exakt diesen Merge-Commit als Release 0.2.133
+(`forest-android-1013301`). Die APK hat 2.577.470 Byte, SHA-256
+`0c783ea3444f1b472ab59fb5375baf0e09d9828819d3643765d06824db617d3f` und den unveränderten
+Signierer-SHA-256 `de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da`.
+
+Der abschließende Roadmap-Abgleich findet keinen zweiten Persistenzpfad, keine Produkt-Keep-Regel,
+keinen veränderten Updatervertrag und keinen übersprungenen Remote-Nachweis mehr. Phase 5b ist
+damit implementiert und veröffentlicht. Die physische Sicht- und In-App-Update-Abnahme bleibt
+ausdrücklich ausstehend und wird ohne Handy nicht als bestanden gewertet.
