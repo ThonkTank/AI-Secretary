@@ -26,7 +26,7 @@ public final class UpgradeProbeInstrumentation extends Instrumentation {
         String phase = arguments.getString("upgradePhase", "");
         try {
             if ("seed".equals(phase)) {
-                UpgradePersistenceProbe.seed(getTargetContext(), getContext());
+                UpgradePersistenceProbe.seed(getTargetContext(), getContext(), this);
             } else if ("verify".equals(phase)) {
                 UpgradePersistenceProbe.verify(getTargetContext(), this);
             } else {

@@ -34,19 +34,28 @@ final class UpgradePersistenceProbe {
     private static final String STEP_TEXT = "Persistierten Schritt lesen";
     private static final String PROBE_PREFERENCES = "upgrade_e2e_probe";
     private static final String PREVIOUS_VERSION = "previous_version";
+    private static final String EXPECTED_LAST_CHECK = "expected_last_check";
     private static final long DEDICATED_UPDATE_PREFERENCES_VERSION = 1_002_301L;
-    private static final long SEEDED_LAST_CHECK = 123_456_789L;
     private static final long SEEDED_POSTPONED_CODE = 987_654L;
     private static final long SEEDED_POSTPONED_AT = 123_450_000L;
 
     private UpgradePersistenceProbe() {}
 
-    static void seed(Context targetContext, Context testContext) throws Exception {
-        File path = targetContext.getDatabasePath(DATABASE);
-        check(path.isFile(), "The previous app did not create its production database");
+    static void seed(Context targetContext, Context testContext,
+                     Instrumentation instrumentation) throws Exception {
+        long previousVersion = installedVersion(targetContext);
+        long expectedLastCheck = System.currentTimeMillis();
+        if (previousVersion >= DEDICATED_UPDATE_PREFERENCES_VERSION) {
+            check(targetContext.getSharedPreferences("forest_updates", Context.MODE_PRIVATE).edit()
+                    .putLong("last_update_check", expectedLastCheck)
+                    .putLong("postponed_update_code", SEEDED_POSTPONED_CODE)
+                    .putLong("postponed_update_at", SEEDED_POSTPONED_AT)
+                    .commit(), "Could not prepare dedicated update preferences");
+        }
 
-        try (SQLiteDatabase database = SQLiteDatabase.openDatabase(
-                path.getAbsolutePath(), null, SQLiteDatabase.OPEN_READWRITE)) {
+        Activity activity = startMainActivity(targetContext, instrumentation);
+        try (SQLiteDatabase database = awaitDatabaseVersion(targetContext,
+                SOURCE_DATABASE_VERSION, SQLiteDatabase.OPEN_READWRITE, "previous app")) {
             equal(SOURCE_DATABASE_VERSION, database.getVersion(),
                     "The rolling fixture must run against the supported 0.2.80 schema");
             database.beginTransaction();
@@ -56,25 +65,27 @@ final class UpgradePersistenceProbe {
             } finally {
                 database.endTransaction();
             }
+        } finally {
+            finish(activity, instrumentation);
         }
 
-        long previousVersion = installedVersion(targetContext);
         check(targetContext.getSharedPreferences("forest_ui", Context.MODE_PRIVATE).edit()
                 .putString("theme_mode", "DARK")
                 .putString("calendar_policy", "GOOGLE_ONLY")
-                .putLong("last_update_check", SEEDED_LAST_CHECK)
+                .putLong("last_update_check", expectedLastCheck)
                 .putLong("postponed_update_code", SEEDED_POSTPONED_CODE)
                 .putLong("postponed_update_at", SEEDED_POSTPONED_AT)
                 .commit(), "Could not seed UI and legacy update preferences");
         if (previousVersion >= DEDICATED_UPDATE_PREFERENCES_VERSION) {
             check(targetContext.getSharedPreferences("forest_updates", Context.MODE_PRIVATE).edit()
-                    .putLong("last_update_check", SEEDED_LAST_CHECK)
+                    .putLong("last_update_check", expectedLastCheck)
                     .putLong("postponed_update_code", SEEDED_POSTPONED_CODE)
                     .putLong("postponed_update_at", SEEDED_POSTPONED_AT)
                     .commit(), "Could not seed dedicated update preferences");
         }
         check(targetContext.getSharedPreferences(PROBE_PREFERENCES, Context.MODE_PRIVATE).edit()
                 .putLong(PREVIOUS_VERSION, previousVersion)
+                .putLong(EXPECTED_LAST_CHECK, expectedLastCheck)
                 .commit(), "Could not seed the previous-version marker");
     }
 
@@ -83,28 +94,46 @@ final class UpgradePersistenceProbe {
                 PROBE_PREFERENCES, Context.MODE_PRIVATE);
         long previousVersion = probe.getLong(PREVIOUS_VERSION, -1L);
         check(previousVersion > 0L, "The previous-version marker is missing");
+        long expectedLastCheck = probe.getLong(EXPECTED_LAST_CHECK, -1L);
+        check(expectedLastCheck > 0L, "The update-check marker is missing");
         check(installedVersion(context) > previousVersion,
                 "adb install -r did not install a newer version");
-        verifyMigratedPreferences(context);
+        Activity activity = startMainActivity(context, instrumentation);
+        try {
+            try (SQLiteDatabase database = awaitMigratedDatabase(context)) {
+                verifyRows(database);
+            }
+            verifyPreferencesAfterActivityStart(context, expectedLastCheck);
+        } finally {
+            finish(activity, instrumentation);
+        }
+    }
 
+    private static Activity startMainActivity(Context context,
+                                              Instrumentation instrumentation) {
         Intent launch = new Intent()
                 .setClassName(context.getPackageName(), context.getPackageName() + ".MainActivity")
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         Activity activity = instrumentation.startActivitySync(launch);
         notNull(activity);
         equal(context.getPackageName() + ".MainActivity", activity.getClass().getName());
-        try {
-            instrumentation.waitForIdleSync();
-            try (SQLiteDatabase database = awaitMigratedDatabase(context)) {
-                verifyRows(database);
-            }
-            verifyPreferencesAfterActivityStart(context);
-        } finally {
-            instrumentation.runOnMainSync(activity::finish);
-        }
+        instrumentation.waitForIdleSync();
+        return activity;
+    }
+
+    private static void finish(Activity activity, Instrumentation instrumentation) {
+        instrumentation.runOnMainSync(activity::finish);
+        instrumentation.waitForIdleSync();
     }
 
     private static SQLiteDatabase awaitMigratedDatabase(Context context) throws Exception {
+        return awaitDatabaseVersion(context, TARGET_DATABASE_VERSION,
+                SQLiteDatabase.OPEN_READONLY, "product");
+    }
+
+    private static SQLiteDatabase awaitDatabaseVersion(Context context, int expectedVersion,
+                                                       int openFlags, String owner)
+            throws Exception {
         File path = context.getDatabasePath(DATABASE);
         long deadline = SystemClock.uptimeMillis() + DATABASE_READY_TIMEOUT_MILLIS;
         int observedVersion = -1;
@@ -112,11 +141,11 @@ final class UpgradePersistenceProbe {
         while (SystemClock.uptimeMillis() < deadline) {
             try {
                 SQLiteDatabase database = SQLiteDatabase.openDatabase(
-                        path.getAbsolutePath(), null, SQLiteDatabase.OPEN_READONLY);
+                        path.getAbsolutePath(), null, openFlags);
                 observedVersion = database.getVersion();
-                if (observedVersion == TARGET_DATABASE_VERSION) return database;
+                if (observedVersion == expectedVersion) return database;
                 database.close();
-                if (observedVersion > TARGET_DATABASE_VERSION) {
+                if (observedVersion > expectedVersion) {
                     throw new AssertionError("Unexpected future database version "
                             + observedVersion);
                 }
@@ -125,8 +154,9 @@ final class UpgradePersistenceProbe {
             }
             Thread.sleep(100L);
         }
-        AssertionError timeout = new AssertionError("The product did not migrate its database to "
-                + TARGET_DATABASE_VERSION + "; last observed version was " + observedVersion);
+        AssertionError timeout = new AssertionError("The " + owner
+                + " did not open its database at version " + expectedVersion
+                + "; last observed version was " + observedVersion);
         if (lastFailure != null) timeout.initCause(lastFailure);
         throw timeout;
     }
@@ -194,28 +224,14 @@ final class UpgradePersistenceProbe {
         return row.getLong(row.getColumnIndexOrThrow(column));
     }
 
-    private static void verifyMigratedPreferences(Context context) {
+    private static void verifyPreferencesAfterActivityStart(Context context,
+                                                            long expectedLastCheck) {
         SharedPreferences ui = context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE);
         equal("DARK", ui.getString("theme_mode", ""));
         equal("GOOGLE_ONLY", ui.getString("calendar_policy", ""));
         SharedPreferences updates = context.getSharedPreferences(
                 "forest_updates", Context.MODE_PRIVATE);
-        equal(SEEDED_LAST_CHECK, updates.getLong("last_update_check", -1L));
-        equal(SEEDED_POSTPONED_CODE, updates.getLong("postponed_update_code", -1L));
-        equal(SEEDED_POSTPONED_AT, updates.getLong("postponed_update_at", -1L));
-        check(!ui.contains("last_update_check"), "Legacy last-update check was not migrated");
-        check(!ui.contains("postponed_update_code"), "Legacy postponed code was not migrated");
-        check(!ui.contains("postponed_update_at"), "Legacy postponed time was not migrated");
-    }
-
-    private static void verifyPreferencesAfterActivityStart(Context context) {
-        SharedPreferences ui = context.getSharedPreferences("forest_ui", Context.MODE_PRIVATE);
-        equal("DARK", ui.getString("theme_mode", ""));
-        equal("GOOGLE_ONLY", ui.getString("calendar_policy", ""));
-        SharedPreferences updates = context.getSharedPreferences(
-                "forest_updates", Context.MODE_PRIVATE);
-        check(updates.getLong("last_update_check", -1L) >= SEEDED_LAST_CHECK,
-                "Activity startup lost the migrated update-check timestamp");
+        equal(expectedLastCheck, updates.getLong("last_update_check", -1L));
         equal(SEEDED_POSTPONED_CODE, updates.getLong("postponed_update_code", -1L));
         equal(SEEDED_POSTPONED_AT, updates.getLong("postponed_update_at", -1L));
         check(!ui.contains("last_update_check"), "Legacy last-update check reappeared");
