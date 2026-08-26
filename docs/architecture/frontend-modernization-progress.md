@@ -2406,3 +2406,32 @@ Die Geräteklassen kompilierten erfolgreich; ihre erneute Ausführung bleibt dem
 Pull-Request-Lauf vorbehalten. Phase 6a ist damit lokal weiterhin roadmapkonform, aber erst nach
 einer vollständig grünen Remote-Matrix und Squash-Merge technisch abgeschlossen. Die physische
 Sicht- und In-App-Update-Abnahme bleibt ohne Handy offen.
+
+### Phase 6a – zweite Remote-Nachtarbeit: Widget-Publikationsbarriere
+
+Der zweite Pull-Request-Lauf `32975121134` stoppte vor der Gerätematrix, weil einer von 480
+Quality-Tests scheiterte. `providerRequestFinishesAfterTheLatestProjectionIsPublished` sah den
+korrekten Abschluss-Callback unmittelbar nach der ersten Widget-Publikation, prüfte aber im
+selben Scheduler-Takt bereits, dass die danach angeforderte zweite Host-Projektion ebenfalls
+fertig sei. Der erste Lauf hatte diese bestehende Race zufällig nicht getroffen; Compose-Code,
+Gerätetestkorrekturen und Produktionswidget waren unbeteiligt.
+
+Die erneute Prüfung des ursprünglichen Observable-Vertrags verbietet ein Sleep, ein größeres
+Timeout oder schwächere Zählerassertionen. Das Widget-Fixture erhält deshalb wie der bereits
+gehärtete `LatestReadPipeline` einen ausschließlich injizierten seriellen Collection-Executor.
+Nach der ersten sichtbaren Hostaktualisierung reiht der Test dort eine Barrier ein. Erst wenn sie
+ausgeführt wurde, ist bewiesen, dass `publish`, Rendern und Completion-Drain der Initialprojektion
+vollständig beendet sind; anschließend fordert der Test die zweite Hostprojektion an und behält
+seine exakten Zwei-Publikationen-/Zwei-Loads-/Ein-Callback-Assertions. Die produktive Konstruktion
+übergibt weiterhin keinen eigenen Collection-Executor und verwendet unverändert den bisherigen
+Dispatcher.
+
+Der fokussierte Widget-Vertrag bestand zunächst einmal und danach fünf erzwungen neu erzeugte
+Testläufe in Folge. Der zusätzliche Test-Executor wird beim Fixture-Close beendet; die
+Produktionskonstruktion sowie State-, Widget- und Compose-Verhalten bleiben unverändert. Der
+anschließend weitgehend neu erzeugte Java-21-Gesamtlauf bestand in 18 Minuten 52 Sekunden alle
+157 Aufgaben mit 480 Tests bei einem bewussten Skip, Goldens, `lintDebug`, Debug-, Android-Test-
+und Release-Paketierung einschließlich beider R8-Pfade und Release-Vital-Lint. Die 17 CI- und 23
+Release-/Workflow-Verträge sind ebenfalls erneut grün. Der nächste Remote-Lauf muss weiterhin
+Quality und die vollständige Gerätematrix bestätigen; die physische Sicht- und
+In-App-Update-Abnahme bleibt ohne Handy offen.

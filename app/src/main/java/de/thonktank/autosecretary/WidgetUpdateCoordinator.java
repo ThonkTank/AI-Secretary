@@ -51,6 +51,7 @@ public final class WidgetUpdateCoordinator {
     private final ViewsFactory viewsFactory;
     private final InstalledHost installedHost;
     private final Invalidations invalidations;
+    private final Executor collectionExecutor;
     private final List<Runnable> pendingCompletions = new ArrayList<>();
     private LatestReadPipeline<PresentationInvalidation, WidgetPresenter.CycleData> reads;
 
@@ -58,7 +59,7 @@ public final class WidgetUpdateCoordinator {
                             WidgetSizeClassifier sizes, CycleLoader loader,
                             Projector projector, ViewsFactory viewsFactory) {
         this(executor, logger, sizes, NO_COMPLETION, loader, ignored -> loader.load(), projector,
-                viewsFactory, null, null);
+                viewsFactory, null, null, null);
     }
 
     WidgetUpdateCoordinator(Executor executor, AppLogger logger, WidgetSizeClassifier sizes,
@@ -66,6 +67,15 @@ public final class WidgetUpdateCoordinator {
                             LatestCycleLoader latestLoader, Projector projector,
                             ViewsFactory viewsFactory, InstalledHost installedHost,
                             Invalidations invalidations) {
+        this(executor, logger, sizes, preparation, loader, latestLoader, projector, viewsFactory,
+                installedHost, invalidations, null);
+    }
+
+    WidgetUpdateCoordinator(Executor executor, AppLogger logger, WidgetSizeClassifier sizes,
+                            Runnable preparation, CycleLoader loader,
+                            LatestCycleLoader latestLoader, Projector projector,
+                            ViewsFactory viewsFactory, InstalledHost installedHost,
+                            Invalidations invalidations, Executor collectionExecutor) {
         this.executor = executor;
         this.logger = logger;
         this.sizes = sizes;
@@ -76,6 +86,7 @@ public final class WidgetUpdateCoordinator {
         this.viewsFactory = viewsFactory;
         this.installedHost = installedHost;
         this.invalidations = invalidations;
+        this.collectionExecutor = collectionExecutor;
     }
 
     static WidgetUpdateCoordinator create(Context context, AppContainer container,
@@ -197,9 +208,15 @@ public final class WidgetUpdateCoordinator {
 
     private void ensureObservingLocked() {
         if (reads != null) return;
-        reads = LatestReadPipeline.prepared(invalidations.changes(), executor,
-                ignored -> preparation.run(), latestLoader::load, this::publish,
-                this::readFailed);
+        if (collectionExecutor == null) {
+            reads = LatestReadPipeline.prepared(invalidations.changes(), executor,
+                    ignored -> preparation.run(), latestLoader::load, this::publish,
+                    this::readFailed);
+        } else {
+            reads = LatestReadPipeline.prepared(invalidations.changes(), executor,
+                    collectionExecutor, ignored -> preparation.run(), latestLoader::load,
+                    this::publish, this::readFailed);
+        }
     }
 
     private void publish(WidgetPresenter.CycleData data) {
