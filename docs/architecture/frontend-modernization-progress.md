@@ -2607,6 +2607,16 @@ Quellknoten, `move` aber auf der Root injiziert und dadurch den aktiven Detektor
 vollständige Sequenz bleibt jetzt auf demselben stabilen Quellknoten; lediglich die Zielkoordinate
 wird nach Aktivierung aus dessen aktueller Rootgeometrie zurückgerechnet.
 
+Der siebte Lauf zeigte trotz konsistenter Injektion weiterhin `start` unmittelbar gefolgt von
+`cancel`, also einen Produktkonflikt zwischen aktivem Kinddrag und dem Scrollgestendetektor der
+`LazyColumn`. Der bisherige Convenience-Detektor konsumierte die erste Bewegung erst im normalen
+Main-Pass; der Scrollcontainer konnte den Pointer dadurch nach bestätigtem Long-Press noch
+übernehmen. Der produktive Modifier verwendet nun die zugrunde liegenden AndroidX-Primitiven:
+Vor dem Long-Press bleibt die Berührung unbeansprucht und normales Scrollen möglich. Nach der
+Bestätigung verarbeitet und konsumiert der Quellknoten Move und Up bereits im Initial-Pass, sodass
+ein aktiver Reorder nicht mehr vom Parent gestohlen werden kann. Cancel und Coroutine-Abbruch
+schließen den kurzlebigen Zustand weiterhin explizit.
+
 Der erneute Abgleich findet keine parallele Screen-Wahrheit, keinen fortbestehenden Recyclerpfad,
 keinen persistierten Transientzustand und keine Änderung an Domain-, Room-, Request-, Schema-,
 SDK-, Signatur-, Upgrade- oder Gestaltungskontrakten. Die automatisierte Implementation benötigt

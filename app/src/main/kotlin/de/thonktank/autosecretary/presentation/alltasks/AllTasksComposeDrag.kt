@@ -1,6 +1,8 @@
 package de.thonktank.autosecretary.presentation.alltasks
 
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -9,10 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import de.thonktank.autosecretary.PresentationTrace
+import kotlinx.coroutines.CancellationException
 
 internal fun Modifier.allTasksDragSource(
     key: String,
@@ -27,17 +31,33 @@ internal fun Modifier.allTasksDragSource(
         .onGloballyPositioned { coordinates = it }
         .pointerInput(key, enabled) {
             if (!enabled) return@pointerInput
-            detectDragGesturesAfterLongPress(
-                onDragStart = { local ->
-                    onStart(key, coordinates.rootY(local))
-                },
-                onDrag = { change, _ ->
-                    change.consume()
-                    onMove(coordinates.rootY(change.position))
-                },
-                onDragEnd = onDrop,
-                onDragCancel = onCancel,
-            )
+            awaitEachGesture {
+                var started = false
+                try {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val longPress = awaitLongPressOrCancellation(down.id)
+                        ?: return@awaitEachGesture
+                    started = true
+                    onStart(key, coordinates.rootY(longPress.position))
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull { it.id == longPress.id }
+                        if (change == null || change.isConsumed) {
+                            onCancel()
+                            return@awaitEachGesture
+                        }
+                        change.consume()
+                        if (!change.pressed) {
+                            onDrop()
+                            return@awaitEachGesture
+                        }
+                        onMove(coordinates.rootY(change.position))
+                    }
+                } catch (cancelled: CancellationException) {
+                    if (started) onCancel()
+                    throw cancelled
+                }
+            }
         }
 }
 
