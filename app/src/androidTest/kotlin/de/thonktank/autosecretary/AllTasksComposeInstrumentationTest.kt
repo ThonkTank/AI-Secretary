@@ -10,7 +10,6 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToIndex
@@ -136,7 +135,7 @@ class AllTasksComposeInstrumentationTest {
         )
         val sourceBounds = source.fetchSemanticsNode().boundsInRoot
         val targetCenter = compose.onNodeWithTag(
-            "all-tasks:row:task:bed|MORNING",
+            "all-tasks:row:step:morning|MORNING:morning-step-1",
         ).fetchSemanticsNode().boundsInRoot.center
         source.performTouchInput {
             moveTo(Offset(
@@ -150,38 +149,33 @@ class AllTasksComposeInstrumentationTest {
         val trace = PresentationTrace.describe()
         assertTrue(trace, trace.contains("all-tasks-drag/start"))
         assertTrue(trace, trace.contains("all-tasks-drag/drop"))
-        assertEquals("step:morning-step-0:bed:null", compose.activity.lastMove)
+        assertEquals("swap:morning-step-0:morning-step-1", compose.activity.lastMove)
     }
 
     @Test
     fun activeLongPressDragScrollsAtTheLazyListEdgeAndStopsAfterRelease() {
         compose.runOnUiThread { compose.activity.render(AllTasksComposeFixture.longDragState(60)) }
         compose.waitForIdle()
-        val sourceCenter = compose.onNodeWithTag(
+        val source = compose.onNodeWithTag(
             "all-tasks:row:step:drag-source|MORNING:drag-source-step-0",
-        ).fetchSemanticsNode().boundsInRoot.center
-        val listBounds = compose.onNodeWithTag("all-tasks:list")
-            .fetchSemanticsNode().boundsInRoot
-        val root = compose.onRoot()
-        val rootBounds = root.fetchSemanticsNode().boundsInRoot
-        val edge = Offset(
-            sourceCenter.x - rootBounds.left,
-            listBounds.bottom - rootBounds.top - 2,
         )
         PresentationTrace.clear()
-        root.performTouchInput {
-            down(Offset(
-                sourceCenter.x - rootBounds.left,
-                sourceCenter.y - rootBounds.top,
-            ))
-        }
+        source.performTouchInput { down(center) }
         try {
             compose.mainClock.advanceTimeBy(longPressDurationMillis())
+            compose.waitForIdle()
+            val sourceBounds = source.fetchSemanticsNode().boundsInRoot
+            val listBounds = compose.onNodeWithTag("all-tasks:list")
+                .fetchSemanticsNode().boundsInRoot
+            val edge = Offset(
+                sourceBounds.center.x - sourceBounds.left,
+                listBounds.bottom - sourceBounds.top - 2,
+            )
             compose.mainClock.autoAdvance = false
-            root.performTouchInput { moveTo(edge, 100) }
+            source.performTouchInput { moveTo(edge, 100) }
             repeat(120) { compose.mainClock.advanceTimeByFrame() }
         } finally {
-            root.performTouchInput { up() }
+            source.performTouchInput { up() }
             compose.mainClock.autoAdvance = true
         }
         compose.waitForIdle()

@@ -2598,6 +2598,15 @@ Randscrollvertrag fährt die eingefrorene Hauptuhr außerdem frameweise statt in
 verlangt neben dem Scrollwert explizite Traceereignisse für Dragstart und untere Randrichtung. Ein
 Fehler unterscheidet dadurch Gestenerkennung, Randaktivierung und tatsächlichen Scrollfortschritt.
 
+Im sechsten Lauf belegte der Trace den erfolgreichen Dragstart und machte die letzten beiden
+Testgeometriefehler konkret. Auf dem kleineren API-26-Viewport war die weiter unten liegende zweite
+Karte nach Einblendung der Dropzeilen nicht mehr sichtbar. Der echte Pointertest legt deshalb nun
+auf dem weiterhin sichtbaren Nachbarschritt ab; Cross-Task-Mapping bleibt unabhängig über den
+reinen Dispatcher und den API-37-Canary geprüft. Der Randscrolltest hatte außerdem `down` auf dem
+Quellknoten, `move` aber auf der Root injiziert und dadurch den aktiven Detektor abgebrochen. Die
+vollständige Sequenz bleibt jetzt auf demselben stabilen Quellknoten; lediglich die Zielkoordinate
+wird nach Aktivierung aus dessen aktueller Rootgeometrie zurückgerechnet.
+
 Der erneute Abgleich findet keine parallele Screen-Wahrheit, keinen fortbestehenden Recyclerpfad,
 keinen persistierten Transientzustand und keine Änderung an Domain-, Room-, Request-, Schema-,
 SDK-, Signatur-, Upgrade- oder Gestaltungskontrakten. Die automatisierte Implementation benötigt
