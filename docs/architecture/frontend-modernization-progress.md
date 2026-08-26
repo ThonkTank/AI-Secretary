@@ -2248,3 +2248,30 @@ Postpone-Code, Postpone-Zeitpunkt, Theme und Kalenderpolitik müssen exakt erhal
 Legacy-Keys dürfen nicht wieder erscheinen. Ein Workflowvertrag sichert Reihenfolge und
 Monotonie. Produktcode, Updateverhalten und Release-Scope bleiben unverändert. Die physische
 Sicht- und In-App-Update-Abnahme bleibt offen.
+
+### Phase 5b – dreizehnte Nachtarbeitsphase: deterministische Lifecycle-Barrieren
+
+Pull Request `#289` bestand Quality und alle sechs normalen beziehungsweise animationsaktiven
+Gerätepfade und wurde als `09a91173d4b08e38e9cdd316bd357452a960a684` per Squash nach `main`
+übernommen. Hauptlauf `32959533571` bestätigte erneut Quality, vollständige Gerätematrix,
+signiertes Kandidatenpaket und den API-26-Produktionsupgradepfad. Veröffentlichung blieb jedoch
+korrekt gesperrt: API 35 sah beim Verify die bereits gesäten dedizierten Updatewerte, prüfte die
+Entfernung der Legacy-Werte aber noch vor der versionsabhängig späteren
+`Application.onCreate`-Initialisierung. API 37 startete die 0.2.80-App, wurde jedoch vor dem
+abgeschlossenen Room-Erstaufbau gestoppt und sah beim anschließenden Seed einmal nicht Schema 8.
+
+Der erneute Abgleich mit der Original-Roadmap und der externen Persistenzgrenze bewertet beide
+Fehler als Harness-Races, nicht als akzeptierbare Produktnachweise. Die Seed-Phase startet die
+echte MainActivity der unterstützten Vorversion deshalb nun selbst und wartet begrenzt auf das
+vollständig geöffnete Schema 8, bevor sie die Fixture in einer Transaktion schreibt. Das macht
+die Ausgangsbarriere unabhängig von der Geschwindigkeit des vorherigen Shell-Kaltstarts.
+
+Der Update-Check-Zeitpunkt wird beim Seed nicht mehr als absichtlich jahrzehntealter Konstantwert,
+sondern aus der aktuellen Gerätezeit erzeugt und zusammen mit der Vorversionsmarke als erwarteter
+Wert persistiert. Beim Kandidatenstart ist damit vertragsgemäß keine automatische 24-Stunden-
+Prüfung fällig. Nach dem echten Activity-Start müssen Updatezeitpunkt, Postpone-Werte, Theme und
+Kalenderpolitik exakt erhalten sowie alle drei Legacy-Schlüssel entfernt sein. Die Probe hängt
+damit weder von der internen Reihenfolge zwischen Instrumentation und Application noch von einem
+echten Netzwerkcheck ab. Produktcode, Updaterlogik, Schema und Release-Scope bleiben unverändert.
+Vor dem Remote-Abschluss folgen fokussierte Harnessverträge und erneut das vollständige lokale
+Android-Gate. Die physische Sicht- und In-App-Update-Abnahme bleibt offen.

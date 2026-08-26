@@ -274,15 +274,29 @@ class WorkflowContractTest(unittest.TestCase):
             self.assertNotIn(product_api, UPGRADE_PROBE)
         self.assertIn("SQLiteDatabase.OPEN_READONLY", UPGRADE_PROBE)
         self.assertIn("TARGET_DATABASE_VERSION = 19", UPGRADE_PROBE)
-        before_start = UPGRADE_PROBE.index("verifyMigratedPreferences(context)")
-        activity_start = UPGRADE_PROBE.index("instrumentation.startActivitySync")
-        after_start = UPGRADE_PROBE.index("verifyPreferencesAfterActivityStart(context)")
-        self.assertLess(before_start, activity_start)
+        self.assertIn("SOURCE_DATABASE_VERSION = 8", UPGRADE_PROBE)
+        self.assertIn("awaitDatabaseVersion(targetContext", UPGRADE_PROBE)
+        self.assertIn("System.currentTimeMillis()", UPGRADE_PROBE)
+        self.assertIn(".putLong(EXPECTED_LAST_CHECK, expectedLastCheck)", UPGRADE_PROBE)
+        seed_method = UPGRADE_PROBE.split("static void seed(", 1)[1].split(
+            "static void verify(", 1
+        )[0]
+        self.assertLess(
+            seed_method.index("startMainActivity(targetContext, instrumentation)"),
+            seed_method.index("awaitDatabaseVersion(targetContext"),
+        )
+        verify_method = UPGRADE_PROBE.split("static void verify(", 1)[1].split(
+            "private static Activity startMainActivity", 1
+        )[0]
+        activity_start = verify_method.index("startMainActivity(context, instrumentation)")
+        after_start = verify_method.index("verifyPreferencesAfterActivityStart(context")
         self.assertLess(activity_start, after_start)
         self.assertIn(
-            'updates.getLong("last_update_check", -1L) >= SEEDED_LAST_CHECK',
+            'equal(expectedLastCheck, updates.getLong("last_update_check", -1L))',
             UPGRADE_PROBE,
         )
+        for key in ("last_update_check", "postponed_update_code", "postponed_update_at"):
+            self.assertIn(f'!ui.contains("{key}")', UPGRADE_PROBE)
         self.assertIn("OK (1 probe)", UPGRADE_INSTRUMENTATION)
 
     def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):

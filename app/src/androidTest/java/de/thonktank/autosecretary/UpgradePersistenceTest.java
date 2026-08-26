@@ -15,7 +15,8 @@ public final class UpgradePersistenceTest {
         requirePhase("seed");
         UpgradePersistenceProbe.seed(
                 InstrumentationRegistry.getInstrumentation().getTargetContext(),
-                InstrumentationRegistry.getInstrumentation().getContext());
+                InstrumentationRegistry.getInstrumentation().getContext(),
+                InstrumentationRegistry.getInstrumentation());
     }
 
     @Test public void currentVersionStartsAndReadsPreviousData() throws Exception {
