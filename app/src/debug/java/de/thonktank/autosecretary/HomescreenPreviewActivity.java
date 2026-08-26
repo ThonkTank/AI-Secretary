@@ -5,7 +5,6 @@ import de.thonktank.autosecretary.presentation.today.CalendarEventSnapshot;
 import de.thonktank.autosecretary.ui.today.HeaderView;
 
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
 import de.thonktank.autosecretary.presentation.shell.AppShellScreenState;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
@@ -82,7 +81,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         DashboardRenderer renderer = new DashboardRenderer(this, scroll, content,
                 action -> { }, action -> { }, "preview",
                 new RewardAnchorRegistry(),
-                new AllTasksView.Listener() { });
+                action -> { });
         java.util.List<CalendarEventSnapshot> events = DebugPreviewFixtures.referenceCalendar(preview);
         TodayUiModel today = TodayUiModel.compose(dashboard, events);
         renderer.render(new AppShellScreenState(NavigationDestination.TODAY, palette),

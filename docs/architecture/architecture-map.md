@@ -99,7 +99,7 @@ Transaktion; diese Invariante gilt auch unter Schema 19 unverändert.
 | Today-Renderzustand, Requests, Timer und Rewards | `TodayScreenState` im `TodayViewModel` | Requests im `SavedStateHandle` |
 | Top-Level-Auswahl und globale Legacy-Palette | `AppShellScreenState` im `AppShellViewModel` | Auswahl im `SavedStateHandle` |
 | Alles-Filter, Modus, Karten- und Filterbereich | `AllTasksPresentationState` im `AllTasksViewModel` | ja, `SavedStateHandle` |
-| Alles-Dropdown und aktiver Drag | `AllTasksView` | nein, bei Abbruch/Detach/Recreation geschlossen |
+| Alles-Dropdown, Swap-Auswahl und aktiver Drag | `AllTasksComposeScreen` | nein, bei Abbruch/Detach/Recreation geschlossen |
 | Editor-Draft, Wizardnavigation, Feedback und Prompt | `EditorUiState` im `TaskEditorViewModel` | Recreation über `SavedStateHandle` |
 | Wiederholungsdraft | `RepetitionInputState` im `TodayViewModel` | nein |
 | Blatt-/Grain-Geometrie | `LeafSurface` | nein |
@@ -111,6 +111,9 @@ Transaktion; diese Invariante gilt auch unter Schema 19 unverändert.
 - Der produktive Compose-Editor wird gegen alle zehn kanonischen und fünf adaptiven freigegebenen
   Baselines sowie über Semantik-, Fokus-, Scroll-, Recreation-, Host-Back- und Actionverträge
   geprüft. Architekturtests verbieten einen zweiten Draft und die entfernte View-Orchestrierung.
+- Der produktive Compose-Alles-Tab wird gegen seine 13 unveränderten Baselines sowie über
+  LazyList-, Filter-, Dropdown-, Long-Press-Drag-, Randscroll-, Recreation-,
+  Accessibility- und Actionverträge geprüft; ein RecyclerView-Ersatzpfad ist nicht mehr zulässig.
 - Die Android-Test-APK enthält Today-Long-Press/Drag/Drop, Randscrollen,
   Accessibilityaktionen und Recreation eines nicht persistierten Reorders.
 - CI führt normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie echte

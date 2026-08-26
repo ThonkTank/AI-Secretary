@@ -3,7 +3,6 @@ package de.thonktank.autosecretary;
 import de.thonktank.autosecretary.ui.today.*;
 
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
@@ -146,7 +145,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         scroll.addView(content, new ScrollView.LayoutParams(-1, -2));
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
                 action -> { }, action -> { }, "test", new RewardAnchorRegistry(),
-                new AllTasksView.Listener() { });
+                action -> { });
         renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.TODAY, palette),
                 TodayScreenStateFixtures.today(DashboardFixtures.fullDashboard()),
                 AllTasksUiState.empty(), options(palette));

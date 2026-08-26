@@ -5,7 +5,6 @@ import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksAction;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
 import de.thonktank.autosecretary.presentation.editor.TaskEditorComposeHostView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
@@ -202,7 +201,7 @@ public final class UiComponentRobolectricTest {
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
                 action -> { }, action -> { }, "1.0", new RewardAnchorRegistry(),
-                new AllTasksView.Listener() { });
+                action -> { });
         DayPalette morning = DayPalette.at(LocalTime.of(8, 0), DayPalette.Mode.AUTO);
         de.thonktank.autosecretary.presentation.today.TodayScreenState first = state();
 

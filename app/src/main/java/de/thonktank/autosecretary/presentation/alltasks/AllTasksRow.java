@@ -15,7 +15,6 @@ final class AllTasksRow {
     final Kind kind;
     final String key;
     final long stableId;
-    final AllTasksRowContent content;
     final AllTasksUiState.TaskItem task;
     final TaskStepTemplate step;
     final AllTasksUiState.ScheduleItem schedule;
@@ -28,15 +27,14 @@ final class AllTasksRow {
 
     enum EmptyReason { NO_TASKS, SEARCH, FILTERS, STATUS }
 
-    private AllTasksRow(Kind kind, String key, AllTasksRowContent content,
-                        AllTasksUiState.TaskItem task, TaskStepTemplate step,
+    private AllTasksRow(Kind kind, String key, AllTasksUiState.TaskItem task,
+                        TaskStepTemplate step,
                         AllTasksUiState.ScheduleItem schedule, String taskId, String cardKey,
                         String beforeId, TaskSlot slot, boolean endTarget,
                         EmptyReason emptyReason) {
         this.kind = kind;
         this.key = key;
         this.stableId = stableId(key);
-        this.content = content;
         this.task = task;
         this.step = step;
         this.schedule = schedule;
@@ -60,9 +58,6 @@ final class AllTasksRow {
             String taskId = item.task.id.value;
             String cardKey = item.cardKey;
             result.add(new AllTasksRow(Kind.TASK_HEADER, "task:" + cardKey,
-                    new AllTasksRowContent.TaskHeader(item.task.title, item.archived,
-                            item.expanded, item.steps.size(), item.task.nextDueOn,
-                            item.task.recurrence, item.slot, item.needle),
                     item, null, null, taskId, cardKey, null, null, false, null));
             if (!item.expanded) continue;
             for (TaskStepTemplate step : item.visibleSteps) {
@@ -70,14 +65,11 @@ final class AllTasksRow {
                     result.add(target(Kind.STEP_TARGET, taskId, cardKey,
                             step.id, null, false));
                 result.add(new AllTasksRow(Kind.STEP, "step:" + cardKey + ':' + step.id,
-                        new AllTasksRowContent.Step(step.text, step.note,
-                                item.archived, item.needle),
                         item, step, null, taskId, cardKey, null, null, false, null));
             }
             if (!item.archived)
                 result.add(target(Kind.STEP_TARGET, taskId, cardKey, null, null, true));
             result.add(new AllTasksRow(Kind.STEP_ADD, "add:" + cardKey,
-                    new AllTasksRowContent.AddStep(cardKey, item.archived),
                     item, null, null, taskId, cardKey,
                     null, null, true, null));
         }
@@ -90,14 +82,11 @@ final class AllTasksRow {
         for (TaskSlot slot : TaskSlot.values()) {
             if (!state.slots.isEmpty() && !state.slots.contains(slot)) continue;
             result.add(new AllTasksRow(Kind.SLOT_HEADER, "slot:" + slot.name(),
-                    new AllTasksRowContent.SlotHeader(slot),
                     null, null, null, null, null, null, slot, false, null));
             for (AllTasksUiState.ScheduleItem item : state.schedule) {
                 if (item.slot != slot) continue;
                 result.add(target(Kind.SCHEDULE_TARGET, null, null, item.id, slot, false));
                 result.add(new AllTasksRow(Kind.SCHEDULE, "schedule:" + item.id,
-                        new AllTasksRowContent.Schedule(item.title, item.slot,
-                                item.displayOrder, item.recurrence),
                         null, null, item, item.taskId, null, null, slot, false, null));
             }
             result.add(target(Kind.SCHEDULE_TARGET, null, null, null, slot, true));
@@ -110,7 +99,7 @@ final class AllTasksRow {
         String owner = taskId == null ? slot.name() : cardKey;
         String before = beforeId == null ? "end" : beforeId;
         return new AllTasksRow(kind, kind.name() + ':' + owner + ':' + before,
-                new AllTasksRowContent.Target(owner, before), null, null, null,
+                null, null, null,
                 taskId, cardKey, beforeId, slot,
                 end, null);
     }
@@ -121,8 +110,7 @@ final class AllTasksRow {
         else if (!state.slots.isEmpty() || !state.recurrences.isEmpty() || state.weekday != 0)
             reason = EmptyReason.FILTERS;
         else reason = EmptyReason.STATUS;
-        return new AllTasksRow(Kind.EMPTY, "empty:" + reason,
-                new AllTasksRowContent.Empty(reason, state.mode), null,
+        return new AllTasksRow(Kind.EMPTY, "empty:" + reason, null,
                 null, null, null, null, null, null, false, reason);
     }
 

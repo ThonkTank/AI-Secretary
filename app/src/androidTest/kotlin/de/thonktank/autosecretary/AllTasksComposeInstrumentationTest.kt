@@ -1,16 +1,20 @@
 package de.thonktank.autosecretary
 
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.filters.SdkSuppress
 import de.thonktank.autosecretary.domain.model.TaskSlot
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeFixture
@@ -106,6 +110,68 @@ class AllTasksComposeInstrumentationTest {
         }
         assertTrue(handled)
         assertEquals("step:morning-step-0:bed:null", compose.activity.lastMove)
+    }
+
+    @Test
+    fun longPressPointerDragUsesTheSameStableDropBoundary() {
+        val expanded = AllTasksComposeFixture.state()
+            .toggleExpanded(AllTasksUiState.cardKey("morning", TaskSlot.MORNING))
+            .toggleExpanded(AllTasksUiState.cardKey("bed", TaskSlot.MORNING))
+        compose.runOnUiThread { compose.activity.render(expanded) }
+        compose.waitForIdle()
+
+        val source = compose.onNodeWithTag(
+            "all-tasks:row:step:morning|MORNING:morning-step-0",
+        )
+        val sourceBounds = source.fetchSemanticsNode().boundsInRoot
+        val targetCenter = compose.onNodeWithTag(
+            "all-tasks:row:task:bed|MORNING",
+        ).fetchSemanticsNode().boundsInRoot.center
+
+        source.performTouchInput {
+            down(center)
+            advanceEventTime(650)
+            moveTo(Offset(
+                targetCenter.x - sourceBounds.left,
+                targetCenter.y - sourceBounds.top,
+            ), 300)
+            up()
+        }
+
+        compose.waitUntil { compose.activity.lastMove != null }
+        assertEquals("step:morning-step-0:bed:null", compose.activity.lastMove)
+    }
+
+    @Test
+    fun activeLongPressDragScrollsAtTheLazyListEdgeAndStopsAfterRelease() {
+        compose.runOnUiThread { compose.activity.render(AllTasksComposeFixture.longDragState(60)) }
+        compose.waitForIdle()
+        val sourceCenter = compose.onNodeWithTag(
+            "all-tasks:row:step:drag-source|MORNING:drag-source-step-0",
+        ).fetchSemanticsNode().boundsInRoot.center
+        val listBounds = compose.onNodeWithTag("all-tasks:list")
+            .fetchSemanticsNode().boundsInRoot
+        val rootBounds = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val root = compose.onRoot()
+
+        root.performTouchInput {
+            down(Offset(sourceCenter.x - rootBounds.left, sourceCenter.y - rootBounds.top))
+            advanceEventTime(650)
+            moveTo(
+                Offset(sourceCenter.x - rootBounds.left, listBounds.bottom - rootBounds.top - 2),
+                100,
+            )
+        }
+        compose.waitUntil(5_000) {
+            compose.onNodeWithTag("all-tasks:list").fetchSemanticsNode()
+                .config[SemanticsProperties.VerticalScrollAxisRange].value() > 0f
+        }
+        root.performTouchInput { up() }
+        compose.waitForIdle()
+
+        val settled = compose.onNodeWithTag("all-tasks:list").fetchSemanticsNode()
+            .config[SemanticsProperties.VerticalScrollAxisRange].value()
+        assertTrue(settled > 0f)
     }
 
     @Test

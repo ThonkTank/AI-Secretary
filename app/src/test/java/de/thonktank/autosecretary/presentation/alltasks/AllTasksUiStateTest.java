@@ -57,23 +57,6 @@ public final class AllTasksUiStateTest {
         assertFalse(first.expandedCardKeys.isEmpty());
     }
 
-    @Test public void rowContentsUseTypedValueEquality() {
-        AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog());
-        AllTasksRow first = AllTasksRow.project(state).get(0);
-        AllTasksRow same = AllTasksRow.project(
-                AllTasksUiState.empty().withCatalog(catalog())).get(0);
-        AllTasksRow expanded = AllTasksRow.project(state.toggleExpanded(first.cardKey)).get(0);
-
-        assertFalse(String.class.isInstance(first.content));
-        assertEquals(first.content, same.content);
-        assertEquals(first.content.hashCode(), same.content.hashCode());
-        assertNotEquals(first.content, expanded.content);
-        assertNotEquals(new AllTasksRowContent.Schedule("Gym", TaskSlot.MORNING,
-                        1_024, Recurrence.DAILY),
-                new AllTasksRowContent.Schedule("Gym", TaskSlot.MORNING,
-                        1_024, Recurrence.ONCE));
-    }
-
     @Test public void searchAndFiltersInspectTaskAndNestedStepText() {
         TaskCatalog catalog = catalog();
         AllTasksUiState state = AllTasksUiState.empty().withCatalog(catalog)

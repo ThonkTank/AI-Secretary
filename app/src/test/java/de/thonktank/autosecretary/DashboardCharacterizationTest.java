@@ -5,7 +5,9 @@ import de.thonktank.autosecretary.presentation.today.CalendarEventSnapshot;
 import de.thonktank.autosecretary.ui.today.CompletedTodayView;
 
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksAction;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeFixture;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeHostView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
@@ -85,6 +87,35 @@ public final class DashboardCharacterizationTest {
         assertEquals(3, TaskSlot.LATER.rank);
     }
 
+    @Test public void allTasksDestinationMountsComposeAndPublishesTypedActions() {
+        Context context = ApplicationProvider.getApplicationContext();
+        LinearLayout shell = new LinearLayout(context);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(content);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        List<AllTasksAction> actions = new ArrayList<>();
+        DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
+                action -> { }, action -> { }, "test", new RewardAnchorRegistry(), actions::add);
+        AllTasksUiState state = AllTasksComposeFixture.state(true).toggleExpanded(
+                AllTasksUiState.cardKey("morning", TaskSlot.MORNING)).toggleExpanded(
+                AllTasksUiState.cardKey("bed", TaskSlot.MORNING));
+        DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.LIGHT);
+
+        renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.ALL_TASKS, palette),
+                TodayScreenStateFixtures.today(DashboardFixtures.fullDashboard()), state,
+                options(palette));
+
+        assertEquals(View.GONE, scroll.getVisibility());
+        assertTrue(shell.getChildAt(1) instanceof AllTasksComposeHostView);
+        AllTasksComposeHostView host = (AllTasksComposeHostView) shell.getChildAt(1);
+        assertEquals(R.id.all_tasks_compose_host, host.getId());
+        assertTrue(host.dispatchDropForTest(
+                "step:morning|MORNING:morning-step-0", "task:bed|MORNING"));
+        assertTrue(actions.get(0) instanceof AllTasksAction.StepMoved);
+    }
+
     @Test public void calendarFixtureKeepsAllDayBeforeTimedEvents() {
         java.util.List<CalendarEventSnapshot> events = DashboardFixtures.calendarEvents();
 
@@ -103,7 +134,7 @@ public final class DashboardCharacterizationTest {
         TodayActionRecorder recorded = new TodayActionRecorder();
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
                 recorded, action -> { }, "test", new RewardAnchorRegistry(),
-                new AllTasksView.Listener() { });
+                action -> { });
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
         FocusTaskUiModel simple = DashboardFixtures.simpleTask();
@@ -157,7 +188,7 @@ public final class DashboardCharacterizationTest {
         scroll.addView(content);
         DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
                 action -> { }, action -> { }, "test", new RewardAnchorRegistry(),
-                new AllTasksView.Listener() { });
+                action -> { });
         TodayUiModel today = new TodayUiModel(new XpProgress(10), null,
                 Collections.emptyList(),
                 Collections.singletonList(DashboardFixtures.completedTodayTask()));

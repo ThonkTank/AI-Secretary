@@ -17,18 +17,8 @@
     <item name="rep_stepper_value" type="id" />
     <item name="rep_stepper_increment" type="id" />
     <item name="set_bars" type="id" />
-    <item name="all_tasks_list" type="id" />
+    <item name="all_tasks_compose_host" type="id" />
     <item name="task_editor_compose_host" type="id" />
-    <item name="action_step_up" type="id" />
-    <item name="action_step_down" type="id" />
-    <item name="action_step_previous_task" type="id" />
-    <item name="action_step_next_task" type="id" />
-    <item name="action_step_select_swap" type="id" />
-    <item name="action_step_swap_selected" type="id" />
-    <item name="action_schedule_up" type="id" />
-    <item name="action_schedule_down" type="id" />
-    <item name="action_schedule_previous_slot" type="id" />
-    <item name="action_schedule_next_slot" type="id" />
     <item name="action_today_step_up" type="id" />
     <item name="action_today_step_down" type="id" />
     <item name="action_today_step_front" type="id" />

@@ -97,7 +97,9 @@ public final class ArchitectureBoundaryTest {
         String request = read(main("presentation/alltasks/AllTasksRequest.java"));
         String requestState = read(main(
                 "presentation/alltasks/AllTasksRequestSavedStateAdapter.java"));
-        String coordinator = read(main("presentation/alltasks/AllTasksCoordinator.java"));
+        String actionSink = read(main("presentation/alltasks/AllTasksActionSink.java"));
+        String composeHost = read(Path.of("src/main/kotlin/de/thonktank/autosecretary/"
+                + "presentation/alltasks/AllTasksComposeHostView.kt"));
         String activity = read(main("MainActivity.java"));
 
         assertTrue(viewModel.contains("StateFlow<AllTasksScreenState> state()"));
@@ -106,9 +108,11 @@ public final class ArchitectureBoundaryTest {
         assertFalse(viewModel.contains("MutableLiveData"));
         assertFalse(viewModel.contains("UiEvent"));
         assertFalse(viewModel.contains("events()"));
-        assertFalse(coordinator.contains("interface Host"));
-        assertTrue(coordinator.contains("viewModel.dispatch(AllTasksAction"));
-        assertFalse(coordinator.contains("viewModel.update"));
+        assertTrue(actionSink.contains("void emit(AllTasksAction action)"));
+        assertTrue(composeHost.contains("emit(AllTasksAction.queryChanged(it))"));
+        assertTrue(composeHost.contains("this.screenState = state"));
+        assertFalse(Files.exists(main("presentation/alltasks/AllTasksCoordinator.java")));
+        assertTrue(activity.contains("allTasksViewModel::dispatch"));
         assertTrue(activity.contains("LegacyStateFlowBinder.observe"));
         assertFalse(activity.contains("allTasksViewModel.events()"));
         assertTrue(viewModel.contains("navigator.navigate(AppDestination."));

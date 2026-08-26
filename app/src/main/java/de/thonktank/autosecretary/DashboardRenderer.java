@@ -3,7 +3,8 @@ package de.thonktank.autosecretary;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksView;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksActionSink;
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeHostView;
 import de.thonktank.autosecretary.presentation.options.OptionsActionSink;
 import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
 import de.thonktank.autosecretary.presentation.shell.AppShellScreenState;
@@ -38,14 +39,14 @@ public final class DashboardRenderer {
     private final OptionsActionSink optionsActions;
     private final String version;
     private final RewardAnchorRegistry rewardAnchors;
-    private final AllTasksView.Listener allTasksListener;
+    private final AllTasksActionSink allTasksActions;
     private NavigationDestination mounted;
     private FocusTaskView focus;
     private LinearLayout timeline;
     private TextView more;
     private EmptyStateView empty;
     private CompletedTodayView completedToday;
-    private AllTasksView allTasks;
+    private AllTasksComposeHostView allTasks;
     private OptionsView options;
     private final Map<String, View> timelineViews = new LinkedHashMap<>();
 
@@ -54,7 +55,7 @@ public final class DashboardRenderer {
                              OptionsActionSink optionsActions,
                              String version,
                              RewardAnchorRegistry rewardAnchors,
-                             AllTasksView.Listener allTasksListener) {
+                             AllTasksActionSink allTasksActions) {
         this.context = context;
         this.scroll = scroll;
         this.content = content;
@@ -62,7 +63,7 @@ public final class DashboardRenderer {
         this.optionsActions = optionsActions;
         this.version = version;
         this.rewardAnchors = rewardAnchors;
-        this.allTasksListener = allTasksListener;
+        this.allTasksActions = allTasksActions;
         style = new UiStyle(context);
     }
 
@@ -73,7 +74,7 @@ public final class DashboardRenderer {
         if (shell.navigation == NavigationDestination.TODAY)
             bindToday(todayState, shell.palette, todayState.focusStepLimit);
         else if (shell.navigation == NavigationDestination.ALL_TASKS)
-            allTasks.bind(allTasksState, shell.palette);
+            allTasks.bind(allTasksState, shell.palette, allTasksActions);
         else options.bind(optionsState, version);
     }
 
@@ -148,13 +149,19 @@ public final class DashboardRenderer {
         content.removeAllViews();
         scroll.setVisibility(destination == NavigationDestination.ALL_TASKS
                 ? View.GONE : View.VISIBLE);
-        if (allTasks != null) allTasks.setVisibility(destination == NavigationDestination.ALL_TASKS
-                ? View.VISIBLE : View.GONE);
+        if (allTasks != null) {
+            if (destination != NavigationDestination.ALL_TASKS) allTasks.closeTransientState();
+            allTasks.setVisibility(destination == NavigationDestination.ALL_TASKS
+                    ? View.VISIBLE : View.GONE);
+        }
         mounted = destination;
         if (destination == NavigationDestination.TODAY) mountToday();
         else if (destination == NavigationDestination.ALL_TASKS) {
             content.setPadding(0, 0, 0, 0);
-            if (allTasks == null) allTasks = new AllTasksView(context, allTasksListener);
+            if (allTasks == null) {
+                allTasks = new AllTasksComposeHostView(context);
+                allTasks.setId(R.id.all_tasks_compose_host);
+            }
             ViewGroupParent.mountBesideScroll(scroll, content, allTasks);
         } else {
             content.setPadding(0, 0, 0, 0);
@@ -169,7 +176,7 @@ public final class DashboardRenderer {
         private ViewGroupParent() { }
 
         static void mountBesideScroll(ScrollView scroll, LinearLayout fallback,
-                                      AllTasksView allTasks) {
+                                      AllTasksComposeHostView allTasks) {
             if (allTasks.getParent() != null) return;
             if (scroll.getParent() instanceof LinearLayout) {
                 LinearLayout parent = (LinearLayout) scroll.getParent();
