@@ -1881,6 +1881,27 @@ Debug-APK, neuer Android-Testkandidat und unsigned Release. Die finalen Paketgr�
 5.104.140, 1.436.280 und 6.458.826 Byte; zusätzlich sind alle 14 CI-Harness- und 23
 Release-/Workflow-Verträge grün.
 
+Der dritte Matrixlauf `32914245968` bestätigte auf API 26 den vollständigen Laufzeitgraphen: 32
+Tests wurden ausgeführt, Room-Migrationen und alle Renderer-/Interaktionsklassen starteten. Genau
+ein neuer Compose-Test scheiterte nach erfolgreich restauriertem Verwerfen-Dialog an seiner
+eigenen falschen Textannahme. Er suchte `behalten`, obwohl der autoritative Verwerfen-Vertrag
+`weiter bearbeiten` verwendet; `behalten` gehört ausschließlich zum Löschdialog. Die dritte
+Nachtarbeitskorrektur richtet die Aktion am bestehenden Produkttext aus. Renderer, Zustand und
+Produkttexte werden dafür nicht verändert.
+
+Dasselbe Laufpaar legte außerdem eine reine Vorschau-SDK-Inkompatibilität des Compose-Testtreibers
+offen: Auf API 37 bricht dessen Rule bereits vor dem Testkörper ab, weil das dort entfernte
+`InputManager.getInstance()` reflektiv gesucht wird. Die fünf detaillierten Semantik-, Fokus-,
+Recreation-, Host-Back- und Mindestzieltests bleiben deshalb bis API 36 aktiv und laufen in der
+Matrix auf API 26 und 35. API 37 erhält keinen Skip ohne Ersatz, sondern einen separaten schwarzen
+Kasten mit UI Automator 2.4.0: Er findet die wirklichen Compose-Accessibility-Knoten, klickt
+Navigation und Abbruch und prüft Navigation sowie den über Recreation stabilen Verwerfen-Dialog
+gegen denselben autoritativen `EditorUiState`. Der vorhandene Compose-Smoke-Test bleibt auf API 37
+ebenfalls aktiv. Diese vierte Nachtarbeitskorrektur verändert weder Renderer noch Produktpaket.
+Der neue Android-Testkandidat misst einschließlich UI Automator 2.659.658 Byte; Debug,
+Instrumentierungsziel und unsigned Release bleiben bytegleich bei 5.104.140, 11.445.777 und
+6.458.826 Byte.
+
 Die Nachtarbeit verschiebt deshalb den gesamten 5a-Renderer samt Foundation und Animation in den
 Debug-Quellsatz. Release enthält weder diese Bibliotheken noch UI-Testcode und ist bytegleich zum
 Produktumfang vor 5a; erst 5b verschiebt den Renderer beim echten Cutover in den

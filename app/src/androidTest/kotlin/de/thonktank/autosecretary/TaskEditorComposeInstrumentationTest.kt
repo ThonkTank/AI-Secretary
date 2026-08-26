@@ -8,24 +8,22 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
+import androidx.test.filters.SdkSuppress
 import de.thonktank.autosecretary.domain.model.Recurrence
-import de.thonktank.autosecretary.domain.model.StepAmount
-import de.thonktank.autosecretary.domain.model.TaskBoundKind
-import de.thonktank.autosecretary.domain.model.TaskSlot
-import de.thonktank.autosecretary.domain.model.TimeOfDay
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@SdkSuppress(maxSdkVersion = 36)
 class TaskEditorComposeInstrumentationTest {
     @get:Rule
     val compose = createAndroidComposeRule<TaskEditorComposeHarnessActivity>()
 
     @Before
     fun renderReferenceState() {
-        compose.runOnUiThread { compose.activity.render(referenceState()) }
+        compose.runOnUiThread { compose.activity.render(taskEditorComposeReferenceState()) }
         compose.waitForIdle()
     }
 
@@ -68,7 +66,7 @@ class TaskEditorComposeInstrumentationTest {
         compose.onNodeWithTag("task-editor:prompt").assertExists()
         assertEquals(EditorUiState.Prompt.DISCARD, compose.activity.state.prompt)
 
-        compose.onNodeWithText("behalten").performClick()
+        compose.onNodeWithText("weiter bearbeiten").performClick()
         compose.waitUntil { compose.activity.state.prompt == EditorUiState.Prompt.NONE }
         assertEquals(0, compose.activity.dismissCount)
     }
@@ -98,30 +96,5 @@ class TaskEditorComposeInstrumentationTest {
         compose.waitUntil { compose.activity.state.page == EditorUiState.Page.STEPS }
         compose.onNodeWithTag("task-editor:step:step-1").assertExists()
         compose.onNodeWithContentDescription("Dehnen nach unten verschieben").assertExists()
-    }
-
-    private fun referenceState(): EditorUiState {
-        val steps = listOf(
-            EditorStepState("step-1", "Dehnen", 0, StepAmount.none(), ""),
-            EditorStepState("step-2", "Atmen", 0, StepAmount.none(), ""),
-        )
-        return EditorUiState.create().draft(
-            "Morgenroutine",
-            TaskSlot.MORNING,
-            30,
-            Recurrence.DAILY,
-            1,
-            0,
-            TimeOfDay.MORNING.bit,
-            TaskBoundKind.FOREVER,
-            null,
-            null,
-            null,
-            null,
-            "ruhig beginnen",
-            steps,
-            null,
-            3,
-        )
     }
 }
