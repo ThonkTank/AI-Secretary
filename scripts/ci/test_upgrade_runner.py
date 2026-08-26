@@ -11,7 +11,7 @@ RUNNER = ROOT / "scripts" / "ci" / "run-upgrade-test.sh"
 
 
 class UpgradeRunnerTest(unittest.TestCase):
-    def run_runner(self, package_present=False):
+    def run_runner(self, package_present=False, probe_crash=False):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = pathlib.Path(temporary.name)
@@ -36,7 +36,15 @@ class UpgradeRunnerTest(unittest.TestCase):
                   "shell pm path "*) exit 1 ;;
                   "shell am start "*) echo 'Status: ok' ;;
                   "shell dumpsys package de.example.autosecretary") echo '  versionCode=123 minSdk=26 targetSdk=35' ;;
+                  "shell am instrument "*currentVersionStartsAndReadsPreviousData*)
+                    if [ "${ADB_PROBE_CRASH:-false}" = true ]; then
+                      echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'
+                      exit 1
+                    fi
+                    echo 'OK (1 test)'
+                    ;;
                   "shell am instrument "*) echo 'OK (1 test)' ;;
+                  "logcat -d -v threadtime") echo 'FATAL EXCEPTION: InstrumentationThread' ;;
                   *) echo OK ;;
                 esac
                 """
@@ -48,6 +56,7 @@ class UpgradeRunnerTest(unittest.TestCase):
         environment["PATH"] = f"{root}:{environment['PATH']}"
         environment["ADB_LOG"] = str(log)
         environment["ADB_PACKAGE_PRESENT"] = str(package_present).lower()
+        environment["ADB_PROBE_CRASH"] = str(probe_crash).lower()
         result = subprocess.run(
             [
                 str(RUNNER),
@@ -100,6 +109,14 @@ class UpgradeRunnerTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("Package is still installed", result.stderr)
         self.assertNotIn(f"install {root / 'candidate.apk'}", calls)
+
+    def test_candidate_probe_crash_prints_device_diagnostics(self):
+        _, result, calls = self.run_runner(probe_crash=True)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Upgrade probe 'verify' failed", result.stderr)
+        self.assertIn("FATAL EXCEPTION: InstrumentationThread", result.stderr)
+        self.assertIn("logcat -d -v threadtime", calls)
 
 
 if __name__ == "__main__":

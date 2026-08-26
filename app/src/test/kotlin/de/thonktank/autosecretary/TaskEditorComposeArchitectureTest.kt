@@ -64,6 +64,6 @@ class TaskEditorComposeArchitectureTest {
         assertFalse(build.contains("debugImplementation(\"androidx.compose.foundation:foundation\")"))
         val releaseRules = File("proguard-release.pro").readText()
         assertTrue(releaseRules.contains("-dontobfuscate"))
-        assertTrue(releaseRules.contains("-keep class kotlin.jvm.internal.Intrinsics { *; }"))
+        assertTrue(releaseRules.contains("-keep class kotlin.** { *; }"))
     }
 }

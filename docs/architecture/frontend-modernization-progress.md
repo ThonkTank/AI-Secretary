@@ -2111,3 +2111,25 @@ klassifiziert Release-Proguard-Regeln künftig als vollständigen Produkt-/Relea
 Debug-Proguard-Regeln als Quality-/Instrumentierungs-Scope. Regressionstests sichern beide
 Zuordnungen. Da `scripts/ci/change_scope.py` selbst bereits alle Gates auslöst, muss ihr gemergter
 `main`-Stand anschließend automatisch die vollständige Release- und Upgrade-Matrix ausführen.
+
+Pull Request `#284` bestätigte Quality und alle sechs normalen beziehungsweise animationsaktiven
+Emulatorpfade und wurde als `1b57b0d87a3d6e2bc05dfe184eda9d22f2d39898` per Squash nach `main`
+übernommen. Lauf `32936285968` bewies anschließend, dass die korrigierte Scope-Erkennung auch auf
+`main` Quality, die vollständige Gerätematrix und das signierte Release-Paket ausführte. Alle diese
+Gates waren grün. Die drei Upgrades auf API 26/35/37 installierten und starteten sowohl Kandidat
+als auch Vorversion, säten die Produktionsfixture und installierten den Kandidaten erfolgreich
+darüber. Der externe Verifikationsprozess startete jedoch auf allen APIs noch nicht bis zur ersten
+Testmeldung. Die vorherige `checkNotNullParameter`-Signatur war beseitigt; statische Analyse des
+Test-APKs zeigte aber zahlreiche weitere Kotlin-Standardbibliotheksaufrufe, deren Klassen ebenfalls
+aus dem R8-gekürzten Ziel-APK zuerst geladen werden.
+
+Die achte Nachtarbeitskorrektur behandelt deshalb die gemeinsame Kotlin-Standardbibliothek als
+vollständige Release-ABI-Grenze, statt nur `Intrinsics` einzeln zu erhalten. Das bleibt auf die
+Kotlin-Runtime beschränkt. Das frische unsigned Release ist mit `3.096.190` Byte weiterhin klar
+kleiner als 8 MiB; DEX-Inspektion bestätigt neben der vollständigen `Intrinsics`-Klasse auch die
+vom Test-APK erwarteten Collections- und String-Laufzeitmethoden in ihren Vererbungsklassen. Der
+Upgrade-Runner gibt bei einem fehlgeschlagenen Probeprozess zusätzlich die letzten 400
+Logcat-Zeilen aus, damit ein weiterer Lauf eine konkrete Runtimeursache statt nur
+`Process crashed` liefert. Alle 39 CI-/Release-Verträge, Shellsyntax sowie
+`testInstrumentationUnitTest`, `lintDebug`, Debug-, Instrumentierungs- und Release-Paketierung
+liefen lokal grün. Die physische Sicht- und In-App-Update-Abnahme bleibt offen.
