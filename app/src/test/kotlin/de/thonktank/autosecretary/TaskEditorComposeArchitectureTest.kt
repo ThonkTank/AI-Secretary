@@ -62,6 +62,8 @@ class TaskEditorComposeArchitectureTest {
         assertTrue(build.contains("implementation(\"androidx.compose.foundation:foundation\")"))
         assertTrue(build.contains("implementation(\"androidx.compose.animation:animation\")"))
         assertFalse(build.contains("debugImplementation(\"androidx.compose.foundation:foundation\")"))
-        assertTrue(File("proguard-release.pro").readText().contains("-dontobfuscate"))
+        val releaseRules = File("proguard-release.pro").readText()
+        assertTrue(releaseRules.contains("-dontobfuscate"))
+        assertTrue(releaseRules.contains("-keep class kotlin.jvm.internal.Intrinsics { *; }"))
     }
 }

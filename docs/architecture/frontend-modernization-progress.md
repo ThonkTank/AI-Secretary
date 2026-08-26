@@ -2078,3 +2078,25 @@ nun direkt vor `events.collect` ein `eventsSubscribed`-Latch; der Test sendet er
 Signal. Damit sind sowohl gestarteter alter Read als auch aktive Invalidierungssammlung bewiesen,
 bevor der neuere Impuls den Abbruchvertrag auslösen soll. Produktiver Flow, Widgetkoordinator und
 Timeoutgrenzen bleiben unverändert.
+
+Pull Request `#282` bestand danach Quality und wurde als
+`ad27b58efbf9e436a09cde8fb08290826bbef0ba` per Squash nach `main` übernommen. Der automatische
+Test-only-`main`-Lauf war grün. Der erste manuelle Vollmodus `32929817843` wurde kontrolliert
+abgebrochen, nachdem `testInstrumentationUnitTest` mehr als 30 Minuten ohne Assertion oder
+Abschlussreport lief. Ein frischer Vollmodus `32931852367` bestätigte Quality und die komplette
+normale sowie animationsaktive Gerätematrix auf API 26/35/37. Er fand anschließend jedoch einen
+echten Release-Cutover-Fehler auf allen drei Upgrade-APIs: Frische Installation, App-Start,
+Vorversions-Fixture und Kandidat-Upgrade waren erfolgreich; erst der externe Kandidat-Testprozess
+brach vor seinem Test mit `NoSuchMethodError` auf
+`kotlin.jvm.internal.Intrinsics.checkNotNullParameter` ab.
+
+R8 hatte im neuen geschrumpften Produkt-APK die Kotlin-`Intrinsics`-Klasse auf die vom Produkt
+selbst verwendeten Mitglieder reduziert. Der Instrumentierungsprozess teilt den Classloader der
+Ziel-App und sah deshalb deren unvollständige Klasse vor der kompatiblen Test-Runtime. Die sechste
+Nachtarbeitskorrektur erhält `kotlin.jvm.internal.Intrinsics` im Release als vollständige ABI-
+Grenze. Architektur- und Workflowverträge sichern die Keep-Regel; Debug- und
+Instrumentierungsgraph bleiben weiterhin ungeschrumpft. Das neu gebaute unsigned Release bleibt
+mit `2.569.278` Byte unter dem 8-MiB-Budget und enthält nachweislich
+`Intrinsics.checkNotNullParameter(Object,String)`. Alle 38 CI-/Release-Verträge sowie
+`testInstrumentationUnitTest`, `lintDebug`, Debug-, Instrumentierungs- und Release-Paketierung
+liefen lokal grün. Die physische Sicht- und In-App-Update-Abnahme bleibt offen.
