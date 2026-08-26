@@ -2291,3 +2291,93 @@ Der abschließende Roadmap-Abgleich findet keinen zweiten Persistenzpfad, keine 
 keinen veränderten Updatervertrag und keinen übersprungenen Remote-Nachweis mehr. Phase 5b ist
 damit implementiert und veröffentlicht. Die physische Sicht- und In-App-Update-Abnahme bleibt
 ausdrücklich ausstehend und wird ohne Handy nicht als bestanden gewertet.
+
+## Phase 6 – Alles-Tab in Compose
+
+### Phase 6a – Vorprüfung und Implementationsplan für den Vergleichsrenderer
+
+Vor dem ersten Produktcode wurden die Original-Roadmap, der veröffentlichte Phase-5b-Stand
+`e53a04fcb39935644a95fd867091a194f87da595`, der dokumentierte Abschluss auf `21145507`,
+`AllTasksViewModel`, `AllTasksScreenState`, `AllTasksUiState`, Saved-State-Adapter,
+`AllTasksView`, Controls, flache stabile Zeilenprojektion, Recycler-Adapter, Reorder-Controller,
+alle Holder sowie Unit-, Virtualisierungs-, Golden- und Geräteinteraktionsverträge erneut gelesen.
+Der Screen besitzt bereits genau einen atomaren StateFlow-Owner und abgeschlossene Actions; die
+Fragilität liegt nun im 1.800-Zeilen-View-/Recycler-/Popup-/Drag-Renderer und seiner transienten
+lokalen Orchestrierung.
+
+Phase 6 ist als einzelner reviewbarer Sprint zu groß. **6a** implementiert den vollständigen
+Compose-Renderer zunächst ausschließlich im Test-/Vergleichspfad gegen denselben unveränderlichen
+`AllTasksUiState`. `LazyColumn` verwendet die vorhandenen stabilen Zeilenschlüssel; Suche,
+Filter, Expansion, List-/Sort-Modus, Dropdown, Dragziele und gleichwertige Accessibility-Aktionen
+publizieren nur bestehende typisierte Actions. Kurzlebige Dropdown-, Drag- und Swap-Auswahl bleibt
+lokal und wird bei Recreation geschlossen; Filter und Kartenexpansion bleiben ausschließlich im
+SavedStateHandle des Owners. Material, neue Farben, neue Produkttexte, ein zweiter Screen-State
+und ein produktives Mounting sind ausgeschlossen. Read-only-Goldens, Semantik, Zielgrößen,
+Virtualisierung und Actiongleichheit bilden das Gate.
+
+**6b** übernimmt anschließend auf einem eigenen Branch das produktive Mounting, echte Gesten,
+Randscrollen, Recreation und Persistenzfehler. Erst nach grünen Cutover-Nachweisen entfallen
+`AllTasksView`, RecyclerView, Controls, Holder, Reorder-Controller und der Legacy-Coordinator.
+Domain-, Room-, Updater-, Signatur-, SDK- und Gestaltungskontrakte bleiben in beiden Unterphasen
+unverändert. Gemäß Owner-Anweisung wird ohne Handy fortgefahren; die physische Geräteabnahme
+bleibt ausdrücklich offen und wird nicht als bestanden gewertet.
+
+### Phase 6a – Implementation und lokale Nachweise
+
+Der neue Alles-Renderer besteht aus Foundation-Primitiven, Controls und eigenen Dropdowns, allen
+acht vorhandenen flachen Zeilenarten, einem reinen Aktionsdispatcher sowie einer Java-kompatiblen
+Hostgrenze. `LazyColumn` verwendet `AllTasksRow.key` als Schlüssel und die Zeilenart als
+Content-Type; Projektion, Filterlogik und Sortierregeln bleiben ausschließlich in
+`AllTasksUiState`. Suche, Status, Zeit-/Rhythmus-/Wochentagsfilter, Expansion, Moduswechsel,
+Taskmenü und Organisationsaktionen laufen über den vorhandenen Listener zurück zum einzigen
+State-Owner. Der Host mutiert keine lokale Renderkopie. Nur Dropdown, Dragquelle und
+Accessibility-Swap-Auswahl sind kurzlebiger Compose-Zustand.
+
+Renderer, Fixture und nicht exportierter Harness liegen vollständig im Debug-Quellsatz. Weder
+`DashboardRenderer` noch der Produktionsquellsatz referenzieren den Compose-Host; das produktive
+Alles-Tab bleibt bis 6b unverändert auf `AllTasksView`. Der Harness restauriert mit dem
+vorhandenen `AllTasksSavedStateAdapter` exakt Filter, Modus und expandierte Karten. Die normalen
+Compose-Gerätetests prüfen auf API 26/35 Suche, Dropdown, Filter, Modus, Recreation,
+Virtualisierung eines 200-Zeilen-Katalogs, sichtbare Dragziele, stabile Drop-Schlüssel und
+Accessibility-Aktionen. Ein eigener API-37-Canary bedient dieselbe sichtbare
+Accessibility-Oberfläche außerhalb des dort inkompatiblen Compose-Eingabetreibers. Beide Klassen
+sind zusätzlich Teil der Animation-on-Matrix.
+
+Alle 13 vorhandenen Alles-Golden-Baselines bleiben unverändert und werden schreibgeschützt gegen
+den Compose-Renderer geprüft. Bei Kanaltoleranz 64 liegt die größte Abweichung mit 7,5614 Prozent
+im bestehenden 200-Prozent-Schrift-Szenario und damit unter der auf 10 Prozent verschärften
+Grenze. Standard, Suche, Filterdropdown, Archiv, Sortier-/Dragziele, alle leeren Gründe, Nacht,
+320/412/600 dp sowie große Schrift sind enthalten. Architekturtests verbieten Material,
+unabhängige Hexfarben, Golden-Schreibschalter und ein produktives Mounting.
+
+Das abschließende lokale Java-21-Gate bestand alle 157 Gradle-Aufgaben: 480 Host-, Robolectric-
+und Golden-Tests ohne Fehler bei einem bewussten Skip, `lintDebug`, Debug-, Android-Test- und
+unsigned Release-Paketierung. Die 17 CI-Harness- und 23 Release-/Workflow-Vertragstests sind
+ebenfalls grün. Debug misst 9.130.820 Byte, die Android-Test-APK 2.659.658 Byte, unsigned Release
+unverändert 2.569.278 Byte und die Fonts 1.478.008 Byte; alle Größenverträge bleiben eingehalten.
+Die beiden neuen Geräteklassen sind lokal kompiliert, mangels verbundenem Gerät aber nicht als
+ausgeführt gewertet.
+
+### Phase 6a – Roadmap-Abgleich und Nachtarbeit
+
+Der erste negative Abgleich fand drei relevante Schwächen. Ein zunächst konstruierter Drop-Test
+adressierte ein in der Projektion nicht vorhandenes Ziel; der erneute Vergleich mit dem
+Recycler-Vertrag zeigte dabei außerdem, dass ein Drop direkt auf einen Schritt tauscht, während
+nur ein Einfügeziel verschiebt. Dispatcher und Vertrag bilden diese Unterscheidung nun exakt ab.
+Zweitens bot die erste Compose-Semantik auch an Listenrändern nicht ausführbare Hoch-/Runter- und
+Slotaktionen an. Die sichtbaren Custom Actions werden jetzt wie im Legacy-Controller aus der
+wirklichen Zeilenposition abgeleitet. Drittens löste der erste Gesamtlauf 17 Compose-Lintfehler
+aus, weil Accessibility- und Ergebnisstrings über einen nicht konfigurationssensitiven Context
+gelesen wurden. Alle Ressourcenreads verwenden nun `LocalResources`; eine Lint-Baseline oder
+Unterdrückung wurde nicht eingeführt.
+
+Die Nachtarbeit ergänzte die fehlende höfliche Live-Region für eine ausgewählte Swap-Quelle und
+belegt direkt, dass Swap-Auswahl und geöffnetes Dropdown bei Activity-Recreation verschwinden,
+während Query und expandierte Karten über den autoritativen Saved-State erhalten bleiben. Der
+vollständige 480-Test-/Lint-/Paketlauf wurde danach erneut grün ausgeführt. Eine weitere lokale
+Nacharbeitsphase ist nicht begründet. Bewusst noch nicht implementiert sind reale Long-Press-
+Gesten, Pointer-Drag, Randscrollen, produktives Mounting und das Entfernen der RecyclerViews; der
+Testhook für Dragziel und Drop-Key ist kein Produktnachweis. Diese kohärenten Cutoverarbeiten
+bleiben ausdrücklich 6b und dürfen 6a nicht als produktionsfertigen Screen erscheinen lassen.
+Vor einem technischen Abschluss stehen weiterhin der eigene grüne Pull Request und Squash-Merge
+nach `main`; die physische Sicht- und In-App-Update-Abnahme bleibt ohne Handy offen.

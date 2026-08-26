@@ -13,5 +13,9 @@
             android:name=".TaskEditorComposeHarnessActivity"
             android:exported="false"
             android:theme="@style/ComposeSmokeTheme" />
+        <activity
+            android:name=".AllTasksComposeHarnessActivity"
+            android:exported="false"
+            android:theme="@style/ComposeSmokeTheme" />
     </application>
 </manifest>
