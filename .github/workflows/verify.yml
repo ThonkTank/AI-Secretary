@@ -323,7 +323,7 @@ jobs:
           export SIGNING_STORE_FILE="$KEYSTORE"
           ./gradlew assembleRelease assembleInstrumentationAndroidTest \
             -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" \
-            -PrequireReleaseSigning=true
+            -PrequireReleaseSigning=true -PupgradeProbeRunner=true
           CANDIDATE="$RUNNER_TEMP/release-candidate"
           mkdir -p "$CANDIDATE"
           cp app/build/outputs/apk/release/app-release.apk "$CANDIDATE/$APK_ASSET"

@@ -11,8 +11,7 @@ candidate_apk=$2
 test_apk=$3
 package_name=$4
 candidate_version=$5
-runner="${package_name}.test/androidx.test.runner.AndroidJUnitRunner"
-test_class="${package_name}.UpgradePersistenceTest"
+runner="${package_name}.test/${package_name}.UpgradeProbeInstrumentation"
 
 install_apk() {
   local apk=$1
@@ -58,16 +57,14 @@ start_main_activity() {
 
 run_probe() {
   local phase=$1
-  local method=$2
   local output
   local status
   set +e
-  output=$(adb shell am instrument -w -r -e upgradePhase "$phase" \
-    -e class "${test_class}#${method}" "$runner" 2>&1)
+  output=$(adb shell am instrument -w -r -e upgradePhase "$phase" "$runner" 2>&1)
   status=$?
   set -e
   printf '%s\n' "$output"
-  if [ "$status" -eq 0 ] && [[ "$output" == *"OK (1 test)"* ]]; then
+  if [ "$status" -eq 0 ] && [[ "$output" == *"OK (1 probe)"* ]]; then
     return
   fi
   echo "Upgrade probe '$phase' failed; recent device log follows" >&2
@@ -97,9 +94,9 @@ install_apk "$previous_apk"
 start_main_activity
 adb shell am force-stop "$package_name"
 install_apk "$test_apk"
-run_probe seed seedPreviousVersion
+run_probe seed
 
 install_apk "$candidate_apk" upgrade
 verify_installed_version
-run_probe verify currentVersionStartsAndReadsPreviousData
+run_probe verify
 adb shell am force-stop "$package_name"

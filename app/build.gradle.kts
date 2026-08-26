@@ -12,6 +12,8 @@ val configuredVersionCode = providers.gradleProperty("versionCode").orElse("2").
 val configuredVersionName = providers.gradleProperty("versionName").orElse("0.2.0").get()
 val requireReleaseSigning = providers.gradleProperty("requireReleaseSigning")
     .map(String::toBoolean).orElse(false).get()
+val useUpgradeProbeRunner = providers.gradleProperty("upgradeProbeRunner")
+    .map(String::toBoolean).orElse(false).get()
 val signingStoreFile = System.getenv("SIGNING_STORE_FILE")
 val signingStorePassword = System.getenv("SIGNING_STORE_PASSWORD")
 val signingKeyAlias = System.getenv("SIGNING_KEY_ALIAS")
@@ -33,7 +35,11 @@ android {
         targetSdk = 35
         versionCode = configuredVersionCode
         versionName = configuredVersionName
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = if (useUpgradeProbeRunner) {
+            "de.thonktank.autosecretary.UpgradeProbeInstrumentation"
+        } else {
+            "androidx.test.runner.AndroidJUnitRunner"
+        }
         buildConfigField("String", "UPDATE_REPOSITORY_OWNER",
             "\"${releaseContract.getProperty("repositoryOwner")}\"")
         buildConfigField("String", "UPDATE_REPOSITORY_NAME",

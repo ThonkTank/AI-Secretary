@@ -67,6 +67,28 @@ PREVIEW_SDK_RUNNER = (
 UPGRADE_RUNNER = (ROOT / "scripts" / "ci" / "run-upgrade-test.sh").read_text(
     encoding="utf-8"
 )
+UPGRADE_INSTRUMENTATION = (
+    ROOT
+    / "app"
+    / "src"
+    / "androidTest"
+    / "java"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "UpgradeProbeInstrumentation.java"
+).read_text(encoding="utf-8")
+UPGRADE_PROBE = (
+    ROOT
+    / "app"
+    / "src"
+    / "androidTest"
+    / "java"
+    / "de"
+    / "thonktank"
+    / "autosecretary"
+    / "UpgradePersistenceProbe.java"
+).read_text(encoding="utf-8")
 RELEASE_TOOL = (ROOT / "scripts" / "release" / "release_tool.py").read_text(
     encoding="utf-8"
 )
@@ -224,7 +246,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("ui-test-manifest", APP_BUILD)
         self.assertIn("-keep class de.thonktank.autosecretary.** { *; }", DEBUG_PROGUARD)
         self.assertIn("-keepattributes SourceFile,LineNumberTable", DEBUG_PROGUARD)
-        self.assertIn("-keep class kotlin.** { *; }", RELEASE_PROGUARD)
+        self.assertNotIn("-keep class kotlin.** { *; }", RELEASE_PROGUARD)
         self.assertIn("assembleInstrumentationAndroidTest", WORKFLOW)
         self.assertNotIn("assembleDebugAndroidTest", WORKFLOW)
         self.assertIn("testInstrumentationUnitTest", WORKFLOW)
@@ -233,6 +255,15 @@ class WorkflowContractTest(unittest.TestCase):
             "app-instrumentation-androidTest.apk",
             WORKFLOW,
         )
+        self.assertIn("-PupgradeProbeRunner=true", WORKFLOW)
+        self.assertIn('providers.gradleProperty("upgradeProbeRunner")', APP_BUILD)
+        self.assertIn(
+            '"de.thonktank.autosecretary.UpgradeProbeInstrumentation"', APP_BUILD
+        )
+        self.assertIn("extends Instrumentation", UPGRADE_INSTRUMENTATION)
+        self.assertNotIn("androidx.", UPGRADE_INSTRUMENTATION + UPGRADE_PROBE)
+        self.assertNotIn("org.junit", UPGRADE_INSTRUMENTATION + UPGRADE_PROBE)
+        self.assertIn("OK (1 probe)", UPGRADE_INSTRUMENTATION)
 
     def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):
         quality = WORKFLOW.split("\n  quality:", 1)[1].split(
