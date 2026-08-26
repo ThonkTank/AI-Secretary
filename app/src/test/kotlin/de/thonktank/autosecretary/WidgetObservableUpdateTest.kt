@@ -89,6 +89,7 @@ class WidgetObservableUpdateTest {
             fixture.host.ids = intArrayOf(4)
             fixture.coordinator.reconcileInstalledWidgets()
             await { fixture.host.updates.get() == 1 }
+            fixture.awaitPublicationIdle()
             val completions = AtomicInteger()
 
             fixture.coordinator.update(null, intArrayOf(4), completions::incrementAndGet)
@@ -175,6 +176,7 @@ class WidgetObservableUpdateTest {
         latestLoader: ((PresentationInvalidation) -> WidgetPresenter.CycleData)? = null,
     ) {
         val executor = Executors.newSingleThreadExecutor()
+        private val collectionExecutor = Executors.newSingleThreadExecutor()
         val host = RecordingHost()
         val invalidations = FakeInvalidations()
         val logger = RecordingLogger()
@@ -196,11 +198,19 @@ class WidgetObservableUpdateTest {
             { RemoteViews(context.packageName, R.layout.task_widget) },
             host,
             invalidations,
+            collectionExecutor,
         )
+
+        fun awaitPublicationIdle() {
+            val idle = CountDownLatch(1)
+            collectionExecutor.execute(idle::countDown)
+            assertTrue(idle.await(5, TimeUnit.SECONDS))
+        }
 
         fun close() {
             coordinator.stopObserving()
             executor.shutdownNow()
+            collectionExecutor.shutdownNow()
         }
     }
 
