@@ -14,6 +14,7 @@ Alles-Tab bietet einen ruhigen Ort zum Organisieren, ohne zum Abarbeiten einzula
 - Schritte sammeln ihre kombomultiplizierten XP in einem Gefäß; eine Routine-Ernte multipliziert die Summe erneut. Gesamt-XP treiben die Stufe im Kopfblatt. Die Ernte ist möglich, sobald XP gesammelt wurden; unerledigte Schritte gelten danach als verpasst und werden am nächsten Tag nachgeplant.
 - „Rest erledigen“ füllt in der App zunächst nur das Gefäß und ergänzt bei Mengenschritten ausschließlich fehlende Slots mit dem Planwert. Die bewusste Ernte schließt das Vorkommen auch mit offenen Schritten. Positive, am Tageswechsel noch offene Mengenarbeit wird mit ihren Ist-Werten abgeschlossen und automatisch geerntet. Erledigte Aufgaben verschwinden aus Fokus und Tagesfolge und bleiben in einer standardmäßig eingeklappten Heute-Historie exakt rückgängig machbar.
 - Mengen- und Satzschritte werden im Fokusblatt ausgeklappt und dort bearbeitet. Ihre XP folgen dem Verhältnis aus tatsächlicher und geplanter Menge, sind bei Übererfüllung nicht gedeckelt und werden bei Korrekturen als Differenz angepasst. Ein explizites Null-Ergebnis löst den Termin ohne XP oder Kombo; „Für heute abschließen“ bewahrt Teilwerte ohne erfundene Nullresultate.
+- Satzschritte können optional einen lokalen Trainingsassistenten verwenden. Er protokolliert pro Satz Wiederholungen, Gewicht und RIR, lernt zunächst aus vollständigen echten Einheiten und passt danach nachvollziehbar jeweils nur Wiederholungen, Widerstand oder Satzanzahl innerhalb fester Leitplanken an. Schmerz- oder Technikhinweise pausieren die Automatik; bestehende Tagespläne bleiben unverändert.
 - Offene Schritte lassen sich im Fokusblatt per langem Druck für das heutige Vorkommen umsortieren. Diese Ausführungsreihenfolge verändert weder die Schrittdefinition noch spätere Vorkommen.
 - Das Widget ist der Arbeitsbereich: abhaken, später setzen und Bedingungen erfüllen. Erstellen und Bearbeiten öffnen die App.
 - Im Alles-Tab lassen sich aktive und archivierte Aufgaben suchen und nach Status, Tageszeit
@@ -27,7 +28,7 @@ Alles-Tab bietet einen ruhigen Ort zum Organisieren, ohne zum Abarbeiten einzula
 
 ## Bewusste Grenzen
 
-- Keine KI, keine sozialen Vergleiche, kein Bestrafungs-Tracking und keine zum Erledigen
+- Keine offene oder generative KI, keine sozialen Vergleiche, kein Bestrafungs-Tracking und keine zum Erledigen
   drängende Gesamtliste. „Alles“ bleibt ein explizit geöffneter Verwaltungsbereich.
 - Manuelle Reihenfolgen werden nie automatisch aus dem Nutzungsverhalten überschrieben.
 - Release-APKs kommen über GitHub Releases; reguläre Updates erhalten den lokalen Zustand.

@@ -17,9 +17,16 @@ import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
+import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.StringJoiner;
 
 public final class TaskEntityMapper {
     public Task toDomain(TaskEntity entity) {
@@ -68,16 +75,37 @@ public final class TaskEntityMapper {
                         StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
                         entity.plannedReps, entity.plannedDurationSeconds),
                 RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
+                trainingConfig(entity), TrainingAssistantState.restore(entity.assistantStatus,
+                        entity.assistantObservations, entity.assistantReadyStreak,
+                        entity.assistantHardStreak),
                 entity.note, StepActivationKind.fromStorage(entity.activationKind));
     }
 
     public TaskStepEntity toEntity(TaskStepTemplate step) {
         StoredAmount amount = stored(step.amount);
-        return new TaskStepEntity(step.id, step.taskId.value, step.position, step.text,
+        TaskStepEntity entity = new TaskStepEntity(step.id, step.taskId.value, step.position, step.text,
                 step.weekdayMask, step.intervalDays, amount.kind.storageCode(), amount.sets,
                 amount.repetitions, amount.durationSeconds, step.restTimerPolicy.mode.name(),
                 step.restTimerPolicy.customSeconds, step.note,
                 step.activationKind.storageCode());
+        TrainingAssistantConfig config = step.trainingAssistant;
+        entity.assistantEnabled = config.enabled;
+        entity.assistantMinSets = config.minSets; entity.assistantMaxSets = config.maxSets;
+        entity.assistantMinReps = config.minRepetitions;
+        entity.assistantMaxReps = config.maxRepetitions;
+        entity.assistantTargetRir = config.targetRir;
+        entity.assistantLoadIncrementMilli = config.loadIncrementMilli;
+        entity.assistantWeeklySetCeiling = config.automaticWeeklySetCeiling;
+        entity.plannedLoadMode = config.load.mode.name();
+        entity.plannedLoadUnit = config.load.unit.name();
+        entity.plannedLoadMilli = config.load.milliUnits;
+        entity.primaryMuscle = config.primaryMuscle == null ? null : config.primaryMuscle.name();
+        entity.secondaryMuscles = muscles(config.secondaryMuscles);
+        entity.assistantStatus = step.trainingState.status.name();
+        entity.assistantObservations = step.trainingState.eligibleObservations;
+        entity.assistantReadyStreak = step.trainingState.readyStreak;
+        entity.assistantHardStreak = step.trainingState.hardStreak;
+        return entity;
     }
 
     public TaskScheduleEntry toDomain(TaskScheduleEntity entity) {
@@ -100,17 +128,55 @@ public final class TaskEntityMapper {
                 repetitions,
                 entity.sourceTemplateId, entity.comboOwnerId,
                 entity.originOccurrenceId,
-                CarryForwardReason.fromStorage(entity.carryForwardReason));
+                CarryForwardReason.fromStorage(entity.carryForwardReason),
+                ResistanceLoad.restore(entity.plannedLoadMode, entity.plannedLoadUnit,
+                        entity.plannedLoadMilli), entity.targetRir);
     }
 
     public OccurrenceStepEntity toEntity(OccurrenceStep step) {
         StoredAmount amount = stored(step.amount);
-        return new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
+        OccurrenceStepEntity entity = new OccurrenceStepEntity(step.id, step.occurrenceId, step.position, step.text,
                 step.done, amount.kind.storageCode(), amount.sets, amount.repetitions,
                 amount.durationSeconds, step.restTimerPolicy.mode.name(),
                 step.restTimerPolicy.customSeconds, step.note, "", step.sourceTemplateId,
                 step.comboOwnerId, step.originOccurrenceId,
                 step.carryForwardReason.storageCode());
+        entity.plannedLoadMode = step.plannedLoad.mode.name();
+        entity.plannedLoadUnit = step.plannedLoad.unit.name();
+        entity.plannedLoadMilli = step.plannedLoad.milliUnits;
+        entity.targetRir = step.targetRir;
+        return entity;
+    }
+
+    private static TrainingAssistantConfig trainingConfig(TaskStepEntity entity) {
+        return new TrainingAssistantConfig(entity.assistantEnabled, entity.assistantMinSets,
+                entity.assistantMaxSets, entity.assistantMinReps, entity.assistantMaxReps,
+                entity.assistantTargetRir, entity.assistantLoadIncrementMilli,
+                entity.assistantWeeklySetCeiling,
+                ResistanceLoad.restore(entity.plannedLoadMode, entity.plannedLoadUnit,
+                        entity.plannedLoadMilli),
+                muscle(entity.primaryMuscle), parseMuscles(entity.secondaryMuscles));
+    }
+
+    private static TrainingMuscleGroup muscle(String value) {
+        try { return value == null ? null : TrainingMuscleGroup.valueOf(value); }
+        catch (IllegalArgumentException invalid) { return null; }
+    }
+
+    private static Set<TrainingMuscleGroup> parseMuscles(String value) {
+        EnumSet<TrainingMuscleGroup> result = EnumSet.noneOf(TrainingMuscleGroup.class);
+        if (value == null || value.isEmpty()) return result;
+        for (String part : value.split(",")) {
+            TrainingMuscleGroup muscle = muscle(part);
+            if (muscle != null) result.add(muscle);
+        }
+        return result;
+    }
+
+    private static String muscles(Set<TrainingMuscleGroup> values) {
+        StringJoiner result = new StringJoiner(",");
+        for (TrainingMuscleGroup value : values) result.add(value.name());
+        return result.toString();
     }
 
     private static StoredAmount stored(StepAmount amount) {

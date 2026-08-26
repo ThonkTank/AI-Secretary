@@ -58,8 +58,11 @@ public final class CreateTask {
             TaskStepDefinition step = definitions.get(i);
             String id = step.id == null ? ids.nextId() : step.id;
             result.add(new TaskStepTemplate(id, taskId, i, step.text, step.weekdayMask,
-                    step.intervalDays, step.amount, step.restTimerPolicy, step.note,
-                    step.activationKind));
+                    step.intervalDays, step.amount, step.restTimerPolicy, step.trainingAssistant,
+                    step.trainingAssistant.enabled
+                            ? de.thonktank.autosecretary.domain.model.TrainingAssistantState.calibrating()
+                            : de.thonktank.autosecretary.domain.model.TrainingAssistantState.disabled(),
+                    step.note, step.activationKind));
         }
         return result;
     }

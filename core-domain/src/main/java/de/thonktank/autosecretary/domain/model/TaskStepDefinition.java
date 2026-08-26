@@ -10,38 +10,59 @@ public final class TaskStepDefinition {
     public final int intervalDays;
     public final StepAmount amount;
     public final RestTimerPolicy restTimerPolicy;
+    public final TrainingAssistantConfig trainingAssistant;
     public final String note;
     public final StepActivationKind activationKind;
 
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
                               StepAmount amount, String note) {
         this(id, position, text, weekdayMask, 0, amount,
-                RestTimerPolicy.forAmount(amount), note);
+                RestTimerPolicy.forAmount(amount), TrainingAssistantConfig.disabled(), note,
+                StepActivationKind.SCHEDULED);
     }
 
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
                               int intervalDays, StepAmount amount, String note) {
         this(id, position, text, weekdayMask, intervalDays, amount,
-                RestTimerPolicy.forAmount(amount), note);
+                RestTimerPolicy.forAmount(amount), TrainingAssistantConfig.disabled(), note,
+                StepActivationKind.SCHEDULED);
     }
 
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
                               int intervalDays, StepAmount amount,
                               RestTimerPolicy restTimerPolicy, String note) {
-        this(id, position, text, weekdayMask, intervalDays, amount, restTimerPolicy, note,
-                StepActivationKind.SCHEDULED);
+        this(id, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
+                TrainingAssistantConfig.disabled(), note, StepActivationKind.SCHEDULED);
     }
 
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
                               int intervalDays, StepAmount amount, String note,
                               StepActivationKind activationKind) {
         this(id, position, text, weekdayMask, intervalDays, amount,
-                RestTimerPolicy.forAmount(amount), note, activationKind);
+                RestTimerPolicy.forAmount(amount), TrainingAssistantConfig.disabled(), note,
+                activationKind);
     }
 
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
                               int intervalDays, StepAmount amount,
                               RestTimerPolicy restTimerPolicy, String note,
+                              StepActivationKind activationKind) {
+        this(id, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
+                TrainingAssistantConfig.disabled(), note, activationKind);
+    }
+
+    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
+                              int intervalDays, StepAmount amount,
+                              RestTimerPolicy restTimerPolicy,
+                              TrainingAssistantConfig trainingAssistant, String note) {
+        this(id, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
+                trainingAssistant, note, StepActivationKind.SCHEDULED);
+    }
+
+    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
+                              int intervalDays, StepAmount amount,
+                              RestTimerPolicy restTimerPolicy,
+                              TrainingAssistantConfig trainingAssistant, String note,
                               StepActivationKind activationKind) {
         if (position < 0) throw new IllegalArgumentException("Step position must not be negative");
         if (text == null || text.trim().isEmpty())
@@ -61,13 +82,17 @@ public final class TaskStepDefinition {
         if (!(this.amount instanceof StepAmount.SetsReps)
                 && this.restTimerPolicy.mode != RestTimerPolicy.Mode.OFF)
             throw new IllegalArgumentException("Only set steps may configure a rest timer");
+        this.trainingAssistant = trainingAssistant == null
+                ? TrainingAssistantConfig.disabled() : trainingAssistant;
+        if (!(this.amount instanceof StepAmount.SetsReps) && this.trainingAssistant.enabled)
+            throw new IllegalArgumentException("Only set steps may use the training assistant");
         this.note = note == null ? "" : note;
         this.activationKind = Objects.requireNonNull(activationKind, "activationKind");
     }
 
     public TaskStepDefinition withIdentity(String value, int newPosition) {
         return new TaskStepDefinition(value, newPosition, text, weekdayMask, intervalDays,
-                amount, restTimerPolicy, note, activationKind);
+                amount, restTimerPolicy, trainingAssistant, note, activationKind);
     }
 
     @Override public boolean equals(Object other) {
@@ -77,11 +102,12 @@ public final class TaskStepDefinition {
                 && text.equals(value.text) && weekdayMask == value.weekdayMask
                 && intervalDays == value.intervalDays
                 && amount.equals(value.amount) && restTimerPolicy.equals(value.restTimerPolicy)
+                && trainingAssistant.equals(value.trainingAssistant)
                 && note.equals(value.note) && activationKind == value.activationKind;
     }
 
     @Override public int hashCode() {
         return Objects.hash(id, position, text, weekdayMask, intervalDays, amount,
-                restTimerPolicy, note, activationKind);
+                restTimerPolicy, trainingAssistant, note, activationKind);
     }
 }

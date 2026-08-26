@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.domain.model.ComboProgress;
+import de.thonktank.autosecretary.domain.model.CarryForwardReason;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
@@ -45,7 +46,8 @@ final class AccumulatingOccurrenceAssembler {
                 steps.add(new OccurrenceStep(ids.nextId(), occurrence.id, index, template.text,
                         false, template.amount, template.restTimerPolicy, template.note,
                         Collections.emptyList(), template.id,
-                        ComboProgress.stepOwner(template.id)));
+                        ComboProgress.stepOwner(template.id), null, CarryForwardReason.NONE,
+                        template.trainingAssistant.load, template.trainingAssistant.targetRir));
             }
             if (!steps.isEmpty()) repository.insertOccurrenceSteps(steps);
             changed = true;

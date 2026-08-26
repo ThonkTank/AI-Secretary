@@ -18,6 +18,7 @@ public interface TaskDao {
     @Query("SELECT * FROM tasks WHERE id = :id LIMIT 1") TaskEntity task(String id);
     @Query("DELETE FROM tasks WHERE id = :id") void deleteTask(String id);
     @Upsert void insertTemplates(List<TaskStepEntity> steps);
+    @Update void updateTemplate(TaskStepEntity step);
     @Query("DELETE FROM task_steps WHERE id = :id") void deleteTemplate(String id);
     @Query("DELETE FROM task_steps WHERE taskId = :taskId") void deleteTemplates(String taskId);
     @Query("SELECT * FROM task_steps WHERE taskId = :taskId ORDER BY position") List<TaskStepEntity> templates(String taskId);
@@ -95,6 +96,27 @@ public interface TaskDao {
     List<RepetitionResultEntity> repetitionResultsFor(List<String> stepIds);
     @Query("DELETE FROM repetition_results WHERE stepId = :stepId AND slotIndex >= :fromIndex")
     void deleteRepetitionResultsFrom(String stepId, int fromIndex);
+    @Query("SELECT COUNT(*) FROM repetition_results rr "
+            + "JOIN occurrence_steps os ON os.id=rr.stepId "
+            + "JOIN occurrences o ON o.id=os.occurrenceId "
+            + "JOIN task_steps ts ON ts.id=os.sourceTemplateId "
+            + "WHERE rr.source='USER' AND ts.primaryMuscle=:muscle "
+            + "AND o.scheduledOn BETWEEN :start AND :end")
+    int effectivePrimarySets(String muscle, String start, String end);
+    @Query("SELECT COUNT(*) FROM repetition_results rr "
+            + "JOIN occurrence_steps os ON os.id=rr.stepId "
+            + "JOIN occurrences o ON o.id=os.occurrenceId "
+            + "JOIN task_steps ts ON ts.id=os.sourceTemplateId "
+            + "WHERE rr.source='USER' "
+            + "AND (',' || ts.secondaryMuscles || ',') LIKE ('%,' || :muscle || ',%') "
+            + "AND o.scheduledOn BETWEEN :start AND :end")
+    int effectiveSecondarySets(String muscle, String start, String end);
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    void insertTrainingAdjustment(TrainingAdjustmentEntity adjustment);
+    @Update void updateTrainingAdjustment(TrainingAdjustmentEntity adjustment);
+    @Query("SELECT * FROM training_adjustments WHERE templateId=:templateId "
+            + "ORDER BY createdOn DESC,id DESC LIMIT 1")
+    TrainingAdjustmentEntity latestTrainingAdjustment(String templateId);
     @Insert(onConflict = OnConflictStrategy.REPLACE) void putStats(StatsEntity stats);
     @Query("SELECT * FROM stats WHERE id = 1") StatsEntity stats();
     @Insert(onConflict = OnConflictStrategy.REPLACE) void putCombo(ComboEntity combo);

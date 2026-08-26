@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.domain.model.FlowResourceState;
 import de.thonktank.autosecretary.domain.model.FlowRunResourceSnapshot;
 import de.thonktank.autosecretary.domain.model.FlowRunStepSnapshot;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepFlowRun;
@@ -74,7 +75,8 @@ final class StepFlowEntityMapper {
                 value.sourceTemplateId, value.text, amount(value.amountKind, value.plannedSets,
                 value.plannedReps, value.plannedDurationSeconds),
                 RestTimerPolicy.fromStorage(value.restTimerMode, value.restTimerSeconds),
-                value.note, delay,
+                ResistanceLoad.restore(value.plannedLoadMode, value.plannedLoadUnit,
+                        value.plannedLoadMilli), value.targetRir, value.note, delay,
                 value.chosenDelayMillis);
     }
 
@@ -83,7 +85,9 @@ final class StepFlowEntityMapper {
         return new FlowRunStepEntity(value.id, value.runId, value.position,
                 value.sourceTemplateId, value.text, amount.kind.storageCode(), amount.sets,
                 amount.repetitions, amount.durationSeconds, value.restTimerPolicy.mode.name(),
-                value.restTimerPolicy.customSeconds, value.note,
+                value.restTimerPolicy.customSeconds, value.plannedLoad.mode.name(),
+                value.plannedLoad.unit.name(), value.plannedLoad.milliUnits, value.targetRir,
+                value.note,
                 value.delayAfter == null ? null : value.delayAfter.mode.name(),
                 value.delayAfter == null ? null : value.delayAfter.defaultDelayMillis,
                 value.delayAfter == null ? null : value.delayAfter.lastUsedDelayMillis,

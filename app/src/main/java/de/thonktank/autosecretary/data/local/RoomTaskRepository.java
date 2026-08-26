@@ -23,6 +23,11 @@ import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.ComboObligation;
 import de.thonktank.autosecretary.domain.model.ComboDecayEvent;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
+import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
+import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
+import de.thonktank.autosecretary.domain.model.TrainingSetResult;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
 import java.time.LocalDate;
@@ -97,6 +102,10 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
     }
 
     @Override public void deleteTemplate(String id) { dao.deleteTemplate(id); }
+
+    @Override public void updateTrainingTemplate(TaskStepTemplate template) {
+        dao.updateTemplate(mapper.toEntity(template));
+    }
 
     @Override public List<TaskStepTemplate> templates(TaskId taskId) {
         List<TaskStepTemplate> result = new ArrayList<>();
@@ -499,6 +508,78 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
                 event.eventOn.toString(), event.bookingId));
     }
 
+    @Override public void putTrainingSetResult(String occurrenceStepId, int slotIndex,
+                                               TrainingSetResult result) {
+        dao.putRepetitionResult(new RepetitionResultEntity(occurrenceStepId, slotIndex,
+                result.repetitions, result.load.mode.name(), result.load.unit.name(),
+                result.load.milliUnits, result.rir, result.source.name(),
+                result.safetyFlag.name()));
+    }
+
+    @Override public List<TrainingSetResult> trainingSetResults(String occurrenceStepId) {
+        List<TrainingSetResult> result = new ArrayList<>();
+        int expected = 0;
+        for (RepetitionResultEntity value : dao.repetitionResults(occurrenceStepId)) {
+            if (value.slotIndex != expected++) break;
+            result.add(new TrainingSetResult(value.actualRepetitions,
+                    ResistanceLoad.restore(value.loadMode, value.loadUnit, value.loadMilli),
+                    value.rir, enumValue(TrainingSetResult.Source.class, value.source,
+                    TrainingSetResult.Source.LEGACY),
+                    enumValue(TrainingSetResult.SafetyFlag.class, value.safetyFlag,
+                    TrainingSetResult.SafetyFlag.NONE)));
+        }
+        return result;
+    }
+
+    @Override public double effectiveSetsSince(TrainingMuscleGroup muscle, LocalDate start,
+                                               LocalDate end) {
+        if (muscle == null) return 0;
+        String first = start.toString();
+        String last = end.toString();
+        return dao.effectivePrimarySets(muscle.name(), first, last)
+                + dao.effectiveSecondarySets(muscle.name(), first, last) * 0.5;
+    }
+
+    @Override public void insertTrainingAdjustment(TrainingAdjustment adjustment) {
+        dao.insertTrainingAdjustment(adjustment(adjustment));
+    }
+
+    @Override public TrainingAdjustment latestTrainingAdjustment(String templateId) {
+        TrainingAdjustmentEntity value = dao.latestTrainingAdjustment(templateId);
+        return value == null ? null : adjustment(value);
+    }
+
+    @Override public void updateTrainingAdjustment(TrainingAdjustment adjustment) {
+        dao.updateTrainingAdjustment(adjustment(adjustment));
+    }
+
+    private static TrainingAdjustmentEntity adjustment(TrainingAdjustment value) {
+        return new TrainingAdjustmentEntity(value.id, value.templateId,
+                value.sourceOccurrenceStepId, value.reason.name(), value.before.sets,
+                value.before.repetitions, value.beforeLoad.mode.name(),
+                value.beforeLoad.unit.name(), value.beforeLoad.milliUnits, value.after.sets,
+                value.after.repetitions, value.afterLoad.mode.name(), value.afterLoad.unit.name(),
+                value.afterLoad.milliUnits, value.createdOn.toString(), value.state.name());
+    }
+
+    private static TrainingAdjustment adjustment(TrainingAdjustmentEntity value) {
+        return new TrainingAdjustment(value.id, value.templateId, value.sourceOccurrenceStepId,
+                de.thonktank.autosecretary.domain.training.TrainingAdaptationEngine.Reason
+                        .valueOf(value.reason),
+                (StepAmount.SetsReps) StepAmount.setsReps(value.beforeSets, value.beforeReps),
+                ResistanceLoad.restore(value.beforeLoadMode, value.beforeLoadUnit,
+                        value.beforeLoadMilli),
+                (StepAmount.SetsReps) StepAmount.setsReps(value.afterSets, value.afterReps),
+                ResistanceLoad.restore(value.afterLoadMode, value.afterLoadUnit,
+                        value.afterLoadMilli), LocalDate.parse(value.createdOn),
+                TrainingAdjustment.State.valueOf(value.state));
+    }
+
+    private static <T extends Enum<T>> T enumValue(Class<T> type, String value, T fallback) {
+        try { return Enum.valueOf(type, value); }
+        catch (RuntimeException invalid) { return fallback; }
+    }
+
     private static ComboObligationEntity obligation(ComboObligation value) {
         return new ComboObligationEntity(value.id, value.ownerId, value.taskId.value,
                 value.kind.name(), value.slot.storageCode, value.scheduledOn.toString(),
@@ -582,7 +663,12 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
             int value = desired.get(index);
             if (index >= stored.size() || stored.get(index).slotIndex != index
                     || stored.get(index).actualRepetitions != value)
-                dao.putRepetitionResult(new RepetitionResultEntity(step.id, index, value));
+                dao.putRepetitionResult(index < stored.size()
+                        ? new RepetitionResultEntity(step.id, index, value,
+                        stored.get(index).loadMode, stored.get(index).loadUnit,
+                        stored.get(index).loadMilli, stored.get(index).rir,
+                        stored.get(index).source, stored.get(index).safetyFlag)
+                        : new RepetitionResultEntity(step.id, index, value));
         }
         dao.deleteRepetitionResultsFrom(step.id, desired.size());
     }

@@ -39,8 +39,11 @@ import de.thonktank.autosecretary.StepCadenceMode
 import de.thonktank.autosecretary.ValidationIssue
 import de.thonktank.autosecretary.domain.model.Recurrence
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy
+import de.thonktank.autosecretary.domain.model.ResistanceLoad
 import de.thonktank.autosecretary.domain.model.StepAmount
 import de.thonktank.autosecretary.domain.model.StepAmountKind
+import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig
+import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer
 import de.thonktank.autosecretary.presentation.TaskEditorTextFormatter
 
@@ -263,6 +266,7 @@ internal fun EditorStepDetailPage(
     }
     AmountInputs(state, step, index, palette, dispatcher)
     if (step.amount is StepAmount.SetsReps) {
+        TrainingAssistantInputs(state, step, index, palette, dispatcher)
         RestTimerInputs(state, step, index, palette, dispatcher)
     }
     if (state.hasStepIssue(ValidationIssue.Field.STEP_AMOUNT, step.id)) {
@@ -277,6 +281,201 @@ internal fun EditorStepDetailPage(
         hint = stringResource(R.string.field_note_hint),
         tag = focusTag("note", step.id),
     )
+}
+
+@Composable
+private fun TrainingAssistantInputs(
+    state: EditorUiState,
+    step: EditorStepState,
+    index: Int,
+    palette: DayPalette,
+    dispatcher: TaskEditorComposeDispatcher,
+) {
+    val config = step.trainingAssistant
+    Label(R.string.training_assistant_label, palette, Modifier.padding(top = 22.dp, bottom = 10.dp))
+    ChipFlow {
+        EditorChip(R.string.training_assistant_off, !config.enabled, palette) {
+            updateStep(state, index, step.withTrainingAssistant(TrainingAssistantConfig.disabled()), dispatcher)
+        }
+        EditorChip(R.string.training_assistant_automatic, config.enabled, palette) {
+            if (!config.enabled) {
+                updateStep(
+                    state,
+                    index,
+                    step.withTrainingAssistant(
+                        TrainingAssistantConfig.defaults(
+                            ResistanceLoad.numeric(
+                                ResistanceLoad.Mode.EXTERNAL,
+                                ResistanceLoad.Unit.KG,
+                                20_000,
+                            ),
+                            null,
+                        ),
+                    ),
+                    dispatcher,
+                )
+            }
+        }
+    }
+    if (!config.enabled) {
+        EditorText(
+            stringResource(R.string.training_assistant_explanation),
+            Color.argb(palette.muted),
+            14,
+            Modifier.padding(top = 8.dp),
+            italic = true,
+        )
+        return
+    }
+
+    Label(R.string.training_load_mode, palette, Modifier.padding(top = 18.dp, bottom = 8.dp))
+    ChipFlow {
+        trainingLoadModes.forEach { (label, mode) ->
+            EditorChip(label, config.load.mode == mode, palette) {
+                val load = if (mode == ResistanceLoad.Mode.BODYWEIGHT) {
+                    ResistanceLoad.bodyweight()
+                } else {
+                    ResistanceLoad.numeric(
+                        mode,
+                        if (config.load.unit == ResistanceLoad.Unit.LB) ResistanceLoad.Unit.LB
+                        else ResistanceLoad.Unit.KG,
+                        config.load.milliUnits ?: 20_000,
+                    )
+                }
+                updateTraining(state, step, index, config, load = load, dispatcher = dispatcher)
+            }
+        }
+    }
+    if (config.load.adjustable()) {
+        Row(
+            Modifier.fillMaxWidth().padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            NumberInput(
+                ((config.load.milliUnits ?: 0L) / 1000L).toInt(),
+                R.string.training_load_value,
+                palette,
+                { value ->
+                    val load = ResistanceLoad.numeric(
+                        config.load.mode,
+                        config.load.unit,
+                        (value ?: 0).coerceAtLeast(0) * 1000L,
+                    )
+                    updateTraining(state, step, index, config, load = load, dispatcher = dispatcher)
+                },
+                Modifier.weight(1f),
+                focusTag("training-load", step.id),
+            )
+            ChipFlow(Modifier.weight(1f)) {
+                EditorChip(R.string.training_unit_kg, config.load.unit == ResistanceLoad.Unit.KG, palette) {
+                    updateTraining(
+                        state, step, index, config,
+                        load = ResistanceLoad.numeric(config.load.mode, ResistanceLoad.Unit.KG, config.load.milliUnits ?: 0),
+                        increment = 2_500,
+                        dispatcher = dispatcher,
+                    )
+                }
+                EditorChip(R.string.training_unit_lb, config.load.unit == ResistanceLoad.Unit.LB, palette) {
+                    updateTraining(
+                        state, step, index, config,
+                        load = ResistanceLoad.numeric(config.load.mode, ResistanceLoad.Unit.LB, config.load.milliUnits ?: 0),
+                        increment = 5_000,
+                        dispatcher = dispatcher,
+                    )
+                }
+            }
+        }
+    }
+
+    Row(
+        Modifier.fillMaxWidth().padding(top = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        NumberInput(
+            config.targetRir,
+            R.string.training_target_rir,
+            palette,
+            { value -> updateTraining(state, step, index, config, targetRir = (value ?: 2).coerceIn(0, 5), dispatcher = dispatcher) },
+            Modifier.weight(1f),
+            focusTag("training-rir", step.id),
+        )
+        NumberInput(
+            config.automaticWeeklySetCeiling,
+            R.string.training_weekly_ceiling,
+            palette,
+            { value -> updateTraining(state, step, index, config, ceiling = (value ?: 10).coerceAtLeast(1), dispatcher = dispatcher) },
+            Modifier.weight(1f),
+            focusTag("training-ceiling", step.id),
+        )
+    }
+
+    Label(R.string.training_primary_muscle, palette, Modifier.padding(top = 18.dp, bottom = 8.dp))
+    ChipFlow {
+        TrainingMuscleGroup.values().forEach { muscle ->
+            EditorChip(trainingMuscleLabel(muscle), config.primaryMuscle == muscle, palette) {
+                updateTraining(state, step, index, config, primary = muscle, dispatcher = dispatcher)
+            }
+        }
+    }
+    Label(R.string.training_secondary_muscles, palette, Modifier.padding(top = 14.dp, bottom = 8.dp))
+    ChipFlow {
+        TrainingMuscleGroup.values().filter { it != config.primaryMuscle }.forEach { muscle ->
+            EditorChip(trainingMuscleLabel(muscle), config.secondaryMuscles.contains(muscle), palette) {
+                val selected = config.secondaryMuscles.toMutableSet()
+                if (!selected.add(muscle)) selected.remove(muscle)
+                updateTraining(state, step, index, config, secondaries = selected, dispatcher = dispatcher)
+            }
+        }
+    }
+}
+
+private fun updateTraining(
+    state: EditorUiState,
+    step: EditorStepState,
+    index: Int,
+    current: TrainingAssistantConfig,
+    load: ResistanceLoad = current.load,
+    increment: Long = current.loadIncrementMilli,
+    targetRir: Int = current.targetRir,
+    ceiling: Int = current.automaticWeeklySetCeiling,
+    primary: TrainingMuscleGroup? = current.primaryMuscle,
+    secondaries: Set<TrainingMuscleGroup> = current.secondaryMuscles,
+    dispatcher: TaskEditorComposeDispatcher,
+) = updateStep(
+    state,
+    index,
+    step.withTrainingAssistant(
+        TrainingAssistantConfig(
+            true,
+            current.minSets,
+            current.maxSets,
+            current.minRepetitions,
+            current.maxRepetitions,
+            targetRir,
+            increment,
+            ceiling,
+            load,
+            primary,
+            secondaries,
+        ),
+    ),
+    dispatcher,
+)
+
+@StringRes
+private fun trainingMuscleLabel(muscle: TrainingMuscleGroup): Int = when (muscle) {
+    TrainingMuscleGroup.CHEST -> R.string.training_muscle_chest
+    TrainingMuscleGroup.BACK -> R.string.training_muscle_back
+    TrainingMuscleGroup.SHOULDERS -> R.string.training_muscle_shoulders
+    TrainingMuscleGroup.BICEPS -> R.string.training_muscle_biceps
+    TrainingMuscleGroup.TRICEPS -> R.string.training_muscle_triceps
+    TrainingMuscleGroup.QUADRICEPS -> R.string.training_muscle_quadriceps
+    TrainingMuscleGroup.HAMSTRINGS -> R.string.training_muscle_hamstrings
+    TrainingMuscleGroup.GLUTES -> R.string.training_muscle_glutes
+    TrainingMuscleGroup.CALVES -> R.string.training_muscle_calves
+    TrainingMuscleGroup.CORE -> R.string.training_muscle_core
 }
 
 @Composable
@@ -510,6 +709,13 @@ private val amountChoices = listOf(
     R.string.amount_sets_reps to StepAmountKind.SETS_REPS,
     R.string.amount_reps to StepAmountKind.REPS,
     R.string.amount_duration to StepAmountKind.DURATION,
+)
+
+private val trainingLoadModes = listOf(
+    R.string.training_load_external to ResistanceLoad.Mode.EXTERNAL,
+    R.string.training_load_bodyweight to ResistanceLoad.Mode.BODYWEIGHT,
+    R.string.training_load_bodyweight_plus to ResistanceLoad.Mode.BODYWEIGHT_PLUS,
+    R.string.training_load_assisted to ResistanceLoad.Mode.ASSISTED_BODYWEIGHT,
 )
 
 private val cadenceChoices = listOf(

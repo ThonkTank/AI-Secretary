@@ -24,6 +24,10 @@ public class FlowRunStepEntity {
     @Nullable public Integer plannedDurationSeconds;
     @NonNull public String restTimerMode;
     @Nullable public Integer restTimerSeconds;
+    @NonNull public String plannedLoadMode;
+    @NonNull public String plannedLoadUnit;
+    @Nullable public Long plannedLoadMilli;
+    public int targetRir;
     @NonNull public String note;
     @Nullable public String delayMode;
     @Nullable public Long defaultDelayMillis;
@@ -36,7 +40,10 @@ public class FlowRunStepEntity {
                              @Nullable Integer plannedReps,
                              @Nullable Integer plannedDurationSeconds,
                              @NonNull String restTimerMode,
-                             @Nullable Integer restTimerSeconds, @NonNull String note,
+                             @Nullable Integer restTimerSeconds,
+                             @NonNull String plannedLoadMode, @NonNull String plannedLoadUnit,
+                             @Nullable Long plannedLoadMilli, int targetRir,
+                             @NonNull String note,
                              @Nullable String delayMode, @Nullable Long defaultDelayMillis,
                              @Nullable Long lastUsedDelayMillis,
                              @Nullable Long chosenDelayMillis) {
@@ -51,6 +58,10 @@ public class FlowRunStepEntity {
         this.plannedDurationSeconds = plannedDurationSeconds;
         this.restTimerMode = restTimerMode;
         this.restTimerSeconds = restTimerSeconds;
+        this.plannedLoadMode = plannedLoadMode;
+        this.plannedLoadUnit = plannedLoadUnit;
+        this.plannedLoadMilli = plannedLoadMilli;
+        this.targetRir = targetRir;
         this.note = note;
         this.delayMode = delayMode;
         this.defaultDelayMillis = defaultDelayMillis;

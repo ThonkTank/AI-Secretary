@@ -1,5 +1,6 @@
 package de.thonktank.autosecretary.presentation.today;
 
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,10 +14,13 @@ public final class RepetitionProgressUiModel {
     public final int slotCount;
     public final int plannedRepetitions;
     public final List<Integer> actualRepetitions;
+    public final ResistanceLoad plannedLoad;
+    public final int targetRir;
 
     private RepetitionProgressUiModel(Kind kind, int slotCount,
                                       int plannedRepetitions,
-                                      List<Integer> actualRepetitions) {
+                                      List<Integer> actualRepetitions,
+                                      ResistanceLoad plannedLoad, int targetRir) {
         if (slotCount <= 0 || plannedRepetitions <= 0)
             throw new IllegalArgumentException("Repetition progress needs positive targets");
         if (kind == Kind.SINGLE && slotCount != 1)
@@ -31,18 +35,34 @@ public final class RepetitionProgressUiModel {
         this.plannedRepetitions = plannedRepetitions;
         this.actualRepetitions = Collections.unmodifiableList(
                 new ArrayList<>(actualRepetitions));
+        this.plannedLoad = plannedLoad == null ? ResistanceLoad.unspecified() : plannedLoad;
+        if (targetRir < 0 || targetRir > 5)
+            throw new IllegalArgumentException("Target RIR must be between zero and five");
+        this.targetRir = targetRir;
     }
 
     public static RepetitionProgressUiModel sets(int sets, int repetitions,
                                                   List<Integer> actual) {
-        return new RepetitionProgressUiModel(Kind.SETS, sets, repetitions, actual);
+        return new RepetitionProgressUiModel(Kind.SETS, sets, repetitions, actual,
+                ResistanceLoad.unspecified(), 2);
+    }
+
+    public static RepetitionProgressUiModel trainingSets(int sets, int repetitions,
+                                                          List<Integer> actual,
+                                                          ResistanceLoad load, int targetRir) {
+        return new RepetitionProgressUiModel(Kind.SETS, sets, repetitions, actual,
+                load, targetRir);
     }
 
     public static RepetitionProgressUiModel single(int repetitions,
                                                     List<Integer> actual) {
-        return new RepetitionProgressUiModel(Kind.SINGLE, 1, repetitions, actual);
+        return new RepetitionProgressUiModel(Kind.SINGLE, 1, repetitions, actual,
+                ResistanceLoad.unspecified(), 2);
     }
 
     public int nextSlotNumber() { return actualRepetitions.size() + 1; }
     public boolean showsBars() { return kind == Kind.SETS; }
+    public boolean detailedTraining() {
+        return kind == Kind.SETS && plannedLoad.mode != ResistanceLoad.Mode.UNSPECIFIED;
+    }
 }

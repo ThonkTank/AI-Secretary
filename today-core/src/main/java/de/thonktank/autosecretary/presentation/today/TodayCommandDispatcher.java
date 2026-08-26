@@ -17,6 +17,9 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
         void handleAdvanceStep(String stepId);
         void handleUndoOccurrence(String occurrenceId);
         void handleAdjustRepetition(String stepId, int delta);
+        default void handleAdjustTrainingLoad(String stepId, int milliUnitDelta) { }
+        default void handleAdjustTrainingRir(String stepId, int delta) { }
+        default void handleToggleTrainingSafety(String stepId) { }
         void handleEditRepetition(String stepId, int index);
         void handleSubmitRepetition(String stepId);
         void handleStartDurationTimer(String stepId, String title, int seconds);
@@ -71,6 +74,15 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
                 return;
             case ADJUST_REPETITION:
                 handlers.handleAdjustRepetition(command.id, command.value);
+                return;
+            case ADJUST_TRAINING_LOAD:
+                handlers.handleAdjustTrainingLoad(command.id, command.value);
+                return;
+            case ADJUST_TRAINING_RIR:
+                handlers.handleAdjustTrainingRir(command.id, command.value);
+                return;
+            case TOGGLE_TRAINING_SAFETY:
+                handlers.handleToggleTrainingSafety(command.id);
                 return;
             case EDIT_REPETITION:
                 handlers.handleEditRepetition(command.id, command.value);

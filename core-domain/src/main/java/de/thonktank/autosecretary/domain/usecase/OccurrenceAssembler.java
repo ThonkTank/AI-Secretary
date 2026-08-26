@@ -82,7 +82,8 @@ final class OccurrenceAssembler {
                             step.repetitionProgress == null ? Collections.emptyList()
                                     : step.repetitionProgress.actualRepetitions,
                             step.sourceTemplateId, step.comboOwnerId,
-                            step.originOccurrenceId, step.carryForwardReason));
+                            step.originOccurrenceId, step.carryForwardReason,
+                            step.plannedLoad, step.targetRir));
                 }
                 repository.insertOccurrenceSteps(positioned);
             }
@@ -99,13 +100,15 @@ final class OccurrenceAssembler {
                         : step.repetitionProgress.actualRepetitions,
                 step.sourceTemplateId,
                 step.comboOwnerId == null ? comboOwner : step.comboOwnerId,
-                originOccurrenceId, CarryForwardReason.UNFINISHED_STEP);
+                originOccurrenceId, CarryForwardReason.UNFINISHED_STEP,
+                step.plannedLoad, step.targetRir);
     }
 
     private OccurrenceStep snapshot(TaskStepTemplate template, String id, String comboOwner) {
         return new OccurrenceStep(id, "pending", 0, template.text, false, template.amount,
                 template.restTimerPolicy, template.note, Collections.emptyList(), template.id,
-                "step:" + template.id);
+                "step:" + template.id, null, CarryForwardReason.NONE,
+                template.trainingAssistant.load, template.trainingAssistant.targetRir);
     }
 
     static final class Result {
