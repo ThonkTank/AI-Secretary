@@ -18,9 +18,9 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import de.thonktank.autosecretary.PresentationTrace
 import kotlinx.coroutines.CancellationException
 
-internal fun Modifier.allTasksDragSource(
-    key: String,
-    enabled: Boolean,
+internal fun Modifier.allTasksDragContainer(
+    enabledKeys: Set<String>,
+    visibleBounds: Map<String, Rect>,
     onStart: (String, Float) -> Unit,
     onMove: (Float) -> Unit,
     onDrop: () -> Unit,
@@ -29,16 +29,21 @@ internal fun Modifier.allTasksDragSource(
     var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     this
         .onGloballyPositioned { coordinates = it }
-        .pointerInput(key, enabled) {
-            if (!enabled) return@pointerInput
+        .pointerInput(enabledKeys) {
+            if (enabledKeys.isEmpty()) return@pointerInput
             awaitEachGesture {
                 var started = false
                 try {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    val source = dragSourceAt(
+                        pointerY = coordinates.rootY(down.position),
+                        enabledKeys = enabledKeys,
+                        visibleBounds = visibleBounds,
+                    ) ?: return@awaitEachGesture
                     val longPress = awaitLongPressOrCancellation(down.id)
                         ?: return@awaitEachGesture
                     started = true
-                    onStart(key, coordinates.rootY(longPress.position))
+                    onStart(source, coordinates.rootY(longPress.position))
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
                         val change = event.changes.firstOrNull { it.id == longPress.id }
@@ -59,6 +64,20 @@ internal fun Modifier.allTasksDragSource(
                 }
             }
         }
+}
+
+internal fun dragSourceAt(
+    pointerY: Float,
+    enabledKeys: Set<String>,
+    visibleBounds: Map<String, Rect>,
+): String? {
+    if (!pointerY.isFinite()) return null
+    return visibleBounds.entries
+        .asSequence()
+        .filter { it.key in enabledKeys }
+        .filter { pointerY >= it.value.top && pointerY <= it.value.bottom }
+        .minByOrNull { kotlin.math.abs(pointerY - it.value.center.y) }
+        ?.key
 }
 
 internal fun nearestDropTarget(

@@ -50,6 +50,14 @@ internal fun AllTasksComposeScreen(
     val rowBounds = remember { mutableStateMapOf<String, androidx.compose.ui.geometry.Rect>() }
     val listState = rememberLazyListState()
     val rows = remember(state) { AllTasksRow.project(state) }
+    val draggableRowKeys = remember(rows) {
+        rows.asSequence()
+            .filter { row ->
+                row.kind == AllTasksRow.Kind.SCHEDULE ||
+                    row.kind == AllTasksRow.Kind.STEP && !row.task.archived
+            }
+            .mapTo(mutableSetOf()) { it.key }
+    }
     val dispatcher = remember(state, callbacks) { AllTasksComposeDispatcher(state, callbacks) }
     val pageStart = dimensionResource(R.dimen.page_start)
     val pageEnd = dimensionResource(R.dimen.page_end)
@@ -109,7 +117,40 @@ internal fun AllTasksComposeScreen(
                     .fillMaxWidth()
                     .weight(1f)
                     .testTag("all-tasks:list")
-                    .onGloballyPositioned { listBounds = it.boundsInRoot() },
+                    .onGloballyPositioned { listBounds = it.boundsInRoot() }
+                    .allTasksDragContainer(
+                        enabledKeys = draggableRowKeys,
+                        visibleBounds = rowBounds,
+                        onStart = { key, pointerY ->
+                            activeDragKey = key
+                            dragPointerY = pointerY
+                            traceAllTasksDrag("start", "source=$key")
+                            openFilter = null
+                            openTaskMenu = null
+                        },
+                        onMove = { dragPointerY = it },
+                        onDrop = {
+                            val source = activeDragKey
+                            if (source != null) {
+                                val target = nearestDropTarget(
+                                    dragPointerY,
+                                    source,
+                                    rowBounds,
+                                )
+                                val handled = target?.let { dispatcher.drop(source, it) }
+                                    ?: false
+                                traceAllTasksDrag(
+                                    "drop",
+                                    "source=$source target=$target handled=$handled",
+                                )
+                            }
+                            clearDrag()
+                        },
+                        onCancel = {
+                            traceAllTasksDrag("cancel", "source=$activeDragKey")
+                            clearDrag()
+                        },
+                    ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     top = 10.dp,
                     bottom = 26.dp,
@@ -136,41 +177,7 @@ internal fun AllTasksComposeScreen(
                         onSelectSwap = { selectedSwapStep = it },
                         onOpenTaskMenu = { openTaskMenu = it },
                         rowModifier = Modifier
-                            .onGloballyPositioned { rowBounds[row.key] = it.boundsInRoot() }
-                            .allTasksDragSource(
-                                key = row.key,
-                                enabled = row.kind == AllTasksRow.Kind.SCHEDULE ||
-                                    row.kind == AllTasksRow.Kind.STEP && !row.task.archived,
-                                onStart = { key, pointerY ->
-                                    activeDragKey = key
-                                    dragPointerY = pointerY
-                                    traceAllTasksDrag("start", "source=$key")
-                                    openFilter = null
-                                    openTaskMenu = null
-                                },
-                                onMove = { dragPointerY = it },
-                                onDrop = {
-                                    val source = activeDragKey
-                                    if (source != null) {
-                                        val target = nearestDropTarget(
-                                            dragPointerY,
-                                            source,
-                                            rowBounds,
-                                        )
-                                        val handled = target?.let { dispatcher.drop(source, it) }
-                                            ?: false
-                                        traceAllTasksDrag(
-                                            "drop",
-                                            "source=$source target=$target handled=$handled",
-                                        )
-                                    }
-                                    clearDrag()
-                                },
-                                onCancel = {
-                                    traceAllTasksDrag("cancel", "source=$activeDragKey")
-                                    clearDrag()
-                                },
-                            ),
+                            .onGloballyPositioned { rowBounds[row.key] = it.boundsInRoot() },
                     )
                 }
             }

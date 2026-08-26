@@ -6,6 +6,18 @@ import org.junit.Test
 
 class AllTasksComposeDragTest {
     @Test
+    fun dragSourceRequiresAnEnabledRowAtThePointerPosition() {
+        val bounds = linkedMapOf(
+            "archived" to Rect(0f, 0f, 100f, 40f),
+            "enabled" to Rect(0f, 50f, 100f, 90f),
+        )
+
+        assertEquals("enabled", dragSourceAt(75f, setOf("enabled"), bounds))
+        assertEquals(null, dragSourceAt(20f, setOf("enabled"), bounds))
+        assertEquals(null, dragSourceAt(Float.NaN, setOf("enabled"), bounds))
+    }
+
+    @Test
     fun visibleBoundsSelectTheContainingRowThenTheNearestStableKey() {
         val bounds = linkedMapOf(
             "source" to Rect(0f, 0f, 100f, 40f),

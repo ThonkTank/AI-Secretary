@@ -159,23 +159,27 @@ class AllTasksComposeInstrumentationTest {
         val source = compose.onNodeWithTag(
             "all-tasks:row:step:drag-source|MORNING:drag-source-step-0",
         )
+        val list = compose.onNodeWithTag("all-tasks:list")
+        val sourceBounds = source.fetchSemanticsNode().boundsInRoot
+        val listBounds = list.fetchSemanticsNode().boundsInRoot
+        val start = Offset(
+            sourceBounds.center.x - listBounds.left,
+            sourceBounds.center.y - listBounds.top,
+        )
         PresentationTrace.clear()
-        source.performTouchInput { down(center) }
+        list.performTouchInput { down(start) }
         try {
             compose.mainClock.advanceTimeBy(longPressDurationMillis())
             compose.waitForIdle()
-            val sourceBounds = source.fetchSemanticsNode().boundsInRoot
-            val listBounds = compose.onNodeWithTag("all-tasks:list")
-                .fetchSemanticsNode().boundsInRoot
             val edge = Offset(
-                sourceBounds.center.x - sourceBounds.left,
-                listBounds.bottom - sourceBounds.top - 2,
+                start.x,
+                listBounds.height - 2,
             )
             compose.mainClock.autoAdvance = false
-            source.performTouchInput { moveTo(edge, 100) }
+            list.performTouchInput { moveTo(edge, 100) }
             repeat(120) { compose.mainClock.advanceTimeByFrame() }
         } finally {
-            source.performTouchInput { up() }
+            list.performTouchInput { up() }
             compose.mainClock.autoAdvance = true
         }
         compose.waitForIdle()

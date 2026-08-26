@@ -2617,6 +2617,23 @@ Bestätigung verarbeitet und konsumiert der Quellknoten Move und Up bereits im I
 ein aktiver Reorder nicht mehr vom Parent gestohlen werden kann. Cancel und Coroutine-Abbruch
 schließen den kurzlebigen Zustand weiterhin explizit.
 
+Der achte Lauf `33017919553` bestätigte diese Konfliktkorrektur: Das vollständige Quality-Gate
+war grün, und API 37 bestand normale sowie animationsaktive Interaktion. API 26 und 35 scheiterten
+in beiden Modi dagegen reproduzierbar erst während des Randscrolls, weil der Quellknoten nach
+genügend Scrollfortschritt nicht mehr im Lazy-Layoutbaum lag. Der Fehler war damit weder eine
+Injektions- noch eine API-Inkompatibilität, sondern eine zweite Produkt-Lebenszykluslücke: Ein an
+einer virtualisierten Zeile gebundener Pointer-Detektor kann den Drag nicht bis zum Loslassen
+besitzen, sobald genau diese Zeile aus dem Viewport fällt.
+
+Die nächste Nachtarbeitskorrektur verlagert deshalb den vollständigen Long-Press-Pointerlebenszyklus
+auf die stabile `LazyColumn`. Sichtbare Zeilen veröffentlichen nur noch ihre Rootgrenzen und
+stabilen Schlüssel; die Liste wählt beim Down ausschließlich eine tatsächlich verschiebbare
+Zeile, lässt normales Scrollen bis zum bestätigten Long-Press unbeansprucht und konsumiert danach
+Move und Up im Initial-Pass. Quellschlüssel und Dragzustand überleben so die Disposal der
+ursprünglichen Zeile. Der Gerätevertrag injiziert Down, Move und Up entsprechend über denselben
+stabilen Listenknoten und beweist weiterhin echten Randfortschritt. Gezielter Unit-Test,
+Android-Testkompilierung und `lintDebug` bestanden lokal unter Java 21 in 59 Aufgaben.
+
 Der erneute Abgleich findet keine parallele Screen-Wahrheit, keinen fortbestehenden Recyclerpfad,
 keinen persistierten Transientzustand und keine Änderung an Domain-, Room-, Request-, Schema-,
 SDK-, Signatur-, Upgrade- oder Gestaltungskontrakten. Die automatisierte Implementation benötigt
