@@ -64,35 +64,28 @@ internal fun AllTasksComposeScreen(
         dragPointerY = Float.NaN
     }
 
-    LaunchedEffect(activeDragKey) {
+    LaunchedEffect(activeDragKey, dragPointerY, listBounds) {
         if (activeDragKey == null) return@LaunchedEffect
+        val velocity = edgeScrollVelocity(
+            dragPointerY,
+            listBounds,
+            edgeSizePx,
+            edgeSpeedPx,
+        )
+        if (velocity == 0f) return@LaunchedEffect
         var previous = androidx.compose.runtime.withFrameNanos { it }
-        var previousDirection = 0
+        val direction = if (velocity < 0f) -1 else 1
+        traceAllTasksDrag("edge", "direction=$direction")
         try {
-            while (activeDragKey != null) {
+            while (true) {
                 val now = androidx.compose.runtime.withFrameNanos { it }
                 val elapsedSeconds =
                     ((now - previous).coerceAtMost(100_000_000L)) / 1_000_000_000f
                 previous = now
-                val velocity = edgeScrollVelocity(
-                    dragPointerY,
-                    listBounds,
-                    edgeSizePx,
-                    edgeSpeedPx,
-                )
-                val direction = when {
-                    velocity < 0f -> -1
-                    velocity > 0f -> 1
-                    else -> 0
-                }
-                if (direction != previousDirection) {
-                    traceAllTasksDrag("edge", "direction=$direction")
-                    previousDirection = direction
-                }
-                if (velocity != 0f) listState.scrollBy(velocity * elapsedSeconds)
+                listState.scrollBy(velocity * elapsedSeconds)
             }
         } finally {
-            if (previousDirection != 0) traceAllTasksDrag("edge", "direction=0")
+            traceAllTasksDrag("edge", "direction=0")
         }
     }
 

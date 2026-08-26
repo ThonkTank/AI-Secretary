@@ -2580,6 +2580,16 @@ Reihenfolge und verlangt vor jeder Bewegung zusätzlich sichtbare Dropsemantik. 
 zuerst den Eintritt in den produktiven Dragzustand und danach getrennt Drop beziehungsweise
 framegetriebenen Randscroll, ohne privilegierte Systemeinspeisung oder Testhook.
 
+Der vierte Gerätelauf erreichte damit erstmals den echten Long-Press-Start, lief anschließend aber
+in ein Compose-Idling-Timeout. Die Ursache lag nun im Produktcode: Der Randscroll-Effekt forderte
+während jedes aktiven Drags fortlaufend Frames an, selbst wenn der Pointer außerhalb des
+Randbereichs lag und die berechnete Geschwindigkeit null war. Das widersprach dem 6b-Negativgate
+gegen hängenbleibende Framearbeit. Der Effekt ist deshalb jetzt zusätzlich an Pointerposition und
+Viewport gebunden, beendet sich bei Geschwindigkeit null sofort und fordert Frames ausschließlich
+für eine tatsächliche Randbewegung an. Der Randscrolltest friert während des aktiven Randdrags die
+automatische Testuhr ein, fährt die benötigten Frames kontrolliert vor, löst den Pointer und prüft
+erst im danach wieder ruhigen Zustand den erzielten Scrollfortschritt.
+
 Der erneute Abgleich findet keine parallele Screen-Wahrheit, keinen fortbestehenden Recyclerpfad,
 keinen persistierten Transientzustand und keine Änderung an Domain-, Room-, Request-, Schema-,
 SDK-, Signatur-, Upgrade- oder Gestaltungskontrakten. Die automatisierte Implementation benötigt

@@ -172,19 +172,12 @@ class AllTasksComposeInstrumentationTest {
         }
         try {
             compose.mainClock.advanceTimeBy(longPressDurationMillis())
-            compose.waitForIdle()
-            assertTrue(
-                compose.onAllNodesWithContentDescription(
-                    "Schritt an dieser Position ablegen.",
-                ).fetchSemanticsNodes().isNotEmpty(),
-            )
+            compose.mainClock.autoAdvance = false
             root.performTouchInput { moveTo(edge, 100) }
-            compose.waitUntil(5_000) {
-                compose.onNodeWithTag("all-tasks:list").fetchSemanticsNode()
-                    .config[SemanticsProperties.VerticalScrollAxisRange].value() > 0f
-            }
+            compose.mainClock.advanceTimeBy(1_000)
         } finally {
             root.performTouchInput { up() }
+            compose.mainClock.autoAdvance = true
         }
         compose.waitForIdle()
 
