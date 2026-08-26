@@ -2557,6 +2557,16 @@ gepflegte zweite Zeilenbeschreibung übrig. Sie und die ungenutzten Recycler-Res
 entfernt, sodass `AllTasksRow` nur noch die unmittelbar vom Compose-Renderer konsumierte stabile
 Projektion trägt.
 
+Der erste Pull-Request-Gerätelauf machte anschließend eine Lücke genau in diesem neuen Nachweis
+sichtbar: API 26 und 35 erreichten in normaler wie animationsaktiver Ausführung bei beiden
+Pointertests den Long-Press-Start nicht, während der API-37-Canary grün blieb. Trace und identische
+Timeouts zeigten, dass `performTouchInput` nur seine synthetische Eventzeit vorspulte, der
+Produktionsdetektor den Long-Press aber über reale Coroutine-Zeit erwartet. Die Nachtarbeit ersetzt
+diese virtuelle Zeitabkürzung deshalb durch echte Android-`MotionEvent`s, hält den Pointer länger
+als den System-Long-Press-Timeout und sendet Move und Up über die Instrumentierung an die reale
+Hostposition. Der produktive Gestendetektor und seine Reorderlogik bleiben unverändert; der
+Gerätevertrag prüft sie nun mit derselben Zeitsemantik wie eine tatsächliche Berührung.
+
 Der erneute Abgleich findet keine parallele Screen-Wahrheit, keinen fortbestehenden Recyclerpfad,
 keinen persistierten Transientzustand und keine Änderung an Domain-, Room-, Request-, Schema-,
 SDK-, Signatur-, Upgrade- oder Gestaltungskontrakten. Die automatisierte Implementation benötigt

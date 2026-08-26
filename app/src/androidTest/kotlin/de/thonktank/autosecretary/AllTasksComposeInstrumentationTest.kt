@@ -1,5 +1,9 @@
 package de.thonktank.autosecretary
 
+import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.geometry.Offset
@@ -9,13 +13,12 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.performTouchInput
 import androidx.test.filters.SdkSuppress
+import androidx.test.platform.app.InstrumentationRegistry
 import de.thonktank.autosecretary.domain.model.TaskSlot
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeFixture
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState
@@ -123,22 +126,17 @@ class AllTasksComposeInstrumentationTest {
         val source = compose.onNodeWithTag(
             "all-tasks:row:step:morning|MORNING:morning-step-0",
         )
-        val sourceBounds = source.fetchSemanticsNode().boundsInRoot
+        val sourceCenter = source.fetchSemanticsNode().boundsInRoot.center
         val targetCenter = compose.onNodeWithTag(
             "all-tasks:row:task:bed|MORNING",
         ).fetchSemanticsNode().boundsInRoot.center
 
-        source.performTouchInput {
-            down(center)
-            advanceEventTime(650)
-            moveTo(Offset(
-                targetCenter.x - sourceBounds.left,
-                targetCenter.y - sourceBounds.top,
-            ), 300)
-            up()
-        }
+        val downTime = pointerDown(sourceCenter)
+        holdForLongPress()
+        pointerMove(downTime, targetCenter)
+        pointerUp(downTime, targetCenter)
 
-        compose.waitUntil { compose.activity.lastMove != null }
+        compose.waitUntil(5_000) { compose.activity.lastMove != null }
         assertEquals("step:morning-step-0:bed:null", compose.activity.lastMove)
     }
 
@@ -151,22 +149,18 @@ class AllTasksComposeInstrumentationTest {
         ).fetchSemanticsNode().boundsInRoot.center
         val listBounds = compose.onNodeWithTag("all-tasks:list")
             .fetchSemanticsNode().boundsInRoot
-        val rootBounds = compose.onRoot().fetchSemanticsNode().boundsInRoot
-        val root = compose.onRoot()
-
-        root.performTouchInput {
-            down(Offset(sourceCenter.x - rootBounds.left, sourceCenter.y - rootBounds.top))
-            advanceEventTime(650)
-            moveTo(
-                Offset(sourceCenter.x - rootBounds.left, listBounds.bottom - rootBounds.top - 2),
-                100,
-            )
+        val edge = Offset(sourceCenter.x, listBounds.bottom - 2)
+        val downTime = pointerDown(sourceCenter)
+        try {
+            holdForLongPress()
+            pointerMove(downTime, edge)
+            compose.waitUntil(5_000) {
+                compose.onNodeWithTag("all-tasks:list").fetchSemanticsNode()
+                    .config[SemanticsProperties.VerticalScrollAxisRange].value() > 0f
+            }
+        } finally {
+            pointerUp(downTime, edge)
         }
-        compose.waitUntil(5_000) {
-            compose.onNodeWithTag("all-tasks:list").fetchSemanticsNode()
-                .config[SemanticsProperties.VerticalScrollAxisRange].value() > 0f
-        }
-        root.performTouchInput { up() }
         compose.waitForIdle()
 
         val settled = compose.onNodeWithTag("all-tasks:list").fetchSemanticsNode()
@@ -219,5 +213,48 @@ class AllTasksComposeInstrumentationTest {
             "all-tasks:row:step:morning|MORNING:morning-step-1",
         ).fetchSemanticsNode().config[SemanticsActions.CustomActions]
         assertFalse(restoredActions.any { it.label == "Mit ausgewähltem Schritt tauschen" })
+    }
+
+    private fun pointerDown(rootPosition: Offset): Long {
+        val downTime = SystemClock.uptimeMillis()
+        sendPointer(downTime, downTime, MotionEvent.ACTION_DOWN, rootPosition)
+        return downTime
+    }
+
+    private fun holdForLongPress() {
+        SystemClock.sleep(ViewConfiguration.getLongPressTimeout().toLong() + 150L)
+    }
+
+    private fun pointerMove(downTime: Long, rootPosition: Offset) {
+        sendPointer(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_MOVE, rootPosition)
+    }
+
+    private fun pointerUp(downTime: Long, rootPosition: Offset) {
+        sendPointer(downTime, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, rootPosition)
+    }
+
+    private fun sendPointer(
+        downTime: Long,
+        eventTime: Long,
+        action: Int,
+        rootPosition: Offset,
+    ) {
+        val hostOrigin = IntArray(2)
+        compose.activity.allTasks.getLocationOnScreen(hostOrigin)
+        MotionEvent.obtain(
+            downTime,
+            eventTime,
+            action,
+            hostOrigin[0] + rootPosition.x,
+            hostOrigin[1] + rootPosition.y,
+            0,
+        ).also { event ->
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            try {
+                InstrumentationRegistry.getInstrumentation().sendPointerSync(event)
+            } finally {
+                event.recycle()
+            }
+        }
     }
 }
