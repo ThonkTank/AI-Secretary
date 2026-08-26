@@ -18,6 +18,7 @@
     <item name="rep_stepper_increment" type="id" />
     <item name="set_bars" type="id" />
     <item name="all_tasks_list" type="id" />
+    <item name="task_editor_compose_host" type="id" />
     <item name="action_step_up" type="id" />
     <item name="action_step_down" type="id" />
     <item name="action_step_previous_task" type="id" />

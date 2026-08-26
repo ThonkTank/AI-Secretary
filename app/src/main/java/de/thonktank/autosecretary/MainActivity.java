@@ -9,6 +9,7 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksScreenState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
 import de.thonktank.autosecretary.presentation.legacy.LegacyStateFlowBinder;
+import de.thonktank.autosecretary.presentation.editor.TaskEditorComposeHostView;
 import de.thonktank.autosecretary.presentation.navigation.AppDestination;
 import de.thonktank.autosecretary.presentation.navigation.AppNavigator;
 import de.thonktank.autosecretary.presentation.navigation.TaskEditorNavigator;
@@ -142,7 +143,7 @@ public class MainActivity extends ComponentActivity {
                 optionsViewModel::dispatch, versionName(),
                 rewardAnchors, allTasks);
         editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
-                new TaskEditorView.Listener() {
+                new TaskEditorComposeHostView.Listener() {
                     @Override public void onDraftChanged(EditorUiState draft) {
                         editorViewModel.dispatch(TaskEditorAction.draftChanged(draft));
                     }

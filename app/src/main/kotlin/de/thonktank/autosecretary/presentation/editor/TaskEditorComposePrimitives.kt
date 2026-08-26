@@ -23,7 +23,12 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +37,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Shape
@@ -258,13 +264,27 @@ internal fun EditorInput(
     focusRequester: FocusRequester? = null,
     tag: String? = null,
 ) {
-    val requestModifier = if (focusRequester == null) Modifier else Modifier.focusRequester(focusRequester)
+    val localFocusRequester = remember { FocusRequester() }
+    val activeFocusRequester = focusRequester ?: localFocusRequester
+    var restoreFocus by rememberSaveable(tag) { mutableStateOf(false) }
+    var restorationPending by remember { mutableStateOf(restoreFocus) }
+    LaunchedEffect(restorationPending) {
+        if (restorationPending) activeFocusRequester.requestFocus()
+    }
     val underline = if (error) Color.argb(palette.bad) else Color.argb(palette.accent)
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier
-            .then(requestModifier)
+            .focusRequester(activeFocusRequester)
+            .onFocusChanged {
+                if (it.isFocused) {
+                    restoreFocus = true
+                    restorationPending = false
+                } else if (!restorationPending) {
+                    restoreFocus = false
+                }
+            }
             .then(if (tag == null) Modifier else Modifier.testTag(tag))
             .defaultMinSize(minHeight = if (multiline) 56.dp else 48.dp)
             .drawBehind {

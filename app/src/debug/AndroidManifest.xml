@@ -6,9 +6,6 @@
             android:name=".ui.today.TodayInteractionHarnessActivity"
             android:exported="false" />
         <activity
-            android:name=".TaskEditorInteractionHarnessActivity"
-            android:exported="false" />
-        <activity
             android:name=".ComposeSmokeActivity"
             android:exported="false"
             android:theme="@style/ComposeSmokeTheme" />

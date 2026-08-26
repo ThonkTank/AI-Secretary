@@ -4,6 +4,8 @@ import android.content.Context;
 import android.view.View;
 import android.widget.FrameLayout;
 
+import de.thonktank.autosecretary.presentation.editor.TaskEditorComposeHostView;
+
 import java.time.LocalDate;
 
 /** Owns mounting and binding the full-screen task editor. */
@@ -11,8 +13,8 @@ public final class TaskEditorCoordinator {
     private final Context context;
     private final FrameLayout root;
     private final View dashboard;
-    private final TaskEditorView.Listener listener;
-    private TaskEditorView editor;
+    private final TaskEditorComposeHostView.Listener listener;
+    private TaskEditorComposeHostView editor;
     private int topInset;
     private int bottomInset;
     private boolean deferredOpen;
@@ -22,7 +24,7 @@ public final class TaskEditorCoordinator {
     private LocalDate pendingToday;
 
     public TaskEditorCoordinator(Context context, FrameLayout root, View dashboard,
-                                 TaskEditorView.Listener listener) {
+                                 TaskEditorComposeHostView.Listener listener) {
         this.context = context;
         this.root = root;
         this.dashboard = dashboard;
@@ -32,7 +34,7 @@ public final class TaskEditorCoordinator {
     public void setInsets(int top, int bottom) {
         topInset = top;
         bottomInset = bottom;
-        if (editor != null) editor.setPadding(0, topInset, 0, bottomInset);
+        if (editor != null) editor.setContentInsets(topInset, bottomInset);
     }
 
     public void render(EditorUiState state, DayPalette palette, LocalDate today) {
@@ -72,17 +74,20 @@ public final class TaskEditorCoordinator {
         disposed = true;
         deferredOpen = false;
         clearPendingOpen();
+        unmount();
+        dashboard.setVisibility(View.VISIBLE);
     }
 
     private void renderOpen(EditorUiState state, DayPalette palette, LocalDate today) {
         dashboard.setVisibility(View.INVISIBLE);
         if (state.loading) return;
         if (editor == null) {
-            editor = new TaskEditorView(context, listener);
-            editor.setPadding(0, topInset, 0, bottomInset);
+            editor = new TaskEditorComposeHostView(context);
+            editor.setId(R.id.task_editor_compose_host);
+            editor.setContentInsets(topInset, bottomInset);
             root.addView(editor, new FrameLayout.LayoutParams(-1, -1));
         }
-        editor.bind(state, palette, today);
+        editor.bind(state, palette, today, listener);
     }
 
     public boolean handleBack() {
@@ -91,6 +96,7 @@ public final class TaskEditorCoordinator {
 
     private void unmount() {
         if (editor == null) return;
+        editor.dispose();
         root.removeView(editor);
         editor = null;
     }

@@ -87,6 +87,12 @@ android {
         getByName("release") {
             // CI supplies this signing configuration. A local release stays unsigned for testing.
             if (signingReady) signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-release.pro",
+            )
         }
     }
 
@@ -102,7 +108,7 @@ android {
     }
 
     sourceSets {
-        // The test target uses the exact debug-only renderer and harnesses without shrinking.
+        // The test target uses the product renderer plus debug-only harnesses without shrinking.
         getByName("instrumentation").setRoot("src/debug")
         getByName("androidTest").assets.directories.add("$projectDir/schemas")
         getByName("androidTest").assets.directories.add(
@@ -144,10 +150,8 @@ dependencies {
     implementation(platform("org.jetbrains.kotlinx:kotlinx-serialization-bom:1.8.1"))
     implementation(platform("androidx.compose:compose-bom:2026.08.00"))
     implementation("androidx.compose.ui:ui")
-    debugImplementation("androidx.compose.foundation:foundation")
-    debugImplementation("androidx.compose.animation:animation")
-    add("instrumentationImplementation", "androidx.compose.foundation:foundation")
-    add("instrumentationImplementation", "androidx.compose.animation:animation")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.animation:animation")
     implementation("androidx.activity:activity:1.13.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     testImplementation("junit:junit:4.13.2")

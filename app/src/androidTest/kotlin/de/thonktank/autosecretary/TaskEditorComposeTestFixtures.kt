@@ -30,3 +30,9 @@ internal fun taskEditorComposeReferenceState(): EditorUiState {
         3,
     )
 }
+
+internal fun taskEditorComposeEditReferenceState(): EditorUiState {
+    val bundle = taskEditorComposeReferenceState().toBundle()
+    bundle.putString("task_id", "task-1")
+    return EditorUiState.fromBundle(bundle)
+}
