@@ -2435,3 +2435,33 @@ und Release-Paketierung einschließlich beider R8-Pfade und Release-Vital-Lint. 
 Release-/Workflow-Verträge sind ebenfalls erneut grün. Der nächste Remote-Lauf muss weiterhin
 Quality und die vollständige Gerätematrix bestätigen; die physische Sicht- und
 In-App-Update-Abnahme bleibt ohne Handy offen.
+
+### Phase 6a – Remote-Abschluss und Actions-Störfall
+
+Pull Request `#292` bestand im Lauf `32979021140` Quality sowie die normale und
+animationsaktive Instrumentierung auf API 26/35/37 vollständig und wurde als
+`425adcd35a069bec30dd147e10e086dd981e14d8` per Squash nach `main` übernommen. Damit ist der
+Vergleichsrenderer gemäß dem vorab festgelegten 6a-Schnitt technisch implementiert; das
+produktive Mounting und die Entfernung der Legacy-Fläche bleiben unverändert Phase 6b.
+
+Der verpflichtende Push-Lauf `32980596577` geriet anschließend in den offiziellen GitHub-Actions-
+Ausfall vom 26. August 2026. Sein erster Runner schloss den Release-Scope ab, blieb danach im
+Quality-Hauptschritt über 36 Minuten ohne Abschluss und wurde kontrolliert beendet; die noch
+nicht begonnenen Geräte-, Paket- und Upgradepfade wurden dadurch ebenfalls abgebrochen. Unmittelbar
+angeforderte Ersatzversuche endeten während des Ausfalls als `startup_failure` ohne ausführbare
+Jobs. Es wurden weder Repository- noch Workflowänderungen vorgenommen, um den Plattformausfall zu
+umgehen.
+
+Erst nachdem der offizielle Status GitHub Actions wieder als operational auswies, wurde derselbe
+Workflowlauf für exakt denselben Commit erneut angefordert. Versuch 2 bestand Quality, normale
+Instrumentierung und Animation-on-Instrumentierung jeweils auf API 26, 35 und 37, das gemeinsame
+Instrumentierungsgate, signierte Paketierung sowie die echten Produktionsupgrades auf allen drei
+API-Stufen. Der Publish-Job veröffentlichte exakt den Merge-Commit als Release 0.2.134
+(`forest-android-1013401`). Die APK hat 2.577.470 Byte und SHA-256
+`5b30ff1fdf254c4420774005594d4439d77760ce75a78787c7e9f9c26f176c5d`.
+
+Der erneute Roadmap-Abgleich findet damit keinen fehlenden automatisierten 6a-Nachweis und keinen
+als Codekorrektur kaschierten Infrastrukturfehler. Phase 6a ist implementiert und veröffentlicht.
+Ohne verfügbares Handy bleiben die physische Sichtprüfung und die Installation über den echten
+In-App-Updater ausdrücklich ausstehend; sie werden durch Emulator- und Upgradeerfolg nicht als
+bestanden gewertet.
