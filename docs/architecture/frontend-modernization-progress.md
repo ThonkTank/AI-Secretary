@@ -2381,3 +2381,28 @@ Testhook für Dragziel und Drop-Key ist kein Produktnachweis. Diese kohärenten 
 bleiben ausdrücklich 6b und dürfen 6a nicht als produktionsfertigen Screen erscheinen lassen.
 Vor einem technischen Abschluss stehen weiterhin der eigene grüne Pull Request und Squash-Merge
 nach `main`; die physische Sicht- und In-App-Update-Abnahme bleibt ohne Handy offen.
+
+### Phase 6a – Remote-Nachtarbeit: gerätefeste Vergleichsassertionen
+
+Der erste Pull-Request-Lauf `32973388164` bestand Quality und Release-Scope sowie beide
+API-37-Pfade. Die normalen und animationsaktiven API-26-Pfade meldeten zwei, die entsprechenden
+API-35-Pfade einen Fehler ausschließlich in der neuen Vergleichsprüfung. Alle übrigen 32
+beziehungsweise 20 ausgeführten Gerätefälle blieben grün. Der Artefaktabgleich ordnet beide
+Befunde Testannahmen zu, nicht dem Renderer oder dem autoritativen Zustand.
+
+Der Dropdown-Test klickte zum Schließen die geometrische Mitte eines vollflächigen Overlays. An
+dieser Stelle lag jedoch das darüber gerenderte Dropdown, sodass API 26 den Klick korrekt dort
+zustellte und der anschließende Moduswechsel abgefangen wurde. Die Prüfung ruft nun gezielt die
+`OnClick`-Semantik des Overlays auf und belegt damit die eigentliche Dismiss-Grenze ohne eine
+verdeckte Koordinate. Der Recreation-Test verlangte ferner genau einen Semantikknoten mit dem
+Titel `Morgenroutine`. Der unveränderte Zustand projiziert diese Aufgabe vertragsgemäß einmal für
+MORNING und einmal für EVENING; API 26 und 35 lieferten deshalb zwei gültige Platzierungskarten.
+Die Assertion prüft nun exakt beide Karten. Produktrenderer, State, Dispatcher und Gestenlogik
+blieben unverändert.
+
+Nach der Korrektur bestand das vollständige lokale Java-21-Gate erneut alle 157 Aufgaben mit
+Unit-/Robolectric-/Golden-Tests, `lintDebug` sowie Debug-, Android-Test- und Release-Paketierung.
+Die Geräteklassen kompilierten erfolgreich; ihre erneute Ausführung bleibt dem neuen
+Pull-Request-Lauf vorbehalten. Phase 6a ist damit lokal weiterhin roadmapkonform, aber erst nach
+einer vollständig grünen Remote-Matrix und Squash-Merge technisch abgeschlossen. Die physische
+Sicht- und In-App-Update-Abnahme bleibt ohne Handy offen.

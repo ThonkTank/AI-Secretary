@@ -3,10 +3,12 @@ package de.thonktank.autosecretary
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.filters.SdkSuppress
@@ -37,7 +39,8 @@ class AllTasksComposeInstrumentationTest {
         compose.onNodeWithText("Abend").performClick()
         compose.waitUntil { compose.activity.state.slots == setOf(TaskSlot.EVENING) }
         compose.onNodeWithText("Bett machen").assertDoesNotExist()
-        compose.onNodeWithTag("all-tasks:overlay").performClick()
+        compose.onNodeWithTag("all-tasks:overlay")
+            .performSemanticsAction(SemanticsActions.OnClick)
 
         compose.onNodeWithText("Sortieren").performClick()
         compose.waitUntil { compose.activity.state.mode == AllTasksUiState.Mode.SORT }
@@ -57,7 +60,10 @@ class AllTasksComposeInstrumentationTest {
 
         assertEquals("Routine", compose.activity.state.query)
         assertTrue(compose.activity.state.expandedCardKeys.contains(expanded))
-        compose.onNodeWithText("Morgenroutine").assertExists()
+        assertEquals(
+            2,
+            compose.onAllNodesWithText("Morgenroutine").fetchSemanticsNodes().size,
+        )
     }
 
     @Test
