@@ -78,6 +78,20 @@ nur mit den lokalen, expliziten Update-Schaltern
 `UPDATE_TASK_EDITOR_ADAPTIVE_GOLDENS=1` und
 `UPDATE_TASK_EDITOR_ADAPTIVE_CONTACT=1` geschrieben werden; CI darf sie nicht verändern.
 
+## Compose-Vergleichsrenderer (Phase 5a)
+
+Der Compose-Editor rendert dieselben zehn kanonischen und fünf adaptiven Zustände gegen die
+unveränderten, bereits freigegebenen Android-Baselines. Der eigene Vergleich ist mit 64
+Farbkanalstufen und höchstens 25 Prozent abweichenden Pixeln enger als der allgemeine
+Editor-Migrationsvertrag. Jeder Lauf schreibt die tatsächlichen Compose-Bilder in die
+Quality-Artefakte. Der Vergleich ist strikt schreibgeschützt: Weder lokal noch in CI existiert
+über 5a ein Aktualisierungspfad für die autoritativen Legacy-Baselines.
+
+Phase 5a montiert diesen Renderer ausschließlich in einem nicht exportierten Debug-Harness.
+Produktiv bleibt bis Phase 5b der freigegebene View-Renderer aktiv. Die automatisierte
+Side-by-Side-Prüfung ist deshalb weder ein produktiver Cutover noch eine neue menschliche oder
+physische Gerätefreigabe.
+
 ### Erneute menschliche Freigabe
 
 Status: **VISUELL FREIGEGEBEN**

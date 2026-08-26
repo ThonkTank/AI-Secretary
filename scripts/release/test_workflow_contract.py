@@ -52,6 +52,7 @@ COMPOSE_SMOKE_TEST = (
     / "autosecretary"
     / "ComposeSmokeInstrumentationTest.kt"
 ).read_text(encoding="utf-8")
+DEBUG_PROGUARD = (ROOT / "app" / "proguard-debug.pro").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
 SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").read_text(
     encoding="utf-8"
@@ -200,6 +201,33 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("FLAG_DIM_BEHIND", COMPOSE_SMOKE_TEST)
         self.assertIn(
             'test "$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)" -lt 10485760',
+            WORKFLOW,
+        )
+
+    def test_phase_5a_compose_foundation_keeps_both_apk_budgets_without_test_leakage(self):
+        self.assertIn('debugImplementation("androidx.compose.foundation:foundation")', APP_BUILD)
+        self.assertIn('debugImplementation("androidx.compose.animation:animation")', APP_BUILD)
+        self.assertIn("isMinifyEnabled = true", APP_BUILD)
+        self.assertIn('create("instrumentation")', APP_BUILD)
+        self.assertIn('testBuildType = "instrumentation"', APP_BUILD)
+        self.assertIn('getByName("instrumentation").setRoot("src/debug")', APP_BUILD)
+        self.assertIn(
+            'add("instrumentationImplementation", "androidx.compose.foundation:foundation")',
+            APP_BUILD,
+        )
+        instrumentation_build = APP_BUILD.split('create("instrumentation")', 1)[1].split(
+            'getByName("release")', 1
+        )[0]
+        self.assertIn("isMinifyEnabled = false", instrumentation_build)
+        self.assertNotIn("ui-test-manifest", APP_BUILD)
+        self.assertIn("-keep class de.thonktank.autosecretary.** { *; }", DEBUG_PROGUARD)
+        self.assertIn("-keepattributes SourceFile,LineNumberTable", DEBUG_PROGUARD)
+        self.assertIn("assembleInstrumentationAndroidTest", WORKFLOW)
+        self.assertNotIn("assembleDebugAndroidTest", WORKFLOW)
+        self.assertIn("testInstrumentationUnitTest", WORKFLOW)
+        self.assertIn(
+            "app/build/outputs/apk/androidTest/instrumentation/"
+            "app-instrumentation-androidTest.apk",
             WORKFLOW,
         )
 
@@ -356,7 +384,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("build/reports/instrumentation/", instrumentation)
         self.assertIn("androidTests/connected/", instrumentation)
         self.assertIn("./gradlew", INSTRUMENTATION_RUNNER)
-        self.assertIn("connectedDebugAndroidTest", INSTRUMENTATION_RUNNER)
+        self.assertIn("connectedInstrumentationAndroidTest", INSTRUMENTATION_RUNNER)
         self.assertIn("status=$?", INSTRUMENTATION_RUNNER)
         self.assertIn('exit "$status"', INSTRUMENTATION_RUNNER)
         for diagnostic in (

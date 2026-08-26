@@ -138,7 +138,7 @@ Der lokale Quality-Gate bleibt:
 ```bash
 python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
 python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
-./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease
+./gradlew testInstrumentationUnitTest lintDebug assembleDebug assembleInstrumentationAndroidTest assembleRelease
 ```
 
 Ein lokaler `assembleRelease` bleibt absichtlich unsigned. Ein signierter Build erfordert den

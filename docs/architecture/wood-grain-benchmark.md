@@ -11,13 +11,13 @@ Größen. Miss und Hit werden direkt am Pipelinevertrag gemessen; die Draw-Verte
 weiterhin den gebundenen `WoodGrainView`. Er läuft absichtlich nicht im normalen Unit-Gate:
 
 ```bash
-./gradlew testDebugUnitTest \
+./gradlew testInstrumentationUnitTest \
   --tests 'de.thonktank.autosecretary.ui.leaf.WoodGrainBenchmarkTest' \
   -Dwoodgrain.benchmark=true --no-daemon --rerun-tasks
 ```
 
 Das maschinenlesbare Ergebnis steht anschließend in
-`app/build/test-results/testDebugUnitTest/TEST-de.thonktank.autosecretary.ui.leaf.WoodGrainBenchmarkTest.xml`
+`app/build/test-results/testInstrumentationUnitTest/TEST-de.thonktank.autosecretary.ui.leaf.WoodGrainBenchmarkTest.xml`
 unter `WOOD_GRAIN_BENCHMARK`.
 
 ## Vergleich

@@ -60,7 +60,7 @@ jobs:
       - name: Test release contract tool
         run: python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
       - name: Compile, unit tests, goldens, lint and APKs
-        run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest assembleRelease
+        run: ./gradlew testInstrumentationUnitTest lintDebug assembleDebug assembleInstrumentationAndroidTest assembleRelease
       - name: Enforce compact install artifacts
         run: |
           test "$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)" -lt 10485760
@@ -321,7 +321,7 @@ jobs:
             | sed -n 's/^[[:space:]]*SHA256: //p' | tr -d ':' | tr '[:upper:]' '[:lower:]')
           test "$ACTUAL_CERT" = "$EXPECTED_SIGNER"
           export SIGNING_STORE_FILE="$KEYSTORE"
-          ./gradlew assembleRelease assembleDebugAndroidTest \
+          ./gradlew assembleRelease assembleInstrumentationAndroidTest \
             -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" \
             -PrequireReleaseSigning=true
           CANDIDATE="$RUNNER_TEMP/release-candidate"
@@ -332,7 +332,7 @@ jobs:
           "$APKSIGNER" sign --ks "$KEYSTORE" --ks-key-alias "$SIGNING_KEY_ALIAS" \
             --ks-pass env:SIGNING_STORE_PASSWORD --key-pass env:SIGNING_KEY_PASSWORD \
             --out "$CANDIDATE/upgrade-test.apk" \
-            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            app/build/outputs/apk/androidTest/instrumentation/app-instrumentation-androidTest.apk
           for SIGNED_APK in "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk"; do
             "$APKSIGNER" verify --verbose "$SIGNED_APK"
             APK_CERT=$($APKSIGNER verify --print-certs "$SIGNED_APK" \
