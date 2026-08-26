@@ -125,6 +125,7 @@ class WidgetObservableUpdateTest {
             fixture.host.ids = intArrayOf(9)
             fixture.coordinator.reconcileInstalledWidgets()
             assertTrue(started.await(5, TimeUnit.SECONDS))
+            assertTrue(fixture.invalidations.eventsSubscribed.await(5, TimeUnit.SECONDS))
 
             fixture.invalidations.databaseChanged()
             await { fixture.host.updates.get() == 1 }
@@ -220,10 +221,12 @@ class WidgetObservableUpdateTest {
         )
         val starts = AtomicInteger()
         val stops = AtomicInteger()
+        val eventsSubscribed = CountDownLatch(1)
         override fun changes(): Flow<PresentationInvalidation> = flow {
             starts.incrementAndGet()
             try {
                 emit(event(PresentationInvalidationCause.INITIAL))
+                eventsSubscribed.countDown()
                 events.collect { emit(it) }
             } finally {
                 stops.incrementAndGet()
