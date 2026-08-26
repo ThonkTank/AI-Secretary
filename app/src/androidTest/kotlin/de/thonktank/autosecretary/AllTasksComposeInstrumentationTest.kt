@@ -18,7 +18,6 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.filters.SdkSuppress
-import androidx.test.platform.app.InstrumentationRegistry
 import de.thonktank.autosecretary.domain.model.TaskSlot
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeFixture
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState
@@ -239,21 +238,23 @@ class AllTasksComposeInstrumentationTest {
         action: Int,
         rootPosition: Offset,
     ) {
-        val hostOrigin = IntArray(2)
-        compose.activity.allTasks.getLocationOnScreen(hostOrigin)
-        MotionEvent.obtain(
-            downTime,
-            eventTime,
-            action,
-            hostOrigin[0] + rootPosition.x,
-            hostOrigin[1] + rootPosition.y,
-            0,
-        ).also { event ->
-            event.source = InputDevice.SOURCE_TOUCHSCREEN
-            try {
-                InstrumentationRegistry.getInstrumentation().sendPointerSync(event)
-            } finally {
-                event.recycle()
+        compose.runOnUiThread {
+            val hostOrigin = IntArray(2)
+            compose.activity.allTasks.getLocationInWindow(hostOrigin)
+            MotionEvent.obtain(
+                downTime,
+                eventTime,
+                action,
+                hostOrigin[0] + rootPosition.x,
+                hostOrigin[1] + rootPosition.y,
+                0,
+            ).also { event ->
+                event.source = InputDevice.SOURCE_TOUCHSCREEN
+                try {
+                    compose.activity.dispatchTouchEvent(event)
+                } finally {
+                    event.recycle()
+                }
             }
         }
     }

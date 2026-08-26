@@ -2563,9 +2563,14 @@ Pointertests den Long-Press-Start nicht, während der API-37-Canary grün blieb.
 Timeouts zeigten, dass `performTouchInput` nur seine synthetische Eventzeit vorspulte, der
 Produktionsdetektor den Long-Press aber über reale Coroutine-Zeit erwartet. Die Nachtarbeit ersetzt
 diese virtuelle Zeitabkürzung deshalb durch echte Android-`MotionEvent`s, hält den Pointer länger
-als den System-Long-Press-Timeout und sendet Move und Up über die Instrumentierung an die reale
-Hostposition. Der produktive Gestendetektor und seine Reorderlogik bleiben unverändert; der
-Gerätevertrag prüft sie nun mit derselben Zeitsemantik wie eine tatsächliche Berührung.
+als den System-Long-Press-Timeout und sendet Move und Up an die reale Hostposition. Ein erster
+Korrekturversuch über die globale `Instrumentation.sendPointerSync`-Einspeisung erwies sich im
+zweiten Gerätelauf als ungeeignet: API 26 verweigerte sie ohne privilegierte `INJECT_EVENTS`-
+Berechtigung, API 35 erreichte den App-Handler mit den Bildschirmkoordinaten nicht zuverlässig.
+Der Nachweis speist dieselben Touchereignisse deshalb ohne Sonderberechtigung mit
+Fensterkoordinaten durch `Activity.dispatchTouchEvent` in den normalen App-Touchpfad ein. Der
+produktive Gestendetektor und seine Reorderlogik bleiben unverändert; der Gerätevertrag prüft sie
+nun mit derselben Zeitsemantik wie eine tatsächliche Berührung.
 
 Der erneute Abgleich findet keine parallele Screen-Wahrheit, keinen fortbestehenden Recyclerpfad,
 keinen persistierten Transientzustand und keine Änderung an Domain-, Room-, Request-, Schema-,
