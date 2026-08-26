@@ -2567,10 +2567,18 @@ als den System-Long-Press-Timeout und sendet Move und Up an die reale Hostpositi
 Korrekturversuch über die globale `Instrumentation.sendPointerSync`-Einspeisung erwies sich im
 zweiten Gerätelauf als ungeeignet: API 26 verweigerte sie ohne privilegierte `INJECT_EVENTS`-
 Berechtigung, API 35 erreichte den App-Handler mit den Bildschirmkoordinaten nicht zuverlässig.
-Der Nachweis speist dieselben Touchereignisse deshalb ohne Sonderberechtigung mit
+Der zweite Korrekturversuch speiste dieselben Touchereignisse deshalb ohne Sonderberechtigung mit
 Fensterkoordinaten durch `Activity.dispatchTouchEvent` in den normalen App-Touchpfad ein. Der
-produktive Gestendetektor und seine Reorderlogik bleiben unverändert; der Gerätevertrag prüft sie
-nun mit derselben Zeitsemantik wie eine tatsächliche Berührung.
+produktive Gestendetektor und seine Reorderlogik blieben dabei unverändert.
+
+Auch dieser Umweg erreichte im dritten Lauf auf API 26 und 35 den produktiven Long-Press-Zustand
+nicht zuverlässig. Der abschließende Abgleich mit dem AndroidX-eigenen Gerätevertrag identifizierte
+die eigentliche Testregel: Der Touch-`down` muss als eigener Compose-Eingabeblock verarbeitet
+werden; anschließend wird die Compose-Hauptuhr über den System-Long-Press-Timeout bewegt und erst
+danach folgen `move` und `up` in einem weiteren Block. Der finale Vertrag folgt exakt dieser
+Reihenfolge und verlangt vor jeder Bewegung zusätzlich sichtbare Dropsemantik. Damit beweist er
+zuerst den Eintritt in den produktiven Dragzustand und danach getrennt Drop beziehungsweise
+framegetriebenen Randscroll, ohne privilegierte Systemeinspeisung oder Testhook.
 
 Der erneute Abgleich findet keine parallele Screen-Wahrheit, keinen fortbestehenden Recyclerpfad,
 keinen persistierten Transientzustand und keine Änderung an Domain-, Room-, Request-, Schema-,
