@@ -273,7 +273,7 @@ class WorkflowContractTest(unittest.TestCase):
         ):
             self.assertNotIn(product_api, UPGRADE_PROBE)
         self.assertIn("SQLiteDatabase.OPEN_READONLY", UPGRADE_PROBE)
-        self.assertIn("TARGET_DATABASE_VERSION = 19", UPGRADE_PROBE)
+        self.assertIn("TARGET_DATABASE_VERSION = 20", UPGRADE_PROBE)
         self.assertIn("SOURCE_DATABASE_VERSION = 8", UPGRADE_PROBE)
         self.assertIn("awaitDatabaseVersion(targetContext", UPGRADE_PROBE)
         self.assertIn("System.currentTimeMillis()", UPGRADE_PROBE)
