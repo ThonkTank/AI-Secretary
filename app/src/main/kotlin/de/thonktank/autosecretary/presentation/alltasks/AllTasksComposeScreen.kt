@@ -8,15 +8,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
@@ -35,11 +44,58 @@ internal fun AllTasksComposeScreen(
     var openFilter by remember { mutableStateOf<AllTasksFilterMenu?>(null) }
     var openTaskMenu by remember { mutableStateOf<String?>(null) }
     var selectedSwapStep by remember { mutableStateOf<String?>(null) }
+    var activeDragKey by remember { mutableStateOf<String?>(null) }
+    var dragPointerY by remember { mutableFloatStateOf(Float.NaN) }
+    var listBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
+    val rowBounds = remember { mutableStateMapOf<String, androidx.compose.ui.geometry.Rect>() }
+    val listState = rememberLazyListState()
     val rows = remember(state) { AllTasksRow.project(state) }
+    val draggableRowKeys = remember(rows) {
+        rows.asSequence()
+            .filter { row ->
+                row.kind == AllTasksRow.Kind.SCHEDULE ||
+                    row.kind == AllTasksRow.Kind.STEP && !row.task.archived
+            }
+            .mapTo(mutableSetOf()) { it.key }
+    }
     val dispatcher = remember(state, callbacks) { AllTasksComposeDispatcher(state, callbacks) }
     val pageStart = dimensionResource(R.dimen.page_start)
     val pageEnd = dimensionResource(R.dimen.page_end)
     val visibleFilter = forcedOpenFilter ?: openFilter
+    val visibleDragKey = dragSourceKey ?: activeDragKey
+    val density = LocalDensity.current
+    val edgeSizePx = with(density) { 64.dp.toPx() }
+    val edgeSpeedPx = with(density) { 460.dp.toPx() }
+
+    fun clearDrag() {
+        activeDragKey = null
+        dragPointerY = Float.NaN
+    }
+
+    LaunchedEffect(activeDragKey, dragPointerY, listBounds) {
+        if (activeDragKey == null) return@LaunchedEffect
+        val velocity = edgeScrollVelocity(
+            dragPointerY,
+            listBounds,
+            edgeSizePx,
+            edgeSpeedPx,
+        )
+        if (velocity == 0f) return@LaunchedEffect
+        var previous = androidx.compose.runtime.withFrameNanos { it }
+        val direction = if (velocity < 0f) -1 else 1
+        traceAllTasksDrag("edge", "direction=$direction")
+        try {
+            while (true) {
+                val now = androidx.compose.runtime.withFrameNanos { it }
+                val elapsedSeconds =
+                    ((now - previous).coerceAtMost(100_000_000L)) / 1_000_000_000f
+                previous = now
+                listState.scrollBy(velocity * elapsedSeconds)
+            }
+        } finally {
+            traceAllTasksDrag("edge", "direction=0")
+        }
+    }
 
     Box(
         modifier = modifier
@@ -56,10 +112,45 @@ internal fun AllTasksComposeScreen(
                 onCloseMenu = { openFilter = null },
             )
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .testTag("all-tasks:list"),
+                    .testTag("all-tasks:list")
+                    .onGloballyPositioned { listBounds = it.boundsInRoot() }
+                    .allTasksDragContainer(
+                        enabledKeys = draggableRowKeys,
+                        visibleBounds = rowBounds,
+                        onStart = { key, pointerY ->
+                            activeDragKey = key
+                            dragPointerY = pointerY
+                            traceAllTasksDrag("start", "source=$key")
+                            openFilter = null
+                            openTaskMenu = null
+                        },
+                        onMove = { dragPointerY = it },
+                        onDrop = {
+                            val source = activeDragKey
+                            if (source != null) {
+                                val target = nearestDropTarget(
+                                    dragPointerY,
+                                    source,
+                                    rowBounds,
+                                )
+                                val handled = target?.let { dispatcher.drop(source, it) }
+                                    ?: false
+                                traceAllTasksDrag(
+                                    "drop",
+                                    "source=$source target=$target handled=$handled",
+                                )
+                            }
+                            clearDrag()
+                        },
+                        onCancel = {
+                            traceAllTasksDrag("cancel", "source=$activeDragKey")
+                            clearDrag()
+                        },
+                    ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     top = 10.dp,
                     bottom = 26.dp,
@@ -70,16 +161,23 @@ internal fun AllTasksComposeScreen(
                     key = { row -> row.key },
                     contentType = { row -> row.kind },
                 ) { row ->
+                    DisposableEffect(row.key) {
+                        onDispose { rowBounds.remove(row.key) }
+                    }
                     AllTasksComposeRow(
                         row = row,
                         state = state,
                         palette = palette,
                         dispatcher = dispatcher,
                         callbacks = callbacks,
-                        dragActive = dragSourceKey != null,
+                        dragActive = visibleDragKey?.let { key ->
+                            rows.firstOrNull { it.key == key }?.kind == AllTasksRow.Kind.STEP
+                        } == true,
                         selectedSwapStep = selectedSwapStep,
                         onSelectSwap = { selectedSwapStep = it },
                         onOpenTaskMenu = { openTaskMenu = it },
+                        rowModifier = Modifier
+                            .onGloballyPositioned { rowBounds[row.key] = it.boundsInRoot() },
                     )
                 }
             }

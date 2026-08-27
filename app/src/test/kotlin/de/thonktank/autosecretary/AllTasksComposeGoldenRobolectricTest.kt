@@ -10,9 +10,9 @@ import androidx.activity.ComponentActivity
 import de.thonktank.autosecretary.domain.model.TaskSlot
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeFixture
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeHostView
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksActionSink
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksPresentationState
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksView
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -95,7 +95,7 @@ class AllTasksComposeGoldenRobolectricTest {
         host.openFilterForTest(scenario.openFilter)
         root.addView(host, FrameLayout.LayoutParams(-1, -1))
         activity.setContentView(root)
-        host.bind(scenario.state, palette, NoopListener)
+        host.bind(scenario.state, palette, NoopActions)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
         val width = dp(activity, scenario.widthDp)
         val height = dp(activity, 702)
@@ -127,5 +127,8 @@ class AllTasksComposeGoldenRobolectricTest {
         val mode: DayPalette.Mode = DayPalette.Mode.LIGHT,
     )
 
-    private object NoopListener : AllTasksView.Listener
+    private object NoopActions : AllTasksActionSink {
+        override fun emit(action: de.thonktank.autosecretary.presentation.alltasks.AllTasksAction) =
+            Unit
+    }
 }

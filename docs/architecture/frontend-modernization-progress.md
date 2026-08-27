@@ -2465,3 +2465,178 @@ als Codekorrektur kaschierten Infrastrukturfehler. Phase 6a ist implementiert un
 Ohne verfügbares Handy bleiben die physische Sichtprüfung und die Installation über den echten
 In-App-Updater ausdrücklich ausstehend; sie werden durch Emulator- und Upgradeerfolg nicht als
 bestanden gewertet.
+
+### Phase 6b – Vorprüfung und konkreter Cutover-Plan
+
+Vor Produktänderungen wurden die Original-Roadmap, der veröffentlichte Phase-6a-Stand
+`425adcd35a069bec30dd147e10e086dd981e14d8`, der nachgetragene Releaseabschluss auf
+`999aa214d5cf627c478a04bb8746829a613fe327`, der aktuelle `origin/main`, der gesamte
+Compose-Vergleichsrenderer, `DashboardRenderer`, `MainActivity`, der Alles-State-Owner samt
+Actions und Requests, die Legacy-View-/Recycler-/Drag-Hierarchie sowie Compose-, Golden-,
+Recreation-, Virtualisierungs-, Accessibility- und Geräteverträge erneut gelesen. Der technische
+Ausgangspunkt ist sauber; der produktive Screen verwendet weiterhin ausschließlich
+`AllTasksView`, während die bereits geprüfte Compose-Fläche noch im Debug-Quellsatz liegt.
+
+6b bleibt als ein kohärenter Cutover auf dem Branch
+`codex/frontend-p6b-alltasks-compose-cutover`: Die sechs renderertragenden Compose-Dateien werden
+in den Hauptquellsatz übernommen. Eine kleine Java-kompatible `AllTasksActionSink`-Grenze bindet
+den Host direkt an den einzigen `AllTasksViewModel`; die bisherige Callback-Übersetzung im
+`AllTasksCoordinator` entfällt. `DashboardRenderer` mountet genau einen
+`AllTasksComposeHostView` neben der bestehenden Shell und bindet ausschließlich den jeweils
+publizierten `AllTasksUiState`. Filter, Expansion und Hostrequests bleiben damit unverändert beim
+State-Owner; Dropdown, Dragquelle und Accessibility-Swap-Auswahl bleiben kurzlebiger
+Compose-Zustand und werden bei Recreation geschlossen.
+
+Der produktive Gestenpfad verwendet Long-Press-Pointer-Drag auf stabilen Zeilenschlüsseln. Sichtbare
+Zeilengrenzen bestimmen das Dropziel; derselbe reine Dispatcher verarbeitet Pointer- und
+Accessibility-Reorder. Ein an Compose-Frames gekoppelter Randscrollpfad scrollt die `LazyColumn`
+nur während eines aktiven Drags und wird bei Drop, Abbruch und Detach sicher beendet. Tests müssen
+einen echten Long-Press-Drag, Randscrollfortschritt, Drop auf Schritt und Slot, Recreation,
+Persistenzfehler, gleichwertige Accessibility-Aktionen und die produktive Mountgrenze belegen;
+Testhooks allein zählen nicht mehr als Cutover-Nachweis.
+
+Erst nachdem diese Nachweise grün sind, werden `AllTasksView`, Recycler-Adapter, Controls,
+Holder, Reorder-Controller, die Legacy-Zeilen-UI, der Coordinator und ihre ausschließlich alten
+Tests gelöscht. Projektion, Saved-State-Adapter, Domaincommands, Room-Invalidierung, Requestdialoge,
+visuelle Referenzen, Schema, SDK-, Signatur- und Upgradevertrag bleiben unverändert. Der
+abschließende Negativabgleich prüft insbesondere auf eine zweite Renderwahrheit, hängenbleibende
+Gesten-/Framearbeit, versehentlich persistierten Transientzustand, unvollständige Legacy-Reste und
+fehlende echte Produktintegration. Gefundene blockierende Lücken werden als 6b-Nachtarbeit auf
+demselben Branch behoben. Ohne Handy bleiben Sicht- und In-App-Update-Abnahme ausdrücklich offen.
+
+### Phase 6b – Implementation und lokale Nachweise
+
+`DashboardRenderer` mountet im produktiven Alles-Ziel nun ausschließlich den
+`AllTasksComposeHostView` mit stabiler Host-ID. `MainActivity` reicht
+`allTasksViewModel::dispatch` über die kleine Java-kompatible `AllTasksActionSink`-Grenze direkt
+an den Host. Der Compose-Host übersetzt jede UI-Eingabe in die bestehenden abgeschlossenen
+`AllTasksAction`-Typen und zeigt Änderungen erst nach der erneuten Publication desselben
+StateFlow-Owners. Der frühere Coordinator und eine zweite lokale Renderwahrheit sind entfernt.
+
+Der in 6a geprüfte Foundation-Renderer liegt jetzt im Hauptquellsatz. Long-Press-Pointer-Drag
+verwendet die stabilen Schlüssel der flachen Zeilenprojektion; sichtbare Compose-Zeilengrenzen
+bestimmen das Dropziel und derselbe reine Dispatcher verarbeitet Pointer- und
+Accessibility-Reorder. Randscrollen wird pro Compose-Frame aus Pointerposition, Viewport und
+verstrichener Framezeit berechnet, nicht aus der Häufigkeit von Move-Events. Drop, Cancel und
+Screenwechsel beenden den Pfad; der Debug-Presentation-Trace zeichnet Start, Ziel, Ergebnis und
+Randrichtung auf. Ein echter Gerätevertrag injiziert Long-Press und Pointerbewegung, ein zweiter
+hält den Pointer am Rand bis zu einem nachweisbaren `LazyColumn`-Scroll. Die bisherigen stabilen
+Drop- und Accessibility-Verträge bleiben zusätzlich erhalten.
+
+`AllTasksView`, Controls, Recycler-Adapter, Reorder-Controller, sämtliche Holder, Card-Drawable,
+Search-Highlighter, die alte Zeilen-UI und ihre ausschließlich rendererbezogenen Tests sind
+gelöscht. Auch die nun ungenutzte RecyclerView-Abhängigkeit, Legacy-Accessibility-IDs und der nur
+für Recycler-Diffing gehaltene parallele `AllTasksRowContent` entfielen. Die 13 visuellen
+Baselines blieben unverändert; Architekturverträge verbieten Material, neue hart codierte Farben,
+Golden-Schreibpfade, einen erneuten Legacy-Mount und alle entfernten Dateien.
+
+Das abschließende lokale Java-21-Gate bestand alle 157 Gradle-Aufgaben: 449 Host-, Robolectric-
+und Golden-Tests ohne Fehler bei einem bewussten Skip, `lintDebug`, Debug-, Android-Test- und
+unsigned Release-Paketierung einschließlich beider R8-Pfade und Release-Vital-Lint. Die 17 CI-
+Harness- und 23 Release-/Workflow-Vertragstests sind ebenfalls grün. Debug misst 8.978.940 Byte,
+die Instrumentierungs-APK 2.659.600 Byte, unsigned Release 2.550.429 Byte und die Fonts
+1.478.008 Byte; alle Größenverträge bleiben eingehalten. Der Gerätecode kompiliert lokal, wurde
+ohne verbundenes Ziel aber nicht als ausgeführt gewertet.
+
+### Phase 6b – Roadmap-Abgleich und Nachtarbeit
+
+Der negative Gegencheck fand drei echte Restschwächen im ersten Cutover. Erstens hätte ein
+laufender Compose-Randscroll beim Wechsel zu Today oder Optionen theoretisch weiterlaufen können,
+weil der produktive Host dort nur `GONE`, aber nicht detached wird. `DashboardRenderer` schließt
+deshalb vor jedem Wegnavigieren explizit den gesamten kurzlebigen Compose-Zustand über einen
+neuen Composition-Epoch; Dropdown, Swap-Auswahl, Drag und Framearbeit enden gemeinsam. Activity-
+Recreation verwirft dieselben Werte weiterhin automatisch, während Query und Expansion aus dem
+autoritativen Saved-State wiederkehren.
+
+Zweitens war der 6a-Testhook für Dropmapping allein kein Nachweis einer produktiven Geste. Die
+Nachtarbeit ergänzt deshalb echte Long-Press-/Pointer-Injektion und einen aktiven Randscrolltest;
+der API-37-Canary behält wegen des dort inkompatiblen Compose-Eingabetreibers zusätzlich seine
+sichtbare Accessibility- und stabile Dispatchergrenze, ersetzt aber nicht die echten API-26/35-
+Gestenläufe. Drittens blieb zunächst `AllTasksRowContent` als ausschließlich für Recycler-Diffs
+gepflegte zweite Zeilenbeschreibung übrig. Sie und die ungenutzten Recycler-Ressourcen wurden
+entfernt, sodass `AllTasksRow` nur noch die unmittelbar vom Compose-Renderer konsumierte stabile
+Projektion trägt.
+
+Der erste Pull-Request-Gerätelauf machte anschließend eine Lücke genau in diesem neuen Nachweis
+sichtbar: API 26 und 35 erreichten in normaler wie animationsaktiver Ausführung bei beiden
+Pointertests den Long-Press-Start nicht, während der API-37-Canary grün blieb. Trace und identische
+Timeouts zeigten, dass `performTouchInput` nur seine synthetische Eventzeit vorspulte, der
+Produktionsdetektor den Long-Press aber über reale Coroutine-Zeit erwartet. Die Nachtarbeit ersetzt
+diese virtuelle Zeitabkürzung deshalb durch echte Android-`MotionEvent`s, hält den Pointer länger
+als den System-Long-Press-Timeout und sendet Move und Up an die reale Hostposition. Ein erster
+Korrekturversuch über die globale `Instrumentation.sendPointerSync`-Einspeisung erwies sich im
+zweiten Gerätelauf als ungeeignet: API 26 verweigerte sie ohne privilegierte `INJECT_EVENTS`-
+Berechtigung, API 35 erreichte den App-Handler mit den Bildschirmkoordinaten nicht zuverlässig.
+Der zweite Korrekturversuch speiste dieselben Touchereignisse deshalb ohne Sonderberechtigung mit
+Fensterkoordinaten durch `Activity.dispatchTouchEvent` in den normalen App-Touchpfad ein. Der
+produktive Gestendetektor und seine Reorderlogik blieben dabei unverändert.
+
+Auch dieser Umweg erreichte im dritten Lauf auf API 26 und 35 den produktiven Long-Press-Zustand
+nicht zuverlässig. Der abschließende Abgleich mit dem AndroidX-eigenen Gerätevertrag identifizierte
+die eigentliche Testregel: Der Touch-`down` muss als eigener Compose-Eingabeblock verarbeitet
+werden; anschließend wird die Compose-Hauptuhr über den System-Long-Press-Timeout bewegt und erst
+danach folgen `move` und `up` in einem weiteren Block. Der finale Vertrag folgt exakt dieser
+Reihenfolge und verlangt vor jeder Bewegung zusätzlich sichtbare Dropsemantik. Damit beweist er
+zuerst den Eintritt in den produktiven Dragzustand und danach getrennt Drop beziehungsweise
+framegetriebenen Randscroll, ohne privilegierte Systemeinspeisung oder Testhook.
+
+Der vierte Gerätelauf erreichte damit erstmals den echten Long-Press-Start, lief anschließend aber
+in ein Compose-Idling-Timeout. Die Ursache lag nun im Produktcode: Der Randscroll-Effekt forderte
+während jedes aktiven Drags fortlaufend Frames an, selbst wenn der Pointer außerhalb des
+Randbereichs lag und die berechnete Geschwindigkeit null war. Das widersprach dem 6b-Negativgate
+gegen hängenbleibende Framearbeit. Der Effekt ist deshalb jetzt zusätzlich an Pointerposition und
+Viewport gebunden, beendet sich bei Geschwindigkeit null sofort und fordert Frames ausschließlich
+für eine tatsächliche Randbewegung an. Der Randscrolltest friert während des aktiven Randdrags die
+automatische Testuhr ein, fährt die benötigten Frames kontrolliert vor, löst den Pointer und prüft
+erst im danach wieder ruhigen Zustand den erzielten Scrollfortschritt.
+
+Der fünfte Lauf bestätigte, dass das Idling-Problem verschwunden ist, deckte aber zwei
+deterministische Schwächen im Nachweis auf. Die Zielkoordinate war noch vor dem Dragstart gelesen
+worden; der Drag blendet anschließend reale Dropzeilen ein und verschiebt damit genau diese
+Geometrie. Quelle und Ziel werden nun erst nach der sichtbaren Dragsemantik erneut vermessen. Der
+Randscrollvertrag fährt die eingefrorene Hauptuhr außerdem frameweise statt in einem Zeitsprung und
+verlangt neben dem Scrollwert explizite Traceereignisse für Dragstart und untere Randrichtung. Ein
+Fehler unterscheidet dadurch Gestenerkennung, Randaktivierung und tatsächlichen Scrollfortschritt.
+
+Im sechsten Lauf belegte der Trace den erfolgreichen Dragstart und machte die letzten beiden
+Testgeometriefehler konkret. Auf dem kleineren API-26-Viewport war die weiter unten liegende zweite
+Karte nach Einblendung der Dropzeilen nicht mehr sichtbar. Der echte Pointertest legt deshalb nun
+auf dem weiterhin sichtbaren Nachbarschritt ab; Cross-Task-Mapping bleibt unabhängig über den
+reinen Dispatcher und den API-37-Canary geprüft. Der Randscrolltest hatte außerdem `down` auf dem
+Quellknoten, `move` aber auf der Root injiziert und dadurch den aktiven Detektor abgebrochen. Die
+vollständige Sequenz bleibt jetzt auf demselben stabilen Quellknoten; lediglich die Zielkoordinate
+wird nach Aktivierung aus dessen aktueller Rootgeometrie zurückgerechnet.
+
+Der siebte Lauf zeigte trotz konsistenter Injektion weiterhin `start` unmittelbar gefolgt von
+`cancel`, also einen Produktkonflikt zwischen aktivem Kinddrag und dem Scrollgestendetektor der
+`LazyColumn`. Der bisherige Convenience-Detektor konsumierte die erste Bewegung erst im normalen
+Main-Pass; der Scrollcontainer konnte den Pointer dadurch nach bestätigtem Long-Press noch
+übernehmen. Der produktive Modifier verwendet nun die zugrunde liegenden AndroidX-Primitiven:
+Vor dem Long-Press bleibt die Berührung unbeansprucht und normales Scrollen möglich. Nach der
+Bestätigung verarbeitet und konsumiert der Quellknoten Move und Up bereits im Initial-Pass, sodass
+ein aktiver Reorder nicht mehr vom Parent gestohlen werden kann. Cancel und Coroutine-Abbruch
+schließen den kurzlebigen Zustand weiterhin explizit.
+
+Der achte Lauf `33017919553` bestätigte diese Konfliktkorrektur: Das vollständige Quality-Gate
+war grün, und API 37 bestand normale sowie animationsaktive Interaktion. API 26 und 35 scheiterten
+in beiden Modi dagegen reproduzierbar erst während des Randscrolls, weil der Quellknoten nach
+genügend Scrollfortschritt nicht mehr im Lazy-Layoutbaum lag. Der Fehler war damit weder eine
+Injektions- noch eine API-Inkompatibilität, sondern eine zweite Produkt-Lebenszykluslücke: Ein an
+einer virtualisierten Zeile gebundener Pointer-Detektor kann den Drag nicht bis zum Loslassen
+besitzen, sobald genau diese Zeile aus dem Viewport fällt.
+
+Die nächste Nachtarbeitskorrektur verlagert deshalb den vollständigen Long-Press-Pointerlebenszyklus
+auf die stabile `LazyColumn`. Sichtbare Zeilen veröffentlichen nur noch ihre Rootgrenzen und
+stabilen Schlüssel; die Liste wählt beim Down ausschließlich eine tatsächlich verschiebbare
+Zeile, lässt normales Scrollen bis zum bestätigten Long-Press unbeansprucht und konsumiert danach
+Move und Up im Initial-Pass. Quellschlüssel und Dragzustand überleben so die Disposal der
+ursprünglichen Zeile. Der Gerätevertrag injiziert Down, Move und Up entsprechend über denselben
+stabilen Listenknoten und beweist weiterhin echten Randfortschritt. Gezielter Unit-Test,
+Android-Testkompilierung und `lintDebug` bestanden lokal unter Java 21 in 59 Aufgaben.
+
+Der erneute Abgleich findet keine parallele Screen-Wahrheit, keinen fortbestehenden Recyclerpfad,
+keinen persistierten Transientzustand und keine Änderung an Domain-, Room-, Request-, Schema-,
+SDK-, Signatur-, Upgrade- oder Gestaltungskontrakten. Die automatisierte Implementation benötigt
+nun den eigenen grünen Pull Request, Squash-Merge und den veröffentlichenden `main`-Lauf. Der
+repositoryunabhängige ADB-Check fand weiterhin kein verbundenes Gerät; physische Sicht- und echte
+In-App-Update-Abnahme bleiben ausdrücklich ausstehend und werden nicht als bestanden gewertet.

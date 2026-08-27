@@ -49,8 +49,9 @@ internal fun AllTasksComposeRow(
     selectedSwapStep: String?,
     onSelectSwap: (String?) -> Unit,
     onOpenTaskMenu: (String) -> Unit,
+    rowModifier: Modifier = Modifier,
 ) {
-    val modifier = Modifier
+    val modifier = rowModifier
         .fillMaxWidth()
         .testTag("all-tasks:row:${row.key}")
     when (row.kind) {

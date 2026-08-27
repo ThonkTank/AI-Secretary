@@ -3,18 +3,17 @@ package de.thonktank.autosecretary
 import android.os.Bundle
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
-import de.thonktank.autosecretary.domain.model.Recurrence
-import de.thonktank.autosecretary.domain.model.TaskSlot
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksAction
+import de.thonktank.autosecretary.presentation.alltasks.AllTasksActionSink
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeFixture
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeHostView
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksPresentationState
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksSavedStateAdapter
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksView
 import java.time.LocalTime
 
 /** Debug-only authoritative-state loop for phase-6a semantics and interaction verification. */
-class AllTasksComposeHarnessActivity : ComponentActivity(), AllTasksView.Listener {
+class AllTasksComposeHarnessActivity : ComponentActivity(), AllTasksActionSink {
     private companion object { const val STATE_PRESENTATION = "all_tasks_compose_presentation" }
     private val adapter = AllTasksSavedStateAdapter()
     private val catalog = AllTasksComposeFixture.catalog()
@@ -52,30 +51,36 @@ class AllTasksComposeHarnessActivity : ComponentActivity(), AllTasksView.Listene
         bind()
     }
 
-    override fun onQuery(query: String) = update(state.withQuery(query))
-    override fun onStatus(status: AllTasksUiState.Status) = update(state.withStatus(status))
-    override fun onSlots(slots: Set<TaskSlot>) = update(state.withSlots(slots))
-    override fun onRecurrences(recurrences: Set<Recurrence>) =
-        update(state.withRecurrences(recurrences))
-    override fun onWeekday(weekday: Int) = update(state.withWeekday(weekday))
-    override fun onMode(mode: AllTasksUiState.Mode) = update(state.withMode(mode))
-    override fun onFiltersExpanded(expanded: Boolean) = update(state.withFiltersExpanded(expanded))
-    override fun onResetFilters() = update(state.resetVisibleFilters())
-    override fun onToggleTask(cardKey: String) = update(state.toggleExpanded(cardKey))
-    override fun onEditTask(taskId: String) { lastMove = "edit-task:$taskId" }
-    override fun onEditStep(taskId: String, stepId: String) {
-        lastMove = "edit-step:$taskId:$stepId"
-    }
-    override fun onAddStep(taskId: String) { lastMove = "add-step:$taskId" }
-    override fun onDeleteTask(taskId: String, title: String) { lastMove = "delete:$taskId" }
-    override fun onMoveSchedule(entryId: String, slot: TaskSlot, beforeEntryId: String?) {
-        lastMove = "schedule:$entryId:${slot.name}:$beforeEntryId"
-    }
-    override fun onMoveStep(stepId: String, taskId: String, beforeStepId: String?) {
-        lastMove = "step:$stepId:$taskId:$beforeStepId"
-    }
-    override fun onSwapSteps(stepId: String, targetStepId: String) {
-        lastMove = "swap:$stepId:$targetStepId"
+    override fun emit(action: AllTasksAction) {
+        when (action) {
+            is AllTasksAction.QueryChanged -> update(state.withQuery(action.value))
+            is AllTasksAction.StatusChanged -> update(state.withStatus(action.value))
+            is AllTasksAction.SlotsChanged -> update(state.withSlots(action.value))
+            is AllTasksAction.RecurrencesChanged -> update(state.withRecurrences(action.value))
+            is AllTasksAction.WeekdayChanged -> update(state.withWeekday(action.value))
+            is AllTasksAction.ModeChanged -> update(state.withMode(action.value))
+            is AllTasksAction.FiltersExpandedChanged ->
+                update(state.withFiltersExpanded(action.value))
+            is AllTasksAction.ResetFilters -> update(state.resetVisibleFilters())
+            is AllTasksAction.CardToggled -> update(state.toggleExpanded(action.cardKey))
+            is AllTasksAction.EditTask -> lastMove = "edit-task:${action.taskId.value}"
+            is AllTasksAction.EditStep ->
+                lastMove = "edit-step:${action.taskId.value}:${action.stepId.value}"
+            is AllTasksAction.AddStep -> lastMove = "add-step:${action.taskId.value}"
+            is AllTasksAction.DeleteRequested -> lastMove = "delete:${action.taskId.value}"
+            is AllTasksAction.ScheduleMoved -> lastMove = with(action.request) {
+                "schedule:${entryId.value}:${targetSlot.name}:${beforeEntryId.orElse(null)?.value}"
+            }
+            is AllTasksAction.StepMoved -> lastMove = with(action.request) {
+                "step:${stepId.value}:${targetTaskId.value}:${beforeStepId.orElse(null)?.value}"
+            }
+            is AllTasksAction.StepsSwapped -> lastMove = with(action.request) {
+                "swap:${stepId.value}:${targetStepId.value}"
+            }
+            is AllTasksAction.RequestAcknowledged,
+            is AllTasksAction.DeleteConfirmed -> Unit
+            else -> Unit
+        }
     }
 
     private fun update(value: AllTasksUiState) {

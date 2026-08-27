@@ -65,6 +65,34 @@ object AllTasksComposeFixture {
         return AllTasksUiState.from(TaskCatalog(items), AllTasksPresentationState.defaults())
     }
 
+    @JvmStatic
+    fun longDragState(count: Int): AllTasksUiState {
+        val items = mutableListOf(
+            item(
+                "drag-source",
+                "Drag Quelle",
+                Recurrence.DAILY,
+                0,
+                listOf(TaskSlot.MORNING),
+                listOf("Drag Schritt"),
+                false,
+            ),
+        )
+        items += (1 until count).map { index ->
+            item(
+                "drag-target-$index",
+                "Drag Ziel $index",
+                Recurrence.DAILY,
+                index.toLong() * 1_024,
+                listOf(TaskSlot.MORNING),
+                emptyList(),
+                false,
+            )
+        }
+        return AllTasksUiState.from(TaskCatalog(items), AllTasksPresentationState.defaults())
+            .toggleExpanded(AllTasksUiState.cardKey("drag-source", TaskSlot.MORNING))
+    }
+
     private fun item(
         id: String,
         title: String,

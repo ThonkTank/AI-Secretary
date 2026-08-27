@@ -427,7 +427,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("TaskEditorComposeApi37InstrumentationTest", animation_instrumentation)
         self.assertIn("AllTasksComposeInstrumentationTest", animation_instrumentation)
         self.assertIn("AllTasksComposeApi37InstrumentationTest", animation_instrumentation)
-        self.assertIn("AllTasksInteractionTest", animation_instrumentation)
+        self.assertNotIn("AllTasksInteractionTest", animation_instrumentation)
         self.assertIn("TodayInteractionInstrumentationTest", animation_instrumentation)
         self.assertNotIn("INSTRUMENTATION_RERUN_TASKS", animation_instrumentation)
         self.assertIn(

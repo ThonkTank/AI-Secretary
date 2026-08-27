@@ -3,7 +3,6 @@ package de.thonktank.autosecretary;
 import de.thonktank.autosecretary.ui.today.HeaderView;
 
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksAction;
-import de.thonktank.autosecretary.presentation.alltasks.AllTasksCoordinator;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksRequest;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksScreenState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
@@ -137,11 +136,10 @@ public class MainActivity extends ComponentActivity {
         shellState = shellViewModel.state().getValue();
         todayState = todayViewModel.state().getValue();
         optionsState = optionsViewModel.state().getValue();
-        AllTasksCoordinator allTasks = new AllTasksCoordinator(allTasksViewModel);
         renderer = new DashboardRenderer(this, scroll, dashboardContent,
                 todayViewModel::dispatch,
                 optionsViewModel::dispatch, versionName(),
-                rewardAnchors, allTasks);
+                rewardAnchors, allTasksViewModel::dispatch);
         editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
                 new TaskEditorComposeHostView.Listener() {
                     @Override public void onDraftChanged(EditorUiState draft) {

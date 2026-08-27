@@ -39,7 +39,7 @@ class AllTasksComposeDispatcherTest {
     }
 
     @Test
-    fun accessibilityMappingsUseTheSameBeforeIdRulesAsRecyclerView() {
+    fun accessibilityMappingsKeepTheEstablishedBeforeIdRules() {
         val recorder = Recorder()
         val state = AllTasksComposeFixture.state().toggleExpanded(
             AllTasksUiState.cardKey("morning", TaskSlot.MORNING),

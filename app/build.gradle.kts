@@ -144,7 +144,6 @@ dependencies {
     implementation(project(":today-core"))
     implementation("androidx.core:core:1.18.0")
     implementation("androidx.customview:customview:1.1.0")
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.room:room-ktx:2.8.4")
     annotationProcessor("androidx.room:room-compiler:2.8.4")
