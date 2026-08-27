@@ -27,6 +27,12 @@ public final class RecordRepetitionResult {
         completion = new StepExecutionService(repository, clock, policies);
     }
 
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    RecordRepetitionResult(T repository, Clock clock, ComboPolicySource policies,
+                           FlowRuntimeCoordinator flows) {
+        completion = new StepExecutionService(repository, clock, policies, flows);
+    }
+
     public StepExecutionResult execute(String stepId, int repetitions) {
         return completion.recordRepetitionResult(stepId, repetitions);
     }

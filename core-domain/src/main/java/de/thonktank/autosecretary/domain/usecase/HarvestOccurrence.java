@@ -16,6 +16,11 @@ public final class HarvestOccurrence {
     HarvestOccurrence(T repository, Clock clock, ComboPolicySource policies) {
         completion = new OccurrenceCompletionService(repository, clock, policies);
     }
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    HarvestOccurrence(T repository, Clock clock, ComboPolicySource policies,
+                      FlowRuntimeCoordinator flows) {
+        completion = new OccurrenceCompletionService(repository, clock, policies, flows);
+    }
     public RewardReceipt execute(String occurrenceId) {
         return completion.harvestOccurrence(occurrenceId);
     }

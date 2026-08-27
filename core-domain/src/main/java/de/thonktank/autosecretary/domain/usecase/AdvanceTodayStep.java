@@ -20,6 +20,12 @@ public final class AdvanceTodayStep {
         completion = new StepExecutionService(repository, clock, policies);
     }
 
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    AdvanceTodayStep(T repository, Clock clock, ComboPolicySource policies,
+                     FlowRuntimeCoordinator flows) {
+        completion = new StepExecutionService(repository, clock, policies, flows);
+    }
+
     public AdvanceTodayStepResult execute(String stepId) {
         return completion.advanceStepWithPlannedResult(stepId);
     }

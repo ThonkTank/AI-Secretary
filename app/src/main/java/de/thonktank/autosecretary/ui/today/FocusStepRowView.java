@@ -193,6 +193,10 @@ public final class FocusStepRowView extends LinearLayout {
         } else if (step.executionAction.kind == StepExecutionUiAction.Kind.TOGGLE) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step, step.title, step.reward.resultXp));
+        } else if (step.executionAction.kind == StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY) {
+            reward.setContentDescription(getContext().getString(
+                    R.string.content_complete_step_with_delay, step.title,
+                    step.reward.resultXp));
         } else if (step.executionAction.kind
                 == StepExecutionUiAction.Kind.ADVANCE_PLANNED_REPETITIONS) {
             StringBuilder description = new StringBuilder(step.title);
@@ -278,10 +282,15 @@ public final class FocusStepRowView extends LinearLayout {
                 seconds % 60);
     }
 
-    private static void emitExecution(StepExecutionUiAction action, TodayActionSink events) {
+    private void emitExecution(StepExecutionUiAction action, TodayActionSink events) {
         switch (action.kind) {
             case TOGGLE:
                 events.emit(TodayAction.toggleStep(action.stepId));
+                return;
+            case TOGGLE_WITH_DELAY:
+                FlowDurationDialog.show(getContext(), getContext().getString(
+                                R.string.flow_delay_prompt_title), action.proposedDelayMillis,
+                        delay -> events.emit(TodayAction.toggleStep(action.stepId, delay)));
                 return;
             case SUBMIT_REPETITION:
                 events.emit(TodayAction.submitRepetition(action.stepId));

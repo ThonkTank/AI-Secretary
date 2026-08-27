@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksActionSink;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeHostView;
 import de.thonktank.autosecretary.presentation.options.OptionsActionSink;
+import de.thonktank.autosecretary.presentation.options.OptionsAction;
 import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
 import de.thonktank.autosecretary.presentation.shell.AppShellScreenState;
 import de.thonktank.autosecretary.ui.today.FocusCardUiModel;
@@ -42,6 +43,7 @@ public final class DashboardRenderer {
     private final AllTasksActionSink allTasksActions;
     private NavigationDestination mounted;
     private FocusTaskView focus;
+    private FlowRunningStripView flowStrip;
     private LinearLayout timeline;
     private TextView more;
     private EmptyStateView empty;
@@ -195,6 +197,11 @@ public final class DashboardRenderer {
                 style.dimen(R.dimen.page_end), style.dp(26));
         focus = new FocusTaskView(context, rewardAnchors,
                 new EdgeAutoScroller.AndroidScrollHost(scroll));
+        flowStrip = new FlowRunningStripView(context,
+                () -> optionsActions.emit(OptionsAction.openFlowRunsSelected()));
+        LinearLayout.LayoutParams flowParams = new LinearLayout.LayoutParams(-1, -2);
+        flowParams.bottomMargin = style.dp(12);
+        content.addView(flowStrip, flowParams);
         focus.setId(R.id.dashboard_focus);
         content.addView(focus, new LinearLayout.LayoutParams(-1, -2));
         timeline = new LinearLayout(context);
@@ -218,6 +225,7 @@ public final class DashboardRenderer {
         TodayUiModel dashboard = state.today();
         rewardAnchors.clearDynamic();
         FocusTaskUiModel focusTask = dashboard.focus;
+        flowStrip.bind(dashboard.flowRuns, palette);
         boolean hasFocus = focusTask != null;
         focus.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
         timeline.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
@@ -225,7 +233,8 @@ public final class DashboardRenderer {
         empty.setVisibility(hasFocus ? View.GONE : View.VISIBLE);
         completedToday.bind(dashboard.completedToday, palette);
         if (!hasFocus) {
-            content.setPadding(style.dimen(R.dimen.page_start), style.dp(120),
+            content.setPadding(style.dimen(R.dimen.page_start), dashboard.flowRuns.isEmpty()
+                            ? style.dp(120) : style.dimen(R.dimen.content_top),
                     style.dimen(R.dimen.page_end), style.dp(26));
             empty.bind(palette, false);
             return;

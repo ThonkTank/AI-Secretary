@@ -16,6 +16,11 @@ public final class CompleteOccurrence {
     CompleteOccurrence(T repository, Clock clock, ComboPolicySource policies) {
         completion = new OccurrenceCompletionService(repository, clock, policies);
     }
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    CompleteOccurrence(T repository, Clock clock, ComboPolicySource policies,
+                       FlowRuntimeCoordinator flows) {
+        completion = new OccurrenceCompletionService(repository, clock, policies, flows);
+    }
     public RewardReceipt execute(String occurrenceId) {
         return completion.completeOccurrence(occurrenceId);
     }

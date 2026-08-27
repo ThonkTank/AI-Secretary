@@ -16,6 +16,7 @@ import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -49,14 +50,16 @@ public final class TaskEntityMapper {
     public Occurrence toDomain(OccurrenceEntity entity) {
         return new Occurrence(entity.id, TaskId.of(entity.taskId), LocalDate.parse(entity.scheduledOn),
                 TaskSlot.fromStorage(entity.slot), OccurrenceState.fromStorage(entity.state),
-                entity.sortOrder, date(entity.completedOn), entity.id.startsWith("condition:")
-                ? OccurrenceKind.CONDITION : OccurrenceKind.SCHEDULED);
+                entity.sortOrder, date(entity.completedOn), OccurrenceKind.fromStorage(entity.kind),
+                entity.sourceKey, entity.flowRunId, entity.flowSheetSequence);
     }
 
     public OccurrenceEntity toEntity(Occurrence occurrence) {
         return new OccurrenceEntity(occurrence.id, occurrence.taskId.value,
                 occurrence.scheduledOn.toString(), occurrence.state.storageCode(),
-                occurrence.sortOrder, nullableText(occurrence.completedOn), occurrence.slot.storageCode);
+                occurrence.sortOrder, nullableText(occurrence.completedOn),
+                occurrence.slot.storageCode, occurrence.kind.name(), occurrence.sourceKey,
+                occurrence.flowRunId, occurrence.flowSheetSequence);
     }
 
     public TaskStepTemplate toDomain(TaskStepEntity entity) {
@@ -65,7 +68,7 @@ public final class TaskEntityMapper {
                         StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
                         entity.plannedReps, entity.plannedDurationSeconds),
                 RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
-                entity.note);
+                entity.note, StepActivationKind.fromStorage(entity.activationKind));
     }
 
     public TaskStepEntity toEntity(TaskStepTemplate step) {
@@ -73,7 +76,8 @@ public final class TaskEntityMapper {
         return new TaskStepEntity(step.id, step.taskId.value, step.position, step.text,
                 step.weekdayMask, step.intervalDays, amount.kind.storageCode(), amount.sets,
                 amount.repetitions, amount.durationSeconds, step.restTimerPolicy.mode.name(),
-                step.restTimerPolicy.customSeconds, step.note);
+                step.restTimerPolicy.customSeconds, step.note,
+                step.activationKind.storageCode());
     }
 
     public TaskScheduleEntry toDomain(TaskScheduleEntity entity) {

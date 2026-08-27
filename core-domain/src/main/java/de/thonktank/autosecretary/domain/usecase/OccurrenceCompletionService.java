@@ -34,30 +34,42 @@ public final class OccurrenceCompletionService {
     private final ScheduleProjector schedules;
     private final StepExecutionService stepExecution;
     private final ComboObligationResolver obligationResolver;
+    private final FlowProgression flows;
 
     public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
     OccurrenceCompletionService(T repository, Clock clock) {
         this(repository, repository, clock, new RewardCalculator(),
-                new CompletionStateMachine(), new ScheduleProjector());
+                new CompletionStateMachine(), new ScheduleProjector(),
+                FlowProgressions.create(repository, clock));
     }
 
     public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
     OccurrenceCompletionService(T repository, Clock clock, ComboPolicySource policies) {
         this(repository, repository, clock, new RewardCalculator(policies),
-                new CompletionStateMachine(), new ScheduleProjector());
+                new CompletionStateMachine(), new ScheduleProjector(),
+                FlowProgressions.create(repository, clock));
+    }
+
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    OccurrenceCompletionService(T repository, Clock clock, ComboPolicySource policies,
+                                FlowRuntimeCoordinator flows) {
+        this(repository, repository, clock, new RewardCalculator(policies),
+                new CompletionStateMachine(), new ScheduleProjector(), flows);
     }
 
     OccurrenceCompletionService(OccurrenceExecutionRepository occurrences,
                       RewardLedgerRepository ledger, Clock clock, RewardCalculator rewards,
-                      CompletionStateMachine states, ScheduleProjector schedules) {
+                      CompletionStateMachine states, ScheduleProjector schedules,
+                      FlowProgression flows) {
         this.occurrences = occurrences;
         this.ledger = ledger;
         this.clock = clock;
         this.rewards = rewards;
         this.states = states;
         this.schedules = schedules;
+        this.flows = flows == null ? FlowProgression.NONE : flows;
         this.stepExecution = new StepExecutionService(occurrences, ledger, clock,
-                rewards, states);
+                rewards, states, this.flows);
         this.obligationResolver = new ComboObligationResolver(occurrences);
     }
 
@@ -162,10 +174,13 @@ public final class OccurrenceCompletionService {
         ledger.insertRewardBooking(booking);
         obligationResolver.resolve(ComboProgress.taskOwner(task.id), task, occurrence,
                 clock.today());
-        occurrences.updateOccurrence(hasMissedSteps
+        Occurrence harvested = hasMissedSteps
                 ? states.harvestWithMissedSteps(occurrence, clock.today())
-                : states.completeOccurrence(occurrence, clock.today()));
-        projectSchedule(task.id);
+                : states.completeOccurrence(occurrence, clock.today());
+        occurrences.updateOccurrence(harvested);
+        if (occurrence.kind == OccurrenceKind.FLOW_SHEET)
+            flows.onOccurrenceHarvested(harvested);
+        else projectSchedule(task.id);
         return RewardReceipt.of(transactionId, Collections.singletonList(booking),
                 RewardReceipt.Target.HEAD);
     }
@@ -173,8 +188,10 @@ public final class OccurrenceCompletionService {
     private RewardReceipt undoHarvest(Occurrence occurrence, Task task) {
         if (occurrence == null || task == null || !occurrence.state.isHarvested()
                 || !clock.today().equals(occurrence.completedOn)) return RewardReceipt.none();
+        if (!flows.canReopenOccurrence(occurrence)) return RewardReceipt.none();
         Occurrence otherOpen = occurrences.earliestOpenOccurrence(task.id);
-        if (otherOpen != null && !otherOpen.id.equals(occurrence.id)) return RewardReceipt.none();
+        if (occurrence.kind != OccurrenceKind.FLOW_SHEET && otherOpen != null
+                && !otherOpen.id.equals(occurrence.id)) return RewardReceipt.none();
         RewardBooking original = activeOriginal(occurrence.id, null, RewardBooking.Target.HEAD);
         if (original == null) return RewardReceipt.none();
         String transactionId = newId();
@@ -184,9 +201,11 @@ public final class OccurrenceCompletionService {
         ledger.setXp(ledger.xp() + reversal.xpDelta);
         ledger.insertRewardBooking(reversal);
         obligationResolver.reopen(original.ownerId, occurrence, clock.today());
-        occurrences.updateOccurrence(states.reopenOccurrence(occurrence));
+        Occurrence reopened = states.reopenOccurrence(occurrence);
+        occurrences.updateOccurrence(reopened);
+        flows.onOccurrenceReopened(reopened);
         if (task.ongoing && task.conditionDone) occurrences.updateTask(task.reopenCondition());
-        projectSchedule(task.id);
+        if (occurrence.kind != OccurrenceKind.FLOW_SHEET) projectSchedule(task.id);
         return RewardReceipt.of(transactionId, Collections.singletonList(reversal),
                 RewardReceipt.Target.HEAD);
     }

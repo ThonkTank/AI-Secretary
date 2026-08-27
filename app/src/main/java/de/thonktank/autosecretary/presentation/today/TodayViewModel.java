@@ -351,6 +351,15 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 });
     }
 
+    @Override public void handleToggleStepWithDelay(String stepId, long chosenDelayMillis) {
+        runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, stepId),
+                () -> {
+                    RewardReceipt receipt = tasks.toggleStep.execute(stepId, chosenDelayMillis);
+                    if (timers != null) timers.resetForStep(stepId);
+                    return receipt;
+                });
+    }
+
     @Override public void handleFinishStep(String stepId) {
         runTodayReward(command(UiCommand.Kind.FINISH_STEP, stepId),
                 () -> {

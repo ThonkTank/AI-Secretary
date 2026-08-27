@@ -21,6 +21,11 @@ import java.util.Set;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
+import de.thonktank.autosecretary.domain.model.FlowRunSummary;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
+import de.thonktank.autosecretary.domain.model.StepFlowRun;
+import de.thonktank.autosecretary.domain.model.StepFlowRunState;
+import de.thonktank.autosecretary.domain.repository.StepFlowRunRepository;
 
 public final class LoadDashboard {
     private final DashboardReadRepository repository;
@@ -32,6 +37,12 @@ public final class LoadDashboard {
     public Dashboard execute(LocalDate today) {
         Map<TaskId, Task> tasks = new HashMap<>();
         for (Task task : repository.allTasks()) tasks.put(task.id, task);
+        StepFlowRunRepository flowRepository = repository instanceof StepFlowRunRepository
+                ? (StepFlowRunRepository) repository : null;
+        List<StepFlowRun> activeFlowRuns = flowRepository == null
+                ? java.util.Collections.emptyList() : flowRepository.activeFlowRuns();
+        Map<String, StepFlowRunState> flowStates = new HashMap<>();
+        for (StepFlowRun run : activeFlowRuns) flowStates.put(run.id, run.state);
         TaskSchedule schedule = new TaskSchedule(repository.scheduleEntries());
         List<Occurrence> open = repository.openOccurrences();
         List<Occurrence> completed = repository.completedOccurrences(today);
@@ -49,6 +60,7 @@ public final class LoadDashboard {
                 .thenComparingInt(value -> value.sortOrder).thenComparing(value -> value.id));
         Map<String, Integer> openCounts = new HashMap<>();
         for (Occurrence occurrence : open) {
+            if (occurrence.kind == OccurrenceKind.FLOW_SHEET) continue;
             String key = occurrence.taskId.value + '|' + occurrence.slot.name();
             openCounts.put(key, openCounts.getOrDefault(key, 0) + 1);
         }
@@ -56,10 +68,15 @@ public final class LoadDashboard {
         for (Occurrence occurrence : open) {
             Task task = tasks.get(occurrence.taskId);
             if (task == null || task.archived || task.conditionDone) continue;
+            if (occurrence.kind == OccurrenceKind.FLOW_SHEET
+                    && flowStates.get(occurrence.flowRunId) != StepFlowRunState.OFFERED
+                    && flowStates.containsKey(occurrence.flowRunId)) continue;
             String key = occurrence.taskId.value + '|' + occurrence.slot.name();
-            if (task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE
+            if (occurrence.kind != OccurrenceKind.FLOW_SHEET
+                    && task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE
                     && !accumulatedSlots.add(key)) continue;
-            int backlog = task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE
+            int backlog = occurrence.kind != OccurrenceKind.FLOW_SHEET
+                    && task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE
                     ? Math.max(0, openCounts.getOrDefault(key, 1) - 1) : 0;
             result.add(item(task, occurrence, steps, rewards, false, backlog));
             included.add(task.id);
@@ -91,7 +108,10 @@ public final class LoadDashboard {
                 .thenComparingLong(item -> item.task.catalogOrder));
         Map<String, ComboProgress> combos = new HashMap<>();
         for (ComboProgress combo : repository.combos()) combos.put(combo.ownerId, combo);
-        return new Dashboard(repository.xp(), result, combos);
+        List<FlowRunSummary> flowRuns = flowRepository == null
+                ? java.util.Collections.emptyList()
+                : LoadFlowRuns.summaries(tasks, flowRepository, activeFlowRuns);
+        return new Dashboard(repository.xp(), result, combos, flowRuns);
     }
 
     private static DashboardTask item(Task task, Occurrence occurrence,

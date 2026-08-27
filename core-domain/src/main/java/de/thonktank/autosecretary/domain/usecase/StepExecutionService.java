@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.Occurrence;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
@@ -33,38 +34,51 @@ public final class StepExecutionService {
     private final RewardCalculator rewards;
     private final CompletionStateMachine states;
     private final ComboObligationResolver obligationResolver;
+    private final FlowProgression flows;
 
     public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
     StepExecutionService(T repository, Clock clock) {
         this(repository, repository, clock, new RewardCalculator(),
-                new CompletionStateMachine());
+                new CompletionStateMachine(), FlowProgressions.create(repository, clock));
     }
 
     public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
     StepExecutionService(T repository, Clock clock, ComboPolicySource policies) {
         this(repository, repository, clock, new RewardCalculator(policies),
-                new CompletionStateMachine());
+                new CompletionStateMachine(), FlowProgressions.create(repository, clock));
+    }
+
+    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
+    StepExecutionService(T repository, Clock clock, ComboPolicySource policies,
+                         FlowRuntimeCoordinator flows) {
+        this(repository, repository, clock, new RewardCalculator(policies),
+                new CompletionStateMachine(), flows);
     }
 
     StepExecutionService(OccurrenceExecutionRepository occurrences,
                          RewardLedgerRepository ledger, Clock clock, RewardCalculator rewards,
-                         CompletionStateMachine states) {
+                         CompletionStateMachine states, FlowProgression flows) {
         this.occurrences = occurrences;
         this.ledger = ledger;
         this.clock = clock;
         this.rewards = rewards;
         this.states = states;
         this.obligationResolver = new ComboObligationResolver(occurrences);
+        this.flows = flows == null ? FlowProgression.NONE : flows;
     }
 
     public RewardReceipt toggleStep(String stepId) {
+        return toggleStep(stepId, null);
+    }
+
+    public RewardReceipt toggleStep(String stepId, Long chosenDelayMillis) {
         return occurrences.inTransaction(() -> {
             OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
             if (step == null || step.repetitionProgress != null)
                 return RewardReceipt.none();
             Occurrence occurrence = occurrences.findOccurrence(step.occurrenceId);
             return step.done ? undoStep(occurrence, step) : completeStep(
-                    occurrence, step, newId());
+                    occurrence, step, newId(), chosenDelayMillis);
         });
     }
 
@@ -87,6 +101,7 @@ public final class StepExecutionService {
             if (changed.done) {
                 obligationResolver.resolve(changed.comboOwnerId,
                         occurrences.findTask(occurrence.taskId), occurrence, clock.today());
+                flows.onStepCompleted(occurrence, changed, null);
                 finalizeZeroOccurrenceIfComplete(occurrence);
                 return result(StepExecutionResult.Status.COMPLETED,
                         occurrences.findOccurrenceStep(stepId), reward);
@@ -109,8 +124,13 @@ public final class StepExecutionService {
                 return result(StepExecutionResult.Status.UNSUPPORTED, current,
                         RewardReceipt.none());
             OccurrenceStep changed = current.correctRepetitionResult(index, repetitions);
+            if (current.done && !changed.done && !flows.canReopenStep(occurrence, current))
+                return result(StepExecutionResult.Status.UNSUPPORTED, current,
+                        RewardReceipt.none());
             occurrences.updateOccurrenceStep(changed);
             RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
+            if (!current.done && changed.done) flows.onStepCompleted(occurrence, changed, null);
+            else if (current.done && !changed.done) flows.onStepReopened(occurrence, changed);
             if (changed.done) finalizeZeroOccurrenceIfComplete(occurrence);
             return result(StepExecutionResult.Status.CORRECTED, changed, reward);
         });
@@ -143,6 +163,7 @@ public final class StepExecutionService {
             occurrences.updateOccurrenceStep(changed);
             RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
             if (changed.done) {
+                flows.onStepCompleted(occurrence, changed, null);
                 return advance(AdvanceTodayStepResult.Status.STEP_COMPLETED, planned,
                         openIds(step.occurrenceId), reward);
             }
@@ -154,6 +175,11 @@ public final class StepExecutionService {
 
     RewardReceipt completeStep(Occurrence occurrence, OccurrenceStep step,
                                String transactionId) {
+        return completeStep(occurrence, step, transactionId, null);
+    }
+
+    RewardReceipt completeStep(Occurrence occurrence, OccurrenceStep step,
+                               String transactionId, Long chosenDelayMillis) {
         if (step != null && step.repetitionProgress != null) {
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
@@ -162,6 +188,8 @@ public final class StepExecutionService {
             RewardReceipt receipt = adjustQuantitativeReward(occurrence, completed, transactionId);
             obligationResolver.resolve(completed.comboOwnerId,
                     occurrences.findTask(occurrence.taskId), occurrence, clock.today());
+            if (!step.done && completed.done)
+                flows.onStepCompleted(occurrence, completed, chosenDelayMillis);
             finalizeZeroOccurrenceIfComplete(occurrence);
             return receipt;
         }
@@ -178,9 +206,11 @@ public final class StepExecutionService {
                 calculated.xp, change.appliedDelta, clock.today(), null);
         ledger.putCombo(change.progress);
         ledger.insertRewardBooking(booking);
-        occurrences.updateOccurrenceStep(states.completeStep(occurrence, step));
+        OccurrenceStep completed = states.completeStep(occurrence, step);
+        occurrences.updateOccurrenceStep(completed);
         obligationResolver.resolve(step.comboOwnerId, occurrences.findTask(occurrence.taskId),
                 occurrence, clock.today());
+        flows.onStepCompleted(occurrence, completed, chosenDelayMillis);
         return RewardReceipt.of(transactionId, Collections.singletonList(booking),
                 RewardReceipt.Target.VESSEL);
     }
@@ -199,6 +229,7 @@ public final class StepExecutionService {
         RewardReceipt receipt = adjustQuantitativeReward(occurrence, changed, transactionId);
         obligationResolver.resolve(changed.comboOwnerId,
                 occurrences.findTask(occurrence.taskId), occurrence, clock.today());
+        flows.onStepCompleted(occurrence, changed, null);
         return receipt;
     }
 
@@ -272,6 +303,7 @@ public final class StepExecutionService {
         for (RewardBooking booking : ledger.rewardBookings(occurrence.id))
             if (booking.target == RewardBooking.Target.VESSEL) vesselXp += booking.xpDelta;
         if (vesselXp != 0) return;
+        if (occurrence.kind == OccurrenceKind.FLOW_SHEET) return;
         de.thonktank.autosecretary.domain.model.Task task =
                 occurrences.findTask(occurrence.taskId);
         if (task == null) return;
@@ -286,6 +318,7 @@ public final class StepExecutionService {
     private RewardReceipt undoStep(Occurrence occurrence, OccurrenceStep step) {
         if (occurrence == null || occurrence.state != OccurrenceState.OPEN || !step.done)
             return RewardReceipt.none();
+        if (!flows.canReopenStep(occurrence, step)) return RewardReceipt.none();
         RewardBooking original = activeOriginal(occurrence.id, step.id,
                 RewardBooking.Target.VESSEL);
         if (original == null) return RewardReceipt.none();
@@ -294,8 +327,10 @@ public final class StepExecutionService {
         ComboProgress current = combo(original.ownerId, occurrence.taskId, ComboProgress.Kind.STEP);
         ledger.putCombo(current.undo(original.comboPointDelta, clock.today()));
         ledger.insertRewardBooking(reversal);
-        occurrences.updateOccurrenceStep(states.reopenStep(occurrence, step));
+        OccurrenceStep reopened = states.reopenStep(occurrence, step);
+        occurrences.updateOccurrenceStep(reopened);
         obligationResolver.reopen(original.ownerId, occurrence, clock.today());
+        flows.onStepReopened(occurrence, reopened);
         return RewardReceipt.of(transactionId, Collections.singletonList(reversal),
                 RewardReceipt.Target.VESSEL);
     }

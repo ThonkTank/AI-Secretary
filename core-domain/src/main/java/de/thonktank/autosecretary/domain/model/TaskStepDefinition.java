@@ -11,6 +11,7 @@ public final class TaskStepDefinition {
     public final StepAmount amount;
     public final RestTimerPolicy restTimerPolicy;
     public final String note;
+    public final StepActivationKind activationKind;
 
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
                               StepAmount amount, String note) {
@@ -27,6 +28,21 @@ public final class TaskStepDefinition {
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
                               int intervalDays, StepAmount amount,
                               RestTimerPolicy restTimerPolicy, String note) {
+        this(id, position, text, weekdayMask, intervalDays, amount, restTimerPolicy, note,
+                StepActivationKind.SCHEDULED);
+    }
+
+    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
+                              int intervalDays, StepAmount amount, String note,
+                              StepActivationKind activationKind) {
+        this(id, position, text, weekdayMask, intervalDays, amount,
+                RestTimerPolicy.forAmount(amount), note, activationKind);
+    }
+
+    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
+                              int intervalDays, StepAmount amount,
+                              RestTimerPolicy restTimerPolicy, String note,
+                              StepActivationKind activationKind) {
         if (position < 0) throw new IllegalArgumentException("Step position must not be negative");
         if (text == null || text.trim().isEmpty())
             throw new IllegalArgumentException("Step title must not be blank");
@@ -46,11 +62,12 @@ public final class TaskStepDefinition {
                 && this.restTimerPolicy.mode != RestTimerPolicy.Mode.OFF)
             throw new IllegalArgumentException("Only set steps may configure a rest timer");
         this.note = note == null ? "" : note;
+        this.activationKind = Objects.requireNonNull(activationKind, "activationKind");
     }
 
     public TaskStepDefinition withIdentity(String value, int newPosition) {
         return new TaskStepDefinition(value, newPosition, text, weekdayMask, intervalDays,
-                amount, restTimerPolicy, note);
+                amount, restTimerPolicy, note, activationKind);
     }
 
     @Override public boolean equals(Object other) {
@@ -60,11 +77,11 @@ public final class TaskStepDefinition {
                 && text.equals(value.text) && weekdayMask == value.weekdayMask
                 && intervalDays == value.intervalDays
                 && amount.equals(value.amount) && restTimerPolicy.equals(value.restTimerPolicy)
-                && note.equals(value.note);
+                && note.equals(value.note) && activationKind == value.activationKind;
     }
 
     @Override public int hashCode() {
         return Objects.hash(id, position, text, weekdayMask, intervalDays, amount,
-                restTimerPolicy, note);
+                restTimerPolicy, note, activationKind);
     }
 }

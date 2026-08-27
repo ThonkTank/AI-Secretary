@@ -84,6 +84,10 @@ public final class TodayCoordinator implements TodayActionSink {
             case TOGGLE_STEP:
                 commands.execute(TodayCommand.action(TodayCommand.Kind.TOGGLE_STEP, action));
                 return;
+            case TOGGLE_STEP_WITH_DELAY:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.TOGGLE_STEP_WITH_DELAY,
+                        action));
+                return;
             case FINISH_STEP:
                 commands.execute(TodayCommand.action(TodayCommand.Kind.FINISH_STEP, action));
                 return;

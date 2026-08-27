@@ -78,7 +78,7 @@ public final class TaskDefinition {
             copied.add(recurrence == Recurrence.ONCE
                     && (step.weekdayMask != 0 || step.intervalDays != 0)
                     ? new TaskStepDefinition(step.id, i, step.text, 0, 0,
-                    step.amount, step.restTimerPolicy, step.note)
+                    step.amount, step.restTimerPolicy, step.note, step.activationKind)
                     : step);
         }
         this.title = title.trim();

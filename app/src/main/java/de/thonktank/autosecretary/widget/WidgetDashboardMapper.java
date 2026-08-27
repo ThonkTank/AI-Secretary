@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.domain.model.Dashboard;
 import de.thonktank.autosecretary.domain.model.DashboardTask;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.presentation.StepTextFormatter;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
@@ -24,14 +25,28 @@ public final class WidgetDashboardMapper {
 
     public WidgetDashboardUiModel map(Dashboard dashboard, LocalDate today) {
         DashboardTask focus = null;
+        DashboardTask fallback = null;
         String afterTitle = null;
         for (DashboardTask item : dashboard.tasks) {
             if (item.done) continue;
-            if (focus == null) focus = item;
-            else { afterTitle = item.task.title; break; }
+            if (fallback == null) fallback = item;
+            if (focus == null && canOwnFocus(item)) focus = item;
         }
+        if (focus == null) focus = fallback;
         if (focus == null) return WidgetDashboardUiModel.empty();
+        for (DashboardTask item : dashboard.tasks)
+            if (!item.done && item != focus && canOwnFocus(item)) {
+                afterTitle = item.task.title;
+                break;
+            }
         return WidgetDashboardUiModel.of(task(focus, today), afterTitle);
+    }
+
+    private static boolean canOwnFocus(DashboardTask item) {
+        if (item.occurrence == null || item.occurrence.kind != OccurrenceKind.FLOW_SHEET)
+            return true;
+        for (OccurrenceStep step : item.steps) if (!step.done) return true;
+        return false;
     }
 
     private WidgetTaskUiModel task(DashboardTask item, LocalDate today) {

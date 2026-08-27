@@ -10,6 +10,9 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
         void handleHarvest(String occurrenceId);
         void handleDefer(String occurrenceId);
         void handleToggleStep(String stepId);
+        default void handleToggleStepWithDelay(String stepId, long chosenDelayMillis) {
+            handleToggleStep(stepId);
+        }
         void handleFinishStep(String stepId);
         void handleAdvanceStep(String stepId);
         void handleUndoOccurrence(String occurrenceId);
@@ -53,6 +56,9 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
                 return;
             case TOGGLE_STEP:
                 handlers.handleToggleStep(command.id);
+                return;
+            case TOGGLE_STEP_WITH_DELAY:
+                handlers.handleToggleStepWithDelay(command.id, command.longValue);
                 return;
             case FINISH_STEP:
                 handlers.handleFinishStep(command.id);

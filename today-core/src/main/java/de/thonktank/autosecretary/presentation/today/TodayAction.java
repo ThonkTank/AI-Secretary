@@ -16,6 +16,7 @@ public final class TodayAction {
         HARVEST,
         DEFER,
         TOGGLE_STEP,
+        TOGGLE_STEP_WITH_DELAY,
         FINISH_STEP,
         ADVANCE_STEP,
         UNDO_OCCURRENCE,
@@ -49,6 +50,7 @@ public final class TodayAction {
     public final String relatedId;
     public final String text;
     public final int value;
+    public final long longValue;
     public final List<String> order;
     public final TaskActionTarget target;
     public final TaskSlot slot;
@@ -56,12 +58,19 @@ public final class TodayAction {
     private TodayAction(Kind kind, String id, String relatedId,
                         String text, int value, List<String> order,
                         TaskActionTarget target, TaskSlot slot) {
+        this(kind, id, relatedId, text, value, 0L, order, target, slot);
+    }
+
+    private TodayAction(Kind kind, String id, String relatedId,
+                        String text, int value, long longValue, List<String> order,
+                        TaskActionTarget target, TaskSlot slot) {
         if (kind == null) throw new IllegalArgumentException("Today action kind is required");
         this.kind = kind;
         this.id = id == null ? "" : id;
         this.relatedId = emptyToNull(relatedId);
         this.text = text;
         this.value = value;
+        this.longValue = longValue;
         this.order = Collections.unmodifiableList(new ArrayList<>(order));
         this.target = target;
         this.slot = slot;
@@ -90,6 +99,13 @@ public final class TodayAction {
 
     public static TodayAction toggleStep(String stepId) {
         return identified(Kind.TOGGLE_STEP, stepId);
+    }
+
+    public static TodayAction toggleStep(String stepId, long chosenDelayMillis) {
+        if (chosenDelayMillis < 0L)
+            throw new IllegalArgumentException("Delay must not be negative");
+        return new TodayAction(Kind.TOGGLE_STEP_WITH_DELAY, requiredId(stepId), null,
+                null, 0, chosenDelayMillis, Collections.emptyList(), null, null);
     }
 
     public static TodayAction finishStep(String stepId) {

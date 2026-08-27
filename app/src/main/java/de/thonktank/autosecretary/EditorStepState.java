@@ -7,6 +7,7 @@ import java.util.Objects;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 
@@ -20,6 +21,7 @@ public final class EditorStepState {
     public final StepAmount amount;
     public final RestTimerPolicy restTimerPolicy;
     public final String note;
+    public final StepActivationKind activationKind;
 
     public EditorStepState(String id, String text, int weekdayMask, StepAmount amount,
                            String note) {
@@ -36,10 +38,23 @@ public final class EditorStepState {
 
     public EditorStepState(String id, String text, int weekdayMask, int intervalDays,
                            StepAmount amount, RestTimerPolicy restTimerPolicy, String note) {
+        this(id, text, weekdayMask, intervalDays, amount, restTimerPolicy, note,
+                StepActivationKind.SCHEDULED);
+    }
+
+    public EditorStepState(String id, String text, int weekdayMask, int intervalDays,
+                           StepAmount amount, String note, StepActivationKind activationKind) {
+        this(id, text, weekdayMask, intervalDays, amount, RestTimerPolicy.forAmount(amount), note,
+                activationKind);
+    }
+
+    public EditorStepState(String id, String text, int weekdayMask, int intervalDays,
+                           StepAmount amount, RestTimerPolicy restTimerPolicy, String note,
+                           StepActivationKind activationKind) {
         this(id, text, weekdayMask != 0 ? StepCadenceMode.WEEKDAYS
                         : intervalDays != 0 ? StepCadenceMode.INTERVAL : StepCadenceMode.ALWAYS,
                 weekdayMask, intervalDays == 0 ? null : intervalDays, amount,
-                restTimerPolicy, note);
+                restTimerPolicy, note, activationKind);
     }
 
     public EditorStepState(String id, String text, StepCadenceMode cadenceMode,
@@ -51,6 +66,14 @@ public final class EditorStepState {
     public EditorStepState(String id, String text, StepCadenceMode cadenceMode,
                            int weekdayMask, Integer intervalDays, StepAmount amount,
                            RestTimerPolicy restTimerPolicy, String note) {
+        this(id, text, cadenceMode, weekdayMask, intervalDays, amount, restTimerPolicy, note,
+                StepActivationKind.SCHEDULED);
+    }
+
+    public EditorStepState(String id, String text, StepCadenceMode cadenceMode,
+                           int weekdayMask, Integer intervalDays, StepAmount amount,
+                           RestTimerPolicy restTimerPolicy, String note,
+                           StepActivationKind activationKind) {
         this.id = id;
         this.text = text == null ? "" : text;
         this.cadenceMode = cadenceMode == null ? StepCadenceMode.ALWAYS : cadenceMode;
@@ -62,6 +85,8 @@ public final class EditorStepState {
                 ? restTimerPolicy == null ? RestTimerPolicy.inherit() : restTimerPolicy
                 : RestTimerPolicy.off();
         this.note = note == null ? "" : note;
+        this.activationKind = activationKind == null
+                ? StepActivationKind.SCHEDULED : activationKind;
     }
 
     public static EditorStepState blank(int identity) {
@@ -71,7 +96,7 @@ public final class EditorStepState {
 
     public static EditorStepState from(TaskStepTemplate value) {
         return new EditorStepState(value.id, value.text, value.weekdayMask, value.intervalDays,
-                value.amount, value.restTimerPolicy, value.note);
+                value.amount, value.restTimerPolicy, value.note, value.activationKind);
     }
 
     public boolean isDraftIdentity() { return id == null || id.startsWith(DRAFT_PREFIX); }
@@ -80,36 +105,38 @@ public final class EditorStepState {
         if (!once && cadenceMode == StepCadenceMode.INTERVAL
                 && (intervalDays == null || intervalDays < 2))
             throw new IllegalStateException("A valid step interval is required before saving");
+        boolean followUp = activationKind == StepActivationKind.FOLLOW_UP;
         return new TaskStepDefinition(isDraftIdentity() ? null : id, position, text,
-                once || cadenceMode != StepCadenceMode.WEEKDAYS ? 0 : weekdayMask,
-                once || cadenceMode != StepCadenceMode.INTERVAL ? 0 : intervalDays,
-                amount, restTimerPolicy, note);
+                once || followUp || cadenceMode != StepCadenceMode.WEEKDAYS ? 0 : weekdayMask,
+                once || followUp || cadenceMode != StepCadenceMode.INTERVAL ? 0 : intervalDays,
+                amount, restTimerPolicy, note, activationKind);
     }
 
     public EditorStepState withText(String value) {
         return new EditorStepState(id, value, cadenceMode, weekdayMask, intervalDays, amount,
-                restTimerPolicy, note);
+                restTimerPolicy, note, activationKind);
     }
 
     public EditorStepState withWeekdayMask(int value) {
         return new EditorStepState(id, text, StepCadenceMode.WEEKDAYS, value, null, amount,
-                restTimerPolicy, note);
+                restTimerPolicy, note, activationKind);
     }
 
     public EditorStepState withIntervalDays(Integer value) {
         return new EditorStepState(id, text, StepCadenceMode.INTERVAL, 0, value, amount,
-                restTimerPolicy, note);
+                restTimerPolicy, note, activationKind);
     }
 
     public EditorStepState withCadenceMode(StepCadenceMode value) {
         if (value == StepCadenceMode.WEEKDAYS)
             return new EditorStepState(id, text, value, weekdayMask == 0 ? 1 : weekdayMask,
-                    null, amount, restTimerPolicy, note);
+                    null, amount, restTimerPolicy, note, activationKind);
         if (value == StepCadenceMode.INTERVAL)
             return new EditorStepState(id, text, value, 0,
-                    intervalDays == null ? 2 : intervalDays, amount, restTimerPolicy, note);
+                    intervalDays == null ? 2 : intervalDays, amount, restTimerPolicy, note,
+                    activationKind);
         return new EditorStepState(id, text, StepCadenceMode.ALWAYS, 0, null, amount,
-                restTimerPolicy, note);
+                restTimerPolicy, note, activationKind);
     }
 
     public EditorStepState withAmount(StepAmount value) {
@@ -117,17 +144,17 @@ public final class EditorStepState {
                 ? amount instanceof StepAmount.SetsReps ? restTimerPolicy
                 : RestTimerPolicy.inherit() : RestTimerPolicy.off();
         return new EditorStepState(id, text, cadenceMode, weekdayMask, intervalDays, value,
-                rest, note);
+                rest, note, activationKind);
     }
 
     public EditorStepState withRestTimerPolicy(RestTimerPolicy value) {
         return new EditorStepState(id, text, cadenceMode, weekdayMask, intervalDays, amount,
-                value, note);
+                value, note, activationKind);
     }
 
     public EditorStepState withNote(String value) {
         return new EditorStepState(id, text, cadenceMode, weekdayMask, intervalDays, amount,
-                restTimerPolicy, value);
+                restTimerPolicy, value, activationKind);
     }
 
     Bundle toBundle() {
@@ -148,6 +175,7 @@ public final class EditorStepState {
             putInteger(bundle, "duration", ((StepAmount.Duration) amount).seconds);
         }
         bundle.putString("note", note);
+        bundle.putString("activation", activationKind.name());
         return bundle;
     }
 
@@ -162,7 +190,8 @@ public final class EditorStepState {
                 cadence, weekdays, interval, amount,
                 RestTimerPolicy.fromStorage(bundle.getString("rest_timer_mode"),
                         integer(bundle, "rest_timer_seconds")),
-                bundle.getString("note", ""));
+                bundle.getString("note", ""), BundleValues.enumValue(StepActivationKind.class,
+                bundle.getString("activation"), StepActivationKind.SCHEDULED));
     }
 
     private static StepCadenceMode cadence(String value, int weekdays, Integer interval) {
@@ -191,11 +220,11 @@ public final class EditorStepState {
                 && Objects.equals(intervalDays, value.intervalDays)
                 && amount.equals(value.amount)
                 && restTimerPolicy.equals(value.restTimerPolicy)
-                && note.equals(value.note);
+                && note.equals(value.note) && activationKind == value.activationKind;
     }
 
     @Override public int hashCode() {
         return Objects.hash(id, text, cadenceMode, weekdayMask, intervalDays, amount,
-                restTimerPolicy, note);
+                restTimerPolicy, note, activationKind);
     }
 }

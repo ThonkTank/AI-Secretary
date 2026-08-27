@@ -59,6 +59,7 @@ public final class AppContainer {
     public final UiTextProvider texts;
     public final AppExecutors executors;
     public final WidgetUpdateCoordinator widgetUpdates;
+    public final FlowWakeScheduler flowWakeScheduler;
     public final UpdateConfiguration updateConfiguration;
     public final UpdateRepository updates;
     public final UpdatePreferences updatePreferences;
@@ -87,9 +88,11 @@ public final class AppContainer {
         this.clockInvalidations = new ClockInvalidationSource(clock, new AndroidMinuteTicker());
         this.presentationInvalidations = new PresentationInvalidationSource(databaseInvalidations,
                 calendarInvalidations, preferenceInvalidations, clockInvalidations);
+        this.flowWakeScheduler = new FlowWakeScheduler(app, tasks.activateReadyFlows, logger);
         this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
                 tasks.materializeDue, new DashboardUiMapper(texts), tasks.applyComboDecay,
-                tasks.settlePreviousPartialOccurrences);
+                tasks.settlePreviousPartialOccurrences, tasks.activateReadyFlows,
+                flowWakeScheduler::reschedule);
         this.executors = new AppExecutors();
         this.timers = new TimerManager(new RoomTimerSessionStore(database.timers()),
                 new AndroidTimerScheduler(app), new TimerNotificationPublisher(app),

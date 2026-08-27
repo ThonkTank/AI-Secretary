@@ -12,7 +12,7 @@ import java.util.Objects;
 public final class OptionsRequest {
     public enum Kind {
         REQUEST_CALENDAR_PERMISSION, OPEN_APP_SETTINGS, UPDATE_AVAILABLE,
-        INSTALL_UPDATE, UPDATE_ERROR
+        INSTALL_UPDATE, UPDATE_ERROR, OPEN_FLOW_SETUP, OPEN_FLOW_RUNS
     }
 
     public final String id;
@@ -36,7 +36,8 @@ public final class OptionsRequest {
     }
 
     static OptionsRequest system(String id, Kind kind) {
-        if (kind != Kind.REQUEST_CALENDAR_PERMISSION && kind != Kind.OPEN_APP_SETTINGS)
+        if (kind != Kind.REQUEST_CALENDAR_PERMISSION && kind != Kind.OPEN_APP_SETTINGS
+                && kind != Kind.OPEN_FLOW_SETUP && kind != Kind.OPEN_FLOW_RUNS)
             throw new IllegalArgumentException("Unsupported system request");
         return new OptionsRequest(id, kind, null, null, null, null);
     }
