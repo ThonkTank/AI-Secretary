@@ -30,17 +30,19 @@ public final class CreateTask {
         this.ids = ids;
     }
 
-    public void execute(TaskDefinition definition) {
-        repository.inTransaction(() -> {
-            TaskId taskId = TaskId.of(ids.nextId());
-            Task task = Task.create(taskId, definition,
-                    ScheduleCalculator.firstDue(definition.recurrence,
-                            definition.weekdayMask, clock.today()), nextCatalogOrder());
-            repository.insertTask(task);
-            repository.insertTemplates(templates(task.id, definition.steps));
-            new TaskScheduleService(schedules, ids).create(task, definition);
-            return null;
-        });
+    public TaskId execute(TaskDefinition definition) {
+        return repository.inTransaction(() -> executeInsideTransaction(definition));
+    }
+
+    TaskId executeInsideTransaction(TaskDefinition definition) {
+        TaskId taskId = TaskId.of(ids.nextId());
+        Task task = Task.create(taskId, definition,
+                ScheduleCalculator.firstDue(definition.recurrence,
+                        definition.weekdayMask, clock.today()), nextCatalogOrder());
+        repository.insertTask(task);
+        repository.insertTemplates(templates(task.id, definition.steps));
+        new TaskScheduleService(schedules, ids).create(task, definition);
+        return taskId;
     }
 
     private long nextCatalogOrder() {

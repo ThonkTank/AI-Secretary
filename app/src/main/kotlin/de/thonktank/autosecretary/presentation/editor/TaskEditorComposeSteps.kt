@@ -93,6 +93,38 @@ internal fun EditorStepsPage(
             serif = false,
         )
     }
+    if (state.stepStates.size >= 2) {
+        val flowLabel = stringResource(R.string.flow_editor_open)
+        val flowMeta = stringResource(
+            if (state.flowDraft.configured()) R.string.flow_editor_configured
+            else R.string.flow_editor_optional,
+        )
+        LeafSurface(
+            palette = palette,
+            level = 3,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 18.dp)
+                .testTag("task-editor:flow-open"),
+            rotation = .6f,
+            clickableLabel = "$flowLabel. $flowMeta",
+            onClick = {
+                dispatcher.navigate(EditorUiState.Page.FLOW, state.returnToSummary)
+            },
+            padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+        ) {
+            Column {
+                EditorText(flowLabel, Color.argb(palette.ink2), 18)
+                EditorText(
+                    flowMeta,
+                    Color.argb(palette.muted),
+                    14,
+                    Modifier.padding(top = 2.dp),
+                    serif = false,
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -105,7 +137,11 @@ private fun CollapsedStep(
     dispatcher: TaskEditorComposeDispatcher,
 ) {
     val title = step.text.ifEmpty { stringResource(R.string.step_name_hint) }
-    val meta = formatter.stepMeta(step)
+    val meta = if (state.flowDraft.isFollowUp(step.id)) {
+        stringResource(R.string.flow_role_follow_up)
+    } else {
+        formatter.stepMeta(step)
+    }
     val accessibleMeta = meta.ifEmpty { stringResource(R.string.editor_summary_empty) }
     val description = stringResource(R.string.a11y_editor_step_row, index + 1, title, accessibleMeta)
     val up = stringResource(R.string.a11y_editor_move_up_step, title)
@@ -214,7 +250,7 @@ internal fun EditorStepDetailPage(
     if (titleError) {
         ErrorText(R.string.err_step_empty, palette)
     }
-    if (state.recurrence != Recurrence.ONCE) {
+    if (state.recurrence != Recurrence.ONCE && !state.flowDraft.isFollowUp(step.id)) {
         StepCadence(state, step, index, palette, layout, dispatcher)
     }
     Label(R.string.step_amount_label, palette, Modifier.padding(top = 24.dp, bottom = 10.dp))

@@ -266,6 +266,49 @@
     <string name="editor_back">zurück</string>
     <string name="editor_change">ändern</string>
     <string name="editor_back_steps">zurück zu den Schritten</string>
+    <string name="flow_editor_open">Ablauf einrichten</string>
+    <string name="flow_editor_optional">optional · für Wartezeiten und begrenzte Dinge</string>
+    <string name="flow_editor_configured">eingerichtet · antippen zum Ändern</string>
+    <string name="flow_editor_back">zurück</string>
+    <string name="flow_editor_finish">fertig</string>
+    <string name="flow_editor_question">Was kommt wann danach?</string>
+    <string name="flow_editor_intro">Tippe nur die Schritte an, nach denen etwas weitergeht. Gemeinsame Folgeschritte sind erlaubt.</string>
+    <string name="flow_editor_step_end">Danach endet dieser Zweig</string>
+    <string name="flow_editor_step_next">Danach: %1$s</string>
+    <string name="flow_editor_wait_immediate">sofort</string>
+    <string name="flow_editor_wait_fixed">wartet %1$s</string>
+    <string name="flow_editor_wait_remember">fragt beim Erledigen · zuletzt: %1$s</string>
+    <string name="flow_editor_limited_question">Was ist begrenzt?</string>
+    <string name="flow_editor_shared_hint">Diese Dinge werden gemeinsam von allen Aufgaben benutzt. Beispiel: 1 Waschmaschine oder 2 Wäscheständer.</string>
+    <string name="flow_editor_resource_capacity_value">%1$d gleichzeitig</string>
+    <string name="flow_editor_rules_question">Wann wird es belegt?</string>
+    <string name="flow_editor_rule_hint">Eine Regel belegt Platz vor einem Schritt und gibt ihn nach einem späteren Schritt wieder frei.</string>
+    <string name="flow_editor_rule_path_invalid">Der Freigabeschritt muss im Ablauf später erreichbar sein.</string>
+    <string name="flow_editor_units_over_capacity">So viele Plätze gibt es von diesem Ding nicht.</string>
+    <string name="flow_editor_summary_label">Ablauf</string>
+    <string name="flow_editor_summary_empty">ohne Verknüpfungen</string>
+    <string name="flow_editor_summary_value">%1$s · %2$s</string>
+    <plurals name="flow_editor_links">
+        <item quantity="one">%1$d Verknüpfung</item>
+        <item quantity="other">%1$d Verknüpfungen</item>
+    </plurals>
+    <plurals name="flow_editor_capacity_rules">
+        <item quantity="one">%1$d Platzregel</item>
+        <item quantity="other">%1$d Platzregeln</item>
+    </plurals>
+    <string name="flow_editor_step_action">Ablauf nach „%1$s“ ändern</string>
+    <plurals name="flow_duration_minutes">
+        <item quantity="one">%1$d Minute</item>
+        <item quantity="other">%1$d Minuten</item>
+    </plurals>
+    <plurals name="flow_duration_hours">
+        <item quantity="one">%1$d Stunde</item>
+        <item quantity="other">%1$d Stunden</item>
+    </plurals>
+    <plurals name="flow_duration_days">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tage</item>
+    </plurals>
     <string name="editor_interval_unit">Tage Abstand</string>
     <string name="editor_summary_steps">%1$d Schritte</string>
     <string name="editor_summary_duration">etwa %1$d Minuten</string>

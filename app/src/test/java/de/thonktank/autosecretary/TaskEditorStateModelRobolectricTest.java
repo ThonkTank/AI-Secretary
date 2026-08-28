@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
@@ -56,7 +57,7 @@ public final class TaskEditorStateModelRobolectricTest {
                         "Speichern fehlgeschlagen");
 
         Bundle bundle = state.toBundle();
-        assertEquals(2, bundle.getInt("format_version"));
+        assertEquals(3, bundle.getInt("format_version"));
         assertNotNull(bundle.getBundle("draft"));
         assertNotNull(bundle.getBundle("navigation"));
         assertNotNull(bundle.getBundle("feedback"));
@@ -72,6 +73,42 @@ public final class TaskEditorStateModelRobolectricTest {
         assertEquals(EditorUiState.Prompt.DISCARD, restored.feedback.prompt);
         assertEquals("Speichern fehlgeschlagen", restored.feedback.storageError);
         assertTrue(restored.dirty);
+    }
+
+    @Test public void flowDraftRoundTripPreservesLinksCapacityAndDerivedRoles() {
+        EditorUiState state = EditorUiState.create();
+        state = de.thonktank.autosecretary.editor.TaskEditorStateReducer.updateTitle(
+                state, "Wäsche");
+        state = de.thonktank.autosecretary.editor.TaskEditorStateReducer.addStep(state);
+        state = de.thonktank.autosecretary.editor.TaskEditorStateReducer.updateStep(state, 0,
+                state.stepStates.get(0).withText("Waschmaschine anmachen"));
+        state = de.thonktank.autosecretary.editor.TaskEditorStateReducer.addStep(state);
+        state = de.thonktank.autosecretary.editor.TaskEditorStateReducer.updateStep(state, 1,
+                state.stepStates.get(1).withText("Wäsche aufhängen"));
+        state = de.thonktank.autosecretary.editor.TaskEditorStateReducer.addStep(state);
+        state = de.thonktank.autosecretary.editor.TaskEditorStateReducer.updateStep(state, 2,
+                state.stepStates.get(2).withText("Wäsche abnehmen"));
+        String wash = state.stepStates.get(0).id;
+        String hang = state.stepStates.get(1).id;
+        String takeDown = state.stepStates.get(2).id;
+        TaskFlowDraft flow = TaskFlowDraft.empty()
+                .withTransition(wash, hang, FlowDelayPolicy.rememberLast(7_200_000L))
+                .withTransition(hang, takeDown, FlowDelayPolicy.fixed(86_400_000L))
+                .addResource("Wäscheständer", 2)
+                .addLease("draft-resource:1", wash, takeDown, 1);
+        state = state.withFlowDraft(flow).withExpandedStep(null)
+                .withPage(EditorUiState.Page.FLOW, false);
+
+        EditorUiState restored = EditorUiState.fromBundle(state.toBundle());
+
+        assertEquals(flow, restored.flowDraft);
+        assertEquals(EditorUiState.Page.FLOW, restored.page);
+        assertEquals(StepActivationKind.SCHEDULED,
+                restored.definition().steps.get(0).activationKind);
+        assertEquals(StepActivationKind.FOLLOW_UP,
+                restored.definition().steps.get(1).activationKind);
+        assertEquals(0, restored.definition().steps.get(1).intervalDays);
+        assertEquals(1, restored.flowConfiguration().leases.size());
     }
 
     @Test public void legacyFlatBundleRestoresEquivalentDraftNavigationAndFeedback() {

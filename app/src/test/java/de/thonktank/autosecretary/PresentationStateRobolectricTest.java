@@ -287,6 +287,19 @@ public final class PresentationStateRobolectricTest {
         assertFalse(editorValue().saving);
     }
 
+    @Test public void newEditorLoadsSharedCapacityCatalogWithoutBecomingDirty() {
+        tasks.saveCapacityResource.execute("shared-rack", "Wäscheständer", 2);
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
+
+        editorViewModel.dispatch(TaskEditorAction.openNew());
+
+        assertTrue(editorValue().open);
+        assertFalse(editorValue().loading);
+        assertFalse(editorValue().dirty);
+        assertEquals(1, editorValue().flowDraft.resources.size());
+        assertEquals("Wäscheständer", editorValue().flowDraft.resources.get(0).name);
+    }
+
     @Test public void dismissingAStillLoadingEditorPreventsStaleReopen() {
         TaskId id = TaskId.of("slow-editor");
         repository.insertTask(Task.restore(id, "Langsam", Recurrence.DAILY,

@@ -73,13 +73,16 @@ class TaskEditorComposeInstrumentationTest {
             "geschätzte Dauer" to EditorUiState.Page.SCHEDULE,
             "Zeitraum" to EditorUiState.Page.TITLE,
             "Schritte" to EditorUiState.Page.STEPS,
+            "Ablauf" to EditorUiState.Page.FLOW,
             "Notiz" to EditorUiState.Page.TITLE,
         )
 
         targets.forEach { (label, target) ->
             compose.runOnUiThread { compose.activity.render(summary) }
             compose.waitForIdle()
-            compose.onNode(hasContentDescription(label, substring = true)).performClick()
+            compose.onNode(hasContentDescription(label, substring = true))
+                .performScrollTo()
+                .performClick()
             compose.waitUntil {
                 compose.activity.state.page == target && compose.activity.state.returnToSummary
             }
@@ -112,6 +115,27 @@ class TaskEditorComposeInstrumentationTest {
         compose.waitUntil { compose.activity.state.expandedStepId == addedId }
         compose.onNodeWithText("entfernen").performClick()
         compose.waitUntil { compose.activity.state.stepStates.none { it.id == addedId } }
+    }
+
+    @Test
+    fun optionalFlowEntryIsVisibleFromStepsAndDoesNotBecomeAWizardPage() {
+        compose.runOnUiThread {
+            compose.activity.render(
+                taskEditorComposeReferenceState().withPage(EditorUiState.Page.STEPS, false),
+            )
+        }
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("task-editor:flow-open").performScrollTo().performClick()
+        compose.waitUntil { compose.activity.state.page == EditorUiState.Page.FLOW }
+        compose.onNodeWithText("Was kommt wann danach?").assertExists()
+        compose.onNodeWithTag("task-editor:flow-step:step-1").assertExists()
+
+        compose.activityRule.scenario.recreate()
+        compose.waitForIdle()
+        assertEquals(EditorUiState.Page.FLOW, compose.activity.state.page)
+        compose.onNodeWithText("fertig").performClick()
+        compose.waitUntil { compose.activity.state.page == EditorUiState.Page.STEPS }
     }
 
     @Test

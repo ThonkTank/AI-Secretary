@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Objects;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.CapacityResource;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
@@ -30,6 +31,7 @@ public final class TaskDraftSnapshot {
     private final String note;
     private final MissedOccurrenceMode missedOccurrenceMode;
     private final List<EditorStepState> steps;
+    private final TaskFlowDraft flow;
     private final boolean legacyDifferent;
 
     private TaskDraftSnapshot(TaskEditorDraft draft, boolean legacyDifferent) {
@@ -41,6 +43,7 @@ public final class TaskDraftSnapshot {
         deadlineOn = draft.deadlineOn; note = draft.note;
         missedOccurrenceMode = draft.missedOccurrenceMode;
         steps = Collections.unmodifiableList(new ArrayList<>(draft.steps));
+        flow = draft.flow;
         this.legacyDifferent = legacyDifferent;
     }
 
@@ -52,11 +55,20 @@ public final class TaskDraftSnapshot {
         return new TaskDraftSnapshot(draft, true);
     }
 
+    TaskDraftSnapshot withCapacityCatalog(List<CapacityResource> catalog) {
+        TaskEditorDraft value = new TaskEditorDraft(title, slot, estimatedMinutes, recurrence,
+                intervalDays, weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
+                remainingCount, deadlineOn, note, missedOccurrenceMode, steps, 1,
+                flow.mergeCatalog(catalog));
+        return new TaskDraftSnapshot(value, legacyDifferent);
+    }
+
     Bundle toBundle() {
         Bundle bundle = new Bundle();
         bundle.putBundle("draft", new TaskEditorDraft(title, slot, estimatedMinutes, recurrence,
                 intervalDays, weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
-                remainingCount, deadlineOn, note, missedOccurrenceMode, steps, 1).toBundle());
+                remainingCount, deadlineOn, note, missedOccurrenceMode, steps, 1,
+                flow).toBundle());
         bundle.putBoolean("legacy_different", legacyDifferent);
         return bundle;
     }
@@ -80,12 +92,12 @@ public final class TaskDraftSnapshot {
                 && Objects.equals(remainingCount, value.remainingCount)
                 && Objects.equals(deadlineOn, value.deadlineOn) && note.equals(value.note)
                 && missedOccurrenceMode == value.missedOccurrenceMode
-                && steps.equals(value.steps);
+                && steps.equals(value.steps) && flow.equals(value.flow);
     }
 
     @Override public int hashCode() {
         return Objects.hash(title, slot, estimatedMinutes, recurrence, intervalDays, weekdayMask,
                 timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn,
-                note, missedOccurrenceMode, steps, legacyDifferent);
+                note, missedOccurrenceMode, steps, flow, legacyDifferent);
     }
 }
