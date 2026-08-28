@@ -12,6 +12,9 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
+import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
+import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
+import de.thonktank.autosecretary.domain.model.TrainingSetResult;
 import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
@@ -39,6 +42,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
     private Map<String, String> rewardAssignments = new LinkedHashMap<>();
     private Map<String, ComboObligation> comboObligations = new LinkedHashMap<>();
     private Map<String, ComboDecayEvent> comboDecayEvents = new LinkedHashMap<>();
+    private Map<String, List<TrainingSetResult>> trainingResults = new LinkedHashMap<>();
+    private Map<String, TrainingAdjustment> trainingAdjustments = new LinkedHashMap<>();
     private int xp;
 
     @Override public synchronized <T> T inTransaction(Transaction<T> operation) {
@@ -321,6 +326,49 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
             throw new IllegalStateException("Duplicate combo decay event " + key);
     }
 
+    @Override public synchronized void putTrainingSetResult(String occurrenceStepId, int slotIndex,
+                                                             TrainingSetResult result) {
+        List<TrainingSetResult> values = trainingResults.computeIfAbsent(
+                occurrenceStepId, ignored -> new ArrayList<>());
+        while (values.size() <= slotIndex) values.add(null);
+        values.set(slotIndex, result);
+    }
+
+    @Override public synchronized List<TrainingSetResult> trainingSetResults(
+            String occurrenceStepId) {
+        List<TrainingSetResult> values = trainingResults.get(occurrenceStepId);
+        if (values == null) return List.of();
+        List<TrainingSetResult> result = new ArrayList<>();
+        for (TrainingSetResult value : values) if (value != null) result.add(value);
+        return result;
+    }
+
+    @Override public synchronized void updateTrainingTemplate(TaskStepTemplate template) {
+        templates.put(template.id, template);
+    }
+
+    @Override public synchronized double effectiveSetsSince(TrainingMuscleGroup muscle,
+                                                             LocalDate start, LocalDate end) {
+        return 0.0;
+    }
+
+    @Override public synchronized void insertTrainingAdjustment(TrainingAdjustment adjustment) {
+        trainingAdjustments.put(adjustment.id, adjustment);
+    }
+
+    @Override public synchronized TrainingAdjustment latestTrainingAdjustment(String templateId) {
+        TrainingAdjustment latest = null;
+        for (TrainingAdjustment value : trainingAdjustments.values()) {
+            if (!templateId.equals(value.templateId)) continue;
+            if (latest == null || value.createdOn.isAfter(latest.createdOn)) latest = value;
+        }
+        return latest;
+    }
+
+    @Override public synchronized void updateTrainingAdjustment(TrainingAdjustment adjustment) {
+        trainingAdjustments.put(adjustment.id, adjustment);
+    }
+
     private List<Occurrence> byState(OccurrenceState state) {
         List<Occurrence> result = new ArrayList<>();
         for (Occurrence value : occurrences.values()) if (value.state == state) result.add(value);
@@ -355,7 +403,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
                 new LinkedHashMap<>(combos), new LinkedHashMap<>(bookings),
                 new LinkedHashMap<>(rewardAssignments),
                 new LinkedHashMap<>(comboObligations),
-                new LinkedHashMap<>(comboDecayEvents), xp);
+                new LinkedHashMap<>(comboDecayEvents), copyTrainingResults(trainingResults),
+                new LinkedHashMap<>(trainingAdjustments), xp);
     }
 
     private void restore(Snapshot value) {
@@ -369,6 +418,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
         rewardAssignments = value.rewardAssignments;
         comboObligations = value.comboObligations;
         comboDecayEvents = value.comboDecayEvents;
+        trainingResults = value.trainingResults;
+        trainingAdjustments = value.trainingAdjustments;
         xp = value.xp;
     }
 
@@ -383,6 +434,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
         final Map<String, String> rewardAssignments;
         final Map<String, ComboObligation> comboObligations;
         final Map<String, ComboDecayEvent> comboDecayEvents;
+        final Map<String, List<TrainingSetResult>> trainingResults;
+        final Map<String, TrainingAdjustment> trainingAdjustments;
         final int xp;
 
         Snapshot(Map<TaskId, Task> tasks, Map<String, TaskStepTemplate> templates,
@@ -392,7 +445,9 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
                  Map<String, ComboProgress> combos, Map<String, RewardBooking> bookings,
                  Map<String, String> rewardAssignments,
                  Map<String, ComboObligation> comboObligations,
-                 Map<String, ComboDecayEvent> comboDecayEvents, int xp) {
+                 Map<String, ComboDecayEvent> comboDecayEvents,
+                 Map<String, List<TrainingSetResult>> trainingResults,
+                 Map<String, TrainingAdjustment> trainingAdjustments, int xp) {
             this.tasks = tasks;
             this.templates = templates;
             this.schedule = schedule;
@@ -403,8 +458,18 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
             this.rewardAssignments = rewardAssignments;
             this.comboObligations = comboObligations;
             this.comboDecayEvents = comboDecayEvents;
+            this.trainingResults = trainingResults;
+            this.trainingAdjustments = trainingAdjustments;
             this.xp = xp;
         }
+    }
+
+    private static Map<String, List<TrainingSetResult>> copyTrainingResults(
+            Map<String, List<TrainingSetResult>> source) {
+        Map<String, List<TrainingSetResult>> copy = new LinkedHashMap<>();
+        for (Map.Entry<String, List<TrainingSetResult>> entry : source.entrySet())
+            copy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        return copy;
     }
 
     private static String decayKey(String ownerId, LocalDate eventOn) {

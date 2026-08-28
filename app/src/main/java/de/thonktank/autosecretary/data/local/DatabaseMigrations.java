@@ -655,6 +655,86 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Adds explainable per-step training prescriptions, set effort logs and adjustment audit. */
+    public static final Migration MIGRATION_20_21 = new Migration(20, 21) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantEnabled "
+                    + "INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantMinSets "
+                    + "INTEGER NOT NULL DEFAULT 2");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantMaxSets "
+                    + "INTEGER NOT NULL DEFAULT 3");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantMinReps "
+                    + "INTEGER NOT NULL DEFAULT 8");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantMaxReps "
+                    + "INTEGER NOT NULL DEFAULT 12");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantTargetRir "
+                    + "INTEGER NOT NULL DEFAULT 2");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantLoadIncrementMilli "
+                    + "INTEGER NOT NULL DEFAULT 2500");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantWeeklySetCeiling "
+                    + "INTEGER NOT NULL DEFAULT 10");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN plannedLoadMode "
+                    + "TEXT NOT NULL DEFAULT 'UNSPECIFIED'");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN plannedLoadUnit "
+                    + "TEXT NOT NULL DEFAULT 'NONE'");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN plannedLoadMilli INTEGER");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN primaryMuscle TEXT");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN secondaryMuscles "
+                    + "TEXT NOT NULL DEFAULT ''");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantStatus "
+                    + "TEXT NOT NULL DEFAULT 'DISABLED'");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantObservations "
+                    + "INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantReadyStreak "
+                    + "INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE task_steps ADD COLUMN assistantHardStreak "
+                    + "INTEGER NOT NULL DEFAULT 0");
+
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN plannedLoadMode "
+                    + "TEXT NOT NULL DEFAULT 'UNSPECIFIED'");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN plannedLoadUnit "
+                    + "TEXT NOT NULL DEFAULT 'NONE'");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN plannedLoadMilli INTEGER");
+            database.execSQL("ALTER TABLE occurrence_steps ADD COLUMN targetRir "
+                    + "INTEGER NOT NULL DEFAULT 2");
+
+            database.execSQL("ALTER TABLE flow_run_steps ADD COLUMN plannedLoadMode "
+                    + "TEXT NOT NULL DEFAULT 'UNSPECIFIED'");
+            database.execSQL("ALTER TABLE flow_run_steps ADD COLUMN plannedLoadUnit "
+                    + "TEXT NOT NULL DEFAULT 'NONE'");
+            database.execSQL("ALTER TABLE flow_run_steps ADD COLUMN plannedLoadMilli INTEGER");
+            database.execSQL("ALTER TABLE flow_run_steps ADD COLUMN targetRir "
+                    + "INTEGER NOT NULL DEFAULT 2");
+
+            database.execSQL("ALTER TABLE repetition_results ADD COLUMN loadMode "
+                    + "TEXT NOT NULL DEFAULT 'UNSPECIFIED'");
+            database.execSQL("ALTER TABLE repetition_results ADD COLUMN loadUnit "
+                    + "TEXT NOT NULL DEFAULT 'NONE'");
+            database.execSQL("ALTER TABLE repetition_results ADD COLUMN loadMilli INTEGER");
+            database.execSQL("ALTER TABLE repetition_results ADD COLUMN rir INTEGER");
+            database.execSQL("ALTER TABLE repetition_results ADD COLUMN source "
+                    + "TEXT NOT NULL DEFAULT 'LEGACY'");
+            database.execSQL("ALTER TABLE repetition_results ADD COLUMN safetyFlag "
+                    + "TEXT NOT NULL DEFAULT 'NONE'");
+
+            database.execSQL("CREATE TABLE training_adjustments (id TEXT NOT NULL, "
+                    + "templateId TEXT NOT NULL, sourceOccurrenceStepId TEXT NOT NULL, "
+                    + "reason TEXT NOT NULL, beforeSets INTEGER NOT NULL, "
+                    + "beforeReps INTEGER NOT NULL, beforeLoadMode TEXT NOT NULL, "
+                    + "beforeLoadUnit TEXT NOT NULL, beforeLoadMilli INTEGER, "
+                    + "afterSets INTEGER NOT NULL, afterReps INTEGER NOT NULL, "
+                    + "afterLoadMode TEXT NOT NULL, afterLoadUnit TEXT NOT NULL, "
+                    + "afterLoadMilli INTEGER, createdOn TEXT NOT NULL, state TEXT NOT NULL, "
+                    + "PRIMARY KEY(id), FOREIGN KEY(templateId) REFERENCES task_steps(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_training_adjustments_templateId "
+                    + "ON training_adjustments(templateId)");
+            database.execSQL("CREATE INDEX index_training_adjustments_sourceOccurrenceStepId "
+                    + "ON training_adjustments(sourceOccurrenceStepId)");
+        }
+    };
+
     /** Complete historical graph for migration fixtures and archive tests. */
     public static Migration[] all() {
         return from(1);
@@ -666,7 +746,8 @@ public final class DatabaseMigrations {
                 MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
                 MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                 MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-                MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20};
+                MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
+                MIGRATION_20_21};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

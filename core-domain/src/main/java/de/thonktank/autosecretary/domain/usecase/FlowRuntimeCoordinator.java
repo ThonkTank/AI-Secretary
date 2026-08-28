@@ -234,7 +234,7 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
                         open.text, false, open.amount, open.restTimerPolicy, open.note,
                         Collections.emptyList(), open.sourceTemplateId, open.comboOwnerId,
                         occurrence.id,
-                        CarryForwardReason.UNFINISHED_STEP);
+                        CarryForwardReason.UNFINISHED_STEP, open.plannedLoad, open.targetRir);
                 repository.insertOccurrenceSteps(Collections.singletonList(carried));
                 repository.updateFlowRun(run.offerOnSheet(replacement.id,
                         run.nextSheetSequence, now));
@@ -343,7 +343,8 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
             OccurrenceStep step = new OccurrenceStep(ids.nextId(), sheet.id, position,
                     snapshot.text, false, snapshot.amount, snapshot.restTimerPolicy, snapshot.note,
                     Collections.emptyList(), snapshot.sourceTemplateId,
-                    "step:" + snapshot.sourceTemplateId);
+                    "step:" + snapshot.sourceTemplateId, null, CarryForwardReason.NONE,
+                    snapshot.plannedLoad, snapshot.targetRir);
             repository.insertOccurrenceSteps(Collections.singletonList(step));
         }
         repository.updateFlowRun(existingSheet

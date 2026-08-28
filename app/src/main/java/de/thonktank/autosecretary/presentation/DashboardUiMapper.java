@@ -190,8 +190,8 @@ public final class DashboardUiMapper {
     private static RepetitionProgressUiModel repetition(OccurrenceStep step) {
         if (step.amount instanceof StepAmount.SetsReps) {
             StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
-            return RepetitionProgressUiModel.sets(amount.sets, amount.repetitions,
-                    step.repetitionProgress.actualRepetitions);
+            return RepetitionProgressUiModel.trainingSets(amount.sets, amount.repetitions,
+                    step.repetitionProgress.actualRepetitions, step.plannedLoad, step.targetRir);
         }
         if (step.amount instanceof StepAmount.Repetitions)
             return RepetitionProgressUiModel.single(

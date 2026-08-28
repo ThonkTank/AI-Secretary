@@ -25,6 +25,7 @@ import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TrainingSetResult;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
@@ -282,18 +283,26 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         }
         if (submission == null) return;
         if (submission.correction())
-            correctRepetitionResult(submission.stepId, submission.editingIndex,
-                    submission.value);
-        else recordRepetitionResult(submission.stepId, submission.value);
+            correctRepetitionResult(submission);
+        else recordRepetitionResult(submission);
     }
 
-    private void recordRepetitionResult(String stepId, int repetitions) {
-        runTodayStepResult(command(UiCommand.Kind.RECORD_REPETITION_RESULT, stepId),
-                () -> tasks.recordRepetitionResult.execute(stepId, repetitions));
+    private void recordRepetitionResult(RepetitionInputReducer.Submission submission) {
+        runTodayStepResult(command(UiCommand.Kind.RECORD_REPETITION_RESULT, submission.stepId),
+                () -> tasks.recordTrainingSetResult.execute(submission.stepId,
+                        trainingResult(submission)));
     }
-    private void correctRepetitionResult(String stepId, int index, int repetitions) {
-        runTodayStepResult(command(UiCommand.Kind.CORRECT_REPETITION_RESULT, stepId),
-                () -> tasks.correctRepetitionResult.execute(stepId, index, repetitions));
+    private void correctRepetitionResult(RepetitionInputReducer.Submission submission) {
+        runTodayStepResult(command(UiCommand.Kind.CORRECT_REPETITION_RESULT, submission.stepId),
+                () -> tasks.correctTrainingSetResult.execute(submission.stepId,
+                        submission.editingIndex, trainingResult(submission)));
+    }
+
+    private static TrainingSetResult trainingResult(RepetitionInputReducer.Submission value) {
+        return new TrainingSetResult(value.value, value.load, value.rir,
+                TrainingSetResult.Source.USER, value.safetyFlag
+                ? TrainingSetResult.SafetyFlag.PAIN_OR_TECHNIQUE
+                : TrainingSetResult.SafetyFlag.NONE);
     }
     private void close(String taskId) {
         runTodayReward(command(UiCommand.Kind.CLOSE, taskId),
@@ -380,6 +389,18 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     @Override public void handleAdjustRepetition(String stepId, int delta) {
         reduceRepetitionInput(TodayAction.adjustRepetition(stepId, delta));
+    }
+
+    @Override public void handleAdjustTrainingLoad(String stepId, int milliUnitDelta) {
+        reduceRepetitionInput(TodayAction.adjustTrainingLoad(stepId, milliUnitDelta));
+    }
+
+    @Override public void handleAdjustTrainingRir(String stepId, int delta) {
+        reduceRepetitionInput(TodayAction.adjustTrainingRir(stepId, delta));
+    }
+
+    @Override public void handleToggleTrainingSafety(String stepId) {
+        reduceRepetitionInput(TodayAction.toggleTrainingSafety(stepId));
     }
 
     @Override public void handleEditRepetition(String stepId, int index) {

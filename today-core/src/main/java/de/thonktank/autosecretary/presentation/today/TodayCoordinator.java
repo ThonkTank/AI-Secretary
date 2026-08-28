@@ -101,6 +101,18 @@ public final class TodayCoordinator implements TodayActionSink {
                 commands.execute(TodayCommand.action(TodayCommand.Kind.ADJUST_REPETITION,
                         action));
                 return;
+            case ADJUST_TRAINING_LOAD:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.ADJUST_TRAINING_LOAD,
+                        action));
+                return;
+            case ADJUST_TRAINING_RIR:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.ADJUST_TRAINING_RIR,
+                        action));
+                return;
+            case TOGGLE_TRAINING_SAFETY:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.TOGGLE_TRAINING_SAFETY,
+                        action));
+                return;
             case EDIT_REPETITION:
                 commands.execute(TodayCommand.action(TodayCommand.Kind.EDIT_REPETITION, action));
                 return;

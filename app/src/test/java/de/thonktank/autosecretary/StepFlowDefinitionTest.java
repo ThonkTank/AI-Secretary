@@ -15,6 +15,11 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
+import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
+import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.usecase.CreateFlowRunSnapshot;
 
 import org.junit.Test;
@@ -93,6 +98,27 @@ public final class StepFlowDefinitionTest {
 
         assertEquals(90_000L, policy.proposedDelayMillis());
         assertEquals(120_000L, policy.choose(120_000L));
+    }
+
+    @Test public void runSnapshotFreezesTrainingLoadAndTargetRir() {
+        ResistanceLoad load = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
+                ResistanceLoad.Unit.KG, 60_000L);
+        TrainingAssistantConfig training = TrainingAssistantConfig.defaults(
+                load, TrainingMuscleGroup.CHEST);
+        TaskStepTemplate press = new TaskStepTemplate("press", TASK, 0, "Bankdrücken",
+                0, 0, StepAmount.setsReps(3, 10), RestTimerPolicy.inherit(),
+                training, TrainingAssistantState.calibrating(), "",
+                StepActivationKind.SCHEDULED);
+        StepFlowDefinition definition = new StepFlowDefinition(TASK,
+                Collections.singletonList(press), Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyList());
+
+        FlowRunSnapshot snapshot = new CreateFlowRunSnapshot(() -> "snapshot").execute(
+                definition, "press", "due:press", LocalDate.of(2026, 8, 28),
+                TaskSlot.MORNING, 1_000L, 10_000L);
+
+        assertEquals(load, snapshot.steps.get(0).plannedLoad);
+        assertEquals(2, snapshot.steps.get(0).targetRir);
     }
 
     private static StepFlowDefinition laundryDefinition() {

@@ -14,11 +14,19 @@ public final class RepetitionInputReducer {
         public final String stepId;
         public final int value;
         public final int editingIndex;
+        public final de.thonktank.autosecretary.domain.model.ResistanceLoad load;
+        public final int rir;
+        public final boolean safetyFlag;
 
-        private Submission(String stepId, int value, int editingIndex) {
+        private Submission(String stepId, int value, int editingIndex,
+                           de.thonktank.autosecretary.domain.model.ResistanceLoad load,
+                           int rir, boolean safetyFlag) {
             this.stepId = stepId;
             this.value = value;
             this.editingIndex = editingIndex;
+            this.load = load;
+            this.rir = rir;
+            this.safetyFlag = safetyFlag;
         }
 
         public boolean correction() { return editingIndex >= 0; }
@@ -48,9 +56,16 @@ public final class RepetitionInputReducer {
         if (action.kind == TodayAction.Kind.EDIT_REPETITION) {
             return new Result(current.edit(active, action.value), null);
         }
+        if (action.kind == TodayAction.Kind.ADJUST_TRAINING_LOAD)
+            return new Result(current.adjustLoad(active, action.value), null);
+        if (action.kind == TodayAction.Kind.ADJUST_TRAINING_RIR)
+            return new Result(current.adjustRir(active, action.value), null);
+        if (action.kind == TodayAction.Kind.TOGGLE_TRAINING_SAFETY)
+            return new Result(current.toggleSafety(active), null);
         if (action.kind == TodayAction.Kind.SUBMIT_REPETITION) {
             return new Result(RepetitionInputState.idle(), new Submission(active.id,
-                    current.valueFor(active), current.editingIndexFor(active)));
+                    current.valueFor(active), current.editingIndexFor(active),
+                    current.loadFor(active), current.rirFor(active), current.safetyFor(active)));
         }
         return new Result(current, null);
     }
@@ -58,6 +73,9 @@ public final class RepetitionInputReducer {
     @Nullable private static String stepId(TodayAction action) {
         switch (action.kind) {
             case ADJUST_REPETITION:
+            case ADJUST_TRAINING_LOAD:
+            case ADJUST_TRAINING_RIR:
+            case TOGGLE_TRAINING_SAFETY:
             case EDIT_REPETITION:
             case SUBMIT_REPETITION:
                 return action.id;

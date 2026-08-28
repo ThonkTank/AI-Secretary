@@ -21,6 +21,9 @@ public final class TodayAction {
         ADVANCE_STEP,
         UNDO_OCCURRENCE,
         ADJUST_REPETITION,
+        ADJUST_TRAINING_LOAD,
+        ADJUST_TRAINING_RIR,
+        TOGGLE_TRAINING_SAFETY,
         EDIT_REPETITION,
         SUBMIT_REPETITION,
         START_DURATION_TIMER,
@@ -130,6 +133,22 @@ public final class TodayAction {
         if (index < 0) throw new IllegalArgumentException("Saved result index is required");
         return new TodayAction(Kind.EDIT_REPETITION, requiredId(stepId), null,
                 null, index, Collections.emptyList(), null, null);
+    }
+
+    public static TodayAction adjustTrainingLoad(String stepId, int milliUnitDelta) {
+        if (milliUnitDelta == 0) throw new IllegalArgumentException("Adjustment must not be zero");
+        return new TodayAction(Kind.ADJUST_TRAINING_LOAD, requiredId(stepId), null,
+                null, milliUnitDelta, Collections.emptyList(), null, null);
+    }
+
+    public static TodayAction adjustTrainingRir(String stepId, int delta) {
+        if (delta == 0) throw new IllegalArgumentException("Adjustment must not be zero");
+        return new TodayAction(Kind.ADJUST_TRAINING_RIR, requiredId(stepId), null,
+                null, delta, Collections.emptyList(), null, null);
+    }
+
+    public static TodayAction toggleTrainingSafety(String stepId) {
+        return identified(Kind.TOGGLE_TRAINING_SAFETY, stepId);
     }
 
     public static TodayAction submitRepetition(String stepId) {

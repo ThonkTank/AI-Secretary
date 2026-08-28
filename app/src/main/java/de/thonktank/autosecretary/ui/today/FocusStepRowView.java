@@ -20,6 +20,7 @@ import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 import de.thonktank.autosecretary.timer.TimerManager;
@@ -42,6 +43,15 @@ public final class FocusStepRowView extends LinearLayout {
     private final HorizontalScrollView barsScroll;
     private final SetBarsView bars;
     private final LinearLayout.LayoutParams controlsParams;
+    private final HorizontalScrollView trainingScroll;
+    private final LinearLayout trainingControls;
+    private final TextLinkView loadMinus;
+    private final TextView loadLabel;
+    private final TextLinkView loadPlus;
+    private final TextLinkView rirMinus;
+    private final TextView rirLabel;
+    private final TextLinkView rirPlus;
+    private final TextLinkView safety;
     private final LinearLayout timerControls;
     private final TextView timerLabel;
     private final TextLinkView timerPrimary;
@@ -112,6 +122,37 @@ public final class FocusStepRowView extends LinearLayout {
         controlsParams = new LinearLayout.LayoutParams(-1, style.dp(44));
         controlsParams.setMargins(style.dp(52), style.dp(10), 0, 0);
         body.addView(controls, controlsParams);
+
+        trainingScroll = new HorizontalScrollView(context);
+        trainingScroll.setHorizontalScrollBarEnabled(false);
+        trainingScroll.setFillViewport(false);
+        trainingControls = new LinearLayout(context);
+        trainingControls.setGravity(Gravity.CENTER_VERTICAL);
+        loadMinus = trainingLink("−");
+        loadLabel = style.sans("", 15, 0, true);
+        loadLabel.setGravity(Gravity.CENTER);
+        loadPlus = trainingLink("+");
+        rirMinus = trainingLink("−");
+        rirLabel = style.sans("", 15, 0, true);
+        rirLabel.setGravity(Gravity.CENTER);
+        rirPlus = trainingLink("+");
+        safety = trainingLink(context.getString(R.string.training_safety_ok));
+        trainingControls.addView(loadMinus, compactControl());
+        trainingControls.addView(loadLabel, new LinearLayout.LayoutParams(style.dp(84), style.dp(44)));
+        trainingControls.addView(loadPlus, compactControl());
+        LinearLayout.LayoutParams rirMinusParams = compactControl();
+        rirMinusParams.leftMargin = style.dp(10);
+        trainingControls.addView(rirMinus, rirMinusParams);
+        trainingControls.addView(rirLabel, new LinearLayout.LayoutParams(style.dp(58), style.dp(44)));
+        trainingControls.addView(rirPlus, compactControl());
+        LinearLayout.LayoutParams safetyParams = new LinearLayout.LayoutParams(-2, style.dp(44));
+        safetyParams.leftMargin = style.dp(10);
+        trainingControls.addView(safety, safetyParams);
+        trainingScroll.addView(trainingControls,
+                new HorizontalScrollView.LayoutParams(-2, style.dp(44)));
+        LinearLayout.LayoutParams trainingParams = new LinearLayout.LayoutParams(-1, style.dp(44));
+        trainingParams.setMargins(style.dp(52), style.dp(5), 0, 0);
+        body.addView(trainingScroll, trainingParams);
 
         timerControls = new LinearLayout(context);
         timerControls.setGravity(Gravity.CENTER_VERTICAL);
@@ -190,6 +231,7 @@ public final class FocusStepRowView extends LinearLayout {
                     : getContext().getString(editingIndex >= 0
                             ? R.string.content_update_set : R.string.content_confirm_set,
                     editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber(), current));
+            bindTrainingInputs(step, progress, input, palette, events);
         } else if (step.executionAction.kind == StepExecutionUiAction.Kind.TOGGLE) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step, step.title, step.reward.resultXp));
@@ -209,12 +251,74 @@ public final class FocusStepRowView extends LinearLayout {
                     .append(getContext().getString(R.string.action_complete));
             reward.setContentDescription(description.toString());
         }
+        if (!editsRepetitions) trainingScroll.setVisibility(GONE);
         reward.setOnClickListener(step.executionAction.kind == StepExecutionUiAction.Kind.NONE
                 || restBlocks
                 ? null : view -> emitExecution(step.executionAction, events));
         reward.setActionEnabled(step.executionAction.kind != StepExecutionUiAction.Kind.NONE
                 && !restBlocks);
         bindTimer(step, timer, timers.elapsedRealtime, palette, events);
+    }
+
+    private void bindTrainingInputs(FocusStepUiModel step, RepetitionProgressUiModel progress,
+                                    RepetitionInputState input, DayPalette palette,
+                                    TodayActionSink events) {
+        boolean visible = progress != null && progress.detailedTraining();
+        trainingScroll.setVisibility(visible ? VISIBLE : GONE);
+        if (!visible) return;
+        ResistanceLoad load = input.loadFor(step);
+        int rir = input.rirFor(step);
+        boolean flagged = input.safetyFor(step);
+        bindTrainingLink(loadMinus, palette);
+        bindTrainingLink(loadPlus, palette);
+        bindTrainingLink(rirMinus, palette);
+        bindTrainingLink(rirPlus, palette);
+        bindTrainingLink(safety, palette);
+        loadLabel.setText(formatLoad(load));
+        loadLabel.setTextColor(palette.ink);
+        rirLabel.setText(getContext().getString(R.string.training_rir_value, rir));
+        rirLabel.setTextColor(palette.ink);
+        int delta = load.unit == ResistanceLoad.Unit.LB ? 5_000 : 1_000;
+        boolean adjustable = load.adjustable();
+        loadMinus.setVisibility(adjustable ? VISIBLE : GONE);
+        loadPlus.setVisibility(adjustable ? VISIBLE : GONE);
+        loadMinus.setOnClickListener(adjustable ? view -> events.emit(
+                TodayAction.adjustTrainingLoad(step.id, -delta)) : null);
+        loadPlus.setOnClickListener(adjustable ? view -> events.emit(
+                TodayAction.adjustTrainingLoad(step.id, delta)) : null);
+        rirMinus.setOnClickListener(rir > 0 ? view -> events.emit(
+                TodayAction.adjustTrainingRir(step.id, -1)) : null);
+        rirPlus.setOnClickListener(rir < 5 ? view -> events.emit(
+                TodayAction.adjustTrainingRir(step.id, 1)) : null);
+        safety.setText(flagged ? R.string.training_safety_flagged : R.string.training_safety_ok);
+        safety.setTextColor(flagged ? palette.bad : palette.hint);
+        safety.setOnClickListener(view -> events.emit(TodayAction.toggleTrainingSafety(step.id)));
+    }
+
+    private TextLinkView trainingLink(String text) {
+        TextLinkView view = new TextLinkView(getContext());
+        view.setText(text);
+        view.setGravity(Gravity.CENTER);
+        AccessibilityRoles.button(view);
+        return view;
+    }
+
+    private LinearLayout.LayoutParams compactControl() {
+        return new LinearLayout.LayoutParams(style.dp(36), style.dp(44));
+    }
+
+    private static void bindTrainingLink(TextLinkView view, DayPalette palette) {
+        view.bind(palette.hint, palette.dot);
+    }
+
+    private String formatLoad(ResistanceLoad load) {
+        if (load.mode == ResistanceLoad.Mode.BODYWEIGHT)
+            return getContext().getString(R.string.training_load_bodyweight_short);
+        double value = (load.milliUnits == null ? 0L : load.milliUnits) / 1000d;
+        String unit = load.unit == ResistanceLoad.Unit.LB ? "lb" : "kg";
+        String prefix = load.mode == ResistanceLoad.Mode.BODYWEIGHT_PLUS ? "+"
+                : load.mode == ResistanceLoad.Mode.ASSISTED_BODYWEIGHT ? "−" : "";
+        return prefix + String.format(java.util.Locale.getDefault(), "%.1f %s", value, unit);
     }
 
     private void bindTimer(FocusStepUiModel step, TimerSession timer, long elapsedRealtime,

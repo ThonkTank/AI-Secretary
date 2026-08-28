@@ -23,7 +23,7 @@ import java.util.Iterator;
 final class UpgradePersistenceProbe {
     private static final String DATABASE = "auto_secretary.db";
     private static final int SOURCE_DATABASE_VERSION = 8;
-    private static final int TARGET_DATABASE_VERSION = 20;
+    private static final int TARGET_DATABASE_VERSION = 21;
     private static final long DATABASE_READY_TIMEOUT_MILLIS = 15_000L;
     private static final String TASK_ID = "upgrade-e2e-task";
     private static final String TEMPLATE_ID = "upgrade-e2e-template";

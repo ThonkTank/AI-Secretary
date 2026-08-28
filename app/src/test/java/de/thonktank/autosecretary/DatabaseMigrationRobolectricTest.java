@@ -337,6 +337,47 @@ public final class DatabaseMigrationRobolectricTest {
         }
     }
 
+    @Test public void migrationTwentyToTwentyOnePreservesFlowsAndAddsTrainingSnapshots() {
+        SupportSQLiteOpenHelper.Configuration configuration =
+                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
+                        .callback(new SupportSQLiteOpenHelper.Callback(20) {
+                            @Override public void onCreate(SupportSQLiteDatabase database) {
+                                ExportedRoomSchemaFixture.create(database, 20);
+                                database.execSQL("INSERT INTO capacity_resources "
+                                        + "(id,name,normalizedName,capacity) VALUES "
+                                        + "('rack','Rack','rack',1)");
+                            }
+                            @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                            int oldVersion, int newVersion) { }
+                        }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
+                .create(configuration);
+        helper.getWritableDatabase();
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.from(20))
+                .allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+
+        assertEquals(21, database.getVersion());
+        try (Cursor cursor = database.query(
+                "SELECT name,capacity FROM capacity_resources WHERE id='rack'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("Rack", cursor.getString(0));
+            assertEquals(1, cursor.getInt(1));
+        }
+        assertColumnsPresent(database, "task_steps", "assistantEnabled", "plannedLoadMode");
+        assertColumnsPresent(database, "occurrence_steps", "plannedLoadMode", "targetRir");
+        assertColumnsPresent(database, "flow_run_steps", "plannedLoadMode", "targetRir");
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM sqlite_master "
+                + "WHERE type='table' AND name='training_adjustments'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(1, cursor.getInt(0));
+        }
+        migrated.close();
+    }
+
     @Test public void migrationFifteenToSixteenDerivesStableCadenceAnchors() {
         SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
                 .builder(context).name(DATABASE)
@@ -919,5 +960,16 @@ public final class DatabaseMigrationRobolectricTest {
                 for (String value : forbidden) assertTrue(!value.equals(column));
             }
         }
+    }
+
+    private static void assertColumnsPresent(SupportSQLiteDatabase database, String table,
+                                             String... expected) {
+        java.util.Set<String> columns = new java.util.HashSet<>();
+        try (Cursor cursor = database.query("PRAGMA table_info(" + table + ")")) {
+            while (cursor.moveToNext())
+                columns.add(cursor.getString(cursor.getColumnIndexOrThrow("name")));
+        }
+        for (String value : expected) assertTrue(table + " is missing " + value,
+                columns.contains(value));
     }
 }

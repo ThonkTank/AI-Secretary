@@ -91,10 +91,21 @@ public final class UpdateTask {
             TaskStepDefinition step = definitions.get(i);
             String identity = step.id != null && existingIds.contains(step.id)
                     ? step.id : ids.nextId();
+            TaskStepTemplate old = null;
+            for (TaskStepTemplate candidate : existing)
+                if (candidate.id.equals(identity)) { old = candidate; break; }
+            de.thonktank.autosecretary.domain.model.TrainingAssistantState trainingState =
+                    old != null && old.trainingAssistant.equals(step.trainingAssistant)
+                            && old.amount.equals(step.amount)
+                            ? old.trainingState
+                            : step.trainingAssistant.enabled
+                            ? de.thonktank.autosecretary.domain.model.TrainingAssistantState.calibrating()
+                            : de.thonktank.autosecretary.domain.model.TrainingAssistantState.disabled();
             retained.add(identity);
             updated.add(new TaskStepTemplate(identity, taskId, i, step.text,
                     step.weekdayMask, step.intervalDays, step.amount,
-                    step.restTimerPolicy, step.note, step.activationKind));
+                    step.restTimerPolicy, step.trainingAssistant, trainingState, step.note,
+                    step.activationKind));
         }
         for (TaskStepTemplate old : existing)
             if (!retained.contains(old.id)) repository.deleteTemplate(old.id);
