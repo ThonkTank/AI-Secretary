@@ -80,7 +80,9 @@ class TaskEditorComposeInstrumentationTest {
         targets.forEach { (label, target) ->
             compose.runOnUiThread { compose.activity.render(summary) }
             compose.waitForIdle()
-            compose.onNode(hasContentDescription(label, substring = true)).performClick()
+            compose.onNode(hasContentDescription(label, substring = true))
+                .performScrollTo()
+                .performClick()
             compose.waitUntil {
                 compose.activity.state.page == target && compose.activity.state.returnToSummary
             }
