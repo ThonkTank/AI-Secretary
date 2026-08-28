@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -60,6 +61,7 @@ internal fun EditorPageContent(
             state.page == EditorUiState.Page.TITLE -> EditorTitlePage(state, palette, today, dispatcher)
             state.page == EditorUiState.Page.SCHEDULE -> EditorSchedulePage(state, palette, layout, dispatcher)
             state.page == EditorUiState.Page.STEPS -> EditorStepsPage(state, palette, layout, formatter, dispatcher)
+            state.page == EditorUiState.Page.FLOW -> EditorFlowPage(state, palette, dispatcher)
             else -> EditorSummaryPage(state, palette, formatter, dispatcher)
         }
     }
@@ -370,7 +372,7 @@ private fun EditorSummaryPage(
             )
         }
     }
-    val rows = listOf(
+    val rows = mutableListOf(
         SummaryItem(R.string.field_rhythm_label, formatter.rhythm(state), EditorUiState.Page.SCHEDULE),
         SummaryItem(R.string.field_timeofday_label, formatter.time(state), EditorUiState.Page.SCHEDULE),
         SummaryItem(R.string.field_duration_label, formatter.duration(state), EditorUiState.Page.SCHEDULE),
@@ -380,7 +382,34 @@ private fun EditorSummaryPage(
             EditorUiState.Page.TITLE,
         ),
         SummaryItem(R.string.field_steps_label, formatter.steps(state), EditorUiState.Page.STEPS),
-        SummaryItem(R.string.field_note_label, state.note.ifEmpty { formatter.empty() }, EditorUiState.Page.TITLE),
+    )
+    if (state.stepStates.size >= 2) {
+        rows += SummaryItem(
+            R.string.flow_editor_summary_label,
+            if (state.flowDraft.configured()) {
+                stringResource(
+                    R.string.flow_editor_summary_value,
+                    pluralStringResource(
+                        R.plurals.flow_editor_links,
+                        state.flowDraft.transitions.size,
+                        state.flowDraft.transitions.size,
+                    ),
+                    pluralStringResource(
+                        R.plurals.flow_editor_capacity_rules,
+                        state.flowDraft.leases.size,
+                        state.flowDraft.leases.size,
+                    ),
+                )
+            } else {
+                stringResource(R.string.flow_editor_summary_empty)
+            },
+            EditorUiState.Page.FLOW,
+        )
+    }
+    rows += SummaryItem(
+        R.string.field_note_label,
+        state.note.ifEmpty { formatter.empty() },
+        EditorUiState.Page.TITLE,
     )
     rows.forEachIndexed { index, item ->
         SummaryRow(item, index, palette) { dispatcher.navigate(item.page, true) }
@@ -399,9 +428,9 @@ private fun SummaryRow(item: SummaryItem, index: Int, palette: DayPalette, onCli
     val even = index % 2 == 0
     LeafSurface(
         palette = palette,
-        level = if (index == 5) 3 else 2,
+        level = if (item.label == R.string.field_note_label) 3 else 2,
         modifier = Modifier.fillMaxWidth().padding(bottom = 9.dp),
-        rotation = floatArrayOf(1.1f, -1.5f, .8f, -.7f, 1.4f, -1f)[index],
+        rotation = floatArrayOf(1.1f, -1.5f, .8f, -.7f, 1.4f, -1f, .7f)[index % 7],
         topStart = if (even) 8 else 56,
         topEnd = if (even) 56 else 8,
         bottomEnd = if (even) 8 else 56,

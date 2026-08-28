@@ -48,8 +48,17 @@ public final class TaskEditorGoldenCatalogTest {
                     .collect(Collectors.toCollection(LinkedHashSet::new));
         }
         assertEquals(adaptiveScenarios, adaptiveBaselines);
+        Path flow = root.resolve("flow");
+        Set<String> flowBaselines;
+        try (java.util.stream.Stream<Path> paths = Files.list(flow)) {
+            flowBaselines = paths.filter(value -> value.getFileName().toString()
+                            .endsWith(".png"))
+                    .map(value -> value.getFileName().toString())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+        assertEquals(java.util.Collections.singleton("01-waesche-ablauf.png"), flowBaselines);
         Set<String> allowed = new LinkedHashSet<>();
-        allowed.add("wizard"); allowed.add("adaptive");
+        allowed.add("wizard"); allowed.add("adaptive"); allowed.add("flow");
         Set<String> actualChildren;
         try (java.util.stream.Stream<Path> children = Files.list(root)) {
             actualChildren = children.filter(Files::isDirectory)

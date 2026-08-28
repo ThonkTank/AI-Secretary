@@ -37,24 +37,29 @@ public final class UpdateTask {
 
     public void execute(TaskId id, TaskDefinition definition) {
         repository.inTransaction(() -> {
-            Task current = repository.findTask(id);
-            if (current == null) return null;
-            LocalDate nextDue = current.nextDueOn;
-            if (current.recurrence != definition.recurrence
-                    || current.weekdayMask != definition.weekdayMask
-                    || current.intervalDays != definition.intervalDays) {
-                LocalDate today = clock == null ? current.nextDueOn : clock.today();
-                if (today != null)
-                    nextDue = ScheduleCalculator.firstDue(definition.recurrence,
-                            definition.weekdayMask, today);
-            }
-            repository.updateTask(current.editDefinition(definition, current.catalogOrder, nextDue));
-            syncTemplates(id, definition.steps);
-            validateRetainedFlow(id);
-            new TaskScheduleService(schedules, ids).sync(
-                    repository.findTask(id), definition);
+            executeInsideTransaction(id, definition, true);
             return null;
         });
+    }
+
+    void executeInsideTransaction(TaskId id, TaskDefinition definition,
+                                  boolean validateFlow) {
+        Task current = repository.findTask(id);
+        if (current == null) return;
+        LocalDate nextDue = current.nextDueOn;
+        if (current.recurrence != definition.recurrence
+                || current.weekdayMask != definition.weekdayMask
+                || current.intervalDays != definition.intervalDays) {
+            LocalDate today = clock == null ? current.nextDueOn : clock.today();
+            if (today != null)
+                nextDue = ScheduleCalculator.firstDue(definition.recurrence,
+                        definition.weekdayMask, today);
+        }
+        repository.updateTask(current.editDefinition(definition, current.catalogOrder, nextDue));
+        syncTemplates(id, definition.steps);
+        if (validateFlow) validateRetainedFlow(id);
+        new TaskScheduleService(schedules, ids).sync(
+                repository.findTask(id), definition);
     }
 
     private void validateRetainedFlow(TaskId taskId) {

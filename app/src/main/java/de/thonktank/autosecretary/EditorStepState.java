@@ -102,14 +102,22 @@ public final class EditorStepState {
     public boolean isDraftIdentity() { return id == null || id.startsWith(DRAFT_PREFIX); }
 
     public TaskStepDefinition definition(int position, boolean once) {
-        if (!once && cadenceMode == StepCadenceMode.INTERVAL
+        return definition(position, once, activationKind);
+    }
+
+    public TaskStepDefinition definition(int position, boolean once,
+                                         StepActivationKind activation) {
+        StepActivationKind resolved = activation == null
+                ? StepActivationKind.SCHEDULED : activation;
+        if (!once && resolved != StepActivationKind.FOLLOW_UP
+                && cadenceMode == StepCadenceMode.INTERVAL
                 && (intervalDays == null || intervalDays < 2))
             throw new IllegalStateException("A valid step interval is required before saving");
-        boolean followUp = activationKind == StepActivationKind.FOLLOW_UP;
+        boolean followUp = resolved == StepActivationKind.FOLLOW_UP;
         return new TaskStepDefinition(isDraftIdentity() ? null : id, position, text,
                 once || followUp || cadenceMode != StepCadenceMode.WEEKDAYS ? 0 : weekdayMask,
                 once || followUp || cadenceMode != StepCadenceMode.INTERVAL ? 0 : intervalDays,
-                amount, restTimerPolicy, note, activationKind);
+                amount, restTimerPolicy, note, resolved);
     }
 
     public EditorStepState withText(String value) {

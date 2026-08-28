@@ -11,6 +11,8 @@ import java.util.Objects;
 import java.util.Set;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.FlowConfigurationDraft;
+import de.thonktank.autosecretary.domain.model.CapacityResource;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskDetails;
@@ -21,9 +23,9 @@ import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 
 /** Immutable editor state facade with separated draft, navigation and feedback components. */
 public final class EditorUiState {
-    private static final int BUNDLE_VERSION = 2;
+    private static final int BUNDLE_VERSION = 3;
     public enum Prompt { NONE, DISCARD, DELETE }
-    public enum Page { TITLE, SCHEDULE, STEPS, SUMMARY }
+    public enum Page { TITLE, SCHEDULE, STEPS, FLOW, SUMMARY }
 
     public final boolean open;
     public final boolean loading;
@@ -51,6 +53,7 @@ public final class EditorUiState {
     public final String note;
     public final MissedOccurrenceMode missedOccurrenceMode;
     public final List<EditorStepState> stepStates;
+    public final TaskFlowDraft flowDraft;
     public final int nextDraftIdentity;
     public final String expandedStepId;
     public final Page page;
@@ -74,6 +77,7 @@ public final class EditorUiState {
         boundKind = draft.boundKind; boundUntilOn = draft.boundUntilOn;
         boundWeeks = draft.boundWeeks; remainingCount = draft.remainingCount;
         deadlineOn = draft.deadlineOn; note = draft.note; stepStates = draft.steps;
+        flowDraft = draft.flow;
         missedOccurrenceMode = draft.missedOccurrenceMode;
         nextDraftIdentity = draft.nextDraftIdentity;
         expandedStepId = navigation.expandedStepId; page = navigation.page;
@@ -87,9 +91,13 @@ public final class EditorUiState {
     public static EditorUiState create() { return create(TaskSlot.MORNING); }
 
     public static EditorUiState create(TaskSlot slot) {
+        return create(slot, TaskFlowDraft.empty());
+    }
+
+    public static EditorUiState create(TaskSlot slot, TaskFlowDraft flow) {
         TaskEditorDraft draft = new TaskEditorDraft("", slot, null, Recurrence.DAILY, 2, 0,
                 TimeOfDay.fromSlot(slot).bit, TaskBoundKind.FOREVER, null, null, null, null,
-                "", Collections.emptyList(), 1);
+                "", MissedOccurrenceMode.COLLAPSE, Collections.emptyList(), 1, flow);
         return new EditorUiState(true, false, false, null, draft,
                 new TaskEditorNavigation(Page.TITLE, false, null),
                 TaskEditorFeedback.empty(), null);
@@ -107,13 +115,17 @@ public final class EditorUiState {
     }
 
     public static EditorUiState edit(TaskDetails details) {
+        return edit(details, TaskFlowDraft.empty());
+    }
+
+    public static EditorUiState edit(TaskDetails details, TaskFlowDraft flow) {
         List<EditorStepState> steps = new ArrayList<>();
         for (TaskStepTemplate value : details.stepTemplates) steps.add(EditorStepState.from(value));
         TaskEditorDraft draft = new TaskEditorDraft(details.title, details.slot,
                 details.estimatedMinutes, details.recurrence, details.intervalDays,
                 details.weekdayMask, details.timeOfDayMask, details.boundKind,
                 details.boundUntilOn, details.boundWeeks, details.remainingCount,
-                details.deadlineOn, details.note, details.missedOccurrenceMode, steps, 1);
+                details.deadlineOn, details.note, details.missedOccurrenceMode, steps, 1, flow);
         return new EditorUiState(true, false, false, details.id.value, draft,
                 new TaskEditorNavigation(Page.SUMMARY, false, null),
                 TaskEditorFeedback.empty(), null);
@@ -183,6 +195,17 @@ public final class EditorUiState {
                 draft.withMissedOccurrenceMode(value), navigation, feedback, baseline);
     }
 
+    public EditorUiState withFlowDraft(TaskFlowDraft value) {
+        return new EditorUiState(open, loading, saving, taskId, draft.withFlow(value),
+                navigation, feedback, baseline);
+    }
+
+    public EditorUiState withCapacityCatalog(List<CapacityResource> catalog) {
+        TaskFlowDraft merged = flowDraft.mergeCatalog(catalog);
+        return new EditorUiState(open, loading, saving, taskId, draft.withFlow(merged),
+                navigation, feedback, baseline.withCapacityCatalog(catalog));
+    }
+
     public EditorUiState withPage(Page value, boolean returnValue) {
         return new EditorUiState(open, loading, saving, taskId, draft,
                 navigation.withPage(value, returnValue), feedback, baseline);
@@ -194,6 +217,10 @@ public final class EditorUiState {
     }
 
     public TaskDefinition definition() { return draft.definition(); }
+
+    public FlowConfigurationDraft flowConfiguration() {
+        return flowDraft.configuration(stepStates);
+    }
 
     public Bundle toBundle() {
         Bundle bundle = new Bundle();
@@ -209,7 +236,7 @@ public final class EditorUiState {
 
     public static EditorUiState fromBundle(Bundle bundle) {
         if (bundle == null || !bundle.getBoolean("open", false)) return closed();
-        if (bundle.getInt("format_version") >= BUNDLE_VERSION && bundle.getBundle("draft") != null) {
+        if (bundle.getInt("format_version") >= 2 && bundle.getBundle("draft") != null) {
             TaskEditorDraft draft = TaskEditorDraft.fromBundle(bundle.getBundle("draft"));
             Page fallback = bundle.getString("task_id") == null ? Page.TITLE : Page.SUMMARY;
             return new EditorUiState(true, bundle.getBoolean("loading"),

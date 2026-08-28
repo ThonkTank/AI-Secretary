@@ -42,6 +42,8 @@ public final class TaskUseCases {
     public final SaveStepFlowDefinition saveStepFlowDefinition;
     public final LoadStepFlowSetup loadStepFlowSetup;
     public final SaveStepFlowSetup saveStepFlowSetup;
+    public final LoadCapacityResources loadCapacityResources;
+    public final SaveTaskConfiguration saveTaskConfiguration;
     public final ActivateReadyFlows activateReadyFlows;
     public final DeferFlowRun deferFlowRun;
     public final CancelFlowRun cancelFlowRun;
@@ -99,6 +101,9 @@ public final class TaskUseCases {
         saveStepFlowDefinition = new SaveStepFlowDefinition(repository, repository);
         loadStepFlowSetup = new LoadStepFlowSetup(repository, repository);
         saveStepFlowSetup = new SaveStepFlowSetup(repository, repository);
+        loadCapacityResources = new LoadCapacityResources(repository);
+        saveTaskConfiguration = new SaveTaskConfiguration(repository, repository,
+                create, update, ids);
         activateReadyFlows = new ActivateReadyFlows(flowRuntime);
         deferFlowRun = new DeferFlowRun(flowRuntime);
         cancelFlowRun = new CancelFlowRun(flowRuntime);

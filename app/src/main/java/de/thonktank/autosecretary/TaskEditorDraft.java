@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
@@ -32,6 +33,7 @@ public final class TaskEditorDraft {
     public final MissedOccurrenceMode missedOccurrenceMode;
     public final List<EditorStepState> steps;
     public final int nextDraftIdentity;
+    public final TaskFlowDraft flow;
 
     public TaskEditorDraft(String title, TaskSlot slot, Integer estimatedMinutes,
                            Recurrence recurrence, int intervalDays, int weekdayMask,
@@ -40,7 +42,8 @@ public final class TaskEditorDraft {
                            String note, List<EditorStepState> steps, int nextDraftIdentity) {
         this(title, slot, estimatedMinutes, recurrence, intervalDays, weekdayMask,
                 timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn,
-                note, MissedOccurrenceMode.COLLAPSE, steps, nextDraftIdentity);
+                note, MissedOccurrenceMode.COLLAPSE, steps, nextDraftIdentity,
+                TaskFlowDraft.empty());
     }
 
     public TaskEditorDraft(String title, TaskSlot slot, Integer estimatedMinutes,
@@ -49,6 +52,18 @@ public final class TaskEditorDraft {
                            Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn,
                            String note, MissedOccurrenceMode missedOccurrenceMode,
                            List<EditorStepState> steps, int nextDraftIdentity) {
+        this(title, slot, estimatedMinutes, recurrence, intervalDays, weekdayMask,
+                timeOfDayMask, boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn,
+                note, missedOccurrenceMode, steps, nextDraftIdentity, TaskFlowDraft.empty());
+    }
+
+    public TaskEditorDraft(String title, TaskSlot slot, Integer estimatedMinutes,
+                           Recurrence recurrence, int intervalDays, int weekdayMask,
+                           int timeOfDayMask, TaskBoundKind boundKind, LocalDate boundUntilOn,
+                           Integer boundWeeks, Integer remainingCount, LocalDate deadlineOn,
+                           String note, MissedOccurrenceMode missedOccurrenceMode,
+                           List<EditorStepState> steps, int nextDraftIdentity,
+                           TaskFlowDraft flow) {
         this.title = title == null ? "" : title;
         this.slot = slot == null ? TaskSlot.MORNING : slot;
         this.estimatedMinutes = estimatedMinutes;
@@ -66,6 +81,7 @@ public final class TaskEditorDraft {
                 ? MissedOccurrenceMode.COLLAPSE : missedOccurrenceMode;
         this.steps = Collections.unmodifiableList(new ArrayList<>(steps));
         this.nextDraftIdentity = nextDraftIdentity;
+        this.flow = (flow == null ? TaskFlowDraft.empty() : flow).reconcileSteps(this.steps);
     }
 
     public TaskEditorDraft withValues(String title, TaskSlot slot, Integer estimatedMinutes,
@@ -77,21 +93,32 @@ public final class TaskEditorDraft {
         return new TaskEditorDraft(title, slot, estimatedMinutes, recurrence, intervalDays,
                 weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
                 remainingCount, deadlineOn, note, missedOccurrenceMode, steps,
-                nextDraftIdentity);
+                nextDraftIdentity, flow.reconcileSteps(steps));
     }
 
     public TaskEditorDraft withMissedOccurrenceMode(MissedOccurrenceMode value) {
         return new TaskEditorDraft(title, slot, estimatedMinutes, recurrence, intervalDays,
                 weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
-                remainingCount, deadlineOn, note, value, steps, nextDraftIdentity);
+                remainingCount, deadlineOn, note, value, steps, nextDraftIdentity, flow);
+    }
+
+    public TaskEditorDraft withFlow(TaskFlowDraft value) {
+        return new TaskEditorDraft(title, slot, estimatedMinutes, recurrence, intervalDays,
+                weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
+                remainingCount, deadlineOn, note, missedOccurrenceMode, steps,
+                nextDraftIdentity, value);
     }
 
     public TaskDraftSnapshot snapshot() { return TaskDraftSnapshot.from(this); }
 
     public TaskDefinition definition() {
         List<TaskStepDefinition> definitions = new ArrayList<>();
-        for (int index = 0; index < steps.size(); index++)
-            definitions.add(steps.get(index).definition(index, recurrence == Recurrence.ONCE));
+        for (int index = 0; index < steps.size(); index++) {
+            EditorStepState step = steps.get(index);
+            StepActivationKind activation = flow.isFollowUp(step.id)
+                    ? StepActivationKind.FOLLOW_UP : StepActivationKind.SCHEDULED;
+            definitions.add(step.definition(index, recurrence == Recurrence.ONCE, activation));
+        }
         return new TaskDefinition(title, estimatedMinutes, slot, recurrence, intervalDays,
                 weekdayMask, timeOfDayMask, boundKind, boundUntilOn, boundWeeks,
                 remainingCount, deadlineOn, note, missedOccurrenceMode, definitions);
@@ -112,6 +139,7 @@ public final class TaskEditorDraft {
         for (EditorStepState value : steps) values.add(value.toBundle());
         bundle.putParcelableArrayList("steps", values);
         bundle.putInt("next_id", nextDraftIdentity);
+        bundle.putBundle("flow", flow.toBundle());
         return bundle;
     }
 
@@ -129,6 +157,6 @@ public final class TaskEditorDraft {
                 BundleValues.integer(bundle, "count"), BundleValues.date(bundle, "deadline"),
                 bundle.getString("note", ""), BundleValues.enumValue(MissedOccurrenceMode.class,
                 bundle.getString("missed_mode"), MissedOccurrenceMode.COLLAPSE), steps,
-                bundle.getInt("next_id", 1));
+                bundle.getInt("next_id", 1), TaskFlowDraft.fromBundle(bundle.getBundle("flow")));
     }
 }

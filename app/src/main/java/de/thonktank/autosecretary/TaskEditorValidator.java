@@ -41,7 +41,8 @@ public final class TaskEditorValidator {
                 issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_TITLE, step.id));
             if (!step.amount.isValid())
                 issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, step.id));
-            if (step.cadenceMode == StepCadenceMode.INTERVAL
+            if (!draft.flowDraft.isFollowUp(step.id)
+                    && step.cadenceMode == StepCadenceMode.INTERVAL
                     && (step.intervalDays == null || step.intervalDays < 2))
                 issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_INTERVAL, step.id));
         }

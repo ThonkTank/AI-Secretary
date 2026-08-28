@@ -2,6 +2,7 @@ package de.thonktank.autosecretary.editor;
 
 import de.thonktank.autosecretary.EditorStepState;
 import de.thonktank.autosecretary.EditorUiState;
+import de.thonktank.autosecretary.TaskFlowDraft;
 import de.thonktank.autosecretary.ValidationIssue;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
@@ -23,6 +24,10 @@ public final class TaskEditorStateReducer {
     public static EditorUiState updateMissedOccurrenceMode(EditorUiState state,
                                                             MissedOccurrenceMode value) {
         return state.withMissedOccurrenceMode(value);
+    }
+
+    public static EditorUiState updateFlow(EditorUiState state, TaskFlowDraft value) {
+        return state.withFlowDraft(value);
     }
 
     public static EditorUiState addStep(EditorUiState state) {
@@ -269,6 +274,7 @@ public final class TaskEditorStateReducer {
     private static EditorUiState.Page next(EditorUiState.Page page) {
         if (page == EditorUiState.Page.TITLE) return EditorUiState.Page.SCHEDULE;
         if (page == EditorUiState.Page.SCHEDULE) return EditorUiState.Page.STEPS;
+        if (page == EditorUiState.Page.FLOW) return EditorUiState.Page.SUMMARY;
         return EditorUiState.Page.SUMMARY;
     }
 }

@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.CreationExtras;
 import de.thonktank.autosecretary.domain.model.TaskDetails;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.StepFlowSetup;
 import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
@@ -38,6 +39,7 @@ public final class TaskEditorViewModel extends ViewModel {
     private final Clock clock;
     private final AppLogger logger;
     private final UiTextProvider texts;
+    private final FlowWakeScheduler wakeScheduler;
     private final SavedStateHandle savedState;
     private final ExecutorService worker;
     private final TaskEditorRequestSavedStateAdapter requestAdapter =
@@ -52,12 +54,19 @@ public final class TaskEditorViewModel extends ViewModel {
 
     TaskEditorViewModel(TaskUseCases tasks, Clock clock, AppLogger logger, UiTextProvider texts,
                         SavedStateHandle savedState, ExecutorService worker) {
+        this(tasks, clock, logger, texts, savedState, worker, null);
+    }
+
+    TaskEditorViewModel(TaskUseCases tasks, Clock clock, AppLogger logger, UiTextProvider texts,
+                        SavedStateHandle savedState, ExecutorService worker,
+                        FlowWakeScheduler wakeScheduler) {
         this.tasks = tasks;
         this.clock = clock;
         this.logger = logger;
         this.texts = texts;
         this.savedState = savedState;
         this.worker = worker;
+        this.wakeScheduler = wakeScheduler;
         EditorUiState editor = EditorUiState.fromBundle(savedState.get(SAVED_EDITOR));
         if (editor.saving) {
             editor = TaskEditorStateReducer.feedback(
@@ -71,7 +80,7 @@ public final class TaskEditorViewModel extends ViewModel {
             requestSequence = Math.max(requestSequence, sequenceOf(request.id));
         current = new TaskEditorScreenState(editor, requests);
         state = StateFlowKt.MutableStateFlow(current);
-        if (editor.open && editor.loading && editor.taskId != null)
+        if (editor.open && editor.loading)
             open(editor.taskId, null, false);
     }
 
@@ -100,15 +109,32 @@ public final class TaskEditorViewModel extends ViewModel {
     }
 
     private void open(String taskId, String stepId, boolean addStep) {
+        UiCommand key;
+        long generation;
         if (taskId == null) {
-            synchronized (lock) { openGeneration++; }
+            synchronized (lock) { generation = ++openGeneration; }
+            key = new UiCommand(UiCommand.Kind.LOAD_EDITOR, "new:" + generation);
+            begin(key);
+        } else {
+            key = new UiCommand(UiCommand.Kind.LOAD_EDITOR, taskId);
+            if (!begin(key)) return;
+            synchronized (lock) { generation = ++openGeneration; }
+        }
+        if (taskId == null) {
             setContent(EditorUiState.create(defaultSlot(clock.time())));
+            worker.execute(() -> {
+                try {
+                    List<de.thonktank.autosecretary.domain.model.CapacityResource> catalog =
+                            tasks.loadCapacityResources.execute();
+                    finish(key);
+                    publishCatalogIfCurrent(generation, catalog);
+                } catch (RuntimeException error) {
+                    finish(key);
+                    logger.error("TaskEditorViewModel", "Capacity catalog load failed", error);
+                }
+            });
             return;
         }
-        UiCommand key = new UiCommand(UiCommand.Kind.LOAD_EDITOR, taskId);
-        if (!begin(key)) return;
-        long generation;
-        synchronized (lock) { generation = ++openGeneration; }
         setContent(EditorUiState.loading(taskId));
         worker.execute(() -> {
             try {
@@ -119,7 +145,8 @@ public final class TaskEditorViewModel extends ViewModel {
                             new IllegalArgumentException("Missing task " + taskId));
                     return;
                 }
-                EditorUiState loaded = EditorUiState.edit(details);
+                StepFlowSetup setup = tasks.loadStepFlowSetup.execute(TaskId.of(taskId));
+                EditorUiState loaded = EditorUiState.edit(details, TaskFlowDraft.from(setup));
                 if (addStep) loaded = TaskEditorStateReducer.addStep(loaded);
                 else if (stepId != null) loaded = TaskEditorStateReducer.expandStep(loaded, stepId);
                 finish(key);
@@ -129,6 +156,21 @@ public final class TaskEditorViewModel extends ViewModel {
                 failLoad(generation, texts.text(R.string.error_editor_load), error);
             }
         });
+    }
+
+    private void publishCatalogIfCurrent(
+            long generation,
+            List<de.thonktank.autosecretary.domain.model.CapacityResource> catalog) {
+        if (catalog == null || catalog.isEmpty()) return;
+        synchronized (lock) {
+            if (generation != openGeneration || !current.content.open
+                    || current.content.taskId != null) return;
+            EditorUiState merged = current.content.withCapacityCatalog(catalog);
+            if (merged.flowDraft == current.content.flowDraft) return;
+            current = current.withContent(merged);
+            persistContent();
+            state.setValue(current);
+        }
     }
 
     private void dismiss() {
@@ -154,16 +196,28 @@ public final class TaskEditorViewModel extends ViewModel {
         setContent(TaskEditorStateReducer.saving(draft, true));
         worker.execute(() -> {
             try {
-                if (draft.taskId == null) tasks.create.execute(draft.definition());
-                else tasks.update.execute(TaskId.of(draft.taskId), draft.definition());
+                tasks.saveTaskConfiguration.execute(
+                        draft.taskId == null ? null : TaskId.of(draft.taskId),
+                        draft.definition(), draft.flowConfiguration());
+                try {
+                    tasks.materializeDue.execute();
+                    tasks.activateReadyFlows.execute();
+                    if (wakeScheduler != null) wakeScheduler.reschedule();
+                } catch (RuntimeException runtimeError) {
+                    logger.error("TaskEditorViewModel",
+                            "Task saved but flow activation refresh failed", runtimeError);
+                }
                 finish(key);
                 publishIfCurrent(generation, EditorUiState.closed());
             } catch (RuntimeException error) {
                 logger.error("TaskEditorViewModel", "Editor save failed", error);
                 finish(key);
+                String message = error.getMessage();
+                if (message == null || message.trim().isEmpty())
+                    message = texts.text(R.string.error_change_save);
                 publishIfCurrent(generation, TaskEditorStateReducer.feedback(
                         TaskEditorStateReducer.saving(draft, false), Collections.emptySet(),
-                        EditorUiState.Prompt.NONE, texts.text(R.string.error_change_save)));
+                        EditorUiState.Prompt.NONE, message));
             }
         });
     }
@@ -296,7 +350,7 @@ public final class TaskEditorViewModel extends ViewModel {
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
             return (T) new TaskEditorViewModel(container.tasks, container.clock, container.logger,
                     container.texts, SavedStateHandleSupport.createSavedStateHandle(extras),
-                    workers.get());
+                    workers.get(), container.flowWakeScheduler);
         }
     }
 }

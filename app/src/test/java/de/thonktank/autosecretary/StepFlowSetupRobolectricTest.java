@@ -10,6 +10,7 @@ import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
+import de.thonktank.autosecretary.domain.model.FlowConfigurationDraft;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
@@ -65,6 +66,75 @@ public final class StepFlowSetupRobolectricTest {
     }
 
     @After public void tearDown() { database.close(); }
+
+    @Test public void combinedEditorSaveCreatesConvergingLaundryFlowAndSharedResources() {
+        int taskCount = repository.allTasks().size();
+        TaskDefinition definition = TaskDefinition.basic("Wäsche-Test", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, Arrays.asList(
+                        "Buntwäsche starten", "Weißwäsche starten", "Wäsche aufhängen",
+                        "Wäsche abnehmen"));
+        List<String> keys = Arrays.asList("color", "white", "hang", "take-down");
+        List<FlowConfigurationDraft.Link> links = Arrays.asList(
+                new FlowConfigurationDraft.Link("color", "hang",
+                        FlowDelayPolicy.rememberLast(7_200_000L)),
+                new FlowConfigurationDraft.Link("white", "hang",
+                        FlowDelayPolicy.rememberLast(7_200_000L)),
+                new FlowConfigurationDraft.Link("hang", "take-down",
+                        FlowDelayPolicy.fixed(86_400_000L)));
+        List<FlowConfigurationDraft.Resource> resources = Arrays.asList(
+                new FlowConfigurationDraft.Resource("washer-key", null,
+                        "Waschmaschine", 1, true),
+                new FlowConfigurationDraft.Resource("rack-key", null,
+                        "Wäscheständer", 2, true));
+        List<FlowConfigurationDraft.Lease> leases = Arrays.asList(
+                new FlowConfigurationDraft.Lease("washer-color", null, "washer-key",
+                        "color", "hang", 1),
+                new FlowConfigurationDraft.Lease("washer-white", null, "washer-key",
+                        "white", "hang", 1),
+                new FlowConfigurationDraft.Lease("rack-color", null, "rack-key",
+                        "color", "take-down", 1),
+                new FlowConfigurationDraft.Lease("rack-white", null, "rack-key",
+                        "white", "take-down", 1));
+
+        de.thonktank.autosecretary.domain.model.TaskId saved =
+                tasks.saveTaskConfiguration.execute(null, definition,
+                        new FlowConfigurationDraft(keys, links, resources, leases));
+
+        assertEquals(taskCount + 1, repository.allTasks().size());
+        assertEquals(3, repository.stepTransitions(saved).size());
+        assertEquals(4, repository.stepResourceLeases(saved).size());
+        List<TaskStepTemplate> savedSteps = repository.templates(saved);
+        assertEquals(StepActivationKind.SCHEDULED, savedSteps.get(0).activationKind);
+        assertEquals(StepActivationKind.SCHEDULED, savedSteps.get(1).activationKind);
+        assertEquals(StepActivationKind.FOLLOW_UP, savedSteps.get(2).activationKind);
+        assertEquals(StepActivationKind.FOLLOW_UP, savedSteps.get(3).activationKind);
+        assertEquals(1, repository.capacityResources().stream()
+                .filter(value -> value.name.equals("Waschmaschine")).findFirst().get().capacity);
+        assertEquals(2, repository.capacityResources().stream()
+                .filter(value -> value.name.equals("Wäscheständer")).findFirst().get().capacity);
+    }
+
+    @Test public void invalidCombinedEditorSaveRollsBackTaskAndNewResource() {
+        int taskCount = repository.allTasks().size();
+        TaskDefinition definition = TaskDefinition.basic("Ungültiger Ablauf",
+                TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
+                Arrays.asList("Start", "Ende"));
+        FlowConfigurationDraft draft = new FlowConfigurationDraft(
+                Arrays.asList("start", "end"),
+                java.util.Collections.singletonList(new FlowConfigurationDraft.Link(
+                        "start", "end", FlowDelayPolicy.fixed(0L))),
+                java.util.Collections.singletonList(new FlowConfigurationDraft.Resource(
+                        "only-one", null, "Nur einer", 1, true)),
+                java.util.Collections.singletonList(new FlowConfigurationDraft.Lease(
+                        "too-many", null, "only-one", "start", "end", 2)));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> tasks.saveTaskConfiguration.execute(null, definition, draft));
+
+        assertEquals(taskCount, repository.allTasks().size());
+        assertEquals(0, repository.capacityResources().stream()
+                .filter(value -> value.name.equals("Nur einer")).count());
+    }
 
     @Test public void setupDerivesRolesAtomicallyAndSurvivesNormalTaskEdits() {
         de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);

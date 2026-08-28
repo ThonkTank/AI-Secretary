@@ -13,6 +13,7 @@ import java.time.LocalDate;
 
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 
@@ -42,6 +43,28 @@ public final class TaskEditorStateReducerTest {
     @Test public void invalidMoveIsANoOp() {
         EditorUiState state = TaskEditorStateReducer.addStep(EditorUiState.create());
         assertSame(state, TaskEditorStateReducer.moveStep(state, 0, 4));
+    }
+
+    @Test public void deletingAStepAlsoRemovesDanglingFlowAndCapacityRules() {
+        EditorUiState state = EditorUiState.create();
+        state = TaskEditorStateReducer.addStep(state);
+        state = TaskEditorStateReducer.addStep(state);
+        state = TaskEditorStateReducer.addStep(state);
+        String first = state.stepStates.get(0).id;
+        String middle = state.stepStates.get(1).id;
+        String last = state.stepStates.get(2).id;
+        TaskFlowDraft flow = TaskFlowDraft.empty()
+                .withTransition(first, middle, FlowDelayPolicy.fixed(0L))
+                .withTransition(middle, last, FlowDelayPolicy.fixed(60_000L))
+                .addResource("Platz", 1)
+                .addLease("draft-resource:1", first, last, 1);
+        state = TaskEditorStateReducer.updateFlow(state, flow);
+
+        EditorUiState removed = TaskEditorStateReducer.removeStep(state, 1);
+
+        assertTrue(removed.flowDraft.transitions.isEmpty());
+        assertTrue(removed.flowDraft.leases.isEmpty());
+        assertEquals(1, removed.flowDraft.resources.size());
     }
 
     @Test public void navigationDoesNotMakeTheDraftDirty() {
