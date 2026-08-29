@@ -34,6 +34,8 @@ Migrationen und aktualisierte Tests.
 - [ADR-024: Terminbewusste Kombos und echte Verpflichtungen](adr-024-terminbewusste-kombos.md)
 - [ADR-025: Mengenbasierte Schritt-Rewards und Tagesabschluss](adr-025-mengenbasierte-schritt-rewards.md)
 - [ADR-026: Getrennte State-Owner für Today und App-Shell](adr-026-today-und-shell-state-owner.md)
+- [ADR-027: Deterministischer adaptiver Trainingsassistent](adr-027-adaptiver-trainingsassistent.md)
+- [ADR-028: Eindeutige Schritt-, Satz- und Trainingsentscheidungsgrenzen](adr-028-schritt-und-trainingsgrenzen.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -56,6 +58,12 @@ führt die Präsentation schrittweise zu Kotlin, Compose und eindeutigen Screen-
 Vorprüfungen, Phasenergebnisse und Selbstkritik werden getrennt im
 [Fortschrittsprotokoll der Frontend-Modernisierung](frontend-modernization-progress.md)
 festgehalten.
+
+Die verbindliche
+[Roadmap zur Schritt- und Trainingsarchitektur](training-assistant-cleanup-roadmap.md) bereinigt
+den adaptiven Trainingsassistenten in getrennten, kompatibilitätserhaltenden Phasen. Ihr
+[Ausführungsprotokoll](training-assistant-cleanup-progress.md) hält Phasenpläne, Nachweise und
+Korrekturrunden separat fest.
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.

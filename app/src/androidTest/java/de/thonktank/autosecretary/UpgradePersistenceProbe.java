@@ -22,8 +22,6 @@ import java.util.Iterator;
 /** Product-upgrade assertions shared by the ordinary JUnit test and the release-safe runner. */
 final class UpgradePersistenceProbe {
     private static final String DATABASE = "auto_secretary.db";
-    private static final int SOURCE_DATABASE_VERSION = 8;
-    private static final int TARGET_DATABASE_VERSION = 21;
     private static final long DATABASE_READY_TIMEOUT_MILLIS = 15_000L;
     private static final String TASK_ID = "upgrade-e2e-task";
     private static final String TEMPLATE_ID = "upgrade-e2e-template";
@@ -34,6 +32,7 @@ final class UpgradePersistenceProbe {
     private static final String STEP_TEXT = "Persistierten Schritt lesen";
     private static final String PROBE_PREFERENCES = "upgrade_e2e_probe";
     private static final String PREVIOUS_VERSION = "previous_version";
+    private static final String PREVIOUS_DATABASE_VERSION = "previous_database_version";
     private static final String EXPECTED_LAST_CHECK = "expected_last_check";
     private static final long DEDICATED_UPDATE_PREFERENCES_VERSION = 1_002_301L;
     private static final long SEEDED_POSTPONED_CODE = 987_654L;
@@ -45,6 +44,8 @@ final class UpgradePersistenceProbe {
                      Instrumentation instrumentation) throws Exception {
         long previousVersion = installedVersion(targetContext);
         long expectedLastCheck = System.currentTimeMillis();
+        JSONObject fixture = fixture(testContext);
+        int sourceDatabaseVersion = fixture.getJSONObject("source").getInt("databaseVersion");
         if (previousVersion >= DEDICATED_UPDATE_PREFERENCES_VERSION) {
             check(targetContext.getSharedPreferences("forest_updates", Context.MODE_PRIVATE).edit()
                     .putLong("last_update_check", expectedLastCheck)
@@ -55,8 +56,8 @@ final class UpgradePersistenceProbe {
 
         Activity activity = startMainActivity(targetContext, instrumentation);
         try (SQLiteDatabase database = awaitDatabaseVersion(targetContext,
-                SOURCE_DATABASE_VERSION, SQLiteDatabase.OPEN_READWRITE, "previous app")) {
-            equal(SOURCE_DATABASE_VERSION, database.getVersion(),
+                sourceDatabaseVersion, SQLiteDatabase.OPEN_READWRITE, "previous app")) {
+            equal(sourceDatabaseVersion, database.getVersion(),
                     "The rolling fixture must run against the supported 0.2.80 schema");
             database.beginTransaction();
             try {
@@ -85,22 +86,30 @@ final class UpgradePersistenceProbe {
         }
         check(targetContext.getSharedPreferences(PROBE_PREFERENCES, Context.MODE_PRIVATE).edit()
                 .putLong(PREVIOUS_VERSION, previousVersion)
+                .putInt(PREVIOUS_DATABASE_VERSION, sourceDatabaseVersion)
                 .putLong(EXPECTED_LAST_CHECK, expectedLastCheck)
                 .commit(), "Could not seed the previous-version marker");
     }
 
-    static void verify(Context context, Instrumentation instrumentation) throws Exception {
+    static void verify(Context context, Context testContext,
+                       Instrumentation instrumentation) throws Exception {
         SharedPreferences probe = context.getSharedPreferences(
                 PROBE_PREFERENCES, Context.MODE_PRIVATE);
         long previousVersion = probe.getLong(PREVIOUS_VERSION, -1L);
         check(previousVersion > 0L, "The previous-version marker is missing");
         long expectedLastCheck = probe.getLong(EXPECTED_LAST_CHECK, -1L);
         check(expectedLastCheck > 0L, "The update-check marker is missing");
+        int previousDatabaseVersion = probe.getInt(PREVIOUS_DATABASE_VERSION, -1);
+        check(previousDatabaseVersion > 0, "The previous database version is missing");
+        int targetDatabaseVersion = fixture(testContext).getInt("targetDatabaseVersion");
+        check(targetDatabaseVersion > previousDatabaseVersion,
+                "The fixture target must be newer than its source schema");
         check(installedVersion(context) > previousVersion,
                 "adb install -r did not install a newer version");
         Activity activity = startMainActivity(context, instrumentation);
         try {
-            try (SQLiteDatabase database = awaitMigratedDatabase(context)) {
+            try (SQLiteDatabase database = awaitDatabaseVersion(context,
+                    targetDatabaseVersion, SQLiteDatabase.OPEN_READONLY, "product")) {
                 verifyRows(database);
             }
             verifyPreferencesAfterActivityStart(context, expectedLastCheck);
@@ -124,11 +133,6 @@ final class UpgradePersistenceProbe {
     private static void finish(Activity activity, Instrumentation instrumentation) {
         instrumentation.runOnMainSync(activity::finish);
         instrumentation.waitForIdleSync();
-    }
-
-    private static SQLiteDatabase awaitMigratedDatabase(Context context) throws Exception {
-        return awaitDatabaseVersion(context, TARGET_DATABASE_VERSION,
-                SQLiteDatabase.OPEN_READONLY, "product");
     }
 
     private static SQLiteDatabase awaitDatabaseVersion(Context context, int expectedVersion,

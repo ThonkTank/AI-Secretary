@@ -23,6 +23,7 @@ public final class UpgradePersistenceTest {
         requirePhase("verify");
         UpgradePersistenceProbe.verify(
                 InstrumentationRegistry.getInstrumentation().getTargetContext(),
+                InstrumentationRegistry.getInstrumentation().getContext(),
                 InstrumentationRegistry.getInstrumentation());
     }
 

@@ -295,7 +295,7 @@ public final class DatabaseMigrationRobolectricTest {
         migrated.close();
     }
 
-    @Test public void migrationRegistryProvidesEveryContiguousPathThroughSixteen() {
+    @Test public void migrationRegistryProvidesEveryContiguousPathToTheCentralVersion() {
         Migration[] all = DatabaseMigrations.all();
         assertEquals(DatabaseContract.VERSION - 1, all.length);
         for (int source = 1; source <= DatabaseContract.VERSION; source++) {
@@ -308,7 +308,7 @@ public final class DatabaseMigrationRobolectricTest {
         }
     }
 
-    @Test public void everySupportedSchemaOpensThroughSixteen() {
+    @Test public void everySupportedSchemaOpensAtTheCentralVersion() {
         for (int source = DatabaseContract.PRODUCTION_UPGRADE_SOURCE_VERSION;
              source < DatabaseContract.VERSION; source++) {
             String name = DATABASE + "-supported-" + source;
@@ -360,7 +360,7 @@ public final class DatabaseMigrationRobolectricTest {
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
 
-        assertEquals(21, database.getVersion());
+        assertEquals(DatabaseContract.VERSION, database.getVersion());
         try (Cursor cursor = database.query(
                 "SELECT name,capacity FROM capacity_resources WHERE id='rack'")) {
             assertTrue(cursor.moveToFirst());

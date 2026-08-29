@@ -28,7 +28,7 @@ public final class UpgradeProbeInstrumentation extends Instrumentation {
             if ("seed".equals(phase)) {
                 UpgradePersistenceProbe.seed(getTargetContext(), getContext(), this);
             } else if ("verify".equals(phase)) {
-                UpgradePersistenceProbe.verify(getTargetContext(), this);
+                UpgradePersistenceProbe.verify(getTargetContext(), getContext(), this);
             } else {
                 throw new AssertionError("Unknown upgrade phase: " + phase);
             }
