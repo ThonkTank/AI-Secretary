@@ -3,6 +3,10 @@
 - Status: angenommen
 - Datum: 2026-08-26
 
+Hinweis: Die feste Lastschrittweite, die konkrete damalige Schemanummer und die gewachsenen
+Schritt-/Satzgrenzen werden durch [ADR-028](adr-028-schritt-und-trainingsgrenzen.md) fortgeschrieben.
+Die Forschungs-, Kalibrierungs- und Sicherheitsentscheidungen dieser ADR bleiben maßgeblich.
+
 ## Kontext
 
 Satzschritte speichern bisher Wiederholungen, aber weder den tatsächlich verwendeten Widerstand

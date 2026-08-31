@@ -5,7 +5,12 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 ROOT_BUILD = (ROOT / "build.gradle.kts").read_text(encoding="utf-8")
+SETTINGS_BUILD = (ROOT / "settings.gradle.kts").read_text(encoding="utf-8")
 APP_BUILD = (ROOT / "app" / "build.gradle.kts").read_text(encoding="utf-8")
+JAVA_VERSION = (ROOT / ".java-version").read_text(encoding="utf-8").strip()
+DAEMON_JVM = (ROOT / "gradle" / "gradle-daemon-jvm.properties").read_text(
+    encoding="utf-8"
+)
 GRADLE_PROPERTIES = (ROOT / "gradle.properties").read_text(encoding="utf-8")
 GRADLE_WRAPPER = (
     ROOT / "gradle" / "wrapper" / "gradle-wrapper.properties"
@@ -188,6 +193,15 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("targetSdk = 35", APP_BUILD)
         self.assertIn("sourceCompatibility = JavaVersion.VERSION_17", APP_BUILD)
         self.assertIn("targetCompatibility = JavaVersion.VERSION_17", APP_BUILD)
+        self.assertEqual("21", JAVA_VERSION)
+        self.assertIn("toolchainVersion=21", DAEMON_JVM)
+        self.assertNotIn("/tmp/", DAEMON_JVM)
+        self.assertNotIn("/home/", DAEMON_JVM)
+        self.assertIn(
+            'id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"',
+            SETTINGS_BUILD,
+        )
+        self.assertIn('tasks.named<UpdateDaemonJvm>("updateDaemonJvm")', ROOT_BUILD)
         self.assertNotIn("org.jetbrains.kotlin.android", ROOT_BUILD + APP_BUILD)
         self.assertNotIn("android.builtInKotlin=false", GRADLE_PROPERTIES)
         self.assertIn("kotlinSourcesCompileThroughAgp", BUILT_IN_KOTLIN_SMOKE)
@@ -273,8 +287,11 @@ class WorkflowContractTest(unittest.TestCase):
         ):
             self.assertNotIn(product_api, UPGRADE_PROBE)
         self.assertIn("SQLiteDatabase.OPEN_READONLY", UPGRADE_PROBE)
-        self.assertIn("TARGET_DATABASE_VERSION = 21", UPGRADE_PROBE)
-        self.assertIn("SOURCE_DATABASE_VERSION = 8", UPGRADE_PROBE)
+        self.assertNotIn("TARGET_DATABASE_VERSION", UPGRADE_PROBE)
+        self.assertNotIn("SOURCE_DATABASE_VERSION", UPGRADE_PROBE)
+        self.assertIn('getInt("targetDatabaseVersion")', UPGRADE_PROBE)
+        self.assertIn('getInt("databaseVersion")', UPGRADE_PROBE)
+        self.assertIn("PREVIOUS_DATABASE_VERSION", UPGRADE_PROBE)
         self.assertIn("awaitDatabaseVersion(targetContext", UPGRADE_PROBE)
         self.assertIn("System.currentTimeMillis()", UPGRADE_PROBE)
         self.assertIn(".putLong(EXPECTED_LAST_CHECK, expectedLastCheck)", UPGRADE_PROBE)
