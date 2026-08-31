@@ -1,5 +1,6 @@
 package de.thonktank.autosecretary.domain.model;
 
+/** Persisted template. Assistant learning state exists only here. */
 public final class TaskStepTemplate {
     public final String id;
     public final TaskId taskId;
@@ -7,97 +8,61 @@ public final class TaskStepTemplate {
     public final String text;
     public final int weekdayMask;
     public final int intervalDays;
-    public final StepAmount amount;
-    public final RestTimerPolicy restTimerPolicy;
-    public final TrainingAssistantConfig trainingAssistant;
-    public final TrainingAssistantState trainingState;
+    public final StepPrescription prescription;
+    public final TrainingAssistantProfile assistantProfile;
     public final String note;
     public final StepActivationKind activationKind;
 
-    public TaskStepTemplate(String id, TaskId taskId, int position, String text) {
-        this(id, taskId, position, text, 0, StepAmount.none(), "");
-    }
+    /** Read-only projections of the canonical grouped value. */
+    public final StepAmount amount;
+    public final RestTimerPolicy restTimerPolicy;
 
     public TaskStepTemplate(String id, TaskId taskId, int position, String text,
-                            int weekdayMask, StepAmount amount, String note) {
-        this(id, taskId, position, text, weekdayMask, 0, amount, note);
-    }
-
-    public TaskStepTemplate(String id, TaskId taskId, int position, String text,
-                            int weekdayMask, int intervalDays, StepAmount amount, String note) {
-        this(id, taskId, position, text, weekdayMask, intervalDays, amount,
-                RestTimerPolicy.forAmount(amount), TrainingAssistantConfig.disabled(),
-                TrainingAssistantState.disabled(), note, StepActivationKind.SCHEDULED);
-    }
-
-    public TaskStepTemplate(String id, TaskId taskId, int position, String text,
-                            int weekdayMask, int intervalDays, StepAmount amount,
-                            RestTimerPolicy restTimerPolicy, String note) {
-        this(id, taskId, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
-                TrainingAssistantConfig.disabled(), TrainingAssistantState.disabled(), note,
-                StepActivationKind.SCHEDULED);
-    }
-
-    public TaskStepTemplate(String id, TaskId taskId, int position, String text,
-                            int weekdayMask, int intervalDays, StepAmount amount, String note,
+                            int weekdayMask, int intervalDays, StepPrescription prescription,
+                            TrainingAssistantProfile assistantProfile, String note,
                             StepActivationKind activationKind) {
-        this(id, taskId, position, text, weekdayMask, intervalDays, amount,
-                RestTimerPolicy.forAmount(amount), TrainingAssistantConfig.disabled(),
-                TrainingAssistantState.disabled(), note, activationKind);
-    }
-
-    public TaskStepTemplate(String id, TaskId taskId, int position, String text,
-                            int weekdayMask, int intervalDays, StepAmount amount,
-                            RestTimerPolicy restTimerPolicy, String note,
-                            StepActivationKind activationKind) {
-        this(id, taskId, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
-                TrainingAssistantConfig.disabled(), TrainingAssistantState.disabled(), note,
-                activationKind);
-    }
-
-    public TaskStepTemplate(String id, TaskId taskId, int position, String text,
-                            int weekdayMask, int intervalDays, StepAmount amount,
-                            RestTimerPolicy restTimerPolicy,
-                            TrainingAssistantConfig trainingAssistant,
-                            TrainingAssistantState trainingState, String note) {
-        this(id, taskId, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
-                trainingAssistant, trainingState, note, StepActivationKind.SCHEDULED);
-    }
-
-    public TaskStepTemplate(String id, TaskId taskId, int position, String text,
-                            int weekdayMask, int intervalDays, StepAmount amount,
-                            RestTimerPolicy restTimerPolicy,
-                            TrainingAssistantConfig trainingAssistant,
-                            TrainingAssistantState trainingState, String note,
-                            StepActivationKind activationKind) {
-        if (id == null || id.isEmpty() || taskId == null || text == null || text.trim().isEmpty())
-            throw new IllegalArgumentException("Step template identity, task and text are required");
+        if (id == null || id.isEmpty() || taskId == null)
+            throw new IllegalArgumentException("Step template identity and task are required");
         TaskStepDefinition checked = new TaskStepDefinition(id, position, text, weekdayMask,
-                intervalDays, amount, restTimerPolicy, trainingAssistant, note, activationKind);
+                intervalDays, prescription,
+                assistantProfile == null ? null : assistantProfile.policy, note, activationKind);
         this.id = id;
         this.taskId = taskId;
         this.position = checked.position;
         this.text = checked.text;
         this.weekdayMask = checked.weekdayMask;
         this.intervalDays = checked.intervalDays;
-        this.amount = checked.amount;
-        this.restTimerPolicy = checked.restTimerPolicy;
-        this.trainingAssistant = checked.trainingAssistant;
-        this.trainingState = trainingState == null
-                ? checked.trainingAssistant.enabled ? TrainingAssistantState.calibrating()
-                : TrainingAssistantState.disabled() : trainingState;
+        this.prescription = checked.prescription;
+        this.assistantProfile = assistantProfile;
+        this.amount = prescription.amount;
+        this.restTimerPolicy = prescription.rest;
         this.note = checked.note;
         this.activationKind = checked.activationKind;
     }
 
     public TaskStepDefinition definition() {
-        return new TaskStepDefinition(id, position, text, weekdayMask, intervalDays, amount,
-                restTimerPolicy, trainingAssistant, note, activationKind);
+        return new TaskStepDefinition(id, position, text, weekdayMask, intervalDays,
+                prescription, assistantProfile == null ? null : assistantProfile.policy,
+                note, activationKind);
     }
 
-    public TaskStepTemplate withTraining(StepAmount value, TrainingAssistantConfig config,
-                                         TrainingAssistantState state) {
+    public TaskStepTemplate withTraining(StepPrescription value,
+                                         TrainingAssistantProfile profile) {
         return new TaskStepTemplate(id, taskId, position, text, weekdayMask, intervalDays,
-                value, restTimerPolicy, config, state, note, activationKind);
+                value, profile, note, activationKind);
+    }
+
+    public boolean assistantEnabled() { return assistantProfile != null; }
+
+    /** Transitional engine input removed with the load-request phase. */
+    public TrainingAssistantConfig legacyTrainingConfig() {
+        if (assistantProfile == null) return TrainingAssistantConfig.disabled();
+        TrainingAssistantPolicy policy = assistantProfile.policy;
+        TrainingPrescription training = prescription.training;
+        return new TrainingAssistantConfig(true, policy.minSets, policy.maxSets,
+                policy.minRepetitions, policy.maxRepetitions, training.targetRir,
+                training.load.unit == ResistanceLoad.Unit.LB ? 5_000 : 2_500,
+                policy.automaticWeeklySetCeiling, training.load, policy.primaryMuscle,
+                policy.secondaryMuscles);
     }
 }

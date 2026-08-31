@@ -21,6 +21,8 @@ import java.time.LocalTime
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy
 import de.thonktank.autosecretary.domain.model.Recurrence
 import de.thonktank.autosecretary.domain.model.StepAmount
+import de.thonktank.autosecretary.domain.model.StepActivationKind
+import de.thonktank.autosecretary.domain.model.StepPrescription
 import de.thonktank.autosecretary.domain.model.TaskBoundKind
 import de.thonktank.autosecretary.domain.model.TaskSlot
 import de.thonktank.autosecretary.domain.model.TimeOfDay
@@ -154,9 +156,9 @@ class TaskEditorComposeGoldenRobolectricTest {
 
     private fun flowState(): EditorUiState {
         val steps = listOf(
-            EditorStepState("wash", "Waschmaschine anmachen", 0, StepAmount.none(), ""),
-            EditorStepState("hang", "Wäsche aufhängen", 0, StepAmount.none(), ""),
-            EditorStepState("take-down", "Wäsche abnehmen", 0, StepAmount.none(), ""),
+            editorStep("wash", "Waschmaschine anmachen"),
+            editorStep("hang", "Wäsche aufhängen"),
+            editorStep("take-down", "Wäsche abnehmen"),
         )
         val flow = TaskFlowDraft.empty()
             .withTransition("wash", "hang", FlowDelayPolicy.rememberLast(7_200_000L))
@@ -182,6 +184,11 @@ class TaskEditorComposeGoldenRobolectricTest {
             1,
         ).withFlowDraft(flow).withPage(EditorUiState.Page.FLOW, false)
     }
+
+    private fun editorStep(id: String, text: String) = EditorStepState(
+        id, text, StepCadenceMode.ALWAYS, 0, null,
+        StepPrescription.forAmount(StepAmount.none()), null, "", StepActivationKind.SCHEDULED,
+    )
 
     private fun render(scenario: TaskEditorAdaptiveGoldenScenario): Bitmap {
         val controller = Robolectric.buildActivity(ComponentActivity::class.java)

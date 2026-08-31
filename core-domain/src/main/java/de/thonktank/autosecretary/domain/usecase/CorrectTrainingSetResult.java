@@ -4,6 +4,7 @@ import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
 import de.thonktank.autosecretary.domain.model.TrainingSetResult;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
@@ -32,9 +33,10 @@ public final class CorrectTrainingSetResult {
             OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
             if (step != null && step.sourceTemplateId != null) {
                 TaskStepTemplate template = training.findTemplate(step.sourceTemplateId);
-                if (template != null && template.trainingAssistant.enabled)
-                    training.updateTrainingTemplate(template.withTraining(template.amount,
-                            template.trainingAssistant, TrainingAssistantState.calibrating()));
+                if (template != null && template.assistantProfile != null)
+                    training.updateTrainingTemplate(template.withTraining(template.prescription,
+                            new TrainingAssistantProfile(template.assistantProfile.policy,
+                                    TrainingAssistantState.calibrating())));
             }
             return result;
         });

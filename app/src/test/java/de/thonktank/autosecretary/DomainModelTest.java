@@ -109,7 +109,7 @@ public final class DomainModelTest {
 
         for (int index = 0; index < amounts.size(); index++) {
             StepAmount amount = amounts.get(index);
-            TaskStepTemplate template = new TaskStepTemplate("step-" + index,
+            TaskStepTemplate template = de.thonktank.autosecretary.testing.StepTestFixtures.template("step-" + index,
                     TaskId.of("task"), index, "Schritt " + index, 0, amount, "Notiz");
 
             TaskStepEntity stored = mapper.toEntity(template);
@@ -129,11 +129,11 @@ public final class DomainModelTest {
     }
 
     @Test public void repetitionProgressAcceptsZeroForSetsAndSingleValues() {
-        OccurrenceStep sets = new OccurrenceStep("sets", "occ", 0, "Kniebeugen", false,
+        OccurrenceStep sets = de.thonktank.autosecretary.testing.StepTestFixtures.occurrence("sets", "occ", 0, "Kniebeugen", false,
                 StepAmount.setsReps(2, 12), "", java.util.Collections.emptyList());
         OccurrenceStep first = sets.recordRepetitionResult(0);
         OccurrenceStep second = first.recordRepetitionResult(999);
-        OccurrenceStep single = new OccurrenceStep("single", "occ", 1, "Liegestütze", false,
+        OccurrenceStep single = de.thonktank.autosecretary.testing.StepTestFixtures.occurrence("single", "occ", 1, "Liegestütze", false,
                 StepAmount.repetitions(12), "", java.util.Collections.emptyList())
                 .recordRepetitionResult(0);
 
@@ -147,7 +147,7 @@ public final class DomainModelTest {
     }
 
     @Test public void legacyRepetitionValuesAboveTheNewInputLimitRemainReadable() {
-        OccurrenceStep legacy = new OccurrenceStep("legacy", "occ", 0, "Beinpresse", false,
+        OccurrenceStep legacy = de.thonktank.autosecretary.testing.StepTestFixtures.occurrence("legacy", "occ", 0, "Beinpresse", false,
                 StepAmount.setsReps(2, 12), "", Arrays.asList(1_200));
 
         assertEquals(Arrays.asList(1_200), legacy.repetitionProgress.actualRepetitions);

@@ -3,6 +3,9 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
+import de.thonktank.autosecretary.domain.model.TrainingPrescription;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
 
 /** Restores the latest adjustment only while its after-state is still current. */
@@ -20,10 +23,14 @@ public final class UndoLatestTrainingAdjustment {
             if (template == null || adjustment == null
                     || adjustment.state != TrainingAdjustment.State.APPLIED
                     || !template.amount.equals(adjustment.after)
-                    || !template.trainingAssistant.load.equals(adjustment.afterLoad)) return false;
-            repository.updateTrainingTemplate(template.withTraining(adjustment.before,
-                    template.trainingAssistant.withLoad(adjustment.beforeLoad),
-                    TrainingAssistantState.calibrating()));
+                    || !template.prescription.plannedLoad().equals(adjustment.afterLoad)
+                    || template.assistantProfile == null) return false;
+            StepPrescription before = new StepPrescription(adjustment.before,
+                    template.prescription.rest, new TrainingPrescription(adjustment.beforeLoad,
+                    template.prescription.targetRir()));
+            repository.updateTrainingTemplate(template.withTraining(before,
+                    new TrainingAssistantProfile(template.assistantProfile.policy,
+                            TrainingAssistantState.calibrating())));
             repository.updateTrainingAdjustment(adjustment.undone());
             return true;
         });

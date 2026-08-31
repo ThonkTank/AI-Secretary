@@ -31,6 +31,8 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
@@ -78,10 +80,10 @@ public final class TaskEditorFeatureRobolectricTest {
                 0, TaskBoundKind.FOREVER, null, Collections.emptyList()));
         assertThrows(IllegalArgumentException.class, () -> definition("Routine",
                 Recurrence.WEEKDAYS, 0, TaskBoundKind.FOREVER, null, Collections.emptyList()));
-        TaskStepDefinition none = new TaskStepDefinition(null, 0, "Schritt", 0,
+        TaskStepDefinition none = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Schritt", 0,
                 StepAmount.none(), "Notiz");
         assertEquals(StepAmount.none(), none.amount);
-        assertThrows(IllegalArgumentException.class, () -> new TaskStepDefinition(
+        assertThrows(IllegalArgumentException.class, () -> de.thonktank.autosecretary.testing.StepTestFixtures.definition(
                 null, 0, "Schritt", 0, StepAmount.setsReps(0, 12), ""));
     }
 
@@ -123,7 +125,7 @@ public final class TaskEditorFeatureRobolectricTest {
     }
 
     @Test public void templateUpdateKeepsIdentityAndDoesNotMutateOpenSnapshot() {
-        TaskStepDefinition original = new TaskStepDefinition(null, 0, "Alt", 0,
+        TaskStepDefinition original = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Alt", 0,
                 StepAmount.setsReps(3, 12), "23 kg");
         TaskDefinition definition = definition("Training", Recurrence.DAILY, 0,
                 TaskBoundKind.FOREVER, null, Collections.singletonList(original));
@@ -134,7 +136,7 @@ public final class TaskEditorFeatureRobolectricTest {
         new MaterializeDueOccurrences(repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
 
-        TaskStepDefinition edited = new TaskStepDefinition(stableId, 0, "Neu", 0,
+        TaskStepDefinition edited = de.thonktank.autosecretary.testing.StepTestFixtures.definition(stableId, 0, "Neu", 0,
                 StepAmount.setsReps(4, 10), "25 kg");
         new UpdateTask(repository, repository, ids, clock).execute(task.id,
                 definition("Training neu", Recurrence.DAILY, 0, TaskBoundKind.FOREVER,
@@ -151,9 +153,9 @@ public final class TaskEditorFeatureRobolectricTest {
     }
 
     @Test public void stepIntervalsStayAnchoredToTheFirstDueCalendarDay() {
-        TaskStepDefinition always = new TaskStepDefinition(null, 0, "Immer", 0,
+        TaskStepDefinition always = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Immer", 0,
                 StepAmount.none(), "");
-        TaskStepDefinition everyOtherDay = new TaskStepDefinition(null, 1, "Intervall", 0, 2,
+        TaskStepDefinition everyOtherDay = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 1, "Intervall", 0, 2,
                 StepAmount.none(), "");
         new CreateTask(repository, repository, clock, ids).execute(definition(
                 "Pflege", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
@@ -177,9 +179,9 @@ public final class TaskEditorFeatureRobolectricTest {
     }
 
     @Test public void cadenceAnchorSurvivesHistoryDeletionReloadAndDefinitionEdit() {
-        TaskStepDefinition always = new TaskStepDefinition(null, 0, "Immer", 0,
+        TaskStepDefinition always = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Immer", 0,
                 StepAmount.none(), "");
-        TaskStepDefinition interval = new TaskStepDefinition(null, 1, "Intervall", 0, 2,
+        TaskStepDefinition interval = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 1, "Intervall", 0, 2,
                 StepAmount.none(), "");
         TaskDefinition original = definition("Pflege", Recurrence.DAILY, 0,
                 TaskBoundKind.FOREVER, null, Arrays.asList(always, interval));
@@ -195,9 +197,9 @@ public final class TaskEditorFeatureRobolectricTest {
         List<TaskStepTemplate> templates = repository.templates(task.id);
         TaskDefinition edited = definition("Pflege bearbeitet", Recurrence.DAILY, 0,
                 TaskBoundKind.FOREVER, null, Arrays.asList(
-                new TaskStepDefinition(templates.get(0).id, 0, "Immer", 0,
+                de.thonktank.autosecretary.testing.StepTestFixtures.definition(templates.get(0).id, 0, "Immer", 0,
                         StepAmount.none(), ""),
-                new TaskStepDefinition(templates.get(1).id, 1, "Intervall", 0, 2,
+                de.thonktank.autosecretary.testing.StepTestFixtures.definition(templates.get(1).id, 1, "Intervall", 0, 2,
                         StepAmount.none(), "")));
         new UpdateTask(repository, repository, ids, clock).execute(task.id, edited);
         repository = new RoomTaskRepository(database);
@@ -217,7 +219,7 @@ public final class TaskEditorFeatureRobolectricTest {
         repository.insertTask(Task.restore(id, "Beschädigt", Recurrence.DAILY, 1, 0,
                 false, "", false, false, TODAY, null, null, null, 1_024L, false,
                 null, TaskBoundKind.FOREVER, null, null, null, null, ""));
-        repository.insertTemplates(Collections.singletonList(new TaskStepTemplate(
+        repository.insertTemplates(Collections.singletonList(de.thonktank.autosecretary.testing.StepTestFixtures.template(
                 "interval", id, 0, "Intervall", 0, 2, StepAmount.none(), "")));
         repository.putScheduleEntries(Collections.singletonList(new TaskScheduleEntry(
                 "schedule", id, TaskSlot.MORNING, 1_024L)));
@@ -255,7 +257,7 @@ public final class TaskEditorFeatureRobolectricTest {
 
     @Test public void repetitionResultsSurviveReloadAndCorrectionsAdjustRewards() {
         int monday = 1;
-        TaskStepDefinition mondayStep = new TaskStepDefinition(null, 0, "Beinpresse", monday,
+        TaskStepDefinition mondayStep = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Beinpresse", monday,
                 StepAmount.setsReps(3, 12), "23 kg, Sitz 5");
         new CreateTask(repository, repository, clock, ids).execute(new TaskDefinition(
                 "Training", 45, TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
@@ -299,7 +301,7 @@ public final class TaskEditorFeatureRobolectricTest {
     }
 
     @Test public void completeRemainingFillsMissingPlansAndNextStartsEmpty() {
-        TaskStepDefinition exercise = new TaskStepDefinition(null, 0, "Kniebeugen", 0,
+        TaskStepDefinition exercise = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Kniebeugen", 0,
                 StepAmount.setsReps(3, 15), "");
         new CreateTask(repository, repository, clock, ids).execute(definition(
                 "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
@@ -324,7 +326,7 @@ public final class TaskEditorFeatureRobolectricTest {
     }
 
     @Test public void explicitZeroPersistsAndCompletesWithoutRewardOrCombo() {
-        TaskStepDefinition exercise = new TaskStepDefinition(null, 0, "Liegestütze", 0,
+        TaskStepDefinition exercise = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Liegestütze", 0,
                 StepAmount.repetitions(12), "auf Fäusten");
         new CreateTask(repository, repository, clock, ids).execute(definition(
                 "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
@@ -373,7 +375,9 @@ public final class TaskEditorFeatureRobolectricTest {
 
     @Test public void stepCadenceBundleKeepsSelectedEmptyIntervalAndReadsLegacyValues() {
         EditorStepState interval = new EditorStepState("step", "Gießen",
-                StepCadenceMode.INTERVAL, 0, null, StepAmount.none(), "");
+                StepCadenceMode.INTERVAL, 0, null,
+                StepPrescription.forAmount(StepAmount.none()), null, "",
+                StepActivationKind.SCHEDULED);
         EditorStepState restored = EditorStepState.fromBundle(interval.toBundle());
         assertEquals(StepCadenceMode.INTERVAL, restored.cadenceMode);
         assertEquals(null, restored.intervalDays);

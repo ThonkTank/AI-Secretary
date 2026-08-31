@@ -16,9 +16,9 @@ public final class RestTimerPolicyTest {
     }
 
     @Test public void newSetsInheritAndOtherAmountsRejectRestTimers() {
-        TaskStepDefinition sets = new TaskStepDefinition("sets", 0, "Liegestütze", 0, 0,
+        TaskStepDefinition sets = de.thonktank.autosecretary.testing.StepTestFixtures.definition("sets", 0, "Liegestütze", 0, 0,
                 StepAmount.setsReps(3, 12), "");
-        TaskStepDefinition duration = new TaskStepDefinition("run", 1, "Laufen", 0, 0,
+        TaskStepDefinition duration = de.thonktank.autosecretary.testing.StepTestFixtures.definition("run", 1, "Laufen", 0, 0,
                 StepAmount.duration(600), "");
 
         assertEquals(RestTimerPolicy.Mode.INHERIT, sets.restTimerPolicy.mode);

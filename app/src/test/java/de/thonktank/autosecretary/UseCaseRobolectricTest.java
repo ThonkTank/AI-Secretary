@@ -207,9 +207,9 @@ public final class UseCaseRobolectricTest {
         Task task = repository.allTasks().get(0);
 
         List<TaskStepDefinition> replacements = Arrays.asList(
-                new TaskStepDefinition(null, 0, "Erster Schritt", 0,
+                de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Erster Schritt", 0,
                         StepAmount.none(), ""),
-                new TaskStepDefinition(null, 1, "Zweiter Schritt", 0,
+                de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 1, "Zweiter Schritt", 0,
                         StepAmount.none(), ""));
         new UpdateTask(repository, repository, ids, clock).execute(task.id,
                 new TaskDefinition("Neu", 25, TaskSlot.EVENING,

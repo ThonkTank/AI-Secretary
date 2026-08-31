@@ -78,12 +78,11 @@ final class OccurrenceAssembler {
                 for (int index = 0; index < steps.size(); index++) {
                     OccurrenceStep step = steps.get(index);
                     positioned.add(new OccurrenceStep(step.id, occurrence.id, index, step.text,
-                            step.done, step.amount, step.restTimerPolicy, step.note,
+                            step.done, step.prescription, step.note,
                             step.repetitionProgress == null ? Collections.emptyList()
                                     : step.repetitionProgress.actualRepetitions,
                             step.sourceTemplateId, step.comboOwnerId,
-                            step.originOccurrenceId, step.carryForwardReason,
-                            step.plannedLoad, step.targetRir));
+                            step.originOccurrenceId, step.carryForwardReason));
                 }
                 repository.insertOccurrenceSteps(positioned);
             }
@@ -94,21 +93,18 @@ final class OccurrenceAssembler {
 
     private OccurrenceStep copyStep(OccurrenceStep step, String id, String comboOwner,
                                     String originOccurrenceId) {
-        return new OccurrenceStep(id, "pending", 0, step.text, false, step.amount,
-                step.restTimerPolicy, step.note,
+        return new OccurrenceStep(id, "pending", 0, step.text, false, step.prescription, step.note,
                 step.repetitionProgress == null ? Collections.emptyList()
                         : step.repetitionProgress.actualRepetitions,
                 step.sourceTemplateId,
                 step.comboOwnerId == null ? comboOwner : step.comboOwnerId,
-                originOccurrenceId, CarryForwardReason.UNFINISHED_STEP,
-                step.plannedLoad, step.targetRir);
+                originOccurrenceId, CarryForwardReason.UNFINISHED_STEP);
     }
 
     private OccurrenceStep snapshot(TaskStepTemplate template, String id, String comboOwner) {
-        return new OccurrenceStep(id, "pending", 0, template.text, false, template.amount,
-                template.restTimerPolicy, template.note, Collections.emptyList(), template.id,
-                "step:" + template.id, null, CarryForwardReason.NONE,
-                template.trainingAssistant.load, template.trainingAssistant.targetRir);
+        return new OccurrenceStep(id, "pending", 0, template.text, false,
+                template.prescription, template.note, Collections.emptyList(), template.id,
+                "step:" + template.id, null, CarryForwardReason.NONE);
     }
 
     static final class Result {

@@ -203,7 +203,7 @@ public final class CompletionInMemoryTest {
                     OccurrenceState.OPEN, taskIndex, null);
             repository.insertOccurrence(open);
             for (int step = 0; step < 12; step++)
-                repository.insertOccurrenceSteps(Collections.singletonList(new OccurrenceStep(
+                repository.insertOccurrenceSteps(Collections.singletonList(de.thonktank.autosecretary.testing.StepTestFixtures.occurrence(
                         open.id + "-step-" + step, open.id, step, "Schritt " + step, false)));
             repository.putCombo(new ComboProgress(ComboProgress.taskOwner(taskId), taskId,
                     ComboProgress.Kind.TASK, taskIndex % 8, TODAY));

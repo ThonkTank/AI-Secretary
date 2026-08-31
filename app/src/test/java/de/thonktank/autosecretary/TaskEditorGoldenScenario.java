@@ -11,6 +11,8 @@ import java.util.List;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
@@ -112,12 +114,16 @@ final class TaskEditorGoldenScenario {
             StepAmountKind kind = steps == Steps.DETAIL
                     ? index < 2 ? StepAmountKind.SETS_REPS : StepAmountKind.DURATION
                     : StepAmountKind.NONE;
-            result.add(new EditorStepState("s" + index, labels[index], index == 1 ? 1 | 8 : 0,
-                    kind == StepAmountKind.SETS_REPS
+            int weekdays = index == 1 ? 1 | 8 : 0;
+            StepAmount amount = kind == StepAmountKind.SETS_REPS
                             ? StepAmount.setsReps(3, 12 + index * 3)
                             : kind == StepAmountKind.DURATION ? StepAmount.duration(45)
-                            : StepAmount.none(),
-                    steps == Steps.DETAIL && index == 0 ? "23 kg, Sitz 5" : ""));
+                            : StepAmount.none();
+            result.add(new EditorStepState("s" + index, labels[index],
+                    weekdays == 0 ? StepCadenceMode.ALWAYS : StepCadenceMode.WEEKDAYS,
+                    weekdays, null, StepPrescription.forAmount(amount), null,
+                    steps == Steps.DETAIL && index == 0 ? "23 kg, Sitz 5" : "",
+                    StepActivationKind.SCHEDULED));
         }
         return result;
     }

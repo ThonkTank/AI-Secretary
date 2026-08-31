@@ -56,7 +56,7 @@ public final class TodayStepOrderTest {
     }
 
     private static OccurrenceStep step(String id, String occurrence, int position, boolean done) {
-        return new OccurrenceStep(id, occurrence, position, id, done);
+        return de.thonktank.autosecretary.testing.StepTestFixtures.occurrence(id, occurrence, position, id, done);
     }
 
     private static TodayStepMoveResult move(Occurrence occurrence, List<OccurrenceStep> steps,

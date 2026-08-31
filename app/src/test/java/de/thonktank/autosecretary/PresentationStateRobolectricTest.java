@@ -180,9 +180,9 @@ public final class PresentationStateRobolectricTest {
                 clock.today(), 1_024L, false, null, TaskBoundKind.FOREVER, null, null,
                 null, null, ""));
         repository.insertTemplates(java.util.Arrays.asList(
-                new de.thonktank.autosecretary.domain.model.TaskStepTemplate(
+                de.thonktank.autosecretary.testing.StepTestFixtures.template(
                         "ongoing-a", migratedId, 0, "A"),
-                new de.thonktank.autosecretary.domain.model.TaskStepTemplate(
+                de.thonktank.autosecretary.testing.StepTestFixtures.template(
                         "ongoing-b", migratedId, 1, "B")));
         repository.putScheduleEntries(Collections.singletonList(
                 new de.thonktank.autosecretary.domain.model.TaskScheduleEntry(
@@ -375,7 +375,7 @@ public final class PresentationStateRobolectricTest {
         TaskDefinition definition = new TaskDefinition("Gym", null, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", Collections.singletonList(
-                        new TaskStepDefinition(null, 0, "Kniebeugen", 0,
+                        de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Kniebeugen", 0,
                                 StepAmount.setsReps(3, 12), "")));
         tasks.create.execute(definition);
         refreshDatabase();
@@ -466,9 +466,9 @@ public final class PresentationStateRobolectricTest {
         tasks.create.execute(new TaskDefinition("Reihenfolge", null, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", java.util.Arrays.asList(
-                new TaskStepDefinition(null, 0, "A", 0, StepAmount.none(), ""),
-                new TaskStepDefinition(null, 1, "B", 0, StepAmount.none(), ""),
-                new TaskStepDefinition(null, 2, "C", 0, StepAmount.none(), ""))));
+                de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "A", 0, StepAmount.none(), ""),
+                de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 1, "B", 0, StepAmount.none(), ""),
+                de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 2, "C", 0, StepAmount.none(), ""))));
         refreshDatabase();
         List<de.thonktank.autosecretary.presentation.today.FocusStepUiModel> steps =
                 value().today().focus.steps;
