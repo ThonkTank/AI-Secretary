@@ -4,10 +4,12 @@ import de.thonktank.autosecretary.*;
 
 import android.content.Context;
 import android.text.TextUtils;
+import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.HorizontalScrollView;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -20,6 +22,7 @@ import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
+import de.thonktank.autosecretary.presentation.today.TrainingContextUiModel;
 import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
@@ -52,12 +55,23 @@ public final class FocusStepRowView extends LinearLayout {
     private final TextView rirLabel;
     private final TextLinkView rirPlus;
     private final TextLinkView safety;
+    private final TextView assistantSummary;
+    private final LinearLayout assistantDetails;
+    private final TextView loadQuestion;
+    private final EditText loadAnswer;
+    private final TextLinkView applyLoadAnswer;
+    private final TextLinkView unavailableLoadAnswer;
+    private final TextLinkView laterLoadAnswer;
+    private final TextView historyTitle;
+    private final LinearLayout history;
+    private final TextLinkView undoAdjustment;
     private final LinearLayout timerControls;
     private final TextView timerLabel;
     private final TextLinkView timerPrimary;
     private final TextLinkView timerSecondary;
     private String lastAnimatedTimerId;
     private int grainLevel;
+    private String boundTrainingTemplateId;
 
     interface ReorderAction {
         boolean perform(String stepId, int actionId);
@@ -154,6 +168,50 @@ public final class FocusStepRowView extends LinearLayout {
         trainingParams.setMargins(style.dp(52), style.dp(5), 0, 0);
         body.addView(trainingScroll, trainingParams);
 
+        assistantSummary = style.sans("", 14, 0, false);
+        assistantSummary.setMaxLines(3);
+        LinearLayout.LayoutParams assistantSummaryParams = new LinearLayout.LayoutParams(-1, -2);
+        assistantSummaryParams.setMargins(style.dp(52), style.dp(6), 0, 0);
+        body.addView(assistantSummary, assistantSummaryParams);
+
+        assistantDetails = new LinearLayout(context);
+        assistantDetails.setOrientation(VERTICAL);
+        loadQuestion = style.sans("", 15, 0, true);
+        assistantDetails.addView(loadQuestion, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout loadAnswerRow = new LinearLayout(context);
+        loadAnswerRow.setGravity(Gravity.CENTER_VERTICAL);
+        loadAnswer = new EditText(context);
+        loadAnswer.setSingleLine(true);
+        loadAnswer.setTextSize(16);
+        loadAnswer.setInputType(InputType.TYPE_CLASS_NUMBER
+                | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        loadAnswer.setHint(context.getString(R.string.training_load_answer_hint));
+        loadAnswerRow.addView(loadAnswer, new LinearLayout.LayoutParams(0, style.dp(48), 1));
+        applyLoadAnswer = trainingLink(context.getString(R.string.training_load_apply));
+        loadAnswerRow.addView(applyLoadAnswer, new LinearLayout.LayoutParams(-2, style.dp(48)));
+        assistantDetails.addView(loadAnswerRow, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout answerActions = new LinearLayout(context);
+        answerActions.setGravity(Gravity.CENTER_VERTICAL);
+        unavailableLoadAnswer = trainingLink("");
+        laterLoadAnswer = trainingLink(context.getString(R.string.training_load_later));
+        answerActions.addView(unavailableLoadAnswer,
+                new LinearLayout.LayoutParams(0, style.dp(44), 1));
+        answerActions.addView(laterLoadAnswer,
+                new LinearLayout.LayoutParams(-2, style.dp(44)));
+        assistantDetails.addView(answerActions, new LinearLayout.LayoutParams(-1, -2));
+        historyTitle = style.sans(context.getString(R.string.training_history_title), 14, 0, true);
+        LinearLayout.LayoutParams historyTitleParams = new LinearLayout.LayoutParams(-1, -2);
+        historyTitleParams.topMargin = style.dp(8);
+        assistantDetails.addView(historyTitle, historyTitleParams);
+        history = new LinearLayout(context);
+        history.setOrientation(VERTICAL);
+        assistantDetails.addView(history, new LinearLayout.LayoutParams(-1, -2));
+        undoAdjustment = trainingLink(context.getString(R.string.training_undo));
+        assistantDetails.addView(undoAdjustment, new LinearLayout.LayoutParams(-2, style.dp(44)));
+        LinearLayout.LayoutParams assistantParams = new LinearLayout.LayoutParams(-1, -2);
+        assistantParams.setMargins(style.dp(52), style.dp(6), 0, 0);
+        body.addView(assistantDetails, assistantParams);
+
         timerControls = new LinearLayout(context);
         timerControls.setGravity(Gravity.CENTER_VERTICAL);
         timerLabel = style.sans("", 18, 0, true);
@@ -208,6 +266,7 @@ public final class FocusStepRowView extends LinearLayout {
         WoodGrainView.applyTextHalo(title, palette.leaf1);
         WoodGrainView.applyTextHalo(amount, palette.leaf1);
         WoodGrainView.applyTextHalo(note, palette.leaf1);
+        bindTrainingContext(step.trainingContext, active, palette, events);
 
         RepetitionProgressUiModel progress = step.repetitionProgress;
         TimerSession timer = timers.forStep(step.id);
@@ -258,6 +317,86 @@ public final class FocusStepRowView extends LinearLayout {
         reward.setActionEnabled(step.executionAction.kind != StepExecutionUiAction.Kind.NONE
                 && !restBlocks);
         bindTimer(step, timer, timers.elapsedRealtime, palette, events);
+    }
+
+    private void bindTrainingContext(TrainingContextUiModel context, boolean active,
+                                     DayPalette palette, TodayActionSink events) {
+        assistantSummary.setVisibility(context == null ? GONE : VISIBLE);
+        assistantDetails.setVisibility(context != null && active ? VISIBLE : GONE);
+        if (context == null) {
+            boundTrainingTemplateId = null;
+            return;
+        }
+        String summary = context.latestAdjustmentLabel.isEmpty() ? context.statusLabel
+                : context.statusLabel + " · " + context.latestAdjustmentLabel;
+        assistantSummary.setText(summary);
+        assistantSummary.setTextColor(palette.muted);
+        WoodGrainView.applyTextHalo(assistantSummary, palette.leaf1);
+        if (!active) return;
+        bindTrainingLink(applyLoadAnswer, palette);
+        bindTrainingLink(unavailableLoadAnswer, palette);
+        bindTrainingLink(laterLoadAnswer, palette);
+        bindTrainingLink(undoAdjustment, palette);
+        boolean open = context.hasOpenLoadRequest();
+        loadQuestion.setVisibility(open ? VISIBLE : GONE);
+        loadAnswer.setVisibility(open ? VISIBLE : GONE);
+        applyLoadAnswer.setVisibility(open ? VISIBLE : GONE);
+        boolean unavailableChoice = open && context.openDirection
+                == de.thonktank.autosecretary.domain.model.TrainingDecision.LoadDirection.PROGRESS;
+        unavailableLoadAnswer.setVisibility(unavailableChoice ? VISIBLE : GONE);
+        laterLoadAnswer.setVisibility(open ? VISIBLE : GONE);
+        if (open) {
+            loadQuestion.setText(getContext().getString(
+                    context.openDirection
+                            == de.thonktank.autosecretary.domain.model.TrainingDecision.LoadDirection.PROGRESS
+                            ? R.string.training_load_question_higher
+                            : R.string.training_load_question_lower,
+                    formatLoad(context.openCurrentLoad)));
+            loadQuestion.setTextColor(palette.ink);
+            loadAnswer.setTextColor(palette.ink);
+            loadAnswer.setHintTextColor(palette.hint);
+            if (!context.templateId.equals(boundTrainingTemplateId)) loadAnswer.setText("");
+            unavailableLoadAnswer.setText(R.string.training_load_no_higher);
+            applyLoadAnswer.setOnClickListener(view -> {
+                Long value = parseLoad(loadAnswer.getText().toString());
+                if (value == null || value <= 0) {
+                    loadAnswer.setError(getContext().getString(R.string.training_load_invalid));
+                    return;
+                }
+                events.emit(TodayAction.applyTrainingLoad(context.templateId, value));
+            });
+            unavailableLoadAnswer.setOnClickListener(unavailableChoice ? view -> events.emit(
+                    TodayAction.noHigherTrainingLoad(context.templateId)) : null);
+            laterLoadAnswer.setOnClickListener(view -> {
+                assistantDetails.setVisibility(GONE);
+                events.emit(TodayAction.laterTrainingLoad(context.templateId));
+            });
+        }
+        boundTrainingTemplateId = context.templateId;
+        history.removeAllViews();
+        historyTitle.setTextColor(palette.muted);
+        historyTitle.setVisibility(context.historyLabels.isEmpty() ? GONE : VISIBLE);
+        history.setVisibility(context.historyLabels.isEmpty() ? GONE : VISIBLE);
+        for (String label : context.historyLabels) {
+            TextView item = style.sans("· " + label, 13, 0, false);
+            item.setTextColor(palette.hint);
+            item.setPadding(0, style.dp(2), 0, style.dp(2));
+            history.addView(item, new LinearLayout.LayoutParams(-1, -2));
+        }
+        undoAdjustment.setVisibility(context.canUndo ? VISIBLE : GONE);
+        undoAdjustment.setOnClickListener(context.canUndo ? view -> events.emit(
+                TodayAction.undoTrainingAdjustment(context.templateId)) : null);
+    }
+
+    private static Long parseLoad(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            java.math.BigDecimal decimal = new java.math.BigDecimal(
+                    value.trim().replace(',', '.'));
+            return decimal.movePointRight(3).longValueExact();
+        } catch (ArithmeticException | NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private void bindTrainingInputs(FocusStepUiModel step, RepetitionProgressUiModel progress,

@@ -9,6 +9,8 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.DashboardReadRepository;
+import de.thonktank.autosecretary.domain.repository.TrainingRepository;
+import de.thonktank.autosecretary.domain.model.TrainingContext;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -29,9 +31,17 @@ import de.thonktank.autosecretary.domain.repository.StepFlowRunRepository;
 
 public final class LoadDashboard {
     private final DashboardReadRepository repository;
+    private final LoadTrainingContext loadTrainingContext;
 
     public LoadDashboard(DashboardReadRepository repository) {
+        this(repository, null);
+    }
+
+    public LoadDashboard(DashboardReadRepository repository,
+                         TrainingRepository trainingRepository) {
         this.repository = repository;
+        this.loadTrainingContext = trainingRepository == null ? null
+                : new LoadTrainingContext(trainingRepository);
     }
 
     public Dashboard execute(LocalDate today) {
@@ -111,7 +121,15 @@ public final class LoadDashboard {
         List<FlowRunSummary> flowRuns = flowRepository == null
                 ? java.util.Collections.emptyList()
                 : LoadFlowRuns.summaries(tasks, flowRepository, activeFlowRuns);
-        return new Dashboard(repository.xp(), result, combos, flowRuns);
+        Map<String, TrainingContext> trainingContexts = new HashMap<>();
+        if (loadTrainingContext != null) for (DashboardTask item : result)
+            for (OccurrenceStep step : item.steps)
+                if (step.sourceTemplateId != null
+                        && !trainingContexts.containsKey(step.sourceTemplateId)) {
+                    TrainingContext context = loadTrainingContext.execute(step.sourceTemplateId);
+                    if (context != null) trainingContexts.put(step.sourceTemplateId, context);
+                }
+        return new Dashboard(repository.xp(), result, combos, flowRuns, trainingContexts);
     }
 
     private static DashboardTask item(Task task, Occurrence occurrence,

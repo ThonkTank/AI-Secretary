@@ -27,6 +27,8 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TrainingObservation;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
+import de.thonktank.autosecretary.domain.usecase.ResolveTrainingLoadRequest;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
@@ -216,6 +218,18 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
             case ACKNOWLEDGE_REWARD:
                 publishRewards(rewardQueue.acknowledge(action.id));
                 return;
+            case APPLY_TRAINING_LOAD:
+                applyTrainingLoad(action.id, action.longValue);
+                return;
+            case NO_HIGHER_TRAINING_LOAD:
+                resolveNoHigherLoad(action.id);
+                return;
+            case LATER_TRAINING_LOAD:
+                deferTrainingLoad(action.id);
+                return;
+            case UNDO_TRAINING_ADJUSTMENT:
+                undoTrainingAdjustment(action.id);
+                return;
             default:
                 todayCoordinator.emit(action);
         }
@@ -319,6 +333,85 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private void delete(String taskId) {
         run(command(UiCommand.Kind.DELETE, taskId),
                 () -> tasks.delete.execute(TaskId.of(taskId)));
+    }
+
+    private void applyTrainingLoad(String templateId, long milliUnits) {
+        ResistanceLoad currentLoad = trainingLoad(templateId);
+        if (currentLoad == null || !currentLoad.adjustable()) {
+            trainingFeedback(R.string.training_request_no_longer_open);
+            return;
+        }
+        ResistanceLoad answer = ResistanceLoad.numeric(currentLoad.mode, currentLoad.unit,
+                milliUnits);
+        run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
+            ResolveTrainingLoadRequest.Result result =
+                    tasks.resolveTrainingLoadRequest.applyConcreteLoad(templateId, answer);
+            requireResolved(result);
+        });
+    }
+
+    private void resolveNoHigherLoad(String templateId) {
+        run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
+            ResolveTrainingLoadRequest.Result result =
+                    tasks.resolveTrainingLoadRequest.noHigherLoad(templateId);
+            requireResolved(result);
+        });
+    }
+
+    private void deferTrainingLoad(String templateId) {
+        run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
+            ResolveTrainingLoadRequest.Result result =
+                    tasks.resolveTrainingLoadRequest.later(templateId);
+            if (result != ResolveTrainingLoadRequest.Result.DEFERRED)
+                throw new IllegalArgumentException(
+                        texts.text(R.string.training_request_no_longer_open));
+            trainingFeedback(R.string.training_request_deferred);
+        });
+    }
+
+    private void undoTrainingAdjustment(String templateId) {
+        run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
+            if (!tasks.undoLatestTrainingAdjustment.execute(templateId))
+                throw new IllegalArgumentException(
+                        texts.text(R.string.training_undo_no_longer_available));
+        });
+    }
+
+    private void requireResolved(ResolveTrainingLoadRequest.Result result) {
+        switch (result) {
+            case APPLIED:
+            case SETS_ADDED:
+            case HELD:
+                return;
+            case INVALID_LOAD:
+                throw new IllegalArgumentException(texts.text(R.string.training_load_invalid));
+            case WRONG_DIRECTION:
+                throw new IllegalArgumentException(texts.text(R.string.training_load_wrong_direction));
+            case JUMP_TOO_LARGE:
+                throw new IllegalArgumentException(texts.text(R.string.training_load_jump_too_large));
+            case NO_OPEN_REQUEST:
+            case DEFERRED:
+            default:
+                throw new IllegalArgumentException(
+                        texts.text(R.string.training_request_no_longer_open));
+        }
+    }
+
+    @Nullable private ResistanceLoad trainingLoad(String templateId) {
+        TodayUiModel today;
+        synchronized (stateLock) { today = current.today(); }
+        if (today.focus == null) return null;
+        for (de.thonktank.autosecretary.presentation.today.FocusStepUiModel step
+                : today.focus.steps)
+            if (step.trainingContext != null
+                    && step.trainingContext.templateId.equals(templateId))
+                return step.trainingContext.openCurrentLoad;
+        return null;
+    }
+
+    private void trainingFeedback(int stringId) {
+        enqueue(TodayRequest.feedback(nextRequestId(), TodayRequest.Kind.INFO,
+                texts.text(stringId)));
     }
 
     @Override public void handleCompleteOccurrence(String occurrenceId) {

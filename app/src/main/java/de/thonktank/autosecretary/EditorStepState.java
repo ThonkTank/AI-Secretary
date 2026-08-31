@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
 
 public final class EditorStepState {
@@ -24,6 +25,7 @@ public final class EditorStepState {
     public final TrainingAssistantConfig trainingAssistant;
     public final StepPrescription prescription;
     public final TrainingAssistantPolicy assistantPolicy;
+    public final TrainingAssistantState assistantState;
     public final String note;
     public final StepActivationKind activationKind;
 
@@ -32,6 +34,17 @@ public final class EditorStepState {
                            StepPrescription prescription,
                            TrainingAssistantPolicy assistantPolicy, String note,
                            StepActivationKind activationKind) {
+        this(id, text, cadenceMode, weekdayMask, intervalDays, prescription,
+                assistantPolicy, assistantPolicy == null ? TrainingAssistantState.disabled()
+                        : TrainingAssistantState.calibrating(), note, activationKind);
+    }
+
+    private EditorStepState(String id, String text, StepCadenceMode cadenceMode,
+                            int weekdayMask, Integer intervalDays,
+                            StepPrescription prescription,
+                            TrainingAssistantPolicy assistantPolicy,
+                            TrainingAssistantState assistantState, String note,
+                            StepActivationKind activationKind) {
         this.id = id;
         this.text = text == null ? "" : text;
         this.cadenceMode = cadenceMode == null ? StepCadenceMode.ALWAYS : cadenceMode;
@@ -42,6 +55,8 @@ public final class EditorStepState {
         if (assistantPolicy != null && prescription.training == null)
             throw new IllegalArgumentException("An assistant policy needs training values");
         this.assistantPolicy = assistantPolicy;
+        this.assistantState = assistantPolicy == null ? TrainingAssistantState.disabled()
+                : Objects.requireNonNull(assistantState, "assistantState");
         this.amount = prescription.amount;
         this.restTimerPolicy = prescription.rest;
         this.trainingAssistant = legacyTrainingConfig(prescription, assistantPolicy);
@@ -62,12 +77,15 @@ public final class EditorStepState {
         return new EditorStepState(value.id, value.text, cadence, value.weekdayMask,
                 value.intervalDays == 0 ? null : value.intervalDays, value.prescription,
                 value.assistantProfile == null ? null : value.assistantProfile.policy,
+                value.assistantProfile == null ? TrainingAssistantState.disabled()
+                        : value.assistantProfile.state,
                 value.note, value.activationKind);
     }
 
     static EditorStepState fromStored(String id, String text, StepCadenceMode cadenceMode,
                                       int weekdayMask, Integer intervalDays, StepAmount amount,
                                       RestTimerPolicy rest, TrainingAssistantConfig assistant,
+                                      TrainingAssistantState assistantState,
                                       String note, StepActivationKind activationKind) {
         TrainingAssistantConfig resolved = assistant == null
                 ? TrainingAssistantConfig.disabled() : assistant;
@@ -77,7 +95,9 @@ public final class EditorStepState {
                 sets && resolved.enabled ? resolved.load : ResistanceLoad.unspecified(),
                 resolved.targetRir);
         return new EditorStepState(id, text, cadenceMode, weekdayMask, intervalDays,
-                prescription, sets ? policy(resolved) : null, note, activationKind);
+                prescription, sets ? policy(resolved) : null,
+                sets && resolved.enabled ? assistantState : TrainingAssistantState.disabled(),
+                note, activationKind);
     }
 
     public boolean isDraftIdentity() { return id == null || id.startsWith(DRAFT_PREFIX); }
@@ -165,9 +185,13 @@ public final class EditorStepState {
     public EditorStepState withTrainingAssistant(TrainingAssistantConfig value) {
         TrainingAssistantConfig resolved = value == null
                 ? TrainingAssistantConfig.disabled() : value;
+        TrainingAssistantPolicy nextPolicy = policy(resolved);
+        TrainingAssistantState nextState = nextPolicy == null
+                ? TrainingAssistantState.disabled()
+                : assistantPolicy == null ? TrainingAssistantState.calibrating() : assistantState;
         return copy(text, cadenceMode, weekdayMask, intervalDays,
                 StepPrescription.restore(amount, restTimerPolicy, resolved.load,
-                        resolved.targetRir), policy(resolved), note);
+                        resolved.targetRir), nextPolicy, nextState, note);
     }
 
     public EditorStepState withNote(String value) {
@@ -178,8 +202,16 @@ public final class EditorStepState {
     private EditorStepState copy(String newText, StepCadenceMode cadence, int weekdays,
                                  Integer interval, StepPrescription newPrescription,
                                  TrainingAssistantPolicy policy, String newNote) {
+        return copy(newText, cadence, weekdays, interval, newPrescription, policy,
+                policy == null ? TrainingAssistantState.disabled() : assistantState, newNote);
+    }
+
+    private EditorStepState copy(String newText, StepCadenceMode cadence, int weekdays,
+                                 Integer interval, StepPrescription newPrescription,
+                                 TrainingAssistantPolicy policy, TrainingAssistantState state,
+                                 String newNote) {
         return new EditorStepState(id, newText, cadence, weekdays, interval, newPrescription,
-                policy, newNote, activationKind);
+                policy, state, newNote, activationKind);
     }
 
     android.os.Bundle toBundle() { return EditorStepSavedStateCodec.encode(this); }
@@ -196,11 +228,12 @@ public final class EditorStepState {
                 && Objects.equals(intervalDays, value.intervalDays)
                 && prescription.equals(value.prescription)
                 && Objects.equals(assistantPolicy, value.assistantPolicy)
+                && assistantState.equals(value.assistantState)
                 && note.equals(value.note) && activationKind == value.activationKind;
     }
 
     @Override public int hashCode() {
         return Objects.hash(id, text, cadenceMode, weekdayMask, intervalDays, prescription,
-                assistantPolicy, note, activationKind);
+                assistantPolicy, assistantState, note, activationKind);
     }
 }

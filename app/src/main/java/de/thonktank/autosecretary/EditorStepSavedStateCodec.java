@@ -11,6 +11,7 @@ import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 
 /** Stable Bundle boundary for one editor step; legacy keys remain readable. */
@@ -35,6 +36,10 @@ final class EditorStepSavedStateCodec {
             putInteger(bundle, "duration", ((StepAmount.Duration) amount).seconds);
         }
         putTraining(bundle, step.trainingAssistant);
+        bundle.putString("training_state", step.assistantState.status.name());
+        bundle.putInt("training_observations", step.assistantState.eligibleObservations);
+        bundle.putInt("training_ready_streak", step.assistantState.readyStreak);
+        bundle.putInt("training_hard_streak", step.assistantState.hardStreak);
         bundle.putString("note", step.note);
         bundle.putString("activation", step.activationKind.name());
         return bundle;
@@ -51,7 +56,11 @@ final class EditorStepSavedStateCodec {
                 cadence, weekdays, interval, amount,
                 RestTimerPolicy.fromStorage(bundle.getString("rest_timer_mode"),
                         integer(bundle, "rest_timer_seconds")),
-                training(bundle), bundle.getString("note", ""),
+                training(bundle), TrainingAssistantState.restore(
+                        bundle.getString("training_state", "CALIBRATING"),
+                        bundle.getInt("training_observations"),
+                        bundle.getInt("training_ready_streak"),
+                        bundle.getInt("training_hard_streak")), bundle.getString("note", ""),
                 BundleValues.enumValue(StepActivationKind.class, bundle.getString("activation"),
                         StepActivationKind.SCHEDULED));
     }

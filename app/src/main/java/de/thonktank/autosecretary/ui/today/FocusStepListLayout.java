@@ -69,8 +69,11 @@ public final class FocusStepListLayout extends ViewGroup {
         List<FocusStepUiModel> openSteps = new ArrayList<>();
         int doneCount = 0;
         for (FocusStepUiModel step : model.task.steps) {
-            if (step.isDone()) doneCount++;
-            else openSteps.add(step);
+            if (step.isDone()) {
+                doneCount++;
+                if (step.trainingContext != null
+                        && step.trainingContext.hasOpenLoadRequest()) openSteps.add(step);
+            } else openSteps.add(step);
         }
         rowIds.clear();
         for (FocusStepUiModel step : openSteps) rowIds.add(step.id);
@@ -92,7 +95,9 @@ public final class FocusStepListLayout extends ViewGroup {
                 continue;
             }
             FocusStepUiModel step = openSteps.get(index);
-            row.bind(step, step.status == FocusStepStatus.ACTIVE, model.palette,
+            boolean assistantQuestion = step.isDone() && step.trainingContext != null
+                    && step.trainingContext.hasOpenLoadRequest();
+            row.bind(step, step.status == FocusStepStatus.ACTIVE || assistantQuestion, model.palette,
                     model.repetitionInput, model.timers, actions);
             row.setOnStepLongClickListener(view -> beginReorder(row, step.id));
             final int renderedIndex = index;

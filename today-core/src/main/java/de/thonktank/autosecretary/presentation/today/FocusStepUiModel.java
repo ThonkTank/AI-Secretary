@@ -18,11 +18,12 @@ public final class FocusStepUiModel {
     public final int plannedXp;
     /** Positive only for a duration step; zero for every other amount type. */
     public final int durationSeconds;
+    public final TrainingContextUiModel trainingContext;
 
     private FocusStepUiModel(String id, String title, boolean done) {
         this(id, title, "", "", done ? FocusStepStatus.COMPLETED : FocusStepStatus.ACTIVE,
                 done ? StepExecutionUiAction.none() : StepExecutionUiAction.toggle(id), null,
-                RewardBreakdown.fromStage(10, 0), 0, done ? 10 : 0, 10, 0);
+                RewardBreakdown.fromStage(10, 0), 0, done ? 10 : 0, 10, 0, null);
     }
 
     private FocusStepUiModel(String id, String title,
@@ -31,7 +32,7 @@ public final class FocusStepUiModel {
                              StepExecutionUiAction executionAction,
                              RepetitionProgressUiModel repetitionProgress,
                              RewardBreakdown reward, int grainLevel, int earnedXp, int plannedXp,
-                             int durationSeconds) {
+                             int durationSeconds, TrainingContextUiModel trainingContext) {
         if (id == null || id.isEmpty() || title == null || title.trim().isEmpty()
                 || amountLabel == null || note == null || status == null
                 || executionAction == null || reward == null)
@@ -66,6 +67,7 @@ public final class FocusStepUiModel {
         this.earnedXp = Math.max(0, earnedXp);
         this.plannedXp = Math.max(0, plannedXp);
         this.durationSeconds = Math.max(0, durationSeconds);
+        this.trainingContext = trainingContext;
     }
 
     public static FocusStepUiModel of(String id, String title,
@@ -80,7 +82,7 @@ public final class FocusStepUiModel {
                                       RepetitionProgressUiModel repetitionProgress,
                                       RewardBreakdown reward, int earnedXp) {
         return new FocusStepUiModel(id, title, amountLabel, note, status, action,
-                repetitionProgress, reward, reward.comboStage, earnedXp, reward.resultXp, 0);
+                repetitionProgress, reward, reward.comboStage, earnedXp, reward.resultXp, 0, null);
     }
 
     public static FocusStepUiModel executable(String id, String title,
@@ -90,7 +92,7 @@ public final class FocusStepUiModel {
                                       RepetitionProgressUiModel repetitionProgress,
                                       RewardBreakdown reward, int earnedXp, int plannedXp) {
         return new FocusStepUiModel(id, title, amountLabel, note, status, action,
-                repetitionProgress, reward, reward.comboStage, earnedXp, plannedXp, 0);
+                repetitionProgress, reward, reward.comboStage, earnedXp, plannedXp, 0, null);
     }
 
     public static FocusStepUiModel executableWithGrainLevel(String id,
@@ -101,12 +103,19 @@ public final class FocusStepUiModel {
                                       RewardBreakdown reward, int grainLevel,
                                       int earnedXp) {
         return new FocusStepUiModel(id, title, amountLabel, note, status, action,
-                repetitionProgress, reward, grainLevel, earnedXp, reward.resultXp, 0);
+                repetitionProgress, reward, grainLevel, earnedXp, reward.resultXp, 0, null);
     }
 
     public FocusStepUiModel withDurationSeconds(int seconds) {
         return new FocusStepUiModel(id, title, amountLabel, note, status, executionAction,
-                repetitionProgress, reward, grainLevel, earnedXp, plannedXp, seconds);
+                repetitionProgress, reward, grainLevel, earnedXp, plannedXp, seconds,
+                trainingContext);
+    }
+
+    public FocusStepUiModel withTrainingContext(TrainingContextUiModel value) {
+        return new FocusStepUiModel(id, title, amountLabel, note, status, executionAction,
+                repetitionProgress, reward, grainLevel, earnedXp, plannedXp, durationSeconds,
+                value);
     }
 
     public boolean isDone() { return status == FocusStepStatus.COMPLETED; }

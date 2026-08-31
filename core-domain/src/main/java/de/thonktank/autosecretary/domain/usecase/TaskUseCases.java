@@ -73,7 +73,7 @@ public final class TaskUseCases {
                         MomentSource moments, IdGenerator ids, ComboPolicySource policies) {
         FlowRuntimeCoordinator flowRuntime = new FlowRuntimeCoordinator(repository, clock,
                 moments, ids);
-        loadDashboard = new LoadDashboard(repository);
+        loadDashboard = new LoadDashboard(repository, repository);
         materializeDue = new MaterializeDueOccurrences(repository, clock, moments, ids);
         create = new CreateTask(repository, repository, clock, ids);
         update = new UpdateTask(repository, repository, ids, clock);
