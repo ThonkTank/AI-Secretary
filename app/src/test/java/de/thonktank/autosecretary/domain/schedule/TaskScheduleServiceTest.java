@@ -13,7 +13,7 @@ import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import org.junit.Test;
 
@@ -43,7 +43,7 @@ public final class TaskScheduleServiceTest {
         store.add(open("eo", eveningTask.id, TaskSlot.EVENING, 8));
         store.add(open("uo", untouched.id, TaskSlot.MIDDAY, 77));
 
-        ScheduleMoveResult result = new TaskScheduleService(store, () -> "unused").move(
+        ScheduleMoveResult result = new TaskScheduleService(store, store, () -> "unused").move(
                 new ScheduleMoveRequest(ScheduleEntryId.of("m"), TaskSlot.EVENING,
                         Optional.empty()));
 
@@ -68,7 +68,7 @@ public final class TaskScheduleServiceTest {
     }
 
     /** Focused double: it cannot accidentally provide catalog, template, reward or global reads. */
-    private static final class ScheduleDouble implements TaskScheduleRepository {
+    private static final class ScheduleDouble implements TaskScheduleRepository, TransactionRunner {
         final Map<TaskId, Task> tasks = new LinkedHashMap<>();
         final Map<String, TaskScheduleEntry> schedule = new LinkedHashMap<>();
         final Map<String, Occurrence> occurrences = new LinkedHashMap<>();
@@ -80,7 +80,7 @@ public final class TaskScheduleServiceTest {
         }
         void add(Occurrence value) { occurrences.put(value.id, value); }
 
-        @Override public <T> T inTransaction(TransactionalRepository.Transaction<T> operation) {
+        @Override public <T> T inTransaction(TransactionRunner.Transaction<T> operation) {
             return operation.execute();
         }
         @Override public Task findTask(TaskId id) { return tasks.get(id); }

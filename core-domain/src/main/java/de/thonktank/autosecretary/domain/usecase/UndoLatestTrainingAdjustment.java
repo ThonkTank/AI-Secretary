@@ -9,19 +9,23 @@ import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Restores the latest adjustment only while its after-state is still current. */
 public final class UndoLatestTrainingAdjustment {
     private final TrainingRepository repository;
+    private final TransactionRunner transactions;
     private final Clock clock;
 
-    public UndoLatestTrainingAdjustment(TrainingRepository repository, Clock clock) {
+    public UndoLatestTrainingAdjustment(TrainingRepository repository,
+                                        TransactionRunner transactions, Clock clock) {
         this.repository = repository;
+        this.transactions = transactions;
         this.clock = clock;
     }
 
     public boolean execute(String templateId) {
-        return repository.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             TaskStepTemplate template = repository.findTemplate(templateId);
             TrainingAdjustment adjustment = repository.latestTrainingAdjustment(templateId);
             if (template == null || adjustment == null

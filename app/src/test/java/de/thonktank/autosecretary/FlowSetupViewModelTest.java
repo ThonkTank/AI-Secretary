@@ -15,9 +15,8 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepTransition;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
+import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
-import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 
@@ -38,7 +37,7 @@ import java.util.concurrent.TimeUnit;
 @Config(sdk = 35)
 public final class FlowSetupViewModelTest {
     private AppDatabase database;
-    private TaskUseCases tasks;
+    private ApplicationUseCaseComposition tasks;
     private SavedStateHandle savedState;
     private FlowSetupViewModel viewModel;
 
@@ -46,16 +45,17 @@ public final class FlowSetupViewModelTest {
         Context context = ApplicationProvider.getApplicationContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
                 .allowMainThreadQueries().build();
-        ApplicationTaskRepository repository = new RoomTaskRepository(database);
+        TaskStore repository = new RoomTaskRepository(database);
         Clock clock = new Clock() {
             @Override public LocalDate today() { return LocalDate.of(2026, 8, 27); }
             @Override public LocalTime time() { return LocalTime.NOON; }
         };
-        tasks = new TaskUseCases(repository, clock, new SequenceIds());
-        tasks.create.execute(TaskDefinition.basic("Wäsche", TaskSlot.MORNING,
+        tasks = new ApplicationUseCaseComposition(repository, repository, repository, clock,
+                new SequenceIds(), de.thonktank.autosecretary.domain.repository.ComboPolicySource.defaults());
+        tasks.catalog.create.execute(TaskDefinition.basic("Wäsche", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, java.util.Arrays.asList(
                         "Waschgang", "Aufhängen", "Abhängen")));
-        tasks.create.execute(TaskDefinition.basic("Spülmaschine", TaskSlot.EVENING,
+        tasks.catalog.create.execute(TaskDefinition.basic("Spülmaschine", TaskSlot.EVENING,
                 Recurrence.DAILY, 1, 0, java.util.Arrays.asList(
                         "Starten", "Ausräumen")));
         savedState = new SavedStateHandle();
@@ -91,7 +91,8 @@ public final class FlowSetupViewModelTest {
     }
 
     private FlowSetupViewModel create(Context context) {
-        return new FlowSetupViewModel(tasks, null, new NoOpLogger(),
+        return new FlowSetupViewModel(tasks.catalog, tasks.flows, tasks.today, null,
+                new NoOpLogger(),
                 new AndroidUiTextProvider(context), savedState, new DirectExecutor());
     }
 

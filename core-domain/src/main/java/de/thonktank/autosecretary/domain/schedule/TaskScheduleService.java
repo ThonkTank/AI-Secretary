@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,10 +18,13 @@ import java.util.Map;
 /** The sole application service allowed to mutate persisted task placements. */
 public final class TaskScheduleService {
     private final TaskScheduleRepository repository;
+    private final TransactionRunner transactions;
     private final IdGenerator ids;
 
-    public TaskScheduleService(TaskScheduleRepository repository, IdGenerator ids) {
+    public TaskScheduleService(TaskScheduleRepository repository, TransactionRunner transactions,
+                               IdGenerator ids) {
         this.repository = repository;
+        this.transactions = transactions;
         this.ids = ids;
     }
 
@@ -61,7 +65,7 @@ public final class TaskScheduleService {
     }
 
     public ScheduleMoveResult move(ScheduleMoveRequest request) {
-        return repository.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             TaskScheduleEntry moving = repository.findScheduleEntry(request.entryId.value);
             if (moving == null) return ScheduleMoveResult.NOT_FOUND;
             List<TaskScheduleEntry> affected = new ArrayList<>(

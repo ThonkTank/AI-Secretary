@@ -22,23 +22,31 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 public final class UpdateTask {
     private final TaskDefinitionRepository repository;
     private final TaskScheduleRepository schedules;
+    private final StepFlowDefinitionRepository flows;
+    private final TrainingRepository training;
+    private final TransactionRunner transactions;
     private final IdGenerator ids;
     private final Clock clock;
 
     public UpdateTask(TaskDefinitionRepository repository, TaskScheduleRepository schedules,
-                      IdGenerator ids, Clock clock) {
+                      StepFlowDefinitionRepository flows, TrainingRepository training,
+                      TransactionRunner transactions, IdGenerator ids, Clock clock) {
         this.repository = repository;
         this.schedules = schedules;
+        this.flows = flows;
+        this.training = training;
+        this.transactions = transactions;
         this.ids = ids;
         this.clock = clock;
     }
 
     public void execute(TaskId id, TaskDefinition definition) {
-        repository.inTransaction(() -> {
+        transactions.inTransaction(() -> {
             executeInsideTransaction(id, definition, true);
             return null;
         });
@@ -60,13 +68,12 @@ public final class UpdateTask {
         repository.updateTask(current.editDefinition(definition, current.catalogOrder, nextDue));
         syncTemplates(id, definition.steps);
         if (validateFlow) validateRetainedFlow(id);
-        new TaskScheduleService(schedules, ids).sync(
+        new TaskScheduleService(schedules, transactions, ids).sync(
                 repository.findTask(id), definition);
     }
 
     private void validateRetainedFlow(TaskId taskId) {
-        if (!(repository instanceof StepFlowDefinitionRepository)) return;
-        StepFlowDefinitionRepository flows = (StepFlowDefinitionRepository) repository;
+        if (flows == null) return;
         List<TaskStepTemplate> templates = repository.templates(taskId);
         boolean hasFollowUp = false;
         for (TaskStepTemplate template : templates)
@@ -111,8 +118,7 @@ public final class UpdateTask {
                     && (!old.prescription.equals(step.prescription)
                     || !java.util.Objects.equals(old.assistantProfile.policy,
                     step.assistantPolicy))
-                    && repository instanceof TrainingRepository && clock != null) {
-                TrainingRepository training = (TrainingRepository) repository;
+                    && training != null && clock != null) {
                 TrainingLoadRequest request = training.openTrainingLoadRequest(identity);
                 if (request != null) training.updateTrainingLoadRequest(request.cancel(
                         TrainingLoadRequest.Resolution.MANUAL_CHANGE, clock.today()));

@@ -7,12 +7,11 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
 
 import java.util.List;
 
 /** Minimal persistence port for management-time step transfers. */
-public interface StepOrganizationRepository extends TransactionalRepository {
+public interface StepOrganizationRepository {
     Task findTask(TaskId id);
     TaskStepTemplate findTemplate(String id);
     List<TaskStepTemplate> templates(TaskId taskId);

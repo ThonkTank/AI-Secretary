@@ -1,10 +1,12 @@
 # Architekturkarte nach der Today-/Fokus-Bereinigung
 
 Stand der beschriebenen Today-/Fokus-Bereinigung: 2026-08-21, damals Datenbankschema 14.
-Aktueller Persistenzstand: Datenbankschema 19.
+Aktueller Persistenzstand: Datenbankschema 22.
 
 Schema 15 ergänzte den Editorvertrag, Schema 16 persistente Rhythmusanker, Schema 17/18 Timer-
-und Kombozustand und Schema 19 den eingefrorenen Planwert quantitativer Rewards. Diese Erweiterungen
+und Kombozustand und Schema 19 den eingefrorenen Planwert quantitativer Rewards. Schema 20 bis 22
+normalisieren Satzresultate und persistieren Trainingsentscheidungen, Lastfragen und ihre stabile
+Auditordnung. Diese Erweiterungen
 ändern die hier beschriebenen Compiler-, Today- und Capability-Port-Grenzen nicht. Die aktuelle
 Präsentationsbaseline und ihre weitere Migration stehen in der
 [Frontend-Modernisierungsroadmap](frontend-modernization-roadmap.md).
@@ -40,8 +42,8 @@ ui.today View
   → TodayCoordinator / TodayReducer                 (:today-core)
   → TodayCommandDispatcher
   → fokussierter Handler im TodayViewModel          (:app)
-  → Use Case → Capability-Port                      (:core-domain)
-  → RoomTaskRepository / DAO                        (:app)
+  → fokussiertes Use-Case-Bündel → Capability-Port   (:core-domain)
+  → RoomTask-/RoomStep-/RoomTraining-Adapter / DAO  (:app)
   → DashboardPresenter / DashboardUiMapper          (:app)
   → StateFlow<TodayScreenState>                     (:app)
   → DashboardRenderer → ui.today View               (:app)
@@ -71,8 +73,9 @@ erzeugen keine zweite Blattform und persistieren keinen Reorderzustand.
 
 ## Persistenzports
 
-`ApplicationTaskRepository` ist ausschließlich der Composition-Root-Vertrag der konkreten
-Room-Implementierung. Fachcode hängt von kleinen Fähigkeiten ab:
+Die Domain besitzt keinen aggregierten Repository-Vertrag. `AppContainer` setzt vier sichtbare
+Bündel zusammen: `CatalogUseCases`, `TodayUseCases`, `FlowUseCases` und `TrainingUseCases`.
+Transaktionale Abläufe erhalten `TransactionRunner` getrennt von ihren kleinen Fachports:
 
 - `DashboardReadRepository`
 - `OccurrenceExecutionRepository`
@@ -82,10 +85,19 @@ Room-Implementierung. Fachcode hängt von kleinen Fähigkeiten ab:
 - `TaskDefinitionRepository`
 - `TaskScheduleRepository`
 - `StepOrganizationRepository`
+- `TrainingRepository`
+- `StepFlowDefinitionRepository` und `StepFlowRunRepository`
+
+Use Cases dürfen diese Fähigkeiten weder über Mehrfachport-Typparameter noch über
+`instanceof`-Sondierung wieder zu einem impliziten Sammelvertrag verbinden.
 
 Schrittausführung liegt in `StepExecutionService`, Occurrence-Abschluss, Ernte und Undo in
-`OccurrenceCompletionService`. Reorder schreibt nur geänderte Positionsspalten innerhalb einer
-Transaktion; diese Invariante gilt auch unter Schema 19 unverändert.
+`OccurrenceCompletionService`. `RoomTransactionRunner` besitzt die Room-Transaktionsgrenze;
+`RoomStepRepository` besitzt Vorlagen-, Snapshot- und Satzresultatzeilen,
+`RoomTrainingRepository` Trainingsprofil, Lastfragen und Auditspur. Der infrastrukturelle
+`TaskStore` ist nur ein Implementierungsdetail des Room-Gateways und kein Domain- oder
+Präsentationsvertrag. Reorder schreibt nur geänderte Positionsspalten innerhalb einer
+Transaktion; diese Invariante gilt auch unter Schema 22 unverändert.
 
 ## Autoritative Zustände
 

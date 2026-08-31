@@ -13,7 +13,9 @@ import de.thonktank.autosecretary.domain.model.StepTransition;
 import de.thonktank.autosecretary.domain.model.TaskCatalog;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
+import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
+import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
+import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
 
@@ -32,7 +34,9 @@ import kotlinx.coroutines.flow.StateFlowKt;
 public final class FlowSetupViewModel extends ViewModel {
     private static final String SELECTED_TASK = "flow_setup_selected_task";
 
-    private final TaskUseCases tasks;
+    private final CatalogUseCases catalogUseCases;
+    private final FlowUseCases flows;
+    private final TodayUseCases today;
     private final FlowWakeScheduler wakeScheduler;
     private final AppLogger logger;
     private final UiTextProvider texts;
@@ -46,10 +50,13 @@ public final class FlowSetupViewModel extends ViewModel {
     private long feedbackSequence;
     private volatile boolean cleared;
 
-    FlowSetupViewModel(TaskUseCases tasks, FlowWakeScheduler wakeScheduler,
+    FlowSetupViewModel(CatalogUseCases catalogUseCases, FlowUseCases flows,
+                       TodayUseCases today, FlowWakeScheduler wakeScheduler,
                        AppLogger logger, UiTextProvider texts, SavedStateHandle savedState,
                        ExecutorService worker) {
-        this.tasks = tasks;
+        this.catalogUseCases = catalogUseCases;
+        this.flows = flows;
+        this.today = today;
         this.wakeScheduler = wakeScheduler;
         this.logger = logger;
         this.texts = texts;
@@ -87,10 +94,10 @@ public final class FlowSetupViewModel extends ViewModel {
         long generation = ++loadGeneration;
         worker.execute(() -> {
             try {
-                TaskCatalog catalog = tasks.loadTaskCatalog.execute();
+                TaskCatalog catalog = catalogUseCases.loadTaskCatalog.execute();
                 int index = restoredIndex(catalog, savedState.get(SELECTED_TASK));
                 StepFlowSetup setup = index < 0 ? null
-                        : tasks.loadStepFlowSetup.execute(catalog.items.get(index).task.id);
+                        : flows.loadStepFlowSetup.execute(catalog.items.get(index).task.id);
                 if (cleared || generation != loadGeneration) return;
                 FlowSetupDraft draft = draftFor(setup);
                 publish(current.loaded(catalog, index, setup, draft));
@@ -110,7 +117,7 @@ public final class FlowSetupViewModel extends ViewModel {
         publish(snapshot.loadingTask(index));
         worker.execute(() -> {
             try {
-                StepFlowSetup setup = tasks.loadStepFlowSetup.execute(taskId);
+                StepFlowSetup setup = flows.loadStepFlowSetup.execute(taskId);
                 if (cleared || generation != loadGeneration) return;
                 publish(current.loaded(snapshot.catalog, index, setup, draftFor(setup)));
             } catch (RuntimeException error) {
@@ -132,8 +139,8 @@ public final class FlowSetupViewModel extends ViewModel {
         publish(snapshot.withSaving());
         worker.execute(() -> {
             try {
-                tasks.saveCapacityResource.execute(id, name, capacity);
-                StepFlowSetup refreshed = tasks.loadStepFlowSetup.execute(taskId);
+                flows.saveCapacityResource.execute(id, name, capacity);
+                StepFlowSetup refreshed = flows.loadStepFlowSetup.execute(taskId);
                 if (cleared || current.setup == null || !taskId.equals(current.setup.task.id))
                     return;
                 FlowSetupDraft draft = drafts.getOrDefault(taskId.value, snapshot.draft);
@@ -152,11 +159,11 @@ public final class FlowSetupViewModel extends ViewModel {
             try {
                 Map<String, StepActivationKind> activations = activations(
                         snapshot.setup, snapshot.draft);
-                tasks.saveStepFlowSetup.execute(snapshot.setup.task.id, activations,
+                flows.saveStepFlowSetup.execute(snapshot.setup.task.id, activations,
                         snapshot.draft.transitions,
                         snapshot.draft.domainLeases(snapshot.setup.task.id));
-                tasks.materializeDue.execute();
-                tasks.activateReadyFlows.execute();
+                today.materializeDue.execute();
+                flows.activateReadyFlows.execute();
                 wakeScheduler.reschedule();
                 drafts.remove(snapshot.setup.task.id.value);
                 feedback(texts.text(R.string.flow_setup_saved), true);
@@ -224,7 +231,8 @@ public final class FlowSetupViewModel extends ViewModel {
                                               @NonNull CreationExtras extras) {
             if (!modelClass.isAssignableFrom(FlowSetupViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
-            return (T) new FlowSetupViewModel(container.tasks, container.flowWakeScheduler,
+            return (T) new FlowSetupViewModel(container.catalog, container.flows,
+                    container.today, container.flowWakeScheduler,
                     container.logger, container.texts,
                     SavedStateHandleSupport.createSavedStateHandle(extras),
                     Executors.newSingleThreadExecutor());

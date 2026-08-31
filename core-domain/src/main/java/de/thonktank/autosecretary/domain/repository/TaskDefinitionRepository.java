@@ -8,7 +8,7 @@ import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import java.util.List;
 
 /** Narrow port for task definitions and their reusable step templates. */
-public interface TaskDefinitionRepository extends TransactionalRepository {
+public interface TaskDefinitionRepository {
     void insertTask(Task task);
     void updateTask(Task task);
     Task findTask(TaskId id);

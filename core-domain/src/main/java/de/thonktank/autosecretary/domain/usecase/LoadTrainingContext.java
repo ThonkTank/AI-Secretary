@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.domain.model.TrainingContext;
 import de.thonktank.autosecretary.domain.model.TrainingHistoryEntry;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -15,13 +16,15 @@ import java.util.List;
 public final class LoadTrainingContext {
     public static final int HISTORY_LIMIT = 10;
     private final TrainingRepository repository;
+    private final TransactionRunner transactions;
 
-    public LoadTrainingContext(TrainingRepository repository) {
+    public LoadTrainingContext(TrainingRepository repository, TransactionRunner transactions) {
         this.repository = repository;
+        this.transactions = transactions;
     }
 
     public TrainingContext execute(String templateId) {
-        return repository.inTransaction(() -> load(templateId));
+        return transactions.inTransaction(() -> load(templateId));
     }
 
     private TrainingContext load(String templateId) {

@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -24,24 +25,29 @@ import java.util.TreeSet;
 public final class ApplyComboDecay {
     private final RewardLedgerRepository ledger;
     private final ComboObligationRepository obligations;
+    private final TransactionRunner transactions;
     private final ComboPolicySource policies;
     private final Clock clock;
 
-    public <T extends RewardLedgerRepository & ComboObligationRepository>
-    ApplyComboDecay(T repository, Clock clock) {
-        this(repository, clock, ComboPolicySource.defaults());
+    public ApplyComboDecay(RewardLedgerRepository ledger,
+                    ComboObligationRepository obligations, TransactionRunner transactions,
+                    Clock clock) {
+        this(ledger, obligations, transactions, clock, ComboPolicySource.defaults());
     }
 
-    public <T extends RewardLedgerRepository & ComboObligationRepository>
-    ApplyComboDecay(T repository, Clock clock, ComboPolicySource policies) {
-        this.ledger = repository;
-        this.obligations = repository;
+    public ApplyComboDecay(RewardLedgerRepository ledger,
+                    ComboObligationRepository obligations, TransactionRunner transactions,
+                    Clock clock,
+                    ComboPolicySource policies) {
+        this.ledger = ledger;
+        this.obligations = obligations;
+        this.transactions = transactions;
         this.policies = policies;
         this.clock = clock;
     }
 
     public boolean execute() {
-        return ledger.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             ComboPolicy policy = policies.current();
             Map<String, List<ComboObligation>> openByOwner = new LinkedHashMap<>();
             for (ComboObligation obligation : obligations.comboObligations())

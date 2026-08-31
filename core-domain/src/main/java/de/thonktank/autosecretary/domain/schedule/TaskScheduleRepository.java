@@ -5,13 +5,12 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
 
 import java.time.LocalDate;
 import java.util.List;
 
 /** Minimal persistence port owned by the scheduling slice. */
-public interface TaskScheduleRepository extends TransactionalRepository {
+public interface TaskScheduleRepository {
     Task findTask(TaskId id);
     TaskScheduleEntry findScheduleEntry(String id);
     List<TaskScheduleEntry> scheduleEntries();

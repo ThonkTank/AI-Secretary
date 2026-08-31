@@ -11,7 +11,9 @@ import de.thonktank.autosecretary.domain.model.TaskDetails;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.StepFlowSetup;
-import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
+import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
+import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
+import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
@@ -35,7 +37,9 @@ public final class TaskEditorViewModel extends ViewModel {
     private static final String SAVED_REQUESTS = "editor_requests";
     private static final String SAVED_REQUEST_SEQUENCE = "editor_request_sequence";
 
-    private final TaskUseCases tasks;
+    private final CatalogUseCases catalog;
+    private final FlowUseCases flows;
+    private final TodayUseCases today;
     private final Clock clock;
     private final AppLogger logger;
     private final UiTextProvider texts;
@@ -52,15 +56,19 @@ public final class TaskEditorViewModel extends ViewModel {
     private long requestSequence;
     private long openGeneration;
 
-    TaskEditorViewModel(TaskUseCases tasks, Clock clock, AppLogger logger, UiTextProvider texts,
+    TaskEditorViewModel(CatalogUseCases catalog, FlowUseCases flows, TodayUseCases today,
+                        Clock clock, AppLogger logger, UiTextProvider texts,
                         SavedStateHandle savedState, ExecutorService worker) {
-        this(tasks, clock, logger, texts, savedState, worker, null);
+        this(catalog, flows, today, clock, logger, texts, savedState, worker, null);
     }
 
-    TaskEditorViewModel(TaskUseCases tasks, Clock clock, AppLogger logger, UiTextProvider texts,
+    TaskEditorViewModel(CatalogUseCases catalog, FlowUseCases flows, TodayUseCases today,
+                        Clock clock, AppLogger logger, UiTextProvider texts,
                         SavedStateHandle savedState, ExecutorService worker,
                         FlowWakeScheduler wakeScheduler) {
-        this.tasks = tasks;
+        this.catalog = catalog;
+        this.flows = flows;
+        this.today = today;
         this.clock = clock;
         this.logger = logger;
         this.texts = texts;
@@ -125,7 +133,7 @@ public final class TaskEditorViewModel extends ViewModel {
             worker.execute(() -> {
                 try {
                     List<de.thonktank.autosecretary.domain.model.CapacityResource> catalog =
-                            tasks.loadCapacityResources.execute();
+                            flows.loadCapacityResources.execute();
                     finish(key);
                     publishCatalogIfCurrent(generation, catalog);
                 } catch (RuntimeException error) {
@@ -138,14 +146,14 @@ public final class TaskEditorViewModel extends ViewModel {
         setContent(EditorUiState.loading(taskId));
         worker.execute(() -> {
             try {
-                TaskDetails details = tasks.loadTaskDetails.execute(TaskId.of(taskId));
+                TaskDetails details = catalog.loadTaskDetails.execute(TaskId.of(taskId));
                 if (details == null) {
                     finish(key);
                     failLoad(generation, texts.text(R.string.error_task_missing),
                             new IllegalArgumentException("Missing task " + taskId));
                     return;
                 }
-                StepFlowSetup setup = tasks.loadStepFlowSetup.execute(TaskId.of(taskId));
+                StepFlowSetup setup = flows.loadStepFlowSetup.execute(TaskId.of(taskId));
                 EditorUiState loaded = EditorUiState.edit(details, TaskFlowDraft.from(setup));
                 if (addStep) loaded = TaskEditorStateReducer.addStep(loaded);
                 else if (stepId != null) loaded = TaskEditorStateReducer.expandStep(loaded, stepId);
@@ -196,12 +204,12 @@ public final class TaskEditorViewModel extends ViewModel {
         setContent(TaskEditorStateReducer.saving(draft, true));
         worker.execute(() -> {
             try {
-                tasks.saveTaskConfiguration.execute(
+                catalog.saveTaskConfiguration.execute(
                         draft.taskId == null ? null : TaskId.of(draft.taskId),
                         draft.definition(), draft.flowConfiguration());
                 try {
-                    tasks.materializeDue.execute();
-                    tasks.activateReadyFlows.execute();
+                    today.materializeDue.execute();
+                    flows.activateReadyFlows.execute();
                     if (wakeScheduler != null) wakeScheduler.reschedule();
                 } catch (RuntimeException runtimeError) {
                     logger.error("TaskEditorViewModel",
@@ -234,7 +242,7 @@ public final class TaskEditorViewModel extends ViewModel {
         setContent(TaskEditorStateReducer.saving(draft, true));
         worker.execute(() -> {
             try {
-                tasks.delete.execute(TaskId.of(taskId));
+                catalog.delete.execute(TaskId.of(taskId));
                 finish(key);
                 publishIfCurrent(generation, EditorUiState.closed());
             } catch (RuntimeException error) {
@@ -348,7 +356,8 @@ public final class TaskEditorViewModel extends ViewModel {
                                               @NonNull CreationExtras extras) {
             if (!modelClass.isAssignableFrom(TaskEditorViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
-            return (T) new TaskEditorViewModel(container.tasks, container.clock, container.logger,
+            return (T) new TaskEditorViewModel(container.catalog, container.flows,
+                    container.today, container.clock, container.logger,
                     container.texts, SavedStateHandleSupport.createSavedStateHandle(extras),
                     workers.get(), container.flowWakeScheduler);
         }

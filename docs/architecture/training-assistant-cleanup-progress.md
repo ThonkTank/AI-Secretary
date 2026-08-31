@@ -578,3 +578,155 @@ Squash-Merge nach `main`. Die physische Abnahme ist weiterhin separat offen: Der
 Sandbox ausgeführte SDK-Befehl `adb devices -l` lieferte am 2026-08-31 keine verbundenen Geräte.
 Das exakt gemergte Artefakt kann deshalb erst nach dem Remote-Gate und bei vorhandener
 Geräteverbindung installiert und vom Owner abgenommen werden.
+
+### Remote-Abschluss
+
+- Pull Request #303 prüfte den Phase-4-Commit gegen den Phase-3-Squash `77afd26d`.
+- `quality`, normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie
+  `instrumentation-gate` und `pull-request-gate` waren grün.
+- Der Pull Request wurde am 2026-08-31 per Squash als `693c94f4` nach `main` gemergt;
+  `origin/main` und der isolierte Roadmap-Worktree zeigten vor Phase 5 exakt diesen Commit.
+
+## Phase 5 – Composition Root, Ports und Abschlussaudit
+
+### Vorprüfung
+
+- Ausgangspunkt ist der verifizierte Phase-4-Squash `693c94f4` auf `origin/main`; gearbeitet wird
+  auf `feat/training-cleanup-p5-focused-ports` im isolierten Roadmap-Worktree.
+- `TaskUseCases` ist noch das gemeinsame, breite Bundle für Katalog, Today, Flows und Training.
+  `AppContainer`, beide Flow-ViewModels, Editor, Today, Widget-Aktionen und All-Tasks greifen darauf
+  zu. Die UI-Abhängigkeiten sind fachlich eindeutig, aber noch nicht als vier Verträge sichtbar.
+- `ApplicationTaskRepository` erbt alle fokussierten Ports. Diese Ports erben ihrerseits
+  `TransactionalRepository`, sodass jeder kleine Fachvertrag ungewollt auch
+  Transaktionsausführung verspricht. Zahlreiche Use Cases rufen die Transaktion deshalb auf
+  demselben Objekt statt über einen getrennt injizierten Runner auf.
+- `RoomTaskRepository` enthält weiterhin Vorlagen-/Occurrence-Schritt- und Trainingspersistenz.
+  Der vorhandene breite In-Memory-Speicher ist dadurch auch für Trainings-Slice-Tests die
+  bequeme Standardabhängigkeit. Architekturkarte und ausführbare Regeln beschreiben diesen
+  Zwischenstand statt des in ADR-028 beschlossenen Zielbilds.
+- Phase 5 ändert weder Datenbankschema noch Ressourcen oder Goldens. Der persistierte Vertrag
+  bleibt Schema 22; die Phase schneidet ausschließlich Composition-, Port-, Adapter- und
+  Testgrenzen.
+
+### Implementationsplan
+
+- Einen eigenständigen `TransactionRunner` einführen und aus allen fokussierten Repository-Ports
+  entfernen. Transaktionale Use Cases erhalten Fachport und Runner getrennt; die ersetzten
+  impliziten Konstruktoren und `TransactionalRepository` werden entfernt.
+- `TaskUseCases` durch vier reine, fokussierte Zusammenstellungen `CatalogUseCases`,
+  `TodayUseCases`, `FlowUseCases` und `TrainingUseCases` ersetzen. `AppContainer` verdrahtet
+  konkrete Use Cases aus kleinen Ports und genau einem Runner; ViewModels, Worker, Widgets und
+  Presenter erhalten nur ihr fachliches Bundle beziehungsweise einzelne Use Cases.
+- Trainingspersistenz und die Schrittoperationen aus `RoomTaskRepository` in
+  `RoomTrainingRepository` und `RoomStepRepository` verschieben. Der konkrete Room-Gateway darf
+  verbleibende Ports bündeln, ist aber weder Domainvertrag noch Quelle der extrahierten SQL-/DAO-
+  Abbildung. Ein `RoomTransactionRunner` besitzt allein die Room-Transaktionsgrenze.
+- Kleine Trainings- und Schritt-Testdoubles bereitstellen und die entsprechenden Slice-Tests vom
+  breiten `InMemoryExecutionRepository` lösen. Breite Abnahme- und End-to-end-Tests dürfen den
+  realistischen Gesamtspeicher weiterhin bewusst verwenden.
+- Architekturkarte und ADR-Index auf Schema 22 sowie die fokussierte Composition aktualisieren;
+  einen Abschluss-ADR für die erreichte Adaptergrenze ergänzen. Ausführbare Architekturregeln
+  verbieten den alten Domainvertrag, das breite Bundle, transaktionserbende Fachports und breite
+  Testdoubles in fokussierten Trainings-/Schritt-Slices.
+- Zuerst Kompilation und fokussierte Domain-/Room-/Architekturtests, dann das vollständige lokale
+  Gate aus Host/Robolectric, Lint, Debug-, AndroidTest- und Release-Build ausführen. Anschließend
+  erfolgt ein negativer Phase-5-Audit und der requirementweise Gesamtabgleich aller sechs Phasen.
+  Erst ein eigener grüner PR und Squash-Merge schließen Phase 5; danach werden Main-Release,
+  Produktionsupgrade und die verfügbare Geräteabnahme separat verifiziert.
+
+### Abnahmekriterien
+
+- Im Domainmodul existieren weder `ApplicationTaskRepository`, `TransactionalRepository` noch
+  `TaskUseCases`; produktive Consumers verwenden ausschließlich die vier fokussierten Bündel.
+- Jeder transaktionale Use Case erhält einen `TransactionRunner` getrennt von seinen kleinen
+  Fachports. Kein fokussierter Port erbt Transaktionsverhalten.
+- Training und Schritt-Persistenz liegen in eigenen Room-Adaptern; Schema, Migrationen, Entities,
+  Ressourcen und Goldens bleiben bytegenau unverändert.
+- Fokussierte Slice-Tests benötigen keinen Speicher, der sämtliche App-Ports implementiert.
+- Architekturregeln und Dokumentation bilden das tatsächliche Zielbild ab. Alle dauerhaften
+  Abnahmeanforderungen bleiben lokal und anschließend in CI grün.
+
+#### Korrekturrunde 1 – auch Mehrfachports explizit injizieren
+
+Der erste negative Audit fand nach grüner Kompilation, fokussierter Matrix und vollständigem
+lokalem Gate noch eine strukturelle Diskrepanz: `TransactionRunner` war zwar getrennt, mehrere
+Ausführungs-Wrapper verwendeten aber weiterhin generische Intersection-Typen und verlangten damit
+ein einziges Objekt, das Occurrence- und Reward-Port beziehungsweise Materialisierung und
+Obligationen gemeinsam implementiert. Das hätte die breite konkrete Speicherform weiterhin in
+kleine Use-Case-Konstruktoren durchsickern lassen.
+
+Plan: Step- und Completion-Services sowie ihre Wrapper erhalten Occurrence-, Reward- und Runner-
+Ports als einzelne Parameter. Combo-Decay, Materialisierung und Tagesabschluss trennen ihre
+jeweiligen Ports ebenfalls. Der Flow-Koordinator erhält Occurrence-, Definitions- und Run-Port
+getrennt; der daraus überflüssige `FlowExecutionRepository`-Verbund entfällt. Test- und
+Produktionswiring werden explizit angepasst. Danach werden Architekturregeln, Fokusmatrix,
+vollständige Hostsuite und das exakte lokale Gate erneut ausgeführt; nur der zweite Lauf gilt als
+abschließender Nachweis.
+
+Die Umsetzung entfernte zusätzlich zwei beim erweiterten negativen Scan gefundene Laufzeit-
+Sondierungen: Combo-Pflichten wurden zuvor aus dem Occurrence-Port und Flow-Laufzeitdaten aus dem
+Dashboard-Port per `instanceof` erraten. `StepExecutionService`,
+`OccurrenceCompletionService`, `LoadDashboard`, `MaterializeDueOccurrences` und
+`FlowRuntimeCoordinator` erhalten nun jeden benötigten Capability-Port explizit. Damit entfiel
+auch `FlowExecutionRepository`; `TaskStore` bleibt ausschließlich das konkrete infrastrukturelle
+Wiring-Detail. Die ausführbare Architekturregel verbietet künftig Repository-Capability-Probes.
+
+### Implementierung
+
+- `ApplicationTaskRepository`, `TransactionalRepository`, `FlowExecutionRepository` und
+  `TaskUseCases` sind entfernt. `CatalogUseCases`, `TodayUseCases`, `FlowUseCases` und
+  `TrainingUseCases` sind reine, persistenzfreie Feldbündel; die konkrete
+  `ApplicationUseCaseComposition` verdrahtet sie aus kleinen Ports und einem separaten
+  `TransactionRunner`.
+- Alle transaktionalen Use Cases erhalten den Runner getrennt. Occurrence-, Reward-, Combo-,
+  Materialisierungs-, Flow-Definitions-, Flow-Run-, Training-, Schedule- und Step-Ports werden
+  einzeln übergeben; weder Intersection-Typen noch `instanceof`-Sondierungen verbinden sie wieder
+  implizit.
+- `RoomTransactionRunner` besitzt die Transaktionsgrenze. `RoomStepRepository` enthält Vorlagen-,
+  Occurrence-Schritt- und Satzresultatabbildung; `RoomTrainingRepository` enthält Trainingsprofil,
+  Lastfragen und Auditspur. `RoomTaskRepository` delegiert diese Fähigkeiten und enthält deren
+  Entities oder Mapping nicht mehr selbst.
+- Schedule- und Step-Porttests behalten ihre kleinen lokalen Doubles. Die drei fokussierten
+  Trainings-Use-Case-Tests verwenden `InMemoryTrainingRepository`; der breite
+  `InMemoryExecutionRepository` bleibt nur für bewusst sliceübergreifende Abnahmeszenarien.
+- ADR-029, Architekturkarte, ADR-Index und ausführbare Architekturregeln bilden den erreichten
+  Stand ab. Schema 22, Migrationen, Entities, Ressourcen und visuelle Goldens wurden nicht
+  verändert.
+
+### Validierung und negativer Audit
+
+- Produktions- und Instrumentierungs-Testkompilation sowie die fokussierte Matrix aus
+  Architektur-, Satztransaktions-, Training-, Flow-, Today-, Schedule- und Step-Verträgen sind
+  nach der Korrekturrunde grün.
+- Die vollständige Host-/Robolectric-Suite lief in 5:09 Minuten grün: 514 Tests, null Failures,
+  null Errors und ein bewusst übersprungener Test. CI-Harness: 17 Tests grün;
+  Release-/Workflowverträge: 23 Tests grün.
+- Das exakte Gate `testInstrumentationUnitTest lintDebug assembleDebug
+  assembleInstrumentationAndroidTest assembleRelease` war in 14:37 Minuten grün: 157 Tasks,
+  Lint ohne Fehler und alle Paketierungen erfolgreich. Artefakte: Debug 9.801.528 Byte,
+  Instrumentierung 1.647.423 Byte, unsigned Release 2.810.784 Byte.
+- `git diff --check` ist grün. Der negative Quellscan findet keinen entfernten Sammelvertrag,
+  keine Repository-Intersection, keine Capability-Sondierung und keinen impliziten
+  Repository-Transaktionsaufruf. Der Diff gegen den Phase-4-Squash enthält keine Schema-,
+  Migrations-, Entity-, Ressourcen- oder Golden-Datei.
+- Der erneute SDK-ADB-Check am 2026-08-31 meldete kein verbundenes Gerät. Die physische
+  Installation und Sicht-/Update-Abnahme bleibt deshalb ausdrücklich offen und wird nicht durch
+  Host-, Paket- oder spätere Emulatornachweise ersetzt.
+
+### Requirementweiser Gesamtabgleich
+
+- Die unveränderten Migrations- und Produktionsfixtures sichern Schema 21 und den garantierten
+  Pfad ab Schema 8 bis Schema 22; vorhandene Occurrence- und Flow-Snapshots bleiben unverändert.
+- `SetResult` bleibt die einzige Satzwahrheit. Aufnahme, Korrektur, Reopen, Completion, Reward und
+  Adaptionsfolgen besitzen explizite Transaktionsgrenzen; die Fehlerverträge blieben in der
+  vollständigen Suite grün.
+- Kalibrierung nach drei Beobachtungen, Entscheidung erst nach zwei weiteren gleichartigen
+  Signalen, Safety-Pause, Volumengrenze und Zehn-Prozent-Limit sind weiterhin durch die
+  Phase-3-Verträge gedeckt und wurden durch Phase 5 nicht verändert.
+- Pro Template existiert höchstens eine persistente offene Lastfrage. Konkrete Last,
+  `Kein höheres Gewicht` und `Später`, Prozess-/Repository-Neuaufbau, stabile Auditordnung,
+  zehn Einträge Verlauf sowie Exactly-once-Undo bei aktuellem Nachzustand blieben in der grünen
+  Hostsuite abgedeckt.
+- Lokal bleibt keine Code-, Architektur- oder Testdiskrepanz. Offen vor Roadmap-Abschluss sind
+  der eigene grüne Phase-5-PR mit Squash-Merge, die anschließende Main-Veröffentlichung samt
+  Produktionsupgrade und Instrumentierungsmatrix sowie mangels ADB-Ziel die physische Abnahme.

@@ -7,15 +7,20 @@ import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Moves one stable step definition and only relocates a matching open snapshot. */
 public final class MoveTaskStep {
     private final StepOrganizationRepository repository;
+    private final TransactionRunner transactions;
 
-    public MoveTaskStep(StepOrganizationRepository repository) { this.repository = repository; }
+    public MoveTaskStep(StepOrganizationRepository repository, TransactionRunner transactions) {
+        this.repository = repository;
+        this.transactions = transactions;
+    }
 
     public StepTransferResult execute(StepMoveRequest request) {
-        return repository.inTransaction(() -> move(request));
+        return transactions.inTransaction(() -> move(request));
     }
 
     private StepTransferResult move(StepMoveRequest request) {

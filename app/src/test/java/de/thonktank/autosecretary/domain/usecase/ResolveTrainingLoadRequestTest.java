@@ -19,24 +19,23 @@ import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.model.TrainingPrescription;
-import de.thonktank.autosecretary.testing.InMemoryExecutionRepository;
+import de.thonktank.autosecretary.testing.InMemoryTrainingRepository;
 
 import org.junit.Test;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Collections;
 
 public final class ResolveTrainingLoadRequestTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 31);
 
     @Test public void concreteLoadAppliesOnlyAtTenPercentAndKeepsLargerQuestionOpen() {
-        InMemoryExecutionRepository repository = new InMemoryExecutionRepository();
+        InMemoryTrainingRepository repository = new InMemoryTrainingRepository();
         TaskStepTemplate template = template("row", ResistanceLoad.Mode.EXTERNAL, 50_000, 3, 12);
-        repository.insertTemplates(Collections.singletonList(template));
+        repository.insertTemplate(template);
         repository.insertTrainingLoadRequest(request(repository, template,
                 TrainingDecision.LoadDirection.PROGRESS));
-        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository,
+        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository, repository,
                 new FixedClock(), new SequenceIds());
 
         assertEquals(ResolveTrainingLoadRequest.Result.JUMP_TOO_LARGE,
@@ -54,13 +53,13 @@ public final class ResolveTrainingLoadRequestTest {
     }
 
     @Test public void assistedBodyweightProgressionRequiresLessAssistance() {
-        InMemoryExecutionRepository repository = new InMemoryExecutionRepository();
+        InMemoryTrainingRepository repository = new InMemoryTrainingRepository();
         TaskStepTemplate template = template("pullup",
                 ResistanceLoad.Mode.ASSISTED_BODYWEIGHT, 20_000, 3, 12);
-        repository.insertTemplates(Collections.singletonList(template));
+        repository.insertTemplate(template);
         repository.insertTrainingLoadRequest(request(repository, template,
                 TrainingDecision.LoadDirection.PROGRESS));
-        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository,
+        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository, repository,
                 new FixedClock(), new SequenceIds());
 
         assertEquals(ResolveTrainingLoadRequest.Result.WRONG_DIRECTION,
@@ -74,13 +73,13 @@ public final class ResolveTrainingLoadRequestTest {
     }
 
     @Test public void unavailableHigherLoadFallsBackToOneAllowedSet() {
-        InMemoryExecutionRepository repository = new InMemoryExecutionRepository();
+        InMemoryTrainingRepository repository = new InMemoryTrainingRepository();
         TaskStepTemplate template = template("press", ResistanceLoad.Mode.EXTERNAL,
                 40_000, 2, 12);
-        repository.insertTemplates(Collections.singletonList(template));
+        repository.insertTemplate(template);
         repository.insertTrainingLoadRequest(request(repository, template,
                 TrainingDecision.LoadDirection.PROGRESS));
-        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository,
+        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository, repository,
                 new FixedClock(), new SequenceIds());
 
         assertEquals(ResolveTrainingLoadRequest.Result.DEFERRED, useCase.later(template.id));
@@ -94,7 +93,7 @@ public final class ResolveTrainingLoadRequestTest {
         assertEquals(8, changed.repetitions);
     }
 
-    private static TrainingLoadRequest request(InMemoryExecutionRepository repository,
+    private static TrainingLoadRequest request(InMemoryTrainingRepository repository,
                                                TaskStepTemplate template,
                                                TrainingDecision.LoadDirection direction) {
         return TrainingLoadRequest.open("request-" + template.id, template.id, "occ-step",

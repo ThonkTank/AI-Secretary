@@ -360,9 +360,9 @@ public final class AllTasksViewModel extends ViewModel {
                                               @NonNull CreationExtras extras) {
             if (!modelClass.isAssignableFrom(AllTasksViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
-            return (T) new AllTasksViewModel(container.tasks.loadTaskCatalog,
-                    container.tasks.moveScheduleEntry, container.tasks.moveTaskStep,
-                    container.tasks.swapTaskSteps, container.tasks.delete, container.texts,
+            return (T) new AllTasksViewModel(container.catalog.loadTaskCatalog,
+                    container.catalog.moveScheduleEntry, container.catalog.moveTaskStep,
+                    container.catalog.swapTaskSteps, container.catalog.delete, container.texts,
                     SavedStateHandleSupport.createSavedStateHandle(extras), workers.get(),
                     container.presentationInvalidations, null, navigator);
         }

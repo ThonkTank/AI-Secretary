@@ -744,7 +744,10 @@ public final class DatabaseMigrationRobolectricTest {
             assertTrue(cursor.moveToFirst());
             assertEquals(2, cursor.getInt(0));
         }
-        RewardReceipt undo = new UndoOccurrence(new RoomTaskRepository(migrated), new Clock() {
+        RoomTaskRepository migratedRepository = new RoomTaskRepository(migrated);
+        RewardReceipt undo = new UndoOccurrence(migratedRepository, migratedRepository,
+                migratedRepository, migratedRepository,
+                new Clock() {
             @Override public LocalDate today() { return LocalDate.of(2026, 8, 17); }
             @Override public LocalTime time() { return LocalTime.NOON; }
         }).execute("done-v4");

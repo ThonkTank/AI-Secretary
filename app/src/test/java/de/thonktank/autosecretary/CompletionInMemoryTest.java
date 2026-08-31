@@ -57,7 +57,7 @@ public final class CompletionInMemoryTest {
         repository.putCombo(new ComboProgress(ComboProgress.taskOwner(occurrence.taskId),
                 occurrence.taskId, ComboProgress.Kind.TASK, 3, TODAY));
 
-        RewardReceipt completed = new CompleteOccurrence(repository, clock).execute(occurrence.id);
+        RewardReceipt completed = new CompleteOccurrence(repository, repository, repository, repository, clock).execute(occurrence.id);
 
         assertEquals(3, completed.bookings.size());
         assertEquals(1, completed.bookings.stream().map(value -> value.transactionId)
@@ -68,7 +68,7 @@ public final class CompletionInMemoryTest {
         assertEquals(TODAY.plusDays(1), repository.findTask(occurrence.taskId).nextDueOn);
         assertEquals(3, repository.rewardBookings(occurrence.id).size());
 
-        RewardReceipt undone = new UndoOccurrence(repository, clock).execute(occurrence.id);
+        RewardReceipt undone = new UndoOccurrence(repository, repository, repository, repository, clock).execute(occurrence.id);
 
         assertEquals(RewardBooking.Kind.REVERSAL, undone.bookings.get(0).kind);
         assertEquals(completed.bookings.get(2).id, undone.bookings.get(0).reversesBookingId);
@@ -78,9 +78,9 @@ public final class CompletionInMemoryTest {
         assertEquals(TODAY.plusDays(1), repository.findTask(occurrence.taskId).nextDueOn);
         assertTrue(repository.findOccurrenceStep(first.id).done);
         assertEquals(4, repository.rewardBookings(occurrence.id).size());
-        assertEquals(0, new UndoOccurrence(repository, clock).execute(occurrence.id).xp);
+        assertEquals(0, new UndoOccurrence(repository, repository, repository, repository, clock).execute(occurrence.id).xp);
 
-        RewardReceipt recompleted = new CompleteOccurrence(repository, clock).execute(occurrence.id);
+        RewardReceipt recompleted = new CompleteOccurrence(repository, repository, repository, repository, clock).execute(occurrence.id);
         assertEquals(70, recompleted.xp);
         assertNotEquals(completed.transactionId, recompleted.transactionId);
         assertEquals(70, repository.xp());
@@ -90,16 +90,16 @@ public final class CompletionInMemoryTest {
     @Test public void stepUndoKeepsOtherRewardsAndCanBeAppliedOnlyOnce() {
         Occurrence occurrence = dailyRoutine("Training", "Mobilisieren");
         OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
-        RewardReceipt earned = new ToggleStep(repository, clock).execute(step.id);
+        RewardReceipt earned = new ToggleStep(repository, repository, repository, repository, clock).execute(step.id);
         assertEquals(10, earned.xp);
         assertTrue(repository.findOccurrenceStep(step.id).done);
 
-        RewardReceipt reversed = new ToggleStep(repository, clock).execute(step.id);
+        RewardReceipt reversed = new ToggleStep(repository, repository, repository, repository, clock).execute(step.id);
         assertEquals(-10, reversed.xp);
         assertEquals(earned.bookings.get(0).id, reversed.bookings.get(0).reversesBookingId);
         assertFalse(repository.findOccurrenceStep(step.id).done);
         assertEquals(2, repository.rewardBookings(occurrence.id).size());
-        assertEquals(10, new ToggleStep(repository, clock).execute(step.id).xp);
+        assertEquals(10, new ToggleStep(repository, repository, repository, repository, clock).execute(step.id).xp);
         assertEquals(10, repository.rewardBookings(occurrence.id).stream()
                 .mapToInt(value -> value.xpDelta).sum());
     }
@@ -109,13 +109,13 @@ public final class CompletionInMemoryTest {
                 "Vertrag unterschrieben");
         Task task = repository.allTasks().get(0);
 
-        RewardReceipt closed = new CloseOngoingTask(repository, clock).execute(task.id);
+        RewardReceipt closed = new CloseOngoingTask(repository, repository, repository, repository, clock).execute(task.id);
         Occurrence occurrence = repository.occurrences(task.id).get(0);
         assertEquals(10, closed.xp);
         assertTrue(repository.findTask(task.id).conditionDone);
         assertTrue(repository.findTask(task.id).archived);
 
-        RewardReceipt undone = new UndoOccurrence(repository, clock).execute(occurrence.id);
+        RewardReceipt undone = new UndoOccurrence(repository, repository, repository, repository, clock).execute(occurrence.id);
         Task reopened = repository.findTask(task.id);
         assertEquals(-10, undone.xp);
         assertFalse(reopened.conditionDone);
@@ -128,7 +128,7 @@ public final class CompletionInMemoryTest {
         OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
 
         assertThrows(IllegalStateException.class, () -> repository.inTransaction(() -> {
-            new ToggleStep(repository, clock).execute(step.id);
+            new ToggleStep(repository, repository, repository, repository, clock).execute(step.id);
             repository.setXp(99);
             throw new IllegalStateException("rollback");
         }));
@@ -142,10 +142,10 @@ public final class CompletionInMemoryTest {
     @Test public void rolloverCreatesTodaysInstanceWithUnfinishedAndFreshStepsOnce() {
         Occurrence yesterday = dailyRoutine("Tagesroutine", "Duschen", "Anziehen");
         OccurrenceStep finished = repository.occurrenceSteps(yesterday.id).get(0);
-        new ToggleStep(repository, clock).execute(finished.id);
+        new ToggleStep(repository, repository, repository, repository, clock).execute(finished.id);
 
         clock.set(TODAY.plusDays(1));
-        new MaterializeDueOccurrences(repository, clock, this::nextId).execute();
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, this::nextId).execute();
 
         assertEquals(OccurrenceState.MISSED, repository.findOccurrence(yesterday.id).state);
         List<Occurrence> open = repository.openOccurrences();
@@ -153,7 +153,7 @@ public final class CompletionInMemoryTest {
         assertEquals(TODAY.plusDays(1), open.get(0).scheduledOn);
         assertEquals(Arrays.asList("Anziehen", "Duschen"), texts(open.get(0).id));
         assertEquals(0, repository.rewardBookings(open.get(0).id).size());
-        new MaterializeDueOccurrences(repository, clock, this::nextId).execute();
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, this::nextId).execute();
         assertEquals(1, repository.openOccurrences().size());
         assertEquals(2, repository.occurrenceSteps(open.get(0).id).size());
     }
@@ -161,15 +161,15 @@ public final class CompletionInMemoryTest {
     @Test public void partialHarvestClosesOccurrenceAndCarriesOpenStepNextDay() {
         Occurrence yesterday = dailyRoutine("Teilernte", "Erster", "Zweiter");
         OccurrenceStep finished = repository.occurrenceSteps(yesterday.id).get(0);
-        new ToggleStep(repository, clock).execute(finished.id);
+        new ToggleStep(repository, repository, repository, repository, clock).execute(finished.id);
 
-        assertEquals(10, new HarvestOccurrence(repository, clock).execute(yesterday.id).xp);
+        assertEquals(10, new HarvestOccurrence(repository, repository, repository, repository, clock).execute(yesterday.id).xp);
         assertEquals(OccurrenceState.HARVESTED_WITH_MISSED_STEPS,
                 repository.findOccurrence(yesterday.id).state);
         assertEquals(10, repository.xp());
 
         clock.set(TODAY.plusDays(1));
-        new MaterializeDueOccurrences(repository, clock, this::nextId).execute();
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, this::nextId).execute();
         assertEquals(1, repository.openOccurrences().size());
         assertEquals(Arrays.asList("Zweiter", "Erster"),
                 texts(repository.openOccurrences().get(0).id));
@@ -209,7 +209,7 @@ public final class CompletionInMemoryTest {
                     ComboProgress.Kind.TASK, taskIndex % 8, TODAY));
         }
 
-        Dashboard dashboard = new LoadDashboard(repository).execute(TODAY);
+        Dashboard dashboard = new LoadDashboard(repository, repository).execute(TODAY);
 
         assertEquals(taskCount, dashboard.tasks.size());
         assertEquals(taskCount, dashboard.combos.size());
@@ -219,14 +219,14 @@ public final class CompletionInMemoryTest {
 
     private Occurrence dailyRoutine(String title, String... steps) {
         create(title, TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList(steps), false, "");
-        new MaterializeDueOccurrences(repository, clock, this::nextId).execute();
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, this::nextId).execute();
         return repository.openOccurrences().get(0);
     }
 
     private void create(String title, TaskSlot slot, Recurrence recurrence,
                         java.util.List<String> steps, boolean ongoing, String condition) {
         if (!ongoing) {
-            new CreateTask(repository, repository, clock, this::nextId).execute(
+            new CreateTask(repository, repository, repository, clock, this::nextId).execute(
                     TaskDefinition.basic(title, slot, recurrence, 1, 0, steps));
             return;
         }

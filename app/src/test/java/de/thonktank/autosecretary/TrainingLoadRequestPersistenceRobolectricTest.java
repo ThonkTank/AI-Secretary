@@ -78,7 +78,7 @@ public final class TrainingLoadRequestPersistenceRobolectricTest {
         assertEquals(TrainingDecision.LoadDirection.PROGRESS, restored.direction);
         assertEquals(Long.valueOf(50_000), restored.currentLoad.milliUnits);
         assertEquals(TrainingDecision.RULE_VERSION, restored.ruleVersion);
-        TrainingContext projected = new LoadTrainingContext(reopenedRepository)
+        TrainingContext projected = new LoadTrainingContext(reopenedRepository, reopenedRepository)
                 .execute(template.id);
         assertNotNull(projected.openLoadRequest);
         assertEquals("request", projected.openLoadRequest.id);

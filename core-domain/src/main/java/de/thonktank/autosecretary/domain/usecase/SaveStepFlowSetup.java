@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
 import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,11 +18,14 @@ import java.util.Map;
 public final class SaveStepFlowSetup {
     private final TaskDefinitionRepository tasks;
     private final StepFlowDefinitionRepository flows;
+    private final TransactionRunner transactions;
 
     public SaveStepFlowSetup(TaskDefinitionRepository tasks,
-                             StepFlowDefinitionRepository flows) {
+                             StepFlowDefinitionRepository flows,
+                             TransactionRunner transactions) {
         this.tasks = tasks;
         this.flows = flows;
+        this.transactions = transactions;
     }
 
     public StepFlowDefinition execute(TaskId taskId,
@@ -30,7 +34,7 @@ public final class SaveStepFlowSetup {
                                       List<StepResourceLease> leases) {
         if (taskId == null || activationByStep == null || transitions == null || leases == null)
             throw new IllegalArgumentException("Ablaufeinrichtung ist unvollständig");
-        return flows.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             if (tasks.findTask(taskId) == null)
                 throw new IllegalArgumentException("Aufgabe existiert nicht");
             List<TaskStepTemplate> updated = new ArrayList<>();

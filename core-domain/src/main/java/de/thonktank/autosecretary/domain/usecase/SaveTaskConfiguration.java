@@ -13,6 +13,7 @@ import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
 import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,15 +26,18 @@ import java.util.Set;
 public final class SaveTaskConfiguration {
     private final TaskDefinitionRepository tasks;
     private final StepFlowDefinitionRepository flows;
+    private final TransactionRunner transactions;
     private final CreateTask create;
     private final UpdateTask update;
     private final IdGenerator ids;
 
     public SaveTaskConfiguration(TaskDefinitionRepository tasks,
                                  StepFlowDefinitionRepository flows,
-                                 CreateTask create, UpdateTask update, IdGenerator ids) {
+                                 TransactionRunner transactions, CreateTask create,
+                                 UpdateTask update, IdGenerator ids) {
         this.tasks = tasks;
         this.flows = flows;
+        this.transactions = transactions;
         this.create = create;
         this.update = update;
         this.ids = ids;
@@ -45,7 +49,7 @@ public final class SaveTaskConfiguration {
             throw new IllegalArgumentException("Aufgabe und Ablauf sind erforderlich");
         if (definition.steps.size() != draft.stepKeys.size())
             throw new IllegalArgumentException("Ablauf und Schritte passen nicht zusammen");
-        return tasks.inTransaction(() -> saveInside(taskId, definition, draft));
+        return transactions.inTransaction(() -> saveInside(taskId, definition, draft));
     }
 
     private TaskId saveInside(TaskId requestedId, TaskDefinition definition,

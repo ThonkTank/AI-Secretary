@@ -32,7 +32,9 @@ import de.thonktank.autosecretary.domain.usecase.ResolveTrainingLoadRequest;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
-import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
+import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
+import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
+import de.thonktank.autosecretary.domain.usecase.TrainingUseCases;
 import de.thonktank.autosecretary.domain.schedule.ScheduleMoveResult;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
@@ -66,7 +68,9 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private static final String SAVED_REQUESTS = "today_requests";
     private static final String SAVED_REQUEST_SEQUENCE = "today_request_sequence";
     private static final String SAVED_TIMER_PERMISSION_WARNED = "today_timer_permission_warned";
-    private final TaskUseCases tasks;
+    private final TodayUseCases today;
+    private final CatalogUseCases catalog;
+    private final TrainingUseCases training;
     private final DashboardPresenter dashboard;
     private final CalendarDataSource calendar;
     private final UiPreferences preferences;
@@ -96,28 +100,36 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     public TodayViewModel(AppContainer container, AppNavigator navigator,
                    SavedStateHandle savedState, ExecutorService worker) {
-        this(container.tasks, container.dashboardPresenter, container.calendar,
+        this(container.today, container.catalog, container.training,
+                container.dashboardPresenter, container.calendar,
                 container.uiPreferences, container.clock, container.logger, container.texts,
                 container.presentationInvalidations, container.timers, navigator,
                 savedState, worker, null);
     }
 
-    public TodayViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
+    public TodayViewModel(TodayUseCases today, CatalogUseCases catalog,
+                  TrainingUseCases training, DashboardPresenter dashboard,
+                  CalendarDataSource calendar,
                   UiPreferences preferences, Clock clock, AppLogger logger,
                   UiTextProvider texts, PresentationInvalidationSource invalidations,
                   SavedStateHandle savedState, ExecutorService worker,
                   @Nullable Executor collectionExecutor) {
-        this(tasks, dashboard, calendar, preferences, clock, logger, texts, invalidations,
+        this(today, catalog, training, dashboard, calendar, preferences, clock, logger, texts,
+                invalidations,
                 null, destination -> { }, savedState, worker, collectionExecutor);
     }
 
-    public TodayViewModel(TaskUseCases tasks, DashboardPresenter dashboard, CalendarDataSource calendar,
+    public TodayViewModel(TodayUseCases today, CatalogUseCases catalog,
+                  TrainingUseCases training, DashboardPresenter dashboard,
+                  CalendarDataSource calendar,
                   UiPreferences preferences, Clock clock, AppLogger logger,
                   UiTextProvider texts, PresentationInvalidationSource invalidations,
                   @Nullable TimerManager timers, AppNavigator navigator,
                   SavedStateHandle savedState,
                   ExecutorService worker, @Nullable Executor collectionExecutor) {
-        this.tasks = tasks;
+        this.today = today;
+        this.catalog = catalog;
+        this.training = training;
         this.dashboard = dashboard;
         this.calendar = calendar;
         this.preferences = preferences;
@@ -304,12 +316,12 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     private void recordRepetitionResult(RepetitionInputReducer.Submission submission) {
         runTodayStepResult(command(UiCommand.Kind.RECORD_REPETITION_RESULT, submission.stepId),
-                () -> tasks.recordSetResult.execute(submission.stepId,
+                () -> today.recordSetResult.execute(submission.stepId,
                         trainingResult(submission)));
     }
     private void correctRepetitionResult(RepetitionInputReducer.Submission submission) {
         runTodayStepResult(command(UiCommand.Kind.CORRECT_REPETITION_RESULT, submission.stepId),
-                () -> tasks.correctSetResult.execute(submission.stepId,
+                () -> today.correctSetResult.execute(submission.stepId,
                         submission.editingIndex, trainingResult(submission)));
     }
 
@@ -320,11 +332,11 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     }
     private void close(String taskId) {
         runTodayReward(command(UiCommand.Kind.CLOSE, taskId),
-                () -> tasks.closeOngoing.execute(TaskId.of(taskId)));
+                () -> today.closeOngoing.execute(TaskId.of(taskId)));
     }
     private void move(String taskId, @Nullable TaskSlot sourceSlot, TaskSlot targetSlot) {
         run(command(UiCommand.Kind.MOVE, taskId), () -> {
-            ScheduleMoveResult result = tasks.moveTaskPlacement.execute(
+            ScheduleMoveResult result = catalog.moveTaskPlacement.execute(
                     TaskId.of(taskId), sourceSlot, targetSlot);
             if (result != ScheduleMoveResult.MOVED)
                 throw new IllegalArgumentException(scheduleMoveMessage(result));
@@ -332,7 +344,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     }
     private void delete(String taskId) {
         run(command(UiCommand.Kind.DELETE, taskId),
-                () -> tasks.delete.execute(TaskId.of(taskId)));
+                () -> catalog.delete.execute(TaskId.of(taskId)));
     }
 
     private void applyTrainingLoad(String templateId, long milliUnits) {
@@ -345,7 +357,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 milliUnits);
         run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
             ResolveTrainingLoadRequest.Result result =
-                    tasks.resolveTrainingLoadRequest.applyConcreteLoad(templateId, answer);
+                    training.resolveTrainingLoadRequest.applyConcreteLoad(templateId, answer);
             requireResolved(result);
         });
     }
@@ -353,7 +365,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private void resolveNoHigherLoad(String templateId) {
         run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
             ResolveTrainingLoadRequest.Result result =
-                    tasks.resolveTrainingLoadRequest.noHigherLoad(templateId);
+                    training.resolveTrainingLoadRequest.noHigherLoad(templateId);
             requireResolved(result);
         });
     }
@@ -361,7 +373,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private void deferTrainingLoad(String templateId) {
         run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
             ResolveTrainingLoadRequest.Result result =
-                    tasks.resolveTrainingLoadRequest.later(templateId);
+                    training.resolveTrainingLoadRequest.later(templateId);
             if (result != ResolveTrainingLoadRequest.Result.DEFERRED)
                 throw new IllegalArgumentException(
                         texts.text(R.string.training_request_no_longer_open));
@@ -371,7 +383,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     private void undoTrainingAdjustment(String templateId) {
         run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
-            if (!tasks.undoLatestTrainingAdjustment.execute(templateId))
+            if (!training.undoLatestTrainingAdjustment.execute(templateId))
                 throw new IllegalArgumentException(
                         texts.text(R.string.training_undo_no_longer_available));
         });
@@ -416,7 +428,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     @Override public void handleCompleteOccurrence(String occurrenceId) {
         runTodayReward(command(UiCommand.Kind.COMPLETE, occurrenceId),
-                () -> tasks.complete.execute(occurrenceId));
+                () -> today.complete.execute(occurrenceId));
     }
 
     @Override public void handleRequestClose(String taskId, String title) {
@@ -427,7 +439,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         Set<String> timerStepIds = focusStepIds();
         runTodayReward(command(UiCommand.Kind.COMPLETE_REMAINING, occurrenceId),
                 () -> {
-                    RewardReceipt receipt = tasks.completeRemainingSteps.execute(occurrenceId);
+                    RewardReceipt receipt = today.completeRemainingSteps.execute(occurrenceId);
                     if (timers != null)
                         for (String stepId : timerStepIds) timers.resetForStep(stepId);
                     return receipt;
@@ -436,18 +448,18 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     @Override public void handleHarvest(String occurrenceId) {
         runTodayReward(command(UiCommand.Kind.HARVEST, occurrenceId),
-                () -> tasks.harvest.execute(occurrenceId));
+                () -> today.harvest.execute(occurrenceId));
     }
 
     @Override public void handleDefer(String occurrenceId) {
         run(command(UiCommand.Kind.DEFER, occurrenceId),
-                () -> tasks.defer.execute(occurrenceId));
+                () -> today.defer.execute(occurrenceId));
     }
 
     @Override public void handleToggleStep(String stepId) {
         runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, stepId),
                 () -> {
-                    RewardReceipt receipt = tasks.toggleStep.execute(stepId);
+                    RewardReceipt receipt = today.toggleStep.execute(stepId);
                     if (timers != null) timers.resetForStep(stepId);
                     return receipt;
                 });
@@ -456,7 +468,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     @Override public void handleToggleStepWithDelay(String stepId, long chosenDelayMillis) {
         runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, stepId),
                 () -> {
-                    RewardReceipt receipt = tasks.toggleStep.execute(stepId, chosenDelayMillis);
+                    RewardReceipt receipt = today.toggleStep.execute(stepId, chosenDelayMillis);
                     if (timers != null) timers.resetForStep(stepId);
                     return receipt;
                 });
@@ -465,7 +477,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     @Override public void handleFinishStep(String stepId) {
         runTodayReward(command(UiCommand.Kind.FINISH_STEP, stepId),
                 () -> {
-                    RewardReceipt receipt = tasks.finishStepForToday.execute(stepId);
+                    RewardReceipt receipt = today.finishStepForToday.execute(stepId);
                     if (timers != null) timers.resetForStep(stepId);
                     return receipt;
                 });
@@ -477,7 +489,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     @Override public void handleUndoOccurrence(String occurrenceId) {
         runTodayReward(command(UiCommand.Kind.UNDO, occurrenceId),
-                () -> tasks.undoOccurrence.execute(occurrenceId));
+                () -> today.undoOccurrence.execute(occurrenceId));
     }
 
     @Override public void handleAdjustRepetition(String stepId, int delta) {
@@ -571,7 +583,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         if (!begin(key, false)) return;
         worker.execute(() -> {
             try {
-                AdvanceTodayStepResult result = tasks.advanceTodayStep.execute(stepId);
+                AdvanceTodayStepResult result = today.advanceTodayStep.execute(stepId);
                 finishCommand(key);
                 enqueueReward(result.rewardReceipt, key);
             } catch (RuntimeException error) {
@@ -602,7 +614,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         if (!begin(key, false)) return;
         worker.execute(() -> {
             try {
-                TodayStepMoveResult result = tasks.moveTodayStep.execute(
+                TodayStepMoveResult result = today.moveTodayStep.execute(
                         stepId, beforeStepId);
                 if (result.status == TodayStepMoveResult.Status.MOVED
                         || result.status == TodayStepMoveResult.Status.NO_CHANGE) {

@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
 import de.thonktank.autosecretary.domain.training.TrainingAdaptationEngine;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Resolves a durable load question without inventing equipment increments. */
 public final class ResolveTrainingLoadRequest {
@@ -29,23 +30,26 @@ public final class ResolveTrainingLoadRequest {
     }
 
     private final TrainingRepository repository;
+    private final TransactionRunner transactions;
     private final Clock clock;
     private final IdGenerator ids;
     private final TrainingAdaptationEngine engine = new TrainingAdaptationEngine();
 
-    public ResolveTrainingLoadRequest(TrainingRepository repository, Clock clock,
+    public ResolveTrainingLoadRequest(TrainingRepository repository,
+                                      TransactionRunner transactions, Clock clock,
                                       IdGenerator ids) {
         this.repository = repository;
+        this.transactions = transactions;
         this.clock = clock;
         this.ids = ids;
     }
 
     public Result applyConcreteLoad(String templateId, ResistanceLoad load) {
-        return repository.inTransaction(() -> applyInside(templateId, load));
+        return transactions.inTransaction(() -> applyInside(templateId, load));
     }
 
     public Result noHigherLoad(String templateId) {
-        return repository.inTransaction(() -> noHigherInside(templateId));
+        return transactions.inTransaction(() -> noHigherInside(templateId));
     }
 
     public Result later(String templateId) {

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Collections;
 
 /** Definition-side storage for generic step flows and user-named capacity pools. */
-public interface StepFlowDefinitionRepository extends TransactionalRepository {
+public interface StepFlowDefinitionRepository {
     default List<CapacityResource> capacityResources() { return Collections.emptyList(); }
     default CapacityResource findCapacityResource(String id) { return null; }
     default void putCapacityResource(CapacityResource resource) {

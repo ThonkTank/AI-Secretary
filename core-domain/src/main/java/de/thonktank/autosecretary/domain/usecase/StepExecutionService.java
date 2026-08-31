@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
+import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
 import de.thonktank.autosecretary.domain.schedule.ScheduleProjector;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
@@ -27,45 +28,58 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Transactional owner of step progress, step completion rewards and execution ordering. */
 public final class StepExecutionService {
     private final OccurrenceExecutionRepository occurrences;
     private final RewardLedgerRepository ledger;
+    private final TransactionRunner transactions;
     private final Clock clock;
     private final RewardCalculator rewards;
     private final CompletionStateMachine states;
     private final ComboObligationResolver obligationResolver;
     private final FlowProgression flows;
 
-    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
-    StepExecutionService(T repository, Clock clock) {
-        this(repository, repository, clock, new RewardCalculator(),
-                new CompletionStateMachine(), FlowProgressions.create(repository, clock));
+    StepExecutionService(OccurrenceExecutionRepository occurrences,
+                         RewardLedgerRepository ledger, ComboObligationRepository obligations,
+                         TransactionRunner transactions,
+                         Clock clock) {
+        this(occurrences, ledger, obligations, transactions, clock, new RewardCalculator(),
+                new CompletionStateMachine(), FlowProgression.NONE);
     }
 
-    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
-    StepExecutionService(T repository, Clock clock, ComboPolicySource policies) {
-        this(repository, repository, clock, new RewardCalculator(policies),
-                new CompletionStateMachine(), FlowProgressions.create(repository, clock));
+    StepExecutionService(OccurrenceExecutionRepository occurrences,
+                         RewardLedgerRepository ledger, ComboObligationRepository obligations,
+                         TransactionRunner transactions, Clock clock,
+                         ComboPolicySource policies) {
+        this(occurrences, ledger, obligations, transactions, clock,
+                new RewardCalculator(policies),
+                new CompletionStateMachine(), FlowProgression.NONE);
     }
 
-    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
-    StepExecutionService(T repository, Clock clock, ComboPolicySource policies,
+    StepExecutionService(OccurrenceExecutionRepository occurrences,
+                         RewardLedgerRepository ledger, ComboObligationRepository obligations,
+                         TransactionRunner transactions, Clock clock,
+                         ComboPolicySource policies,
                          FlowRuntimeCoordinator flows) {
-        this(repository, repository, clock, new RewardCalculator(policies),
+        this(occurrences, ledger, obligations, transactions, clock,
+                new RewardCalculator(policies),
                 new CompletionStateMachine(), flows);
     }
 
     StepExecutionService(OccurrenceExecutionRepository occurrences,
-                         RewardLedgerRepository ledger, Clock clock, RewardCalculator rewards,
+                         RewardLedgerRepository ledger, ComboObligationRepository obligations,
+                         TransactionRunner transactions,
+                         Clock clock, RewardCalculator rewards,
                          CompletionStateMachine states, FlowProgression flows) {
         this.occurrences = occurrences;
         this.ledger = ledger;
+        this.transactions = transactions;
         this.clock = clock;
         this.rewards = rewards;
         this.states = states;
-        this.obligationResolver = new ComboObligationResolver(occurrences);
+        this.obligationResolver = new ComboObligationResolver(obligations);
         this.flows = flows == null ? FlowProgression.NONE : flows;
     }
 
@@ -74,7 +88,7 @@ public final class StepExecutionService {
     }
 
     public RewardReceipt toggleStep(String stepId, Long chosenDelayMillis) {
-        return occurrences.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
             if (step == null || step.repetitionProgress != null)
                 return RewardReceipt.none();
@@ -89,7 +103,7 @@ public final class StepExecutionService {
     }
 
     public StepExecutionResult recordSetResult(String stepId, SetResult value) {
-        return occurrences.inTransaction(() -> recordSetResultInsideTransaction(stepId, value));
+        return transactions.inTransaction(() -> recordSetResultInsideTransaction(stepId, value));
     }
 
     StepExecutionResult recordSetResultInsideTransaction(String stepId, SetResult value) {
@@ -117,7 +131,7 @@ public final class StepExecutionService {
     }
 
     public StepExecutionResult correctRepetitionResult(String stepId, int index, int repetitions) {
-        return occurrences.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             OccurrenceStep current = occurrences.findOccurrenceStep(stepId);
             if (current == null)
                 return result(StepExecutionResult.Status.INVALID_STEP, null,
@@ -131,7 +145,7 @@ public final class StepExecutionService {
     }
 
     public StepExecutionResult correctSetResult(String stepId, int index, SetResult value) {
-        return occurrences.inTransaction(
+        return transactions.inTransaction(
                 () -> correctSetResultInsideTransaction(stepId, index, value));
     }
 
@@ -160,7 +174,7 @@ public final class StepExecutionService {
     }
 
     public AdvanceTodayStepResult advanceStepWithPlannedResult(String stepId) {
-        return occurrences.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
             if (step == null)
                 return advance(AdvanceTodayStepResult.Status.INVALID_STEP, null,

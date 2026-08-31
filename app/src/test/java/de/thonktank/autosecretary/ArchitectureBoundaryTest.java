@@ -211,7 +211,7 @@ public final class ArchitectureBoundaryTest {
     @Test public void managementCommandsDoNotDependOnExecutionOrCompositionPorts()
             throws Exception {
         String executionPort = "domain.repository.TaskRepository";
-        String compositionPort = "domain.repository.ApplicationTaskRepository";
+        String compositionPort = "data.local.TaskStore";
         for (String relative : new String[]{
                 "domain/usecase/CreateTask.java",
                 "domain/usecase/UpdateTask.java",
@@ -229,6 +229,57 @@ public final class ArchitectureBoundaryTest {
                 "domain.repository.TaskRepository")));
     }
 
+    @Test public void compositionUsesFocusedBundlesPortsAndTransactionRunner() throws Exception {
+        assertFalse(Files.exists(main("domain/repository/ApplicationTaskRepository.java")));
+        assertFalse(Files.exists(main("domain/repository/TransactionalRepository.java")));
+        assertFalse(Files.exists(main("domain/repository/FlowExecutionRepository.java")));
+        assertFalse(Files.exists(main("domain/usecase/TaskUseCases.java")));
+        assertTrue(Files.exists(main("domain/transaction/TransactionRunner.java")));
+        for (String bundle : new String[]{"CatalogUseCases.java", "TodayUseCases.java",
+                "FlowUseCases.java", "TrainingUseCases.java"})
+            assertTrue(bundle, Files.exists(main("domain/usecase/" + bundle)));
+
+        forEachJava(main("domain/repository"), source -> {
+            String value = read(source);
+            assertFalse(source + " inherits transaction execution",
+                    value.contains("extends TransactionRunner")
+                            || value.contains("extends TransactionalRepository"));
+        });
+        forEachJava(main("domain/usecase"), source -> {
+            String value = read(source);
+            assertFalse(source + " calls a repository transaction implicitly",
+                    value.contains("repository.inTransaction(")
+                            || value.contains("occurrences.inTransaction(")
+                            || value.contains("training.inTransaction(")
+                            || value.contains("ledger.inTransaction(")
+                            || value.contains("flows.inTransaction(")
+                            || value.contains("tasks.inTransaction("));
+            assertFalse(source + " discovers repository capabilities at runtime",
+                    value.matches("(?s).*instanceof\\s+[A-Za-z0-9_]+Repository.*"));
+        });
+
+        String container = read(main("AppContainer.java"));
+        assertTrue(container.contains("CatalogUseCases catalog"));
+        assertTrue(container.contains("TodayUseCases today"));
+        assertTrue(container.contains("FlowUseCases flows"));
+        assertTrue(container.contains("TrainingUseCases training"));
+        assertFalse(container.contains("TaskUseCases"));
+        assertFalse(container.contains("container.tasks"));
+    }
+
+    @Test public void roomStepAndTrainingPersistenceHaveFocusedAdapters() throws Exception {
+        assertTrue(Files.exists(main("data/local/RoomStepRepository.java")));
+        assertTrue(Files.exists(main("data/local/RoomTrainingRepository.java")));
+        assertTrue(Files.exists(main("data/local/RoomTransactionRunner.java")));
+        String gateway = read(main("data/local/RoomTaskRepository.java"));
+        assertTrue(gateway.contains("RoomStepRepository steps"));
+        assertTrue(gateway.contains("RoomTrainingRepository training"));
+        assertFalse(gateway.contains("TrainingAdjustmentEntity"));
+        assertFalse(gateway.contains("TrainingLoadRequestEntity"));
+        assertFalse(gateway.contains("RepetitionResultEntity"));
+        assertFalse(gateway.contains("OccurrenceStepEntity"));
+    }
+
     @Test public void managementPortTestsUseFocusedDoubles() throws Exception {
         Path tests = Path.of("app/src/test/java/de/thonktank/autosecretary/domain");
         if (!Files.exists(tests)) tests = Path.of("src/test/java/de/thonktank/autosecretary/domain");
@@ -238,6 +289,14 @@ public final class ArchitectureBoundaryTest {
         forEachJava(tests.resolve("steps"), source -> assertFalse(source
                 + " uses execution acceptance store", read(source).contains(
                 "InMemoryExecutionRepository")));
+        for (String trainingSlice : new String[]{"ResolveTrainingLoadRequestTest.java",
+                "LoadTrainingContextTest.java", "UndoLatestTrainingAdjustmentTest.java"}) {
+            String source = read(tests.resolve("usecase").resolve(trainingSlice));
+            assertFalse(trainingSlice + " uses execution acceptance store",
+                    source.contains("InMemoryExecutionRepository"));
+            assertTrue(trainingSlice + " uses focused training store",
+                    source.contains("InMemoryTrainingRepository"));
+        }
     }
 
     @Test public void productionMigrationGraphStartsAtSupportedSchemaEight() throws Exception {

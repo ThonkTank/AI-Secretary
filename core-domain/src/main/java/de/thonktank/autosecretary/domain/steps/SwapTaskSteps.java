@@ -7,15 +7,20 @@ import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Swaps two stable step definitions while preserving IDs, history and combo ownership. */
 public final class SwapTaskSteps {
     private final StepOrganizationRepository repository;
+    private final TransactionRunner transactions;
 
-    public SwapTaskSteps(StepOrganizationRepository repository) { this.repository = repository; }
+    public SwapTaskSteps(StepOrganizationRepository repository, TransactionRunner transactions) {
+        this.repository = repository;
+        this.transactions = transactions;
+    }
 
     public StepTransferResult execute(StepSwapRequest request) {
-        return repository.inTransaction(() -> swap(request));
+        return transactions.inTransaction(() -> swap(request));
     }
 
     private StepTransferResult swap(StepSwapRequest request) {

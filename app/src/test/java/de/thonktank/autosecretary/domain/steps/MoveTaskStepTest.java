@@ -13,7 +13,7 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import org.junit.Test;
 
@@ -35,7 +35,7 @@ public final class MoveTaskStepTest {
         store.templates.put("step", de.thonktank.autosecretary.testing.StepTestFixtures.template("step", source.id, 0,
                 "Schritt", 0, StepAmount.none(), ""));
 
-        StepTransferResult result = new MoveTaskStep(store).execute(new StepMoveRequest(
+        StepTransferResult result = new MoveTaskStep(store, store).execute(new StepMoveRequest(
                 TaskStepId.of("step"), target.id, Optional.empty()));
 
         assertEquals(StepTransferResult.DEFINITION_ONLY_FOR_FUTURE, result);
@@ -50,13 +50,13 @@ public final class MoveTaskStepTest {
                 null, "");
     }
 
-    private static final class StepDouble implements StepOrganizationRepository {
+    private static final class StepDouble implements StepOrganizationRepository, TransactionRunner {
         final Map<TaskId, Task> tasks = new LinkedHashMap<>();
         final Map<String, TaskStepTemplate> templates = new LinkedHashMap<>();
         final Map<String, OccurrenceStep> snapshots = new LinkedHashMap<>();
         final Map<String, ComboProgress> combos = new LinkedHashMap<>();
 
-        @Override public <T> T inTransaction(TransactionalRepository.Transaction<T> operation) {
+        @Override public <T> T inTransaction(TransactionRunner.Transaction<T> operation) {
             return operation.execute();
         }
         @Override public Task findTask(TaskId id) { return tasks.get(id); }
