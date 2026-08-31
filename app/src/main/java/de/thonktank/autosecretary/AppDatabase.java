@@ -22,6 +22,7 @@ import de.thonktank.autosecretary.data.local.StepFlowRunEntity;
 import de.thonktank.autosecretary.data.local.StepResourceLeaseEntity;
 import de.thonktank.autosecretary.data.local.StepTransitionEntity;
 import de.thonktank.autosecretary.data.local.TrainingAdjustmentEntity;
+import de.thonktank.autosecretary.data.local.TrainingLoadRequestEntity;
 
 import androidx.room.Database;
 import androidx.room.RoomDatabase;
@@ -33,7 +34,8 @@ import androidx.room.RoomDatabase;
         TimerSessionEntity.class, ComboObligationEntity.class, ComboDecayEventEntity.class,
         CapacityResourceEntity.class, StepTransitionEntity.class,
         StepResourceLeaseEntity.class, StepFlowRunEntity.class,
-        FlowRunStepEntity.class, FlowRunResourceEntity.class, TrainingAdjustmentEntity.class},
+        FlowRunStepEntity.class, FlowRunResourceEntity.class, TrainingAdjustmentEntity.class,
+        TrainingLoadRequestEntity.class},
         version = DatabaseContract.VERSION,
         exportSchema = true)
 public abstract class AppDatabase extends RoomDatabase {

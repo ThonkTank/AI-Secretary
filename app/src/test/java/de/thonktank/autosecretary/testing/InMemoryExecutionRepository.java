@@ -13,6 +13,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
+import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
@@ -42,6 +43,7 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
     private Map<String, ComboObligation> comboObligations = new LinkedHashMap<>();
     private Map<String, ComboDecayEvent> comboDecayEvents = new LinkedHashMap<>();
     private Map<String, TrainingAdjustment> trainingAdjustments = new LinkedHashMap<>();
+    private Map<String, TrainingLoadRequest> trainingLoadRequests = new LinkedHashMap<>();
     private boolean failTrainingAdjustmentInsert;
     private int xp;
 
@@ -350,13 +352,62 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
         TrainingAdjustment latest = null;
         for (TrainingAdjustment value : trainingAdjustments.values()) {
             if (!templateId.equals(value.templateId)) continue;
-            if (latest == null || value.createdOn.isAfter(latest.createdOn)) latest = value;
+            if (latest == null || value.auditOrder > latest.auditOrder) latest = value;
         }
         return latest;
     }
 
+    @Override public synchronized List<TrainingAdjustment> recentTrainingAdjustments(
+            String templateId, int limit) {
+        List<TrainingAdjustment> result = new ArrayList<>();
+        for (TrainingAdjustment value : trainingAdjustments.values())
+            if (templateId.equals(value.templateId)) result.add(value);
+        result.sort(Comparator.comparingLong((TrainingAdjustment value) -> value.auditOrder)
+                .reversed());
+        return new ArrayList<>(result.subList(0, Math.min(Math.max(limit, 0), result.size())));
+    }
+
     @Override public synchronized void updateTrainingAdjustment(TrainingAdjustment adjustment) {
         trainingAdjustments.put(adjustment.id, adjustment);
+    }
+
+    @Override public synchronized long nextTrainingAuditOrder() {
+        long maximum = 0;
+        for (TrainingAdjustment value : trainingAdjustments.values())
+            maximum = Math.max(maximum, value.auditOrder);
+        for (TrainingLoadRequest value : trainingLoadRequests.values())
+            maximum = Math.max(maximum, value.auditOrder);
+        return maximum + 1;
+    }
+
+    @Override public synchronized void insertTrainingLoadRequest(TrainingLoadRequest request) {
+        if (openTrainingLoadRequest(request.templateId) != null)
+            throw new IllegalStateException("An open training load request already exists");
+        trainingLoadRequests.put(request.id, request);
+    }
+
+    @Override public synchronized TrainingLoadRequest openTrainingLoadRequest(String templateId) {
+        TrainingLoadRequest latest = null;
+        for (TrainingLoadRequest value : trainingLoadRequests.values()) {
+            if (!templateId.equals(value.templateId)
+                    || value.state != TrainingLoadRequest.State.OPEN) continue;
+            if (latest == null || value.auditOrder > latest.auditOrder) latest = value;
+        }
+        return latest;
+    }
+
+    @Override public synchronized List<TrainingLoadRequest> recentTrainingLoadRequests(
+            String templateId, int limit) {
+        List<TrainingLoadRequest> result = new ArrayList<>();
+        for (TrainingLoadRequest value : trainingLoadRequests.values())
+            if (templateId.equals(value.templateId)) result.add(value);
+        result.sort(Comparator.comparingLong((TrainingLoadRequest value) -> value.auditOrder)
+                .reversed());
+        return new ArrayList<>(result.subList(0, Math.min(Math.max(limit, 0), result.size())));
+    }
+
+    @Override public synchronized void updateTrainingLoadRequest(TrainingLoadRequest request) {
+        trainingLoadRequests.put(request.id, request);
     }
 
     private List<Occurrence> byState(OccurrenceState state) {
@@ -394,7 +445,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
                 new LinkedHashMap<>(rewardAssignments),
                 new LinkedHashMap<>(comboObligations),
                 new LinkedHashMap<>(comboDecayEvents),
-                new LinkedHashMap<>(trainingAdjustments), xp);
+                new LinkedHashMap<>(trainingAdjustments),
+                new LinkedHashMap<>(trainingLoadRequests), xp);
     }
 
     private void restore(Snapshot value) {
@@ -409,6 +461,7 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
         comboObligations = value.comboObligations;
         comboDecayEvents = value.comboDecayEvents;
         trainingAdjustments = value.trainingAdjustments;
+        trainingLoadRequests = value.trainingLoadRequests;
         xp = value.xp;
     }
 
@@ -424,6 +477,7 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
         final Map<String, ComboObligation> comboObligations;
         final Map<String, ComboDecayEvent> comboDecayEvents;
         final Map<String, TrainingAdjustment> trainingAdjustments;
+        final Map<String, TrainingLoadRequest> trainingLoadRequests;
         final int xp;
 
         Snapshot(Map<TaskId, Task> tasks, Map<String, TaskStepTemplate> templates,
@@ -434,7 +488,8 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
                  Map<String, String> rewardAssignments,
                  Map<String, ComboObligation> comboObligations,
                  Map<String, ComboDecayEvent> comboDecayEvents,
-                 Map<String, TrainingAdjustment> trainingAdjustments, int xp) {
+                 Map<String, TrainingAdjustment> trainingAdjustments,
+                 Map<String, TrainingLoadRequest> trainingLoadRequests, int xp) {
             this.tasks = tasks;
             this.templates = templates;
             this.schedule = schedule;
@@ -446,6 +501,7 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
             this.comboObligations = comboObligations;
             this.comboDecayEvents = comboDecayEvents;
             this.trainingAdjustments = trainingAdjustments;
+            this.trainingLoadRequests = trainingLoadRequests;
             this.xp = xp;
         }
     }

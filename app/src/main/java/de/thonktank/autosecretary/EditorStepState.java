@@ -111,11 +111,9 @@ public final class EditorStepState {
     private static TrainingAssistantConfig legacyTrainingConfig(
             StepPrescription prescription, TrainingAssistantPolicy policy) {
         if (policy == null) return TrainingAssistantConfig.disabled();
-        long increment = prescription.training.load.unit == ResistanceLoad.Unit.LB
-                ? 5_000 : 2_500;
         return new TrainingAssistantConfig(true, policy.minSets, policy.maxSets,
                 policy.minRepetitions, policy.maxRepetitions,
-                prescription.training.targetRir, increment,
+                prescription.training.targetRir,
                 policy.automaticWeeklySetCeiling, prescription.training.load,
                 policy.primaryMuscle, policy.secondaryMuscles);
     }

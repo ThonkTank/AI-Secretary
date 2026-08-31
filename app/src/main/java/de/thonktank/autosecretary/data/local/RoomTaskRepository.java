@@ -26,6 +26,8 @@ import de.thonktank.autosecretary.domain.model.ComboDecayEvent;
 import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
+import de.thonktank.autosecretary.domain.model.TrainingDecision;
+import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TrainingObservation;
@@ -527,8 +529,42 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
         return value == null ? null : adjustment(value);
     }
 
+    @Override public List<TrainingAdjustment> recentTrainingAdjustments(String templateId,
+                                                                        int limit) {
+        List<TrainingAdjustment> result = new ArrayList<>();
+        for (TrainingAdjustmentEntity value : dao.recentTrainingAdjustments(templateId, limit))
+            result.add(adjustment(value));
+        return result;
+    }
+
     @Override public void updateTrainingAdjustment(TrainingAdjustment adjustment) {
         dao.updateTrainingAdjustment(adjustment(adjustment));
+    }
+
+    @Override public long nextTrainingAuditOrder() {
+        return Math.max(dao.maximumTrainingAdjustmentOrder(),
+                dao.maximumTrainingLoadRequestOrder()) + 1;
+    }
+
+    @Override public void insertTrainingLoadRequest(TrainingLoadRequest request) {
+        dao.insertTrainingLoadRequest(loadRequest(request));
+    }
+
+    @Override public TrainingLoadRequest openTrainingLoadRequest(String templateId) {
+        TrainingLoadRequestEntity value = dao.openTrainingLoadRequest(templateId);
+        return value == null ? null : loadRequest(value);
+    }
+
+    @Override public List<TrainingLoadRequest> recentTrainingLoadRequests(String templateId,
+                                                                          int limit) {
+        List<TrainingLoadRequest> result = new ArrayList<>();
+        for (TrainingLoadRequestEntity value : dao.recentTrainingLoadRequests(templateId, limit))
+            result.add(loadRequest(value));
+        return result;
+    }
+
+    @Override public void updateTrainingLoadRequest(TrainingLoadRequest request) {
+        dao.updateTrainingLoadRequest(loadRequest(request));
     }
 
     private static TrainingAdjustmentEntity adjustment(TrainingAdjustment value) {
@@ -537,20 +573,42 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
                 value.before.repetitions, value.beforeLoad.mode.name(),
                 value.beforeLoad.unit.name(), value.beforeLoad.milliUnits, value.after.sets,
                 value.after.repetitions, value.afterLoad.mode.name(), value.afterLoad.unit.name(),
-                value.afterLoad.milliUnits, value.createdOn.toString(), value.state.name());
+                value.afterLoad.milliUnits, value.createdOn.toString(), value.state.name(),
+                value.auditOrder, value.ruleVersion);
     }
 
     private static TrainingAdjustment adjustment(TrainingAdjustmentEntity value) {
         return new TrainingAdjustment(value.id, value.templateId, value.sourceOccurrenceStepId,
-                de.thonktank.autosecretary.domain.training.TrainingAdaptationEngine.Reason
-                        .valueOf(value.reason),
+                TrainingDecision.Reason.valueOf(value.reason),
                 (StepAmount.SetsReps) StepAmount.setsReps(value.beforeSets, value.beforeReps),
                 ResistanceLoad.restore(value.beforeLoadMode, value.beforeLoadUnit,
                         value.beforeLoadMilli),
                 (StepAmount.SetsReps) StepAmount.setsReps(value.afterSets, value.afterReps),
                 ResistanceLoad.restore(value.afterLoadMode, value.afterLoadUnit,
                         value.afterLoadMilli), LocalDate.parse(value.createdOn),
-                TrainingAdjustment.State.valueOf(value.state));
+                TrainingAdjustment.State.valueOf(value.state), value.auditOrder,
+                value.ruleVersion);
+    }
+
+    private static TrainingLoadRequestEntity loadRequest(TrainingLoadRequest value) {
+        return new TrainingLoadRequestEntity(value.id, value.templateId,
+                value.sourceOccurrenceStepId, value.direction.name(),
+                value.currentLoad.mode.name(), value.currentLoad.unit.name(),
+                value.currentLoad.milliUnits, value.createdOn.toString(), value.auditOrder,
+                value.ruleVersion, value.state.name(), value.resolution.name(),
+                value.resolvedOn == null ? null : value.resolvedOn.toString());
+    }
+
+    private static TrainingLoadRequest loadRequest(TrainingLoadRequestEntity value) {
+        return new TrainingLoadRequest(value.id, value.templateId,
+                value.sourceOccurrenceStepId,
+                TrainingDecision.LoadDirection.valueOf(value.direction),
+                ResistanceLoad.restore(value.currentLoadMode, value.currentLoadUnit,
+                        value.currentLoadMilli), LocalDate.parse(value.createdOn),
+                value.auditOrder, value.ruleVersion,
+                TrainingLoadRequest.State.valueOf(value.state),
+                TrainingLoadRequest.Resolution.valueOf(value.resolution),
+                value.resolvedOn == null ? null : LocalDate.parse(value.resolvedOn));
     }
 
     private static <T extends Enum<T>> T enumValue(Class<T> type, String value, T fallback) {

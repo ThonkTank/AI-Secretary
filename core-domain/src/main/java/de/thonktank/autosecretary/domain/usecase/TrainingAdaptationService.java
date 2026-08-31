@@ -5,6 +5,8 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
+import de.thonktank.autosecretary.domain.model.TrainingDecision;
+import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
@@ -35,6 +37,7 @@ final class TrainingAdaptationService {
         TaskStepTemplate template = training.findTemplate(step.sourceTemplateId);
         if (template == null || !template.assistantEnabled()
                 || !(template.amount instanceof StepAmount.SetsReps)) return;
+        if (training.openTrainingLoadRequest(template.id) != null) return;
         TrainingAssistantConfig config = template.legacyTrainingConfig();
         if (!template.amount.equals(step.amount)
                 || !config.load.equals(step.plannedLoad)) {
@@ -47,18 +50,25 @@ final class TrainingAdaptationService {
                 : training.effectiveSetsSince(config.primaryMuscle,
                 clock.today().minusDays(6), clock.today());
         StepAmount.SetsReps before = (StepAmount.SetsReps) template.amount;
-        TrainingAdaptationEngine.Result result = engine.evaluate(before,
+        TrainingDecision result = engine.evaluate(before,
                 config, template.assistantProfile.state,
                 step.repetitionProgress.results, effective);
         StepPrescription next = new StepPrescription(result.prescription,
                 template.prescription.rest,
-                new TrainingPrescription(result.config.load, result.config.targetRir));
+                new TrainingPrescription(result.load, config.targetRir));
         training.updateTrainingTemplate(template.withTraining(next,
                 new TrainingAssistantProfile(template.assistantProfile.policy, result.state)));
-        if (!result.changedFrom(before, config)) return;
+        if (result.action == TrainingDecision.Action.REQUEST_NEXT_LOAD) {
+            training.insertTrainingLoadRequest(TrainingLoadRequest.open(ids.nextId(), template.id,
+                    step.id, result.loadDirection, result.load, clock.today(),
+                    training.nextTrainingAuditOrder(), result.ruleVersion));
+            return;
+        }
+        if (!result.changedFrom(before, config.load)) return;
         training.insertTrainingAdjustment(new TrainingAdjustment(ids.nextId(), template.id,
                 step.id, result.reason, before, config.load,
-                result.prescription, result.config.load, clock.today(),
-                TrainingAdjustment.State.APPLIED));
+                result.prescription, result.load, clock.today(),
+                TrainingAdjustment.State.APPLIED, training.nextTrainingAuditOrder(),
+                result.ruleVersion));
     }
 }

@@ -61,7 +61,6 @@ public final class TaskStepTemplate {
         TrainingPrescription training = prescription.training;
         return new TrainingAssistantConfig(true, policy.minSets, policy.maxSets,
                 policy.minRepetitions, policy.maxRepetitions, training.targetRir,
-                training.load.unit == ResistanceLoad.Unit.LB ? 5_000 : 2_500,
                 policy.automaticWeeklySetCeiling, training.load, policy.primaryMuscle,
                 policy.secondaryMuscles);
     }

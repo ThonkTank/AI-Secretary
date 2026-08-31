@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.domain.usecase;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
@@ -80,6 +81,49 @@ public final class SetResultTransactionTest {
         assertEquals(template.prescription, restoredTemplate.prescription);
         assertEquals(active, restoredTemplate.assistantProfile.state);
         assertNull(repository.latestTrainingAdjustment(template.id));
+    }
+
+    @Test public void topOfRangeCreatesOneDurableQuestionAndCorrectionCancelsIt() {
+        InMemoryExecutionRepository repository = new InMemoryExecutionRepository();
+        FixedClock clock = new FixedClock();
+        SequenceIds ids = new SequenceIds();
+        ResistanceLoad load = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
+                ResistanceLoad.Unit.KG, 50_000);
+        TrainingAssistantPolicy policy = new TrainingAssistantPolicy(2, 3, 8, 12, 10,
+                TrainingMuscleGroup.BACK, Collections.emptySet());
+        TaskStepDefinition stepDefinition = new TaskStepDefinition(null, 0, "Rudern", 0, 0,
+                new StepPrescription(StepAmount.setsReps(2, 12), RestTimerPolicy.inherit(),
+                        new TrainingPrescription(load, 2)), policy, "",
+                StepActivationKind.SCHEDULED);
+        TaskDefinition task = new TaskDefinition("Training", 30, TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
+                null, null, null, null, "", Collections.singletonList(stepDefinition));
+        new CreateTask(repository, repository, clock, ids).execute(task);
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        TaskStepTemplate template = repository.templates(repository.allTasks().get(0).id).get(0);
+        repository.updateTrainingTemplate(template.withTraining(template.prescription,
+                new TrainingAssistantProfile(template.assistantProfile.policy,
+                        new TrainingAssistantState(TrainingAssistantState.Status.ACTIVE,
+                                4, 1, 0))));
+        OccurrenceStep step = repository.occurrenceSteps(
+                repository.openOccurrences().get(0).id).get(0);
+        RecordSetResult record = new RecordSetResult(repository, clock, ids,
+                ComboPolicySource.defaults());
+        SetResult value = new SetResult(12, TrainingObservation.user(load, 2));
+        record.execute(step.id, value);
+        record.execute(step.id, value);
+
+        assertNotNull(repository.openTrainingLoadRequest(template.id));
+        new TrainingAdaptationService(repository, repository, clock, ids).evaluate(step.id);
+        assertEquals(1, repository.recentTrainingLoadRequests(template.id, 10).size());
+
+        CorrectSetResult correct = new CorrectSetResult(repository, clock,
+                ComboPolicySource.defaults());
+        correct.execute(step.id, 1,
+                new SetResult(11, TrainingObservation.user(load, 2)));
+        assertNull(repository.openTrainingLoadRequest(template.id));
+        assertEquals(TrainingAssistantState.Status.CALIBRATING,
+                repository.findTemplate(template.id).assistantProfile.state.status);
     }
 
     private static final class SequenceIds implements IdGenerator {

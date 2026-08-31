@@ -9,7 +9,8 @@ import androidx.room.PrimaryKey;
 @Entity(tableName = "training_adjustments",
         foreignKeys = @ForeignKey(entity = TaskStepEntity.class, parentColumns = "id",
                 childColumns = "templateId", onDelete = ForeignKey.CASCADE),
-        indices = {@Index("templateId"), @Index("sourceOccurrenceStepId")})
+        indices = {@Index("templateId"), @Index("sourceOccurrenceStepId"),
+                @Index(value = "auditOrder", unique = true)})
 public final class TrainingAdjustmentEntity {
     @PrimaryKey @NonNull public final String id;
     @NonNull public final String templateId;
@@ -27,6 +28,8 @@ public final class TrainingAdjustmentEntity {
     public final Long afterLoadMilli;
     @NonNull public final String createdOn;
     @NonNull public final String state;
+    public final long auditOrder;
+    public final int ruleVersion;
 
     public TrainingAdjustmentEntity(@NonNull String id, @NonNull String templateId,
                                     @NonNull String sourceOccurrenceStepId,
@@ -36,7 +39,8 @@ public final class TrainingAdjustmentEntity {
                                     int afterSets, int afterReps,
                                     @NonNull String afterLoadMode,
                                     @NonNull String afterLoadUnit, Long afterLoadMilli,
-                                    @NonNull String createdOn, @NonNull String state) {
+                                    @NonNull String createdOn, @NonNull String state,
+                                    long auditOrder, int ruleVersion) {
         this.id = id; this.templateId = templateId;
         this.sourceOccurrenceStepId = sourceOccurrenceStepId; this.reason = reason;
         this.beforeSets = beforeSets; this.beforeReps = beforeReps;
@@ -45,5 +49,6 @@ public final class TrainingAdjustmentEntity {
         this.afterReps = afterReps; this.afterLoadMode = afterLoadMode;
         this.afterLoadUnit = afterLoadUnit; this.afterLoadMilli = afterLoadMilli;
         this.createdOn = createdOn; this.state = state;
+        this.auditOrder = auditOrder; this.ruleVersion = ruleVersion;
     }
 }

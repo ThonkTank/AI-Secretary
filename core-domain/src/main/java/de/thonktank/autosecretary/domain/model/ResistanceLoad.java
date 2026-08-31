@@ -51,29 +51,6 @@ public final class ResistanceLoad {
                 || mode == Mode.ASSISTED_BODYWEIGHT;
     }
 
-    public ResistanceLoad progress(long increment) {
-        if (!adjustable() || increment <= 0) return this;
-        long current = milliUnits == null ? 0 : milliUnits;
-        long changed = mode == Mode.ASSISTED_BODYWEIGHT
-                ? Math.max(0, current - increment) : Math.addExact(current, increment);
-        return numeric(mode, unit, changed);
-    }
-
-    public ResistanceLoad regress(long increment) {
-        if (!adjustable() || increment <= 0) return this;
-        long current = milliUnits == null ? 0 : milliUnits;
-        long changed = mode == Mode.ASSISTED_BODYWEIGHT
-                ? Math.addExact(current, increment) : Math.max(0, current - increment);
-        return numeric(mode, unit, changed);
-    }
-
-    public boolean progressionWithinPercent(long increment, int maximumPercent) {
-        if (!adjustable() || increment <= 0 || maximumPercent <= 0) return false;
-        long current = milliUnits == null ? 0 : milliUnits;
-        if (mode == Mode.ASSISTED_BODYWEIGHT) return current >= increment;
-        return current > 0 && increment * 100L <= current * maximumPercent;
-    }
-
     @Override public boolean equals(Object other) {
         if (!(other instanceof ResistanceLoad)) return false;
         ResistanceLoad value = (ResistanceLoad) other;
