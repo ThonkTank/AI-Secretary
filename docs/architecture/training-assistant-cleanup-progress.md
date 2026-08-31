@@ -11,8 +11,8 @@ Roadmap nachträglich umzuschreiben.
 |---|---|---|
 | 0 – Vertrag und Grundlage | abgeschlossen | PR #299, Squash `c1e72ba4` |
 | 1 – Schrittverordnung | abgeschlossen | PR #300, Squash `22a9ac17` |
-| 2 – Satzresultat | in Arbeit | – |
-| 3 – Lastentscheidung | ausstehend | – |
+| 2 – Satzresultat | abgeschlossen | PR #301, Squash `137c7b84` |
+| 3 – Lastentscheidung | in Arbeit | – |
 | 4 – Bedienung | ausstehend | – |
 | 5 – Ports und Abschlussaudit | ausstehend | – |
 
@@ -327,3 +327,146 @@ Architekturphase benötigt Phase 1 keine physische Geräteabnahme.
   Lokal bleibt keine Phase-2-Diskrepanz. Offen sind der eigene grüne Pull Request und Squash-Merge
   nach `main`; als nicht sichtbare Architekturphase benötigt Phase 2 keine physische
   Geräteabnahme.
+
+### Remote-Abschluss
+
+- Pull Request #301 prüfte Commit `11f080e9` gegen Phase-1-Squash `22a9ac17`.
+- `quality`, normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie
+  `instrumentation-gate` und `pull-request-gate` waren grün. Der längste Lauf war die
+  animationsaktive API-35-Variante mit 11:54 Minuten.
+- Der Pull Request wurde am 2026-08-31 per Squash als `137c7b84` nach `main` gemergt;
+  `origin/main` und der isolierte Roadmap-Worktree zeigten anschließend denselben Commit.
+
+## Phase 3 – Korrekte Progression und persistente Lastentscheidung
+
+### Vorprüfung
+
+- Ausgangspunkt ist der verifizierte Phase-2-Squash `137c7b84` auf `origin/main`; gearbeitet wird
+  auf `feat/training-cleanup-p3-load-decision` im isolierten Roadmap-Worktree.
+- `DatabaseContract.VERSION` und das jüngste exportierte Schema sind 21. Die in der Roadmap
+  beschlossene Regel „aktuelle main-Version plus eins“ ergibt deshalb Zielversion 22; die dortige
+  Klammer „Ausgangsbasis Schema 22“ wird als Bezeichnung der neuen Phase-3-Schemabasis, nicht als
+  zusätzlich zu überspringende Version verstanden.
+- `TrainingAssistantConfig`, `TaskStepEntity`, Saved State und Engine enthalten noch eine
+  angenommene Lastschrittweite. Die Engine wendet sie nach ausgeschöpfter Wiederholungsprogression
+  unmittelbar an und kann damit keine real verfügbaren Gerätegewichte berücksichtigen.
+- `training_adjustments` sortiert bei gleichem Datum nach ID und trägt keine Regelversion.
+  Persistente Lastfragen existieren noch nicht. Manuelle Vorlagenänderungen und Satzkorrekturen
+  können deshalb keine offene Entscheidung schließen.
+- Die vorhandene Editor-UI aktiviert den Assistenten mit 20 kg und kann numerische Nullwerte
+  erzeugen. Phase 3 ändert die Entscheidungslogik und Persistenz; die erklärende Inline-Bedienung
+  und Lastfrage folgen sichtbar in Phase 4.
+
+### Implementationsplan
+
+- Alle Increment-Felder aus Domainkonfiguration, Editorprojektion und `task_steps` entfernen.
+  Eine aktivierte Policy validiert bei numerischen Lastarten eine tatsächlich positive
+  Ausgangslast; Körpergewicht bleibt wertlos numerisch korrekt.
+- `TrainingDecision` mit `HOLD`, `APPLY`, `REQUEST_NEXT_LOAD`, `PAUSE`, stabilem Grund und
+  `RULE_VERSION` einführen. Die Engine erhöht zunächst Wiederholungen; am oberen Rand fordert sie
+  bei verstellbarer Last eine konkrete nächste Last an. Reines Körpergewicht geht direkt zur
+  zulässigen Satzprogression. Safety und Volumengrenzen bleiben erhalten.
+- `TrainingLoadRequest` als persistentes, eindeutig offenes Template-Ereignis mit Richtung,
+  Ausgangslast, Status, Ergebnis, Audit-Reihenfolge und Regelversion einführen. Eine erneute
+  abgeschlossene Einheit darf keine zweite offene Frage erzeugen.
+- Einen fokussierten Resolve-Use-Case bereitstellen: Eine konkrete Last muss Modus und Einheit
+  erhalten, für unterstütztes Körpergewicht in die umgekehrte Richtung laufen und höchstens zehn
+  Prozent springen, um automatisch angewendet zu werden. Größere Sprünge bleiben offen und werden
+  nur als manuelle Vorlagenänderung akzeptiert. „Kein höheres Gewicht“ prüft Satz- und
+  Wochenvolumenprogression; „später“ lässt die Frage unverändert offen.
+- Manuelle relevante Vorlagenänderungen, Satzkorrektur und Undo schließen offene Fragen und
+  starten die Kalibrierung neu. Automatisch angewendete Entscheidungen erzeugen weiterhin einen
+  auditierbaren Adjustment-Eintrag.
+- Schema 22 baut `task_steps` ohne Increment-Spalte neu auf, ergänzt `training_load_requests` und
+  erweitert `training_adjustments` um stabile `auditOrder` und `ruleVersion`. Room-Export,
+  Migrationsgraph, Schema-8-Produktupgradefixture und gezielte 21→22-Tests werden aktualisiert.
+- Engine-, Richtungs-, Zehn-Prozent-, Deduplizierungs-, Persistenz-, Restart-, Korrektur- und
+  Upgrade-Tests fokussiert ausführen, danach vollständiges lokales Gate. Der negative Audit prüft
+  auf Increments, implizite Lasten, mehrfache offene Fragen, instabile Auditordnung und
+  unversionierte Entscheidungen.
+
+### Abnahmekriterien
+
+- Keine Produktionsklasse oder aktuelle Schemadefinition enthält eine angenommene
+  Lastschrittweite; numerische Aktivierung mit fehlender oder null Last scheitert.
+- Die Engine liefert versionierte Entscheidungen und erzeugt bei ausgeschöpfter
+  Wiederholungsprogression genau eine persistente Lastfrage.
+- Konkrete Last, „kein höheres Gewicht“ und „später“ sind deterministisch; Richtung und
+  Zehn-Prozent-Grenze gelten auch für unterstütztes Körpergewicht korrekt.
+- Recreation/Repository-Neuaufbau verliert offene Fragen nicht. Manuelle Laständerung und
+  Satzkorrektur schließen sie und setzen die Kalibrierung zurück.
+- Schema 21 und Produktionsfixture ab Schema 8 migrieren verlustfrei auf Schema 22; Auditordnung
+  und Regelversion sind persistent.
+
+### Implementierung
+
+- `TrainingDecision` ist der versionierte Ausgang der reinen Engine. Wiederholungs- und
+  Satzänderungen werden direkt angewendet; an der Lastgrenze entsteht stattdessen
+  `REQUEST_NEXT_LOAD` mit Fortschritts- oder Regressionsrichtung. Reines Körpergewicht bleibt im
+  Satzpfad, unterstütztes Körpergewicht verwendet bei konkreten Lasten die umgekehrte Richtung.
+- `TrainingLoadRequest` persistiert eine offene Lastfrage mit Ausgangslast, Quelle,
+  `auditOrder`, `ruleVersion`, Status und Auflösung. `TrainingAdaptationService` beendet die
+  Auswertung, solange bereits eine Frage offen ist, sodass ein Template höchstens eine offene
+  Entscheidung erhält.
+- `ResolveTrainingLoadRequest` übernimmt nur eine positive konkrete Last desselben Modus und
+  derselben Einheit in der erwarteten Richtung. Der relative Sprung darf zehn Prozent nicht
+  überschreiten. Größere Sprünge und falsche Richtungen lassen die Frage offen; „später“ ist eine
+  reine, persistenzneutrale Entscheidung. „Kein höheres Gewicht“ löst die Frage und prüft danach
+  dieselben Satz- und Wochenvolumengrenzen wie die Engine.
+- Automatische Änderungen erzeugen `TrainingAdjustment` mit stabiler Reihenfolge und
+  Regelversion. Manuelle relevante Vorlagenänderungen, Satzkorrektur und Undo schließen eine
+  offene Frage mit eigenem Auflösungsgrund und setzen den Lernzustand auf Kalibrierung zurück.
+- Alle produktiven Increment-Felder und die unbenutzten Increment-Hilfsmethoden wurden entfernt.
+  Die Editoraktivierung setzt keine verborgenen 20 kg mehr. Ein verstellbarer numerischer Modus
+  benötigt vor dem Speichern einen positiven Wert.
+- Schema 22 baut `task_steps` ohne Increment-Spalte und unter Erhalt von Transitions,
+  Ressourcenleases und Adjustment-Zeilen neu auf. Es ergänzt `training_load_requests` sowie
+  `auditOrder` und `ruleVersion` auf Adjustments. Der zentrale Vertrag, der Room-Export und das
+  Schema-8-Produktupgradefixture zielen gemeinsam auf 22.
+
+### Validierung und Audit
+
+- Die fokussierte Matrix aus Engine, Resolve-Use-Case, Exactly-once-/Korrekturtransaktion,
+  Room-Neuaufbau und vollständigem Migrationsgraph war grün. Der 21→22-Datentest bewahrt
+  `task_steps`, Transitions, Ressourcenleases und historische Adjustments und belegt die entfernte
+  Increment-Spalte. Ein dateibasierter Room-Test schließt und öffnet die Datenbank neu und liest
+  dieselbe offene Lastfrage samt Richtung, Last und Regelversion.
+- `git diff --check`: grün. CI-Harness: 17 Tests grün; Release-/Workflowverträge: 23 Tests grün.
+- Das erste vollständige Gate war in 15:19 Minuten grün. Nach der Auditkorrektur lief das
+  endgültige Gate `testInstrumentationUnitTest lintDebug assembleDebug
+  assembleInstrumentationAndroidTest assembleRelease` in 15:37 Minuten grün: 157 Tasks,
+  505 Host-/Robolectric-Tests, null Fehler, Lint und alle drei Paketierungen erfolgreich.
+- Artefakte: Debug 9.786.713 Byte, Instrumentierung 1.646.490 Byte, unsigned Release
+  2.775.076 Byte; alle bestehenden Budgets werden eingehalten.
+
+#### Korrekturrunde 1 – ungültige Ausgangslast im Editor
+
+Der negative Abgleich fand, dass das Entfernen des 20-kg-Defaults zwar die Domaininvariante
+erfüllte, ein numerischer Nullwert aber erst beim Erzeugen der Definition scheitern konnte. Das
+hätte einen ungültigen Editorzustand ohne vorherige Validierungsrückmeldung zugelassen.
+
+Plan: Die vorhandene schrittspezifische Validierungsgrenze blockiert eine aktivierte verstellbare
+Last ohne positiven Wert. Ein fokussierter Test erzeugt genau diesen Draft und erwartet einen
+Schrittfehler. Unabhängig davon werden die nun unbenutzten generischen Increment-Hilfsmethoden aus
+`ResistanceLoad` entfernt. Danach werden Fokusmatrix und vollständiges Gate wiederholt.
+
+Ergebnis: Der fokussierte Validator-/Entscheidungslauf und das vollständige endgültige Gate sind
+grün. Im aktuellen Produktionscode gibt es weder einen numerischen Lastdefault noch eine
+Increment-API; der einzige verbleibende Spaltenname liegt absichtlich in der historischen
+20→21-Migration und im unveränderlichen Schema-21-Export.
+
+### Roadmap- und Phasenaudit
+
+Der requirementweise Abschlussabgleich findet genau eine Ergebniswahrheit aus Phase 2 und genau
+eine persistente offene Lastfrage pro Template. Die Engine nimmt keine Geräteschrittweite an;
+konkrete Lasten validieren Positivität, Modus, Einheit, Richtung und Zehn-Prozent-Grenze.
+Körpergewicht, unterstütztes Körpergewicht, Volumengrenze, Safety-Pause, „kein höheres Gewicht“
+und „später“ besitzen deterministische Pfade. Recreation und Datenbank-Neuaufbau erhalten offene
+Fragen. Manuelle Änderung, Korrektur und Undo schließen sie und kalibrieren neu. Schema 8 und 21
+besitzen einen grünen Pfad zu Schema 22; historische Flow- und Auditdaten bleiben erhalten.
+
+Die Auditordnung ist unabhängig vom Datum monoton und jede Entscheidung trägt ihre Regelversion.
+Aktuelle Produktionsklassen und Schema 22 enthalten keine Increment-Annahme; nur der notwendige
+historische 20→21-Aufbau dokumentiert die alte Spalte. Die Korrekturrunde ist geschlossen. Lokal
+bleibt keine Phase-3-Diskrepanz. Offen sind nun der eigene grüne Pull Request und Squash-Merge nach
+`main`; die sichtbare Erklärung und Bedienung der Lastfrage folgt bewusst in Phase 4.

@@ -307,7 +307,7 @@ private fun TrainingAssistantInputs(
                             ResistanceLoad.numeric(
                                 ResistanceLoad.Mode.EXTERNAL,
                                 ResistanceLoad.Unit.KG,
-                                20_000,
+                                0,
                             ),
                             null,
                         ),
@@ -339,7 +339,7 @@ private fun TrainingAssistantInputs(
                         mode,
                         if (config.load.unit == ResistanceLoad.Unit.LB) ResistanceLoad.Unit.LB
                         else ResistanceLoad.Unit.KG,
-                        config.load.milliUnits ?: 20_000,
+                        config.load.milliUnits ?: 0,
                     )
                 }
                 updateTraining(state, step, index, config, load = load, dispatcher = dispatcher)
@@ -372,7 +372,6 @@ private fun TrainingAssistantInputs(
                     updateTraining(
                         state, step, index, config,
                         load = ResistanceLoad.numeric(config.load.mode, ResistanceLoad.Unit.KG, config.load.milliUnits ?: 0),
-                        increment = 2_500,
                         dispatcher = dispatcher,
                     )
                 }
@@ -380,7 +379,6 @@ private fun TrainingAssistantInputs(
                     updateTraining(
                         state, step, index, config,
                         load = ResistanceLoad.numeric(config.load.mode, ResistanceLoad.Unit.LB, config.load.milliUnits ?: 0),
-                        increment = 5_000,
                         dispatcher = dispatcher,
                     )
                 }
@@ -437,7 +435,6 @@ private fun updateTraining(
     index: Int,
     current: TrainingAssistantConfig,
     load: ResistanceLoad = current.load,
-    increment: Long = current.loadIncrementMilli,
     targetRir: Int = current.targetRir,
     ceiling: Int = current.automaticWeeklySetCeiling,
     primary: TrainingMuscleGroup? = current.primaryMuscle,
@@ -454,7 +451,6 @@ private fun updateTraining(
             current.minRepetitions,
             current.maxRepetitions,
             targetRir,
-            increment,
             ceiling,
             load,
             primary,

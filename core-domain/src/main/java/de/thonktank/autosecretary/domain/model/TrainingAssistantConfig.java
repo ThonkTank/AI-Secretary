@@ -13,7 +13,6 @@ public final class TrainingAssistantConfig {
     public final int minRepetitions;
     public final int maxRepetitions;
     public final int targetRir;
-    public final long loadIncrementMilli;
     public final int automaticWeeklySetCeiling;
     public final ResistanceLoad load;
     public final TrainingMuscleGroup primaryMuscle;
@@ -21,12 +20,12 @@ public final class TrainingAssistantConfig {
 
     public TrainingAssistantConfig(boolean enabled, int minSets, int maxSets,
                                    int minRepetitions, int maxRepetitions, int targetRir,
-                                   long loadIncrementMilli, int automaticWeeklySetCeiling,
+                                   int automaticWeeklySetCeiling,
                                    ResistanceLoad load, TrainingMuscleGroup primaryMuscle,
                                    Set<TrainingMuscleGroup> secondaryMuscles) {
         if (minSets < 1 || maxSets < minSets || minRepetitions < 1
                 || maxRepetitions < minRepetitions || targetRir < 0 || targetRir > 5
-                || loadIncrementMilli < 0 || automaticWeeklySetCeiling < 1)
+                || automaticWeeklySetCeiling < 1)
             throw new IllegalArgumentException("Invalid training assistant guardrails");
         if (enabled && (load == null || load.mode == ResistanceLoad.Mode.UNSPECIFIED))
             throw new IllegalArgumentException("Enabled assistant needs a resistance mode");
@@ -36,7 +35,6 @@ public final class TrainingAssistantConfig {
         this.minRepetitions = minRepetitions;
         this.maxRepetitions = maxRepetitions;
         this.targetRir = targetRir;
-        this.loadIncrementMilli = loadIncrementMilli;
         this.automaticWeeklySetCeiling = automaticWeeklySetCeiling;
         this.load = load == null ? ResistanceLoad.unspecified() : load;
         this.primaryMuscle = primaryMuscle;
@@ -48,20 +46,19 @@ public final class TrainingAssistantConfig {
     }
 
     public static TrainingAssistantConfig disabled() {
-        return new TrainingAssistantConfig(false, 2, 3, 8, 12, 2, 2_500, 10,
+        return new TrainingAssistantConfig(false, 2, 3, 8, 12, 2, 10,
                 ResistanceLoad.unspecified(), null, Collections.emptySet());
     }
 
     public static TrainingAssistantConfig defaults(ResistanceLoad load,
                                                    TrainingMuscleGroup primary) {
         return new TrainingAssistantConfig(true, 2, 3, 8, 12, 2,
-                load.unit == ResistanceLoad.Unit.LB ? 5_000 : 2_500,
                 10, load, primary, Collections.emptySet());
     }
 
     public TrainingAssistantConfig withLoad(ResistanceLoad value) {
         return new TrainingAssistantConfig(enabled, minSets, maxSets, minRepetitions,
-                maxRepetitions, targetRir, loadIncrementMilli, automaticWeeklySetCeiling,
+                maxRepetitions, targetRir, automaticWeeklySetCeiling,
                 value, primaryMuscle, secondaryMuscles);
     }
 
@@ -71,7 +68,6 @@ public final class TrainingAssistantConfig {
         return enabled == value.enabled && minSets == value.minSets && maxSets == value.maxSets
                 && minRepetitions == value.minRepetitions
                 && maxRepetitions == value.maxRepetitions && targetRir == value.targetRir
-                && loadIncrementMilli == value.loadIncrementMilli
                 && automaticWeeklySetCeiling == value.automaticWeeklySetCeiling
                 && load.equals(value.load) && primaryMuscle == value.primaryMuscle
                 && secondaryMuscles.equals(value.secondaryMuscles);
@@ -79,7 +75,7 @@ public final class TrainingAssistantConfig {
 
     @Override public int hashCode() {
         return Objects.hash(enabled, minSets, maxSets, minRepetitions, maxRepetitions,
-                targetRir, loadIncrementMilli, automaticWeeklySetCeiling, load,
+                targetRir, automaticWeeklySetCeiling, load,
                 primaryMuscle, secondaryMuscles);
     }
 }

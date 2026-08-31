@@ -9,6 +9,7 @@ import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
+import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TrainingObservation;
 
@@ -29,30 +30,30 @@ public final class TrainingAdaptationEngineTest {
         StepAmount.SetsReps prescription = sets(3, 8);
         TrainingAssistantState state = TrainingAssistantState.calibrating();
 
-        TrainingAdaptationEngine.Result first = engine.evaluate(prescription, config, state,
+        TrainingDecision first = engine.evaluate(prescription, config, state,
                 ready(3, 8, load), 6);
-        assertEquals(TrainingAdaptationEngine.Reason.CALIBRATING, first.reason);
-        TrainingAdaptationEngine.Result second = engine.evaluate(prescription, config,
+        assertEquals(TrainingDecision.Reason.CALIBRATING, first.reason);
+        TrainingDecision second = engine.evaluate(prescription, config,
                 first.state, ready(3, 8, load), 6);
-        assertEquals(TrainingAdaptationEngine.Reason.CALIBRATING, second.reason);
-        TrainingAdaptationEngine.Result third = engine.evaluate(prescription, config,
+        assertEquals(TrainingDecision.Reason.CALIBRATING, second.reason);
+        TrainingDecision third = engine.evaluate(prescription, config,
                 second.state, ready(3, 8, load), 6);
 
-        assertEquals(TrainingAdaptationEngine.Reason.CALIBRATING, third.reason);
+        assertEquals(TrainingDecision.Reason.CALIBRATING, third.reason);
         assertEquals(8, third.prescription.repetitions);
         assertEquals(TrainingAssistantState.Status.ACTIVE, third.state.status);
         assertEquals(0, third.state.readyStreak);
 
-        TrainingAdaptationEngine.Result fourth = engine.evaluate(prescription, config,
+        TrainingDecision fourth = engine.evaluate(prescription, config,
                 third.state, ready(3, 8, load), 6);
-        assertEquals(TrainingAdaptationEngine.Reason.NONE, fourth.reason);
-        TrainingAdaptationEngine.Result fifth = engine.evaluate(prescription, config,
+        assertEquals(TrainingDecision.Reason.NONE, fourth.reason);
+        TrainingDecision fifth = engine.evaluate(prescription, config,
                 fourth.state, ready(3, 8, load), 6);
-        assertEquals(TrainingAdaptationEngine.Reason.REPETITIONS_INCREASED, fifth.reason);
+        assertEquals(TrainingDecision.Reason.REPETITIONS_INCREASED, fifth.reason);
         assertEquals(9, fifth.prescription.repetitions);
     }
 
-    @Test public void topOfRangeUsesSmallLoadIncrementAndResetsRepetitions() {
+    @Test public void topOfRangeRequestsTheConcreteNextLoadWithoutChangingPrescription() {
         ResistanceLoad load = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
                 ResistanceLoad.Unit.KG, 50_000);
         TrainingAssistantConfig config = TrainingAssistantConfig.defaults(load,
@@ -60,29 +61,31 @@ public final class TrainingAdaptationEngineTest {
         TrainingAssistantState state = new TrainingAssistantState(
                 TrainingAssistantState.Status.ACTIVE, 4, 1, 0);
 
-        TrainingAdaptationEngine.Result result = engine.evaluate(sets(3, 12), config, state,
+        TrainingDecision result = engine.evaluate(sets(3, 12), config, state,
                 ready(3, 12, load), 6);
 
-        assertEquals(TrainingAdaptationEngine.Reason.LOAD_INCREASED, result.reason);
-        assertEquals(Long.valueOf(52_500), result.config.load.milliUnits);
-        assertEquals(8, result.prescription.repetitions);
+        assertEquals(TrainingDecision.Action.REQUEST_NEXT_LOAD, result.action);
+        assertEquals(TrainingDecision.Reason.NEXT_LOAD_REQUIRED, result.reason);
+        assertEquals(TrainingDecision.LoadDirection.PROGRESS, result.loadDirection);
+        assertEquals(load, result.load);
+        assertEquals(12, result.prescription.repetitions);
     }
 
     @Test public void bodyweightAddsOneSetOnlyBelowConfiguredVolumeCeiling() {
         ResistanceLoad load = ResistanceLoad.bodyweight();
         TrainingAssistantConfig config = new TrainingAssistantConfig(true, 2, 4, 8, 12, 2,
-                0, 10, load, TrainingMuscleGroup.QUADRICEPS, Collections.emptySet());
+                10, load, TrainingMuscleGroup.QUADRICEPS, Collections.emptySet());
         TrainingAssistantState state = new TrainingAssistantState(
                 TrainingAssistantState.Status.ACTIVE, 4, 1, 0);
 
-        TrainingAdaptationEngine.Result added = engine.evaluate(sets(3, 12), config, state,
+        TrainingDecision added = engine.evaluate(sets(3, 12), config, state,
                 ready(3, 12, load), 8);
-        assertEquals(TrainingAdaptationEngine.Reason.SET_ADDED, added.reason);
+        assertEquals(TrainingDecision.Reason.SET_ADDED, added.reason);
         assertEquals(4, added.prescription.sets);
 
-        TrainingAdaptationEngine.Result held = engine.evaluate(sets(3, 12), config, state,
+        TrainingDecision held = engine.evaluate(sets(3, 12), config, state,
                 ready(3, 12, load), 10);
-        assertEquals(TrainingAdaptationEngine.Reason.BOUNDARY_REACHED, held.reason);
+        assertEquals(TrainingDecision.Reason.VOLUME_LIMIT, held.reason);
         assertEquals(3, held.prescription.sets);
     }
 
@@ -94,12 +97,12 @@ public final class TrainingAdaptationEngineTest {
         TrainingAssistantState state = new TrainingAssistantState(
                 TrainingAssistantState.Status.ACTIVE, 5, 0, 1);
 
-        TrainingAdaptationEngine.Result result = engine.evaluate(sets(3, 10), config, state,
+        TrainingDecision result = engine.evaluate(sets(3, 10), config, state,
                 hard(3, 7, load), 6);
-        assertEquals(TrainingAdaptationEngine.Reason.SET_REMOVED, result.reason);
+        assertEquals(TrainingDecision.Reason.SET_REMOVED, result.reason);
         assertEquals(2, result.prescription.sets);
         assertEquals(10, result.prescription.repetitions);
-        assertEquals(Long.valueOf(20_000), result.config.load.milliUnits);
+        assertEquals(Long.valueOf(20_000), result.load.milliUnits);
     }
 
     @Test public void safetyFlagPausesWithoutChangingPrescription() {
@@ -111,11 +114,11 @@ public final class TrainingAdaptationEngineTest {
                 TrainingObservation.Safety.PAIN_OR_TECHNIQUE,
                 TrainingObservation.Origin.USER)));
 
-        TrainingAdaptationEngine.Result result = engine.evaluate(sets(2, 10), config,
+        TrainingDecision result = engine.evaluate(sets(2, 10), config,
                 TrainingAssistantState.calibrating(), sets, 2);
-        assertEquals(TrainingAdaptationEngine.Reason.SAFETY_PAUSE, result.reason);
+        assertEquals(TrainingDecision.Reason.SAFETY_PAUSE, result.reason);
         assertEquals(TrainingAssistantState.Status.PAUSED, result.state.status);
-        assertFalse(result.changedFrom(sets(2, 10), config));
+        assertFalse(result.changedFrom(sets(2, 10), config.load));
     }
 
     @Test public void legacyAndMismatchedLoadAreNotLearningEvidence() {

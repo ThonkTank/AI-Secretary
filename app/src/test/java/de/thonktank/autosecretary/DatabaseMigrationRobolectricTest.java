@@ -378,6 +378,80 @@ public final class DatabaseMigrationRobolectricTest {
         migrated.close();
     }
 
+    @Test public void migrationTwentyOneToTwentyTwoKeepsDependentRowsAndRemovesIncrement() {
+        SupportSQLiteOpenHelper.Configuration configuration =
+                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
+                        .callback(new SupportSQLiteOpenHelper.Callback(21) {
+                            @Override public void onCreate(SupportSQLiteDatabase database) {
+                                ExportedRoomSchemaFixture.create(database, 21);
+                            }
+                            @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                            int oldVersion, int newVersion) { }
+                        }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
+                .create(configuration);
+        SupportSQLiteDatabase old = helper.getWritableDatabase();
+        old.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,weekdayMask,ongoing,"
+                + "conditionText,conditionDone,archived,nextDueOn,catalogOrder,"
+                + "hasCompletedOccurrence,boundKind,note,missedOccurrenceMode) VALUES "
+                + "('task','Training','DAILY',1,0,0,'',0,0,'2026-08-31',1,0,"
+                + "'FOREVER','','SKIP')");
+        old.execSQL("INSERT INTO task_steps(id,taskId,position,text,weekdayMask,intervalDays,"
+                + "amountKind,plannedSets,plannedReps,restTimerMode,assistantEnabled,"
+                + "assistantMinSets,assistantMaxSets,assistantMinReps,assistantMaxReps,"
+                + "assistantTargetRir,assistantLoadIncrementMilli,assistantWeeklySetCeiling,"
+                + "plannedLoadMode,plannedLoadUnit,plannedLoadMilli,secondaryMuscles,"
+                + "assistantStatus,assistantObservations,assistantReadyStreak,"
+                + "assistantHardStreak,note,activationKind) VALUES "
+                + "('first','task',0,'Rudern',0,0,'SETS_REPS',3,12,'INHERIT',1,2,4,8,12,"
+                + "2,2500,10,'EXTERNAL','KG',50000,'','ACTIVE',5,1,0,'','SCHEDULED'),"
+                + "('second','task',1,'Zug',0,0,'SETS_REPS',3,12,'INHERIT',0,2,3,8,12,"
+                + "2,2500,10,'EXTERNAL','KG',40000,'','DISABLED',0,0,0,'','SCHEDULED')");
+        old.execSQL("INSERT INTO capacity_resources(id,name,normalizedName,capacity) "
+                + "VALUES ('rack','Rack','rack',1)");
+        old.execSQL("INSERT INTO step_transitions(sourceStepId,targetStepId,delayMode,"
+                + "defaultDelayMillis,lastUsedDelayMillis) VALUES "
+                + "('first','second','IMMEDIATE',0,NULL)");
+        old.execSQL("INSERT INTO step_resource_leases(id,taskId,acquireStepId,releaseStepId,"
+                + "resourceId,units) VALUES ('lease','task','first','second','rack',1)");
+        old.execSQL("INSERT INTO training_adjustments(id,templateId,sourceOccurrenceStepId,"
+                + "reason,beforeSets,beforeReps,beforeLoadMode,beforeLoadUnit,beforeLoadMilli,"
+                + "afterSets,afterReps,afterLoadMode,afterLoadUnit,afterLoadMilli,createdOn,state)"
+                + " VALUES ('adjust','first','occ-step','REPETITIONS_INCREASED',3,11,"
+                + "'EXTERNAL','KG',50000,3,12,'EXTERNAL','KG',50000,'2026-08-31','APPLIED')");
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.from(21)).allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        try (Cursor cursor = database.query("SELECT text,plannedLoadMilli FROM task_steps "
+                + "WHERE id='first'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("Rudern", cursor.getString(0));
+            assertEquals(50_000L, cursor.getLong(1));
+        }
+        try (Cursor cursor = database.query("SELECT targetStepId FROM step_transitions "
+                + "WHERE sourceStepId='first'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals("second", cursor.getString(0));
+        }
+        try (Cursor cursor = database.query("SELECT resourceId FROM step_resource_leases "
+                + "WHERE id='lease'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals("rack", cursor.getString(0));
+        }
+        try (Cursor cursor = database.query("SELECT reason,auditOrder,ruleVersion FROM "
+                + "training_adjustments WHERE id='adjust'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("REPETITIONS_INCREASED", cursor.getString(0));
+            assertTrue(cursor.getLong(1) > 0); assertEquals(1, cursor.getInt(2));
+        }
+        try (Cursor cursor = database.query("PRAGMA table_info(task_steps)")) {
+            while (cursor.moveToNext())
+                if ("assistantLoadIncrementMilli".equals(cursor.getString(1)))
+                    fail("Obsolete increment column survived schema 22");
+        }
+        migrated.close();
+    }
+
     @Test public void migrationFifteenToSixteenDerivesStableCadenceAnchors() {
         SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
                 .builder(context).name(DATABASE)

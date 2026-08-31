@@ -99,7 +99,6 @@ public final class TaskEntityMapper {
         entity.assistantMinReps = config.minRepetitions;
         entity.assistantMaxReps = config.maxRepetitions;
         entity.assistantTargetRir = config.targetRir;
-        entity.assistantLoadIncrementMilli = config.loadIncrementMilli;
         entity.assistantWeeklySetCeiling = config.automaticWeeklySetCeiling;
         entity.plannedLoadMode = config.load.mode.name();
         entity.plannedLoadUnit = config.load.unit.name();
@@ -158,8 +157,7 @@ public final class TaskEntityMapper {
     private static TrainingAssistantConfig trainingConfig(TaskStepEntity entity) {
         return new TrainingAssistantConfig(entity.assistantEnabled, entity.assistantMinSets,
                 entity.assistantMaxSets, entity.assistantMinReps, entity.assistantMaxReps,
-                entity.assistantTargetRir, entity.assistantLoadIncrementMilli,
-                entity.assistantWeeklySetCeiling,
+                entity.assistantTargetRir, entity.assistantWeeklySetCeiling,
                 ResistanceLoad.restore(entity.plannedLoadMode, entity.plannedLoadUnit,
                         entity.plannedLoadMilli),
                 muscle(entity.primaryMuscle), parseMuscles(entity.secondaryMuscles));

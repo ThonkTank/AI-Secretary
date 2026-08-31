@@ -191,6 +191,22 @@ public final class UiComponentRobolectricTest {
         EditorUiState valid = base.withDraft("Vorhaben", TaskSlot.LATER,
                 Recurrence.ONCE, 1, 0, Collections.emptyList());
         assertTrue(validator.issues(valid, LocalDate.of(2026, 8, 21)).isEmpty());
+
+        EditorStepState exercise = EditorStepState.blank(1).withText("Rudern")
+                .withAmount(de.thonktank.autosecretary.domain.model.StepAmount.setsReps(3, 12))
+                .withTrainingAssistant(
+                        de.thonktank.autosecretary.domain.model.TrainingAssistantConfig.defaults(
+                                de.thonktank.autosecretary.domain.model.ResistanceLoad.numeric(
+                                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
+                                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG,
+                                        0), null));
+        EditorUiState missingLoad = base.draft("Training", TaskSlot.LATER, null,
+                Recurrence.ONCE, 1, 0, 0,
+                de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
+                null, null, null, null, "", Collections.singletonList(exercise),
+                exercise.id, 2);
+        assertTrue(validator.issues(missingLoad, LocalDate.of(2026, 8, 21)).contains(
+                ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, exercise.id)));
     }
 
     @Test public void rendererReusesTheMountedViewTreeForNormalUpdates() {

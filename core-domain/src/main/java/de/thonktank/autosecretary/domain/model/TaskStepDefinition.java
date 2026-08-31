@@ -39,6 +39,11 @@ public final class TaskStepDefinition {
             throw new IllegalArgumentException("Only set steps may use the training assistant");
         if (assistantPolicy != null && prescription.training == null)
             throw new IllegalArgumentException("An assistant policy needs a training prescription");
+        if (assistantPolicy != null && prescription.training.load.adjustable()
+                && (prescription.training.load.milliUnits == null
+                || prescription.training.load.milliUnits <= 0))
+            throw new IllegalArgumentException(
+                    "An enabled assistant needs a positive numeric starting load");
         this.assistantPolicy = assistantPolicy;
         this.amount = prescription.amount;
         this.restTimerPolicy = prescription.rest;

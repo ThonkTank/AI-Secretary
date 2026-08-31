@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
+import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
@@ -17,11 +18,13 @@ public final class CorrectSetResult {
     private final OccurrenceExecutionRepository occurrences;
     private final TrainingRepository training;
     private final StepExecutionService execution;
+    private final Clock clock;
 
     public <T extends OccurrenceExecutionRepository & RewardLedgerRepository & TrainingRepository>
     CorrectSetResult(T repository, Clock clock, ComboPolicySource policies) {
         occurrences = repository;
         training = repository;
+        this.clock = clock;
         execution = new StepExecutionService(repository, clock, policies);
     }
 
@@ -37,6 +40,10 @@ public final class CorrectSetResult {
                     training.updateTrainingTemplate(template.withTraining(template.prescription,
                             new TrainingAssistantProfile(template.assistantProfile.policy,
                                     TrainingAssistantState.calibrating())));
+                TrainingLoadRequest request = training.openTrainingLoadRequest(
+                        step.sourceTemplateId);
+                if (request != null) training.updateTrainingLoadRequest(request.cancel(
+                        TrainingLoadRequest.Resolution.SET_RESULT_CORRECTED, clock.today()));
             }
             return result;
         });

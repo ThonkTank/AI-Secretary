@@ -13,6 +13,8 @@ import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.StepFlowDefinition;
 import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
 import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.TrainingRepository;
+import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.schedule.TaskScheduleRepository;
 
 import java.time.LocalDate;
@@ -104,6 +106,16 @@ public final class UpdateTask {
                                 : de.thonktank.autosecretary.domain.model.TrainingAssistantState.calibrating();
                 profile = new de.thonktank.autosecretary.domain.model.TrainingAssistantProfile(
                         step.assistantPolicy, state);
+            }
+            if (old != null && old.assistantProfile != null
+                    && (!old.prescription.equals(step.prescription)
+                    || !java.util.Objects.equals(old.assistantProfile.policy,
+                    step.assistantPolicy))
+                    && repository instanceof TrainingRepository && clock != null) {
+                TrainingRepository training = (TrainingRepository) repository;
+                TrainingLoadRequest request = training.openTrainingLoadRequest(identity);
+                if (request != null) training.updateTrainingLoadRequest(request.cancel(
+                        TrainingLoadRequest.Resolution.MANUAL_CHANGE, clock.today()));
             }
             retained.add(identity);
             updated.add(new TaskStepTemplate(identity, taskId, i, step.text,

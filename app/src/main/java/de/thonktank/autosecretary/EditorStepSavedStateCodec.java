@@ -63,7 +63,6 @@ final class EditorStepSavedStateCodec {
         bundle.putInt("training_min_reps", value.minRepetitions);
         bundle.putInt("training_max_reps", value.maxRepetitions);
         bundle.putInt("training_target_rir", value.targetRir);
-        bundle.putLong("training_increment", value.loadIncrementMilli);
         bundle.putInt("training_weekly_ceiling", value.automaticWeeklySetCeiling);
         bundle.putString("training_load_mode", value.load.mode.name());
         bundle.putString("training_load_unit", value.load.unit.name());
@@ -97,7 +96,6 @@ final class EditorStepSavedStateCodec {
                 positive(bundle.getInt("training_min_reps"), 8),
                 positive(bundle.getInt("training_max_reps"), 12),
                 bundle.containsKey("training_target_rir") ? bundle.getInt("training_target_rir") : 2,
-                bundle.containsKey("training_increment") ? bundle.getLong("training_increment") : 2_500,
                 positive(bundle.getInt("training_weekly_ceiling"), 10), load,
                 muscle(bundle.getString("training_primary")), secondary);
     }

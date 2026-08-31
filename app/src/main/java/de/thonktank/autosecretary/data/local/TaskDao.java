@@ -115,8 +115,24 @@ public interface TaskDao {
     void insertTrainingAdjustment(TrainingAdjustmentEntity adjustment);
     @Update void updateTrainingAdjustment(TrainingAdjustmentEntity adjustment);
     @Query("SELECT * FROM training_adjustments WHERE templateId=:templateId "
-            + "ORDER BY createdOn DESC,id DESC LIMIT 1")
+            + "ORDER BY auditOrder DESC LIMIT 1")
     TrainingAdjustmentEntity latestTrainingAdjustment(String templateId);
+    @Query("SELECT * FROM training_adjustments WHERE templateId=:templateId "
+            + "ORDER BY auditOrder DESC LIMIT :limit")
+    List<TrainingAdjustmentEntity> recentTrainingAdjustments(String templateId, int limit);
+    @Query("SELECT COALESCE(MAX(auditOrder),0) FROM training_adjustments")
+    long maximumTrainingAdjustmentOrder();
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    void insertTrainingLoadRequest(TrainingLoadRequestEntity request);
+    @Update void updateTrainingLoadRequest(TrainingLoadRequestEntity request);
+    @Query("SELECT * FROM training_load_requests WHERE templateId=:templateId "
+            + "AND state='OPEN' ORDER BY auditOrder DESC LIMIT 1")
+    TrainingLoadRequestEntity openTrainingLoadRequest(String templateId);
+    @Query("SELECT * FROM training_load_requests WHERE templateId=:templateId "
+            + "ORDER BY auditOrder DESC LIMIT :limit")
+    List<TrainingLoadRequestEntity> recentTrainingLoadRequests(String templateId, int limit);
+    @Query("SELECT COALESCE(MAX(auditOrder),0) FROM training_load_requests")
+    long maximumTrainingLoadRequestOrder();
     @Insert(onConflict = OnConflictStrategy.REPLACE) void putStats(StatsEntity stats);
     @Query("SELECT * FROM stats WHERE id = 1") StatsEntity stats();
     @Insert(onConflict = OnConflictStrategy.REPLACE) void putCombo(ComboEntity combo);

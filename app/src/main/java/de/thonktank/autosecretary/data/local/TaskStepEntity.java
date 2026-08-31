@@ -28,7 +28,6 @@ public class TaskStepEntity {
     public int assistantMinReps;
     public int assistantMaxReps;
     public int assistantTargetRir;
-    public long assistantLoadIncrementMilli;
     public int assistantWeeklySetCeiling;
     @NonNull public String plannedLoadMode;
     @NonNull public String plannedLoadUnit;
@@ -100,7 +99,7 @@ public class TaskStepEntity {
         this.restTimerMode = restTimerMode; this.restTimerSeconds = restTimerSeconds;
         this.assistantEnabled = false; this.assistantMinSets = 2; this.assistantMaxSets = 3;
         this.assistantMinReps = 8; this.assistantMaxReps = 12; this.assistantTargetRir = 2;
-        this.assistantLoadIncrementMilli = 2500; this.assistantWeeklySetCeiling = 10;
+        this.assistantWeeklySetCeiling = 10;
         this.plannedLoadMode = "UNSPECIFIED"; this.plannedLoadUnit = "NONE";
         this.secondaryMuscles = ""; this.assistantStatus = "DISABLED";
         this.note = note;

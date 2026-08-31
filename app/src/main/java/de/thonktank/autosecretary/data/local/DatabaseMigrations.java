@@ -735,6 +735,135 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Removes assumed increments and persists explicit, versioned load decisions. */
+    public static final Migration MIGRATION_21_22 = new Migration(21, 22) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE _p3_step_transitions AS "
+                    + "SELECT * FROM step_transitions");
+            database.execSQL("CREATE TABLE _p3_step_resource_leases AS "
+                    + "SELECT * FROM step_resource_leases");
+            database.execSQL("CREATE TABLE _p3_training_adjustments AS SELECT rowid AS "
+                    + "legacyAuditOrder,* FROM training_adjustments");
+            database.execSQL("DROP TABLE step_transitions");
+            database.execSQL("DROP TABLE step_resource_leases");
+            database.execSQL("DROP TABLE training_adjustments");
+
+            database.execSQL("CREATE TABLE _new_task_steps (id TEXT NOT NULL, "
+                    + "taskId TEXT NOT NULL, position INTEGER NOT NULL, text TEXT NOT NULL, "
+                    + "weekdayMask INTEGER NOT NULL, intervalDays INTEGER NOT NULL, "
+                    + "amountKind TEXT NOT NULL, plannedSets INTEGER, plannedReps INTEGER, "
+                    + "plannedDurationSeconds INTEGER, restTimerMode TEXT NOT NULL, "
+                    + "restTimerSeconds INTEGER, assistantEnabled INTEGER NOT NULL, "
+                    + "assistantMinSets INTEGER NOT NULL, assistantMaxSets INTEGER NOT NULL, "
+                    + "assistantMinReps INTEGER NOT NULL, assistantMaxReps INTEGER NOT NULL, "
+                    + "assistantTargetRir INTEGER NOT NULL, "
+                    + "assistantWeeklySetCeiling INTEGER NOT NULL, "
+                    + "plannedLoadMode TEXT NOT NULL, plannedLoadUnit TEXT NOT NULL, "
+                    + "plannedLoadMilli INTEGER, primaryMuscle TEXT, "
+                    + "secondaryMuscles TEXT NOT NULL, assistantStatus TEXT NOT NULL, "
+                    + "assistantObservations INTEGER NOT NULL, "
+                    + "assistantReadyStreak INTEGER NOT NULL, "
+                    + "assistantHardStreak INTEGER NOT NULL, note TEXT NOT NULL, "
+                    + "activationKind TEXT NOT NULL DEFAULT 'SCHEDULED', PRIMARY KEY(id), "
+                    + "FOREIGN KEY(taskId) REFERENCES tasks(id) ON UPDATE NO ACTION "
+                    + "ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO _new_task_steps (id,taskId,position,text,weekdayMask,"
+                    + "intervalDays,amountKind,plannedSets,plannedReps,plannedDurationSeconds,"
+                    + "restTimerMode,restTimerSeconds,assistantEnabled,assistantMinSets,"
+                    + "assistantMaxSets,assistantMinReps,assistantMaxReps,assistantTargetRir,"
+                    + "assistantWeeklySetCeiling,plannedLoadMode,plannedLoadUnit,plannedLoadMilli,"
+                    + "primaryMuscle,secondaryMuscles,assistantStatus,assistantObservations,"
+                    + "assistantReadyStreak,assistantHardStreak,note,activationKind) SELECT "
+                    + "id,taskId,position,text,weekdayMask,intervalDays,amountKind,plannedSets,"
+                    + "plannedReps,plannedDurationSeconds,restTimerMode,restTimerSeconds,"
+                    + "assistantEnabled,assistantMinSets,assistantMaxSets,assistantMinReps,"
+                    + "assistantMaxReps,assistantTargetRir,assistantWeeklySetCeiling,"
+                    + "plannedLoadMode,plannedLoadUnit,plannedLoadMilli,primaryMuscle,"
+                    + "secondaryMuscles,assistantStatus,assistantObservations,"
+                    + "assistantReadyStreak,assistantHardStreak,note,activationKind "
+                    + "FROM task_steps");
+            database.execSQL("DROP TABLE task_steps");
+            database.execSQL("ALTER TABLE _new_task_steps RENAME TO task_steps");
+            database.execSQL("CREATE INDEX index_task_steps_taskId ON task_steps(taskId)");
+
+            database.execSQL("CREATE TABLE step_transitions (sourceStepId TEXT NOT NULL, "
+                    + "targetStepId TEXT NOT NULL, delayMode TEXT NOT NULL, "
+                    + "defaultDelayMillis INTEGER NOT NULL, lastUsedDelayMillis INTEGER, "
+                    + "PRIMARY KEY(sourceStepId), FOREIGN KEY(sourceStepId) REFERENCES "
+                    + "task_steps(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
+                    + "FOREIGN KEY(targetStepId) REFERENCES task_steps(id) ON UPDATE NO ACTION "
+                    + "ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO step_transitions SELECT * FROM _p3_step_transitions");
+            database.execSQL("CREATE INDEX index_step_transitions_targetStepId "
+                    + "ON step_transitions(targetStepId)");
+            database.execSQL("DROP TABLE _p3_step_transitions");
+
+            database.execSQL("CREATE TABLE step_resource_leases (id TEXT NOT NULL, "
+                    + "taskId TEXT NOT NULL, acquireStepId TEXT NOT NULL, "
+                    + "releaseStepId TEXT NOT NULL, resourceId TEXT NOT NULL, "
+                    + "units INTEGER NOT NULL, PRIMARY KEY(id), FOREIGN KEY(taskId) REFERENCES "
+                    + "tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
+                    + "FOREIGN KEY(acquireStepId) REFERENCES task_steps(id) ON UPDATE NO ACTION "
+                    + "ON DELETE CASCADE, FOREIGN KEY(releaseStepId) REFERENCES task_steps(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(resourceId) REFERENCES "
+                    + "capacity_resources(id) ON UPDATE NO ACTION ON DELETE RESTRICT)");
+            database.execSQL("INSERT INTO step_resource_leases SELECT * "
+                    + "FROM _p3_step_resource_leases");
+            database.execSQL("CREATE INDEX index_step_resource_leases_taskId "
+                    + "ON step_resource_leases(taskId)");
+            database.execSQL("CREATE INDEX index_step_resource_leases_acquireStepId "
+                    + "ON step_resource_leases(acquireStepId)");
+            database.execSQL("CREATE INDEX index_step_resource_leases_releaseStepId "
+                    + "ON step_resource_leases(releaseStepId)");
+            database.execSQL("CREATE INDEX index_step_resource_leases_resourceId "
+                    + "ON step_resource_leases(resourceId)");
+            database.execSQL("DROP TABLE _p3_step_resource_leases");
+
+            database.execSQL("CREATE TABLE training_adjustments (id TEXT NOT NULL, "
+                    + "templateId TEXT NOT NULL, sourceOccurrenceStepId TEXT NOT NULL, "
+                    + "reason TEXT NOT NULL, beforeSets INTEGER NOT NULL, "
+                    + "beforeReps INTEGER NOT NULL, beforeLoadMode TEXT NOT NULL, "
+                    + "beforeLoadUnit TEXT NOT NULL, beforeLoadMilli INTEGER, "
+                    + "afterSets INTEGER NOT NULL, afterReps INTEGER NOT NULL, "
+                    + "afterLoadMode TEXT NOT NULL, afterLoadUnit TEXT NOT NULL, "
+                    + "afterLoadMilli INTEGER, createdOn TEXT NOT NULL, state TEXT NOT NULL, "
+                    + "auditOrder INTEGER NOT NULL, ruleVersion INTEGER NOT NULL, "
+                    + "PRIMARY KEY(id), FOREIGN KEY(templateId) REFERENCES task_steps(id) "
+                    + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("INSERT INTO training_adjustments (id,templateId,"
+                    + "sourceOccurrenceStepId,reason,beforeSets,beforeReps,beforeLoadMode,"
+                    + "beforeLoadUnit,beforeLoadMilli,afterSets,afterReps,afterLoadMode,"
+                    + "afterLoadUnit,afterLoadMilli,createdOn,state,auditOrder,ruleVersion) "
+                    + "SELECT id,templateId,sourceOccurrenceStepId,reason,beforeSets,beforeReps,"
+                    + "beforeLoadMode,beforeLoadUnit,beforeLoadMilli,afterSets,afterReps,"
+                    + "afterLoadMode,afterLoadUnit,afterLoadMilli,createdOn,state,"
+                    + "legacyAuditOrder,1 FROM _p3_training_adjustments");
+            database.execSQL("CREATE INDEX index_training_adjustments_templateId "
+                    + "ON training_adjustments(templateId)");
+            database.execSQL("CREATE INDEX index_training_adjustments_sourceOccurrenceStepId "
+                    + "ON training_adjustments(sourceOccurrenceStepId)");
+            database.execSQL("CREATE UNIQUE INDEX index_training_adjustments_auditOrder "
+                    + "ON training_adjustments(auditOrder)");
+            database.execSQL("DROP TABLE _p3_training_adjustments");
+
+            database.execSQL("CREATE TABLE training_load_requests (id TEXT NOT NULL, "
+                    + "templateId TEXT NOT NULL, sourceOccurrenceStepId TEXT NOT NULL, "
+                    + "direction TEXT NOT NULL, currentLoadMode TEXT NOT NULL, "
+                    + "currentLoadUnit TEXT NOT NULL, currentLoadMilli INTEGER NOT NULL, "
+                    + "createdOn TEXT NOT NULL, auditOrder INTEGER NOT NULL, "
+                    + "ruleVersion INTEGER NOT NULL, state TEXT NOT NULL, "
+                    + "resolution TEXT NOT NULL, resolvedOn TEXT, PRIMARY KEY(id), "
+                    + "FOREIGN KEY(templateId) REFERENCES task_steps(id) ON UPDATE NO ACTION "
+                    + "ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_training_load_requests_templateId "
+                    + "ON training_load_requests(templateId)");
+            database.execSQL("CREATE INDEX index_training_load_requests_sourceOccurrenceStepId "
+                    + "ON training_load_requests(sourceOccurrenceStepId)");
+            database.execSQL("CREATE UNIQUE INDEX index_training_load_requests_auditOrder "
+                    + "ON training_load_requests(auditOrder)");
+        }
+    };
+
     /** Complete historical graph for migration fixtures and archive tests. */
     public static Migration[] all() {
         return from(1);
@@ -747,7 +876,7 @@ public final class DatabaseMigrations {
                 MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                 MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
                 MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
-                MIGRATION_20_21};
+                MIGRATION_20_21, MIGRATION_21_22};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];
