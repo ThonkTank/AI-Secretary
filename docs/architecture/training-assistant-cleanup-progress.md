@@ -12,9 +12,14 @@ Roadmap nachträglich umzuschreiben.
 | 0 – Vertrag und Grundlage | abgeschlossen | PR #299, Squash `c1e72ba4` |
 | 1 – Schrittverordnung | abgeschlossen | PR #300, Squash `22a9ac17` |
 | 2 – Satzresultat | abgeschlossen | PR #301, Squash `137c7b84` |
-| 3 – Lastentscheidung | in Arbeit | – |
-| 4 – Bedienung | ausstehend | – |
-| 5 – Ports und Abschlussaudit | ausstehend | – |
+| 3 – Lastentscheidung | abgeschlossen | PR #302, Squash `77afd26d` |
+| 4 – Bedienung | abgeschlossen | PR #303, Squash `693c94f4` |
+| 5 – Ports und Abschlussaudit | abgeschlossen | PR #304, Squash `e91b8833` |
+
+Die Tabelle bezeichnet den Implementierungsabschluss jeder Phase gemäß Pull-Request- und
+Squash-Merge-Gate. Die für die sichtbare Phase 4 zusätzlich vorgeschriebene physische
+Release-Abnahme ist separat offen und wird im Remote-Abschluss sowie in der abschließenden
+Korrekturrunde ausgewiesen.
 
 ## Phase 0 – Vertrag und reproduzierbare Grundlage
 
@@ -756,3 +761,36 @@ Wiring-Detail. Die ausführbare Architekturregel verbietet künftig Repository-C
   physische Installation und Sicht-/In-App-Update-Abnahme bleibt offen: Der letzte SDK-ADB-Check
   fand weiterhin kein verbundenes Gerät. Dieser externe Owner-Nachweis wird nicht als bestanden
   ausgegeben.
+
+## Korrekturrunde – aktuelle Phasenstatus-Übersicht
+
+### Festgestellte Diskrepanz
+
+Der Remote-Abschluss dokumentiert die grünen Pull Requests und Squash-Merges der Phasen 3 bis 5,
+die Statusübersicht am Dokumentanfang weist diese Phasen jedoch noch als `in Arbeit` oder
+`ausstehend` aus. Damit widerspricht die aktuelle Übersicht der im selben Protokoll belegten
+Implementierungs- und Mergehistorie. Die separat offene physische Abnahme von Phase 4 bleibt davon
+unberührt.
+
+### Fixplan
+
+- Die Statusübersicht für Phase 3 bis 5 auf `abgeschlossen` setzen und die bereits belegten
+  Pull-Request- und Squash-Referenzen übernehmen.
+- Den Unterschied zwischen abgeschlossener Implementierungsphase und weiterhin ausstehender
+  physischer Release-Abnahme direkt unter der Tabelle klarstellen.
+- Markdown, Links, Diff und Dokumentations-Scope prüfen; anschließend den vorgeschriebenen eigenen
+  Pull Request mit grünem Gate und Squash-Merge durchführen.
+
+### Validierung und Audit
+
+- GitHub weist PR #302, #303 und #304 als gemergt aus; ihre Merge-Commits stimmen exakt mit
+  `77afd26d`, `693c94f4` und `e91b8833` überein. Die jeweiligen `pull-request-gate`-Checks waren
+  erfolgreich.
+- `git diff --check` ist grün. Der Tabellenvertrag findet für alle sechs Phasen den Status
+  `abgeschlossen` samt Pull-Request- und Squash-Referenz; der Link auf die kanonische Roadmap zeigt
+  weiterhin auf eine vorhandene Datei.
+- Die vollständige CI-Harness-Suite lief mit 17 Tests ohne Fehler. Ihr Scope-Vertrag bestätigt,
+  dass die reine Dokumentationskorrektur weder Produktbuild noch Release auslösen darf.
+- Der negative Abgleich findet keine Änderung an der kanonischen Roadmap und keine Behauptung einer
+  erfolgten Geräteabnahme. Die aktuelle Übersicht beschreibt ausschließlich den nachgewiesenen
+  Implementierungsabschluss; der physische Owner-Nachweis bleibt ausdrücklich offen.
