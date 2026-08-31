@@ -4,7 +4,8 @@ import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
-import de.thonktank.autosecretary.domain.model.TrainingSetResult;
+import de.thonktank.autosecretary.domain.model.SetResult;
+import de.thonktank.autosecretary.domain.model.TrainingObservation;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,7 +46,7 @@ public final class TrainingAdaptationEngine {
     }
 
     public Result evaluate(StepAmount.SetsReps current, TrainingAssistantConfig config,
-                           TrainingAssistantState state, List<TrainingSetResult> sets,
+                           TrainingAssistantState state, List<SetResult> sets,
                            double projectedPrimaryWeeklySets) {
         if (current == null || config == null || state == null || sets == null)
             throw new IllegalArgumentException("Complete adaptation input is required");
@@ -80,17 +81,19 @@ public final class TrainingAdaptationEngine {
     }
 
     public Signal classify(StepAmount.SetsReps current, TrainingAssistantConfig config,
-                           List<TrainingSetResult> sets) {
+                           List<SetResult> sets) {
         if (sets.size() != current.sets) return Signal.INELIGIBLE;
         List<Integer> rirs = new ArrayList<>();
         int missed = 0;
-        for (TrainingSetResult set : sets) {
-            if (set.source != TrainingSetResult.Source.USER || set.rir == null
-                    || !set.load.equals(config.load)) return Signal.INELIGIBLE;
-            if (set.safetyFlag == TrainingSetResult.SafetyFlag.PAIN_OR_TECHNIQUE)
+        for (SetResult set : sets) {
+            TrainingObservation observation = set.training;
+            if (observation == null || observation.origin != TrainingObservation.Origin.USER
+                    || observation.rir == null || !observation.load.equals(config.load))
+                return Signal.INELIGIBLE;
+            if (observation.safety == TrainingObservation.Safety.PAIN_OR_TECHNIQUE)
                 return Signal.SAFETY_PAUSE;
             if (set.repetitions < current.repetitions) missed++;
-            rirs.add(set.rir);
+            rirs.add(observation.rir);
         }
         Collections.sort(rirs);
         int median = rirs.get(rirs.size() / 2);

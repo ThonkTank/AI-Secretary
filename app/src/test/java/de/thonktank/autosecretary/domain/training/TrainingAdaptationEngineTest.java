@@ -9,7 +9,8 @@ import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
-import de.thonktank.autosecretary.domain.model.TrainingSetResult;
+import de.thonktank.autosecretary.domain.model.SetResult;
+import de.thonktank.autosecretary.domain.model.TrainingObservation;
 
 import org.junit.Test;
 
@@ -105,9 +106,10 @@ public final class TrainingAdaptationEngineTest {
         ResistanceLoad load = ResistanceLoad.bodyweight();
         TrainingAssistantConfig config = TrainingAssistantConfig.defaults(load,
                 TrainingMuscleGroup.CORE);
-        List<TrainingSetResult> sets = ready(2, 10, load);
-        sets.set(1, new TrainingSetResult(10, load, 2, TrainingSetResult.Source.USER,
-                TrainingSetResult.SafetyFlag.PAIN_OR_TECHNIQUE));
+        List<SetResult> sets = ready(2, 10, load);
+        sets.set(1, new SetResult(10, new TrainingObservation(load, 2,
+                TrainingObservation.Safety.PAIN_OR_TECHNIQUE,
+                TrainingObservation.Origin.USER)));
 
         TrainingAdaptationEngine.Result result = engine.evaluate(sets(2, 10), config,
                 TrainingAssistantState.calibrating(), sets, 2);
@@ -123,7 +125,7 @@ public final class TrainingAdaptationEngineTest {
                 ResistanceLoad.Unit.KG, 22_500);
         TrainingAssistantConfig config = TrainingAssistantConfig.defaults(planned,
                 TrainingMuscleGroup.SHOULDERS);
-        List<TrainingSetResult> values = ready(2, 10, actual);
+        List<SetResult> values = ready(2, 10, actual);
         assertEquals(TrainingAdaptationEngine.Signal.INELIGIBLE,
                 engine.classify(sets(2, 10), config, values));
         assertTrue(config.enabled);
@@ -133,17 +135,17 @@ public final class TrainingAdaptationEngineTest {
         return (StepAmount.SetsReps) StepAmount.setsReps(sets, repetitions);
     }
 
-    private static List<TrainingSetResult> ready(int sets, int reps, ResistanceLoad load) {
-        List<TrainingSetResult> result = new ArrayList<>();
+    private static List<SetResult> ready(int sets, int reps, ResistanceLoad load) {
+        List<SetResult> result = new ArrayList<>();
         for (int index = 0; index < sets; index++)
-            result.add(TrainingSetResult.user(reps, load, 2));
+            result.add(new SetResult(reps, TrainingObservation.user(load, 2)));
         return result;
     }
 
-    private static List<TrainingSetResult> hard(int sets, int reps, ResistanceLoad load) {
-        List<TrainingSetResult> result = new ArrayList<>();
+    private static List<SetResult> hard(int sets, int reps, ResistanceLoad load) {
+        List<SetResult> result = new ArrayList<>();
         for (int index = 0; index < sets; index++)
-            result.add(TrainingSetResult.user(reps, load, 0));
+            result.add(new SetResult(reps, TrainingObservation.user(load, 0)));
         return result;
     }
 }

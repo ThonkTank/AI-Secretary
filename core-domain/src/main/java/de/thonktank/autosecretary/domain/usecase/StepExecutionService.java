@@ -8,6 +8,8 @@ import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
+import de.thonktank.autosecretary.domain.model.SetResult;
+import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
@@ -83,31 +85,35 @@ public final class StepExecutionService {
     }
 
     public StepExecutionResult recordRepetitionResult(String stepId, int repetitions) {
-        return occurrences.inTransaction(() -> {
-            OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
-            if (step == null)
-                return result(StepExecutionResult.Status.INVALID_STEP, null,
-                        RewardReceipt.none());
-            Occurrence occurrence = occurrences.findOccurrence(step.occurrenceId);
-            if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
-                return result(StepExecutionResult.Status.OCCURRENCE_CLOSED, step,
-                        RewardReceipt.none());
-            if (step.done || step.repetitionProgress == null)
-                return result(StepExecutionResult.Status.UNSUPPORTED, step,
-                        RewardReceipt.none());
-            OccurrenceStep changed = step.recordRepetitionResult(repetitions);
-            occurrences.updateOccurrenceStep(changed);
-            RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
-            if (changed.done) {
-                obligationResolver.resolve(changed.comboOwnerId,
-                        occurrences.findTask(occurrence.taskId), occurrence, clock.today());
-                flows.onStepCompleted(occurrence, changed, null);
-                finalizeZeroOccurrenceIfComplete(occurrence);
-                return result(StepExecutionResult.Status.COMPLETED,
-                        occurrences.findOccurrenceStep(stepId), reward);
-            }
-            return result(StepExecutionResult.Status.RECORDED, changed, reward);
-        });
+        return recordSetResult(stepId, SetResult.repetitions(repetitions));
+    }
+
+    public StepExecutionResult recordSetResult(String stepId, SetResult value) {
+        return occurrences.inTransaction(() -> recordSetResultInsideTransaction(stepId, value));
+    }
+
+    StepExecutionResult recordSetResultInsideTransaction(String stepId, SetResult value) {
+        OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
+        if (step == null)
+            return result(StepExecutionResult.Status.INVALID_STEP, null, RewardReceipt.none());
+        Occurrence occurrence = occurrences.findOccurrence(step.occurrenceId);
+        if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
+            return result(StepExecutionResult.Status.OCCURRENCE_CLOSED, step,
+                    RewardReceipt.none());
+        if (step.done || step.repetitionProgress == null)
+            return result(StepExecutionResult.Status.UNSUPPORTED, step, RewardReceipt.none());
+        OccurrenceStep changed = step.recordSetResult(value);
+        occurrences.updateOccurrenceStep(changed);
+        RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
+        if (changed.done) {
+            obligationResolver.resolve(changed.comboOwnerId,
+                    occurrences.findTask(occurrence.taskId), occurrence, clock.today());
+            flows.onStepCompleted(occurrence, changed, null);
+            finalizeZeroOccurrenceIfComplete(occurrence);
+            return result(StepExecutionResult.Status.COMPLETED,
+                    occurrences.findOccurrenceStep(stepId), reward);
+        }
+        return result(StepExecutionResult.Status.RECORDED, changed, reward);
     }
 
     public StepExecutionResult correctRepetitionResult(String stepId, int index, int repetitions) {
@@ -116,24 +122,41 @@ public final class StepExecutionService {
             if (current == null)
                 return result(StepExecutionResult.Status.INVALID_STEP, null,
                         RewardReceipt.none());
-            Occurrence occurrence = occurrences.findOccurrence(current.occurrenceId);
-            if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
-                return result(StepExecutionResult.Status.OCCURRENCE_CLOSED, current,
-                        RewardReceipt.none());
-            if (current.repetitionProgress == null)
-                return result(StepExecutionResult.Status.UNSUPPORTED, current,
-                        RewardReceipt.none());
-            OccurrenceStep changed = current.correctRepetitionResult(index, repetitions);
-            if (current.done && !changed.done && !flows.canReopenStep(occurrence, current))
-                return result(StepExecutionResult.Status.UNSUPPORTED, current,
-                        RewardReceipt.none());
-            occurrences.updateOccurrenceStep(changed);
-            RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
-            if (!current.done && changed.done) flows.onStepCompleted(occurrence, changed, null);
-            else if (current.done && !changed.done) flows.onStepReopened(occurrence, changed);
-            if (changed.done) finalizeZeroOccurrenceIfComplete(occurrence);
-            return result(StepExecutionResult.Status.CORRECTED, changed, reward);
+            TrainingObservation training = current.repetitionProgress == null
+                    || index < 0 || index >= current.repetitionProgress.results.size() ? null
+                    : current.repetitionProgress.results.get(index).training;
+            return correctSetResultInsideTransaction(stepId, index,
+                    new SetResult(repetitions, training));
         });
+    }
+
+    public StepExecutionResult correctSetResult(String stepId, int index, SetResult value) {
+        return occurrences.inTransaction(
+                () -> correctSetResultInsideTransaction(stepId, index, value));
+    }
+
+    StepExecutionResult correctSetResultInsideTransaction(String stepId, int index,
+                                                          SetResult value) {
+        OccurrenceStep current = occurrences.findOccurrenceStep(stepId);
+        if (current == null)
+            return result(StepExecutionResult.Status.INVALID_STEP, null, RewardReceipt.none());
+        Occurrence occurrence = occurrences.findOccurrence(current.occurrenceId);
+        if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
+            return result(StepExecutionResult.Status.OCCURRENCE_CLOSED, current,
+                    RewardReceipt.none());
+        if (current.repetitionProgress == null)
+            return result(StepExecutionResult.Status.UNSUPPORTED, current,
+                    RewardReceipt.none());
+        OccurrenceStep changed = current.correctSetResult(index, value);
+        if (current.done && !changed.done && !flows.canReopenStep(occurrence, current))
+            return result(StepExecutionResult.Status.UNSUPPORTED, current,
+                    RewardReceipt.none());
+        occurrences.updateOccurrenceStep(changed);
+        RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
+        if (!current.done && changed.done) flows.onStepCompleted(occurrence, changed, null);
+        else if (current.done && !changed.done) flows.onStepReopened(occurrence, changed);
+        if (changed.done) finalizeZeroOccurrenceIfComplete(occurrence);
+        return result(StepExecutionResult.Status.CORRECTED, changed, reward);
     }
 
     public AdvanceTodayStepResult advanceStepWithPlannedResult(String stepId) {

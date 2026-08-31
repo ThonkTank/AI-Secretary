@@ -22,6 +22,7 @@ import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
+import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
 
@@ -124,7 +125,7 @@ public final class TaskEntityMapper {
                 entry.slot.storageCode, entry.displayOrder);
     }
 
-    public OccurrenceStep toDomain(OccurrenceStepEntity entity, List<Integer> repetitions) {
+    public OccurrenceStep toDomain(OccurrenceStepEntity entity, List<SetResult> results) {
         return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text,
                 entity.done, StepPrescription.restore(
                 StepAmount.fromStorage(StepAmountKind.fromStorage(entity.amountKind),
@@ -133,7 +134,7 @@ public final class TaskEntityMapper {
                 RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
                 ResistanceLoad.restore(entity.plannedLoadMode, entity.plannedLoadUnit,
                         entity.plannedLoadMilli), entity.targetRir), entity.note,
-                repetitions,
+                results,
                 entity.sourceTemplateId, entity.comboOwnerId,
                 entity.originOccurrenceId,
                 CarryForwardReason.fromStorage(entity.carryForwardReason));
