@@ -15,6 +15,7 @@ public final class ValidationIssue {
         BOUND(EditorUiState.Page.TITLE),
         STEP_TITLE(EditorUiState.Page.STEPS),
         STEP_AMOUNT(EditorUiState.Page.STEPS),
+        TRAINING_LOAD(EditorUiState.Page.STEPS),
         STEP_INTERVAL(EditorUiState.Page.STEPS);
 
         public final EditorUiState.Page page;
@@ -62,6 +63,7 @@ public final class ValidationIssue {
 
     private static boolean isStepField(Field field) {
         return field == Field.STEP_TITLE || field == Field.STEP_AMOUNT
+                || field == Field.TRAINING_LOAD
                 || field == Field.STEP_INTERVAL;
     }
 

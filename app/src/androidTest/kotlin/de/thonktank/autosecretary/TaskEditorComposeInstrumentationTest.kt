@@ -176,6 +176,18 @@ class TaskEditorComposeInstrumentationTest {
     }
 
     @Test
+    fun trainingAssistantShowsLearningStateAndDedicatedStartLoadError() {
+        compose.runOnUiThread { compose.activity.render(trainingAssistantEditorState()) }
+        compose.waitForIdle()
+
+        compose.onNodeWithTag("task-editor:training-status:press")
+            .performScrollTo()
+            .assertTextEquals("Kalibriert 0/3")
+        compose.onNodeWithText("Bitte ein Startgewicht größer als 0 eingeben.")
+            .assertExists()
+    }
+
+    @Test
     fun discardPromptSurvivesRecreationAndNeedsAnExplicitChoice() {
         compose.onNodeWithContentDescription("abbrechen").performClick()
         compose.onNodeWithTag("task-editor:prompt").assertExists()

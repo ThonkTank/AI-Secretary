@@ -11,6 +11,7 @@ public final class Dashboard {
     public final List<DashboardTask> tasks;
     public final Map<String, ComboProgress> combos;
     public final List<FlowRunSummary> flowRuns;
+    public final Map<String, TrainingContext> trainingContexts;
 
     public Dashboard(int xp, List<DashboardTask> tasks) {
         this(xp, tasks, Collections.emptyMap());
@@ -22,9 +23,17 @@ public final class Dashboard {
 
     public Dashboard(int xp, List<DashboardTask> tasks, Map<String, ComboProgress> combos,
                      List<FlowRunSummary> flowRuns) {
+        this(xp, tasks, combos, flowRuns, Collections.emptyMap());
+    }
+
+    public Dashboard(int xp, List<DashboardTask> tasks, Map<String, ComboProgress> combos,
+                     List<FlowRunSummary> flowRuns,
+                     Map<String, TrainingContext> trainingContexts) {
         this.xp = Math.max(0, xp);
         this.tasks = Collections.unmodifiableList(new ArrayList<>(tasks));
         this.combos = Collections.unmodifiableMap(new LinkedHashMap<>(combos));
         this.flowRuns = Collections.unmodifiableList(new ArrayList<>(flowRuns));
+        this.trainingContexts = Collections.unmodifiableMap(
+                new LinkedHashMap<>(trainingContexts));
     }
 }

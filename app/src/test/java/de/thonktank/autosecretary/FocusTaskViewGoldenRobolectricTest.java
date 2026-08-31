@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.ui.leaf.WoodGrainRenderPipeline;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TrainingContextUiModel;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -47,6 +48,11 @@ public final class FocusTaskViewGoldenRobolectricTest {
     @Test public void activeStepWithoutAmountStaysACompactDirectAction() throws Exception {
         render("active-without-amount", activeWithoutAmountTask(), FocusStepLimit.AUTO, true,
                 824, 900, 1);
+    }
+
+    @Test public void trainingAssistantQuestionExplainsHistoryInline() throws Exception {
+        render("training-assistant-question", trainingAssistantTask(), FocusStepLimit.FIVE,
+                false, 824, 1500, 1);
     }
 
     private static void render(String name, FocusTaskUiModel task, FocusStepLimit limit,
@@ -112,6 +118,29 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 .occurrence("morning-today").slot(TaskSlot.MORNING)
                 .recurrence(Recurrence.DAILY).allowDefer(true).combo(1)
                 .steps(Arrays.asList(warmup, squats, pushups, plank, stretch, shower)).build();
+    }
+
+    private static FocusTaskUiModel trainingAssistantTask() {
+        de.thonktank.autosecretary.domain.model.ResistanceLoad load =
+                de.thonktank.autosecretary.domain.model.ResistanceLoad.numeric(
+                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
+                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG, 50_000);
+        TrainingContextUiModel training = new TrainingContextUiModel("press-template", "Aktiv",
+                "Zuletzt: Wiederholungen erhöht · 3 × 11 · 50 kg → 3 × 12 · 50 kg",
+                de.thonktank.autosecretary.domain.model.TrainingDecision.LoadDirection.PROGRESS,
+                load, Arrays.asList(
+                        "Lastfrage höher ab 50 kg · offen",
+                        "Wiederholungen erhöht · 3 × 11 · 50 kg → 3 × 12 · 50 kg",
+                        "Rückgängig: Satz hinzugefügt · 2 × 12 → 3 × 8"), false);
+        FocusStepUiModel press = FocusTaskFixtures.step("press", "Beinpresse")
+                .amount("3 × 12").note("50 kg, Sitz 7")
+                .repetition(RepetitionProgressUiModel.sets(3, 12,
+                        Arrays.asList(12, 12))).build().withTrainingContext(training);
+        FocusStepUiModel curl = FocusTaskFixtures.step("curl", "Beinbeuger")
+                .amount("3 × 12").note("32 kg, Sitz 5").available().build();
+        return FocusTaskFixtures.task("gym-assistant", "Gym")
+                .occurrence("gym-assistant-today").slot(TaskSlot.MORNING)
+                .recurrence(Recurrence.DAILY).steps(Arrays.asList(press, curl)).build();
     }
 
     private static FocusTaskUiModel activeWithoutAmountTask() {

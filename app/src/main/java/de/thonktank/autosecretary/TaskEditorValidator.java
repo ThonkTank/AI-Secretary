@@ -44,7 +44,7 @@ public final class TaskEditorValidator {
             if (step.trainingAssistant.enabled && step.trainingAssistant.load.adjustable()
                     && (step.trainingAssistant.load.milliUnits == null
                     || step.trainingAssistant.load.milliUnits <= 0))
-                issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, step.id));
+                issues.add(ValidationIssue.step(ValidationIssue.Field.TRAINING_LOAD, step.id));
             if (!draft.flowDraft.isFollowUp(step.id)
                     && step.cadenceMode == StepCadenceMode.INTERVAL
                     && (step.intervalDays == null || step.intervalDays < 2))

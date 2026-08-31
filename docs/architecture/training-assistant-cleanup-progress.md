@@ -470,3 +470,111 @@ Aktuelle Produktionsklassen und Schema 22 enthalten keine Increment-Annahme; nur
 historische 20→21-Aufbau dokumentiert die alte Spalte. Die Korrekturrunde ist geschlossen. Lokal
 bleibt keine Phase-3-Diskrepanz. Offen sind nun der eigene grüne Pull Request und Squash-Merge nach
 `main`; die sichtbare Erklärung und Bedienung der Lastfrage folgt bewusst in Phase 4.
+
+### Remote-Abschluss
+
+- Pull Request #302 prüfte den Phase-3-Commit gegen den Phase-2-Squash `137c7b84`.
+- `quality`, normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie
+  `instrumentation-gate` und `pull-request-gate` waren grün. Der längste Lauf war die
+  animationsaktive API-35-Variante mit 12:05 Minuten.
+- Der Pull Request wurde am 2026-08-31 per Squash als `77afd26d` nach `main` gemergt;
+  `origin/main` und der isolierte Roadmap-Worktree zeigten vor Phase 4 exakt diesen Commit.
+
+## Phase 4 – Erklärbare und reversible Bedienung
+
+### Vorprüfung
+
+- Ausgangspunkt ist der verifizierte Phase-3-Squash `77afd26d` auf `origin/main`; gearbeitet wird
+  auf `feat/training-cleanup-p4-explainable-ui` im isolierten Roadmap-Worktree.
+- Today erfasst Last, RIR und Sicherheitsmarker bereits gemeinsam im `RepetitionInput`, projiziert
+  aber weder Assistentenzustand noch persistente Lastfrage, Begründung, Verlauf oder Undo.
+- Lastfragen und Anpassungen besitzen seit Phase 3 persistente, monotone `auditOrder`-Werte und
+  fokussierte Resolve-/Undo-Use-Cases. Es fehlt eine gemeinsame, auf zehn Einträge begrenzte
+  Leseprojektion und die UI-Aktion darf Undo nur für das neueste noch aktuelle Ereignis anbieten.
+- Der Editor besitzt Opt-in und Lastfelder. Er zeigt den vorhandenen Lernzustand nicht; außerdem
+  meldet die Validierung einer fehlenden numerischen Ausgangslast bislang nur einen generischen
+  Schrittmengenfehler statt einer direkt zugeordneten Lastmeldung.
+- Phase 4 ändert kein Datenbankschema. Persistenz- und Neustartverhalten werden über die bereits
+  versionierten Phase-3-Tabellen und neue Leseprojektion abgesichert.
+
+### Implementationsplan
+
+- Eine fokussierte Trainingskontext-Abfrage führt Zustand, offene Lastfrage, letzte Anpassung und
+  die letzten zehn auditgeordneten Entscheidungen einschließlich Undo zusammen. `canUndo` gilt
+  nur, wenn die neueste Entscheidung eine angewendete Anpassung ist und ihr Nachzustand noch der
+  aktuellen Vorlage entspricht.
+- Die Dashboard-/Today-Projektion ordnet diesen Kontext über die Template-ID der jeweiligen
+  Übung zu. Resolve, „kein höheres Gewicht“, „später“ und Undo laufen über bestehende Use Cases
+  und laden anschließend denselben persistenten Kontext neu.
+- Die Today-Zeile zeigt Zustand und letzte Anpassung direkt, eine offene Frage mit expliziter
+  Lastangabe und allen drei Antworten sowie einen kompakten Verlauf mit bis zu zehn lokalisierten
+  Einträgen. Saved-State-/Recreation-Tests sichern den gerade eingegebenen Lastwert; Repository-
+  Neuaufbau und Screenwechsel lesen die offene Frage erneut aus der Datenbank.
+- Der Editor zeigt für aktivierte Schritte `Kalibriert x/3`, `Aktiv` oder `Pausiert` und ordnet
+  eine fehlende positive Startlast einem eigenen Lastfeldfehler zu. Alle Zustände, Gründe,
+  Entscheidungen und Fehlermeldungen werden lokalisiert.
+- Nach fokussierten Domain-, ViewModel-, Recreation-, UI- und Golden-Tests folgt das vollständige
+  lokale Gate, der negative Phasenaudit und der vorgeschriebene PR-/Squash-Merge-Gate. Die
+  Installation des exakt gemergten Artefakts und die physische Abnahme werden separat belegt;
+  fehlende Geräteverbindung ersetzt diesen Nachweis nicht.
+
+### Implementierung
+
+- `LoadTrainingContext` liest den Vorlagenzustand, die offene Lastfrage sowie Anpassungen und
+  Lastentscheidungen in einer Transaktion. Beide Ereignisarten werden anhand der persistenten
+  `auditOrder` zusammengeführt, absteigend sortiert und gemeinsam auf zehn Einträge begrenzt.
+  `canUndo` ist nur wahr, wenn das neueste Ereignis eine angewendete Anpassung ist und Satz-/Last-
+  Nachzustand noch exakt der Vorlage entsprechen.
+- `LoadDashboard` projiziert diesen Kontext einmal je sichtbarer Template-ID. Der UI-Mapper
+  lokalisiert Lernzustand, alle Entscheidungsgründe, Lastfragen, Auflösungen und Änderungen; Today
+  erhält ausschließlich das begrenzte `TrainingContextUiModel`.
+- Jede Assistentenübung zeigt Zustand und letzte Anpassung direkt unter ihrer Today-Zeile. Die
+  aktive offene Lastfrage enthält ein frei eingebbares konkretes Gewicht, `Anwenden`, bei
+  Progression `Kein höheres Gewicht` und `Später`. Eine gerade abgeschlossene Übung mit offener
+  Frage bleibt dafür sichtbar; der Verlauf zeigt bis zu zehn Einträge einschließlich Undo.
+- Die Aktionen verwenden ausschließlich `ResolveTrainingLoadRequest` und
+  `UndoLatestTrainingAdjustment`. Richtung, Einheit, Positivität und Zehn-Prozent-Grenze werden
+  nicht in der UI dupliziert. `Später` schließt die lokale Detailansicht, lässt die persistente
+  Frage unverändert und zeigt sie bei einem neuen Bind wieder.
+- Der Editor bewahrt den persistierten Lernzustand durch Edit- und Saved-State-Roundtrips und
+  zeigt `Kalibriert x/3`, `Aktiv` oder `Pausiert`. Eine fehlende positive Ausgangslast besitzt mit
+  `TRAINING_LOAD` ein eigenes Validierungsfeld und eine direkt am Lastfeld sichtbare Meldung.
+- Ein neuer visueller Golden-Vertrag deckt den dichten Trainingskontext ab. Der Snapshot wurde
+  vor der Aufnahme als Baseline visuell geprüft und anschließend read-only pixelgenau verglichen.
+  Ein Geräteinstrumentierungstest deckt Lernzustand und dedizierten Lastfehler im Compose-Editor ab.
+
+### Validierung und Audit
+
+- Fokussierte Verträge belegen die gemeinsame Auditordnung und Begrenzung, eine neuere Lastfrage
+  als Undo-Sperre, Exactly-once-Undo, lokalisierte Dashboard-Projektion, konkrete Inline-Eingabe,
+  Editor-State-Restoration sowie Datenbank- und Repository-Neuaufbau mit weiterhin offener Frage.
+- Der visuell geprüfte Golden-Snapshot `training-assistant-question.png` bestand danach einen
+  read-only Vergleich. Das ergänzte Android-Instrumentierungsszenario wurde erfolgreich in das
+  Instrumentierungs-APK kompiliert.
+- `git diff --check`: grün. CI-Harness: 17 Tests grün; Release-/Workflowverträge: 23 Tests grün.
+- Das vollständige Gate `testInstrumentationUnitTest lintDebug assembleDebug
+  assembleInstrumentationAndroidTest assembleRelease` war in 14:46 Minuten grün: 157 Tasks,
+  Lint ohne Fehler und alle drei Paketierungen erfolgreich. Nach dem Audit lief die vollständige
+  Host-/Robolectric-Suite mit dem ergänzten Undo-Vertrag erneut in 6:13 Minuten grün: 512 Tests,
+  null Fehler, ein bewusst übersprungener Test.
+- Artefakte: Debug 9.798.267 Byte, Instrumentierung 1.647.423 Byte, unsigned Release
+  2.810.784 Byte; alle bestehenden Budgets werden eingehalten.
+- Der negative Abgleich findet keine nicht lokalisierte `TrainingDecision.Reason`, keine zweite
+  UI-Regel für zulässige Lasten und keinen Undo-Pfad ohne neuesten aktuellen Nachzustand. Die
+  offene Frage wird aus Room statt aus View-State rekonstruiert und bleibt daher bei Recreation,
+  Repository-Neuaufbau und Screen-Rebind erhalten.
+
+### Roadmap- und Phasenaudit
+
+Editor-Opt-in, erforderliche Startlast und alle drei Lernzustände sind sichtbar. Today erfasst
+Last, RIR und Safety weiterhin in einem `SetResult` und ergänzt nun Status, letzte Anpassung,
+persistente Lastfrage und den zehn Einträge umfassenden Verlauf direkt an der Übung. Konkrete
+Last, `Kein höheres Gewicht`, `Später` und Undo besitzen geschlossene, getestete Aktionspfade.
+Undo ist genau einmal und nur für die neueste noch aktuelle Anpassung verfügbar. Sämtliche
+Status-, Grund- und Auflösungstexte stammen aus lokalisierten Ressourcen.
+
+Lokal bleibt keine Phase-4-Code- oder Testdiskrepanz. Offen sind der eigene grüne Pull Request und
+Squash-Merge nach `main`. Die physische Abnahme ist weiterhin separat offen: Der außerhalb der
+Sandbox ausgeführte SDK-Befehl `adb devices -l` lieferte am 2026-08-31 keine verbundenen Geräte.
+Das exakt gemergte Artefakt kann deshalb erst nach dem Remote-Gate und bei vorhandener
+Geräteverbindung installiert und vom Owner abgenommen werden.

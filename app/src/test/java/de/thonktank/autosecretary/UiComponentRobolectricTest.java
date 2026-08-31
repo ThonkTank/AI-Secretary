@@ -9,6 +9,8 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
 import de.thonktank.autosecretary.presentation.editor.TaskEditorComposeHostView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
+import de.thonktank.autosecretary.presentation.today.TodayAction;
+import de.thonktank.autosecretary.presentation.today.TrainingContextUiModel;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
@@ -32,6 +34,7 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.EditText;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.lifecycle.ViewModelProvider;
@@ -206,7 +209,7 @@ public final class UiComponentRobolectricTest {
                 null, null, null, null, "", Collections.singletonList(exercise),
                 exercise.id, 2);
         assertTrue(validator.issues(missingLoad, LocalDate.of(2026, 8, 21)).contains(
-                ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, exercise.id)));
+                ValidationIssue.step(ValidationIssue.Field.TRAINING_LOAD, exercise.id)));
     }
 
     @Test public void rendererReusesTheMountedViewTreeForNormalUpdates() {
@@ -495,6 +498,45 @@ public final class UiComponentRobolectricTest {
         assertTrue(texts.contains("1 fertig"));
         assertFalse(texts.contains("Beinpresse"));
         assertTrue(texts.contains("Duschen"));
+    }
+
+    @Test public void trainingQuestionStaysInlineAndEmitsConcreteAvailableLoad() {
+        Context context = ApplicationProvider.getApplicationContext();
+        de.thonktank.autosecretary.domain.model.ResistanceLoad load =
+                de.thonktank.autosecretary.domain.model.ResistanceLoad.numeric(
+                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
+                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG, 50_000);
+        TrainingContextUiModel training = new TrainingContextUiModel("template-press",
+                "Aktiv", "Zuletzt: Wiederholungen erhöht",
+                de.thonktank.autosecretary.domain.model.TrainingDecision.LoadDirection.PROGRESS,
+                load, Arrays.asList("Frage offen", "3 × 12 angewendet"), false);
+        FocusStepUiModel set = FocusTaskFixtures.step("set-step", "Beinpresse")
+                .amount("3 × 12").note("50 kg")
+                .repetition(RepetitionProgressUiModel.sets(3, 12, Collections.emptyList()))
+                .build().withTrainingContext(training);
+        de.thonktank.autosecretary.presentation.today.FocusTaskUiModel task =
+                FocusTaskFixtures.task("training", "Training")
+                        .occurrence("training-today").slot(TaskSlot.MORNING)
+                        .recurrence(Recurrence.DAILY).steps(Collections.singletonList(set)).build();
+        java.util.concurrent.atomic.AtomicReference<TodayAction> emitted =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        FocusTaskView focus = new FocusTaskView(context);
+        focus.bind(task, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+                emitted::set);
+
+        EditText answer = first(focus, EditText.class);
+        assertNotNull(answer);
+        answer.setText("52,5");
+        TextView apply = null;
+        for (View view : descendants(focus))
+            if (view instanceof TextView
+                    && "Anwenden".contentEquals(((TextView) view).getText())) apply = (TextView) view;
+        assertNotNull(apply);
+        apply.performClick();
+
+        assertEquals(TodayAction.Kind.APPLY_TRAINING_LOAD, emitted.get().kind);
+        assertEquals("template-press", emitted.get().id);
+        assertEquals(52_500L, emitted.get().longValue);
     }
 
     private static DewDotView firstDew(View root) {

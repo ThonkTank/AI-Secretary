@@ -24,6 +24,10 @@ public final class TodayAction {
         ADJUST_TRAINING_LOAD,
         ADJUST_TRAINING_RIR,
         TOGGLE_TRAINING_SAFETY,
+        APPLY_TRAINING_LOAD,
+        NO_HIGHER_TRAINING_LOAD,
+        LATER_TRAINING_LOAD,
+        UNDO_TRAINING_ADJUSTMENT,
         EDIT_REPETITION,
         SUBMIT_REPETITION,
         START_DURATION_TIMER,
@@ -149,6 +153,24 @@ public final class TodayAction {
 
     public static TodayAction toggleTrainingSafety(String stepId) {
         return identified(Kind.TOGGLE_TRAINING_SAFETY, stepId);
+    }
+
+    public static TodayAction applyTrainingLoad(String templateId, long milliUnits) {
+        if (milliUnits <= 0) throw new IllegalArgumentException("Positive load is required");
+        return new TodayAction(Kind.APPLY_TRAINING_LOAD, requiredId(templateId), null,
+                null, 0, milliUnits, Collections.emptyList(), null, null);
+    }
+
+    public static TodayAction noHigherTrainingLoad(String templateId) {
+        return identified(Kind.NO_HIGHER_TRAINING_LOAD, templateId);
+    }
+
+    public static TodayAction laterTrainingLoad(String templateId) {
+        return identified(Kind.LATER_TRAINING_LOAD, templateId);
+    }
+
+    public static TodayAction undoTrainingAdjustment(String templateId) {
+        return identified(Kind.UNDO_TRAINING_ADJUSTMENT, templateId);
     }
 
     public static TodayAction submitRepetition(String stepId) {

@@ -43,6 +43,7 @@ import de.thonktank.autosecretary.domain.model.ResistanceLoad
 import de.thonktank.autosecretary.domain.model.StepAmount
 import de.thonktank.autosecretary.domain.model.StepAmountKind
 import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig
+import de.thonktank.autosecretary.domain.model.TrainingAssistantState
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer
 import de.thonktank.autosecretary.presentation.TaskEditorTextFormatter
@@ -328,6 +329,23 @@ private fun TrainingAssistantInputs(
         return
     }
 
+    val assistantStatus = when (step.assistantState.status) {
+        TrainingAssistantState.Status.CALIBRATING -> stringResource(
+            R.string.training_status_calibrating,
+            step.assistantState.eligibleObservations.coerceAtMost(3),
+        )
+        TrainingAssistantState.Status.ACTIVE -> stringResource(R.string.training_status_active)
+        TrainingAssistantState.Status.PAUSED -> stringResource(R.string.training_status_paused)
+        TrainingAssistantState.Status.DISABLED -> stringResource(R.string.training_assistant_off)
+    }
+    EditorText(
+        assistantStatus,
+        Color.argb(palette.ink2),
+        14,
+        Modifier.padding(top = 8.dp).testTag("task-editor:training-status:${step.id}"),
+        serif = false,
+    )
+
     Label(R.string.training_load_mode, palette, Modifier.padding(top = 18.dp, bottom = 8.dp))
     ChipFlow {
         trainingLoadModes.forEach { (label, mode) ->
@@ -383,6 +401,9 @@ private fun TrainingAssistantInputs(
                     )
                 }
             }
+        }
+        if (state.hasStepIssue(ValidationIssue.Field.TRAINING_LOAD, step.id)) {
+            ErrorText(R.string.err_training_load_required, palette)
         }
     }
 
@@ -686,6 +707,7 @@ private fun moveStep(
 private fun stepHasAnyIssue(state: EditorUiState, stepId: String): Boolean =
     state.hasStepIssue(ValidationIssue.Field.STEP_TITLE, stepId) ||
             state.hasStepIssue(ValidationIssue.Field.STEP_AMOUNT, stepId) ||
+            state.hasStepIssue(ValidationIssue.Field.TRAINING_LOAD, stepId) ||
             state.hasStepIssue(ValidationIssue.Field.STEP_INTERVAL, stepId)
 
 private fun EditorUiState.hasStepIssue(field: ValidationIssue.Field, stepId: String): Boolean =

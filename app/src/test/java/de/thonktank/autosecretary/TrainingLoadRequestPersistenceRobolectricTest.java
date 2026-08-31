@@ -27,6 +27,8 @@ import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.model.TrainingPrescription;
+import de.thonktank.autosecretary.domain.model.TrainingContext;
+import de.thonktank.autosecretary.domain.usecase.LoadTrainingContext;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -70,12 +72,17 @@ public final class TrainingLoadRequestPersistenceRobolectricTest {
 
         AppDatabase reopened = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .allowMainThreadQueries().build();
-        TrainingLoadRequest restored = new RoomTaskRepository(reopened)
-                .openTrainingLoadRequest(template.id);
+        RoomTaskRepository reopenedRepository = new RoomTaskRepository(reopened);
+        TrainingLoadRequest restored = reopenedRepository.openTrainingLoadRequest(template.id);
         assertNotNull(restored);
         assertEquals(TrainingDecision.LoadDirection.PROGRESS, restored.direction);
         assertEquals(Long.valueOf(50_000), restored.currentLoad.milliUnits);
         assertEquals(TrainingDecision.RULE_VERSION, restored.ruleVersion);
+        TrainingContext projected = new LoadTrainingContext(reopenedRepository)
+                .execute(template.id);
+        assertNotNull(projected.openLoadRequest);
+        assertEquals("request", projected.openLoadRequest.id);
+        assertEquals(1, projected.history.size());
         reopened.close();
         context.deleteDatabase(DATABASE);
     }

@@ -94,6 +94,8 @@ final class FocusTaskFixtures {
                             step.repetitionProgress, step.reward, step.earnedXp);
                     if (step.durationSeconds > 0)
                         mapped = mapped.withDurationSeconds(step.durationSeconds);
+                    if (step.trainingContext != null)
+                        mapped = mapped.withTrainingContext(step.trainingContext);
                     explicit.add(mapped);
                     activeAssigned = true;
                     remaining++;
