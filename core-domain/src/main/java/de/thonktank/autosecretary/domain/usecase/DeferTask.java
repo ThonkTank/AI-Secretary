@@ -9,21 +9,25 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.schedule.TaskScheduleRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 public final class DeferTask {
     private final OccurrenceExecutionRepository repository;
     private final TaskScheduleRepository schedules;
+    private final TransactionRunner transactions;
     private final FlowRuntimeCoordinator flows;
 
     public DeferTask(OccurrenceExecutionRepository repository,
-                     TaskScheduleRepository schedules) {
-        this(repository, schedules, null);
+                     TaskScheduleRepository schedules, TransactionRunner transactions) {
+        this(repository, schedules, transactions, null);
     }
 
     public DeferTask(OccurrenceExecutionRepository repository,
-                     TaskScheduleRepository schedules, FlowRuntimeCoordinator flows) {
+                     TaskScheduleRepository schedules, TransactionRunner transactions,
+                     FlowRuntimeCoordinator flows) {
         this.repository = repository;
         this.schedules = schedules;
+        this.transactions = transactions;
         this.flows = flows;
     }
 
@@ -35,7 +39,7 @@ public final class DeferTask {
                 flows.defer(selected.flowRunId);
                 return;
             }
-            repository.inTransaction(() -> {
+            transactions.inTransaction(() -> {
                 Occurrence current = repository.findOccurrence(occurrenceOrTaskId);
                 if (current == null) return null;
                 int last = current.sortOrder;
@@ -49,7 +53,8 @@ public final class DeferTask {
         TaskId id;
         try { id = TaskId.of(occurrenceOrTaskId); }
         catch (IllegalArgumentException error) { return; }
-        TaskScheduleService service = new TaskScheduleService(schedules, new UuidGenerator());
+        TaskScheduleService service = new TaskScheduleService(schedules, transactions,
+                new UuidGenerator());
         java.util.List<TaskScheduleEntry> placements = schedules.scheduleEntries(id);
         if (placements.isEmpty()) return;
         TaskScheduleEntry primary = placements.get(0);

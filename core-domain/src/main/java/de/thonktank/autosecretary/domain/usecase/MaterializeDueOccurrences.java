@@ -20,6 +20,7 @@ import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.repository.MaterializationRepository;
 import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
 import de.thonktank.autosecretary.domain.repository.StepFlowRunRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
 import de.thonktank.autosecretary.domain.model.ComboObligation;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
@@ -43,6 +44,7 @@ import java.util.Map;
 public final class MaterializeDueOccurrences {
     private final MaterializationRepository repository;
     private final ComboObligationRepository obligations;
+    private final TransactionRunner transactions;
     private final Clock clock;
     private final IdGenerator ids;
     private final MomentSource moments;
@@ -50,26 +52,33 @@ public final class MaterializeDueOccurrences {
     private final StepFlowRunRepository flowRuns;
     private final DueDatePlanner planner = new DueDatePlanner();
 
-    public <T extends MaterializationRepository & ComboObligationRepository>
-    MaterializeDueOccurrences(T repository, Clock clock, IdGenerator ids) {
-        this(repository, clock, new SystemMomentSource(), ids);
+    public MaterializeDueOccurrences(MaterializationRepository repository,
+                              ComboObligationRepository obligations,
+                              StepFlowDefinitionRepository flowDefinitions,
+                              StepFlowRunRepository flowRuns,
+                              TransactionRunner transactions, Clock clock, IdGenerator ids) {
+        this(repository, obligations, flowDefinitions, flowRuns, transactions, clock,
+                new SystemMomentSource(), ids);
     }
 
-    public <T extends MaterializationRepository & ComboObligationRepository>
-    MaterializeDueOccurrences(T repository, Clock clock, MomentSource moments, IdGenerator ids) {
+    public MaterializeDueOccurrences(MaterializationRepository repository,
+                              ComboObligationRepository obligations,
+                              StepFlowDefinitionRepository flowDefinitions,
+                              StepFlowRunRepository flowRuns,
+                              TransactionRunner transactions, Clock clock,
+                              MomentSource moments, IdGenerator ids) {
         this.repository = repository;
-        this.obligations = repository;
+        this.obligations = obligations;
+        this.transactions = transactions;
         this.clock = clock;
         this.moments = moments;
         this.ids = ids;
-        this.flowDefinitions = repository instanceof StepFlowDefinitionRepository
-                ? (StepFlowDefinitionRepository) repository : null;
-        this.flowRuns = repository instanceof StepFlowRunRepository
-                ? (StepFlowRunRepository) repository : null;
+        this.flowDefinitions = flowDefinitions;
+        this.flowRuns = flowRuns;
     }
 
     public boolean execute() {
-        return repository.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             LocalDate today = clock.today();
             List<Task> active = repository.activeTasks();
             List<TaskId> taskIds = new ArrayList<>();
@@ -141,8 +150,6 @@ public final class MaterializeDueOccurrences {
                                                     List<TaskStepTemplate> templates,
                                                     DueDatePlanner.Plan planned,
                                                     Map<String, Integer> scheduleRanks) {
-        if (flowDefinitions == null || flowRuns == null)
-            return new FlowMaterialization(planned, false);
         boolean hasFollowUp = false;
         for (TaskStepTemplate template : templates)
             if (template.activationKind == StepActivationKind.FOLLOW_UP) {

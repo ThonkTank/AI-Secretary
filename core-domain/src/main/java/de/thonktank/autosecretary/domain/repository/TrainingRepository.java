@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /** Narrow persistence capability for detailed training logs and adaptation audit. */
-public interface TrainingRepository extends TransactionalRepository {
+public interface TrainingRepository {
     TaskStepTemplate findTemplate(String id);
     void updateTrainingTemplate(TaskStepTemplate template);
     double effectiveSetsSince(TrainingMuscleGroup muscle, LocalDate start, LocalDate end);

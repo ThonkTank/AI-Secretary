@@ -15,13 +15,12 @@ import java.util.List;
 final class ComboObligationResolver {
     private final ComboObligationRepository repository;
 
-    ComboObligationResolver(Object repository) {
-        this.repository = repository instanceof ComboObligationRepository
-                ? (ComboObligationRepository) repository : null;
+    ComboObligationResolver(ComboObligationRepository repository) {
+        this.repository = repository;
     }
 
     void resolve(String ownerId, Task task, Occurrence occurrence, LocalDate date) {
-        if (repository == null || task == null || occurrence == null) return;
+        if (task == null || occurrence == null) return;
         List<ComboObligation> matches = open(ownerId, occurrence);
         if (matches.isEmpty()) return;
         if (task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE) {
@@ -37,7 +36,7 @@ final class ComboObligationResolver {
     }
 
     void reopen(String ownerId, Occurrence occurrence, LocalDate date) {
-        if (repository == null || occurrence == null) return;
+        if (occurrence == null) return;
         for (ComboObligation value : repository.comboObligations())
             if (value.ownerId.equals(ownerId) && value.slot == occurrence.slot
                     && value.occurrenceId.equals(occurrence.id)

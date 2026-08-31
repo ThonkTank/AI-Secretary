@@ -16,16 +16,16 @@ final class TaskActionHandler {
     TaskActionHandler(AppContainer container) {
         this(new Actions() {
             @Override public void complete(String occurrenceId) {
-                container.tasks.complete.execute(occurrenceId);
+                container.today.complete.execute(occurrenceId);
             }
             @Override public void defer(String occurrenceId) {
-                container.tasks.defer.execute(occurrenceId);
+                container.today.defer.execute(occurrenceId);
             }
             @Override public void toggleStep(String stepId) {
-                container.tasks.toggleStep.execute(stepId);
+                container.today.toggleStep.execute(stepId);
             }
             @Override public void materializeDue() {
-                container.tasks.materializeDue.execute();
+                container.today.materializeDue.execute();
             }
         });
     }

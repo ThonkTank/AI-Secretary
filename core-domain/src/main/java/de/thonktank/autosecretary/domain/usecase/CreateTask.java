@@ -14,24 +14,27 @@ import de.thonktank.autosecretary.domain.schedule.TaskScheduleRepository;
 
 import java.util.ArrayList;
 import java.util.List;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 public final class CreateTask {
     private static final long CATALOG_ORDER_STEP = 1_024L;
     private final TaskDefinitionRepository repository;
     private final TaskScheduleRepository schedules;
+    private final TransactionRunner transactions;
     private final Clock clock;
     private final IdGenerator ids;
 
     public CreateTask(TaskDefinitionRepository repository, TaskScheduleRepository schedules,
-                      Clock clock, IdGenerator ids) {
+                      TransactionRunner transactions, Clock clock, IdGenerator ids) {
         this.repository = repository;
         this.schedules = schedules;
+        this.transactions = transactions;
         this.clock = clock;
         this.ids = ids;
     }
 
     public TaskId execute(TaskDefinition definition) {
-        return repository.inTransaction(() -> executeInsideTransaction(definition));
+        return transactions.inTransaction(() -> executeInsideTransaction(definition));
     }
 
     TaskId executeInsideTransaction(TaskDefinition definition) {
@@ -41,7 +44,7 @@ public final class CreateTask {
                         definition.weekdayMask, clock.today()), nextCatalogOrder());
         repository.insertTask(task);
         repository.insertTemplates(templates(task.id, definition.steps));
-        new TaskScheduleService(schedules, ids).create(task, definition);
+        new TaskScheduleService(schedules, transactions, ids).create(task, definition);
         return taskId;
     }
 

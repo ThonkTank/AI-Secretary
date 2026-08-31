@@ -15,7 +15,8 @@ import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
-import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
+import de.thonktank.autosecretary.data.local.TaskStore;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
 import java.time.LocalDate;
@@ -31,7 +32,7 @@ import java.util.Set;
  * Cross-use-case execution store for completion acceptance tests. Management use cases use
  * focused schedule/step doubles and cannot reach this aggregate by accident.
  */
-public final class InMemoryExecutionRepository implements ApplicationTaskRepository {
+public final class InMemoryExecutionRepository implements TaskStore {
     private Map<TaskId, Task> tasks = new LinkedHashMap<>();
     private Map<String, TaskStepTemplate> templates = new LinkedHashMap<>();
     private Map<String, TaskScheduleEntry> schedule = new LinkedHashMap<>();
@@ -47,7 +48,7 @@ public final class InMemoryExecutionRepository implements ApplicationTaskReposit
     private boolean failTrainingAdjustmentInsert;
     private int xp;
 
-    @Override public synchronized <T> T inTransaction(Transaction<T> operation) {
+    @Override public synchronized <T> T inTransaction(TransactionRunner.Transaction<T> operation) {
         Snapshot before = snapshot();
         try {
             return operation.execute();

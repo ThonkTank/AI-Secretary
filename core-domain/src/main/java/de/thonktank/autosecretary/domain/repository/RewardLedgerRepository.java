@@ -6,7 +6,7 @@ import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 
 /** Persistence capability for XP, combo progress and immutable reward bookings. */
-public interface RewardLedgerRepository extends TransactionalRepository {
+public interface RewardLedgerRepository {
     int xp();
     void setXp(int xp);
     List<ComboProgress> combos();

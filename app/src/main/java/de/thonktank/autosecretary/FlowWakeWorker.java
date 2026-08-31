@@ -15,7 +15,7 @@ public final class FlowWakeWorker extends Worker {
     @NonNull @Override public Result doWork() {
         AppContainer container = AutoSecretaryApplication.from(getApplicationContext()).container();
         try {
-            container.tasks.activateReadyFlows.execute();
+            container.flows.activateReadyFlows.execute();
             container.flowWakeScheduler.reschedule();
             return Result.success();
         } catch (RuntimeException error) {

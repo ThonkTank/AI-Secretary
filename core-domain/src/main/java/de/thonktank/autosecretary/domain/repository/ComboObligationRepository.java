@@ -7,7 +7,7 @@ import de.thonktank.autosecretary.domain.model.ComboDecayEvent;
 import de.thonktank.autosecretary.domain.model.ComboObligation;
 
 /** Persistence capability for genuine scheduled combo obligations and decay idempotency. */
-public interface ComboObligationRepository extends TransactionalRepository {
+public interface ComboObligationRepository {
     List<ComboObligation> comboObligations();
     void insertComboObligations(List<ComboObligation> obligations);
     void updateComboObligation(ComboObligation obligation);

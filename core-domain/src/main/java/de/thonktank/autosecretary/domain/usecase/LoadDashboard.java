@@ -28,29 +28,32 @@ import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.StepFlowRun;
 import de.thonktank.autosecretary.domain.model.StepFlowRunState;
 import de.thonktank.autosecretary.domain.repository.StepFlowRunRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 public final class LoadDashboard {
     private final DashboardReadRepository repository;
+    private final StepFlowRunRepository flowRepository;
     private final LoadTrainingContext loadTrainingContext;
 
-    public LoadDashboard(DashboardReadRepository repository) {
-        this(repository, null);
+    public LoadDashboard(DashboardReadRepository repository,
+                         StepFlowRunRepository flowRepository) {
+        this(repository, flowRepository, null, null);
     }
 
     public LoadDashboard(DashboardReadRepository repository,
-                         TrainingRepository trainingRepository) {
+                         StepFlowRunRepository flowRepository,
+                         TrainingRepository trainingRepository,
+                         TransactionRunner transactions) {
         this.repository = repository;
+        this.flowRepository = flowRepository;
         this.loadTrainingContext = trainingRepository == null ? null
-                : new LoadTrainingContext(trainingRepository);
+                : new LoadTrainingContext(trainingRepository, transactions);
     }
 
     public Dashboard execute(LocalDate today) {
         Map<TaskId, Task> tasks = new HashMap<>();
         for (Task task : repository.allTasks()) tasks.put(task.id, task);
-        StepFlowRunRepository flowRepository = repository instanceof StepFlowRunRepository
-                ? (StepFlowRunRepository) repository : null;
-        List<StepFlowRun> activeFlowRuns = flowRepository == null
-                ? java.util.Collections.emptyList() : flowRepository.activeFlowRuns();
+        List<StepFlowRun> activeFlowRuns = flowRepository.activeFlowRuns();
         Map<String, StepFlowRunState> flowStates = new HashMap<>();
         for (StepFlowRun run : activeFlowRuns) flowStates.put(run.id, run.state);
         TaskSchedule schedule = new TaskSchedule(repository.scheduleEntries());
@@ -118,9 +121,8 @@ public final class LoadDashboard {
                 .thenComparingLong(item -> item.task.catalogOrder));
         Map<String, ComboProgress> combos = new HashMap<>();
         for (ComboProgress combo : repository.combos()) combos.put(combo.ownerId, combo);
-        List<FlowRunSummary> flowRuns = flowRepository == null
-                ? java.util.Collections.emptyList()
-                : LoadFlowRuns.summaries(tasks, flowRepository, activeFlowRuns);
+        List<FlowRunSummary> flowRuns = LoadFlowRuns.summaries(tasks, flowRepository,
+                activeFlowRuns);
         Map<String, TrainingContext> trainingContexts = new HashMap<>();
         if (loadTrainingContext != null) for (DashboardTask item : result)
             for (OccurrenceStep step : item.steps)

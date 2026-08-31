@@ -12,7 +12,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
 /** Mutable occurrence and step capability used by execution workflows. */
-public interface OccurrenceExecutionRepository extends TransactionalRepository {
+public interface OccurrenceExecutionRepository {
     Task findTask(TaskId id);
     void updateTask(Task task);
     void insertOccurrence(Occurrence occurrence);

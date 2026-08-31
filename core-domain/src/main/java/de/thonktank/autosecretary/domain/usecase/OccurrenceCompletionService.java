@@ -16,6 +16,7 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
+import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,11 +24,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Transactional orchestrator for completion, reward projection, undo and scheduling. */
 public final class OccurrenceCompletionService {
     private final OccurrenceExecutionRepository occurrences;
     private final RewardLedgerRepository ledger;
+    private final TransactionRunner transactions;
     private final Clock clock;
     private final RewardCalculator rewards;
     private final CompletionStateMachine states;
@@ -36,45 +39,58 @@ public final class OccurrenceCompletionService {
     private final ComboObligationResolver obligationResolver;
     private final FlowProgression flows;
 
-    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
-    OccurrenceCompletionService(T repository, Clock clock) {
-        this(repository, repository, clock, new RewardCalculator(),
+    OccurrenceCompletionService(OccurrenceExecutionRepository occurrences,
+                                RewardLedgerRepository ledger,
+                                ComboObligationRepository obligations,
+                                TransactionRunner transactions, Clock clock) {
+        this(occurrences, ledger, obligations, transactions, clock, new RewardCalculator(),
                 new CompletionStateMachine(), new ScheduleProjector(),
-                FlowProgressions.create(repository, clock));
+                FlowProgression.NONE);
     }
 
-    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
-    OccurrenceCompletionService(T repository, Clock clock, ComboPolicySource policies) {
-        this(repository, repository, clock, new RewardCalculator(policies),
+    OccurrenceCompletionService(OccurrenceExecutionRepository occurrences,
+                                RewardLedgerRepository ledger,
+                                ComboObligationRepository obligations,
+                                TransactionRunner transactions, Clock clock,
+                                ComboPolicySource policies) {
+        this(occurrences, ledger, obligations, transactions, clock,
+                new RewardCalculator(policies),
                 new CompletionStateMachine(), new ScheduleProjector(),
-                FlowProgressions.create(repository, clock));
+                FlowProgression.NONE);
     }
 
-    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
-    OccurrenceCompletionService(T repository, Clock clock, ComboPolicySource policies,
+    OccurrenceCompletionService(OccurrenceExecutionRepository occurrences,
+                                RewardLedgerRepository ledger,
+                                ComboObligationRepository obligations,
+                                TransactionRunner transactions, Clock clock,
+                                ComboPolicySource policies,
                                 FlowRuntimeCoordinator flows) {
-        this(repository, repository, clock, new RewardCalculator(policies),
+        this(occurrences, ledger, obligations, transactions, clock,
+                new RewardCalculator(policies),
                 new CompletionStateMachine(), new ScheduleProjector(), flows);
     }
 
     OccurrenceCompletionService(OccurrenceExecutionRepository occurrences,
-                      RewardLedgerRepository ledger, Clock clock, RewardCalculator rewards,
+                      RewardLedgerRepository ledger, ComboObligationRepository obligations,
+                      TransactionRunner transactions,
+                      Clock clock, RewardCalculator rewards,
                       CompletionStateMachine states, ScheduleProjector schedules,
                       FlowProgression flows) {
         this.occurrences = occurrences;
         this.ledger = ledger;
+        this.transactions = transactions;
         this.clock = clock;
         this.rewards = rewards;
         this.states = states;
         this.schedules = schedules;
         this.flows = flows == null ? FlowProgression.NONE : flows;
-        this.stepExecution = new StepExecutionService(occurrences, ledger, clock,
-                rewards, states, this.flows);
-        this.obligationResolver = new ComboObligationResolver(occurrences);
+        this.stepExecution = new StepExecutionService(occurrences, ledger, obligations,
+                transactions, clock, rewards, states, this.flows);
+        this.obligationResolver = new ComboObligationResolver(obligations);
     }
 
     public RewardReceipt completeRemainingSteps(String occurrenceId) {
-        return occurrences.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             String transactionId = newId();
             List<RewardBooking> bookings = new ArrayList<>();
             Occurrence occurrence = occurrences.findOccurrence(occurrenceId);
@@ -90,7 +106,7 @@ public final class OccurrenceCompletionService {
 
     public RewardReceipt completeOccurrence(String occurrenceId) {
         if (occurrenceId == null || occurrenceId.isEmpty()) return RewardReceipt.none();
-        return occurrences.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             Occurrence occurrence = occurrences.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
@@ -109,7 +125,7 @@ public final class OccurrenceCompletionService {
     }
 
     public RewardReceipt harvestOccurrence(String occurrenceId) {
-        return occurrences.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             Occurrence occurrence = occurrences.findOccurrence(occurrenceId);
             Task task = occurrence == null ? null : occurrences.findTask(occurrence.taskId);
             return harvest(occurrence, task, newId());
@@ -117,7 +133,7 @@ public final class OccurrenceCompletionService {
     }
 
     public RewardReceipt undoOccurrence(String occurrenceId) {
-        return occurrences.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             Occurrence occurrence = occurrences.findOccurrence(occurrenceId);
             Task task = occurrence == null ? null : occurrences.findTask(occurrence.taskId);
             return undoHarvest(occurrence, task);
@@ -125,7 +141,7 @@ public final class OccurrenceCompletionService {
     }
 
     public RewardReceipt closeCondition(TaskId taskId) {
-        return occurrences.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             Task task = occurrences.findTask(taskId);
             if (task == null || !task.ongoing || task.conditionText.isEmpty()
                     || task.conditionDone) return RewardReceipt.none();

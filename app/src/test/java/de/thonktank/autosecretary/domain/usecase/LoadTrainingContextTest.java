@@ -20,18 +20,17 @@ import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.model.TrainingPrescription;
-import de.thonktank.autosecretary.testing.InMemoryExecutionRepository;
+import de.thonktank.autosecretary.testing.InMemoryTrainingRepository;
 
 import org.junit.Test;
 
 import java.time.LocalDate;
-import java.util.Collections;
 
 public final class LoadTrainingContextTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 31);
 
     @Test public void mergesBothEventKindsNewestFirstAndLimitsHistoryToTen() {
-        InMemoryExecutionRepository repository = repository();
+        InMemoryTrainingRepository repository = repository();
         for (int index = 1; index <= 9; index++)
             repository.insertTrainingAdjustment(adjustment(repository, index,
                     index % 3 == 0 ? TrainingAdjustment.State.UNDONE
@@ -45,7 +44,7 @@ public final class LoadTrainingContextTest {
         repository.insertTrainingAdjustment(adjustment(repository, 10,
                 TrainingAdjustment.State.APPLIED));
 
-        TrainingContext context = new LoadTrainingContext(repository).execute("press");
+        TrainingContext context = new LoadTrainingContext(repository, repository).execute("press");
 
         assertEquals(10, context.history.size());
         assertEquals(11L, context.history.get(0).auditOrder);
@@ -58,20 +57,20 @@ public final class LoadTrainingContextTest {
     }
 
     @Test public void newerOpenQuestionDisablesUndoEvenWhenAdjustmentAfterStateIsCurrent() {
-        InMemoryExecutionRepository repository = repository();
+        InMemoryTrainingRepository repository = repository();
         repository.insertTrainingAdjustment(adjustment(repository, 1,
                 TrainingAdjustment.State.APPLIED));
-        assertTrue(new LoadTrainingContext(repository).execute("press").canUndo);
+        assertTrue(new LoadTrainingContext(repository, repository).execute("press").canUndo);
         repository.insertTrainingLoadRequest(TrainingLoadRequest.open("request", "press",
                 "occ-step", TrainingDecision.LoadDirection.PROGRESS, load(50_000), TODAY,
                 repository.nextTrainingAuditOrder(), TrainingDecision.RULE_VERSION));
 
-        assertFalse(new LoadTrainingContext(repository).execute("press").canUndo);
+        assertFalse(new LoadTrainingContext(repository, repository).execute("press").canUndo);
     }
 
-    private static InMemoryExecutionRepository repository() {
-        InMemoryExecutionRepository repository = new InMemoryExecutionRepository();
-        repository.insertTemplates(Collections.singletonList(template()));
+    private static InMemoryTrainingRepository repository() {
+        InMemoryTrainingRepository repository = new InMemoryTrainingRepository();
+        repository.insertTemplate(template());
         return repository;
     }
 
@@ -85,7 +84,7 @@ public final class LoadTrainingContextTest {
                 StepActivationKind.SCHEDULED);
     }
 
-    private static TrainingAdjustment adjustment(InMemoryExecutionRepository repository,
+    private static TrainingAdjustment adjustment(InMemoryTrainingRepository repository,
                                                  int index,
                                                  TrainingAdjustment.State state) {
         return new TrainingAdjustment("adjustment-" + index, "press", "occ-step",

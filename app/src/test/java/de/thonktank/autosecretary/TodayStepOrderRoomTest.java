@@ -16,7 +16,7 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
+import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
@@ -38,7 +38,7 @@ import java.util.Collections;
 @Config(sdk = 35)
 public final class TodayStepOrderRoomTest {
     private AppDatabase database;
-    private ApplicationTaskRepository repository;
+    private TaskStore repository;
     private int id;
 
     @Before public void setUp() {
@@ -53,10 +53,10 @@ public final class TodayStepOrderRoomTest {
     @Test public void roomWritesOnlyChangedPositionsAndNeverTemplatesOrRepetitions() {
         MutableClock clock = new MutableClock();
         de.thonktank.autosecretary.domain.usecase.IdGenerator ids = () -> "id-" + ++id;
-        new CreateTask(repository, repository, clock, ids).execute(TaskDefinition.basic(
+        new CreateTask(repository, repository, repository, clock, ids).execute(TaskDefinition.basic(
                 "Routine", TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
                 Arrays.asList("A", "B", "C", "D", "E")));
-        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
         java.util.List<OccurrenceStep> steps = repository.occurrenceSteps(occurrence.id);
         repository.updateOccurrenceStep(withDone(steps.get(1), true));
@@ -68,7 +68,7 @@ public final class TodayStepOrderRoomTest {
 
         SupportSQLiteDatabase sql = database.getOpenHelper().getWritableDatabase();
         installAudit(sql);
-        TodayStepMoveResult result = new MoveTodayStep(repository).execute(
+        TodayStepMoveResult result = new MoveTodayStep(repository, repository).execute(
                 steps.get(4).id, steps.get(0).id);
 
         assertEquals(TodayStepMoveResult.Status.MOVED, result.status);
@@ -80,7 +80,7 @@ public final class TodayStepOrderRoomTest {
                 .repetitionProgress.actualRepetitions);
         assertEquals(5, repository.templates(occurrence.taskId).size());
 
-        TodayStepMoveResult noChange = new MoveTodayStep(repository).execute(
+        TodayStepMoveResult noChange = new MoveTodayStep(repository, repository).execute(
                 steps.get(4).id, steps.get(0).id);
         assertEquals(TodayStepMoveResult.Status.NO_CHANGE, noChange.status);
         assertEquals(3, auditCount(sql, "occurrence_steps"));

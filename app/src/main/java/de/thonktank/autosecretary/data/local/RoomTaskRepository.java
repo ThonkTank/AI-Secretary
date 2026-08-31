@@ -17,34 +17,28 @@ import de.thonktank.autosecretary.domain.model.FlowRunStepSnapshot;
 import de.thonktank.autosecretary.domain.model.StepFlowRun;
 import de.thonktank.autosecretary.domain.model.StepResourceLease;
 import de.thonktank.autosecretary.domain.model.StepTransition;
-import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
-import de.thonktank.autosecretary.domain.repository.TransactionalRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.ComboObligation;
 import de.thonktank.autosecretary.domain.model.ComboDecayEvent;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
-import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
-import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
-import de.thonktank.autosecretary.domain.model.SetResult;
-import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.Callable;
 
-public final class RoomTaskRepository implements ApplicationTaskRepository {
+public final class RoomTaskRepository implements TaskStore {
     private final AppDatabase database;
     private final TaskDao dao;
     private final TaskEntityMapper mapper;
     private final StepFlowEntityMapper flowMapper;
+    private final RoomTransactionRunner transactions;
+    private final RoomTrainingRepository training;
+    private final RoomStepRepository steps;
 
     public RoomTaskRepository(AppDatabase database) {
         this(database, new TaskEntityMapper());
@@ -55,10 +49,13 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
         this.dao = database.tasks();
         this.mapper = mapper;
         this.flowMapper = new StepFlowEntityMapper();
+        this.transactions = new RoomTransactionRunner(database);
+        this.training = new RoomTrainingRepository(database, mapper);
+        this.steps = new RoomStepRepository(database, mapper);
     }
 
-    @Override public <T> T inTransaction(TransactionalRepository.Transaction<T> operation) {
-        return database.runInTransaction((Callable<T>) operation::execute);
+    @Override public <T> T inTransaction(TransactionRunner.Transaction<T> operation) {
+        return transactions.inTransaction(operation);
     }
 
     @Override public void insertTask(Task task) {
@@ -90,9 +87,7 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
     }
 
     @Override public void insertTemplates(List<TaskStepTemplate> steps) {
-        List<TaskStepEntity> entities = new ArrayList<>();
-        for (TaskStepTemplate step : steps) entities.add(mapper.toEntity(step));
-        if (!entities.isEmpty()) dao.insertTemplates(entities);
+        this.steps.insertTemplates(steps);
         for (TaskStepTemplate step : steps) {
             String owner = ComboProgress.stepOwner(step.id);
             if (dao.combo(owner) == null)
@@ -101,33 +96,25 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
     }
 
     @Override public void deleteTemplates(TaskId taskId) {
-        dao.deleteTemplates(taskId.value);
+        steps.deleteTemplates(taskId);
     }
 
-    @Override public void deleteTemplate(String id) { dao.deleteTemplate(id); }
+    @Override public void deleteTemplate(String id) { steps.deleteTemplate(id); }
 
     @Override public void updateTrainingTemplate(TaskStepTemplate template) {
-        dao.updateTemplate(mapper.toEntity(template));
+        training.updateTrainingTemplate(template);
     }
 
     @Override public List<TaskStepTemplate> templates(TaskId taskId) {
-        List<TaskStepTemplate> result = new ArrayList<>();
-        for (TaskStepEntity entity : dao.templates(taskId.value)) result.add(mapper.toDomain(entity));
-        return result;
+        return steps.templates(taskId);
     }
 
     @Override public TaskStepTemplate findTemplate(String id) {
-        TaskStepEntity entity = dao.template(id);
-        return entity == null ? null : mapper.toDomain(entity);
+        return steps.findTemplate(id);
     }
 
     @Override public List<TaskStepTemplate> templatesFor(List<TaskId> taskIds) {
-        if (taskIds.isEmpty()) return new ArrayList<>();
-        List<String> values = new ArrayList<>();
-        for (TaskId id : taskIds) values.add(id.value);
-        List<TaskStepTemplate> result = new ArrayList<>();
-        for (TaskStepEntity entity : dao.templatesFor(values)) result.add(mapper.toDomain(entity));
-        return result;
+        return steps.templatesFor(taskIds);
     }
 
     @Override public void putScheduleEntries(List<TaskScheduleEntry> entries) {
@@ -246,48 +233,29 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
     }
 
     @Override public void insertOccurrenceSteps(List<OccurrenceStep> steps) {
-        database.runInTransaction(() -> {
-            List<OccurrenceStepEntity> entities = new ArrayList<>();
-            for (OccurrenceStep step : steps) entities.add(mapper.toEntity(step));
-            if (!entities.isEmpty()) dao.insertOccurrenceSteps(entities);
-            List<RepetitionResultEntity> results = new ArrayList<>();
-            for (OccurrenceStep step : steps) {
-                List<Integer> values = step.repetitionProgress == null
-                        ? java.util.Collections.emptyList()
-                        : step.repetitionProgress.actualRepetitions;
-                for (int index = 0; index < values.size(); index++)
-                    results.add(new RepetitionResultEntity(step.id, index, values.get(index)));
-            }
-            if (!results.isEmpty()) dao.putRepetitionResults(results);
-        });
+        this.steps.insertOccurrenceSteps(steps);
     }
 
     @Override public List<OccurrenceStep> occurrenceSteps(String occurrenceId) {
-        return mapOccurrenceSteps(dao.occurrenceSteps(occurrenceId));
+        return steps.occurrenceSteps(occurrenceId);
     }
 
     @Override public List<OccurrenceStep> occurrenceStepsFor(List<String> occurrenceIds) {
-        if (occurrenceIds.isEmpty()) return new ArrayList<>();
-        return mapOccurrenceSteps(dao.occurrenceStepsFor(occurrenceIds));
+        return steps.occurrenceStepsFor(occurrenceIds);
     }
 
     @Override public OccurrenceStep findOccurrenceStep(String id) {
-        OccurrenceStepEntity entity = dao.occurrenceStep(id);
-        return entity == null ? null : mapper.toDomain(entity, repetitions(id));
+        return steps.findOccurrenceStep(id);
     }
 
     @Override public void updateOccurrenceStep(OccurrenceStep step) {
-        database.runInTransaction(() -> {
-            dao.updateOccurrenceStep(mapper.toEntity(step));
-            syncRepetitionResults(step);
-        });
+        steps.updateOccurrenceStep(step);
     }
 
-    @Override public void deleteOccurrenceStep(String id) { dao.deleteOccurrenceStep(id); }
+    @Override public void deleteOccurrenceStep(String id) { steps.deleteOccurrenceStep(id); }
 
     @Override public void updateOccurrenceStepPositions(List<TodayStepPositionUpdate> updates) {
-        for (TodayStepPositionUpdate update : updates)
-            dao.updateOccurrenceStepPosition(update.stepId, update.position);
+        steps.updateOccurrenceStepPositions(updates);
     }
 
     @Override public void assignRewardBookings(String occurrenceStepId, String occurrenceId) {
@@ -513,107 +481,45 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
 
     @Override public double effectiveSetsSince(TrainingMuscleGroup muscle, LocalDate start,
                                                LocalDate end) {
-        if (muscle == null) return 0;
-        String first = start.toString();
-        String last = end.toString();
-        return dao.effectivePrimarySets(muscle.name(), first, last)
-                + dao.effectiveSecondarySets(muscle.name(), first, last) * 0.5;
+        return training.effectiveSetsSince(muscle, start, end);
     }
 
     @Override public void insertTrainingAdjustment(TrainingAdjustment adjustment) {
-        dao.insertTrainingAdjustment(adjustment(adjustment));
+        training.insertTrainingAdjustment(adjustment);
     }
 
     @Override public TrainingAdjustment latestTrainingAdjustment(String templateId) {
-        TrainingAdjustmentEntity value = dao.latestTrainingAdjustment(templateId);
-        return value == null ? null : adjustment(value);
+        return training.latestTrainingAdjustment(templateId);
     }
 
     @Override public List<TrainingAdjustment> recentTrainingAdjustments(String templateId,
                                                                         int limit) {
-        List<TrainingAdjustment> result = new ArrayList<>();
-        for (TrainingAdjustmentEntity value : dao.recentTrainingAdjustments(templateId, limit))
-            result.add(adjustment(value));
-        return result;
+        return training.recentTrainingAdjustments(templateId, limit);
     }
 
     @Override public void updateTrainingAdjustment(TrainingAdjustment adjustment) {
-        dao.updateTrainingAdjustment(adjustment(adjustment));
+        training.updateTrainingAdjustment(adjustment);
     }
 
     @Override public long nextTrainingAuditOrder() {
-        return Math.max(dao.maximumTrainingAdjustmentOrder(),
-                dao.maximumTrainingLoadRequestOrder()) + 1;
+        return training.nextTrainingAuditOrder();
     }
 
     @Override public void insertTrainingLoadRequest(TrainingLoadRequest request) {
-        dao.insertTrainingLoadRequest(loadRequest(request));
+        training.insertTrainingLoadRequest(request);
     }
 
     @Override public TrainingLoadRequest openTrainingLoadRequest(String templateId) {
-        TrainingLoadRequestEntity value = dao.openTrainingLoadRequest(templateId);
-        return value == null ? null : loadRequest(value);
+        return training.openTrainingLoadRequest(templateId);
     }
 
     @Override public List<TrainingLoadRequest> recentTrainingLoadRequests(String templateId,
                                                                           int limit) {
-        List<TrainingLoadRequest> result = new ArrayList<>();
-        for (TrainingLoadRequestEntity value : dao.recentTrainingLoadRequests(templateId, limit))
-            result.add(loadRequest(value));
-        return result;
+        return training.recentTrainingLoadRequests(templateId, limit);
     }
 
     @Override public void updateTrainingLoadRequest(TrainingLoadRequest request) {
-        dao.updateTrainingLoadRequest(loadRequest(request));
-    }
-
-    private static TrainingAdjustmentEntity adjustment(TrainingAdjustment value) {
-        return new TrainingAdjustmentEntity(value.id, value.templateId,
-                value.sourceOccurrenceStepId, value.reason.name(), value.before.sets,
-                value.before.repetitions, value.beforeLoad.mode.name(),
-                value.beforeLoad.unit.name(), value.beforeLoad.milliUnits, value.after.sets,
-                value.after.repetitions, value.afterLoad.mode.name(), value.afterLoad.unit.name(),
-                value.afterLoad.milliUnits, value.createdOn.toString(), value.state.name(),
-                value.auditOrder, value.ruleVersion);
-    }
-
-    private static TrainingAdjustment adjustment(TrainingAdjustmentEntity value) {
-        return new TrainingAdjustment(value.id, value.templateId, value.sourceOccurrenceStepId,
-                TrainingDecision.Reason.valueOf(value.reason),
-                (StepAmount.SetsReps) StepAmount.setsReps(value.beforeSets, value.beforeReps),
-                ResistanceLoad.restore(value.beforeLoadMode, value.beforeLoadUnit,
-                        value.beforeLoadMilli),
-                (StepAmount.SetsReps) StepAmount.setsReps(value.afterSets, value.afterReps),
-                ResistanceLoad.restore(value.afterLoadMode, value.afterLoadUnit,
-                        value.afterLoadMilli), LocalDate.parse(value.createdOn),
-                TrainingAdjustment.State.valueOf(value.state), value.auditOrder,
-                value.ruleVersion);
-    }
-
-    private static TrainingLoadRequestEntity loadRequest(TrainingLoadRequest value) {
-        return new TrainingLoadRequestEntity(value.id, value.templateId,
-                value.sourceOccurrenceStepId, value.direction.name(),
-                value.currentLoad.mode.name(), value.currentLoad.unit.name(),
-                value.currentLoad.milliUnits, value.createdOn.toString(), value.auditOrder,
-                value.ruleVersion, value.state.name(), value.resolution.name(),
-                value.resolvedOn == null ? null : value.resolvedOn.toString());
-    }
-
-    private static TrainingLoadRequest loadRequest(TrainingLoadRequestEntity value) {
-        return new TrainingLoadRequest(value.id, value.templateId,
-                value.sourceOccurrenceStepId,
-                TrainingDecision.LoadDirection.valueOf(value.direction),
-                ResistanceLoad.restore(value.currentLoadMode, value.currentLoadUnit,
-                        value.currentLoadMilli), LocalDate.parse(value.createdOn),
-                value.auditOrder, value.ruleVersion,
-                TrainingLoadRequest.State.valueOf(value.state),
-                TrainingLoadRequest.Resolution.valueOf(value.resolution),
-                value.resolvedOn == null ? null : LocalDate.parse(value.resolvedOn));
-    }
-
-    private static <T extends Enum<T>> T enumValue(Class<T> type, String value, T fallback) {
-        try { return Enum.valueOf(type, value); }
-        catch (RuntimeException invalid) { return fallback; }
+        training.updateTrainingLoadRequest(request);
     }
 
     private static ComboObligationEntity obligation(ComboObligation value) {
@@ -658,72 +564,4 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
         return result;
     }
 
-    private List<OccurrenceStep> mapOccurrenceSteps(List<OccurrenceStepEntity> entities) {
-        if (entities.isEmpty()) return new ArrayList<>();
-        List<String> ids = new ArrayList<>();
-        Map<String, List<SetResult>> results = new LinkedHashMap<>();
-        for (OccurrenceStepEntity entity : entities) {
-            ids.add(entity.id);
-            results.put(entity.id, new ArrayList<>());
-        }
-        for (RepetitionResultEntity result : dao.repetitionResultsFor(ids)) {
-            List<SetResult> values = results.get(result.stepId);
-            if (values == null) continue;
-            if (result.slotIndex == values.size()) values.add(setResult(result));
-            else android.util.Log.w("RoomTaskRepository", "Ignoring non-contiguous repetition "
-                    + "result for step " + result.stepId + " at slot " + result.slotIndex);
-        }
-        List<OccurrenceStep> result = new ArrayList<>();
-        for (OccurrenceStepEntity entity : entities)
-            result.add(mapper.toDomain(entity, results.get(entity.id)));
-        return result;
-    }
-
-    private List<SetResult> repetitions(String stepId) {
-        List<SetResult> result = new ArrayList<>();
-        for (RepetitionResultEntity value : dao.repetitionResults(stepId)) {
-            if (value.slotIndex == result.size()) result.add(setResult(value));
-            else android.util.Log.w("RoomTaskRepository", "Ignoring non-contiguous repetition "
-                    + "result for step " + stepId + " at slot " + value.slotIndex);
-        }
-        return result;
-    }
-
-    /** Applies a minimal row diff, so correcting one slot writes only that slot. */
-    private void syncRepetitionResults(OccurrenceStep step) {
-        List<SetResult> desired = step.repetitionProgress == null
-                ? java.util.Collections.emptyList()
-                : step.repetitionProgress.results;
-        List<RepetitionResultEntity> stored = dao.repetitionResults(step.id);
-        for (int index = 0; index < desired.size(); index++) {
-            SetResult value = desired.get(index);
-            if (index >= stored.size() || stored.get(index).slotIndex != index
-                    || !value.equals(setResult(stored.get(index))))
-                dao.putRepetitionResult(entity(step.id, index, value));
-        }
-        dao.deleteRepetitionResultsFrom(step.id, desired.size());
-    }
-
-    private static SetResult setResult(RepetitionResultEntity value) {
-        ResistanceLoad load = ResistanceLoad.restore(value.loadMode, value.loadUnit,
-                value.loadMilli);
-        TrainingObservation.Origin origin = enumValue(TrainingObservation.Origin.class,
-                value.source, TrainingObservation.Origin.LEGACY);
-        TrainingObservation.Safety safety = enumValue(TrainingObservation.Safety.class,
-                value.safetyFlag, TrainingObservation.Safety.NONE);
-        TrainingObservation observation = load.mode == ResistanceLoad.Mode.UNSPECIFIED
-                && value.rir == null && origin == TrainingObservation.Origin.LEGACY
-                && safety == TrainingObservation.Safety.NONE ? null
-                : new TrainingObservation(load, value.rir, safety, origin);
-        return SetResult.restore(value.actualRepetitions, observation);
-    }
-
-    private static RepetitionResultEntity entity(String stepId, int index, SetResult value) {
-        if (value.training == null)
-            return new RepetitionResultEntity(stepId, index, value.repetitions);
-        TrainingObservation training = value.training;
-        return new RepetitionResultEntity(stepId, index, value.repetitions,
-                training.load.mode.name(), training.load.unit.name(), training.load.milliUnits,
-                training.rir, training.origin.name(), training.safety.name());
-    }
 }

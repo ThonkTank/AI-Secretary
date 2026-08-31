@@ -8,20 +8,25 @@ import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
+import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Ends one quantitative step with exactly the results recorded so far. */
 public final class FinishStepForToday {
     private final OccurrenceExecutionRepository occurrences;
+    private final TransactionRunner transactions;
     private final StepExecutionService execution;
 
-    public <T extends OccurrenceExecutionRepository & RewardLedgerRepository>
-    FinishStepForToday(T repository, Clock clock, ComboPolicySource policies) {
-        occurrences = repository;
-        execution = new StepExecutionService(repository, clock, policies);
+    public FinishStepForToday(OccurrenceExecutionRepository occurrences,
+                       RewardLedgerRepository rewards, ComboObligationRepository obligations, TransactionRunner transactions, Clock clock,
+                       ComboPolicySource policies) {
+        this.occurrences = occurrences;
+        this.transactions = transactions;
+        execution = new StepExecutionService(occurrences, rewards, obligations, transactions, clock, policies);
     }
 
     public RewardReceipt execute(String stepId) {
-        return occurrences.inTransaction(() -> {
+        return transactions.inTransaction(() -> {
             OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
             Occurrence occurrence = step == null ? null
                     : occurrences.findOccurrence(step.occurrenceId);

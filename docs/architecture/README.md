@@ -36,6 +36,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-026: Getrennte State-Owner für Today und App-Shell](adr-026-today-und-shell-state-owner.md)
 - [ADR-027: Deterministischer adaptiver Trainingsassistent](adr-027-adaptiver-trainingsassistent.md)
 - [ADR-028: Eindeutige Schritt-, Satz- und Trainingsentscheidungsgrenzen](adr-028-schritt-und-trainingsgrenzen.md)
+- [ADR-029: Fokussierte Composition, Transaktionen und Room-Adapter](adr-029-fokussierte-composition-und-room-adapter.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -92,9 +93,11 @@ belastbaren Verantwortungsgrenzen:
 - `presentation`: gemeinsam genutzte Präsentationsadapter und lokalisierte Textformatierung;
 - `editor`: reine, Android-unabhängige Zustandsübergänge des Aufgabeneditors;
 - `widget`: direkte Domain-zu-Widget-Projektion und größenabhängige UI-Modelle;
-- `domain.repository`: Definition-, Ausführungs- und Composition-Root-Verträge; Management-
-  Commands hängen ausschließlich von den kleineren Slice-Ports ab;
-- `data.local`: Room-DAO, Entities, Mapper und konkrete Repository-Implementierung;
+- `domain.repository`: kleine Definition-, Ausführungs-, Flow- und Trainingsports ohne
+  Transaktionsvererbung; Management-Commands hängen ausschließlich von ihren Slice-Ports ab;
+- `domain.transaction`: unabhängiger atomarer Ausführungsport;
+- `data.local`: Room-DAO, Entities, Mapper, fokussierte Schritt-/Trainingsadapter und der
+  infrastrukturelle Gateway;
 - Root-Paket: Android-Views, Lifecycle-/Composition-Root und historisch noch nicht verschobene
   kleine Adapter.
 

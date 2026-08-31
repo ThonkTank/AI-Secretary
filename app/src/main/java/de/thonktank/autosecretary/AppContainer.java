@@ -7,14 +7,19 @@ import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.data.local.DatabaseFactory;
 import de.thonktank.autosecretary.data.local.RoomInvalidationSource;
 import de.thonktank.autosecretary.data.local.RoomTaskRepository;
+import de.thonktank.autosecretary.data.local.RoomTrainingRepository;
+import de.thonktank.autosecretary.data.local.RoomTransactionRunner;
+import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.data.observable.AndroidMinuteTicker;
 import de.thonktank.autosecretary.data.observable.CalendarInvalidationSource;
 import de.thonktank.autosecretary.data.observable.ClockInvalidationSource;
 import de.thonktank.autosecretary.data.observable.PreferenceInvalidationSource;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
-import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
-import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
+import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
+import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
+import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
+import de.thonktank.autosecretary.domain.usecase.TrainingUseCases;
 import de.thonktank.autosecretary.domain.usecase.UuidGenerator;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
@@ -47,8 +52,10 @@ public final class AppContainer {
     public final ZoneIdProvider zones;
     public final IdGenerator ids;
     public final AppLogger logger;
-    public final ApplicationTaskRepository taskRepository;
-    public final TaskUseCases tasks;
+    public final CatalogUseCases catalog;
+    public final TodayUseCases today;
+    public final FlowUseCases flows;
+    public final TrainingUseCases training;
     public final CalendarDataSource calendar;
     public final UiPreferences uiPreferences;
     public final CalendarInvalidationSource calendarInvalidations;
@@ -77,9 +84,16 @@ public final class AppContainer {
         this.logger = logger;
         this.database = databases.create(app);
         this.databaseInvalidations = new RoomInvalidationSource(database);
-        this.taskRepository = new RoomTaskRepository(database);
+        TaskStore taskStore = new RoomTaskRepository(database);
+        RoomTrainingRepository trainingRepository = new RoomTrainingRepository(database);
+        RoomTransactionRunner transactions = new RoomTransactionRunner(database);
         this.uiPreferences = new UiPreferences(app, logger);
-        this.tasks = new TaskUseCases(taskRepository, clock, ids, uiPreferences);
+        ApplicationUseCaseComposition useCases = new ApplicationUseCaseComposition(taskStore,
+                trainingRepository, transactions, clock, ids, uiPreferences);
+        this.catalog = useCases.catalog;
+        this.today = useCases.today;
+        this.flows = useCases.flows;
+        this.training = useCases.training;
         this.texts = new AndroidUiTextProvider(app);
         this.calendar = new CalendarRepository(app, clock, zones,
                 uiPreferences::calendarPolicy, logger, texts);
@@ -88,10 +102,10 @@ public final class AppContainer {
         this.clockInvalidations = new ClockInvalidationSource(clock, new AndroidMinuteTicker());
         this.presentationInvalidations = new PresentationInvalidationSource(databaseInvalidations,
                 calendarInvalidations, preferenceInvalidations, clockInvalidations);
-        this.flowWakeScheduler = new FlowWakeScheduler(app, tasks.activateReadyFlows, logger);
-        this.dashboardPresenter = new DashboardPresenter(clock, tasks.loadDashboard,
-                tasks.materializeDue, new DashboardUiMapper(texts), tasks.applyComboDecay,
-                tasks.settlePreviousPartialOccurrences, tasks.activateReadyFlows,
+        this.flowWakeScheduler = new FlowWakeScheduler(app, flows.activateReadyFlows, logger);
+        this.dashboardPresenter = new DashboardPresenter(clock, today.loadDashboard,
+                today.materializeDue, new DashboardUiMapper(texts), today.applyComboDecay,
+                today.settlePreviousPartialOccurrences, flows.activateReadyFlows,
                 flowWakeScheduler::reschedule);
         this.executors = new AppExecutors();
         this.timers = new TimerManager(new RoomTimerSessionStore(database.timers()),

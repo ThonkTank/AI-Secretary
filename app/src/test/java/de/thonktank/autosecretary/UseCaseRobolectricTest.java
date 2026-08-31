@@ -30,7 +30,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
+import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.usecase.CloseOngoingTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
@@ -67,7 +67,7 @@ public final class UseCaseRobolectricTest {
 
     private final List<String> queries = new CopyOnWriteArrayList<>();
     private AppDatabase database;
-    private ApplicationTaskRepository repository;
+    private TaskStore repository;
     private SequenceIds ids;
     private Clock clock;
     private TaskOrdering ordering;
@@ -96,9 +96,9 @@ public final class UseCaseRobolectricTest {
     }
 
     @Test public void createMaterializeAndLoadAreSeparateAndIdempotent() {
-        CreateTask create = new CreateTask(repository, repository, clock, ids);
-        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, clock, ids);
-        LoadDashboard load = new LoadDashboard(repository);
+        CreateTask create = new CreateTask(repository, repository, repository, clock, ids);
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids);
+        LoadDashboard load = new LoadDashboard(repository, repository);
         create.execute(TaskDefinition.basic("Morgenroutine", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Arrays.asList("Duschen", "Anziehen")));
 
@@ -120,7 +120,7 @@ public final class UseCaseRobolectricTest {
                 Recurrence.DAILY, 1, 0,
                 TimeOfDay.MORNING.bit | TimeOfDay.EVENING.bit,
                 TaskBoundKind.FOREVER, null, null, null, null, "", Collections.emptyList());
-        new CreateTask(repository, repository, clock, ids).execute(definition);
+        new CreateTask(repository, repository, repository, clock, ids).execute(definition);
         Task task = repository.allTasks().get(0);
 
         assertEquals(Arrays.asList(TaskSlot.MORNING, TaskSlot.EVENING),
@@ -132,9 +132,9 @@ public final class UseCaseRobolectricTest {
         assertEquals(Arrays.asList(TaskSlot.MORNING, TaskSlot.EVENING), catalog.schedule.stream()
                 .map(value -> value.slot).collect(java.util.stream.Collectors.toList()));
 
-        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
         assertEquals(Arrays.asList(TaskSlot.MORNING, TaskSlot.EVENING),
-                new LoadDashboard(repository).execute(TODAY).tasks.stream()
+                new LoadDashboard(repository, repository).execute(TODAY).tasks.stream()
                         .map(value -> value.displaySlot)
                         .collect(java.util.stream.Collectors.toList()));
     }
@@ -144,12 +144,12 @@ public final class UseCaseRobolectricTest {
     }
 
     @Test public void dashboardUsesAConstantNumberOfBulkSelects() {
-        CreateTask create = new CreateTask(repository, repository, clock, ids);
+        CreateTask create = new CreateTask(repository, repository, repository, clock, ids);
         for (int i = 0; i < 6; i++)
             create.execute(TaskDefinition.basic("Aufgabe " + i, TaskSlot.MORNING,
                     Recurrence.DAILY, 1, 0, Arrays.asList("Schritt A", "Schritt B")));
-        new MaterializeDueOccurrences(repository, clock, ids).execute();
-        LoadDashboard load = new LoadDashboard(repository);
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
+        LoadDashboard load = new LoadDashboard(repository, repository);
 
         queries.clear();
         Dashboard dashboard = load.execute(TODAY);
@@ -161,11 +161,11 @@ public final class UseCaseRobolectricTest {
     }
 
     @Test public void materializationLoadsOpenTasksAndTemplatesInBulk() {
-        CreateTask create = new CreateTask(repository, repository, clock, ids);
+        CreateTask create = new CreateTask(repository, repository, repository, clock, ids);
         for (int i = 0; i < 6; i++)
             create.execute(TaskDefinition.basic("Aufgabe " + i, TaskSlot.MORNING,
                     Recurrence.DAILY, 1, 0, Arrays.asList("Schritt A", "Schritt B")));
-        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, clock, ids);
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids);
 
         queries.clear();
         materialize.execute();
@@ -178,7 +178,7 @@ public final class UseCaseRobolectricTest {
     }
 
     @Test public void updateMoveAndDeleteAreIndependentCommands() {
-        CreateTask create = new CreateTask(repository, repository, clock, ids);
+        CreateTask create = new CreateTask(repository, repository, repository, clock, ids);
         create.execute(TaskDefinition.basic("Erste", TaskSlot.MORNING,
                 Recurrence.ONCE, 1, 0, Collections.emptyList()));
         create.execute(TaskDefinition.basic("Zweite", TaskSlot.EVENING,
@@ -186,13 +186,13 @@ public final class UseCaseRobolectricTest {
         List<Task> tasks = ordering.sorted(repository.allTasks());
         TaskId first = tasks.get(0).id;
         TaskId second = tasks.get(1).id;
-        UpdateTask update = new UpdateTask(repository, repository, ids, clock);
+        UpdateTask update = new UpdateTask(repository, repository, repository, repository, repository, ids, clock);
 
         update.execute(first, new TaskDefinition("Umbenannt", null, TaskSlot.MORNING,
                 Recurrence.ONCE, 1, 0, 0, TaskBoundKind.FOREVER, null, null, null,
                 null, "", Collections.emptyList()));
-        new MoveTaskPlacement(repository).execute(first, null, TaskSlot.EVENING);
-        new DeleteTask(repository).execute(second);
+        new MoveTaskPlacement(repository, repository).execute(first, null, TaskSlot.EVENING);
+        new DeleteTask(repository, repository).execute(second);
 
         assertEquals(1, repository.allTasks().size());
         assertEquals("Umbenannt", repository.findTask(first).title);
@@ -201,7 +201,7 @@ public final class UseCaseRobolectricTest {
     }
 
     @Test public void updateCanReplaceTheCompleteEditableDefinition() {
-        CreateTask create = new CreateTask(repository, repository, clock, ids);
+        CreateTask create = new CreateTask(repository, repository, repository, clock, ids);
         create.execute(TaskDefinition.basic("Alt", TaskSlot.MORNING,
                 Recurrence.ONCE, 1, 0, Collections.singletonList("Alter Schritt")));
         Task task = repository.allTasks().get(0);
@@ -211,7 +211,7 @@ public final class UseCaseRobolectricTest {
                         StepAmount.none(), ""),
                 de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 1, "Zweiter Schritt", 0,
                         StepAmount.none(), ""));
-        new UpdateTask(repository, repository, ids, clock).execute(task.id,
+        new UpdateTask(repository, repository, repository, repository, repository, ids, clock).execute(task.id,
                 new TaskDefinition("Neu", 25, TaskSlot.EVENING,
                         Recurrence.WEEKDAYS, 1, 1 << 0 | 1 << 4,
                         TimeOfDay.EVENING.bit, TaskBoundKind.FOREVER, null, null, null,
@@ -231,14 +231,14 @@ public final class UseCaseRobolectricTest {
     }
 
     @Test public void editingArchivedDefinitionKeepsItArchived() {
-        new CreateTask(repository, repository, clock, ids).execute(TaskDefinition.basic(
+        new CreateTask(repository, repository, repository, clock, ids).execute(TaskDefinition.basic(
                 "Archiv", TaskSlot.MORNING, Recurrence.ONCE, 1, 0,
                 Collections.singletonList("Alt")));
         Task task = repository.allTasks().get(0);
         repository.updateTask(task.withOccurrenceState(true, task.nextDueOn,
                 task.lastScheduledOn, TODAY, task.hasCompletedOccurrence));
 
-        new UpdateTask(repository, repository, ids, clock).execute(task.id,
+        new UpdateTask(repository, repository, repository, repository, repository, ids, clock).execute(task.id,
                 TaskDefinition.basic("Archiv geändert", TaskSlot.EVENING,
                         Recurrence.ONCE, 1, 0, Collections.singletonList("Neu")));
 
@@ -250,17 +250,17 @@ public final class UseCaseRobolectricTest {
     }
 
     @Test public void toggleAndCompleteAreIdempotentCommandsWithIsolatedXpPolicy() {
-        new CreateTask(repository, repository, clock, ids).execute(TaskDefinition.basic(
+        new CreateTask(repository, repository, repository, clock, ids).execute(TaskDefinition.basic(
                 "Routine", TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
                 Collections.singletonList("Schritt")));
-        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
         Occurrence occurrence = repository.openOccurrences().get(0);
         String stepId = repository.occurrenceSteps(occurrence.id).get(0).id;
 
-        new ToggleStep(repository, clock).execute(stepId);
+        new ToggleStep(repository, repository, repository, repository, clock).execute(stepId);
         assertTrue(repository.findOccurrenceStep(stepId).done);
 
-        CompleteOccurrence complete = new CompleteOccurrence(repository, clock);
+        CompleteOccurrence complete = new CompleteOccurrence(repository, repository, repository, repository, clock);
         complete.execute(occurrence.id);
         complete.execute(occurrence.id);
 
@@ -271,18 +271,18 @@ public final class UseCaseRobolectricTest {
     }
 
     @Test public void deferSwapsOnlyTheSelectedAndNextOpenTask() {
-        CreateTask create = new CreateTask(repository, repository, clock, ids);
+        CreateTask create = new CreateTask(repository, repository, repository, clock, ids);
         create.execute(TaskDefinition.basic("Erste", TaskSlot.MORNING,
                 Recurrence.ONCE, 1, 0, Collections.emptyList()));
         create.execute(TaskDefinition.basic("Zweite", TaskSlot.MORNING,
                 Recurrence.ONCE, 1, 0, Collections.emptyList()));
-        new MaterializeDueOccurrences(repository, clock, ids).execute();
-        LoadDashboard load = new LoadDashboard(repository);
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
+        LoadDashboard load = new LoadDashboard(repository, repository);
         Dashboard before = load.execute(TODAY);
         TaskId first = before.tasks.get(0).task.id;
         String occurrenceId = before.tasks.get(0).occurrence.id;
 
-        new DeferTask(repository, repository).execute(occurrenceId);
+        new DeferTask(repository, repository, repository).execute(occurrenceId);
         Dashboard after = load.execute(TODAY);
 
         assertNotEquals(first, after.tasks.get(0).task.id);
@@ -297,7 +297,7 @@ public final class UseCaseRobolectricTest {
         repository.putScheduleEntries(Collections.singletonList(
                 new de.thonktank.autosecretary.domain.model.TaskScheduleEntry(
                         "ongoing-schedule", ongoing.id, TaskSlot.LATER, 1_024L)));
-        CloseOngoingTask close = new CloseOngoingTask(repository, clock);
+        CloseOngoingTask close = new CloseOngoingTask(repository, repository, repository, repository, clock);
 
         close.execute(ongoing.id);
         close.execute(ongoing.id);
@@ -314,7 +314,7 @@ public final class UseCaseRobolectricTest {
                 .filter(value -> value.target
                         == de.thonktank.autosecretary.domain.model.RewardBooking.Target.HEAD)
                 .mapToInt(value -> value.xpDelta).sum());
-        new UndoOccurrence(repository, clock).execute(completion.id);
+        new UndoOccurrence(repository, repository, repository, repository, clock).execute(completion.id);
 
         assertFalse(repository.findTask(ongoing.id).archived);
         assertFalse(repository.findTask(ongoing.id).conditionDone);
@@ -333,13 +333,13 @@ public final class UseCaseRobolectricTest {
         Occurrence newer = new Occurrence("newer", task.id, TODAY,
                 TaskSlot.MORNING, OccurrenceState.OPEN, 2, null);
         repository.insertOccurrence(older); repository.insertOccurrence(newer);
-        CompleteOccurrence complete = new CompleteOccurrence(repository, clock);
+        CompleteOccurrence complete = new CompleteOccurrence(repository, repository, repository, repository, clock);
         complete.execute(older.id); complete.execute(newer.id);
         assertEquals(30, repository.xp());
         assertEquals(TODAY.plusDays(1), repository.findTask(task.id).nextDueOn);
 
         queries.clear();
-        RewardReceipt undo = new UndoOccurrence(repository, clock).execute(older.id);
+        RewardReceipt undo = new UndoOccurrence(repository, repository, repository, repository, clock).execute(older.id);
 
         assertEquals(-15, undo.xp);
         assertEquals(15, repository.xp());

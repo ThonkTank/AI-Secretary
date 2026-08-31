@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Collections;
 
 /** Runtime-side storage for durable flow cursors and their immutable definition snapshots. */
-public interface StepFlowRunRepository extends TransactionalRepository {
+public interface StepFlowRunRepository {
     default boolean insertFlowRun(FlowRunSnapshot snapshot) {
         throw new UnsupportedOperationException("Step flows are not supported by this store");
     }

@@ -73,10 +73,10 @@ public final class GymRoutineAcceptanceRobolectricTest {
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", steps);
 
-        new CreateTask(repository, repository, clock, ids).execute(gym);
-        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        new CreateTask(repository, repository, repository, clock, ids).execute(gym);
+        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
         TodayUiModel dashboard = new DashboardUiMapper(new AndroidUiTextProvider(context)).map(
-                new LoadDashboard(repository).execute(TODAY), TODAY);
+                new LoadDashboard(repository, repository).execute(TODAY), TODAY);
         FocusTaskUiModel focus = dashboard.focus;
         assertTrue("The materialized gym routine must become today's focus", focus != null);
         assertEquals(4, focus.steps.size());
@@ -90,8 +90,8 @@ public final class GymRoutineAcceptanceRobolectricTest {
         assertEquals("ruhig atmen", focus.steps.get(3).note);
 
         FocusTaskView view = new FocusTaskView(context);
-        RecordRepetitionResult record = new RecordRepetitionResult(repository, clock);
-        CompleteRemainingSteps completeRest = new CompleteRemainingSteps(repository, clock);
+        RecordRepetitionResult record = new RecordRepetitionResult(repository, repository, repository, repository, clock);
+        CompleteRemainingSteps completeRest = new CompleteRemainingSteps(repository, repository, repository, repository, clock);
         TodayActionSink actions = action -> {
             if (action.kind == TodayAction.Kind.SUBMIT_REPETITION) {
                 record.execute(action.id, 12);
@@ -140,7 +140,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
     private static TodayUiModel dashboard(InMemoryExecutionRepository repository, Clock clock,
                                            Context context) {
         return new DashboardUiMapper(new AndroidUiTextProvider(context)).map(
-                new LoadDashboard(repository).execute(clock.today()), clock.today());
+                new LoadDashboard(repository, repository).execute(clock.today()), clock.today());
     }
 
     private static TaskStepDefinition step(int position, String title, StepAmountKind kind,

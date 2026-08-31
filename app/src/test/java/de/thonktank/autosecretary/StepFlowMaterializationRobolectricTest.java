@@ -23,7 +23,7 @@ import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
+import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
@@ -49,7 +49,7 @@ public final class StepFlowMaterializationRobolectricTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 25);
 
     private AppDatabase database;
-    private ApplicationTaskRepository repository;
+    private TaskStore repository;
     private SequenceIds ids;
     private Clock clock;
 
@@ -68,14 +68,14 @@ public final class StepFlowMaterializationRobolectricTest {
     @After public void tearDown() { database.close(); }
 
     @Test public void fourDueSeedsBecomeIdempotentRunsWithSharedTailSnapshots() {
-        new CreateTask(repository, repository, clock, ids).execute(laundryTask());
+        new CreateTask(repository, repository, repository, clock, ids).execute(laundryTask());
         Task task = repository.allTasks().get(0);
-        SaveCapacityResource resources = new SaveCapacityResource(repository, ids);
+        SaveCapacityResource resources = new SaveCapacityResource(repository, repository, ids);
         resources.execute("washer", "Waschmaschine", 1);
         resources.execute("dry", "Trockenplatz", 2);
-        new SaveStepFlowDefinition(repository, repository).execute(task.id,
+        new SaveStepFlowDefinition(repository, repository, repository).execute(task.id,
                 transitions(), leases(task));
-        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, clock,
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock,
                 () -> 1_777_000L, ids);
 
         assertTrue(materialize.execute());
@@ -101,15 +101,15 @@ public final class StepFlowMaterializationRobolectricTest {
             @Override public LocalDate today() { return TODAY.minusDays(2); }
             @Override public LocalTime time() { return LocalTime.NOON; }
         };
-        new CreateTask(repository, repository, startedEarlier, ids).execute(laundryTask());
+        new CreateTask(repository, repository, repository, startedEarlier, ids).execute(laundryTask());
         Task task = repository.allTasks().get(0);
-        SaveCapacityResource resources = new SaveCapacityResource(repository, ids);
+        SaveCapacityResource resources = new SaveCapacityResource(repository, repository, ids);
         resources.execute("washer", "Waschmaschine", 1);
         resources.execute("dry", "Trockenplatz", 2);
-        new SaveStepFlowDefinition(repository, repository).execute(task.id,
+        new SaveStepFlowDefinition(repository, repository, repository).execute(task.id,
                 transitions(), leases(task));
 
-        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, clock,
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock,
                 () -> 1_777_000L, ids);
 
         assertTrue(materialize.execute());

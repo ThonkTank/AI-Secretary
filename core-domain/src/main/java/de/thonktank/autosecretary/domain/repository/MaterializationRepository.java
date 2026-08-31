@@ -10,7 +10,7 @@ import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 
 /** Capability used only by due-occurrence planning and carry-forward materialization. */
-public interface MaterializationRepository extends TransactionalRepository {
+public interface MaterializationRepository {
     List<Task> activeTasks();
     void updateTask(Task task);
     List<TaskStepTemplate> templatesFor(List<TaskId> taskIds);

@@ -55,9 +55,8 @@ import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
+import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
-import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
 import de.thonktank.autosecretary.domain.schedule.ScheduleMoveRequest;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
@@ -97,8 +96,8 @@ public final class PresentationStateRobolectricTest {
 
     private Context context;
     private AppDatabase database;
-    private ApplicationTaskRepository repository;
-    private TaskUseCases tasks;
+    private TaskStore repository;
+    private ApplicationUseCaseComposition tasks;
     private DashboardPresenter presenter;
     private UiPreferences preferences;
     private final FixedClock clock = new FixedClock();
@@ -121,8 +120,10 @@ public final class PresentationStateRobolectricTest {
                 .build();
         repository = new RoomTaskRepository(database);
         IdGenerator idGenerator = () -> "presentation-" + ids.incrementAndGet();
-        tasks = new TaskUseCases(repository, clock, idGenerator);
-        presenter = new DashboardPresenter(clock, tasks.loadDashboard, tasks.materializeDue,
+        tasks = new ApplicationUseCaseComposition(repository, repository, repository, clock,
+                idGenerator,
+                de.thonktank.autosecretary.domain.repository.ComboPolicySource.defaults());
+        presenter = new DashboardPresenter(clock, tasks.today.loadDashboard, tasks.today.materializeDue,
                 new DashboardUiMapper(new AndroidUiTextProvider(context)));
         preferences = new UiPreferences(context, logger);
     }
@@ -288,7 +289,7 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void newEditorLoadsSharedCapacityCatalogWithoutBecomingDirty() {
-        tasks.saveCapacityResource.execute("shared-rack", "Wäscheständer", 2);
+        tasks.flows.saveCapacityResource.execute("shared-rack", "Wäscheständer", 2);
         editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
 
         editorViewModel.dispatch(TaskEditorAction.openNew());
@@ -377,7 +378,7 @@ public final class PresentationStateRobolectricTest {
                 null, null, null, null, "", Collections.singletonList(
                         de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Kniebeugen", 0,
                                 StepAmount.setsReps(3, 12), "")));
-        tasks.create.execute(definition);
+        tasks.catalog.create.execute(definition);
         refreshDatabase();
         String stepId = value().today().focus.steps.get(0).id;
 
@@ -463,7 +464,7 @@ public final class PresentationStateRobolectricTest {
         AtomicInteger calendarLoads = new AtomicInteger();
         viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(),
                 calendarLoads);
-        tasks.create.execute(new TaskDefinition("Reihenfolge", null, TaskSlot.MORNING,
+        tasks.catalog.create.execute(new TaskDefinition("Reihenfolge", null, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", java.util.Arrays.asList(
                 de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "A", 0, StepAmount.none(), ""),
@@ -491,7 +492,7 @@ public final class PresentationStateRobolectricTest {
         AtomicInteger calendarLoads = new AtomicInteger();
         viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor(), calendarLoads);
         editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
-        tasks.create.execute(TaskDefinition.basic("Abschließen", TaskSlot.MORNING,
+        tasks.catalog.create.execute(TaskDefinition.basic("Abschließen", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
         refreshDatabase();
         editorViewModel.dispatch(TaskEditorAction.openNew());
@@ -560,7 +561,7 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void managementCommandIsReprojectedThroughRoomWithoutABrokerSignal() {
-        tasks.create.execute(TaskDefinition.basic("Sortieren", TaskSlot.MORNING,
+        tasks.catalog.create.execute(TaskDefinition.basic("Sortieren", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
         de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
         String entryId = repository.scheduleEntries(task.id).get(0).id;
@@ -576,7 +577,7 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void managementRequestSurvivesRecreationUntilExplicitConfirmation() {
-        tasks.create.execute(TaskDefinition.basic("Löschen", TaskSlot.MORNING,
+        tasks.catalog.create.execute(TaskDefinition.basic("Löschen", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
         Task task = repository.allTasks().get(0);
         SavedStateHandle handle = new SavedStateHandle();
@@ -687,7 +688,7 @@ public final class PresentationStateRobolectricTest {
         viewModel = newViewModel(new SavedStateHandle());
         AllTasksViewModel management = newAllTasksViewModel(new SavedStateHandle());
 
-        tasks.create.execute(TaskDefinition.basic("Gemeinsame Wahrheit", TaskSlot.MORNING,
+        tasks.catalog.create.execute(TaskDefinition.basic("Gemeinsame Wahrheit", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
         refreshDatabase();
 
@@ -728,7 +729,8 @@ public final class PresentationStateRobolectricTest {
                 new RoomInvalidationSource(database), calendarInvalidations,
                 new PreferenceInvalidationSource(preferences),
                 new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
-        return new TodayViewModel(tasks, presenter, calendar, preferences, clock, logger,
+        return new TodayViewModel(tasks.today, tasks.catalog, tasks.training, presenter, calendar,
+                preferences, clock, logger,
                 new AndroidUiTextProvider(context), invalidationSource, handle, worker,
                 Runnable::run);
     }
@@ -761,15 +763,15 @@ public final class PresentationStateRobolectricTest {
                     new PreferenceInvalidationSource(preferences),
                     new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
         }
-        return new AllTasksViewModel(tasks.loadTaskCatalog, tasks.moveScheduleEntry,
-                tasks.moveTaskStep, tasks.swapTaskSteps, tasks.delete,
+        return new AllTasksViewModel(tasks.catalog.loadTaskCatalog, tasks.catalog.moveScheduleEntry,
+                tasks.catalog.moveTaskStep, tasks.catalog.swapTaskSteps, tasks.catalog.delete,
                 new AndroidUiTextProvider(context), handle, new DirectExecutor(),
                 invalidationSource, Runnable::run, navigator);
     }
 
     private TaskEditorViewModel newEditorViewModel(SavedStateHandle handle,
                                                     AbstractExecutorService worker) {
-        return new TaskEditorViewModel(tasks, clock, logger,
+        return new TaskEditorViewModel(tasks.catalog, tasks.flows, tasks.today, clock, logger,
                 new AndroidUiTextProvider(context), handle, worker);
     }
 

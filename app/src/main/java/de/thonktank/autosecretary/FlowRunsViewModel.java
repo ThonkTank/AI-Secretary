@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.viewmodel.CreationExtras;
 
 import de.thonktank.autosecretary.domain.model.FlowRunSummary;
-import de.thonktank.autosecretary.domain.usecase.TaskUseCases;
+import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 
 import java.util.List;
@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.StateFlowKt;
 
 /** Sole state and side-effect owner for the active-flow overview. */
 public final class FlowRunsViewModel extends ViewModel {
-    private final TaskUseCases tasks;
+    private final FlowUseCases flows;
     private final FlowWakeScheduler wakeScheduler;
     private final AppLogger logger;
     private final ExecutorService worker;
@@ -29,9 +29,9 @@ public final class FlowRunsViewModel extends ViewModel {
     private long errorSequence;
     private boolean cleared;
 
-    FlowRunsViewModel(TaskUseCases tasks, FlowWakeScheduler wakeScheduler,
+    FlowRunsViewModel(FlowUseCases flows, FlowWakeScheduler wakeScheduler,
                       AppLogger logger, ExecutorService worker) {
-        this.tasks = tasks;
+        this.flows = flows;
         this.wakeScheduler = wakeScheduler;
         this.logger = logger;
         this.worker = worker;
@@ -49,18 +49,18 @@ public final class FlowRunsViewModel extends ViewModel {
                     load(true);
                     return;
                 case DEFER:
-                    change(() -> tasks.deferFlowRun.execute(action.runId));
+                    change(() -> flows.deferFlowRun.execute(action.runId));
                     return;
                 case READY_AT:
-                    change(() -> tasks.adjustFlowRunReadyAt.execute(
+                    change(() -> flows.adjustFlowRunReadyAt.execute(
                             action.runId, action.epochMillis));
                     return;
                 case MOVE_BEFORE:
-                    change(() -> tasks.reorderFlowRun.execute(
+                    change(() -> flows.reorderFlowRun.execute(
                             action.runId, action.beforeRunId));
                     return;
                 case CANCEL:
-                    change(() -> tasks.cancelFlowRun.execute(action.runId));
+                    change(() -> flows.cancelFlowRun.execute(action.runId));
                     return;
                 case ACKNOWLEDGE_ERROR:
                     publish(current.acknowledgeError(action.errorId));
@@ -73,7 +73,7 @@ public final class FlowRunsViewModel extends ViewModel {
         if (showLoading) publish(current.withLoading());
         worker.execute(() -> {
             try {
-                List<FlowRunSummary> values = tasks.loadFlowRuns.execute();
+                List<FlowRunSummary> values = flows.loadFlowRuns.execute();
                 if (!cleared) publish(current.withRuns(values));
             } catch (RuntimeException error) {
                 failed("Could not load flow runs", error);
@@ -88,7 +88,7 @@ public final class FlowRunsViewModel extends ViewModel {
             try {
                 operation.run();
                 wakeScheduler.reschedule();
-                List<FlowRunSummary> values = tasks.loadFlowRuns.execute();
+                List<FlowRunSummary> values = flows.loadFlowRuns.execute();
                 if (!cleared) publish(current.withRuns(values));
             } catch (RuntimeException error) {
                 failed("Could not change flow run", error);
@@ -125,7 +125,7 @@ public final class FlowRunsViewModel extends ViewModel {
                                               @NonNull CreationExtras extras) {
             if (!modelClass.isAssignableFrom(FlowRunsViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
-            return (T) new FlowRunsViewModel(container.tasks, container.flowWakeScheduler,
+            return (T) new FlowRunsViewModel(container.flows, container.flowWakeScheduler,
                     container.logger, Executors.newSingleThreadExecutor());
         }
     }

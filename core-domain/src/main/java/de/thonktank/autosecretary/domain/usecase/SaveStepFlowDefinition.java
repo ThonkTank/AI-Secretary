@@ -7,6 +7,7 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
 import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.List;
 
@@ -14,11 +15,14 @@ import java.util.List;
 public final class SaveStepFlowDefinition {
     private final TaskDefinitionRepository tasks;
     private final StepFlowDefinitionRepository flows;
+    private final TransactionRunner transactions;
 
     public SaveStepFlowDefinition(TaskDefinitionRepository tasks,
-                                  StepFlowDefinitionRepository flows) {
+                                  StepFlowDefinitionRepository flows,
+                                  TransactionRunner transactions) {
         this.tasks = tasks;
         this.flows = flows;
+        this.transactions = transactions;
     }
 
     public StepFlowDefinition execute(TaskId taskId, List<StepTransition> transitions,
@@ -28,7 +32,7 @@ public final class SaveStepFlowDefinition {
         List<TaskStepTemplate> templates = tasks.templates(taskId);
         StepFlowDefinition definition = new StepFlowDefinition(taskId, templates, transitions,
                 leases, flows.capacityResources());
-        flows.inTransaction(() -> {
+        transactions.inTransaction(() -> {
             flows.replaceStepFlow(taskId, transitions, leases);
             return null;
         });

@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
 import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,23 +15,27 @@ import java.util.List;
 public final class SaveCapacityResource {
     private final StepFlowDefinitionRepository repository;
     private final TaskDefinitionRepository tasks;
+    private final TransactionRunner transactions;
     private final IdGenerator ids;
 
-    public SaveCapacityResource(StepFlowDefinitionRepository repository, IdGenerator ids) {
-        this(repository, null, ids);
+    public SaveCapacityResource(StepFlowDefinitionRepository repository,
+                                TransactionRunner transactions, IdGenerator ids) {
+        this(repository, null, transactions, ids);
     }
 
     public SaveCapacityResource(StepFlowDefinitionRepository repository,
-                                TaskDefinitionRepository tasks, IdGenerator ids) {
+                                TaskDefinitionRepository tasks, TransactionRunner transactions,
+                                IdGenerator ids) {
         this.repository = repository;
         this.tasks = tasks;
+        this.transactions = transactions;
         this.ids = ids;
     }
 
     public CapacityResource execute(String id, String name, int capacity) {
         String identity = id == null || id.trim().isEmpty() ? ids.nextId() : id;
         CapacityResource resource = new CapacityResource(identity, name, capacity);
-        repository.inTransaction(() -> {
+        transactions.inTransaction(() -> {
             validateDefinitions(resource);
             repository.putCapacityResource(resource);
             return null;
