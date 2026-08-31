@@ -57,12 +57,14 @@ public final class CreateTask {
         for (int i = 0; i < definitions.size(); i++) {
             TaskStepDefinition step = definitions.get(i);
             String id = step.id == null ? ids.nextId() : step.id;
+            de.thonktank.autosecretary.domain.model.TrainingAssistantProfile profile =
+                    step.assistantPolicy == null ? null
+                            : new de.thonktank.autosecretary.domain.model.TrainingAssistantProfile(
+                            step.assistantPolicy,
+                            de.thonktank.autosecretary.domain.model.TrainingAssistantState.calibrating());
             result.add(new TaskStepTemplate(id, taskId, i, step.text, step.weekdayMask,
-                    step.intervalDays, step.amount, step.restTimerPolicy, step.trainingAssistant,
-                    step.trainingAssistant.enabled
-                            ? de.thonktank.autosecretary.domain.model.TrainingAssistantState.calibrating()
-                            : de.thonktank.autosecretary.domain.model.TrainingAssistantState.disabled(),
-                    step.note, step.activationKind));
+                    step.intervalDays, step.prescription, profile, step.note,
+                    step.activationKind));
         }
         return result;
     }

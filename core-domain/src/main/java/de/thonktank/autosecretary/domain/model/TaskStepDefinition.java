@@ -2,67 +2,25 @@ package de.thonktank.autosecretary.domain.model;
 
 import java.util.Objects;
 
+/** Validated, identity-optional step input. */
 public final class TaskStepDefinition {
     public final String id;
     public final int position;
     public final String text;
     public final int weekdayMask;
     public final int intervalDays;
-    public final StepAmount amount;
-    public final RestTimerPolicy restTimerPolicy;
-    public final TrainingAssistantConfig trainingAssistant;
+    public final StepPrescription prescription;
+    public final TrainingAssistantPolicy assistantPolicy;
     public final String note;
     public final StepActivationKind activationKind;
 
-    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
-                              StepAmount amount, String note) {
-        this(id, position, text, weekdayMask, 0, amount,
-                RestTimerPolicy.forAmount(amount), TrainingAssistantConfig.disabled(), note,
-                StepActivationKind.SCHEDULED);
-    }
+    /** Read-only projections of the canonical grouped value. */
+    public final StepAmount amount;
+    public final RestTimerPolicy restTimerPolicy;
 
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
-                              int intervalDays, StepAmount amount, String note) {
-        this(id, position, text, weekdayMask, intervalDays, amount,
-                RestTimerPolicy.forAmount(amount), TrainingAssistantConfig.disabled(), note,
-                StepActivationKind.SCHEDULED);
-    }
-
-    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
-                              int intervalDays, StepAmount amount,
-                              RestTimerPolicy restTimerPolicy, String note) {
-        this(id, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
-                TrainingAssistantConfig.disabled(), note, StepActivationKind.SCHEDULED);
-    }
-
-    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
-                              int intervalDays, StepAmount amount, String note,
-                              StepActivationKind activationKind) {
-        this(id, position, text, weekdayMask, intervalDays, amount,
-                RestTimerPolicy.forAmount(amount), TrainingAssistantConfig.disabled(), note,
-                activationKind);
-    }
-
-    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
-                              int intervalDays, StepAmount amount,
-                              RestTimerPolicy restTimerPolicy, String note,
-                              StepActivationKind activationKind) {
-        this(id, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
-                TrainingAssistantConfig.disabled(), note, activationKind);
-    }
-
-    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
-                              int intervalDays, StepAmount amount,
-                              RestTimerPolicy restTimerPolicy,
-                              TrainingAssistantConfig trainingAssistant, String note) {
-        this(id, position, text, weekdayMask, intervalDays, amount, restTimerPolicy,
-                trainingAssistant, note, StepActivationKind.SCHEDULED);
-    }
-
-    public TaskStepDefinition(String id, int position, String text, int weekdayMask,
-                              int intervalDays, StepAmount amount,
-                              RestTimerPolicy restTimerPolicy,
-                              TrainingAssistantConfig trainingAssistant, String note,
+                              int intervalDays, StepPrescription prescription,
+                              TrainingAssistantPolicy assistantPolicy, String note,
                               StepActivationKind activationKind) {
         if (position < 0) throw new IllegalArgumentException("Step position must not be negative");
         if (text == null || text.trim().isEmpty())
@@ -76,23 +34,21 @@ public final class TaskStepDefinition {
         if (this.weekdayMask != 0 && intervalDays != 0)
             throw new IllegalArgumentException("Step weekdays and interval are mutually exclusive");
         this.intervalDays = intervalDays;
-        this.amount = StepAmount.requireValid(amount);
-        this.restTimerPolicy = restTimerPolicy == null
-                ? RestTimerPolicy.forAmount(this.amount) : restTimerPolicy;
-        if (!(this.amount instanceof StepAmount.SetsReps)
-                && this.restTimerPolicy.mode != RestTimerPolicy.Mode.OFF)
-            throw new IllegalArgumentException("Only set steps may configure a rest timer");
-        this.trainingAssistant = trainingAssistant == null
-                ? TrainingAssistantConfig.disabled() : trainingAssistant;
-        if (!(this.amount instanceof StepAmount.SetsReps) && this.trainingAssistant.enabled)
+        this.prescription = Objects.requireNonNull(prescription, "prescription");
+        if (assistantPolicy != null && !(prescription.amount instanceof StepAmount.SetsReps))
             throw new IllegalArgumentException("Only set steps may use the training assistant");
+        if (assistantPolicy != null && prescription.training == null)
+            throw new IllegalArgumentException("An assistant policy needs a training prescription");
+        this.assistantPolicy = assistantPolicy;
+        this.amount = prescription.amount;
+        this.restTimerPolicy = prescription.rest;
         this.note = note == null ? "" : note;
         this.activationKind = Objects.requireNonNull(activationKind, "activationKind");
     }
 
     public TaskStepDefinition withIdentity(String value, int newPosition) {
         return new TaskStepDefinition(value, newPosition, text, weekdayMask, intervalDays,
-                amount, restTimerPolicy, trainingAssistant, note, activationKind);
+                prescription, assistantPolicy, note, activationKind);
     }
 
     @Override public boolean equals(Object other) {
@@ -100,14 +56,13 @@ public final class TaskStepDefinition {
         TaskStepDefinition value = (TaskStepDefinition) other;
         return Objects.equals(id, value.id) && position == value.position
                 && text.equals(value.text) && weekdayMask == value.weekdayMask
-                && intervalDays == value.intervalDays
-                && amount.equals(value.amount) && restTimerPolicy.equals(value.restTimerPolicy)
-                && trainingAssistant.equals(value.trainingAssistant)
+                && intervalDays == value.intervalDays && prescription.equals(value.prescription)
+                && Objects.equals(assistantPolicy, value.assistantPolicy)
                 && note.equals(value.note) && activationKind == value.activationKind;
     }
 
     @Override public int hashCode() {
-        return Objects.hash(id, position, text, weekdayMask, intervalDays, amount,
-                restTimerPolicy, trainingAssistant, note, activationKind);
+        return Objects.hash(id, position, text, weekdayMask, intervalDays, prescription,
+                assistantPolicy, note, activationKind);
     }
 }

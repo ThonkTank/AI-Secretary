@@ -8,6 +8,9 @@ import de.thonktank.autosecretary.domain.model.TaskId
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry
 import de.thonktank.autosecretary.domain.model.TaskSlot
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate
+import de.thonktank.autosecretary.domain.model.StepAmount
+import de.thonktank.autosecretary.domain.model.StepPrescription
+import de.thonktank.autosecretary.domain.model.StepActivationKind
 import java.time.LocalDate
 
 /** Deterministic debug-only catalog shared by phase-6a comparison hosts and tests. */
@@ -118,7 +121,11 @@ object AllTasksComposeFixture {
             TaskScheduleEntry("$id-${slot.name}", task.id, slot, order)
         }
         val templates = steps.mapIndexed { index, text ->
-            TaskStepTemplate("$id-step-$index", task.id, index, text)
+            TaskStepTemplate(
+                "$id-step-$index", task.id, index, text, 0, 0,
+                StepPrescription.forAmount(StepAmount.none()), null, "",
+                StepActivationKind.SCHEDULED,
+            )
         }
         return TaskCatalog.Item(task, templates, schedule)
     }

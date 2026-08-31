@@ -100,7 +100,7 @@ public final class SaveTaskConfiguration {
             boolean followUp = activation == StepActivationKind.FOLLOW_UP;
             steps.add(new TaskStepDefinition(step.id, index, step.text,
                     followUp ? 0 : step.weekdayMask, followUp ? 0 : step.intervalDays,
-                    step.amount, step.restTimerPolicy, step.note, activation));
+                    step.prescription, step.assistantPolicy, step.note, activation));
         }
         return new TaskDefinition(definition.title, definition.estimatedMinutes,
                 definition.fallbackSlot, definition.recurrence, definition.intervalDays,

@@ -163,7 +163,7 @@ public final class AllTasksUiStateTest {
                 null, null, null, null, "");
         return new TaskCatalog(Arrays.asList(
                 new TaskCatalog.Item(gym, Collections.singletonList(
-                        new TaskStepTemplate("s1", gym.id, 0, "Kniebeugen", 0,
+                        de.thonktank.autosecretary.testing.StepTestFixtures.template("s1", gym.id, 0, "Kniebeugen", 0,
                                 StepAmount.none(), "tief")), Arrays.asList(
                         new TaskScheduleEntry("gm", gym.id, TaskSlot.MORNING, 1_024),
                         new TaskScheduleEntry("ge", gym.id, TaskSlot.EVENING, 1_024))),

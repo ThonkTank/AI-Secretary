@@ -251,7 +251,7 @@ public final class AllTasksFeatureRobolectricTest {
                 TODAY.minusDays(1), TaskSlot.MORNING,
                 de.thonktank.autosecretary.domain.model.OccurrenceState.OPEN, 1, null)
                 .harvestedWithMissedSteps(TODAY.minusDays(1));
-        OccurrenceStep harvestedSnapshot = new OccurrenceStep("harvested-step", harvested.id,
+        OccurrenceStep harvestedSnapshot = de.thonktank.autosecretary.testing.StepTestFixtures.occurrence("harvested-step", harvested.id,
                 0, moving.text, false, moving.amount, moving.note,
                 java.util.Collections.emptyList(), moving.id, "step:" + moving.id);
         repository.insertOccurrence(harvested);
@@ -280,7 +280,7 @@ public final class AllTasksFeatureRobolectricTest {
                 .findFirst().orElseThrow();
         TaskStepTemplate moving = repository.templates(source.id).get(0);
         TaskStepTemplate invalid = repository.templates(source.id).get(1);
-        repository.insertTemplates(java.util.Collections.singletonList(new TaskStepTemplate(
+        repository.insertTemplates(java.util.Collections.singletonList(de.thonktank.autosecretary.testing.StepTestFixtures.template(
                 invalid.id, source.id, 4, invalid.text, invalid.weekdayMask,
                 invalid.amount, invalid.note)));
 

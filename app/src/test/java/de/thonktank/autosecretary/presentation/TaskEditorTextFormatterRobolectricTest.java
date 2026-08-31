@@ -20,6 +20,8 @@ import de.thonktank.autosecretary.EditorUiState;
 import de.thonktank.autosecretary.StepCadenceMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
@@ -32,10 +34,10 @@ public final class TaskEditorTextFormatterRobolectricTest {
             new AndroidUiTextProvider(context));
 
     @Test public void formatsSummaryFieldsWithoutViewOwnedCopy() {
-        EditorStepState first = new EditorStepState("1", "Dehnen", 0,
-                StepAmount.none(), "");
-        EditorStepState second = new EditorStepState("2", "Laufen", 0,
-                StepAmount.none(), "");
+        EditorStepState first = step("1", "Dehnen", StepCadenceMode.ALWAYS, 0, null,
+                StepAmount.none());
+        EditorStepState second = step("2", "Laufen", StepCadenceMode.ALWAYS, 0, null,
+                StepAmount.none());
         EditorUiState state = EditorUiState.create().draft("Training", TaskSlot.MORNING, 30,
                 Recurrence.WEEKDAYS, 1, 31, TimeOfDay.MORNING.bit,
                 TaskBoundKind.FOR_WEEKS, LocalDate.of(2026, 9, 6), 2, null, null, "",
@@ -50,10 +52,10 @@ public final class TaskEditorTextFormatterRobolectricTest {
     }
 
     @Test public void formatsStepCadenceAndAmountMetadata() {
-        EditorStepState weekdays = new EditorStepState("1", "Kniebeugen",
-                StepCadenceMode.WEEKDAYS, 5, null, StepAmount.setsReps(3, 12), "");
-        EditorStepState interval = new EditorStepState("2", "Wiegen",
-                StepCadenceMode.INTERVAL, 0, 4, StepAmount.none(), "");
+        EditorStepState weekdays = step("1", "Kniebeugen", StepCadenceMode.WEEKDAYS,
+                5, null, StepAmount.setsReps(3, 12));
+        EditorStepState interval = step("2", "Wiegen", StepCadenceMode.INTERVAL,
+                0, 4, StepAmount.none());
 
         assertEquals("Mo · Mi · 3 × 12 Wdh. · Pause: App-Standard",
                 formatter.stepMeta(weekdays));
@@ -61,5 +63,11 @@ public final class TaskEditorTextFormatterRobolectricTest {
         assertEquals("—", formatter.steps(EditorUiState.create().draft("", TaskSlot.MORNING,
                 null, Recurrence.ONCE, 1, 0, 0, TaskBoundKind.FOREVER, null, null,
                 null, null, "", Collections.emptyList(), null, 1)));
+    }
+
+    private static EditorStepState step(String id, String text, StepCadenceMode cadence,
+                                        int weekdays, Integer interval, StepAmount amount) {
+        return new EditorStepState(id, text, cadence, weekdays, interval,
+                StepPrescription.forAmount(amount), null, "", StepActivationKind.SCHEDULED);
     }
 }

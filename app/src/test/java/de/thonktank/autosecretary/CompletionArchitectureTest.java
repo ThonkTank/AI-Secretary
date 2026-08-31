@@ -29,7 +29,7 @@ public final class CompletionArchitectureTest {
     @Test public void stateMachineTransitionsWithoutPersistenceOrRewardKnowledge() {
         Occurrence occurrence = occurrence("occurrence", OccurrenceState.OPEN, null,
                 OccurrenceKind.SCHEDULED, TODAY);
-        OccurrenceStep step = new OccurrenceStep("step", occurrence.id, 0, "Schritt", false);
+        OccurrenceStep step = de.thonktank.autosecretary.testing.StepTestFixtures.occurrence("step", occurrence.id, 0, "Schritt", false);
         CompletionStateMachine states = new CompletionStateMachine();
 
         OccurrenceStep done = states.completeStep(occurrence, step);

@@ -35,10 +35,10 @@ public final class DashboardRewardProjectionTest {
                 null, TaskBoundKind.FOREVER, null, null, null, null, "");
         Occurrence occurrence = new Occurrence("today", taskId, TODAY, TaskSlot.MORNING,
                 OccurrenceState.OPEN, 1, null);
-        OccurrenceStep done = new OccurrenceStep("done", occurrence.id, 0, "Fertig", true,
+        OccurrenceStep done = de.thonktank.autosecretary.testing.StepTestFixtures.occurrence("done", occurrence.id, 0, "Fertig", true,
                 de.thonktank.autosecretary.domain.model.StepAmount.none(), "",
                 Collections.emptyList(), "template-done", "step:done");
-        OccurrenceStep open = new OccurrenceStep("open", occurrence.id, 1, "Offen", false,
+        OccurrenceStep open = de.thonktank.autosecretary.testing.StepTestFixtures.occurrence("open", occurrence.id, 1, "Offen", false,
                 de.thonktank.autosecretary.domain.model.StepAmount.none(), "",
                 Collections.emptyList(), "template-open", "step:open");
         Map<String, Integer> earned = Collections.singletonMap(done.id, 15);

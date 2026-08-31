@@ -41,7 +41,7 @@ public final class WidgetDashboardMapperTest {
         Context context = ApplicationProvider.getApplicationContext();
         Task gym = task("gym", "Gym", 1);
         Occurrence occurrence = occurrence(gym, "gym-today");
-        OccurrenceStep step = new OccurrenceStep("squats", occurrence.id, 0,
+        OccurrenceStep step = de.thonktank.autosecretary.testing.StepTestFixtures.occurrence("squats", occurrence.id, 0,
                 "Kniebeugen", false, StepAmount.setsReps(3, 8), "60 kg",
                 Collections.singletonList(8));
         Task invoice = task("invoice", "Rechnung bezahlen", 2);

@@ -231,10 +231,9 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
                         run.nextSheetSequence);
                 repository.insertOccurrence(replacement);
                 OccurrenceStep carried = new OccurrenceStep(ids.nextId(), replacement.id, 0,
-                        open.text, false, open.amount, open.restTimerPolicy, open.note,
+                        open.text, false, open.prescription, open.note,
                         Collections.emptyList(), open.sourceTemplateId, open.comboOwnerId,
-                        occurrence.id,
-                        CarryForwardReason.UNFINISHED_STEP, open.plannedLoad, open.targetRir);
+                        occurrence.id, CarryForwardReason.UNFINISHED_STEP);
                 repository.insertOccurrenceSteps(Collections.singletonList(carried));
                 repository.updateFlowRun(run.offerOnSheet(replacement.id,
                         run.nextSheetSequence, now));
@@ -341,10 +340,9 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
             for (OccurrenceStep value : repository.occurrenceSteps(sheet.id))
                 position = Math.max(position, value.position + 1);
             OccurrenceStep step = new OccurrenceStep(ids.nextId(), sheet.id, position,
-                    snapshot.text, false, snapshot.amount, snapshot.restTimerPolicy, snapshot.note,
+                    snapshot.text, false, snapshot.prescription, snapshot.note,
                     Collections.emptyList(), snapshot.sourceTemplateId,
-                    "step:" + snapshot.sourceTemplateId, null, CarryForwardReason.NONE,
-                    snapshot.plannedLoad, snapshot.targetRir);
+                    "step:" + snapshot.sourceTemplateId, null, CarryForwardReason.NONE);
             repository.insertOccurrenceSteps(Collections.singletonList(step));
         }
         repository.updateFlowRun(existingSheet

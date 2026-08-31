@@ -21,6 +21,9 @@ import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -70,15 +73,16 @@ public final class TaskEntityMapper {
     }
 
     public TaskStepTemplate toDomain(TaskStepEntity entity) {
+        StepAmount amount = StepAmount.fromStorage(
+                StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
+                entity.plannedReps, entity.plannedDurationSeconds);
+        TrainingAssistantConfig config = trainingConfig(entity);
         return new TaskStepTemplate(entity.id, TaskId.of(entity.taskId), entity.position, entity.text,
-                entity.weekdayMask, entity.intervalDays, StepAmount.fromStorage(
-                        StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
-                        entity.plannedReps, entity.plannedDurationSeconds),
-                RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
-                trainingConfig(entity), TrainingAssistantState.restore(entity.assistantStatus,
-                        entity.assistantObservations, entity.assistantReadyStreak,
-                        entity.assistantHardStreak),
-                entity.note, StepActivationKind.fromStorage(entity.activationKind));
+                entity.weekdayMask, entity.intervalDays,
+                StepPrescription.restore(amount,
+                        RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
+                        config.load, config.targetRir), profile(config, entity), entity.note,
+                StepActivationKind.fromStorage(entity.activationKind));
     }
 
     public TaskStepEntity toEntity(TaskStepTemplate step) {
@@ -88,7 +92,7 @@ public final class TaskEntityMapper {
                 amount.repetitions, amount.durationSeconds, step.restTimerPolicy.mode.name(),
                 step.restTimerPolicy.customSeconds, step.note,
                 step.activationKind.storageCode());
-        TrainingAssistantConfig config = step.trainingAssistant;
+        TrainingAssistantConfig config = step.legacyTrainingConfig();
         entity.assistantEnabled = config.enabled;
         entity.assistantMinSets = config.minSets; entity.assistantMaxSets = config.maxSets;
         entity.assistantMinReps = config.minRepetitions;
@@ -101,10 +105,12 @@ public final class TaskEntityMapper {
         entity.plannedLoadMilli = config.load.milliUnits;
         entity.primaryMuscle = config.primaryMuscle == null ? null : config.primaryMuscle.name();
         entity.secondaryMuscles = muscles(config.secondaryMuscles);
-        entity.assistantStatus = step.trainingState.status.name();
-        entity.assistantObservations = step.trainingState.eligibleObservations;
-        entity.assistantReadyStreak = step.trainingState.readyStreak;
-        entity.assistantHardStreak = step.trainingState.hardStreak;
+        TrainingAssistantState state = step.assistantProfile == null
+                ? TrainingAssistantState.disabled() : step.assistantProfile.state;
+        entity.assistantStatus = state.status.name();
+        entity.assistantObservations = state.eligibleObservations;
+        entity.assistantReadyStreak = state.readyStreak;
+        entity.assistantHardStreak = state.hardStreak;
         return entity;
     }
 
@@ -120,17 +126,17 @@ public final class TaskEntityMapper {
 
     public OccurrenceStep toDomain(OccurrenceStepEntity entity, List<Integer> repetitions) {
         return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text,
-                entity.done, StepAmount.fromStorage(StepAmountKind.fromStorage(entity.amountKind),
+                entity.done, StepPrescription.restore(
+                StepAmount.fromStorage(StepAmountKind.fromStorage(entity.amountKind),
                         entity.plannedSets, entity.plannedReps,
                         entity.plannedDurationSeconds),
                 RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
-                entity.note,
+                ResistanceLoad.restore(entity.plannedLoadMode, entity.plannedLoadUnit,
+                        entity.plannedLoadMilli), entity.targetRir), entity.note,
                 repetitions,
                 entity.sourceTemplateId, entity.comboOwnerId,
                 entity.originOccurrenceId,
-                CarryForwardReason.fromStorage(entity.carryForwardReason),
-                ResistanceLoad.restore(entity.plannedLoadMode, entity.plannedLoadUnit,
-                        entity.plannedLoadMilli), entity.targetRir);
+                CarryForwardReason.fromStorage(entity.carryForwardReason));
     }
 
     public OccurrenceStepEntity toEntity(OccurrenceStep step) {
@@ -156,6 +162,21 @@ public final class TaskEntityMapper {
                 ResistanceLoad.restore(entity.plannedLoadMode, entity.plannedLoadUnit,
                         entity.plannedLoadMilli),
                 muscle(entity.primaryMuscle), parseMuscles(entity.secondaryMuscles));
+    }
+
+    private static TrainingAssistantProfile profile(TrainingAssistantConfig config,
+                                                     TaskStepEntity entity) {
+        if (!config.enabled) return null;
+        TrainingAssistantPolicy policy = new TrainingAssistantPolicy(config.minSets,
+                config.maxSets, config.minRepetitions, config.maxRepetitions,
+                config.automaticWeeklySetCeiling, config.primaryMuscle,
+                config.secondaryMuscles);
+        TrainingAssistantState state = TrainingAssistantState.restore(entity.assistantStatus,
+                entity.assistantObservations, entity.assistantReadyStreak,
+                entity.assistantHardStreak);
+        if (state.status == TrainingAssistantState.Status.DISABLED)
+            state = TrainingAssistantState.calibrating();
+        return new TrainingAssistantProfile(policy, state);
     }
 
     private static TrainingMuscleGroup muscle(String value) {

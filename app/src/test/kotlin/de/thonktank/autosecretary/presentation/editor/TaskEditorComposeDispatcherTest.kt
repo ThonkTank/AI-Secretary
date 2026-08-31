@@ -2,9 +2,12 @@ package de.thonktank.autosecretary.presentation.editor
 
 import de.thonktank.autosecretary.EditorStepState
 import de.thonktank.autosecretary.EditorUiState
+import de.thonktank.autosecretary.StepCadenceMode
 import de.thonktank.autosecretary.TaskEditorValidator
 import de.thonktank.autosecretary.domain.model.Recurrence
 import de.thonktank.autosecretary.domain.model.StepAmount
+import de.thonktank.autosecretary.domain.model.StepActivationKind
+import de.thonktank.autosecretary.domain.model.StepPrescription
 import de.thonktank.autosecretary.domain.model.TaskBoundKind
 import de.thonktank.autosecretary.domain.model.TaskSlot
 import de.thonktank.autosecretary.domain.model.TimeOfDay
@@ -77,7 +80,11 @@ class TaskEditorComposeDispatcherTest {
         null,
         null,
         "ruhig beginnen",
-        listOf(EditorStepState("step-1", "Dehnen", 0, StepAmount.none(), "")),
+        listOf(EditorStepState(
+            "step-1", "Dehnen", StepCadenceMode.ALWAYS, 0, null,
+            StepPrescription.forAmount(StepAmount.none()), null, "",
+            StepActivationKind.SCHEDULED,
+        )),
         null,
         2,
     )

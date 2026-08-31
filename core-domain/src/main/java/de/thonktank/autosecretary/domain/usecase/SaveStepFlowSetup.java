@@ -41,7 +41,7 @@ public final class SaveStepFlowSetup {
                         current.text,
                         activation == StepActivationKind.FOLLOW_UP ? 0 : current.weekdayMask,
                         activation == StepActivationKind.FOLLOW_UP ? 0 : current.intervalDays,
-                        current.amount, current.restTimerPolicy, current.note, activation));
+                        current.prescription, current.assistantProfile, current.note, activation));
             }
             StepFlowDefinition definition = new StepFlowDefinition(taskId, updated, transitions,
                     leases, flows.capacityResources());

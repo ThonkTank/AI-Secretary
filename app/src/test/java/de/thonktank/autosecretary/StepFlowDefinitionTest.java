@@ -54,7 +54,7 @@ public final class StepFlowDefinitionTest {
                 Collections.singletonList(edge("hang", "colors")), Collections.emptyList()));
 
         List<TaskStepTemplate> foreign = new java.util.ArrayList<>(steps);
-        foreign.add(new TaskStepTemplate("foreign", TaskId.of("other"), 7, "Fremd", 0, 0,
+        foreign.add(de.thonktank.autosecretary.testing.StepTestFixtures.template("foreign", TaskId.of("other"), 7, "Fremd", 0, 0,
                 StepAmount.none(), "", StepActivationKind.FOLLOW_UP));
         assertThrows(FlowDefinitionException.class, () -> definition(foreign,
                 Collections.emptyList(), Collections.emptyList()));
@@ -105,7 +105,7 @@ public final class StepFlowDefinitionTest {
                 ResistanceLoad.Unit.KG, 60_000L);
         TrainingAssistantConfig training = TrainingAssistantConfig.defaults(
                 load, TrainingMuscleGroup.CHEST);
-        TaskStepTemplate press = new TaskStepTemplate("press", TASK, 0, "Bankdrücken",
+        TaskStepTemplate press = de.thonktank.autosecretary.testing.StepTestFixtures.template("press", TASK, 0, "Bankdrücken",
                 0, 0, StepAmount.setsReps(3, 10), RestTimerPolicy.inherit(),
                 training, TrainingAssistantState.calibrating(), "",
                 StepActivationKind.SCHEDULED);
@@ -165,7 +165,7 @@ public final class StepFlowDefinitionTest {
 
     private static TaskStepTemplate step(String id, int position, String text,
                                          StepActivationKind kind) {
-        return new TaskStepTemplate(id, TASK, position, text, 0, 0,
+        return de.thonktank.autosecretary.testing.StepTestFixtures.template(id, TASK, position, text, 0, 0,
                 StepAmount.none(), "", kind);
     }
 

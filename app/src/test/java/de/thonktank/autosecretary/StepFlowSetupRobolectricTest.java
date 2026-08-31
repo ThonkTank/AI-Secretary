@@ -201,7 +201,7 @@ public final class StepFlowSetupRobolectricTest {
         de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
         List<TaskStepTemplate> steps = new ArrayList<>(repository.templates(task.id));
         TaskStepTemplate first = steps.get(0);
-        steps.set(0, new TaskStepTemplate(first.id, first.taskId, first.position, first.text,
+        steps.set(0, de.thonktank.autosecretary.testing.StepTestFixtures.template(first.id, first.taskId, first.position, first.text,
                 first.weekdayMask, first.intervalDays, StepAmount.setsReps(3, 8),
                 RestTimerPolicy.custom(75), first.note, first.activationKind));
         repository.insertTemplates(steps);

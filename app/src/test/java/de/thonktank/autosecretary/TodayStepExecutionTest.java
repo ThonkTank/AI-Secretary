@@ -145,19 +145,19 @@ public final class TodayStepExecutionTest {
 
     private OccurrenceStep step(String id, int position, String text, boolean done,
                                 StepAmount amount, List<Integer> actual) {
-        return new OccurrenceStep(id, "today", position, text, done, amount, "", actual,
+        return de.thonktank.autosecretary.testing.StepTestFixtures.occurrence(id, "today", position, text, done, amount, "", actual,
                 "template-" + id, "step:template-" + id);
     }
 
     private OccurrenceStep stepIn(String id, String occurrenceId, int position,
                                   String text, boolean done) {
-        return new OccurrenceStep(id, occurrenceId, position, text, done,
+        return de.thonktank.autosecretary.testing.StepTestFixtures.occurrence(id, occurrenceId, position, text, done,
                 StepAmount.none(), "", Collections.emptyList(), "template-" + id,
                 "step:template-" + id);
     }
 
     private TaskStepTemplate template(TaskId taskId, String id, int position, String text) {
-        return new TaskStepTemplate(id, taskId, position, text);
+        return de.thonktank.autosecretary.testing.StepTestFixtures.template(id, taskId, position, text);
     }
 
     private List<TaskStepDefinition> templateDefinitions() {

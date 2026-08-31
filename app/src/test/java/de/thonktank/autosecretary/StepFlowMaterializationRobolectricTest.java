@@ -134,7 +134,7 @@ public final class StepFlowMaterializationRobolectricTest {
 
     private static TaskStepDefinition step(String id, String text, StepActivationKind kind,
                                            int position) {
-        return new TaskStepDefinition(id, position, text, 0, 0, StepAmount.none(), "", kind);
+        return de.thonktank.autosecretary.testing.StepTestFixtures.definition(id, position, text, 0, 0, StepAmount.none(), "", kind);
     }
 
     private static List<StepTransition> transitions() {

@@ -20,6 +20,7 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskId;
@@ -30,7 +31,7 @@ import de.thonktank.autosecretary.domain.model.TimeOfDay;
 @Config(sdk = 35)
 public final class TaskEditorStateModelRobolectricTest {
     @Test public void normalEditorRoundTripPreservesAutomaticFollowUpRole() {
-        TaskStepTemplate template = new TaskStepTemplate("hang", TaskId.of("laundry"), 0,
+        TaskStepTemplate template = de.thonktank.autosecretary.testing.StepTestFixtures.template("hang", TaskId.of("laundry"), 0,
                 "Aufhängen", 0, 0, StepAmount.none(), "", StepActivationKind.FOLLOW_UP);
 
         EditorStepState restored = EditorStepState.fromBundle(
@@ -45,7 +46,9 @@ public final class TaskEditorStateModelRobolectricTest {
 
     @Test public void currentBundleIsVersionedNestedAndRestoresAllThreeStateParts() {
         EditorStepState step = new EditorStepState("draft:1", "Laufen",
-                StepCadenceMode.INTERVAL, 0, 3, StepAmount.duration(600), "locker");
+                StepCadenceMode.INTERVAL, 0, 3,
+                StepPrescription.forAmount(StepAmount.duration(600)), null, "locker",
+                StepActivationKind.SCHEDULED);
         ValidationIssue issue = ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, step.id);
         EditorUiState state = EditorUiState.create().draft("Training", TaskSlot.EVENING, 40,
                 Recurrence.INTERVAL, 4, 0, TimeOfDay.EVENING.bit, TaskBoundKind.N_TIMES,
@@ -120,8 +123,10 @@ public final class TaskEditorStateModelRobolectricTest {
         legacy.putInt("weekdays", 5); legacy.putInt("times", TimeOfDay.MIDDAY.bit);
         legacy.putString("bound", "UNTIL_DATE"); legacy.putString("until", "2026-09-01");
         legacy.putString("note", "übernommen"); legacy.putInt("next_id", 2);
-        EditorStepState step = new EditorStepState("step-1", "Anrufen", 0,
-                StepAmount.repetitions(2), "");
+        EditorStepState step = new EditorStepState("step-1", "Anrufen",
+                StepCadenceMode.ALWAYS, 0, null,
+                StepPrescription.forAmount(StepAmount.repetitions(2)), null, "",
+                StepActivationKind.SCHEDULED);
         ArrayList<Bundle> steps = new ArrayList<>(); steps.add(step.toBundle());
         legacy.putParcelableArrayList("step_states", steps);
         legacy.putString("expanded", "step-1"); legacy.putString("page", "STEPS");

@@ -146,7 +146,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
     private static TaskStepDefinition step(int position, String title, StepAmountKind kind,
                                            Integer sets, Integer repetitions, Integer duration,
                                            String note) {
-        return new TaskStepDefinition(null, position, title, 0,
+        return de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, position, title, 0,
                 StepAmount.fromStorage(kind, sets, repetitions, duration), note);
     }
 

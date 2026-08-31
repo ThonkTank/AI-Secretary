@@ -61,7 +61,7 @@ public final class TodayStepOrderRoomTest {
         java.util.List<OccurrenceStep> steps = repository.occurrenceSteps(occurrence.id);
         repository.updateOccurrenceStep(withDone(steps.get(1), true));
         repository.updateOccurrenceStep(withDone(steps.get(3), true));
-        repository.updateOccurrenceStep(new OccurrenceStep(steps.get(0).id, occurrence.id, 0,
+        repository.updateOccurrenceStep(de.thonktank.autosecretary.testing.StepTestFixtures.occurrence(steps.get(0).id, occurrence.id, 0,
                 steps.get(0).text, false, StepAmount.setsReps(2, 12), "",
                 Collections.singletonList(9), steps.get(0).sourceTemplateId,
                 steps.get(0).comboOwnerId));
@@ -87,7 +87,7 @@ public final class TodayStepOrderRoomTest {
     }
 
     private static OccurrenceStep withDone(OccurrenceStep step, boolean done) {
-        return new OccurrenceStep(step.id, step.occurrenceId, step.position, step.text, done,
+        return de.thonktank.autosecretary.testing.StepTestFixtures.occurrence(step.id, step.occurrenceId, step.position, step.text, done,
                 step.amount, step.note, Collections.emptyList(), step.sourceTemplateId,
                 step.comboOwnerId);
     }

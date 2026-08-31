@@ -32,7 +32,7 @@ public final class MoveTaskStepTest {
         Task target = task("target");
         store.tasks.put(source.id, source);
         store.tasks.put(target.id, target);
-        store.templates.put("step", new TaskStepTemplate("step", source.id, 0,
+        store.templates.put("step", de.thonktank.autosecretary.testing.StepTestFixtures.template("step", source.id, 0,
                 "Schritt", 0, StepAmount.none(), ""));
 
         StepTransferResult result = new MoveTaskStep(store).execute(new StepMoveRequest(

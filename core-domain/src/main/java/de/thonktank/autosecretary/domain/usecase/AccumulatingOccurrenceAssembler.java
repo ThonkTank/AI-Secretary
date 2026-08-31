@@ -44,10 +44,9 @@ final class AccumulatingOccurrenceAssembler {
             for (int index = 0; index < due.templates.size(); index++) {
                 TaskStepTemplate template = due.templates.get(index);
                 steps.add(new OccurrenceStep(ids.nextId(), occurrence.id, index, template.text,
-                        false, template.amount, template.restTimerPolicy, template.note,
+                        false, template.prescription, template.note,
                         Collections.emptyList(), template.id,
-                        ComboProgress.stepOwner(template.id), null, CarryForwardReason.NONE,
-                        template.trainingAssistant.load, template.trainingAssistant.targetRir));
+                        ComboProgress.stepOwner(template.id), null, CarryForwardReason.NONE));
             }
             if (!steps.isEmpty()) repository.insertOccurrenceSteps(steps);
             changed = true;

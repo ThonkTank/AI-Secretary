@@ -358,7 +358,7 @@ public final class XpComboRobolectricTest {
 
     private void createQuantitativeTask(
             de.thonktank.autosecretary.domain.usecase.IdGenerator ids, StepAmount amount) {
-        TaskStepDefinition step = new TaskStepDefinition(null, 0, "Menge", 0, amount, "");
+        TaskStepDefinition step = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Menge", 0, amount, "");
         TaskDefinition task = new TaskDefinition("Quantitativ", 10, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", Collections.singletonList(step));

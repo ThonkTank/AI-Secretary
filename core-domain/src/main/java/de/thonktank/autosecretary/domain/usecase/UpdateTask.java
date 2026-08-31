@@ -94,17 +94,20 @@ public final class UpdateTask {
             TaskStepTemplate old = null;
             for (TaskStepTemplate candidate : existing)
                 if (candidate.id.equals(identity)) { old = candidate; break; }
-            de.thonktank.autosecretary.domain.model.TrainingAssistantState trainingState =
-                    old != null && old.trainingAssistant.equals(step.trainingAssistant)
-                            && old.amount.equals(step.amount)
-                            ? old.trainingState
-                            : step.trainingAssistant.enabled
-                            ? de.thonktank.autosecretary.domain.model.TrainingAssistantState.calibrating()
-                            : de.thonktank.autosecretary.domain.model.TrainingAssistantState.disabled();
+            de.thonktank.autosecretary.domain.model.TrainingAssistantProfile profile = null;
+            if (step.assistantPolicy != null) {
+                de.thonktank.autosecretary.domain.model.TrainingAssistantState state =
+                        old != null && old.assistantProfile != null
+                                && old.assistantProfile.policy.equals(step.assistantPolicy)
+                                && old.prescription.equals(step.prescription)
+                                ? old.assistantProfile.state
+                                : de.thonktank.autosecretary.domain.model.TrainingAssistantState.calibrating();
+                profile = new de.thonktank.autosecretary.domain.model.TrainingAssistantProfile(
+                        step.assistantPolicy, state);
+            }
             retained.add(identity);
             updated.add(new TaskStepTemplate(identity, taskId, i, step.text,
-                    step.weekdayMask, step.intervalDays, step.amount,
-                    step.restTimerPolicy, step.trainingAssistant, trainingState, step.note,
+                    step.weekdayMask, step.intervalDays, step.prescription, profile, step.note,
                     step.activationKind));
         }
         for (TaskStepTemplate old : existing)

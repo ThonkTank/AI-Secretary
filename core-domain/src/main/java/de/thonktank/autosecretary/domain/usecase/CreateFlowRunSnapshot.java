@@ -42,9 +42,7 @@ public final class CreateFlowRunSnapshot {
             StepTransition transition = definition.transitionAfter(template.id);
             FlowDelayPolicy delay = transition == null ? null : transition.delay;
             steps.add(new FlowRunStepSnapshot(ids.nextId(), runId, index, template.id,
-                    template.text, template.amount, template.restTimerPolicy,
-                    template.trainingAssistant.load, template.trainingAssistant.targetRir,
-                    template.note, delay, null));
+                    template.text, template.prescription, template.note, delay, null));
         }
         Map<String, CapacityResource> resourceById = new HashMap<>();
         for (CapacityResource resource : definition.resources)

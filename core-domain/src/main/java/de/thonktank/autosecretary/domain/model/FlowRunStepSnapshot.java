@@ -9,37 +9,22 @@ public final class FlowRunStepSnapshot {
     public final int position;
     public final String sourceTemplateId;
     public final String text;
-    public final StepAmount amount;
-    public final RestTimerPolicy restTimerPolicy;
-    public final ResistanceLoad plannedLoad;
-    public final int targetRir;
+    public final StepPrescription prescription;
     public final String note;
     public final FlowDelayPolicy delayAfter;
     public final Long chosenDelayMillis;
 
-    public FlowRunStepSnapshot(String id, String runId, int position, String sourceTemplateId,
-                               String text, StepAmount amount, String note,
-                               FlowDelayPolicy delayAfter, Long chosenDelayMillis) {
-        this(id, runId, position, sourceTemplateId, text, amount,
-                RestTimerPolicy.forAmount(amount), ResistanceLoad.unspecified(), 2,
-                note, delayAfter, chosenDelayMillis);
-    }
+    /** Read-only projections of the canonical grouped value. */
+    public final StepAmount amount;
+    public final RestTimerPolicy restTimerPolicy;
+    public final ResistanceLoad plannedLoad;
+    public final int targetRir;
 
     public FlowRunStepSnapshot(String id, String runId, int position, String sourceTemplateId,
-                               String text, StepAmount amount,
-                               RestTimerPolicy restTimerPolicy, String note,
-                               FlowDelayPolicy delayAfter, Long chosenDelayMillis) {
-        this(id, runId, position, sourceTemplateId, text, amount, restTimerPolicy,
-                ResistanceLoad.unspecified(), 2, note, delayAfter, chosenDelayMillis);
-    }
-
-    public FlowRunStepSnapshot(String id, String runId, int position, String sourceTemplateId,
-                               String text, StepAmount amount,
-                               RestTimerPolicy restTimerPolicy, ResistanceLoad plannedLoad,
-                               int targetRir, String note,
+                               String text, StepPrescription prescription, String note,
                                FlowDelayPolicy delayAfter, Long chosenDelayMillis) {
         if (blank(id) || blank(runId) || position < 0 || blank(sourceTemplateId)
-                || blank(text) || amount == null)
+                || blank(text) || prescription == null)
             throw new IllegalArgumentException("Flow run step snapshot is incomplete");
         if (chosenDelayMillis != null) {
             if (delayAfter == null)
@@ -51,16 +36,11 @@ public final class FlowRunStepSnapshot {
         this.position = position;
         this.sourceTemplateId = sourceTemplateId;
         this.text = text.trim();
-        this.amount = amount;
-        this.restTimerPolicy = restTimerPolicy == null
-                ? RestTimerPolicy.forAmount(amount) : restTimerPolicy;
-        if (!(amount instanceof StepAmount.SetsReps)
-                && this.restTimerPolicy.mode != RestTimerPolicy.Mode.OFF)
-            throw new IllegalArgumentException("Only set steps may configure a rest timer");
-        this.plannedLoad = plannedLoad == null ? ResistanceLoad.unspecified() : plannedLoad;
-        if (targetRir < 0 || targetRir > 5)
-            throw new IllegalArgumentException("Target RIR must be between zero and five");
-        this.targetRir = targetRir;
+        this.prescription = prescription;
+        this.amount = prescription.amount;
+        this.restTimerPolicy = prescription.rest;
+        this.plannedLoad = prescription.plannedLoad();
+        this.targetRir = prescription.targetRir();
         this.note = note == null ? "" : note;
         this.delayAfter = delayAfter;
         this.chosenDelayMillis = chosenDelayMillis;
@@ -69,8 +49,8 @@ public final class FlowRunStepSnapshot {
     public FlowRunStepSnapshot chooseDelay(long delayMillis) {
         if (delayAfter == null) throw new IllegalStateException("This step has no successor delay");
         delayAfter.choose(delayMillis);
-        return new FlowRunStepSnapshot(id, runId, position, sourceTemplateId, text, amount,
-                restTimerPolicy, plannedLoad, targetRir, note, delayAfter, delayMillis);
+        return new FlowRunStepSnapshot(id, runId, position, sourceTemplateId, text, prescription,
+                note, delayAfter, delayMillis);
     }
 
     private static boolean blank(String value) {
@@ -82,15 +62,13 @@ public final class FlowRunStepSnapshot {
         FlowRunStepSnapshot value = (FlowRunStepSnapshot) other;
         return id.equals(value.id) && runId.equals(value.runId) && position == value.position
                 && sourceTemplateId.equals(value.sourceTemplateId) && text.equals(value.text)
-                && amount.equals(value.amount) && restTimerPolicy.equals(value.restTimerPolicy)
-                && plannedLoad.equals(value.plannedLoad) && targetRir == value.targetRir
-                && note.equals(value.note)
+                && prescription.equals(value.prescription) && note.equals(value.note)
                 && Objects.equals(delayAfter, value.delayAfter)
                 && Objects.equals(chosenDelayMillis, value.chosenDelayMillis);
     }
 
     @Override public int hashCode() {
-        return Objects.hash(id, runId, position, sourceTemplateId, text, amount,
-                restTimerPolicy, plannedLoad, targetRir, note, delayAfter, chosenDelayMillis);
+        return Objects.hash(id, runId, position, sourceTemplateId, text, prescription,
+                note, delayAfter, chosenDelayMillis);
     }
 }
