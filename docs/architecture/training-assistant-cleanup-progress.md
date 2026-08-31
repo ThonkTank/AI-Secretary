@@ -730,3 +730,29 @@ Wiring-Detail. Die ausführbare Architekturregel verbietet künftig Repository-C
 - Lokal bleibt keine Code-, Architektur- oder Testdiskrepanz. Offen vor Roadmap-Abschluss sind
   der eigene grüne Phase-5-PR mit Squash-Merge, die anschließende Main-Veröffentlichung samt
   Produktionsupgrade und Instrumentierungsmatrix sowie mangels ADB-Ziel die physische Abnahme.
+
+### Remote-Abschluss
+
+- Pull Request #304 prüfte den Phase-5-Commit `9895a9d6` gegen den Phase-4-Squash `693c94f4`.
+  `quality`, normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie
+  `instrumentation-gate` und `pull-request-gate` waren grün. Der längste Lauf war die
+  animationsaktive API-35-Variante mit 14:37 Minuten.
+- Der Pull Request wurde am 2026-08-31 per Squash als `e91b8833` nach `main` gemergt;
+  `origin/main`, der Phase-5-Tag und das veröffentlichte Release zeigen auf exakt diesen Commit.
+- Der erste Main-Versuch scheiterte ausschließlich in beiden API-37-Jobs beim externen Download
+  des Canary-Emulators: `sdkmanager --install emulator --channel=3` brach mit
+  `java.io.IOException` ab, bevor Emulator oder Gradle-Test starteten. Derselbe Commit war im PR
+  auf API 37 grün. Der gezielte Retry der fehlgeschlagenen Jobs war erfolgreich.
+- Main-Lauf 33432201685, Versuch 2, bestand die vollständige Quality- und
+  Instrumentierungsmatrix. Der einmalig gebaute und signierte Kandidat bestand anschließend den
+  Produktionsupgradepfad auf API 26, 35 und 37; der Publish-Job war grün.
+- Release 0.2.144 wurde als `forest-android-1014401` veröffentlicht. `AutoSecretary.apk` hat
+  2.818.980 Byte und SHA-256
+  `9b036f75a19f6ca55818702c742617863e11f4311b8af5483255caca4d985f88`;
+  `release-metadata.json` ist vorhanden. Release, Tag und `origin/main` verwiesen beim Audit auf
+  `e91b8833`.
+- Damit sind Implementierung, PR-Gates, Main-Instrumentierung, Paketierung, Produktionsupgrade
+  und Veröffentlichung der sechs Phasen abgeschlossen. Die in der Roadmap separat verlangte
+  physische Installation und Sicht-/In-App-Update-Abnahme bleibt offen: Der letzte SDK-ADB-Check
+  fand weiterhin kein verbundenes Gerät. Dieser externe Owner-Nachweis wird nicht als bestanden
+  ausgegeben.
