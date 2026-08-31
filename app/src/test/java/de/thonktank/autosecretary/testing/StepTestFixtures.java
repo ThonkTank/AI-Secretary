@@ -8,6 +8,7 @@ import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
+import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
@@ -130,7 +131,7 @@ public final class StepTestFixtures {
                                             String note, List<Integer> repetitions,
                                             String sourceTemplateId, String comboOwnerId) {
         return new OccurrenceStep(id, occurrenceId, position, text, done,
-                StepPrescription.forAmount(amount), note, repetitions, sourceTemplateId,
+                StepPrescription.forAmount(amount), note, results(repetitions), sourceTemplateId,
                 comboOwnerId, null, CarryForwardReason.NONE);
     }
 
@@ -141,6 +142,20 @@ public final class StepTestFixtures {
                                             String comboOwnerId, String originOccurrenceId,
                                             CarryForwardReason reason) {
         return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
-                repetitions, sourceTemplateId, comboOwnerId, originOccurrenceId, reason);
+                results(repetitions), sourceTemplateId, comboOwnerId, originOccurrenceId, reason);
+    }
+
+    public static OccurrenceStep occurrenceResults(String id, String occurrenceId, int position,
+                                                   String text, boolean done,
+                                                   StepPrescription prescription, String note,
+                                                   List<SetResult> results,
+                                                   String sourceTemplateId,
+                                                   String comboOwnerId) {
+        return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
+                results, sourceTemplateId, comboOwnerId, null, CarryForwardReason.NONE);
+    }
+
+    private static List<SetResult> results(List<Integer> repetitions) {
+        return repetitions.stream().map(value -> SetResult.restore(value, null)).toList();
     }
 }

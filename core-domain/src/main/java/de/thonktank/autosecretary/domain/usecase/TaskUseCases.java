@@ -23,8 +23,8 @@ public final class TaskUseCases {
     public final MoveTodayStep moveTodayStep;
     public final RecordRepetitionResult recordRepetitionResult;
     public final CorrectRepetitionResult correctRepetitionResult;
-    public final RecordTrainingSetResult recordTrainingSetResult;
-    public final CorrectTrainingSetResult correctTrainingSetResult;
+    public final RecordSetResult recordSetResult;
+    public final CorrectSetResult correctSetResult;
     public final UndoLatestTrainingAdjustment undoLatestTrainingAdjustment;
     public final FinishStepForToday finishStepForToday;
     public final CompleteOccurrence complete;
@@ -85,8 +85,8 @@ public final class TaskUseCases {
         recordRepetitionResult = new RecordRepetitionResult(repository, clock, policies,
                 flowRuntime);
         correctRepetitionResult = new CorrectRepetitionResult(repository, clock, policies);
-        recordTrainingSetResult = new RecordTrainingSetResult(repository, clock, ids, policies);
-        correctTrainingSetResult = new CorrectTrainingSetResult(repository, clock, policies);
+        recordSetResult = new RecordSetResult(repository, clock, ids, policies);
+        correctSetResult = new CorrectSetResult(repository, clock, policies);
         undoLatestTrainingAdjustment = new UndoLatestTrainingAdjustment(repository);
         finishStepForToday = new FinishStepForToday(repository, clock, policies);
         complete = new CompleteOccurrence(repository, clock, policies, flowRuntime);

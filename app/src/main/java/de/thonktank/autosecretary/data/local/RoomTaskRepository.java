@@ -27,7 +27,8 @@ import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
-import de.thonktank.autosecretary.domain.model.TrainingSetResult;
+import de.thonktank.autosecretary.domain.model.SetResult;
+import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
 import java.time.LocalDate;
@@ -508,29 +509,6 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
                 event.eventOn.toString(), event.bookingId));
     }
 
-    @Override public void putTrainingSetResult(String occurrenceStepId, int slotIndex,
-                                               TrainingSetResult result) {
-        dao.putRepetitionResult(new RepetitionResultEntity(occurrenceStepId, slotIndex,
-                result.repetitions, result.load.mode.name(), result.load.unit.name(),
-                result.load.milliUnits, result.rir, result.source.name(),
-                result.safetyFlag.name()));
-    }
-
-    @Override public List<TrainingSetResult> trainingSetResults(String occurrenceStepId) {
-        List<TrainingSetResult> result = new ArrayList<>();
-        int expected = 0;
-        for (RepetitionResultEntity value : dao.repetitionResults(occurrenceStepId)) {
-            if (value.slotIndex != expected++) break;
-            result.add(new TrainingSetResult(value.actualRepetitions,
-                    ResistanceLoad.restore(value.loadMode, value.loadUnit, value.loadMilli),
-                    value.rir, enumValue(TrainingSetResult.Source.class, value.source,
-                    TrainingSetResult.Source.LEGACY),
-                    enumValue(TrainingSetResult.SafetyFlag.class, value.safetyFlag,
-                    TrainingSetResult.SafetyFlag.NONE)));
-        }
-        return result;
-    }
-
     @Override public double effectiveSetsSince(TrainingMuscleGroup muscle, LocalDate start,
                                                LocalDate end) {
         if (muscle == null) return 0;
@@ -625,28 +603,28 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
     private List<OccurrenceStep> mapOccurrenceSteps(List<OccurrenceStepEntity> entities) {
         if (entities.isEmpty()) return new ArrayList<>();
         List<String> ids = new ArrayList<>();
-        Map<String, List<Integer>> repetitions = new LinkedHashMap<>();
+        Map<String, List<SetResult>> results = new LinkedHashMap<>();
         for (OccurrenceStepEntity entity : entities) {
             ids.add(entity.id);
-            repetitions.put(entity.id, new ArrayList<>());
+            results.put(entity.id, new ArrayList<>());
         }
         for (RepetitionResultEntity result : dao.repetitionResultsFor(ids)) {
-            List<Integer> values = repetitions.get(result.stepId);
+            List<SetResult> values = results.get(result.stepId);
             if (values == null) continue;
-            if (result.slotIndex == values.size()) values.add(result.actualRepetitions);
+            if (result.slotIndex == values.size()) values.add(setResult(result));
             else android.util.Log.w("RoomTaskRepository", "Ignoring non-contiguous repetition "
                     + "result for step " + result.stepId + " at slot " + result.slotIndex);
         }
         List<OccurrenceStep> result = new ArrayList<>();
         for (OccurrenceStepEntity entity : entities)
-            result.add(mapper.toDomain(entity, repetitions.get(entity.id)));
+            result.add(mapper.toDomain(entity, results.get(entity.id)));
         return result;
     }
 
-    private List<Integer> repetitions(String stepId) {
-        List<Integer> result = new ArrayList<>();
+    private List<SetResult> repetitions(String stepId) {
+        List<SetResult> result = new ArrayList<>();
         for (RepetitionResultEntity value : dao.repetitionResults(stepId)) {
-            if (value.slotIndex == result.size()) result.add(value.actualRepetitions);
+            if (value.slotIndex == result.size()) result.add(setResult(value));
             else android.util.Log.w("RoomTaskRepository", "Ignoring non-contiguous repetition "
                     + "result for step " + stepId + " at slot " + value.slotIndex);
         }
@@ -655,21 +633,39 @@ public final class RoomTaskRepository implements ApplicationTaskRepository {
 
     /** Applies a minimal row diff, so correcting one slot writes only that slot. */
     private void syncRepetitionResults(OccurrenceStep step) {
-        List<Integer> desired = step.repetitionProgress == null
+        List<SetResult> desired = step.repetitionProgress == null
                 ? java.util.Collections.emptyList()
-                : step.repetitionProgress.actualRepetitions;
+                : step.repetitionProgress.results;
         List<RepetitionResultEntity> stored = dao.repetitionResults(step.id);
         for (int index = 0; index < desired.size(); index++) {
-            int value = desired.get(index);
+            SetResult value = desired.get(index);
             if (index >= stored.size() || stored.get(index).slotIndex != index
-                    || stored.get(index).actualRepetitions != value)
-                dao.putRepetitionResult(index < stored.size()
-                        ? new RepetitionResultEntity(step.id, index, value,
-                        stored.get(index).loadMode, stored.get(index).loadUnit,
-                        stored.get(index).loadMilli, stored.get(index).rir,
-                        stored.get(index).source, stored.get(index).safetyFlag)
-                        : new RepetitionResultEntity(step.id, index, value));
+                    || !value.equals(setResult(stored.get(index))))
+                dao.putRepetitionResult(entity(step.id, index, value));
         }
         dao.deleteRepetitionResultsFrom(step.id, desired.size());
+    }
+
+    private static SetResult setResult(RepetitionResultEntity value) {
+        ResistanceLoad load = ResistanceLoad.restore(value.loadMode, value.loadUnit,
+                value.loadMilli);
+        TrainingObservation.Origin origin = enumValue(TrainingObservation.Origin.class,
+                value.source, TrainingObservation.Origin.LEGACY);
+        TrainingObservation.Safety safety = enumValue(TrainingObservation.Safety.class,
+                value.safetyFlag, TrainingObservation.Safety.NONE);
+        TrainingObservation observation = load.mode == ResistanceLoad.Mode.UNSPECIFIED
+                && value.rir == null && origin == TrainingObservation.Origin.LEGACY
+                && safety == TrainingObservation.Safety.NONE ? null
+                : new TrainingObservation(load, value.rir, safety, origin);
+        return SetResult.restore(value.actualRepetitions, observation);
+    }
+
+    private static RepetitionResultEntity entity(String stepId, int index, SetResult value) {
+        if (value.training == null)
+            return new RepetitionResultEntity(stepId, index, value.repetitions);
+        TrainingObservation training = value.training;
+        return new RepetitionResultEntity(stepId, index, value.repetitions,
+                training.load.mode.name(), training.load.unit.name(), training.load.milliUnits,
+                training.rir, training.origin.name(), training.safety.name());
     }
 }

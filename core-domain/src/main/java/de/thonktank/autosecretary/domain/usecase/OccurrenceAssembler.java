@@ -80,7 +80,7 @@ final class OccurrenceAssembler {
                     positioned.add(new OccurrenceStep(step.id, occurrence.id, index, step.text,
                             step.done, step.prescription, step.note,
                             step.repetitionProgress == null ? Collections.emptyList()
-                                    : step.repetitionProgress.actualRepetitions,
+                                    : step.repetitionProgress.results,
                             step.sourceTemplateId, step.comboOwnerId,
                             step.originOccurrenceId, step.carryForwardReason));
                 }
@@ -95,7 +95,7 @@ final class OccurrenceAssembler {
                                     String originOccurrenceId) {
         return new OccurrenceStep(id, "pending", 0, step.text, false, step.prescription, step.note,
                 step.repetitionProgress == null ? Collections.emptyList()
-                        : step.repetitionProgress.actualRepetitions,
+                        : step.repetitionProgress.results,
                 step.sourceTemplateId,
                 step.comboOwnerId == null ? comboOwner : step.comboOwnerId,
                 originOccurrenceId, CarryForwardReason.UNFINISHED_STEP);

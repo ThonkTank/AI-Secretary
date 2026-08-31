@@ -24,6 +24,8 @@ public final class RepetitionProgressTest {
         assertTrue(complete.completed());
         assertEquals(RepetitionProgress.Completion.RESULTS_COMPLETE, complete.completion);
         assertEquals(Arrays.asList(0, 999), complete.actualRepetitions);
+        assertEquals(Arrays.asList(SetResult.repetitions(0), SetResult.repetitions(999)),
+                complete.results);
     }
 
     @Test public void oneBoundaryOwnsValidationForNewAndCorrectedValues() {
@@ -79,6 +81,21 @@ public final class RepetitionProgressTest {
         assertEquals(null, RepetitionProgress.forAmount(
                 StepAmount.duration(60), Collections.emptyList(), false));
         assertThrows(IllegalArgumentException.class, () -> RepetitionProgress.forAmount(
-                StepAmount.none(), Collections.singletonList(10), false));
+                StepAmount.none(), Collections.singletonList(SetResult.repetitions(10)), false));
+    }
+
+    @Test public void repetitionProjectionCannotDivergeFromTrainingObservation() {
+        TrainingObservation observation = TrainingObservation.user(
+                ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
+                        ResistanceLoad.Unit.KG, 23_000), 2);
+        SetResult result = new SetResult(12, observation);
+
+        RepetitionProgress progress = RepetitionProgress.restoreResults(
+                1, Collections.singletonList(result), false);
+
+        assertEquals(Collections.singletonList(result), progress.results);
+        assertEquals(Collections.singletonList(12), progress.actualRepetitions);
+        assertThrows(UnsupportedOperationException.class,
+                () -> progress.actualRepetitions.add(11));
     }
 }

@@ -25,7 +25,8 @@ import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.model.TrainingSetResult;
+import de.thonktank.autosecretary.domain.model.SetResult;
+import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
@@ -289,20 +290,19 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     private void recordRepetitionResult(RepetitionInputReducer.Submission submission) {
         runTodayStepResult(command(UiCommand.Kind.RECORD_REPETITION_RESULT, submission.stepId),
-                () -> tasks.recordTrainingSetResult.execute(submission.stepId,
+                () -> tasks.recordSetResult.execute(submission.stepId,
                         trainingResult(submission)));
     }
     private void correctRepetitionResult(RepetitionInputReducer.Submission submission) {
         runTodayStepResult(command(UiCommand.Kind.CORRECT_REPETITION_RESULT, submission.stepId),
-                () -> tasks.correctTrainingSetResult.execute(submission.stepId,
+                () -> tasks.correctSetResult.execute(submission.stepId,
                         submission.editingIndex, trainingResult(submission)));
     }
 
-    private static TrainingSetResult trainingResult(RepetitionInputReducer.Submission value) {
-        return new TrainingSetResult(value.value, value.load, value.rir,
-                TrainingSetResult.Source.USER, value.safetyFlag
-                ? TrainingSetResult.SafetyFlag.PAIN_OR_TECHNIQUE
-                : TrainingSetResult.SafetyFlag.NONE);
+    private static SetResult trainingResult(RepetitionInputReducer.Submission value) {
+        return new SetResult(value.value, new TrainingObservation(value.load, value.rir,
+                value.safetyFlag ? TrainingObservation.Safety.PAIN_OR_TECHNIQUE
+                : TrainingObservation.Safety.NONE, TrainingObservation.Origin.USER));
     }
     private void close(String taskId) {
         runTodayReward(command(UiCommand.Kind.CLOSE, taskId),

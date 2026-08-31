@@ -29,6 +29,8 @@ import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
+import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
@@ -43,15 +45,19 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.repository.ApplicationTaskRepository;
+import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CompleteRemainingSteps;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.CorrectRepetitionResult;
+import de.thonktank.autosecretary.domain.usecase.CorrectSetResult;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
+import de.thonktank.autosecretary.domain.usecase.RecordSetResult;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 import de.thonktank.autosecretary.domain.usecase.UpdateTask;
 
@@ -271,6 +277,8 @@ public final class TaskEditorFeatureRobolectricTest {
 
         OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
         assertEquals(Arrays.asList(10, 11), restored.repetitionProgress.actualRepetitions);
+        assertTrue(restored.repetitionProgress.results.stream()
+                .allMatch(value -> value.training == null));
         assertFalse(restored.done);
         CorrectRepetitionResult correct = new CorrectRepetitionResult(repository);
         assertEquals(-2, correct.execute(step.id, 0, 0).xp);
@@ -291,6 +299,37 @@ public final class TaskEditorFeatureRobolectricTest {
 
         assertTrue(repository.findOccurrenceStep(step.id).done);
         assertEquals(2, repository.combo(step.comboOwnerId).points);
+    }
+
+    @Test public void detailedSetResultsReloadAndCorrectAsOneValue() {
+        TaskStepDefinition exercise = de.thonktank.autosecretary.testing.StepTestFixtures.definition(
+                null, 0, "Rudern", 0, StepAmount.setsReps(2, 12), "");
+        new CreateTask(repository, repository, clock, ids).execute(definition(
+                "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
+                Collections.singletonList(exercise)));
+        new MaterializeDueOccurrences(repository, clock, ids).execute();
+        OccurrenceStep step = repository.occurrenceSteps(
+                repository.openOccurrences().get(0).id).get(0);
+        ResistanceLoad load = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
+                ResistanceLoad.Unit.KG, 23_000);
+        RecordSetResult record = new RecordSetResult(repository, clock, ids,
+                ComboPolicySource.defaults());
+        SetResult first = new SetResult(12, TrainingObservation.user(load, 2));
+        SetResult second = new SetResult(11, new TrainingObservation(load, 1,
+                TrainingObservation.Safety.PAIN_OR_TECHNIQUE,
+                TrainingObservation.Origin.USER));
+
+        record.execute(step.id, first);
+        record.execute(step.id, second);
+        OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
+
+        assertEquals(Arrays.asList(first, second), restored.repetitionProgress.results);
+        assertEquals(Arrays.asList(12, 11), restored.repetitionProgress.actualRepetitions);
+        SetResult corrected = new SetResult(10, TrainingObservation.user(load, 3));
+        new CorrectSetResult(repository, clock, ComboPolicySource.defaults())
+                .execute(step.id, 1, corrected);
+        assertEquals(Arrays.asList(first, corrected), new RoomTaskRepository(database)
+                .findOccurrenceStep(step.id).repetitionProgress.results);
     }
 
     private int vesselXp(String occurrenceId) {

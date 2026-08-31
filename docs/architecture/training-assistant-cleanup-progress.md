@@ -10,8 +10,8 @@ Roadmap nachträglich umzuschreiben.
 | Phase | Status | Abschlussnachweis |
 |---|---|---|
 | 0 – Vertrag und Grundlage | abgeschlossen | PR #299, Squash `c1e72ba4` |
-| 1 – Schrittverordnung | in Arbeit | – |
-| 2 – Satzresultat | ausstehend | – |
+| 1 – Schrittverordnung | abgeschlossen | PR #300, Squash `22a9ac17` |
+| 2 – Satzresultat | in Arbeit | – |
 | 3 – Lastentscheidung | ausstehend | – |
 | 4 – Bedienung | ausstehend | – |
 | 5 – Ports und Abschlussaudit | ausstehend | – |
@@ -229,3 +229,101 @@ bleibt das Progressionsverhalten in Phase 1 bewusst unverändert und die Beseiti
 Lastsprünge an der dafür vorgesehenen Entscheidungsphase. Lokal bleibt keine Phase-1-Diskrepanz.
 Offen sind der eigene grüne Pull Request und Squash-Merge nach `main`; als nicht sichtbare
 Architekturphase benötigt Phase 1 keine physische Geräteabnahme.
+
+### Remote-Abschluss
+
+- Pull Request #300 prüfte Commit `8ba8f648` gegen Phase-0-Squash `c1e72ba4`.
+- `quality`, normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie
+  `instrumentation-gate` und `pull-request-gate` waren grün. Der längste Lauf war die
+  animationsaktive API-35-Variante mit 12:24 Minuten.
+- Der Pull Request wurde am 2026-08-31 per Squash als `22a9ac17` nach `main` gemergt;
+  `origin/main` und der isolierte Roadmap-Worktree zeigten anschließend denselben Commit.
+
+## Phase 2 – Ein atomisches Satzresultat
+
+### Vorprüfung
+
+- Ausgangspunkt ist der verifizierte Phase-1-Squash `22a9ac17` auf `origin/main`; gearbeitet wird
+  auf `feat/training-cleanup-p2-set-result` im isolierten Roadmap-Worktree.
+- `RepetitionProgress` hält bisher nur `List<Integer>`. Detaillierte Last-, RIR-, Herkunfts- und
+  Sicherheitswerte liegen separat in `TrainingSetResult` und werden über eine zweite
+  `TrainingRepository.trainingSetResults`-Abfrage geladen.
+- `RecordTrainingSetResult` und `CorrectTrainingSetResult` ändern zuerst den Occurrence-Schritt
+  über `StepExecutionService` und schreiben anschließend denselben Slot separat in
+  `repetition_results`. Die äußere Repository-Transaktion umfasst zwar beide Pfade, das Modell
+  besitzt aber weiterhin zwei Ergebniswahrheiten.
+- Die bestehende Room-Tabelle `repetition_results` enthält bereits Wiederholungen, Last, RIR,
+  Herkunft und Safety. Phase 2 benötigt deshalb keine Schema- oder Migrationsänderung.
+
+### Implementationsplan
+
+- `SetResult(repetitions, optional TrainingObservation)` als einziges Satzresultat einführen.
+  `TrainingObservation` bündelt Last, optionales RIR, Safety und Herkunft. Alte Zeilen werden als
+  Beobachtung mit Herkunft `LEGACY` rekonstruiert, auch wenn ihre Last nicht spezifiziert ist.
+- `RepetitionProgress` auf `List<SetResult>` als Wahrheit umstellen; Wiederholungswerte bleiben
+  ausschließlich eine daraus berechnete, unveränderliche Projektion. Record, Correct, Reopen und
+  Completion arbeiten auf vollständigen Resultaten.
+- `OccurrenceStep` trägt und mutiert vollständige Resultate. Room lädt die vorhandenen
+  `repetition_results`-Zeilen einmal zusammen mit dem Schritt und schreibt bei der
+  Occurrence-Aktualisierung alle Felder des geänderten Slots. Die separaten Resultatmethoden
+  entfallen aus `TrainingRepository`.
+- `RecordSetResult` und `CorrectSetResult` ersetzen die trainingsspezifischen Alt-Use-Cases. Eine
+  gemeinsame Transaktion umfasst Ergebnis, Completion, Rewards, Flow-/Combo-Folgen und
+  Adaptionsfolgen. `TrainingAdaptationService` übergibt die Resultate direkt aus dem bereits
+  geladenen Occurrence-Schritt an die Engine; eine zweite Ergebnisabfrage entfällt.
+- Generische Wiederholungseingaben und „mit Planwert fortfahren“ erzeugen `SetResult` ohne
+  Trainingsbeobachtung. Today erzeugt für Trainingssätze eine vollständige Beobachtung, ohne das
+  sichtbare Verhalten dieser Phase zu verändern.
+- Modell-, Room-Kompatibilitäts-, Execution-, Reward-, Adaptions- und Rollbacktests fokussiert
+  ausführen, danach vollständiges lokales Gate. Der negative Audit prüft insbesondere auf
+  verbliebene `TrainingSetResult`- oder separate Resultatabfragen sowie Schemaänderungen.
+
+### Abnahmekriterien
+
+- `RepetitionProgress.results` ist die einzige Ergebniswahrheit; Wiederholungslisten sind nur
+  Projektionen daraus.
+- Aufnahme und Korrektur persistieren vollständiges Resultat, Abschluss, Reward und Adaptionsfolge
+  in derselben Transaktion; ein erzwungener später Fehler rollt alles zurück.
+- Die Engine erhält Resultate aus `OccurrenceStep` und fragt sie nicht separat im Repository ab.
+- Bestehende detaillierte sowie reine Wiederholungszeilen bleiben ohne Room-Schemaänderung lesbar.
+
+### Implementierung
+
+- `SetResult` enthält Wiederholungen und optional genau eine `TrainingObservation` aus Last, RIR,
+  Safety und Herkunft. `TrainingSetResult` wurde entfernt.
+- `RepetitionProgress.results` ist die gespeicherte Modellwahrheit. Die bestehende
+  `actualRepetitions`-API ist eine beim Erzeugen abgeleitete, unveränderliche Projektion; Record,
+  Correct und Reopen kopieren vollständige Resultate.
+- `OccurrenceStep` nimmt vollständige Resultate auf. `RoomTaskRepository` rekonstruiert sie beim
+  Laden aus den bestehenden `repetition_results`-Spalten und schreibt bei der normalen
+  Schrittaktualisierung alle Werte eines Slots. Reine Alt-Wiederholungszeilen werden als
+  `SetResult` ohne künstliche Trainingsbeobachtung gelesen.
+- `RecordSetResult` und `CorrectSetResult` besitzen die äußere Transaktionsgrenze. Ihre
+  `StepExecutionService`-Operationen laufen innerhalb dieser Grenze ohne zweite Use-Case-
+  Transaktion; Completion, Reward, Flow-/Combo-Folgen und Adaptionsänderungen gehören damit zum
+  selben Commit beziehungsweise Rollback.
+- `TrainingAdaptationService` übergibt `step.repetitionProgress.results` direkt an die Engine.
+  `TrainingRepository.trainingSetResults` und `putTrainingSetResult` sowie der separate
+  In-Memory-Ergebnisspeicher wurden entfernt.
+
+### Validierung und Audit
+
+- Fokussierte Matrix aus RepetitionProgress, Engine, Room-Kompatibilität, Task-Execution und
+  Transaktionsrollback: grün in 59 Sekunden.
+- Der Rollbacktest erzwingt einen Fehler beim letzten Adaptionsschreibvorgang und belegt, dass
+  zweites Satzresultat, Step-Completion, Reward, Vorlagenänderung und Adjustment gemeinsam nicht
+  bestehen bleiben.
+- `git diff --check`: grün. CI-Harness: 17 Tests grün; Release-/Workflowverträge: 23 Tests grün.
+- Vollständiges Gate `testInstrumentationUnitTest lintDebug assembleDebug
+  assembleInstrumentationAndroidTest assembleRelease`: grün in 12:38 Minuten, 157 Tasks.
+  498 Host-/Robolectric-Tests liefen mit null Fehlern und einem bewussten Benchmark-Skip.
+- Artefakte: Debug 5.571.045 Byte, Instrumentierung 1.646.391 Byte, unsigned Release 2.775.076
+  Byte; die bestehenden Budgets werden eingehalten.
+- Der negative Abgleich findet keinen `TrainingSetResult`, keinen alten Record-/Correct-Use-Case
+  und keine separate Resultatabfrage oder -schreibmethode. Vollständige Ergebnisse werden aus dem
+  Occurrence-Schritt gelesen; Wiederholungslisten sind ausschließlich Projektionen.
+- Entity-, Migrations-, Schema-, Ressourcen- und Golden-Dateien sind unverändert. Detaillierte
+  Zeilen roundtrippen Last, RIR, Safety und Herkunft; reine Wiederholungszeilen bleiben lesbar.
+  Lokal bleibt keine Phase-2-Diskrepanz. Offen sind der eigene grüne Pull Request und Squash-Merge
+  nach `main`; als nicht sichtbare Architekturphase benötigt Phase 2 keine physische
+  Geräteabnahme.

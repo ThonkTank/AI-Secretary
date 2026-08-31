@@ -49,7 +49,7 @@ final class TrainingAdaptationService {
         StepAmount.SetsReps before = (StepAmount.SetsReps) template.amount;
         TrainingAdaptationEngine.Result result = engine.evaluate(before,
                 config, template.assistantProfile.state,
-                training.trainingSetResults(step.id), effective);
+                step.repetitionProgress.results, effective);
         StepPrescription next = new StepPrescription(result.prescription,
                 template.prescription.rest,
                 new TrainingPrescription(result.config.load, result.config.targetRir));

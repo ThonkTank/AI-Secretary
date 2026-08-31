@@ -24,49 +24,64 @@ public final class RepetitionProgress {
     }
 
     public final int plannedSlots;
+    public final List<SetResult> results;
+    /** Read-only projection of {@link #results}; never persisted independently. */
     public final List<Integer> actualRepetitions;
     public final Completion completion;
 
-    private RepetitionProgress(int plannedSlots, List<Integer> actual,
+    private RepetitionProgress(int plannedSlots, List<SetResult> results,
                                Completion completion) {
         if (plannedSlots <= 0)
             throw new IllegalArgumentException("Repetition progress needs planned slots");
-        if (actual == null || completion == null)
+        if (results == null || completion == null)
             throw new IllegalArgumentException("Repetition progress state is required");
-        if (actual.size() > plannedSlots)
+        if (results.size() > plannedSlots)
             throw new IllegalArgumentException("Confirmed repetitions exceed planned slots");
-        List<Integer> checked = new ArrayList<>();
-        for (Integer value : actual) {
-            if (value == null || value < 0)
-                throw new IllegalArgumentException("Confirmed repetitions must not be negative");
+        List<SetResult> checked = new ArrayList<>();
+        List<Integer> repetitions = new ArrayList<>();
+        for (SetResult value : results) {
+            if (value == null)
+                throw new IllegalArgumentException("Confirmed set results are required");
             checked.add(value);
+            repetitions.add(value.repetitions);
         }
         if (completion == Completion.IN_PROGRESS && checked.size() == plannedSlots)
             throw new IllegalArgumentException("Complete repetition results cannot remain open");
         if (completion == Completion.RESULTS_COMPLETE && checked.size() != plannedSlots)
             throw new IllegalArgumentException("Result completion requires every planned slot");
         this.plannedSlots = plannedSlots;
-        this.actualRepetitions = Collections.unmodifiableList(checked);
+        this.results = Collections.unmodifiableList(checked);
+        this.actualRepetitions = Collections.unmodifiableList(repetitions);
         this.completion = completion;
     }
 
     /** Restores persisted progress while canonicalizing formerly contradictory done flags. */
-    public static RepetitionProgress restore(int plannedSlots, List<Integer> actual,
-                                             boolean storedDone) {
-        int size = actual == null ? 0 : actual.size();
+    public static RepetitionProgress restoreResults(int plannedSlots, List<SetResult> results,
+                                                    boolean storedDone) {
+        int size = results == null ? 0 : results.size();
         Completion completion = size == plannedSlots
                 ? Completion.RESULTS_COMPLETE
                 : storedDone ? Completion.COMPLETED_WITHOUT_RESULTS : Completion.IN_PROGRESS;
-        return new RepetitionProgress(plannedSlots, actual, completion);
+        return new RepetitionProgress(plannedSlots, results, completion);
     }
 
-    public static RepetitionProgress forAmount(StepAmount amount, List<Integer> actual,
+    /** Compatibility reader for callers that have only historical repetition values. */
+    public static RepetitionProgress restore(int plannedSlots, List<Integer> repetitions,
+                                             boolean storedDone) {
+        List<SetResult> results = new ArrayList<>();
+        if (repetitions != null)
+            for (Integer value : repetitions)
+                results.add(SetResult.restore(value == null ? -1 : value, null));
+        return restoreResults(plannedSlots, results, storedDone);
+    }
+
+    public static RepetitionProgress forAmount(StepAmount amount, List<SetResult> results,
                                                boolean storedDone) {
         if (amount instanceof StepAmount.SetsReps)
-            return restore(((StepAmount.SetsReps) amount).sets, actual, storedDone);
+            return restoreResults(((StepAmount.SetsReps) amount).sets, results, storedDone);
         if (amount instanceof StepAmount.Repetitions)
-            return restore(1, actual, storedDone);
-        if (actual != null && !actual.isEmpty())
+            return restoreResults(1, results, storedDone);
+        if (results != null && !results.isEmpty())
             throw new IllegalArgumentException("Step amount does not accept repetition progress");
         return null;
     }
@@ -75,38 +90,46 @@ public final class RepetitionProgress {
 
     /** Zero-based next slot, or -1 when every planned result is present. */
     public int nextOpenSlotIndex() {
-        return actualRepetitions.size() == plannedSlots ? -1 : actualRepetitions.size();
+        return results.size() == plannedSlots ? -1 : results.size();
     }
 
-    public RepetitionProgress record(int repetitions) {
+    public RepetitionProgress record(SetResult result) {
         if (completed())
             throw new IllegalStateException("Completed repetition progress cannot accept results");
-        requireRecordableValue(repetitions);
-        List<Integer> changed = new ArrayList<>(actualRepetitions);
-        changed.add(repetitions);
+        if (result == null) throw new IllegalArgumentException("Set result is required");
+        List<SetResult> changed = new ArrayList<>(results);
+        changed.add(result);
         return new RepetitionProgress(plannedSlots, changed,
                 changed.size() == plannedSlots
                         ? Completion.RESULTS_COMPLETE : Completion.IN_PROGRESS);
     }
 
-    public RepetitionProgress correct(int index, int repetitions) {
-        if (index < 0 || index >= actualRepetitions.size())
+    public RepetitionProgress record(int repetitions) {
+        return record(SetResult.repetitions(repetitions));
+    }
+
+    public RepetitionProgress correct(int index, SetResult result) {
+        if (index < 0 || index >= results.size())
             throw new IllegalArgumentException("Confirmed repetition index is out of range");
-        requireRecordableValue(repetitions);
-        List<Integer> changed = new ArrayList<>(actualRepetitions);
-        changed.set(index, repetitions);
+        if (result == null) throw new IllegalArgumentException("Set result is required");
+        List<SetResult> changed = new ArrayList<>(results);
+        changed.set(index, result);
         return new RepetitionProgress(plannedSlots, changed, completion);
     }
 
+    public RepetitionProgress correct(int index, int repetitions) {
+        return correct(index, SetResult.repetitions(repetitions));
+    }
+
     public RepetitionProgress completeWithoutResults() {
-        return completed() ? this : new RepetitionProgress(plannedSlots, actualRepetitions,
+        return completed() ? this : new RepetitionProgress(plannedSlots, results,
                 Completion.COMPLETED_WITHOUT_RESULTS);
     }
 
     /** Reopening a result-complete step removes its final result to keep the state consistent. */
     public RepetitionProgress reopen() {
         if (!completed()) return this;
-        List<Integer> reopened = new ArrayList<>(actualRepetitions);
+        List<SetResult> reopened = new ArrayList<>(results);
         if (completion == Completion.RESULTS_COMPLETE && !reopened.isEmpty())
             reopened.remove(reopened.size() - 1);
         return new RepetitionProgress(plannedSlots, reopened, Completion.IN_PROGRESS);
@@ -126,11 +149,11 @@ public final class RepetitionProgress {
         if (!(other instanceof RepetitionProgress)) return false;
         RepetitionProgress value = (RepetitionProgress) other;
         return plannedSlots == value.plannedSlots
-                && actualRepetitions.equals(value.actualRepetitions)
+                && results.equals(value.results)
                 && completion == value.completion;
     }
 
     @Override public int hashCode() {
-        return Objects.hash(plannedSlots, actualRepetitions, completion);
+        return Objects.hash(plannedSlots, results, completion);
     }
 }
