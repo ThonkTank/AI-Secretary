@@ -794,3 +794,22 @@ unberührt.
 - Der negative Abgleich findet keine Änderung an der kanonischen Roadmap und keine Behauptung einer
   erfolgten Geräteabnahme. Die aktuelle Übersicht beschreibt ausschließlich den nachgewiesenen
   Implementierungsabschluss; der physische Owner-Nachweis bleibt ausdrücklich offen.
+
+### Remote-Abschluss und Blockeraudit
+
+- Die Statuskorrektur lief über den eigenen Pull Request #306. `release_scope`,
+  `instrumentation-gate` und `pull-request-gate` waren grün; die für den reinen Dokumentationsdiff
+  nicht erforderlichen Produkt-, Instrumentierungs-, Paket-, Upgrade- und Publish-Jobs wurden
+  erwartungsgemäß übersprungen.
+- PR #306 wurde am 2026-08-31 per Squash als `4f396041` nach `main` gemergt. Der anschließende
+  Main-Lauf 33436739503 war für exakt diesen Commit grün; der isolierte Roadmap-Worktree und
+  `origin/main` zeigten beim Abschlussaudit denselben Commit.
+- USB-ADB und die lokale mDNS-Suche fanden erneut kein Gerät. Der offizielle Runner
+  `run-device-acceptance.sh forest-android-1014401` validierte Release 0.2.144, dessen APK-Hash und
+  die vorherige Produktionsversion 0.2.143, schrieb anschließend jedoch den Status `pending` mit
+  dem Grund `Expected exactly one connected ADB device`.
+- Damit ist keine weitere repository- oder remoteseitige Arbeit offen. Die Roadmap bleibt allein
+  an der ausdrücklich verlangten physischen In-App-Update- und Sichtabnahme blockiert. Dafür muss
+  genau ein entsperrtes und autorisiertes Gerät mit installierter Produktionsversion 0.2.143
+  verbunden werden; ohne diesen externen Zustand dürfen Installationsversion, Datenerhalt und die
+  manuellen UI-Prüfungen nicht als bestanden markiert werden.
