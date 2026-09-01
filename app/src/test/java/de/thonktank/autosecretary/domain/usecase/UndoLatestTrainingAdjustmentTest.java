@@ -45,7 +45,7 @@ public final class UndoLatestTrainingAdjustmentTest {
                 (StepAmount.SetsReps) StepAmount.setsReps(3, 12), load,
                 LocalDate.of(2026, 8, 31), TrainingAdjustment.State.APPLIED,
                 repository.nextTrainingAuditOrder(), TrainingDecision.RULE_VERSION));
-        UndoLatestTrainingAdjustment useCase = new UndoLatestTrainingAdjustment(repository, repository,
+        UndoLatestTrainingAdjustment useCase = new UndoLatestTrainingAdjustment(repository.steps, repository, repository.transactions,
                 new FixedClock());
 
         assertTrue(useCase.execute(template.id));
@@ -57,7 +57,7 @@ public final class UndoLatestTrainingAdjustmentTest {
         assertEquals(TrainingAdjustment.State.UNDONE,
                 repository.latestTrainingAdjustment(template.id).state);
         assertFalse(useCase.execute(template.id));
-        assertFalse(new LoadTrainingContext(repository, repository).execute(template.id).canUndo);
+        assertFalse(new LoadTrainingContext(repository.steps, repository, repository.transactions).execute(template.id).canUndo);
     }
 
     private static ResistanceLoad load(long milliUnits) {

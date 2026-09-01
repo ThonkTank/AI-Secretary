@@ -11,10 +11,10 @@ import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.model.StepAmount;
-import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
-import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
-import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 import de.thonktank.autosecretary.domain.schedule.ScheduleProjector;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
@@ -32,8 +32,9 @@ import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Transactional owner of step progress, step completion rewards and execution ordering. */
 public final class StepExecutionService {
-    private final OccurrenceExecutionRepository occurrences;
-    private final RewardLedgerRepository ledger;
+    private final CatalogRepository catalog;
+    private final StepRepository steps;
+    private final TodayRepository today;
     private final TransactionRunner transactions;
     private final Clock clock;
     private final RewardCalculator rewards;
@@ -41,45 +42,46 @@ public final class StepExecutionService {
     private final ComboObligationResolver obligationResolver;
     private final FlowProgression flows;
 
-    StepExecutionService(OccurrenceExecutionRepository occurrences,
-                         RewardLedgerRepository ledger, ComboObligationRepository obligations,
+    StepExecutionService(CatalogRepository catalog, StepRepository steps,
+                         TodayRepository today,
                          TransactionRunner transactions,
                          Clock clock) {
-        this(occurrences, ledger, obligations, transactions, clock, new RewardCalculator(),
+        this(catalog, steps, today, transactions, clock, new RewardCalculator(),
                 new CompletionStateMachine(), FlowProgression.NONE);
     }
 
-    StepExecutionService(OccurrenceExecutionRepository occurrences,
-                         RewardLedgerRepository ledger, ComboObligationRepository obligations,
+    StepExecutionService(CatalogRepository catalog, StepRepository steps,
+                         TodayRepository today,
                          TransactionRunner transactions, Clock clock,
                          ComboPolicySource policies) {
-        this(occurrences, ledger, obligations, transactions, clock,
+        this(catalog, steps, today, transactions, clock,
                 new RewardCalculator(policies),
                 new CompletionStateMachine(), FlowProgression.NONE);
     }
 
-    StepExecutionService(OccurrenceExecutionRepository occurrences,
-                         RewardLedgerRepository ledger, ComboObligationRepository obligations,
+    StepExecutionService(CatalogRepository catalog, StepRepository steps,
+                         TodayRepository today,
                          TransactionRunner transactions, Clock clock,
                          ComboPolicySource policies,
                          FlowRuntimeCoordinator flows) {
-        this(occurrences, ledger, obligations, transactions, clock,
+        this(catalog, steps, today, transactions, clock,
                 new RewardCalculator(policies),
                 new CompletionStateMachine(), flows);
     }
 
-    StepExecutionService(OccurrenceExecutionRepository occurrences,
-                         RewardLedgerRepository ledger, ComboObligationRepository obligations,
+    StepExecutionService(CatalogRepository catalog, StepRepository steps,
+                         TodayRepository today,
                          TransactionRunner transactions,
                          Clock clock, RewardCalculator rewards,
                          CompletionStateMachine states, FlowProgression flows) {
-        this.occurrences = occurrences;
-        this.ledger = ledger;
+        this.catalog = catalog;
+        this.steps = steps;
+        this.today = today;
         this.transactions = transactions;
         this.clock = clock;
         this.rewards = rewards;
         this.states = states;
-        this.obligationResolver = new ComboObligationResolver(obligations);
+        this.obligationResolver = new ComboObligationResolver(today);
         this.flows = flows == null ? FlowProgression.NONE : flows;
     }
 
@@ -89,10 +91,10 @@ public final class StepExecutionService {
 
     public RewardReceipt toggleStep(String stepId, Long chosenDelayMillis) {
         return transactions.inTransaction(() -> {
-            OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
+            OccurrenceStep step = steps.findOccurrenceStep(stepId);
             if (step == null || step.repetitionProgress != null)
                 return RewardReceipt.none();
-            Occurrence occurrence = occurrences.findOccurrence(step.occurrenceId);
+            Occurrence occurrence = today.findOccurrence(step.occurrenceId);
             return step.done ? undoStep(occurrence, step) : completeStep(
                     occurrence, step, newId(), chosenDelayMillis);
         });
@@ -107,32 +109,32 @@ public final class StepExecutionService {
     }
 
     StepExecutionResult recordSetResultInsideTransaction(String stepId, SetResult value) {
-        OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
+        OccurrenceStep step = steps.findOccurrenceStep(stepId);
         if (step == null)
             return result(StepExecutionResult.Status.INVALID_STEP, null, RewardReceipt.none());
-        Occurrence occurrence = occurrences.findOccurrence(step.occurrenceId);
+        Occurrence occurrence = today.findOccurrence(step.occurrenceId);
         if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
             return result(StepExecutionResult.Status.OCCURRENCE_CLOSED, step,
                     RewardReceipt.none());
         if (step.done || step.repetitionProgress == null)
             return result(StepExecutionResult.Status.UNSUPPORTED, step, RewardReceipt.none());
         OccurrenceStep changed = step.recordSetResult(value);
-        occurrences.updateOccurrenceStep(changed);
+        steps.updateOccurrenceStep(changed);
         RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
         if (changed.done) {
             obligationResolver.resolve(changed.comboOwnerId,
-                    occurrences.findTask(occurrence.taskId), occurrence, clock.today());
+                    catalog.findTask(occurrence.taskId), occurrence, clock.today());
             flows.onStepCompleted(occurrence, changed, null);
             finalizeZeroOccurrenceIfComplete(occurrence);
             return result(StepExecutionResult.Status.COMPLETED,
-                    occurrences.findOccurrenceStep(stepId), reward);
+                    steps.findOccurrenceStep(stepId), reward);
         }
         return result(StepExecutionResult.Status.RECORDED, changed, reward);
     }
 
     public StepExecutionResult correctRepetitionResult(String stepId, int index, int repetitions) {
         return transactions.inTransaction(() -> {
-            OccurrenceStep current = occurrences.findOccurrenceStep(stepId);
+            OccurrenceStep current = steps.findOccurrenceStep(stepId);
             if (current == null)
                 return result(StepExecutionResult.Status.INVALID_STEP, null,
                         RewardReceipt.none());
@@ -151,10 +153,10 @@ public final class StepExecutionService {
 
     StepExecutionResult correctSetResultInsideTransaction(String stepId, int index,
                                                           SetResult value) {
-        OccurrenceStep current = occurrences.findOccurrenceStep(stepId);
+        OccurrenceStep current = steps.findOccurrenceStep(stepId);
         if (current == null)
             return result(StepExecutionResult.Status.INVALID_STEP, null, RewardReceipt.none());
-        Occurrence occurrence = occurrences.findOccurrence(current.occurrenceId);
+        Occurrence occurrence = today.findOccurrence(current.occurrenceId);
         if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
             return result(StepExecutionResult.Status.OCCURRENCE_CLOSED, current,
                     RewardReceipt.none());
@@ -165,7 +167,7 @@ public final class StepExecutionService {
         if (current.done && !changed.done && !flows.canReopenStep(occurrence, current))
             return result(StepExecutionResult.Status.UNSUPPORTED, current,
                     RewardReceipt.none());
-        occurrences.updateOccurrenceStep(changed);
+        steps.updateOccurrenceStep(changed);
         RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
         if (!current.done && changed.done) flows.onStepCompleted(occurrence, changed, null);
         else if (current.done && !changed.done) flows.onStepReopened(occurrence, changed);
@@ -175,14 +177,14 @@ public final class StepExecutionService {
 
     public AdvanceTodayStepResult advanceStepWithPlannedResult(String stepId) {
         return transactions.inTransaction(() -> {
-            OccurrenceStep step = occurrences.findOccurrenceStep(stepId);
+            OccurrenceStep step = steps.findOccurrenceStep(stepId);
             if (step == null)
                 return advance(AdvanceTodayStepResult.Status.INVALID_STEP, null,
                         Collections.emptyList(), RewardReceipt.none());
             if (step.done)
                 return advance(AdvanceTodayStepResult.Status.STEP_ALREADY_DONE, null,
                         openIds(step.occurrenceId), RewardReceipt.none());
-            Occurrence occurrence = occurrences.findOccurrence(step.occurrenceId);
+            Occurrence occurrence = today.findOccurrence(step.occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return advance(AdvanceTodayStepResult.Status.OCCURRENCE_CLOSED, null,
                         openIds(step.occurrenceId), RewardReceipt.none());
@@ -197,7 +199,7 @@ public final class StepExecutionService {
                 return advance(AdvanceTodayStepResult.Status.NO_PLANNED_VALUE, null,
                         openIds(step.occurrenceId), RewardReceipt.none());
             OccurrenceStep changed = step.recordRepetitionResult(planned);
-            occurrences.updateOccurrenceStep(changed);
+            steps.updateOccurrenceStep(changed);
             RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
             if (changed.done) {
                 flows.onStepCompleted(occurrence, changed, null);
@@ -221,10 +223,10 @@ public final class StepExecutionService {
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
             OccurrenceStep completed = step.done ? step : step.complete();
-            occurrences.updateOccurrenceStep(completed);
+            steps.updateOccurrenceStep(completed);
             RewardReceipt receipt = adjustQuantitativeReward(occurrence, completed, transactionId);
             obligationResolver.resolve(completed.comboOwnerId,
-                    occurrences.findTask(occurrence.taskId), occurrence, clock.today());
+                    catalog.findTask(occurrence.taskId), occurrence, clock.today());
             if (!step.done && completed.done)
                 flows.onStepCompleted(occurrence, completed, chosenDelayMillis);
             finalizeZeroOccurrenceIfComplete(occurrence);
@@ -241,11 +243,11 @@ public final class StepExecutionService {
         RewardBooking booking = new RewardBooking(newId(), transactionId, occurrence.id, step.id,
                 step.comboOwnerId, RewardBooking.Kind.STEP_EARNED, RewardBooking.Target.VESSEL,
                 calculated.xp, change.appliedDelta, clock.today(), null);
-        ledger.putCombo(change.progress);
-        ledger.insertRewardBooking(booking);
+        today.putCombo(change.progress);
+        today.insertRewardBooking(booking);
         OccurrenceStep completed = states.completeStep(occurrence, step);
-        occurrences.updateOccurrenceStep(completed);
-        obligationResolver.resolve(step.comboOwnerId, occurrences.findTask(occurrence.taskId),
+        steps.updateOccurrenceStep(completed);
+        obligationResolver.resolve(step.comboOwnerId, catalog.findTask(occurrence.taskId),
                 occurrence, clock.today());
         flows.onStepCompleted(occurrence, completed, chosenDelayMillis);
         return RewardReceipt.of(transactionId, Collections.singletonList(booking),
@@ -262,10 +264,10 @@ public final class StepExecutionService {
         if (planned == null) return completeStep(occurrence, step, transactionId);
         OccurrenceStep changed = step;
         while (!changed.done) changed = changed.recordRepetitionResult(planned);
-        occurrences.updateOccurrenceStep(changed);
+        steps.updateOccurrenceStep(changed);
         RewardReceipt receipt = adjustQuantitativeReward(occurrence, changed, transactionId);
         obligationResolver.resolve(changed.comboOwnerId,
-                occurrences.findTask(occurrence.taskId), occurrence, clock.today());
+                catalog.findTask(occurrence.taskId), occurrence, clock.today());
         flows.onStepCompleted(occurrence, changed, null);
         return receipt;
     }
@@ -273,7 +275,7 @@ public final class StepExecutionService {
     private RewardReceipt adjustQuantitativeReward(Occurrence occurrence, OccurrenceStep step,
                                                     String transactionId) {
         if (step.repetitionProgress == null) return RewardReceipt.none();
-        List<RewardBooking> history = ledger.rewardBookings(occurrence.id);
+        List<RewardBooking> history = today.rewardBookings(occurrence.id);
         int currentXp = 0;
         int currentCombo = 0;
         Integer frozenPlan = null;
@@ -304,7 +306,7 @@ public final class StepExecutionService {
         int requestedComboDelta = desiredCombo - currentCombo;
         if (xpDelta == 0 && requestedComboDelta == 0) {
             if (desiredXp > 0) obligationResolver.resolve(step.comboOwnerId,
-                    occurrences.findTask(occurrence.taskId), occurrence, clock.today());
+                    catalog.findTask(occurrence.taskId), occurrence, clock.today());
             else obligationResolver.reopen(step.comboOwnerId, occurrence, clock.today());
             return RewardReceipt.none();
         }
@@ -313,10 +315,10 @@ public final class StepExecutionService {
                 step.comboOwnerId, hasPlanBooking ? RewardBooking.Kind.STEP_ADJUSTMENT
                 : RewardBooking.Kind.STEP_EARNED, RewardBooking.Target.VESSEL,
                 xpDelta, comboChange.appliedDelta, clock.today(), null, plannedXp);
-        ledger.putCombo(comboChange.progress);
-        ledger.insertRewardBooking(booking);
+        today.putCombo(comboChange.progress);
+        today.insertRewardBooking(booking);
         if (desiredXp > 0) obligationResolver.resolve(step.comboOwnerId,
-                occurrences.findTask(occurrence.taskId), occurrence, clock.today());
+                catalog.findTask(occurrence.taskId), occurrence, clock.today());
         else obligationResolver.reopen(step.comboOwnerId, occurrence, clock.today());
         return RewardReceipt.of(transactionId, Collections.singletonList(booking),
                 RewardReceipt.Target.VESSEL);
@@ -334,22 +336,22 @@ public final class StepExecutionService {
 
     private void finalizeZeroOccurrenceIfComplete(Occurrence occurrence) {
         if (occurrence == null || occurrence.state != OccurrenceState.OPEN) return;
-        for (OccurrenceStep value : occurrences.occurrenceSteps(occurrence.id))
+        for (OccurrenceStep value : steps.occurrenceSteps(occurrence.id))
             if (!value.done) return;
         int vesselXp = 0;
-        for (RewardBooking booking : ledger.rewardBookings(occurrence.id))
+        for (RewardBooking booking : today.rewardBookings(occurrence.id))
             if (booking.target == RewardBooking.Target.VESSEL) vesselXp += booking.xpDelta;
         if (vesselXp != 0) return;
         if (occurrence.kind == OccurrenceKind.FLOW_SHEET) return;
         de.thonktank.autosecretary.domain.model.Task task =
-                occurrences.findTask(occurrence.taskId);
+                catalog.findTask(occurrence.taskId);
         if (task == null) return;
         obligationResolver.resolve(ComboProgress.taskOwner(task.id), task, occurrence,
                 clock.today());
-        occurrences.updateOccurrence(states.completeOccurrence(occurrence, clock.today()));
-        occurrences.updateTask(new ScheduleProjector().project(task, new ScheduleProjector.Input(
-                occurrences.earliestOpenOccurrence(task.id),
-                occurrences.latestCompletedOccurrence(task.id))));
+        today.updateOccurrence(states.completeOccurrence(occurrence, clock.today()));
+        catalog.updateTask(new ScheduleProjector().project(task, new ScheduleProjector.Input(
+                today.earliestOpenOccurrence(task.id),
+                today.latestCompletedOccurrence(task.id))));
     }
 
     private RewardReceipt undoStep(Occurrence occurrence, OccurrenceStep step) {
@@ -362,10 +364,10 @@ public final class StepExecutionService {
         String transactionId = newId();
         RewardBooking reversal = original.reverse(newId(), transactionId, clock.today());
         ComboProgress current = combo(original.ownerId, occurrence.taskId, ComboProgress.Kind.STEP);
-        ledger.putCombo(current.undo(original.comboPointDelta, clock.today()));
-        ledger.insertRewardBooking(reversal);
+        today.putCombo(current.undo(original.comboPointDelta, clock.today()));
+        today.insertRewardBooking(reversal);
         OccurrenceStep reopened = states.reopenStep(occurrence, step);
-        occurrences.updateOccurrenceStep(reopened);
+        steps.updateOccurrenceStep(reopened);
         obligationResolver.reopen(original.ownerId, occurrence, clock.today());
         flows.onStepReopened(occurrence, reopened);
         return RewardReceipt.of(transactionId, Collections.singletonList(reversal),
@@ -373,7 +375,7 @@ public final class StepExecutionService {
     }
 
     private void moveToFirstOpen(Occurrence occurrence, String stepId) {
-        List<OccurrenceStep> all = occurrences.occurrenceSteps(occurrence.id);
+        List<OccurrenceStep> all = steps.occurrenceSteps(occurrence.id);
         OccurrenceStep moving = null;
         OccurrenceStep first = null;
         for (OccurrenceStep value : all) {
@@ -383,19 +385,19 @@ public final class StepExecutionService {
         if (moving == null || first == null) return;
         TodayStepMoveResult move = TodayStepOrder.move(
                 new TodayOccurrenceSnapshot(occurrence, all, first), stepId, first.id);
-        if (move.moved()) occurrences.updateOccurrenceStepPositions(move.positionUpdates);
+        if (move.moved()) steps.updateOccurrenceStepPositions(move.positionUpdates);
     }
 
     private List<String> openIds(String occurrenceId) {
         List<String> result = new ArrayList<>();
-        for (OccurrenceStep value : occurrences.occurrenceSteps(occurrenceId))
+        for (OccurrenceStep value : steps.occurrenceSteps(occurrenceId))
             if (!value.done) result.add(value.id);
         return result;
     }
 
     private RewardBooking activeOriginal(String occurrenceId, String stepId,
                                          RewardBooking.Target target) {
-        List<RewardBooking> bookings = ledger.rewardBookings(occurrenceId);
+        List<RewardBooking> bookings = today.rewardBookings(occurrenceId);
         Set<String> reversed = new HashSet<>();
         for (RewardBooking booking : bookings)
             if (booking.reversesBookingId != null) reversed.add(booking.reversesBookingId);
@@ -410,10 +412,10 @@ public final class StepExecutionService {
 
     private ComboProgress combo(String owner, de.thonktank.autosecretary.domain.model.TaskId taskId,
                                 ComboProgress.Kind kind) {
-        ComboProgress combo = ledger.combo(owner);
+        ComboProgress combo = today.combo(owner);
         if (combo != null) return combo;
         combo = ComboProgress.fresh(owner, taskId, kind);
-        ledger.putCombo(combo);
+        today.putCombo(combo);
         return combo;
     }
 

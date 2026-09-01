@@ -36,7 +36,7 @@ public final class ScheduleAwareComboDecayTest {
     @Test public void plannedOffDayDoesNotDecayAResolvedIntervalStep() {
         Fixture fixture = new Fixture(ComboPolicy.defaults());
         OccurrenceStep step = fixture.createIntervalTaskAndMaterialize();
-        new ToggleStep(fixture.repository, fixture.repository, fixture.repository, fixture.repository, fixture.clock).execute(step.id);
+        new ToggleStep(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.transactions, fixture.clock).execute(step.id);
 
         fixture.clock.date = MONDAY.plusDays(1);
         fixture.materialize.execute();
@@ -104,7 +104,7 @@ public final class ScheduleAwareComboDecayTest {
 
     @Test public void decayLedgerEntryDoesNotMasqueradeAsACompletionReward() {
         Fixture fixture = new Fixture(ComboPolicy.defaults());
-        new CreateTask(fixture.repository, fixture.repository, fixture.repository, fixture.clock, fixture.ids).execute(
+        new CreateTask(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.transactions, fixture.clock, fixture.ids).execute(
                 TaskDefinition.basic("Einmalig", TaskSlot.MORNING, Recurrence.ONCE,
                         1, 0, Collections.emptyList()));
         fixture.materialize.execute();
@@ -117,14 +117,14 @@ public final class ScheduleAwareComboDecayTest {
         fixture.decay.execute();
         Occurrence carried = fixture.repository.openOccurrences().get(0);
 
-        assertTrue(new CompleteOccurrence(fixture.repository, fixture.repository, fixture.repository, fixture.repository, fixture.clock)
+        assertTrue(new CompleteOccurrence(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.transactions, fixture.clock)
                 .execute(carried.id).xp > 0);
         assertEquals(11, fixture.repository.combo(ComboProgress.taskOwner(first.taskId)).points);
     }
 
     @Test public void accumulateKeepsEveryDueDateButDashboardAdvancesOneAtATime() {
         Fixture fixture = new Fixture(ComboPolicy.defaults());
-        new CreateTask(fixture.repository, fixture.repository, fixture.repository, fixture.clock, fixture.ids).execute(
+        new CreateTask(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.transactions, fixture.clock, fixture.ids).execute(
                 new TaskDefinition("Gym", null, TaskSlot.EVENING, Recurrence.DAILY,
                         1, 0, TimeOfDay.EVENING.bit, TaskBoundKind.FOREVER,
                         null, null, null, null, "", MissedOccurrenceMode.ACCUMULATE,
@@ -135,15 +135,15 @@ public final class ScheduleAwareComboDecayTest {
 
         assertEquals(3, fixture.repository.openOccurrences().size());
         de.thonktank.autosecretary.domain.model.Dashboard first =
-                new LoadDashboard(fixture.repository, fixture.repository).execute(fixture.clock.today());
+                new LoadDashboard(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.flows).execute(fixture.clock.today());
         assertEquals(1, first.tasks.size());
         assertEquals(MONDAY, first.tasks.get(0).occurrence.scheduledOn);
         assertEquals(2, first.tasks.get(0).backlogCount);
 
-        new CompleteOccurrence(fixture.repository, fixture.repository, fixture.repository, fixture.repository, fixture.clock)
+        new CompleteOccurrence(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.transactions, fixture.clock)
                 .execute(first.tasks.get(0).occurrence.id);
         de.thonktank.autosecretary.domain.model.Dashboard next =
-                new LoadDashboard(fixture.repository, fixture.repository).execute(fixture.clock.today());
+                new LoadDashboard(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.flows).execute(fixture.clock.today());
         assertEquals(MONDAY.plusDays(1), next.tasks.stream().filter(value -> !value.done)
                 .findFirst().orElseThrow().occurrence.scheduledOn);
         assertEquals(1, next.tasks.stream().filter(value -> !value.done)
@@ -155,16 +155,16 @@ public final class ScheduleAwareComboDecayTest {
         final MutableClock clock = new MutableClock(MONDAY);
         final IncrementingIds ids = new IncrementingIds();
         final MaterializeDueOccurrences materialize =
-                new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids);
+                new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids);
         final ApplyComboDecay decay;
 
         Fixture(ComboPolicy policy) {
             ComboPolicySource source = () -> policy;
-            decay = new ApplyComboDecay(repository, repository, repository, clock, source);
+            decay = new ApplyComboDecay(repository.today, repository.transactions, clock, source);
         }
 
         OccurrenceStep createIntervalTaskAndMaterialize() {
-            new CreateTask(repository, repository, repository, clock, ids).execute(
+            new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(
                     TaskDefinition.basic("Peeling", TaskSlot.EVENING, Recurrence.INTERVAL,
                             2, 0, Collections.singletonList("Anwenden")));
             materialize.execute();

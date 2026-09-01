@@ -7,6 +7,9 @@ import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,8 +21,8 @@ import java.util.Set;
 final class StepTransferSupport {
     private StepTransferSupport() { }
 
-    static Task active(StepOrganizationRepository repository, TaskId id) {
-        Task task = repository.findTask(id);
+    static Task active(CatalogRepository catalog, TaskId id) {
+        Task task = catalog.findTask(id);
         return task == null || task.archived || task.conditionDone ? null : task;
     }
 
@@ -41,10 +44,11 @@ final class StepTransferSupport {
         return isCanonical(positioned);
     }
 
-    static boolean canonicalSnapshots(StepOrganizationRepository repository, TaskId taskId) {
-        for (Occurrence occurrence : repository.openOccurrences(taskId)) {
+    static boolean canonicalSnapshots(StepRepository steps, TodayRepository today,
+                                      TaskId taskId) {
+        for (Occurrence occurrence : today.openOccurrences(taskId)) {
             List<Positioned> positioned = new ArrayList<>();
-            for (OccurrenceStep value : repository.occurrenceSteps(occurrence.id))
+            for (OccurrenceStep value : steps.occurrenceSteps(occurrence.id))
                 positioned.add(new Positioned() {
                     @Override public String id() { return value.id; }
                     @Override public int position() { return value.position; }
@@ -70,13 +74,14 @@ final class StepTransferSupport {
                 value.prescription, value.assistantProfile, value.note, value.activationKind);
     }
 
-    static boolean resequenceOpen(StepOrganizationRepository repository, TaskId taskId) {
+    static boolean resequenceOpen(StepRepository repository, TodayRepository today,
+                                  TaskId taskId) {
         Map<String, Integer> templateOrder = new HashMap<>();
         List<TaskStepTemplate> templates = repository.templates(taskId);
         for (int index = 0; index < templates.size(); index++)
             templateOrder.put(templates.get(index).id, index);
         boolean changed = false;
-        for (Occurrence occurrence : repository.openOccurrences(taskId)) {
+        for (Occurrence occurrence : today.openOccurrences(taskId)) {
             List<OccurrenceStep> steps = repository.occurrenceSteps(occurrence.id);
             steps.sort((left, right) -> {
                 int leftOrder = templateOrder.getOrDefault(left.sourceTemplateId,
@@ -95,14 +100,14 @@ final class StepTransferSupport {
         return changed;
     }
 
-    static OccurrenceStep snapshot(StepOrganizationRepository repository, String occurrenceId,
+    static OccurrenceStep snapshot(StepRepository repository, String occurrenceId,
                                    String templateId) {
         for (OccurrenceStep step : repository.occurrenceSteps(occurrenceId))
             if (templateId.equals(step.sourceTemplateId)) return step;
         return null;
     }
 
-    static void reparentCombo(StepOrganizationRepository repository, String templateId,
+    static void reparentCombo(TodayRepository repository, String templateId,
                               TaskId taskId) {
         String owner = ComboProgress.stepOwner(templateId);
         ComboProgress combo = repository.combo(owner);

@@ -53,7 +53,7 @@ public final class TodayStepExecutionTest {
     }
 
     @Test public void plannedSetIsRecordedAndIncompleteFutureStepMovesToFirstOpenSlot() {
-        AdvanceTodayStep advance = new AdvanceTodayStep(repository, repository, repository, repository, clock);
+        AdvanceTodayStep advance = new AdvanceTodayStep(repository.catalog, repository.steps, repository.today, repository.transactions, clock);
 
         AdvanceTodayStepResult firstAdvance = advance.execute("sets");
         assertEquals(AdvanceTodayStepResult.Status.PROGRESS_RECORDED, firstAdvance.status);
@@ -83,7 +83,7 @@ public final class TodayStepExecutionTest {
     }
 
     @Test public void todayMoveReordersOnlyOpenSlotsAndPreservesCompletedSlot() {
-        MoveTodayStep move = new MoveTodayStep(repository, repository);
+        MoveTodayStep move = new MoveTodayStep(repository.steps, repository.today, repository.transactions);
         List<TaskStepDefinition> templatesBefore = templateDefinitions();
 
         assertEquals(de.thonktank.autosecretary.domain.today.TodayStepMoveResult.Status.MOVED,
@@ -114,7 +114,7 @@ public final class TodayStepExecutionTest {
                 stepIn("open-c", "mixed", 4, "E", false)));
 
         assertEquals(de.thonktank.autosecretary.domain.today.TodayStepMoveResult.Status.MOVED,
-                new MoveTodayStep(repository, repository).execute("open-c", "open-a").status);
+                new MoveTodayStep(repository.steps, repository.today, repository.transactions).execute("open-c", "open-a").status);
 
         assertEquals(Arrays.asList("open-c", "done-a", "open-a", "done-b", "open-b"),
                 ids("mixed"));
@@ -124,7 +124,7 @@ public final class TodayStepExecutionTest {
     }
 
     @Test public void plainFutureStepCompletesImmediately() {
-        AdvanceTodayStepResult result = new AdvanceTodayStep(repository, repository, repository, repository, clock).execute("last");
+        AdvanceTodayStepResult result = new AdvanceTodayStep(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute("last");
         assertEquals(AdvanceTodayStepResult.Status.STEP_COMPLETED, result.status);
         assertEquals(null, result.recordedPlanValue);
         assertEquals(10, result.xp);
@@ -132,7 +132,7 @@ public final class TodayStepExecutionTest {
     }
 
     @Test public void incompleteRepetitionWriteImmediatelyRewardsTheActualRatio() {
-        StepExecutionResult result = new RecordRepetitionResult(repository, repository, repository, repository, clock)
+        StepExecutionResult result = new RecordRepetitionResult(repository.catalog, repository.steps, repository.today, repository.transactions, clock)
                 .execute("sets", 11);
 
         assertEquals(StepExecutionResult.Status.RECORDED, result.status);

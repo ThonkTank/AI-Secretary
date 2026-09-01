@@ -44,7 +44,7 @@ public final class LoadTrainingContextTest {
         repository.insertTrainingAdjustment(adjustment(repository, 10,
                 TrainingAdjustment.State.APPLIED));
 
-        TrainingContext context = new LoadTrainingContext(repository, repository).execute("press");
+        TrainingContext context = new LoadTrainingContext(repository.steps, repository, repository.transactions).execute("press");
 
         assertEquals(10, context.history.size());
         assertEquals(11L, context.history.get(0).auditOrder);
@@ -60,12 +60,12 @@ public final class LoadTrainingContextTest {
         InMemoryTrainingRepository repository = repository();
         repository.insertTrainingAdjustment(adjustment(repository, 1,
                 TrainingAdjustment.State.APPLIED));
-        assertTrue(new LoadTrainingContext(repository, repository).execute("press").canUndo);
+        assertTrue(new LoadTrainingContext(repository.steps, repository, repository.transactions).execute("press").canUndo);
         repository.insertTrainingLoadRequest(TrainingLoadRequest.open("request", "press",
                 "occ-step", TrainingDecision.LoadDirection.PROGRESS, load(50_000), TODAY,
                 repository.nextTrainingAuditOrder(), TrainingDecision.RULE_VERSION));
 
-        assertFalse(new LoadTrainingContext(repository, repository).execute("press").canUndo);
+        assertFalse(new LoadTrainingContext(repository.steps, repository, repository.transactions).execute("press").canUndo);
     }
 
     private static InMemoryTrainingRepository repository() {

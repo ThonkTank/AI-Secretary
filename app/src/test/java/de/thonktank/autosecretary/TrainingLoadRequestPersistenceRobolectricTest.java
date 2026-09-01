@@ -8,7 +8,6 @@ import android.content.Context;
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.ResistanceLoad;
@@ -48,10 +47,10 @@ public final class TrainingLoadRequestPersistenceRobolectricTest {
         context.deleteDatabase(DATABASE);
         AppDatabase first = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .allowMainThreadQueries().build();
-        RoomTaskRepository repository = new RoomTaskRepository(first);
+        RoomRepositoryFixture repository = new RoomRepositoryFixture(first);
         TaskId taskId = TaskId.of("task");
         LocalDate today = LocalDate.of(2026, 8, 31);
-        repository.insertTask(Task.restore(taskId, "Training", Recurrence.DAILY, 1, 0,
+        repository.catalog.insertTask(Task.restore(taskId, "Training", Recurrence.DAILY, 1, 0,
                 false, "", false, false, today, null, null, today, 1, false, null,
                 TaskBoundKind.FOREVER, null, null, null, null, "",
                 MissedOccurrenceMode.COLLAPSE));
@@ -64,21 +63,22 @@ public final class TrainingLoadRequestPersistenceRobolectricTest {
                         TrainingMuscleGroup.BACK), new TrainingAssistantState(
                         TrainingAssistantState.Status.ACTIVE, 5, 0, 0)), "",
                 StepActivationKind.SCHEDULED);
-        repository.insertTemplates(Collections.singletonList(template));
-        repository.insertTrainingLoadRequest(TrainingLoadRequest.open("request", template.id,
+        repository.steps.insertTemplates(Collections.singletonList(template));
+        repository.training.insertTrainingLoadRequest(TrainingLoadRequest.open("request", template.id,
                 "occ-step", TrainingDecision.LoadDirection.PROGRESS, load, today,
-                repository.nextTrainingAuditOrder(), TrainingDecision.RULE_VERSION));
+                repository.training.nextTrainingAuditOrder(), TrainingDecision.RULE_VERSION));
         first.close();
 
         AppDatabase reopened = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .allowMainThreadQueries().build();
-        RoomTaskRepository reopenedRepository = new RoomTaskRepository(reopened);
-        TrainingLoadRequest restored = reopenedRepository.openTrainingLoadRequest(template.id);
+        RoomRepositoryFixture reopenedRepository = new RoomRepositoryFixture(reopened);
+        TrainingLoadRequest restored = reopenedRepository.training.openTrainingLoadRequest(template.id);
         assertNotNull(restored);
         assertEquals(TrainingDecision.LoadDirection.PROGRESS, restored.direction);
         assertEquals(Long.valueOf(50_000), restored.currentLoad.milliUnits);
         assertEquals(TrainingDecision.RULE_VERSION, restored.ruleVersion);
-        TrainingContext projected = new LoadTrainingContext(reopenedRepository, reopenedRepository)
+        TrainingContext projected = new LoadTrainingContext(reopenedRepository.steps,
+                reopenedRepository.training, reopenedRepository.transactions)
                 .execute(template.id);
         assertNotNull(projected.openLoadRequest);
         assertEquals("request", projected.openLoadRequest.id);

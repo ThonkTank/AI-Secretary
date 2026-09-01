@@ -1,15 +1,15 @@
 package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.domain.model.CapacityResource;
-import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.FlowRepository;
 
 import java.util.List;
 
 /** Loads the shared capacity catalog for an unsaved task editor draft. */
 public final class LoadCapacityResources {
-    private final StepFlowDefinitionRepository repository;
+    private final FlowRepository repository;
 
-    public LoadCapacityResources(StepFlowDefinitionRepository repository) {
+    public LoadCapacityResources(FlowRepository repository) {
         this.repository = repository;
     }
 

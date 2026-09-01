@@ -4,8 +4,9 @@ import de.thonktank.autosecretary.domain.model.CapacityResource;
 import de.thonktank.autosecretary.domain.model.StepFlowDefinition;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
-import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.FlowRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.ArrayList;
@@ -13,21 +14,24 @@ import java.util.List;
 
 /** Creates or edits a named capacity pool while preserving its stable identity. */
 public final class SaveCapacityResource {
-    private final StepFlowDefinitionRepository repository;
-    private final TaskDefinitionRepository tasks;
+    private final FlowRepository repository;
+    private final CatalogRepository tasks;
+    private final StepRepository steps;
     private final TransactionRunner transactions;
     private final IdGenerator ids;
 
-    public SaveCapacityResource(StepFlowDefinitionRepository repository,
+    public SaveCapacityResource(FlowRepository repository,
                                 TransactionRunner transactions, IdGenerator ids) {
-        this(repository, null, transactions, ids);
+        this(repository, null, null, transactions, ids);
     }
 
-    public SaveCapacityResource(StepFlowDefinitionRepository repository,
-                                TaskDefinitionRepository tasks, TransactionRunner transactions,
+    public SaveCapacityResource(FlowRepository repository,
+                                CatalogRepository tasks, StepRepository steps,
+                                TransactionRunner transactions,
                                 IdGenerator ids) {
         this.repository = repository;
         this.tasks = tasks;
+        this.steps = steps;
         this.transactions = transactions;
         this.ids = ids;
     }
@@ -55,7 +59,7 @@ public final class SaveCapacityResource {
         }
         if (!replaced) resources.add(changed);
         for (Task task : tasks.allTasks()) {
-            List<TaskStepTemplate> templates = tasks.templates(task.id);
+            List<TaskStepTemplate> templates = steps.templates(task.id);
             List<de.thonktank.autosecretary.domain.model.StepTransition> transitions =
                     repository.stepTransitions(task.id);
             List<de.thonktank.autosecretary.domain.model.StepResourceLease> leases =

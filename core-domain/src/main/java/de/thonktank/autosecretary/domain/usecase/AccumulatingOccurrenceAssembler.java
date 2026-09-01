@@ -8,7 +8,8 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.repository.MaterializationRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,11 +19,14 @@ import java.util.Map;
 
 /** Materializes every genuine due date as its own open occurrence. */
 final class AccumulatingOccurrenceAssembler {
-    private final MaterializationRepository repository;
+    private final StepRepository steps;
+    private final TodayRepository today;
     private final IdGenerator ids;
 
-    AccumulatingOccurrenceAssembler(MaterializationRepository repository, IdGenerator ids) {
-        this.repository = repository;
+    AccumulatingOccurrenceAssembler(StepRepository steps, TodayRepository today,
+                                    IdGenerator ids) {
+        this.steps = steps;
+        this.today = today;
         this.ids = ids;
     }
 
@@ -36,7 +40,7 @@ final class AccumulatingOccurrenceAssembler {
                     globalNextOrders.getOrDefault(due.slot, 0) + 1);
             Occurrence occurrence = new Occurrence(ids.nextId(), task.id, due.scheduledOn,
                     due.slot, OccurrenceState.OPEN, order, null);
-            repository.insertOccurrence(occurrence);
+            today.insertOccurrence(occurrence);
             byDue.put(key(due.scheduledOn, due.slot), occurrence);
             globalNextOrders.put(due.slot,
                     Math.max(globalNextOrders.getOrDefault(due.slot, 0), order));
@@ -48,7 +52,7 @@ final class AccumulatingOccurrenceAssembler {
                         Collections.emptyList(), template.id,
                         ComboProgress.stepOwner(template.id), null, CarryForwardReason.NONE));
             }
-            if (!steps.isEmpty()) repository.insertOccurrenceSteps(steps);
+            if (!steps.isEmpty()) this.steps.insertOccurrenceSteps(steps);
             changed = true;
         }
         return new Result(changed, byDue);

@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.time.LocalDate;
@@ -13,19 +14,44 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 
 /** Small transactional double for the adaptive-training slice only. */
-public final class InMemoryTrainingRepository implements TrainingRepository, TransactionRunner {
+public final class InMemoryTrainingRepository implements TrainingRepository {
+    public final StepRepository steps = adapter(StepRepository.class);
+    public final TransactionRunner transactions = adapter(TransactionRunner.class);
     private Map<String, TaskStepTemplate> templates = new LinkedHashMap<>();
     private Map<String, TrainingAdjustment> adjustments = new LinkedHashMap<>();
     private Map<String, TrainingLoadRequest> requests = new LinkedHashMap<>();
     private double effectiveSets;
 
+    private <T> T adapter(Class<T> port) {
+        return port.cast(Proxy.newProxyInstance(port.getClassLoader(), new Class<?>[]{port},
+                (proxy, method, arguments) -> invokePort(port, method, arguments)));
+    }
+
+    private Object invokePort(Class<?> port, Method method, Object[] arguments) throws Throwable {
+        try {
+            return getClass().getMethod(method.getName(), method.getParameterTypes())
+                    .invoke(this, arguments);
+        } catch (NoSuchMethodException missing) {
+            if (List.class.isAssignableFrom(method.getReturnType())) return new ArrayList<>();
+            if (method.getReturnType() == void.class)
+                throw new UnsupportedOperationException(port.getSimpleName() + '.'
+                        + method.getName() + " is not supported by this test fixture");
+            return null;
+        } catch (InvocationTargetException failure) {
+            throw failure.getCause();
+        }
+    }
+
     public void insertTemplate(TaskStepTemplate template) { templates.put(template.id, template); }
 
     public void setEffectiveSets(double value) { effectiveSets = value; }
 
-    @Override public <T> T inTransaction(Transaction<T> operation) {
+    public <T> T inTransaction(TransactionRunner.Transaction<T> operation) {
         Map<String, TaskStepTemplate> beforeTemplates = new LinkedHashMap<>(templates);
         Map<String, TrainingAdjustment> beforeAdjustments = new LinkedHashMap<>(adjustments);
         Map<String, TrainingLoadRequest> beforeRequests = new LinkedHashMap<>(requests);
@@ -39,9 +65,9 @@ public final class InMemoryTrainingRepository implements TrainingRepository, Tra
         }
     }
 
-    @Override public TaskStepTemplate findTemplate(String id) { return templates.get(id); }
+    public TaskStepTemplate findTemplate(String id) { return templates.get(id); }
 
-    @Override public void updateTrainingTemplate(TaskStepTemplate template) {
+    public void updateTemplate(TaskStepTemplate template) {
         templates.put(template.id, template);
     }
 

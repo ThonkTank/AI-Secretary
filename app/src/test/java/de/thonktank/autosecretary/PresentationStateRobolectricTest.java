@@ -36,7 +36,6 @@ import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.calendar.CalendarResult;
-import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.data.local.RoomInvalidationSource;
 import de.thonktank.autosecretary.data.observable.CalendarInvalidationSource;
 import de.thonktank.autosecretary.data.observable.ClockInvalidationSource;
@@ -55,7 +54,6 @@ import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.schedule.ScheduleMoveRequest;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
@@ -96,7 +94,7 @@ public final class PresentationStateRobolectricTest {
 
     private Context context;
     private AppDatabase database;
-    private TaskStore repository;
+    private RoomRepositoryFixture repository;
     private ApplicationUseCaseComposition tasks;
     private DashboardPresenter presenter;
     private UiPreferences preferences;
@@ -118,9 +116,9 @@ public final class PresentationStateRobolectricTest {
                 .setTransactionExecutor(Runnable::run)
                 .setQueryCallback((sql, arguments) -> databaseQueries.add(sql), Runnable::run)
                 .build();
-        repository = new RoomTaskRepository(database);
+        repository = new RoomRepositoryFixture(database);
         IdGenerator idGenerator = () -> "presentation-" + ids.incrementAndGet();
-        tasks = new ApplicationUseCaseComposition(repository, repository, repository, clock,
+        tasks = new ApplicationUseCaseComposition(database, clock,
                 idGenerator,
                 de.thonktank.autosecretary.domain.repository.ComboPolicySource.defaults());
         presenter = new DashboardPresenter(clock, tasks.today.loadDashboard, tasks.today.materializeDue,
@@ -176,19 +174,19 @@ public final class PresentationStateRobolectricTest {
         assertFalse(value().loading);
 
         TaskId migratedId = TaskId.of("migrated-ongoing");
-        repository.insertTask(Task.restore(migratedId, "Bearbeitbar", Recurrence.INTERVAL,
+        repository.catalog.insertTask(Task.restore(migratedId, "Bearbeitbar", Recurrence.INTERVAL,
                 4, 0, true, "Fertig", false, false, clock.today(), null, null,
                 clock.today(), 1_024L, false, null, TaskBoundKind.FOREVER, null, null,
                 null, null, ""));
-        repository.insertTemplates(java.util.Arrays.asList(
+        repository.steps.insertTemplates(java.util.Arrays.asList(
                 de.thonktank.autosecretary.testing.StepTestFixtures.template(
                         "ongoing-a", migratedId, 0, "A"),
                 de.thonktank.autosecretary.testing.StepTestFixtures.template(
                         "ongoing-b", migratedId, 1, "B")));
-        repository.putScheduleEntries(Collections.singletonList(
+        repository.catalog.putScheduleEntries(Collections.singletonList(
                 new de.thonktank.autosecretary.domain.model.TaskScheduleEntry(
                         "ongoing-schedule", migratedId, TaskSlot.EVENING, 1_024L)));
-        String taskId = repository.allTasks().get(0).id.value;
+        String taskId = repository.catalog.allTasks().get(0).id.value;
 
         AppShellViewModel shell = newShellViewModel(shellHandle);
         shell.dispatch(AppShellAction.destinationSelected(NavigationDestination.OPTIONS));
@@ -245,7 +243,7 @@ public final class PresentationStateRobolectricTest {
 
         worker.runAll();
         assertFalse(editorValue().saving);
-        assertEquals(1, repository.allTasks().size());
+        assertEquals(1, repository.catalog.allTasks().size());
     }
 
     @Test public void refreshCompletesForTheRecreatedLifecycleOwnerWithoutDuplicateWork() {
@@ -303,7 +301,7 @@ public final class PresentationStateRobolectricTest {
 
     @Test public void dismissingAStillLoadingEditorPreventsStaleReopen() {
         TaskId id = TaskId.of("slow-editor");
-        repository.insertTask(Task.restore(id, "Langsam", Recurrence.DAILY,
+        repository.catalog.insertTask(Task.restore(id, "Langsam", Recurrence.DAILY,
                 1, 0, false, "", false, false, clock.today(), null, null,
                 clock.today(), 1_024L, false, null, TaskBoundKind.FOREVER, null, null,
                 null, null, ""));
@@ -329,7 +327,7 @@ public final class PresentationStateRobolectricTest {
         EditorUiState newer = editorValue();
         worker.runAll();
 
-        assertEquals(1, repository.allTasks().size());
+        assertEquals(1, repository.catalog.allTasks().size());
         assertSame(newer, editorValue());
         assertTrue(editorValue().open);
     }
@@ -386,14 +384,14 @@ public final class PresentationStateRobolectricTest {
         viewModel.dispatch(TodayAction.adjustRepetition(stepId, 1));
 
         assertEquals(14, value().repetitionInput.value);
-        assertTrue(repository.findOccurrenceStep(stepId).repetitionProgress.repetitions()
+        assertTrue(repository.steps.findOccurrenceStep(stepId).repetitionProgress.repetitions()
                 .isEmpty());
 
         viewModel.dispatch(TodayAction.submitRepetition(stepId));
 
         assertNull(value().repetitionInput.stepId);
         assertEquals(Collections.singletonList(14),
-                repository.findOccurrenceStep(stepId).repetitionProgress.repetitions());
+                repository.steps.findOccurrenceStep(stepId).repetitionProgress.repetitions());
     }
 
     @Test public void todayMenuRequestRestoresAndTransitionsAtomically() {
@@ -563,14 +561,14 @@ public final class PresentationStateRobolectricTest {
     @Test public void managementCommandIsReprojectedThroughRoomWithoutABrokerSignal() {
         tasks.catalog.create.execute(TaskDefinition.basic("Sortieren", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
-        de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
-        String entryId = repository.scheduleEntries(task.id).get(0).id;
+        de.thonktank.autosecretary.domain.model.Task task = repository.catalog.allTasks().get(0);
+        String entryId = repository.catalog.scheduleEntries(task.id).get(0).id;
         AllTasksViewModel management = newAllTasksViewModel(new SavedStateHandle());
 
         management.dispatch(AllTasksAction.scheduleMoved(new ScheduleMoveRequest(
                 ScheduleEntryId.of(entryId), TaskSlot.EVENING, java.util.Optional.empty())));
 
-        assertEquals(TaskSlot.EVENING, repository.scheduleEntries(task.id).get(0).slot);
+        assertEquals(TaskSlot.EVENING, repository.catalog.scheduleEntries(task.id).get(0).slot);
         assertEquals(TaskSlot.EVENING,
                 management.state().getValue().content.schedule.get(0).slot);
         management.onCleared();
@@ -579,7 +577,7 @@ public final class PresentationStateRobolectricTest {
     @Test public void managementRequestSurvivesRecreationUntilExplicitConfirmation() {
         tasks.catalog.create.execute(TaskDefinition.basic("Löschen", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Collections.emptyList()));
-        Task task = repository.allTasks().get(0);
+        Task task = repository.catalog.allTasks().get(0);
         SavedStateHandle handle = new SavedStateHandle();
         AllTasksViewModel management = newAllTasksViewModel(handle);
 
@@ -608,7 +606,7 @@ public final class PresentationStateRobolectricTest {
         recreated.dispatch(AllTasksAction.confirmDelete(restored.id));
 
         assertNull(recreated.state().getValue().firstRequest());
-        assertTrue(repository.allTasks().stream().noneMatch(value -> value.id.equals(task.id)));
+        assertTrue(repository.catalog.allTasks().stream().noneMatch(value -> value.id.equals(task.id)));
         recreated.onCleared();
     }
 

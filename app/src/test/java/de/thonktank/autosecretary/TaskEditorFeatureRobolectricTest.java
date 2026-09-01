@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -46,7 +45,6 @@ import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.model.TrainingObservation;
-import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
@@ -66,7 +64,7 @@ import de.thonktank.autosecretary.domain.usecase.UpdateTask;
 public final class TaskEditorFeatureRobolectricTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 17);
     private AppDatabase database;
-    private TaskStore repository;
+    private RoomRepositoryFixture repository;
     private SequenceIds ids;
     private MutableClock clock;
 
@@ -74,7 +72,7 @@ public final class TaskEditorFeatureRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
                 .allowMainThreadQueries().build();
-        repository = new RoomTaskRepository(database);
+        repository = new RoomRepositoryFixture(database);
         ids = new SequenceIds();
         clock = new MutableClock(TODAY);
     }
@@ -97,30 +95,30 @@ public final class TaskEditorFeatureRobolectricTest {
         TaskDefinition definition = new TaskDefinition("Katze", 15, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit | TimeOfDay.EVENING.bit,
                 TaskBoundKind.N_TIMES, null, null, 3, null, "", Collections.emptyList());
-        new CreateTask(repository, repository, repository, clock, ids).execute(definition);
-        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids);
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(definition);
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids);
         materialize.execute(); materialize.execute();
 
-        List<Occurrence> firstRound = repository.openOccurrences();
+        List<Occurrence> firstRound = repository.today.openOccurrences();
         assertEquals(2, firstRound.size());
         assertEquals(TaskSlot.MORNING, firstRound.get(0).slot);
         assertEquals(TaskSlot.EVENING, firstRound.get(1).slot);
-        assertEquals(Integer.valueOf(1), repository.allTasks().get(0).remainingCount);
-        assertEquals(2, new LoadDashboard(repository, repository).execute(TODAY).tasks.size());
+        assertEquals(Integer.valueOf(1), repository.catalog.allTasks().get(0).remainingCount);
+        assertEquals(2, new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows).execute(TODAY).tasks.size());
 
-        Occurrence morning = repository.findOccurrence(repository.allTasks().get(0).id,
+        Occurrence morning = repository.today.findOccurrence(repository.catalog.allTasks().get(0).id,
                 TODAY, TaskSlot.MORNING);
-        CompleteOccurrence complete = new CompleteOccurrence(repository, repository, repository, repository, clock);
+        CompleteOccurrence complete = new CompleteOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock);
         complete.execute(morning.id);
         materialize.execute();
-        assertEquals(morning.id, repository.findOccurrence(repository.allTasks().get(0).id,
+        assertEquals(morning.id, repository.today.findOccurrence(repository.catalog.allTasks().get(0).id,
                 TODAY, TaskSlot.MORNING).id);
-        assertEquals(1, database.tasks().occurrencesByState("OPEN").size());
-        assertEquals(1, database.tasks().completedOccurrences("COMPLETED", TODAY.toString()).size());
+        assertEquals(1, database.today().occurrencesByState("OPEN").size());
+        assertEquals(1, repository.today.completedOccurrences(TODAY).size());
         complete.execute(firstRound.get(1).id);
-        assertEquals(2, new LoadDashboard(repository, repository).execute(TODAY).tasks.size());
-        assertEquals(25, repository.xp());
-        assertEquals(TODAY.plusDays(1), repository.allTasks().get(0).nextDueOn);
+        assertEquals(2, new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows).execute(TODAY).tasks.size());
+        assertEquals(25, repository.today.xp());
+        assertEquals(TODAY.plusDays(1), repository.catalog.allTasks().get(0).nextDueOn);
     }
 
     @Test public void newEditorChoosesAContextualDaySlot() {
@@ -135,21 +133,21 @@ public final class TaskEditorFeatureRobolectricTest {
                 StepAmount.setsReps(3, 12), "23 kg");
         TaskDefinition definition = definition("Training", Recurrence.DAILY, 0,
                 TaskBoundKind.FOREVER, null, Collections.singletonList(original));
-        CreateTask create = new CreateTask(repository, repository, repository, clock, ids);
+        CreateTask create = new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids);
         create.execute(definition);
-        Task task = repository.allTasks().get(0);
-        String stableId = repository.templates(task.id).get(0).id;
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
-        Occurrence occurrence = repository.openOccurrences().get(0);
+        Task task = repository.catalog.allTasks().get(0);
+        String stableId = repository.steps.templates(task.id).get(0).id;
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
+        Occurrence occurrence = repository.today.openOccurrences().get(0);
 
         TaskStepDefinition edited = de.thonktank.autosecretary.testing.StepTestFixtures.definition(stableId, 0, "Neu", 0,
                 StepAmount.setsReps(4, 10), "25 kg");
-        new UpdateTask(repository, repository, repository, repository, repository, ids, clock).execute(task.id,
+        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.training, repository.transactions, ids, clock).execute(task.id,
                 definition("Training neu", Recurrence.DAILY, 0, TaskBoundKind.FOREVER,
                         null, Collections.singletonList(edited)));
 
-        TaskStepTemplate template = repository.templates(task.id).get(0);
-        OccurrenceStep snapshot = repository.occurrenceSteps(occurrence.id).get(0);
+        TaskStepTemplate template = repository.steps.templates(task.id).get(0);
+        OccurrenceStep snapshot = repository.steps.occurrenceSteps(occurrence.id).get(0);
         assertEquals(stableId, template.id);
         assertEquals(stableId, snapshot.sourceTemplateId);
         assertEquals("Neu", template.text);
@@ -163,25 +161,25 @@ public final class TaskEditorFeatureRobolectricTest {
                 StepAmount.none(), "");
         TaskStepDefinition everyOtherDay = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 1, "Intervall", 0, 2,
                 StepAmount.none(), "");
-        new CreateTask(repository, repository, repository, clock, ids).execute(definition(
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(definition(
                 "Pflege", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
                 Arrays.asList(always, everyOtherDay)));
-        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids);
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids);
 
         materialize.execute();
-        assertEquals(2, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+        assertEquals(2, repository.steps.occurrenceSteps(repository.today.openOccurrences().get(0).id).size());
         closeOpenOccurrence();
 
         clock.date = TODAY.plusDays(1);
         materialize.execute();
-        assertEquals(1, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
-        assertEquals("Immer", repository.occurrenceSteps(
-                repository.openOccurrences().get(0).id).get(0).text);
+        assertEquals(1, repository.steps.occurrenceSteps(repository.today.openOccurrences().get(0).id).size());
+        assertEquals("Immer", repository.steps.occurrenceSteps(
+                repository.today.openOccurrences().get(0).id).get(0).text);
         closeOpenOccurrence();
 
         clock.date = TODAY.plusDays(2);
         materialize.execute();
-        assertEquals(2, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+        assertEquals(2, repository.steps.occurrenceSteps(repository.today.openOccurrences().get(0).id).size());
     }
 
     @Test public void cadenceAnchorSurvivesHistoryDeletionReloadAndDefinitionEdit() {
@@ -191,47 +189,47 @@ public final class TaskEditorFeatureRobolectricTest {
                 StepAmount.none(), "");
         TaskDefinition original = definition("Pflege", Recurrence.DAILY, 0,
                 TaskBoundKind.FOREVER, null, Arrays.asList(always, interval));
-        new CreateTask(repository, repository, repository, clock, ids).execute(original);
-        Task task = repository.allTasks().get(0);
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(original);
+        Task task = repository.catalog.allTasks().get(0);
         assertEquals(TODAY, task.cadenceAnchorOn);
 
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
         closeOpenOccurrence();
         database.getOpenHelper().getWritableDatabase().execSQL(
                 "DELETE FROM occurrences WHERE taskId='" + task.id.value + "'");
 
-        List<TaskStepTemplate> templates = repository.templates(task.id);
+        List<TaskStepTemplate> templates = repository.steps.templates(task.id);
         TaskDefinition edited = definition("Pflege bearbeitet", Recurrence.DAILY, 0,
                 TaskBoundKind.FOREVER, null, Arrays.asList(
                 de.thonktank.autosecretary.testing.StepTestFixtures.definition(templates.get(0).id, 0, "Immer", 0,
                         StepAmount.none(), ""),
                 de.thonktank.autosecretary.testing.StepTestFixtures.definition(templates.get(1).id, 1, "Intervall", 0, 2,
                         StepAmount.none(), "")));
-        new UpdateTask(repository, repository, repository, repository, repository, ids, clock).execute(task.id, edited);
-        repository = new RoomTaskRepository(database);
-        assertEquals(TODAY, repository.findTask(task.id).cadenceAnchorOn);
+        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.training, repository.transactions, ids, clock).execute(task.id, edited);
+        repository = new RoomRepositoryFixture(database);
+        assertEquals(TODAY, repository.catalog.findTask(task.id).cadenceAnchorOn);
 
         clock.date = TODAY.plusDays(1);
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
-        assertEquals(1, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
+        assertEquals(1, repository.steps.occurrenceSteps(repository.today.openOccurrences().get(0).id).size());
         closeOpenOccurrence();
         clock.date = TODAY.plusDays(2);
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
-        assertEquals(2, repository.occurrenceSteps(repository.openOccurrences().get(0).id).size());
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
+        assertEquals(2, repository.steps.occurrenceSteps(repository.today.openOccurrences().get(0).id).size());
     }
 
     @Test public void activeStepIntervalWithoutPersistedAnchorFailsFast() {
         TaskId id = TaskId.of("missing-anchor");
-        repository.insertTask(Task.restore(id, "Beschädigt", Recurrence.DAILY, 1, 0,
+        repository.catalog.insertTask(Task.restore(id, "Beschädigt", Recurrence.DAILY, 1, 0,
                 false, "", false, false, TODAY, null, null, null, 1_024L, false,
                 null, TaskBoundKind.FOREVER, null, null, null, null, ""));
-        repository.insertTemplates(Collections.singletonList(de.thonktank.autosecretary.testing.StepTestFixtures.template(
+        repository.steps.insertTemplates(Collections.singletonList(de.thonktank.autosecretary.testing.StepTestFixtures.template(
                 "interval", id, 0, "Intervall", 0, 2, StepAmount.none(), "")));
-        repository.putScheduleEntries(Collections.singletonList(new TaskScheduleEntry(
+        repository.catalog.putScheduleEntries(Collections.singletonList(new TaskScheduleEntry(
                 "schedule", id, TaskSlot.MORNING, 1_024L)));
 
         IllegalStateException failure = assertThrows(IllegalStateException.class,
-                () -> new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute());
+                () -> new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute());
         assertTrue(failure.getMessage().contains("missing-anchor"));
     }
 
@@ -239,80 +237,81 @@ public final class TaskEditorFeatureRobolectricTest {
         TaskDefinition everyThreeDays = new TaskDefinition("Intervall", null, TaskSlot.MORNING,
                 Recurrence.INTERVAL, 3, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", Collections.emptyList());
-        new CreateTask(repository, repository, repository, clock, ids).execute(everyThreeDays);
-        Task task = repository.allTasks().get(0);
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
-        assertEquals(TODAY.plusDays(3), repository.findTask(task.id).nextDueOn);
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(everyThreeDays);
+        Task task = repository.catalog.allTasks().get(0);
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
+        assertEquals(TODAY.plusDays(3), repository.catalog.findTask(task.id).nextDueOn);
 
         clock.date = TODAY.plusDays(1);
         TaskDefinition everyFiveDays = new TaskDefinition("Intervall", null, TaskSlot.MORNING,
                 Recurrence.INTERVAL, 5, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", Collections.emptyList());
-        new UpdateTask(repository, repository, repository, repository, repository, ids, clock).execute(task.id, everyFiveDays);
+        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.training, repository.transactions, ids, clock).execute(task.id, everyFiveDays);
 
-        Task updated = repository.findTask(task.id);
+        Task updated = repository.catalog.findTask(task.id);
         assertEquals(TODAY.plusDays(1), updated.nextDueOn);
         assertEquals(TODAY, updated.cadenceAnchorOn);
     }
 
     private void closeOpenOccurrence() {
-        Occurrence occurrence = repository.openOccurrences().get(0);
-        new CompleteRemainingSteps(repository, repository, repository, repository, clock).execute(occurrence.id);
-        new CompleteOccurrence(repository, repository, repository, repository, clock).execute(occurrence.id);
+        Occurrence occurrence = repository.today.openOccurrences().get(0);
+        new CompleteRemainingSteps(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
+        new CompleteOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
     }
 
     @Test public void repetitionResultsSurviveReloadAndCorrectionsAdjustRewards() {
         int monday = 1;
         TaskStepDefinition mondayStep = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Beinpresse", monday,
                 StepAmount.setsReps(3, 12), "23 kg, Sitz 5");
-        new CreateTask(repository, repository, repository, clock, ids).execute(new TaskDefinition(
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(new TaskDefinition(
                 "Training", 45, TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
                 TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER, null, null, null, null,
                 "", Collections.singletonList(mondayStep)));
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
-        Occurrence occurrence = repository.openOccurrences().get(0);
-        OccurrenceStep step = repository.occurrenceSteps(occurrence.id).get(0);
-        RecordRepetitionResult record = new RecordRepetitionResult(repository, repository, repository, repository, clock);
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
+        Occurrence occurrence = repository.today.openOccurrences().get(0);
+        OccurrenceStep step = repository.steps.occurrenceSteps(occurrence.id).get(0);
+        RecordRepetitionResult record = new RecordRepetitionResult(repository.catalog, repository.steps, repository.today, repository.transactions, clock);
         record.execute(step.id, 10); record.execute(step.id, 11);
 
-        OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
+        OccurrenceStep restored = new RoomRepositoryFixture(database).steps.findOccurrenceStep(step.id);
         assertEquals(Arrays.asList(10, 11), restored.repetitionProgress.repetitions());
         assertTrue(restored.repetitionProgress.results.stream()
                 .allMatch(value -> value.training == null));
         assertFalse(restored.done);
-        CorrectRepetitionResult correct = new CorrectRepetitionResult(repository, repository, repository, repository);
+        CorrectRepetitionResult correct = new CorrectRepetitionResult(repository.catalog,
+                repository.steps, repository.today, repository.transactions);
         assertEquals(-2, correct.execute(step.id, 0, 0).xp);
         assertEquals(Arrays.asList(0, 11),
-                repository.findOccurrenceStep(step.id).repetitionProgress.repetitions());
+                repository.steps.findOccurrenceStep(step.id).repetitionProgress.repetitions());
         assertThrows(IllegalArgumentException.class,
                 () -> correct.execute(step.id, 0, 1_000));
         assertEquals(3, record.execute(step.id, 12).xp);
-        assertTrue(repository.findOccurrenceStep(step.id).done);
-        assertEquals(2, repository.combo(step.comboOwnerId).points);
+        assertTrue(repository.steps.findOccurrenceStep(step.id).done);
+        assertEquals(2, repository.today.combo(step.comboOwnerId).points);
 
         assertEquals(2, correct.execute(step.id, 0, 9).xp);
-        OccurrenceStep editedDone = repository.findOccurrenceStep(step.id);
+        OccurrenceStep editedDone = repository.steps.findOccurrenceStep(step.id);
         assertTrue(editedDone.done);
         assertEquals(Arrays.asList(9, 11, 12),
                 editedDone.repetitionProgress.repetitions());
         assertEquals(9, vesselXp(occurrence.id));
 
-        assertTrue(repository.findOccurrenceStep(step.id).done);
-        assertEquals(2, repository.combo(step.comboOwnerId).points);
+        assertTrue(repository.steps.findOccurrenceStep(step.id).done);
+        assertEquals(2, repository.today.combo(step.comboOwnerId).points);
     }
 
     @Test public void detailedSetResultsReloadAndCorrectAsOneValue() {
         TaskStepDefinition exercise = de.thonktank.autosecretary.testing.StepTestFixtures.definition(
                 null, 0, "Rudern", 0, StepAmount.setsReps(2, 12), "");
-        new CreateTask(repository, repository, repository, clock, ids).execute(definition(
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(definition(
                 "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
                 Collections.singletonList(exercise)));
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
-        OccurrenceStep step = repository.occurrenceSteps(
-                repository.openOccurrences().get(0).id).get(0);
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
+        OccurrenceStep step = repository.steps.occurrenceSteps(
+                repository.today.openOccurrences().get(0).id).get(0);
         ResistanceLoad load = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
                 ResistanceLoad.Unit.KG, 23_000);
-        RecordSetResult record = new RecordSetResult(repository, repository, repository, repository, repository, clock, ids,
+        RecordSetResult record = new RecordSetResult(repository.catalog, repository.steps, repository.today, repository.training, repository.transactions, clock, ids,
                 ComboPolicySource.defaults());
         SetResult first = new SetResult(12, TrainingObservation.user(load, 2));
         SetResult second = new SetResult(11, new TrainingObservation(load, 1,
@@ -321,19 +320,19 @@ public final class TaskEditorFeatureRobolectricTest {
 
         record.execute(step.id, first);
         record.execute(step.id, second);
-        OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
+        OccurrenceStep restored = new RoomRepositoryFixture(database).steps.findOccurrenceStep(step.id);
 
         assertEquals(Arrays.asList(first, second), restored.repetitionProgress.results);
         assertEquals(Arrays.asList(12, 11), restored.repetitionProgress.repetitions());
         SetResult corrected = new SetResult(10, TrainingObservation.user(load, 3));
-        new CorrectSetResult(repository, repository, repository, repository, repository, clock, ComboPolicySource.defaults())
+        new CorrectSetResult(repository.catalog, repository.steps, repository.today, repository.training, repository.transactions, clock, ComboPolicySource.defaults())
                 .execute(step.id, 1, corrected);
-        assertEquals(Arrays.asList(first, corrected), new RoomTaskRepository(database)
+        assertEquals(Arrays.asList(first, corrected), new RoomRepositoryFixture(database).steps
                 .findOccurrenceStep(step.id).repetitionProgress.results);
     }
 
     private int vesselXp(String occurrenceId) {
-        return repository.rewardBookings(occurrenceId).stream()
+        return repository.today.rewardBookings(occurrenceId).stream()
                 .filter(value -> value.target
                         == de.thonktank.autosecretary.domain.model.RewardBooking.Target.VESSEL)
                 .mapToInt(value -> value.xpDelta).sum();
@@ -342,24 +341,25 @@ public final class TaskEditorFeatureRobolectricTest {
     @Test public void completeRemainingFillsMissingPlansAndNextStartsEmpty() {
         TaskStepDefinition exercise = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Kniebeugen", 0,
                 StepAmount.setsReps(3, 15), "");
-        new CreateTask(repository, repository, repository, clock, ids).execute(definition(
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(definition(
                 "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
                 Collections.singletonList(exercise)));
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
-        OccurrenceStep step = repository.occurrenceSteps(repository.openOccurrences().get(0).id).get(0);
-        new RecordRepetitionResult(repository, repository, repository, repository).execute(step.id, 13);
-        new CompleteRemainingSteps(repository, repository, repository, repository, clock).execute(step.occurrenceId);
-        assertTrue(repository.findOccurrenceStep(step.id).done);
-        assertEquals(Arrays.asList(13, 15, 15), repository.findOccurrenceStep(step.id)
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
+        OccurrenceStep step = repository.steps.occurrenceSteps(repository.today.openOccurrences().get(0).id).get(0);
+        new RecordRepetitionResult(repository.catalog, repository.steps, repository.today,
+                repository.transactions).execute(step.id, 13);
+        new CompleteRemainingSteps(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(step.occurrenceId);
+        assertTrue(repository.steps.findOccurrenceStep(step.id).done);
+        assertEquals(Arrays.asList(13, 15, 15), repository.steps.findOccurrenceStep(step.id)
                 .repetitionProgress.repetitions());
         assertEquals(de.thonktank.autosecretary.domain.model.RepetitionProgress.Completion
                         .RESULTS_COMPLETE,
-                repository.findOccurrenceStep(step.id).repetitionProgress.completion);
+                repository.steps.findOccurrenceStep(step.id).repetitionProgress.completion);
 
-        new CompleteOccurrence(repository, repository, repository, repository, clock).execute(step.occurrenceId);
+        new CompleteOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(step.occurrenceId);
         clock.date = TODAY.plusDays(1);
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
-        OccurrenceStep next = repository.occurrenceSteps(repository.openOccurrences().get(0).id).get(0);
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
+        OccurrenceStep next = repository.steps.occurrenceSteps(repository.today.openOccurrences().get(0).id).get(0);
         assertTrue(next.repetitionProgress.repetitions().isEmpty());
         assertFalse(next.done);
     }
@@ -367,24 +367,24 @@ public final class TaskEditorFeatureRobolectricTest {
     @Test public void explicitZeroPersistsAndCompletesWithoutRewardOrCombo() {
         TaskStepDefinition exercise = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Liegestütze", 0,
                 StepAmount.repetitions(12), "auf Fäusten");
-        new CreateTask(repository, repository, repository, clock, ids).execute(definition(
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(definition(
                 "Training", Recurrence.DAILY, 0, TaskBoundKind.FOREVER, null,
                 Collections.singletonList(exercise)));
-        new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
-        OccurrenceStep step = repository.occurrenceSteps(
-                repository.openOccurrences().get(0).id).get(0);
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
+        OccurrenceStep step = repository.steps.occurrenceSteps(
+                repository.today.openOccurrences().get(0).id).get(0);
 
-        assertEquals(0, new RecordRepetitionResult(repository, repository, repository, repository, clock).execute(step.id, 0).xp);
+        assertEquals(0, new RecordRepetitionResult(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(step.id, 0).xp);
 
-        OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
+        OccurrenceStep restored = new RoomRepositoryFixture(database).steps.findOccurrenceStep(step.id);
         assertTrue(restored.done);
         assertEquals(Collections.singletonList(0), restored.repetitionProgress.repetitions());
-        assertEquals(0, repository.combo(step.comboOwnerId).points);
-        assertEquals(0, new RecordRepetitionResult(repository, repository, repository, repository, clock).execute(step.id, 1).xp);
+        assertEquals(0, repository.today.combo(step.comboOwnerId).points);
+        assertEquals(0, new RecordRepetitionResult(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(step.id, 1).xp);
 
-        assertEquals(0, new ToggleStep(repository, repository, repository, repository, clock).execute(step.id).xp);
-        assertTrue(repository.findOccurrenceStep(step.id).done);
-        assertTrue(repository.rewardBookings(step.occurrenceId).isEmpty());
+        assertEquals(0, new ToggleStep(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(step.id).xp);
+        assertTrue(repository.steps.findOccurrenceStep(step.id).done);
+        assertTrue(repository.today.rewardBookings(step.occurrenceId).isEmpty());
     }
 
     @Test public void editorBundleKeepsDirtyExpandedStepsAndErrors() {

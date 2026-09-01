@@ -6,10 +6,6 @@ import android.content.Context;
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.data.local.DatabaseFactory;
 import de.thonktank.autosecretary.data.local.RoomInvalidationSource;
-import de.thonktank.autosecretary.data.local.RoomTaskRepository;
-import de.thonktank.autosecretary.data.local.RoomTrainingRepository;
-import de.thonktank.autosecretary.data.local.RoomTransactionRunner;
-import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.data.observable.AndroidMinuteTicker;
 import de.thonktank.autosecretary.data.observable.CalendarInvalidationSource;
 import de.thonktank.autosecretary.data.observable.ClockInvalidationSource;
@@ -84,12 +80,9 @@ public final class AppContainer {
         this.logger = logger;
         this.database = databases.create(app);
         this.databaseInvalidations = new RoomInvalidationSource(database);
-        TaskStore taskStore = new RoomTaskRepository(database);
-        RoomTrainingRepository trainingRepository = new RoomTrainingRepository(database);
-        RoomTransactionRunner transactions = new RoomTransactionRunner(database);
         this.uiPreferences = new UiPreferences(app, logger);
-        ApplicationUseCaseComposition useCases = new ApplicationUseCaseComposition(taskStore,
-                trainingRepository, transactions, clock, ids, uiPreferences);
+        ApplicationUseCaseComposition useCases = new ApplicationUseCaseComposition(database,
+                clock, ids, uiPreferences);
         this.catalog = useCases.catalog;
         this.today = useCases.today;
         this.flows = useCases.flows;

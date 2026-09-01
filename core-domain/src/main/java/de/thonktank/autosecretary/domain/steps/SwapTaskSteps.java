@@ -4,6 +4,9 @@ import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,11 +14,16 @@ import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Swaps two stable step definitions while preserving IDs, history and combo ownership. */
 public final class SwapTaskSteps {
-    private final StepOrganizationRepository repository;
+    private final CatalogRepository catalog;
+    private final StepRepository steps;
+    private final TodayRepository today;
     private final TransactionRunner transactions;
 
-    public SwapTaskSteps(StepOrganizationRepository repository, TransactionRunner transactions) {
-        this.repository = repository;
+    public SwapTaskSteps(CatalogRepository catalog, StepRepository steps,
+                         TodayRepository today, TransactionRunner transactions) {
+        this.catalog = catalog;
+        this.steps = steps;
+        this.today = today;
         this.transactions = transactions;
     }
 
@@ -24,22 +32,22 @@ public final class SwapTaskSteps {
     }
 
     private StepTransferResult swap(StepSwapRequest request) {
-        TaskStepTemplate first = repository.findTemplate(request.stepId.value);
-        TaskStepTemplate second = repository.findTemplate(request.targetStepId.value);
+        TaskStepTemplate first = steps.findTemplate(request.stepId.value);
+        TaskStepTemplate second = steps.findTemplate(request.targetStepId.value);
         if (first == null || second == null) return StepTransferResult.NOT_FOUND;
         if (first.id.equals(second.id)) return StepTransferResult.UNCHANGED;
-        Task firstTask = StepTransferSupport.active(repository, first.taskId);
-        Task secondTask = StepTransferSupport.active(repository, second.taskId);
+        Task firstTask = StepTransferSupport.active(catalog, first.taskId);
+        Task secondTask = StepTransferSupport.active(catalog, second.taskId);
         if (firstTask == null || secondTask == null)
             return StepTransferResult.REJECTED_ARCHIVED_TASK;
-        List<TaskStepTemplate> firstSteps = new ArrayList<>(repository.templates(firstTask.id));
+        List<TaskStepTemplate> firstSteps = new ArrayList<>(steps.templates(firstTask.id));
         List<TaskStepTemplate> secondSteps = firstTask.id.equals(secondTask.id)
-                ? firstSteps : new ArrayList<>(repository.templates(secondTask.id));
+                ? firstSteps : new ArrayList<>(steps.templates(secondTask.id));
         if (!StepTransferSupport.canonicalTemplates(firstSteps)
                 || secondSteps != firstSteps && !StepTransferSupport.canonicalTemplates(secondSteps)
-                || !StepTransferSupport.canonicalSnapshots(repository, firstTask.id)
+                || !StepTransferSupport.canonicalSnapshots(steps, today, firstTask.id)
                 || !firstTask.id.equals(secondTask.id)
-                && !StepTransferSupport.canonicalSnapshots(repository, secondTask.id))
+                && !StepTransferSupport.canonicalSnapshots(steps, today, secondTask.id))
             return StepTransferResult.REJECTED_INVALID_POSITION_SEQUENCE;
 
         if (firstSteps == secondSteps) {
@@ -48,8 +56,8 @@ public final class SwapTaskSteps {
             TaskStepTemplate value = firstSteps.get(firstIndex);
             firstSteps.set(firstIndex, firstSteps.get(secondIndex));
             firstSteps.set(secondIndex, value);
-            repository.insertTemplates(StepTransferSupport.resequence(firstSteps, firstTask));
-            StepTransferSupport.resequenceOpen(repository, firstTask.id);
+            steps.insertTemplates(StepTransferSupport.resequence(firstSteps, firstTask));
+            StepTransferSupport.resequenceOpen(steps, today, firstTask.id);
             return StepTransferResult.STEPS_SWAPPED;
         }
 
@@ -62,28 +70,28 @@ public final class SwapTaskSteps {
         List<TaskStepTemplate> writes = new ArrayList<>();
         writes.addAll(StepTransferSupport.resequence(firstSteps, firstTask));
         writes.addAll(StepTransferSupport.resequence(secondSteps, secondTask));
-        repository.insertTemplates(writes);
-        StepTransferSupport.reparentCombo(repository, first.id, secondTask.id);
-        StepTransferSupport.reparentCombo(repository, second.id, firstTask.id);
+        steps.insertTemplates(writes);
+        StepTransferSupport.reparentCombo(today, first.id, secondTask.id);
+        StepTransferSupport.reparentCombo(today, second.id, firstTask.id);
 
-        for (Occurrence firstOccurrence : repository.openOccurrences(firstTask.id)) {
-            Occurrence secondOccurrence = repository.openOccurrence(secondTask.id,
+        for (Occurrence firstOccurrence : today.openOccurrences(firstTask.id)) {
+            Occurrence secondOccurrence = today.openOccurrence(secondTask.id,
                     firstOccurrence.slot);
             if (secondOccurrence == null) continue;
-            OccurrenceStep firstSnapshot = StepTransferSupport.snapshot(repository,
+            OccurrenceStep firstSnapshot = StepTransferSupport.snapshot(steps,
                     firstOccurrence.id, first.id);
-            OccurrenceStep secondSnapshot = StepTransferSupport.snapshot(repository,
+            OccurrenceStep secondSnapshot = StepTransferSupport.snapshot(steps,
                     secondOccurrence.id, second.id);
             if (firstSnapshot == null || secondSnapshot == null) continue;
-            repository.updateOccurrenceStep(firstSnapshot.relocate(secondOccurrence.id,
+            steps.updateOccurrenceStep(firstSnapshot.relocate(secondOccurrence.id,
                     firstSnapshot.position));
-            repository.assignRewardBookings(firstSnapshot.id, secondOccurrence.id);
-            repository.updateOccurrenceStep(secondSnapshot.relocate(firstOccurrence.id,
+            today.assignRewardBookings(firstSnapshot.id, secondOccurrence.id);
+            steps.updateOccurrenceStep(secondSnapshot.relocate(firstOccurrence.id,
                     secondSnapshot.position));
-            repository.assignRewardBookings(secondSnapshot.id, firstOccurrence.id);
+            today.assignRewardBookings(secondSnapshot.id, firstOccurrence.id);
         }
-        StepTransferSupport.resequenceOpen(repository, firstTask.id);
-        StepTransferSupport.resequenceOpen(repository, secondTask.id);
+        StepTransferSupport.resequenceOpen(steps, today, firstTask.id);
+        StepTransferSupport.resequenceOpen(steps, today, secondTask.id);
         return StepTransferResult.STEPS_SWAPPED;
     }
 }

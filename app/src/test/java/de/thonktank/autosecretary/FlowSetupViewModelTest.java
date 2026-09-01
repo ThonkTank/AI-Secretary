@@ -9,13 +9,11 @@ import androidx.lifecycle.SavedStateHandle;
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepTransition;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
@@ -45,12 +43,12 @@ public final class FlowSetupViewModelTest {
         Context context = ApplicationProvider.getApplicationContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
                 .allowMainThreadQueries().build();
-        TaskStore repository = new RoomTaskRepository(database);
+        RoomRepositoryFixture repository = new RoomRepositoryFixture(database);
         Clock clock = new Clock() {
             @Override public LocalDate today() { return LocalDate.of(2026, 8, 27); }
             @Override public LocalTime time() { return LocalTime.NOON; }
         };
-        tasks = new ApplicationUseCaseComposition(repository, repository, repository, clock,
+        tasks = new ApplicationUseCaseComposition(database, clock,
                 new SequenceIds(), de.thonktank.autosecretary.domain.repository.ComboPolicySource.defaults());
         tasks.catalog.create.execute(TaskDefinition.basic("Wäsche", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, java.util.Arrays.asList(

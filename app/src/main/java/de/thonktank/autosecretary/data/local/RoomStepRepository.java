@@ -7,6 +7,8 @@ import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TrainingObservation;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
 import java.util.ArrayList;
@@ -15,43 +17,48 @@ import java.util.List;
 import java.util.Map;
 
 /** Focused Room adapter for reusable and materialized step rows and their atomic set results. */
-public final class RoomStepRepository {
-    private final TaskDao dao;
+public final class RoomStepRepository implements StepRepository {
+    private final StepDao dao;
     private final TaskEntityMapper mapper;
-    private final RoomTransactionRunner transactions;
+    private final TransactionRunner transactions;
 
-    public RoomStepRepository(AppDatabase database) {
-        this(database, new TaskEntityMapper());
+    public RoomStepRepository(AppDatabase database, TransactionRunner transactions) {
+        this(database, new TaskEntityMapper(), transactions);
     }
 
-    RoomStepRepository(AppDatabase database, TaskEntityMapper mapper) {
-        this.dao = database.tasks();
+    RoomStepRepository(AppDatabase database, TaskEntityMapper mapper,
+                       TransactionRunner transactions) {
+        this.dao = database.steps();
         this.mapper = mapper;
-        this.transactions = new RoomTransactionRunner(database);
+        this.transactions = transactions;
     }
 
-    public void insertTemplates(List<TaskStepTemplate> steps) {
+    @Override public void insertTemplates(List<TaskStepTemplate> steps) {
         List<TaskStepEntity> entities = new ArrayList<>();
         for (TaskStepTemplate step : steps) entities.add(mapper.toEntity(step));
         if (!entities.isEmpty()) dao.insertTemplates(entities);
     }
 
-    public void deleteTemplates(TaskId taskId) { dao.deleteTemplates(taskId.value); }
+    @Override public void updateTemplate(TaskStepTemplate template) {
+        dao.updateTemplate(mapper.toEntity(template));
+    }
 
-    public void deleteTemplate(String id) { dao.deleteTemplate(id); }
+    @Override public void deleteTemplates(TaskId taskId) { dao.deleteTemplates(taskId.value); }
 
-    public List<TaskStepTemplate> templates(TaskId taskId) {
+    @Override public void deleteTemplate(String id) { dao.deleteTemplate(id); }
+
+    @Override public List<TaskStepTemplate> templates(TaskId taskId) {
         List<TaskStepTemplate> result = new ArrayList<>();
         for (TaskStepEntity entity : dao.templates(taskId.value)) result.add(mapper.toDomain(entity));
         return result;
     }
 
-    public TaskStepTemplate findTemplate(String id) {
+    @Override public TaskStepTemplate findTemplate(String id) {
         TaskStepEntity entity = dao.template(id);
         return entity == null ? null : mapper.toDomain(entity);
     }
 
-    public List<TaskStepTemplate> templatesFor(List<TaskId> taskIds) {
+    @Override public List<TaskStepTemplate> templatesFor(List<TaskId> taskIds) {
         if (taskIds.isEmpty()) return new ArrayList<>();
         List<String> values = new ArrayList<>();
         for (TaskId id : taskIds) values.add(id.value);
@@ -60,7 +67,7 @@ public final class RoomStepRepository {
         return result;
     }
 
-    public void insertOccurrenceSteps(List<OccurrenceStep> steps) {
+    @Override public void insertOccurrenceSteps(List<OccurrenceStep> steps) {
         transactions.inTransaction(() -> {
             List<OccurrenceStepEntity> entities = new ArrayList<>();
             for (OccurrenceStep step : steps) entities.add(mapper.toEntity(step));
@@ -78,21 +85,21 @@ public final class RoomStepRepository {
         });
     }
 
-    public List<OccurrenceStep> occurrenceSteps(String occurrenceId) {
+    @Override public List<OccurrenceStep> occurrenceSteps(String occurrenceId) {
         return mapOccurrenceSteps(dao.occurrenceSteps(occurrenceId));
     }
 
-    public List<OccurrenceStep> occurrenceStepsFor(List<String> occurrenceIds) {
+    @Override public List<OccurrenceStep> occurrenceStepsFor(List<String> occurrenceIds) {
         if (occurrenceIds.isEmpty()) return new ArrayList<>();
         return mapOccurrenceSteps(dao.occurrenceStepsFor(occurrenceIds));
     }
 
-    public OccurrenceStep findOccurrenceStep(String id) {
+    @Override public OccurrenceStep findOccurrenceStep(String id) {
         OccurrenceStepEntity entity = dao.occurrenceStep(id);
         return entity == null ? null : mapper.toDomain(entity, results(id));
     }
 
-    public void updateOccurrenceStep(OccurrenceStep step) {
+    @Override public void updateOccurrenceStep(OccurrenceStep step) {
         transactions.inTransaction(() -> {
             dao.updateOccurrenceStep(mapper.toEntity(step));
             syncResults(step);
@@ -100,9 +107,9 @@ public final class RoomStepRepository {
         });
     }
 
-    public void deleteOccurrenceStep(String id) { dao.deleteOccurrenceStep(id); }
+    @Override public void deleteOccurrenceStep(String id) { dao.deleteOccurrenceStep(id); }
 
-    public void updateOccurrenceStepPositions(List<TodayStepPositionUpdate> updates) {
+    @Override public void updateOccurrenceStepPositions(List<TodayStepPositionUpdate> updates) {
         for (TodayStepPositionUpdate update : updates)
             dao.updateOccurrenceStepPosition(update.stepId, update.position);
     }

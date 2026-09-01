@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.domain.model.TrainingContext;
 import de.thonktank.autosecretary.domain.model.TrainingHistoryEntry;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.ArrayList;
@@ -16,9 +17,12 @@ import java.util.List;
 public final class LoadTrainingContext {
     public static final int HISTORY_LIMIT = 10;
     private final TrainingRepository repository;
+    private final StepRepository steps;
     private final TransactionRunner transactions;
 
-    public LoadTrainingContext(TrainingRepository repository, TransactionRunner transactions) {
+    public LoadTrainingContext(StepRepository steps, TrainingRepository repository,
+                               TransactionRunner transactions) {
+        this.steps = steps;
         this.repository = repository;
         this.transactions = transactions;
     }
@@ -28,7 +32,7 @@ public final class LoadTrainingContext {
     }
 
     private TrainingContext load(String templateId) {
-        TaskStepTemplate template = repository.findTemplate(templateId);
+        TaskStepTemplate template = steps.findTemplate(templateId);
         if (template == null || template.assistantProfile == null) return null;
         TrainingAdjustment latest = repository.latestTrainingAdjustment(templateId);
         TrainingLoadRequest open = repository.openTrainingLoadRequest(templateId);

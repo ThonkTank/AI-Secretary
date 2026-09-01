@@ -206,7 +206,139 @@ bleibt bis zum Abschluss dieses Docs-Gates gesperrt.
 
 ## Phase 2 – Fünf Repositories und eindeutige Composition
 
-Status: wartet auf den vollständig abgeschlossenen Phase-1-Gate
+Status: in Arbeit
+
+### Plan
+
+Ergebnis: `CatalogRepository`, `StepRepository`, `TodayRepository`, `FlowRepository` und
+`TrainingRepository` sind die einzigen fachlichen Persistenzports. Room besitzt dafür genau fünf
+gleichnamig fokussierte DAOs und fünf eigenständige Adapter. Portübergreifende Atomizität liegt
+ausschließlich beim separaten `RoomTransactionRunner`; Schema 22, Entities, Migrationen,
+Upgradefixture, Ressourcen und sichtbares Verhalten bleiben unverändert.
+
+Betroffene Grenzen:
+
+- `core-domain` mit den bisherigen Capability-Ports, Schedule-/Step-Services, fachlichen Use
+  Cases und ihren vier bestehenden Use-Case-Bündeln;
+- `data.local` mit dem bisherigen Sammel-DAO, Room-Gateway, Step-/Training-Adapter,
+  Entity-Mapping und dem getrennten Transaktionsrunner;
+- `AppDatabase`, `ApplicationUseCaseComposition` und `AppContainer` als einmalige Erzeugungs- und
+  Verdrahtungsgrenze der fünf Adapter;
+- Room-, Transaktions-, Rollback-, Migrations-, Presentation- und Cross-Slice-Tests sowie deren
+  bisher breite Teststores;
+- aktive Architekturübersichten und Architekturtests für Port-, DAO-, Adapter-, Import- und
+  Composition-Grenzen.
+
+Reihenfolge:
+
+1. Vor dem Produktdiff Hash-Baselines für Schemaexport, Migrationen, Upgradefixture, Ressourcen,
+   Goldens und die kanonische Roadmap erfassen; Entity- und Migrationsdiffs bleiben im gesamten
+   Phasenverlauf leer.
+2. Die elf überlappenden Capability-Ports atomar durch die fünf Zielports ersetzen. Use Cases,
+   Schedule-/Step-Services und fachliche Hilfen erhalten jeden tatsächlich benötigten benannten
+   Port genau einmal; Intersection-Typen, Capability-Probes und Portvererbung werden entfernt.
+3. `TaskDao` nach `CatalogDao`, `StepDao`, `TodayDao`, `FlowDao` und `TrainingDao` aufteilen und
+   seine Queries ohne SQL- oder Schemaänderung eindeutig zuordnen. Fünf einzelne Room-Adapter
+   übernehmen Mapping und Writes; der Step-Adapter besitzt Templates, Snapshots und atomare
+   Satzresultate, der Training-Adapter nur Profil-/Anpassungs-/Lastfrage-/Audit-/Volumengrenzen.
+   `TaskStore`, `RoomTaskRepository` und `TaskDao` werden im selben Diff gelöscht.
+4. `ApplicationUseCaseComposition` direkt aus `AppDatabase` verdrahten: jeden der fünf Adapter
+   und den `RoomTransactionRunner` genau einmal erzeugen und ohne wiederholte positionale
+   Adapterargumente an die vier Bündel weiterreichen. Slice-Tests erhalten portgenaue Fakes;
+   gemeinsamer In-Memory-Zustand wird nur hinter getrennten Portadaptern beziehungsweise in
+   ausdrücklich benannten Cross-Slice-Abnahmen geteilt.
+5. Zuerst Compile-, Architektur-, DAO-/Room-, Transaktions-/Rollback- und Composition-Tests,
+   danach Migration 8 bis 22, Produktionsupgradefixture, Neustartpersistenz, read-only Goldens,
+   Accessibility und die vollständige Host-/Robolectric-, Lint- und Build-Matrix mit JDK 21
+   ausführen.
+6. Implementierung getrennt gegen diesen Plan, die Phase-2-Entfernungslisten und die gesamte
+   Roadmap auditieren. Negative Scans müssen exakt fünf fachliche Ports/DAOs/Produktionsadapter,
+   den separaten Runner, einmalige Adapterargumente, fehlende Room-Imports in Domain/Presentation
+   sowie das Fehlen jedes All-Capabilities-Gateways belegen. Vor jeder Korrekturrunde zuerst
+   einen Fixplan ergänzen.
+
+Abnahme: Alle lokalen Phase-2-Kriterien sind belegt, bevor der produktwirksame Themenbranch
+committed und über Pull Request, Squash-Merge, vollständigen Main-Workflow, Produktionsupgrade,
+Packaging und Publish geschlossen wird. Bis dahin bleiben Phase 3 und der Status
+`veröffentlicht` gesperrt.
+
+### Implementierung
+
+- Die elf bisherigen Capability-Ports wurden durch die fünf unabhängigen Ports
+  `CatalogRepository`, `StepRepository`, `TodayRepository`, `FlowRepository` und
+  `TrainingRepository` ersetzt. Kein Port erbt einen anderen Port oder den Runner.
+- `CatalogDao`, `StepDao`, `TodayDao`, `FlowDao` und `TrainingDao` besitzen die unveränderten
+  SQL-Zugriffe eindeutig; die fünf gleichnamigen Room-Adapter implementieren jeweils genau einen
+  Port. Der Sammelstore, sein Room-Gateway und sein DAO wurden ohne Übergangsfassade entfernt.
+- `ApplicationUseCaseComposition` erzeugt die fünf Adapter und `RoomTransactionRunner` direkt aus
+  `AppDatabase` jeweils einmal. Use Cases, Schedule-/Step-Services und Trainingspfade erhalten nur
+  ihre benannten Fachports.
+- Room-Integrationstests bündeln die fünf echten Adapter in einer Fixture ohne eigenen Port.
+  Cross-Slice-In-Memory-Abnahmen teilen Zustand hinter getrennten Port-Proxies; fokussierte
+  Schedule-, Step- und Trainingtests verwenden ebenfalls getrennte Portobjekte und Runner.
+- Die aktive Architekturübersicht, Today-Fokus-Beschreibung und die betroffenen ADR-Verweise
+  beschreiben die erreichte Fünf-Port-Grenze. Die kanonische Roadmap blieb unverändert.
+
+### Validierung vor dem unabhängigen Audit
+
+- `:core-domain:compileJava`: grün.
+- `:app:compileDebugJavaWithJavac`: grün; nur die bereits bestehenden
+  Android-Deprecation-Warnungen.
+- `:app:compileInstrumentationUnitTestJavaWithJavac`: grün; 12 bestehende
+  Accessibility-Deprecation-Warnungen.
+- Fokussierte Architektur-, Completion-, Today-Step-, Schedule- und Step-Transfer-Tests: grün.
+- Vollständiges `:app:testInstrumentationUnitTest`: 515 Tests, 0 Fehler, 0 Fehlschläge,
+  1 übersprungener Test.
+- Vorher-/Nachher-Abgleich: Schemaexport `782fddf69323c48ec3ff09902ba36a79030c8d2e`,
+  Ressourcen `0f6192766a50132038aad4825dbc0c41853009c9`, Goldens
+  `96a127b245ee92c02b3534ae2912d0a06def8a85`, Upgradefixture
+  `5d66ded633d944576b2d9d2d55128a411df7c45d`, Migrationen
+  `0a19df76bcab6bf03f3d92a4198b88ccb42a9e72` und Roadmap
+  `2e0a69aaaed6baeb23c5225781d575f09e468f31` sind unverändert; Entitydiff leer.
+- Negativscans über Produktions- und Testquellen finden keinen entfernten Capability-Port, keinen
+  Sammelstore, kein Sammel-DAO und kein altes Room-Gateway. Domain und Presentation importieren
+  weder Room- noch `data.local`-Typen.
+
+### Unabhängiger Audit und Korrekturrunde 1
+
+Audit: Die Implementierung wurde erneut getrennt gegen die vollständige Roadmap, den Phase-2-Plan,
+die Entfernungslisten und die unveränderlichen Dateien gelesen. Produktionsports, DAOs, Adapter,
+Composition, Runner, Importgrenzen und Schema sind konform. Eine Testabweichung blieb: Der
+ausdrücklich erlaubte Cross-Slice-In-Memory-Zustand implementiert selbst keinen Port, stellte aber
+noch die fachlich veraltete Convenience-Methode `updateTrainingTemplate` bereit. Zwei
+Rollbacktests schrieben dadurch nicht sichtbar über ihren getrennten `StepRepository`-Adapter.
+
+Fixplan vor der Korrektur: Die beiden Tests schreiben über `repository.steps.updateTemplate`, die
+Convenience-Methode wird ersatzlos entfernt. Danach laufen Negativscan, Testquellencompiler, die
+beiden Set-Result-Rollbacktests und der Architekturtest erneut. Die bereits grüne vollständige
+Hostmatrix wird vor dem lokalen Abschluss gemeinsam mit Lint und der vollständigen Buildmatrix
+noch einmal aus sauberem Zustand ausgeführt.
+
+Ergebnis: Beide Tests schreiben über den getrennten Step-Port; die Convenience-Methode ist
+entfernt. Negativscan, Testquellencompiler, beide Set-Result-Rollbacktests und der Architekturtest
+sind grün. Der erneute Roadmapabgleich findet keine weitere lokale Abweichung.
+
+### Korrekturrunde 2 – genau eine Runnerinstanz
+
+Audit: Der saubere Gesamtlauf war grün, der anschließende Instanziierungsscan fand jedoch neben
+dem einmal in der Composition erzeugten Runner eine zweite, im `RoomStepRepository` verborgene
+Runnerinstanz für die atomaren Snapshot-/Ergebniswrites. Sie überschritt keine Portgrenze, wich
+aber von der wörtlichen Vorgabe ab, die fünf Adapter und den Runner jeweils einmal zu erzeugen.
+
+Fixplan vor der Korrektur: Die Composition erzeugt `RoomTransactionRunner` vor den Adaptern und
+übergibt dieselbe Instanz an `RoomStepRepository`; dessen selbst erzeugter Runner entfällt. Die
+Room-Testfixture verdrahtet ihren einen Runner identisch. Der Architekturtest zählt anschließend
+repo-weit im Produktionscode genau eine Runnererzeugung und genau eine Erzeugung jedes Adapters.
+Danach laufen Compiler, Architektur-, Room-Step-, Transaktions-/Rollbacktests und die vollständige
+Buildmatrix erneut.
+
+Ergebnis: Produktionscode und Room-Testfixture erzeugen je Composition genau einen Runner und
+reichen ihn an den Step-Adapter weiter. Architektur-, Room-Step-/Editor- und Set-Result-
+Rollbacktests sind grün. Der finale `build`-Lauf ist mit 143 Tasks in 12 Minuten 39 Sekunden grün;
+er enthält erneut 515 Host-/Robolectric-Tests mit 0 Fehlern, 0 Fehlschlägen und dem unverändert
+übersprungenen `WoodGrainBenchmarkTest`, Lint, Check, Debug-, Instrumentation- und Release-Build,
+R8 sowie Packaging. Der vorherige saubere `clean build` war mit allen 146 Tasks in 16 Minuten
+53 Sekunden grün. Der abschließende Negativ- und Immutable-Scan findet keine weitere Abweichung.
 
 ## Phase 3 – UI-Ownership und Abschlussaudit
 

@@ -12,6 +12,7 @@ import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.training.TrainingAdaptationEngine;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
@@ -29,14 +30,16 @@ public final class ResolveTrainingLoadRequest {
     }
 
     private final TrainingRepository repository;
+    private final StepRepository steps;
     private final TransactionRunner transactions;
     private final Clock clock;
     private final IdGenerator ids;
     private final TrainingAdaptationEngine engine = new TrainingAdaptationEngine();
 
-    public ResolveTrainingLoadRequest(TrainingRepository repository,
+    public ResolveTrainingLoadRequest(StepRepository steps, TrainingRepository repository,
                                       TransactionRunner transactions, Clock clock,
                                       IdGenerator ids) {
+        this.steps = steps;
         this.repository = repository;
         this.transactions = transactions;
         this.clock = clock;
@@ -58,7 +61,7 @@ public final class ResolveTrainingLoadRequest {
 
     private Result applyInside(String templateId, ResistanceLoad load) {
         TrainingLoadRequest request = repository.openTrainingLoadRequest(templateId);
-        TaskStepTemplate template = repository.findTemplate(templateId);
+        TaskStepTemplate template = steps.findTemplate(templateId);
         if (request == null || template == null || template.assistantProfile == null)
             return Result.NO_OPEN_REQUEST;
         if (!validComparableLoad(request.currentLoad, load)) return Result.INVALID_LOAD;
@@ -85,7 +88,7 @@ public final class ResolveTrainingLoadRequest {
         StepPrescription prescription = new StepPrescription(after,
                 template.prescription.rest,
                 new TrainingPrescription(load, template.prescription.targetRir()));
-        repository.updateTrainingTemplate(template.withTraining(prescription,
+        steps.updateTemplate(template.withTraining(prescription,
                 new TrainingAssistantProfile(template.assistantProfile.policy, state)));
         repository.insertTrainingAdjustment(new TrainingAdjustment(ids.nextId(), template.id,
                 request.sourceOccurrenceStepId, TrainingDecision.Reason.LOAD_APPLIED,
@@ -99,7 +102,7 @@ public final class ResolveTrainingLoadRequest {
 
     private Result noHigherInside(String templateId) {
         TrainingLoadRequest request = repository.openTrainingLoadRequest(templateId);
-        TaskStepTemplate template = repository.findTemplate(templateId);
+        TaskStepTemplate template = steps.findTemplate(templateId);
         if (request == null || template == null || template.assistantProfile == null)
             return Result.NO_OPEN_REQUEST;
         if (request.direction != TrainingDecision.LoadDirection.PROGRESS)
@@ -113,7 +116,7 @@ public final class ResolveTrainingLoadRequest {
                 template.prescription, template.assistantProfile, effective);
         repository.updateTrainingLoadRequest(request.resolve(
                 TrainingLoadRequest.Resolution.NO_HIGHER_LOAD, clock.today()));
-        repository.updateTrainingTemplate(template.withTraining(decision.nextPrescription,
+        steps.updateTemplate(template.withTraining(decision.nextPrescription,
                 new TrainingAssistantProfile(template.assistantProfile.policy,
                         decision.nextState)));
         if (decision.action != TrainingDecision.Action.APPLY) return Result.HELD;

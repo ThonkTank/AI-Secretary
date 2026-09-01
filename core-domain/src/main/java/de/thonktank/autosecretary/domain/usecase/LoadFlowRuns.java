@@ -6,8 +6,8 @@ import de.thonktank.autosecretary.domain.model.FlowRunSummary;
 import de.thonktank.autosecretary.domain.model.StepFlowRun;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
-import de.thonktank.autosecretary.domain.repository.StepFlowRunRepository;
-import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.FlowRepository;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,10 +15,10 @@ import java.util.List;
 import java.util.Map;
 
 public final class LoadFlowRuns {
-    private final TaskDefinitionRepository tasks;
-    private final StepFlowRunRepository runs;
+    private final CatalogRepository tasks;
+    private final FlowRepository runs;
 
-    public LoadFlowRuns(TaskDefinitionRepository tasks, StepFlowRunRepository runs) {
+    public LoadFlowRuns(CatalogRepository tasks, FlowRepository runs) {
         this.tasks = tasks;
         this.runs = runs;
     }
@@ -30,12 +30,12 @@ public final class LoadFlowRuns {
     }
 
     static List<FlowRunSummary> summaries(Map<TaskId, Task> taskById,
-                                          StepFlowRunRepository runs) {
+                                          FlowRepository runs) {
         return summaries(taskById, runs, runs.activeFlowRuns());
     }
 
     static List<FlowRunSummary> summaries(Map<TaskId, Task> taskById,
-                                          StepFlowRunRepository runs,
+                                          FlowRepository runs,
                                           List<StepFlowRun> active) {
         List<String> runIds = new ArrayList<>();
         for (StepFlowRun run : active) runIds.add(run.id);

@@ -74,12 +74,12 @@ class RoomInvalidationSourceTest {
 
         try {
             database.runInTransaction {
-                database.tasks().putStats(StatsEntity(10))
-                database.tasks().putStats(StatsEntity(20))
+                database.today().putStats(StatsEntity(10))
+                database.today().putStats(StatsEntity(20))
             }
 
             assertEquals(setOf("stats"), emissions.next())
-            assertEquals(20, database.tasks().stats()?.xp)
+            assertEquals(20, database.today().stats()?.xp)
         } finally {
             emissions.cancel()
         }
@@ -93,7 +93,7 @@ class RoomInvalidationSourceTest {
         try {
             try {
                 database.runInTransaction {
-                    database.tasks().putStats(StatsEntity(99))
+                    database.today().putStats(StatsEntity(99))
                     throw ExpectedRollback()
                 }
             } catch (_: ExpectedRollback) {
@@ -102,7 +102,7 @@ class RoomInvalidationSourceTest {
             yield()
 
             assertTrue(emissions.tryReceive().isFailure)
-            assertNull(database.tasks().stats())
+            assertNull(database.today().stats())
         } finally {
             emissions.cancel()
         }

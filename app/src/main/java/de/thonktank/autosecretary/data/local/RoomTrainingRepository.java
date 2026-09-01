@@ -3,7 +3,6 @@ package de.thonktank.autosecretary.data.local;
 import de.thonktank.autosecretary.AppDatabase;
 import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.StepAmount;
-import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
 import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
@@ -16,25 +15,10 @@ import java.util.List;
 
 /** Focused Room adapter for training prescriptions, decisions and audit history. */
 public final class RoomTrainingRepository implements TrainingRepository {
-    private final TaskDao dao;
-    private final TaskEntityMapper mapper;
+    private final TrainingDao dao;
 
     public RoomTrainingRepository(AppDatabase database) {
-        this(database, new TaskEntityMapper());
-    }
-
-    RoomTrainingRepository(AppDatabase database, TaskEntityMapper mapper) {
-        this.dao = database.tasks();
-        this.mapper = mapper;
-    }
-
-    @Override public TaskStepTemplate findTemplate(String id) {
-        TaskStepEntity entity = dao.template(id);
-        return entity == null ? null : mapper.toDomain(entity);
-    }
-
-    @Override public void updateTrainingTemplate(TaskStepTemplate template) {
-        dao.updateTemplate(mapper.toEntity(template));
+        this.dao = database.training();
     }
 
     @Override public double effectiveSetsSince(TrainingMuscleGroup muscle, LocalDate start,

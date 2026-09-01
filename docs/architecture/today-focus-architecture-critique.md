@@ -72,11 +72,10 @@ schreiben; Testdoubles mussten fachfremde Methoden implementieren. Erst die Zerl
 klar, dass Reorder nur Snapshot und Positionswrites, Completion dagegen Execution und Ledger
 benötigt.
 
-Capability-Ports und die Trennung von `StepExecutionService` und
-`OccurrenceCompletionService` verbessern Testbarkeit und Transaktionssicht. Der konkrete
-`RoomTaskRepository` bleibt absichtlich breit, weil er mehrere Ports am Composition Root
-implementiert. Eine Aufteilung der Room-Klasse wäre kosmetisch, solange DAO und Transaktionen
-gemeinsam bleiben.
+Die Trennung von `StepExecutionService` und `OccurrenceCompletionService` verbessert Testbarkeit
+und Transaktionssicht. Die spätere Storage-Konsolidierung hat die damalige breite Room-Klasse
+durch fünf fachliche Ports, fünf DAOs und fünf einportige Adapter ersetzt; portübergreifende
+Atomizität besitzt nur noch der separate `RoomTransactionRunner`.
 
 ### Paketregeln waren vor der Modultrennung nur nachträgliche Warnungen
 
