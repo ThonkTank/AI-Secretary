@@ -22,6 +22,7 @@ Verhalten bleibt dabei unverändert:
   bleiben verlustfrei erhalten;
 - Room-Schema 22, Datenbankversion, Schemaexport, Saved-State-Schlüssel und garantierter
   Upgradepfad ab Schema 8 bleiben unverändert;
+- es wird keine neue Room-Migration angelegt;
 - Editor und Today werden strukturell, nicht visuell verändert.
 
 Die Bereinigung führt keine Deprecated-Aliase, Übergangskonstruktoren, Sammelfassaden oder
@@ -53,6 +54,8 @@ Eine nicht produktwirksame Phase ist mit grünem Main-Workflow und vertraglich k
 übersprungenem Publish abgeschlossen. Eine produktwirksame Phase ist erst abgeschlossen, wenn der
 exakte Squash-Stand auf `main` die vollständige Instrumentierungs-, Upgrade-, Packaging- und
 Publish-Kette bestanden hat. Es gibt keinen nachgelagerten Status „Geräteabnahme ausstehend“.
+Die Ausnahme für die reine Vertrags- und Archivphase 0 ist die einzige bewusste Abweichung vom
+ursprünglichen Arbeitsplan: Sie erzeugt gemäß Owner-Entscheidung kein künstliches Produktrelease.
 
 ## Zielarchitektur und Schnittstellen
 
@@ -97,6 +100,8 @@ Port zu implementieren.
 `ApplicationUseCaseComposition` erzeugt die fünf Room-Adapter und den Runner jeweils einmal direkt
 aus `AppDatabase`. Die vier fachlichen Bündel `CatalogUseCases`, `TodayUseCases`, `FlowUseCases`
 und `TrainingUseCases` bleiben bestehen. Use Cases erhalten nur die benötigten benannten Ports.
+Kein Konstruktor erhält denselben benannten Adapter mehr als einmal; jeder benötigte Port erscheint
+in seiner Signatur genau einmal.
 `TaskStore`, `RoomTaskRepository`, `TaskDao`, Intersection-Typen, Capability-Probes und mehrfach
 positionell übergebene Store-Objekte entfallen vollständig.
 
@@ -105,7 +110,8 @@ explizit benannten Cross-Slice-Abnahmetests zulässig.
 
 ### Klare UI-Ownership bei identischem Layout
 
-- `TrainingAssistantEditorSection` erhält direkt `StepPrescription`, eine nullable
+- Die eigene Compose-Komponente `TrainingAssistantEditorSection` erhält direkt
+  `StepPrescription`, eine nullable
   `TrainingAssistantPolicy` und `TrainingAssistantState` und liefert Änderungen wieder in diesen
   Typen zurück. Ein Editor-Adaptermodell für dieselben Werte ist nicht zulässig.
 - `TrainingAssistantPanelView` besitzt in Today Status, Lastfrage, Antwortfeld, Verlauf und Undo.
@@ -113,8 +119,9 @@ explizit benannten Cross-Slice-Abnahmetests zulässig.
   Safety-Eingaben für die Satzaufnahme bleiben normale Ausführungscontrols der Zeile.
 - `TrainingAssistantUiAction` bildet `ApplyLoad`, `NoHigherLoad`, `Later` und `Undo` typisiert ab.
   `ApplyLoad` trägt den Rohtext sowie die aktuelle Lastart und Einheit.
-- `TrainingAssistantActionHandler` übernimmt Dezimalpunkt/-komma, Milli-Unit-Konvertierung,
-  Validierung, Use-Case-Aufruf und Ergebnis-Mapping.
+- Der kleine `TrainingAssistantActionHandler` erhält ausschließlich `TrainingUseCases` und
+  übersetzt `ApplyLoad`, `NoHigherLoad`, `Later` und `Undo` in deren Operationen. Er übernimmt
+  außerdem Dezimalpunkt/-komma, Milli-Unit-Konvertierung, Validierung und Ergebnis-Mapping.
 - Das Handler-Ergebnis unterscheidet `Completed`, `Feedback(message)` und `Rejected(message)`.
   `TodayViewModel` führt es nur über den vorhandenen Command-/Feedbackkanal aus und enthält weder
   Lastparsing noch Trainings-Use-Case-Ergebnismapping.
@@ -132,6 +139,9 @@ Branch: `refactor/training-minimal-p0-contract`
   Abschlussgrenzen werden als einzige aktive Trainings-Architekturführung angelegt.
 - Die bisherige Trainings-Roadmap, ihr 815-zeiliges Protokoll sowie ADR-027 bis ADR-029 werden
   unverändert nach `docs/archive/training-assistant-cleanup-2026-08/` verschoben.
+- Die archivierten Dokumente werden aus `docs/architecture/README.md` und allen anderen aktiven
+  Architekturindizes entfernt; aktive Links zeigen nur noch auf Roadmap, ADR und Log des neuen
+  Zielzustands.
 - Historische Protokolle mit dem früheren Gerätegate werden vollständig archiviert statt
   nachträglich umgeschrieben. Laufende Protokolle erhalten einen kompakten aktuellen Nachfolger.
 - Normative Release-, Frontend-, Teststrategie- und Architekturtexte werden auf automatisierten
@@ -143,9 +153,13 @@ Branch: `refactor/training-minimal-p0-contract`
 
 Abnahme:
 
-- Kein aktiver normativer Vertrag referenziert Runner, manuelle Gerätefreigabe oder einen offenen
+- Ein negativer Repository-Scan findet außerhalb dieser abschaffenden Entscheidung, ADR-030 und
+  `docs/archive/` in keiner aktiven Dokumentation, keinem Skript und keinem CI-Test einen
+  Geräteabnahme-Runner, eine manuelle oder physische Gerätefreigabe oder einen offenen
   Geräte-Abnahmestatus.
 - Historische Gate-Nachweise liegen ausschließlich unter `docs/archive/`.
+- Der aktive Architekturindex referenziert weder die alte Roadmap noch ihr Protokoll oder die
+  archivierten Trainings-ADRs.
 - Release-Scope-Tests bestätigen für Phase 0 den absichtlich übersprungenen Produkt-Publish.
 - Pull Request, Squash-Merge und Main-Workflow sind grün.
 
@@ -169,8 +183,9 @@ Branch: `refactor/training-minimal-p1-domain`
 
 Abnahme:
 
-- Negative Architekturtests finden keine entfernten Typen, Legacy-Helfer, Domain-Schattenfelder
-  oder zweite Ergebnisliste.
+- Kein Produktions- oder Testcode referenziert `TrainingAssistantConfig`,
+  `legacyTrainingConfig()`, öffentliche Schrittplan-Schattenfelder oder eine zweite
+  Satzresultatliste. Alle Produktions- und Testaufrufer verwenden die kanonischen Typen.
 - Persistence-Entities, DAO-Spalten, Migrationstexte und Schemaexporte sind die einzige Allowlist
   für historische Feldnamen.
 - Trainingsregeln, Saved-State-Recreation, Migration 8 nach 22 und Persistenz-Neustarts sind grün.
@@ -188,7 +203,8 @@ Branch: `refactor/training-minimal-p2-storage`
 - Fünf eigenständige Room-Adapter werden erstellt. `TaskStore`, `RoomTaskRepository` und `TaskDao`
   werden im selben Pull Request gelöscht; eine delegierende Übergangsfassade ist nicht zulässig.
 - `ApplicationUseCaseComposition` wird aus `AppDatabase`, den fünf einmal erzeugten Adaptern und
-  einem Runner verdrahtet.
+  einem Runner verdrahtet. Jeder benannte Adapter wird an einen Konstruktor höchstens einmal
+  übergeben.
 - Use Cases erhalten nur die fachlich benötigten Ports. Intersection-Typen, Capability-Probes und
   wiederholte positionale Übergabe desselben Stores sind verboten.
 - Slice-Tests verwenden portgenaue Fakes; der breite In-Memory-Speicher bleibt ausschließlich für
@@ -198,6 +214,10 @@ Abnahme:
 
 - Domain und Presentation importieren keine Room-Typen.
 - Kein Produktionsadapter implementiert mehrere der fünf Ports.
+- Architekturtests sichern die fünf exakten Portgrenzen, den getrennten Runner, einmalige
+  Adapterargumente, verbotene Room-Imports und das Verbot eines All-Capabilities-Gateways.
+- `TransactionRunner` bleibt unabhängig testbar; seine fokussierten Commit-/Rollback-Verträge
+  sind grün.
 - Transaktions- und Rollbacktests beweisen atomare Satzaufnahme, Korrektur, Completion, Rewards und
   Adaptation über mehrere Ports.
 - Schema 22, Migrationen, Entities und vorhandene Daten bleiben unverändert.
@@ -214,7 +234,8 @@ Branch: `refactor/training-minimal-p3-ui`
 - Die vier Assistentenaktionen werden über `TrainingAssistantUiAction`,
   `TrainingAssistantActionHandler` und typisierte Ergebnisse geführt.
 - `TaskEditorComposeSteps`, `FocusStepRowView` und `TodayViewModel` werden von
-  Assistentencontrols, Lastparsing und Use-Case-Ergebnismapping bereinigt.
+  internen Assistentencontrols, Lastparsing, Use-Case-Ergebnismapping und
+  Assistenten-Entscheidungslogik bereinigt.
 - Abschließend werden alle Entfernungslisten, Portgrenzen, Dokumentationsindizes,
   Schema-/Saved-State-Verträge und UI-Goldens negativ auditiert.
 
@@ -224,6 +245,11 @@ Abnahme:
 - Accessibility-Matrix und sämtliche Assistenteninteraktionen sind unverändert grün.
 - Aktive Dokumentation beschreibt ausschließlich den erreichten Zielzustand. Das kompakte
   Protokoll enthält nur Status, Plan, Validierung und Abweichungen.
+- Ein auf `main` gelesener Phasenstatus `implementiert` beziehungsweise `veröffentlicht` bedeutet,
+  dass die zugehörigen Gates vollständig abgeschlossen sind. Offene oder nachgelagerte
+  Acceptance-Zustände werden nicht geführt.
+- PR-Nummern, Commit-SHAs, Workflow-IDs, Laufzeiten und Artefakthashes bleiben in Git und GitHub;
+  sie werden nicht als nachträgliche Ereignischronik in das Ausführungsprotokoll kopiert.
 - Nach Squash-Merge schließen grüner Main-Workflow, Produktionsupgrade, Packaging und Publish die
   Roadmap vollständig ab.
 
@@ -231,9 +257,11 @@ Abnahme:
 
 Pro Phase laufen mindestens:
 
-- `git diff --check`, Architektur-Negativtests sowie CI- und Release-Vertragstests;
-- die fokussierte Domain-, Saved-State-, Persistenz-, Transaktions- oder UI-Suite des
-  Phasenscopes;
+- `git diff --check` sowie die Python-Suites der CI- und Release-Vertragstests;
+- eine fokussierte Gradle-Suite für die betroffenen Domain-, Saved-State-, Persistenz-,
+  Transaktions- oder UI-Verträge;
+- Architekturtests für entfernte Typen, die fünf Repository-Grenzen, den getrennten Runner,
+  einmalige Adapterargumente, verbotene Room-Imports und verbotene Multi-Port-Produktionsadapter;
 - ein negativer Scan, dass keine unerlaubte Übergangs-API im Merge-Diff verbleibt.
 
 Vor jedem produktwirksamen Merge laufen zusätzlich:
@@ -247,6 +275,9 @@ Vor jedem produktwirksamen Merge laufen zusätzlich:
   Datenbankneustart;
 - vollständiger Migrationsgraph ab Schema 8 und Nachweis des byteidentischen Schema-22-Exports;
 - Editor-/Today-Recreation, read-only Goldens und Accessibility-Matrix.
+
+Spätestens vor dem letzten Merge wird diese vollständige Host-/Robolectric-, Lint- und
+Build-Matrix als abschließender Gesamtnachweis erneut ausgeführt.
 
 Im Pull Request und auf `main` laufen normale und animationsaktive Instrumentierung auf API 26,
 35 und 37. Für Phasen 1 bis 3 folgen Produktionsupgrade, Paketprüfung und Veröffentlichung
