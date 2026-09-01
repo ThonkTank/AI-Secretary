@@ -358,7 +358,7 @@ deshalb `veröffentlicht`; Phase 3 bleibt bis zum Abschluss dieses Docs-Gates ge
 
 ## Phase 3 – UI-Ownership und Abschlussaudit
 
-Status: in Arbeit
+Status: veröffentlicht
 
 ### Plan
 
@@ -517,3 +517,30 @@ Goldens und kanonische Roadmap sind gegenüber dem Phasenstart byteidentisch. Di
 Scope-Klassifikation fordert korrekt Quality, Instrumentierung und Produktrelease. Damit sind
 alle lokal belegbaren Phase-3- und Gesamtroadmapkriterien erfüllt; `veröffentlicht` bleibt bis
 zum abgeschlossenen Remote-Gate gesperrt.
+
+### Korrekturrunde 3 – transienter Main-Retry vor dem Releasegate
+
+Audit: Der erste Main-Lauf bestand Scope, Quality und fünf der sechs Emulatorachsen. Die
+animationsaktive API-35-Achse erreichte weder AVD-Erstellung noch Teststart: `sdkmanager` brach
+beim Installieren des Android-Emulators mit einem ungültigen ZIP-Archiv ab, und es entstanden
+folgerichtig keine Instrumentation-Testreports. Dieselbe Achse war im Pull-Request-Gate auf dem
+inhaltlich identischen Produktstand grün. Der Befund betrifft damit die Runner-/SDK-
+Bereitstellung, nicht Produktcode oder Testverhalten; der Aggregator sperrte Packaging, Upgrade
+und Publish korrekt.
+
+Fixplan vor der Korrektur: Produkt-, Workflow- und Vertragscode bleiben unverändert. Für
+denselben exakten Main-Stand werden ausschließlich die fehlgeschlagenen Jobs des ursprünglichen
+Workflows erneut gestartet, sodass GitHub den Emulator und das SDK frisch bereitstellt. Der
+Roadmapabschluss wird nur fortgesetzt, wenn die wiederholte API-35-Animationsachse, der
+Instrumentation-Aggregator, Packaging, alle drei Produktionsupgradeachsen und Publish grün sind.
+Bei einer erneuten gleichartigen Bereitstellungsstörung bleibt Phase 3 offen und der Befund wird
+vor jedem weiteren Eingriff erneut auditiert.
+
+Ergebnis: Der gezielte Retry stellte SDK und Emulator frisch bereit und führte die
+animationsaktive API-35-Achse auf demselben Main-Stand vollständig grün aus. Damit waren alle
+sechs normalen beziehungsweise animationsaktiven Emulatorachsen und der gemeinsame
+Instrumentation-Aggregator grün. Anschließend bestanden der einmal gebaute und signierte
+Produktionskandidat, die Produktionsupgrades auf API 26, 35 und 37 sowie Publish. Das
+veröffentlichte Release zeigt exakt auf denselben Main-Stand und enthält ausschließlich APK und
+Release-Metadaten. Phase 3 und die Minimal-Roadmap sind damit vollständig `veröffentlicht`; es
+bleibt kein nachgelagerter Acceptance-Zustand offen.
