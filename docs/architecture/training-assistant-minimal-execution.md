@@ -206,7 +206,7 @@ bleibt bis zum Abschluss dieses Docs-Gates gesperrt.
 
 ## Phase 2 – Fünf Repositories und eindeutige Composition
 
-Status: in Arbeit
+Status: veröffentlicht
 
 ### Plan
 
@@ -339,6 +339,24 @@ er enthält erneut 515 Host-/Robolectric-Tests mit 0 Fehlern, 0 Fehlschlägen un
 übersprungenen `WoodGrainBenchmarkTest`, Lint, Check, Debug-, Instrumentation- und Release-Build,
 R8 sowie Packaging. Der vorherige saubere `clean build` war mit allen 146 Tasks in 16 Minuten
 53 Sekunden grün. Der abschließende Negativ- und Immutable-Scan findet keine weitere Abweichung.
+
+### Korrekturrunde 3 – Status nach dem Remote-Gate
+
+Plan: Nach grünem Pull Request, Squash-Merge, vollständiger grüner Main-Matrix, erfolgreicher
+Paketierung, drei grünen Produktionsupgradeachsen und erfolgreichem Publish wird ausschließlich
+der Phase-2-Status von `in Arbeit` auf `veröffentlicht` gesetzt. Der frühere Auditbefund bleibt
+unverändert als damaliger Stand erhalten. Die Korrektur verändert weder Roadmap noch Produkt-,
+Schema-, Ressourcen- oder Testcode und wird erneut über Themenbranch, Pull Request und
+Main-Workflow geprüft. Validiert werden `git diff --check`, Dokumentationsscope und der negative
+Gate-Scan.
+
+Ergebnis: Pull Request 312 wurde nach vollständig grünem PR-Gate per Squash-Merge als
+`4b4a868c08692c9bae623e083dc3a933b35dbe1b` nach `main` übernommen. Der exakt darauf laufende
+Main-Workflow 33514256888 ist einschließlich Quality, sechs Emulatorachsen, gemeinsamem
+Instrumentation-Gate, Paketierung, Produktionsupgrade auf API 26, 35 und 37 sowie Publish grün.
+Release `forest-android-1014601` zeigt auf denselben Commit und enthält ausschließlich APK und
+Release-Metadaten. Der Phase-2-Status lautet deshalb `veröffentlicht`; Phase 3 bleibt bis zum
+Abschluss dieses Docs-Gates gesperrt.
 
 ## Phase 3 – UI-Ownership und Abschlussaudit
 
