@@ -90,7 +90,7 @@ Status- oder Scopeabweichung; Phase 1 bleibt bis zum Abschluss dieses Docs-Gates
 
 ## Phase 1 – Eine kanonische Schritt-, Trainings- und Ergebnisstruktur
 
-Status: in Arbeit
+Status: veröffentlicht
 
 ### Plan
 
@@ -188,6 +188,21 @@ Ausführungsprotokoll verändert.
   deshalb bleibt der Status `in Arbeit` und Phase 2 gesperrt.
 - Außer der dokumentierten und abgeschlossenen Negativscan-Korrektur wurde keine weitere
   Abweichung gefunden.
+
+### Korrekturrunde 2 – Status nach dem Remote-Gate
+
+Plan: Nach grünem Pull Request, Squash-Merge, vollständiger grüner Main-Matrix, erfolgreicher
+Paketierung, drei grünen Produktionsupgradeachsen und erfolgreichem Publish wird ausschließlich
+der Phase-1-Status von der während der Implementierung zutreffenden Arbeitsmarkierung auf
+`veröffentlicht` gesetzt. Der frühere Auditbefund bleibt unverändert als damaliger Stand erhalten.
+Die Korrektur verändert weder Roadmap noch Produkt-, Schema-, Ressourcen- oder Testcode und wird
+erneut über einen Themenbranch, Pull Request und Main-Workflow geprüft. Validiert werden
+`git diff --check`, Dokumentationsscope und der negative Gate-Scan.
+
+Ergebnis: Der Phase-1-Status lautet `veröffentlicht`. Das veröffentlichte Release zeigt auf den
+exakten Squash-Commit und enthält ausschließlich APK und Release-Metadaten; der Remote-Themenbranch
+ist gelöscht. Der erneute Abgleich findet keine weitere Status- oder Scopeabweichung; Phase 2
+bleibt bis zum Abschluss dieses Docs-Gates gesperrt.
 
 ## Phase 2 – Fünf Repositories und eindeutige Composition
 
