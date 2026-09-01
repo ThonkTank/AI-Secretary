@@ -21,7 +21,7 @@ import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.calendar.CalendarResult;
-import de.thonktank.autosecretary.data.local.RoomInvalidationSource;
+import de.thonktank.autosecretary.data.observable.DatabaseInvalidationSource;
 import de.thonktank.autosecretary.data.observable.CalendarInvalidationSource;
 import de.thonktank.autosecretary.data.observable.ClockInvalidationSource;
 import de.thonktank.autosecretary.data.observable.PreferenceInvalidationSource;
@@ -252,7 +252,7 @@ public final class OptionsViewModelTest {
         };
         if (invalidations != null) invalidations.close();
         calendarInvalidations = new CalendarInvalidationSource(calendar);
-        invalidations = new PresentationInvalidationSource(new RoomInvalidationSource(database),
+        invalidations = new PresentationInvalidationSource(new DatabaseInvalidationSource(database),
                 calendarInvalidations, new PreferenceInvalidationSource(uiPreferences),
                 new ClockInvalidationSource(new FixedClock(), observer -> () -> { }),
                 Runnable::run);

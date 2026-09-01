@@ -1,11 +1,11 @@
-package de.thonktank.autosecretary.data.local
+package de.thonktank.autosecretary.data.observable
 
 import de.thonktank.autosecretary.AppDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.conflate
 
-/** Cold Room invalidation stream; synchronous repositories remain the only data readers. */
-class RoomInvalidationSource(database: AppDatabase) {
+/** Cold database invalidation stream; synchronous repositories remain the only data readers. */
+class DatabaseInvalidationSource(database: AppDatabase) {
     val changes: Flow<Set<String>> = database.invalidationTracker
         .createFlow(*TABLE_NAMES, emitInitialState = true)
         .conflate()

@@ -64,6 +64,23 @@ public final class TaskEditorArchitectureTest {
         assertFalse(renderer.contains("\", ausgewählt\""));
     }
 
+    @Test public void trainingAssistantSectionOwnsCanonicalEditorControls() throws IOException {
+        String steps = kotlinSource("presentation/editor/TaskEditorComposeSteps.kt");
+        String section = kotlinSource("presentation/editor/TrainingAssistantEditorSection.kt");
+
+        assertTrue(steps.contains("TrainingAssistantEditorSection("));
+        assertFalse(steps.contains("TrainingAssistantInputs"));
+        assertFalse(steps.contains("trainingLoadModes"));
+        assertFalse(steps.contains("trainingMuscleLabel"));
+        assertTrue(section.contains("prescription: StepPrescription"));
+        assertTrue(section.contains("policy: TrainingAssistantPolicy?"));
+        assertTrue(section.contains("assistantState: TrainingAssistantState"));
+        assertTrue(section.contains("onChange: (StepPrescription, TrainingAssistantPolicy?)"));
+        assertFalse(section.contains("EditorStepState"));
+        assertFalse(section.contains("EditorUiState"));
+        assertFalse(section.contains("TaskEditorComposeDispatcher"));
+    }
+
     private static String source(String name) throws IOException {
         Path path = sourcePath(name);
         return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);

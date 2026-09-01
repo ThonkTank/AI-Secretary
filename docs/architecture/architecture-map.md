@@ -7,7 +7,7 @@ Schema 15 ergänzte den Editorvertrag, Schema 16 persistente Rhythmusanker, Sche
 und Kombozustand und Schema 19 den eingefrorenen Planwert quantitativer Rewards. Schema 20 bis 22
 normalisieren Satzresultate und persistieren Trainingsentscheidungen, Lastfragen und ihre stabile
 Auditordnung. Diese Erweiterungen
-ändern die hier beschriebenen Compiler-, Today- und Capability-Port-Grenzen nicht. Die aktuelle
+ändern die hier beschriebenen Compiler-, Today- und Repository-Port-Grenzen nicht. Die aktuelle
 Präsentationsbaseline und ihre weitere Migration stehen in der
 [Frontend-Modernisierungsroadmap](frontend-modernization-roadmap.md).
 Phase 5b schaltet den Aufgabeneditor vollständig auf Compose um. Der produktive
@@ -28,7 +28,8 @@ Phase 5b schaltet den Aufgabeneditor vollständig auf Compose um. Der produktive
   └── no project or Android dependency
 ```
 
-`core-domain` besitzt Domainmodelle, Capability-Ports, Scheduling-/Schrittregeln und Use Cases.
+`core-domain` besitzt Domainmodelle, fünf fachliche Repository-Ports,
+Scheduling-/Schrittregeln und Use Cases.
 `today-core` besitzt die getrennten Fokus-, Timeline- und Historyprojektionen sowie
 `TodayAction`, `TodayCommand`, Reducer und Coordinator. Android-Ressourcen, Room, Lifecycle,
 Kalenderzugriff, Widgetcode und Views verbleiben in `app`.
@@ -39,11 +40,13 @@ Kalenderzugriff, Widgetcode und Views verbleiben in `app`.
 ui.today View
   → TodayActionSink
   → TodayViewModel                                  (:app)
-  → TodayCoordinator / TodayReducer                 (:today-core)
-  → TodayCommandDispatcher
-  → fokussierter Handler im TodayViewModel          (:app)
-  → fokussiertes Use-Case-Bündel → Capability-Port   (:core-domain)
-  → RoomTask-/RoomStep-/RoomTraining-Adapter / DAO  (:app)
+      ├── TodayCoordinator / TodayReducer             (:today-core)
+      │   → TodayCommandDispatcher
+      │   → fokussierter Command-Handler                 (:app)
+      └── TrainingAssistantUiAction
+          → TrainingAssistantActionHandler                    (:app)
+  → fokussiertes Use-Case-Bündel → benannter Repository-Port (:core-domain)
+  → einer der fünf Room-Adapter / DAOs               (:app)
   → DashboardPresenter / DashboardUiMapper          (:app)
   → StateFlow<TodayScreenState>                     (:app)
   → DashboardRenderer → ui.today View               (:app)
@@ -60,11 +63,11 @@ verbrauchbare `UiEvent`s existieren nicht mehr.
 | Paket | Verantwortung |
 |---|---|
 | `app/ui/leaf` | `LeafShape`, `LeafSurface`, `GrainSpec`, Clip und asynchrone Grain-Pipeline |
-| `app/ui/today` | Header, Fokuskarte, Timelineblätter, Tageshistorie, Gesten und Accessibility |
+| `app/ui/today` | Header, Fokuskarte, `TrainingAssistantPanelView`, Timelineblätter, Tageshistorie, Gesten und Accessibility |
 | `app/presentation/alltasks` | Verwaltungszustand, virtuelle Liste und Managementaktionen |
-| `app/presentation/editor` | zustandsloser Compose-Editor, Hostgrenze und Reducer-Dispatcher; in 5a nur Vergleichsrenderer |
+| `app/presentation/editor` | zustandsloser Compose-Editor, `TrainingAssistantEditorSection`, Hostgrenze und Reducer-Dispatcher |
 | `app/presentation/options` | Optionen-, Kalender-, Updaterzustand und stabile Hostrequests |
-| `app/presentation/today` | Android-State-Owner, Today-Screen-State und Hostrequests |
+| `app/presentation/today` | Android-State-Owner, Today-Screen-State, Hostrequests und typisierter Assistentenhandler |
 | `app/presentation/shell` | temporäre Top-Level-Auswahl und globale Legacy-Palette |
 | `today-core/presentation/today` | Android-freie Today-Modelle, Actions und Zustandsautomat |
 
@@ -108,6 +111,8 @@ Schema 22 unverändert.
 | Alles-Filter, Modus, Karten- und Filterbereich | `AllTasksPresentationState` im `AllTasksViewModel` | ja, `SavedStateHandle` |
 | Alles-Dropdown, Swap-Auswahl und aktiver Drag | `AllTasksComposeScreen` | nein, bei Abbruch/Detach/Recreation geschlossen |
 | Editor-Draft, Wizardnavigation, Feedback und Prompt | `EditorUiState` im `TaskEditorViewModel` | Recreation über `SavedStateHandle` |
+| Editor-Assistentencontrols | `TrainingAssistantEditorSection` mit kanonischen Typen | nein |
+| Today-Assistentenpanel und seine vier UI-Aktionen | `TrainingAssistantPanelView` und `TrainingAssistantActionHandler` | fachliche Ergebnisse über Training-Use-Cases |
 | Wiederholungsdraft | `RepetitionInputState` im `TodayViewModel` | nein |
 | Blatt-/Grain-Geometrie | `LeafSurface` | nein |
 
@@ -118,6 +123,9 @@ Schema 22 unverändert.
 - Der produktive Compose-Editor wird gegen alle zehn kanonischen und fünf adaptiven freigegebenen
   Baselines sowie über Semantik-, Fokus-, Scroll-, Recreation-, Host-Back- und Actionverträge
   geprüft. Architekturtests verbieten einen zweiten Draft und die entfernte View-Orchestrierung.
+- Ownership-Tests halten Assistentencontrols aus `TaskEditorComposeSteps` und
+  `FocusStepRowView` heraus. Handler-Tests sichern Dezimalpunkt/-komma, exakte Milli-Units,
+  alle vier typisierten Aktionen sowie Completed-, Feedback- und Rejected-Ergebnisse.
 - Der produktive Compose-Alles-Tab wird gegen seine 13 unveränderten Baselines sowie über
   LazyList-, Filter-, Dropdown-, Long-Press-Drag-, Randscroll-, Recreation-,
   Accessibility- und Actionverträge geprüft; ein RecyclerView-Ersatzpfad ist nicht mehr zulässig.

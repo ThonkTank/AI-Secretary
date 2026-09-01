@@ -334,11 +334,11 @@ Buildmatrix erneut.
 
 Ergebnis: Produktionscode und Room-Testfixture erzeugen je Composition genau einen Runner und
 reichen ihn an den Step-Adapter weiter. Architektur-, Room-Step-/Editor- und Set-Result-
-Rollbacktests sind grün. Der finale `build`-Lauf ist mit 143 Tasks in 12 Minuten 39 Sekunden grün;
-er enthält erneut 515 Host-/Robolectric-Tests mit 0 Fehlern, 0 Fehlschlägen und dem unverändert
-übersprungenen `WoodGrainBenchmarkTest`, Lint, Check, Debug-, Instrumentation- und Release-Build,
-R8 sowie Packaging. Der vorherige saubere `clean build` war mit allen 146 Tasks in 16 Minuten
-53 Sekunden grün. Der abschließende Negativ- und Immutable-Scan findet keine weitere Abweichung.
+Rollbacktests sind grün. Der finale `build`-Lauf enthält erneut 515 Host-/Robolectric-Tests mit
+0 Fehlern, 0 Fehlschlägen und dem unverändert übersprungenen `WoodGrainBenchmarkTest`, Lint,
+Check, Debug-, Instrumentation- und Release-Build, R8 sowie Packaging. Der vorherige saubere
+`clean build` war ebenfalls grün. Der abschließende Negativ- und Immutable-Scan findet keine
+weitere Abweichung.
 
 ### Korrekturrunde 3 – Status nach dem Remote-Gate
 
@@ -350,14 +350,170 @@ Schema-, Ressourcen- oder Testcode und wird erneut über Themenbranch, Pull Requ
 Main-Workflow geprüft. Validiert werden `git diff --check`, Dokumentationsscope und der negative
 Gate-Scan.
 
-Ergebnis: Pull Request 312 wurde nach vollständig grünem PR-Gate per Squash-Merge als
-`4b4a868c08692c9bae623e083dc3a933b35dbe1b` nach `main` übernommen. Der exakt darauf laufende
-Main-Workflow 33514256888 ist einschließlich Quality, sechs Emulatorachsen, gemeinsamem
-Instrumentation-Gate, Paketierung, Produktionsupgrade auf API 26, 35 und 37 sowie Publish grün.
-Release `forest-android-1014601` zeigt auf denselben Commit und enthält ausschließlich APK und
-Release-Metadaten. Der Phase-2-Status lautet deshalb `veröffentlicht`; Phase 3 bleibt bis zum
-Abschluss dieses Docs-Gates gesperrt.
+Ergebnis: Der Produktstand bestand das vollständig grüne Pull-Request-Gate, wurde per Squash nach
+`main` übernommen und bestand dort Quality, sechs Emulatorachsen, gemeinsames
+Instrumentation-Gate, Paketierung, Produktionsupgrade auf API 26, 35 und 37 sowie Publish. Die
+Veröffentlichung enthält ausschließlich APK und Release-Metadaten. Der Phase-2-Status lautet
+deshalb `veröffentlicht`; Phase 3 bleibt bis zum Abschluss dieses Docs-Gates gesperrt.
 
 ## Phase 3 – UI-Ownership und Abschlussaudit
 
-Status: wartet auf den vollständig abgeschlossenen Phase-2-Gate
+Status: in Arbeit
+
+### Plan
+
+Ergebnis: `TrainingAssistantEditorSection` besitzt die Editor-Assistentencontrols und arbeitet
+direkt mit `StepPrescription`, nullable `TrainingAssistantPolicy` und
+`TrainingAssistantState`. `TrainingAssistantPanelView` besitzt in Today Status, Lastfrage,
+Antwortfeld, Verlauf und Undo. Die vier Assistentenaktionen laufen typisiert über
+`TrainingAssistantUiAction` und den ausschließlich mit `TrainingUseCases` verdrahteten
+`TrainingAssistantActionHandler`; `TodayViewModel` führt dessen Ergebnis nur über den vorhandenen
+Command-/Feedbackkanal aus. Layout, Texte, Felder, Defaults, Reihenfolge, Test-Tags,
+Accessibility und Interaktionen bleiben unverändert.
+
+Betroffene Grenzen:
+
+- Compose-Schritteditor und seine neue eigenständige Assistentensektion;
+- Today-Fokuszeile, neues Assistentenpanel sowie die geschlossene Today-Aktionsgrenze;
+- typisierte UI-Aktionen, Handler-Ergebnisse und `TodayViewModel` als reine Orchestrierung;
+- UI-, Handler-, ViewModel-, Architektur-, Accessibility- und Golden-Tests;
+- aktive Architekturübersichten und Abschlussaudit aller Roadmap-Entfernungslisten.
+
+Reihenfolge:
+
+1. Vor dem Produktdiff Hash-Baselines für Schemaexport, Migrationen, Upgradefixture, Ressourcen,
+   Editor-/Focus-Goldens, Saved-State-Codec und kanonische Roadmap erfassen.
+2. Die Editor-Assistentencontrols atomar nach `TrainingAssistantEditorSection` verschieben. Die
+   Komponente erhält die drei kanonischen Typen direkt und liefert Änderungen ausschließlich als
+   `StepPrescription` und nullable Policy zurück; ein Adaptermodell wird nicht eingeführt.
+3. Status, Lastfrage, Antwortfeld, Verlauf und Undo atomar nach
+   `TrainingAssistantPanelView` verschieben. `FocusStepRowView` bindet nur das Kind; Last-, RIR-
+   und Safety-Controls der normalen Satzaufnahme bleiben unverändert in der Zeile.
+4. `TrainingAssistantUiAction` für ApplyLoad, NoHigherLoad, Later und Undo einführen. ApplyLoad
+   trägt Rohtext, aktuelle Lastart und Einheit. Der Handler übernimmt Punkt/Komma,
+   Milli-Unit-Konvertierung, Validierung, Use-Case-Aufruf und typisiertes Ergebnis-Mapping.
+   `TodayViewModel` verliert Lastparsing, Trainings-Use-Case-Ergebnismapping und
+   Assistentenentscheidungslogik.
+5. Architektur- und Interaktionstests auf die neuen Ownership-Grenzen erweitern und aktive
+   Architekturtexte auf den erreichten Zielzustand aktualisieren. Danach fokussierte Compile-,
+   Handler-, UI-, Recreation-, Accessibility- und read-only Golden-Suites ausführen.
+6. Die vollständige Host-/Robolectric-, Lint- und Buildmatrix mit JDK 21 ausführen und die gesamte
+   Roadmap getrennt gegen Entfernungslisten, Portgrenzen, Dokumentationsindizes,
+   Schema-/Saved-State-Verträge sowie unveränderte UI-Goldens auditieren. Vor jeder Korrekturrunde
+   zuerst einen Fixplan ergänzen.
+
+Abnahme: Alle lokalen Phase-3- und Gesamtroadmap-Kriterien sind belegt, bevor der produktwirksame
+Themenbranch committed und über Pull Request, Squash-Merge, vollständigen Main-Workflow,
+Produktionsupgrade, Packaging und Publish geschlossen wird. Bis dahin bleiben der Status
+`veröffentlicht` und der vollständige Roadmapabschluss gesperrt.
+
+### Korrekturrunde 1 – identische Focus-Hierarchie und Undo-Testsequenz
+
+Audit: Der erste read-only Focus-Golden fand ausschließlich an der nativen
+`EditText`-Unterlinie eine deterministische Abweichung von 0,00001699. Die zusätzliche
+`LinearLayout`-Ebene des neuen Panels veränderte dort die Alpha-Rundung einzelner Pixel, obwohl
+Maße und übriger Renderstand identisch blieben. Der Handler-Test prüfte außerdem den durch
+NoHigherLoad erhöhten Setstand erst nach dem unmittelbar folgenden erfolgreichen Undo und
+erwartete deshalb fälschlich noch den Zwischenstand.
+
+Fixplan vor der Korrektur: `TrainingAssistantPanelView` bleibt alleiniger Owner und Bindepunkt
+aller Assistentenviews, hängt seine besessenen Summary-/Detailviews aber direkt in den bestehenden
+Zeilenhost ein, sodass kein zusätzlicher Layoutknoten die unveränderte Pixelhierarchie beeinflusst.
+Der Handler-Test prüft den erhöhten Setstand vor Undo, danach den wiederhergestellten Stand und
+erst beim zweiten Undo das typisierte Rejected-Ergebnis. Anschließend laufen Testcompile,
+Handler-, Ownership-, UI-, Focus-/Editor-Golden- und Accessibility-Suite erneut; Golden-Dateien
+werden nicht aktualisiert.
+
+Ergebnis: Das Panel besitzt und bindet weiterhin allein alle Assistentencontrols; die direkt in
+den bestehenden Zeilenhost eingefügten Views stellen zugleich die byteidentische Renderhierarchie
+wieder her. NoHigherLoad, der erfolgreiche Exactly-once-Undo und dessen zweite Ablehnung werden
+in der fachlich richtigen Reihenfolge geprüft. Testcompile sowie 59 fokussierte Handler-,
+Ownership-, UI-, Focus-/Editor-Golden- und Accessibility-Tests sind grün; kein Golden wurde
+aktualisiert.
+
+### Implementierung
+
+- `TrainingAssistantEditorSection` besitzt alle Editor-Assistentencontrols, erhält direkt
+  Prescription, nullable Policy und State und liefert nur Prescription und nullable Policy
+  zurück. `TaskEditorComposeSteps` bindet die Komponente ohne Adaptermodell.
+- `TrainingAssistantPanelView` besitzt in Today Summary, Lastfrage, Rohtextfeld, Antwortaktionen,
+  Verlauf und Undo. `FocusStepRowView` bindet nur diesen Owner; Last-, RIR- und Safety-Eingaben
+  der Satzaufnahme bleiben unverändert in der Zeile.
+- Die vier Aktionen sind eigenständige `TrainingAssistantUiAction`-Typen. ApplyLoad trägt Rohtext,
+  aktuelle Lastart und Einheit. `TrainingAssistantActionHandler` erhält ausschließlich
+  `TrainingUseCases` und besitzt Parsing, exakte Milli-Unit-Konvertierung, Validierung,
+  Use-Case-Aufruf und Completed-/Feedback-/Rejected-Mapping.
+- `TodayViewModel` erzeugt den Handler einmal und ordnet sein typisiertes Ergebnis nur dem
+  vorhandenen Command-/Feedbackkanal zu. Es enthält weder Lastparsing noch Trainings-Use-Case-
+  Ergebnismapping oder eine Projektion der offenen Lastfrage.
+- Architekturkarte, Today-Fokus-Beschreibung und Architekturindex beschreiben die erreichten
+  UI-, Aktions-, Handler- und Fünf-Port-Grenzen ohne Sammelgateway.
+
+### Validierung vor dem unabhängigen Audit
+
+- Produkt- und Testquellencompiler für `today-core`, Debug-App und Instrumentation: grün; nur die
+  bereits bestehenden Android- und Accessibility-Deprecation-Warnungen.
+- Fokussierte Handler-, Ownership-, UI-, Focus-/Editor-Golden- und Accessibility-Suite:
+  59 Tests grün; die Korrekturrunde ist darin enthalten.
+- Vollständiges `:app:testInstrumentationUnitTest`: 521 Tests, 0 Fehler, 0 Fehlschläge,
+  1 unverändert übersprungener Benchmark.
+- `python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v`: 16 Tests grün.
+- `python3 -m unittest discover -s scripts/release -p 'test_*.py' -v`: 23 Tests grün.
+- `./gradlew clean build --console=plain --no-daemon`: mit JDK 21 und vorhandenem Android-SDK
+  grün. Der Lauf umfasst Host-/Robolectric-Tests, Lint, Check, Debug-, Instrumentation- und
+  Release-Build, R8 sowie Packaging.
+- Vorher-/Nachher-Abgleich: Editor-/Focus-Goldens, Schemaexport, Ressourcen, Upgradefixture,
+  Saved-State-Codec, Migrationen und kanonische Roadmap sind byteidentisch. Der tatsächliche
+  Diff wird korrekt als Quality-, Instrumentierungs- und Produktrelease-relevant klassifiziert.
+
+### Unabhängiger Abschlussaudit und Korrekturrunde 2
+
+Audit: Der negative Gesamtroadmap-Scan fand trotz grüner Vorabvalidierung vier verbliebene
+Vertragsabweichungen. `PresentationInvalidationSource` importiert in einer Kotlin-Datei noch den
+Room-namensgebundenen Typ `data.local.RoomInvalidationSource`; der bisherige Architekturtest
+prüfte diese Presentation-Grenze nur in Java. ADR-022 erklärt nachgelagerte visuelle
+Folgefreigaben weiterhin zum Vertrag, und die aktive Render-Kritik hält ein späteres
+hardwaregebundenes Performance-Gate offen, obwohl ADR-030 den Abschluss vollständig
+automatisiert. Außerdem kopiert das Phase-2-
+Ergebnis Pull-Request-, Commit-, Workflow- und Releasekennungen als nachträgliche
+Ereignischronik in dieses Protokoll; mehrere Validierungsabschnitte nennen außerdem entgegen dem
+kompakten Protokollvertrag konkrete Laufzeiten. `ComboPolicySource` und `TaskCatalogQuery` sind
+dagegen keine
+zusätzlichen Persistenzports: Ersteres liest eine Preference-Policy, Letzteres ist eine reine
+Use-Case-Projektion, und kein Room-Adapter implementiert einen der beiden Typen.
+
+Fixplan vor der Korrektur: Die Datenbank-Invalidierungsquelle wird ohne Verhaltensänderung als
+`data.observable.DatabaseInvalidationSource` benannt und von Composition, Presentation sowie
+ihren Tests ausschließlich über diesen neutralen Quelltyp verdrahtet; die alte Datei und ihr
+Name entfallen. Der Architekturtest erhält einen Kotlin-fähigen negativen Production-Scan, der
+Room- und `data.local`-Imports in allen Presentation-Quellen verbietet. ADR-022 verweist für den
+visuellen Vertrag auf unveränderte Goldens und die automatisierte Matrix aus ADR-030; die
+Render-Kritik ersetzt das offene hardwaregebundene Folgegate durch ein reproduzierbares
+automatisiertes Performance-Budget. Das Phase-2-Ergebnis bleibt als knapper Gate-Nachweis
+erhalten, entfernt aber sämtliche externen Kennungen; konkrete Laufzeiten entfallen im gesamten
+Protokoll. Danach laufen Invalidierungs-,
+Architektur-, UI-Ownership- und Golden-Tests, beide Python-Vertragssuiten, der vollständige
+Host-/Robolectric-Testbestand sowie ein vollständiger JDK-21-Build erneut. Immutable-Hashes und
+negative Gesamtroadmap-Scans werden abschließend wiederholt; Roadmap, Schema, Migrationen,
+Ressourcen, Saved-State und Goldens dürfen sich nicht ändern.
+
+Ergebnis: `DatabaseInvalidationSource` liegt als neutraler Datenbank-Quelltyp in
+`data.observable`; Composition und Presentation importieren weder dessen Room-Implementierung
+noch `data.local`. Der neue Java-/Kotlin-Architekturtest sichert diese Grenze über alle Domain-
+und Presentation-Produktionsquellen. Die beiden aktiven Alttexte verweisen nun ausschließlich
+auf unveränderte Goldens, die automatisierte Matrix und ein reproduzierbares CI-
+Performancebudget. Externe Gate-Kennungen und konkrete Laufzeiten sind aus dem kompakten
+Protokoll entfernt.
+
+Die fokussierte Invalidierungs-, Ownership-, Handler-, UI-, Golden- und Accessibility-Suite ist
+grün. CI-Vertragssuite mit 16 Tests und Release-Vertragssuite mit 23 Tests sind grün. Der
+vollständige Host-/Robolectric-Bericht enthält 522 Tests, 0 Fehlschläge, 0 Fehler und den
+unverändert einen übersprungenen Benchmark. Der anschließende saubere JDK-21-Gesamtbuild ist mit
+allen 146 Tasks grün und umfasst erneut Test, Lint, Check, Debug-, Instrumentation- und
+Release-Build, R8 sowie Packaging. Der finale Negativscan findet weder alte Trainings- oder
+Gatewaytypen, unerlaubte Room-/`data.local`-Imports, Multi-Port-Adapter noch aktive offene
+Folgegates. Schema, Migrationen, Upgradefixture, Ressourcen, Saved-State-Codec, Editor-/Focus-
+Goldens und kanonische Roadmap sind gegenüber dem Phasenstart byteidentisch. Die
+Scope-Klassifikation fordert korrekt Quality, Instrumentierung und Produktrelease. Damit sind
+alle lokal belegbaren Phase-3- und Gesamtroadmapkriterien erfüllt; `veröffentlicht` bleibt bis
+zum abgeschlossenen Remote-Gate gesperrt.

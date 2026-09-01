@@ -11,6 +11,7 @@ import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TrainingContextUiModel;
+import de.thonktank.autosecretary.presentation.today.TrainingAssistantUiAction;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
@@ -540,9 +541,17 @@ public final class UiComponentRobolectricTest {
         assertNotNull(apply);
         apply.performClick();
 
-        assertEquals(TodayAction.Kind.APPLY_TRAINING_LOAD, emitted.get().kind);
+        assertEquals(TodayAction.Kind.TRAINING_ASSISTANT, emitted.get().kind);
         assertEquals("template-press", emitted.get().id);
-        assertEquals(52_500L, emitted.get().longValue);
+        assertTrue(emitted.get().trainingAssistantAction
+                instanceof TrainingAssistantUiAction.ApplyLoad);
+        TrainingAssistantUiAction.ApplyLoad action =
+                (TrainingAssistantUiAction.ApplyLoad) emitted.get().trainingAssistantAction;
+        assertEquals("52,5", action.rawLoad);
+        assertEquals(de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
+                action.currentMode);
+        assertEquals(de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG,
+                action.currentUnit);
     }
 
     private static DewDotView firstDew(View root) {
