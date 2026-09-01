@@ -10,7 +10,7 @@ und GitHub.
 
 ## Phase 0 – Vertrag, Archiv und automatisierter Abschluss
 
-Status: in Arbeit – lokal validiert, Remote-Gate offen
+Status: implementiert
 
 ### Plan
 
@@ -75,6 +75,18 @@ den vorgeschriebenen Pull-Request-, Squash-Merge- und Main-Workflow-Gate.
   Squash-Merge und Main-Workflow fehlen noch; deshalb wird Phase 0 nicht als `implementiert`
   geschlossen und Phase 1 nicht begonnen.
 - Es wurde keine inhaltliche Diskrepanz gefunden; eine Fixrunde war nicht erforderlich.
+
+### Korrekturrunde 1 – Status nach dem Remote-Gate
+
+Plan: Nach grünem Pull Request, Squash-Merge und grünem Main-Workflow wird ausschließlich der
+Phase-0-Status von der während der Implementierung zutreffenden Arbeitsmarkierung auf
+`implementiert` gesetzt. Der frühere Auditbefund bleibt unverändert als damaliger Stand erhalten.
+Die Korrektur verändert weder Roadmap noch Produkt-, Schema-, Ressourcen- oder Testcode und wird
+erneut über einen Themenbranch, Pull Request und Main-Workflow geprüft. Validiert werden
+`git diff --check`, Dokumentationsscope und der negative Gate-Scan.
+
+Ergebnis: Der Phase-0-Status lautet `implementiert`. Der erneute Abgleich findet keine weitere
+Status- oder Scopeabweichung; Phase 1 bleibt bis zum Abschluss dieses Docs-Gates gesperrt.
 
 ## Phase 1 – Eine kanonische Schritt-, Trainings- und Ergebnisstruktur
 
