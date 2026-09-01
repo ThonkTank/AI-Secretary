@@ -14,6 +14,8 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 
 import org.junit.Test;
 
@@ -26,6 +28,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 
 public final class TaskScheduleServiceTest {
     @Test public void reorderReadsAndNormalizesOnlySourceAndTargetSlots() {
@@ -43,7 +48,8 @@ public final class TaskScheduleServiceTest {
         store.add(open("eo", eveningTask.id, TaskSlot.EVENING, 8));
         store.add(open("uo", untouched.id, TaskSlot.MIDDAY, 77));
 
-        ScheduleMoveResult result = new TaskScheduleService(store, store, () -> "unused").move(
+        ScheduleMoveResult result = new TaskScheduleService(store.catalog, store.today,
+                store.transactions, () -> "unused").move(
                 new ScheduleMoveRequest(ScheduleEntryId.of("m"), TaskSlot.EVENING,
                         Optional.empty()));
 
@@ -68,11 +74,31 @@ public final class TaskScheduleServiceTest {
     }
 
     /** Focused double: it cannot accidentally provide catalog, template, reward or global reads. */
-    private static final class ScheduleDouble implements TaskScheduleRepository, TransactionRunner {
+    private static final class ScheduleDouble {
+        final CatalogRepository catalog = adapter(CatalogRepository.class);
+        final TodayRepository today = adapter(TodayRepository.class);
+        final TransactionRunner transactions = adapter(TransactionRunner.class);
         final Map<TaskId, Task> tasks = new LinkedHashMap<>();
         final Map<String, TaskScheduleEntry> schedule = new LinkedHashMap<>();
         final Map<String, Occurrence> occurrences = new LinkedHashMap<>();
         final Set<TaskSlot> readSlots = EnumSet.noneOf(TaskSlot.class);
+
+        private <T> T adapter(Class<T> port) {
+            return port.cast(Proxy.newProxyInstance(port.getClassLoader(), new Class<?>[]{port},
+                    (proxy, method, arguments) -> invoke(port, method, arguments)));
+        }
+
+        private Object invoke(Class<?> port, Method method, Object[] arguments) throws Throwable {
+            try {
+                return getClass().getMethod(method.getName(), method.getParameterTypes())
+                        .invoke(this, arguments);
+            } catch (NoSuchMethodException missing) {
+                throw new AssertionError("Unexpected " + port.getSimpleName() + " call: "
+                        + method.getName());
+            } catch (InvocationTargetException failure) {
+                throw failure.getCause();
+            }
+        }
 
         void add(Task task, TaskScheduleEntry entry) {
             tasks.put(task.id, task);
@@ -80,53 +106,53 @@ public final class TaskScheduleServiceTest {
         }
         void add(Occurrence value) { occurrences.put(value.id, value); }
 
-        @Override public <T> T inTransaction(TransactionRunner.Transaction<T> operation) {
+        public <T> T inTransaction(TransactionRunner.Transaction<T> operation) {
             return operation.execute();
         }
-        @Override public Task findTask(TaskId id) { return tasks.get(id); }
-        @Override public TaskScheduleEntry findScheduleEntry(String id) {
+        public Task findTask(TaskId id) { return tasks.get(id); }
+        public TaskScheduleEntry findScheduleEntry(String id) {
             return schedule.get(id);
         }
-        @Override public List<TaskScheduleEntry> scheduleEntries() {
+        public List<TaskScheduleEntry> scheduleEntries() {
             throw new AssertionError("Scheduling mutations must not perform a global read");
         }
-        @Override public List<TaskScheduleEntry> scheduleEntries(TaskId taskId) {
+        public List<TaskScheduleEntry> scheduleEntries(TaskId taskId) {
             List<TaskScheduleEntry> result = new ArrayList<>();
             for (TaskScheduleEntry value : schedule.values())
                 if (value.taskId.equals(taskId)) result.add(value);
             return result;
         }
-        @Override public List<TaskScheduleEntry> scheduleEntries(TaskSlot slot) {
+        public List<TaskScheduleEntry> scheduleEntries(TaskSlot slot) {
             readSlots.add(slot);
             List<TaskScheduleEntry> result = new ArrayList<>();
             for (TaskScheduleEntry value : schedule.values())
                 if (value.slot == slot) result.add(value);
             return result;
         }
-        @Override public void putScheduleEntries(List<TaskScheduleEntry> entries) {
+        public void putScheduleEntries(List<TaskScheduleEntry> entries) {
             for (TaskScheduleEntry value : entries) schedule.put(value.id, value);
         }
-        @Override public void deleteScheduleEntry(String id) { schedule.remove(id); }
-        @Override public Occurrence openOccurrence(TaskId taskId, TaskSlot slot) {
+        public void deleteScheduleEntry(String id) { schedule.remove(id); }
+        public Occurrence openOccurrence(TaskId taskId, TaskSlot slot) {
             for (Occurrence value : occurrences.values())
                 if (value.taskId.equals(taskId) && value.slot == slot
                         && value.state == OccurrenceState.OPEN) return value;
             return null;
         }
-        @Override public List<Occurrence> openOccurrences(TaskSlot slot) {
+        public List<Occurrence> openOccurrences(TaskSlot slot) {
             readSlots.add(slot);
             List<Occurrence> result = new ArrayList<>();
             for (Occurrence value : occurrences.values())
                 if (value.slot == slot && value.state == OccurrenceState.OPEN) result.add(value);
             return result;
         }
-        @Override public Occurrence findOccurrence(TaskId taskId, LocalDate date, TaskSlot slot) {
+        public Occurrence findOccurrence(TaskId taskId, LocalDate date, TaskSlot slot) {
             for (Occurrence value : occurrences.values())
                 if (value.taskId.equals(taskId) && value.scheduledOn.equals(date)
                         && value.slot == slot) return value;
             return null;
         }
-        @Override public void updateOccurrence(Occurrence occurrence) {
+        public void updateOccurrence(Occurrence occurrence) {
             occurrences.put(occurrence.id, occurrence);
         }
     }

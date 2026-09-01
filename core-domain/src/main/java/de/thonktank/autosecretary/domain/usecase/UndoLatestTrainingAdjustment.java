@@ -9,16 +9,19 @@ import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Restores the latest adjustment only while its after-state is still current. */
 public final class UndoLatestTrainingAdjustment {
     private final TrainingRepository repository;
+    private final StepRepository steps;
     private final TransactionRunner transactions;
     private final Clock clock;
 
-    public UndoLatestTrainingAdjustment(TrainingRepository repository,
+    public UndoLatestTrainingAdjustment(StepRepository steps, TrainingRepository repository,
                                         TransactionRunner transactions, Clock clock) {
+        this.steps = steps;
         this.repository = repository;
         this.transactions = transactions;
         this.clock = clock;
@@ -26,7 +29,7 @@ public final class UndoLatestTrainingAdjustment {
 
     public boolean execute(String templateId) {
         return transactions.inTransaction(() -> {
-            TaskStepTemplate template = repository.findTemplate(templateId);
+            TaskStepTemplate template = steps.findTemplate(templateId);
             TrainingAdjustment adjustment = repository.latestTrainingAdjustment(templateId);
             if (template == null || adjustment == null
                     || adjustment.state != TrainingAdjustment.State.APPLIED
@@ -36,7 +39,7 @@ public final class UndoLatestTrainingAdjustment {
             StepPrescription before = new StepPrescription(adjustment.before,
                     template.prescription.rest, new TrainingPrescription(adjustment.beforeLoad,
                     template.prescription.targetRir()));
-            repository.updateTrainingTemplate(template.withTraining(before,
+            steps.updateTemplate(template.withTraining(before,
                     new TrainingAssistantProfile(template.assistantProfile.policy,
                             TrainingAssistantState.calibrating())));
             repository.updateTrainingAdjustment(adjustment.undone());

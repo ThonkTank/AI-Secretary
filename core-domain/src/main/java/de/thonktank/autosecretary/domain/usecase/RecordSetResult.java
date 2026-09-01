@@ -3,9 +3,9 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
-import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
-import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
-import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
@@ -17,27 +17,23 @@ public final class RecordSetResult {
     private final StepExecutionService execution;
     private final TrainingAdaptationService adaptation;
 
-    public RecordSetResult(OccurrenceExecutionRepository occurrences,
-                           RewardLedgerRepository rewards,
-                           ComboObligationRepository obligations,
+    public RecordSetResult(CatalogRepository catalog, StepRepository steps, TodayRepository today,
                            TrainingRepository training,
                            TransactionRunner transactions, Clock clock, IdGenerator ids,
                            ComboPolicySource policies) {
-        this(occurrences, rewards, obligations, training, transactions, clock, ids, policies,
+        this(catalog, steps, today, training, transactions, clock, ids, policies,
                 null);
     }
 
-    public RecordSetResult(OccurrenceExecutionRepository occurrences,
-                           RewardLedgerRepository rewards,
-                           ComboObligationRepository obligations,
+    public RecordSetResult(CatalogRepository catalog, StepRepository steps, TodayRepository today,
                            TrainingRepository training,
                            TransactionRunner transactions, Clock clock, IdGenerator ids,
                            ComboPolicySource policies, FlowRuntimeCoordinator flows) {
         this.training = training;
         this.transactions = transactions;
-        execution = new StepExecutionService(occurrences, rewards, obligations, transactions, clock,
+        execution = new StepExecutionService(catalog, steps, today, transactions, clock,
                 new RewardCalculator(policies), new CompletionStateMachine(), flows);
-        adaptation = new TrainingAdaptationService(occurrences, training, clock, ids);
+        adaptation = new TrainingAdaptationService(steps, training, clock, ids);
     }
 
     public StepExecutionResult execute(String stepId, SetResult value) {

@@ -8,7 +8,8 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
-import de.thonktank.autosecretary.domain.repository.MaterializationRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -21,11 +22,13 @@ import java.util.Set;
 
 /** Creates one active occurrence per target slot from carry-forward and fresh templates. */
 final class OccurrenceAssembler {
-    private final MaterializationRepository repository;
+    private final StepRepository steps;
+    private final TodayRepository today;
     private final IdGenerator ids;
 
-    OccurrenceAssembler(MaterializationRepository repository, IdGenerator ids) {
-        this.repository = repository;
+    OccurrenceAssembler(StepRepository steps, TodayRepository today, IdGenerator ids) {
+        this.steps = steps;
+        this.today = today;
         this.ids = ids;
     }
 
@@ -48,21 +51,21 @@ final class OccurrenceAssembler {
         boolean changed = false;
         for (TaskSlot slot : targetSlots) {
             if (carry.open.containsKey(slot)) continue;
-            List<OccurrenceStep> steps = new ArrayList<>();
+            List<OccurrenceStep> snapshots = new ArrayList<>();
             Set<String> sourceIds = new HashSet<>();
             List<OccurrenceStep> carried = carry.carry.get(slot);
             if (carried != null) for (OccurrenceStep step : carried) {
-                steps.add(copyStep(step, ids.nextId(), "pending:" + task.id.value,
+                snapshots.add(copyStep(step, ids.nextId(), "pending:" + task.id.value,
                         carry.originOccurrenceIds.get(slot)));
                 if (step.sourceTemplateId != null) sourceIds.add(step.sourceTemplateId);
             }
             List<TaskStepTemplate> fresh = planned.stepsBySlot.get(slot);
             if (fresh != null) for (TaskStepTemplate template : fresh) {
                 if (sourceIds.contains(template.id)) continue;
-                steps.add(snapshot(template, ids.nextId(), "pending:" + task.id.value));
+                snapshots.add(snapshot(template, ids.nextId(), "pending:" + task.id.value));
                 sourceIds.add(template.id);
             }
-            if (steps.isEmpty() && carried == null && fresh == null
+            if (snapshots.isEmpty() && carried == null && fresh == null
                     && !planned.stepsBySlot.containsKey(slot)) continue;
             int order = carried != null && !carried.isEmpty()
                     ? OccurrenceCarryForward.carryOrder(history, slot)
@@ -70,13 +73,13 @@ final class OccurrenceAssembler {
                     globalNextOrders.getOrDefault(slot, 0) + 1);
             Occurrence occurrence = new Occurrence(ids.nextId(), task.id, today, slot,
                     OccurrenceState.OPEN, order, null);
-            repository.insertOccurrence(occurrence);
+            this.today.insertOccurrence(occurrence);
             active.put(slot, occurrence);
             globalNextOrders.put(slot, Math.max(globalNextOrders.getOrDefault(slot, 0), order));
-            if (!steps.isEmpty()) {
+            if (!snapshots.isEmpty()) {
                 List<OccurrenceStep> positioned = new ArrayList<>();
-                for (int index = 0; index < steps.size(); index++) {
-                    OccurrenceStep step = steps.get(index);
+                for (int index = 0; index < snapshots.size(); index++) {
+                    OccurrenceStep step = snapshots.get(index);
                     positioned.add(new OccurrenceStep(step.id, occurrence.id, index, step.text,
                             step.done, step.prescription, step.note,
                             step.repetitionProgress == null ? Collections.emptyList()
@@ -84,7 +87,7 @@ final class OccurrenceAssembler {
                             step.sourceTemplateId, step.comboOwnerId,
                             step.originOccurrenceId, step.carryForwardReason));
                 }
-                repository.insertOccurrenceSteps(positioned);
+                steps.insertOccurrenceSteps(positioned);
             }
             changed = true;
         }

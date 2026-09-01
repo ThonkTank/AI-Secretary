@@ -9,7 +9,6 @@ import android.content.Context;
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
@@ -23,7 +22,6 @@ import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
@@ -49,7 +47,7 @@ public final class StepFlowMaterializationRobolectricTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 25);
 
     private AppDatabase database;
-    private TaskStore repository;
+    private RoomRepositoryFixture repository;
     private SequenceIds ids;
     private Clock clock;
 
@@ -57,7 +55,7 @@ public final class StepFlowMaterializationRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
                 .allowMainThreadQueries().build();
-        repository = new RoomTaskRepository(database);
+        repository = new RoomRepositoryFixture(database);
         ids = new SequenceIds();
         clock = new Clock() {
             @Override public LocalDate today() { return TODAY; }
@@ -68,31 +66,31 @@ public final class StepFlowMaterializationRobolectricTest {
     @After public void tearDown() { database.close(); }
 
     @Test public void fourDueSeedsBecomeIdempotentRunsWithSharedTailSnapshots() {
-        new CreateTask(repository, repository, repository, clock, ids).execute(laundryTask());
-        Task task = repository.allTasks().get(0);
-        SaveCapacityResource resources = new SaveCapacityResource(repository, repository, ids);
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(laundryTask());
+        Task task = repository.catalog.allTasks().get(0);
+        SaveCapacityResource resources = new SaveCapacityResource(repository.flows, repository.transactions, ids);
         resources.execute("washer", "Waschmaschine", 1);
         resources.execute("dry", "Trockenplatz", 2);
-        new SaveStepFlowDefinition(repository, repository, repository).execute(task.id,
+        new SaveStepFlowDefinition(repository.catalog, repository.steps, repository.flows, repository.transactions).execute(task.id,
                 transitions(), leases(task));
-        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock,
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock,
                 () -> 1_777_000L, ids);
 
         assertTrue(materialize.execute());
         assertFalse(materialize.execute());
 
-        List<StepFlowRun> runs = repository.activeFlowRuns(task.id);
+        List<StepFlowRun> runs = repository.flows.activeFlowRuns(task.id);
         assertEquals(4, runs.size());
-        assertTrue(repository.openOccurrences().isEmpty());
+        assertTrue(repository.today.openOccurrences().isEmpty());
         for (StepFlowRun run : runs) {
-            assertEquals(4, repository.flowRunSteps(run.id).size());
-            assertEquals("Aufhängen", repository.flowRunSteps(run.id).get(1).text);
-            assertEquals("Abhängen", repository.flowRunSteps(run.id).get(2).text);
-            assertEquals(2, repository.flowRunResources(run.id).size());
+            assertEquals(4, repository.flows.flowRunSteps(run.id).size());
+            assertEquals("Aufhängen", repository.flows.flowRunSteps(run.id).get(1).text);
+            assertEquals("Abhängen", repository.flows.flowRunSteps(run.id).get(2).text);
+            assertEquals(2, repository.flows.flowRunResources(run.id).size());
         }
-        assertEquals(4, repository.templates(task.id).stream()
+        assertEquals(4, repository.steps.templates(task.id).stream()
                 .filter(value -> value.activationKind == StepActivationKind.SCHEDULED).count());
-        assertEquals(3, repository.templates(task.id).stream()
+        assertEquals(3, repository.steps.templates(task.id).stream()
                 .filter(value -> value.activationKind == StepActivationKind.FOLLOW_UP).count());
     }
 
@@ -101,20 +99,20 @@ public final class StepFlowMaterializationRobolectricTest {
             @Override public LocalDate today() { return TODAY.minusDays(2); }
             @Override public LocalTime time() { return LocalTime.NOON; }
         };
-        new CreateTask(repository, repository, repository, startedEarlier, ids).execute(laundryTask());
-        Task task = repository.allTasks().get(0);
-        SaveCapacityResource resources = new SaveCapacityResource(repository, repository, ids);
+        new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, startedEarlier, ids).execute(laundryTask());
+        Task task = repository.catalog.allTasks().get(0);
+        SaveCapacityResource resources = new SaveCapacityResource(repository.flows, repository.transactions, ids);
         resources.execute("washer", "Waschmaschine", 1);
         resources.execute("dry", "Trockenplatz", 2);
-        new SaveStepFlowDefinition(repository, repository, repository).execute(task.id,
+        new SaveStepFlowDefinition(repository.catalog, repository.steps, repository.flows, repository.transactions).execute(task.id,
                 transitions(), leases(task));
 
-        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock,
+        MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock,
                 () -> 1_777_000L, ids);
 
         assertTrue(materialize.execute());
-        assertEquals(12, repository.activeFlowRuns(task.id).size());
-        assertTrue(repository.openOccurrences().isEmpty());
+        assertEquals(12, repository.flows.activeFlowRuns(task.id).size());
+        assertTrue(repository.today.openOccurrences().isEmpty());
         assertFalse(materialize.execute());
     }
 

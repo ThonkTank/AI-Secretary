@@ -35,7 +35,7 @@ public final class ResolveTrainingLoadRequestTest {
         repository.insertTemplate(template);
         repository.insertTrainingLoadRequest(request(repository, template,
                 TrainingDecision.LoadDirection.PROGRESS));
-        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository, repository,
+        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository.steps, repository, repository.transactions,
                 new FixedClock(), new SequenceIds());
 
         assertEquals(ResolveTrainingLoadRequest.Result.JUMP_TOO_LARGE,
@@ -59,7 +59,7 @@ public final class ResolveTrainingLoadRequestTest {
         repository.insertTemplate(template);
         repository.insertTrainingLoadRequest(request(repository, template,
                 TrainingDecision.LoadDirection.PROGRESS));
-        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository, repository,
+        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository.steps, repository, repository.transactions,
                 new FixedClock(), new SequenceIds());
 
         assertEquals(ResolveTrainingLoadRequest.Result.WRONG_DIRECTION,
@@ -79,7 +79,7 @@ public final class ResolveTrainingLoadRequestTest {
         repository.insertTemplate(template);
         repository.insertTrainingLoadRequest(request(repository, template,
                 TrainingDecision.LoadDirection.PROGRESS));
-        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository, repository,
+        ResolveTrainingLoadRequest useCase = new ResolveTrainingLoadRequest(repository.steps, repository, repository.transactions,
                 new FixedClock(), new SequenceIds());
 
         assertEquals(ResolveTrainingLoadRequest.Result.DEFERRED, useCase.later(template.id));

@@ -179,20 +179,26 @@ public final class ArchitectureBoundaryTest {
         assertFalse(Files.exists(main("UiEvent.java")));
     }
 
-    @Test public void slicesAndFocusedPortsAreConcretePackageBoundaries() {
+    @Test public void slicesAndFivePersistencePortsAreConcretePackageBoundaries()
+            throws Exception {
         assertTrue(Files.isDirectory(main("presentation/alltasks")));
         assertTrue(Files.isDirectory(main("presentation/today")));
         assertTrue(Files.isDirectory(main("domain/schedule")));
         assertTrue(Files.isDirectory(main("domain/steps")));
         assertTrue(Files.isDirectory(main("domain/today")));
         assertTrue(Files.isDirectory(main("data/local")));
-        assertTrue(Files.exists(main("domain/schedule/TaskScheduleRepository.java")));
-        assertTrue(Files.exists(main("domain/steps/StepOrganizationRepository.java")));
-        assertTrue(Files.exists(main("domain/repository/TodayStepOrderRepository.java")));
-        assertTrue(Files.exists(main("domain/repository/DashboardReadRepository.java")));
-        assertTrue(Files.exists(main("domain/repository/OccurrenceExecutionRepository.java")));
-        assertTrue(Files.exists(main("domain/repository/RewardLedgerRepository.java")));
-        assertTrue(Files.exists(main("domain/repository/MaterializationRepository.java")));
+        for (String port : new String[]{"Catalog", "Step", "Today", "Flow", "Training"}) {
+            Path source = main("domain/repository/" + port + "Repository.java");
+            assertTrue(port, Files.exists(source));
+            assertFalse(port + " port inherits another capability",
+                    read(source).contains(" extends "));
+        }
+        for (String removed : new String[]{"TaskDefinition", "DashboardRead",
+                "OccurrenceExecution", "RewardLedger", "Materialization", "TodayStepOrder",
+                "ComboObligation", "StepFlowDefinition", "StepFlowRun"})
+            assertFalse(Files.exists(main("domain/repository/" + removed + "Repository.java")));
+        assertFalse(Files.exists(main("domain/schedule/TaskSchedule" + "Repository.java")));
+        assertFalse(Files.exists(main("domain/steps/StepOrganization" + "Repository.java")));
     }
 
     @Test public void todayOrderIsPureAndStepExecutionHasItsOwnService() throws Exception {
@@ -211,7 +217,6 @@ public final class ArchitectureBoundaryTest {
     @Test public void managementCommandsDoNotDependOnExecutionOrCompositionPorts()
             throws Exception {
         String executionPort = "domain.repository.TaskRepository";
-        String compositionPort = "data.local.TaskStore";
         for (String relative : new String[]{
                 "domain/usecase/CreateTask.java",
                 "domain/usecase/UpdateTask.java",
@@ -221,7 +226,8 @@ public final class ArchitectureBoundaryTest {
                 "domain/steps/SwapTaskSteps.java"}) {
             String source = read(main(relative));
             assertFalse(relative + " imports execution repository", source.contains(executionPort));
-            assertFalse(relative + " imports composition repository", source.contains(compositionPort));
+            assertFalse(relative + " imports removed composition store",
+                    source.contains("data.local.Task" + "Store"));
         }
         assertFalse(Files.exists(main("domain/repository/TaskRepository.java")));
         forEachJava(main("domain/usecase"), source -> assertFalse(source
@@ -248,7 +254,7 @@ public final class ArchitectureBoundaryTest {
         forEachJava(main("domain/usecase"), source -> {
             String value = read(source);
             assertFalse(source + " calls a repository transaction implicitly",
-                    value.contains("repository.inTransaction(")
+                    value.contains("repository.transactions.inTransaction(")
                             || value.contains("occurrences.inTransaction(")
                             || value.contains("training.inTransaction(")
                             || value.contains("ledger.inTransaction(")
@@ -267,17 +273,41 @@ public final class ArchitectureBoundaryTest {
         assertFalse(container.contains("container.tasks"));
     }
 
-    @Test public void roomStepAndTrainingPersistenceHaveFocusedAdapters() throws Exception {
-        assertTrue(Files.exists(main("data/local/RoomStepRepository.java")));
-        assertTrue(Files.exists(main("data/local/RoomTrainingRepository.java")));
+    @Test public void roomPersistenceHasExactlyFiveFocusedAdaptersAndOneRunner()
+            throws Exception {
+        String composition = read(main("ApplicationUseCaseComposition.java"));
+        String database = read(main("AppDatabase.java"));
+        for (String slice : new String[]{"Catalog", "Step", "Today", "Flow", "Training"}) {
+            String port = slice + "Repository";
+            String adapter = "Room" + port;
+            String dao = slice + "Dao";
+            Path adapterSource = main("data/local/" + adapter + ".java");
+            assertTrue(adapter, Files.exists(adapterSource));
+            assertTrue(dao, Files.exists(main("data/local/" + dao + ".java")));
+            String source = read(adapterSource);
+            assertTrue(adapter + " implements its port", source.contains("implements " + port));
+            assertFalse(adapter + " implements multiple ports",
+                    source.contains("implements " + port + ","));
+            assertTrue("composition creates " + adapter + " exactly once",
+                    occurrences(composition, "new " + adapter + "(database") == 1);
+            assertTrue("database exposes " + dao + " exactly once",
+                    occurrences(database, "abstract " + dao + " ") == 1);
+        }
         assertTrue(Files.exists(main("data/local/RoomTransactionRunner.java")));
-        String gateway = read(main("data/local/RoomTaskRepository.java"));
-        assertTrue(gateway.contains("RoomStepRepository steps"));
-        assertTrue(gateway.contains("RoomTrainingRepository training"));
-        assertFalse(gateway.contains("TrainingAdjustmentEntity"));
-        assertFalse(gateway.contains("TrainingLoadRequestEntity"));
-        assertFalse(gateway.contains("RepetitionResultEntity"));
-        assertFalse(gateway.contains("OccurrenceStepEntity"));
+        assertTrue(occurrences(composition, "new RoomTransactionRunner(database)") == 1);
+        int productionRunnerCreations = 0;
+        for (String source : new String[]{read(main("ApplicationUseCaseComposition.java")),
+                read(main("data/local/RoomCatalogRepository.java")),
+                read(main("data/local/RoomStepRepository.java")),
+                read(main("data/local/RoomTodayRepository.java")),
+                read(main("data/local/RoomFlowRepository.java")),
+                read(main("data/local/RoomTrainingRepository.java"))})
+            productionRunnerCreations += occurrences(source,
+                    "new RoomTransactionRunner(database)");
+        assertTrue(productionRunnerCreations == 1);
+        assertFalse(Files.exists(main("data/local/Task" + "Store.java")));
+        assertFalse(Files.exists(main("data/local/RoomTask" + "Repository.java")));
+        assertFalse(Files.exists(main("data/local/Task" + "Dao.java")));
     }
 
     @Test public void managementPortTestsUseFocusedDoubles() throws Exception {
@@ -376,6 +406,16 @@ public final class ArchitectureBoundaryTest {
 
     private static String read(Path source) throws IOException {
         return new String(Files.readAllBytes(source), StandardCharsets.UTF_8);
+    }
+
+    private static int occurrences(String value, String fragment) {
+        int count = 0;
+        int start = 0;
+        while ((start = value.indexOf(fragment, start)) >= 0) {
+            count++;
+            start += fragment.length();
+        }
+        return count;
     }
 
     private interface CheckedConsumer { void accept(Path source) throws IOException; }

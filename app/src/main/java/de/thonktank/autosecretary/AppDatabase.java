@@ -7,7 +7,11 @@ import de.thonktank.autosecretary.data.local.RepetitionResultEntity;
 import de.thonktank.autosecretary.data.local.RewardAssignmentEntity;
 import de.thonktank.autosecretary.data.local.RewardBookingEntity;
 import de.thonktank.autosecretary.data.local.StatsEntity;
-import de.thonktank.autosecretary.data.local.TaskDao;
+import de.thonktank.autosecretary.data.local.CatalogDao;
+import de.thonktank.autosecretary.data.local.FlowDao;
+import de.thonktank.autosecretary.data.local.StepDao;
+import de.thonktank.autosecretary.data.local.TodayDao;
+import de.thonktank.autosecretary.data.local.TrainingDao;
 import de.thonktank.autosecretary.data.local.TaskEntity;
 import de.thonktank.autosecretary.data.local.TaskScheduleEntity;
 import de.thonktank.autosecretary.data.local.TaskStepEntity;
@@ -39,6 +43,10 @@ import androidx.room.RoomDatabase;
         version = DatabaseContract.VERSION,
         exportSchema = true)
 public abstract class AppDatabase extends RoomDatabase {
-    public abstract TaskDao tasks();
+    public abstract CatalogDao catalog();
+    public abstract StepDao steps();
+    public abstract TodayDao today();
+    public abstract FlowDao flows();
+    public abstract TrainingDao training();
     public abstract TimerSessionDao timers();
 }

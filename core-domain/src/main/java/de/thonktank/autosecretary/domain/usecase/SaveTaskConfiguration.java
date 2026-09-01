@@ -11,8 +11,9 @@ import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
-import de.thonktank.autosecretary.domain.repository.StepFlowDefinitionRepository;
-import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.FlowRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.ArrayList;
@@ -24,18 +25,20 @@ import java.util.Set;
 
 /** Atomically creates or updates a task together with its optional flow and capacity rules. */
 public final class SaveTaskConfiguration {
-    private final TaskDefinitionRepository tasks;
-    private final StepFlowDefinitionRepository flows;
+    private final CatalogRepository tasks;
+    private final StepRepository steps;
+    private final FlowRepository flows;
     private final TransactionRunner transactions;
     private final CreateTask create;
     private final UpdateTask update;
     private final IdGenerator ids;
 
-    public SaveTaskConfiguration(TaskDefinitionRepository tasks,
-                                 StepFlowDefinitionRepository flows,
+    public SaveTaskConfiguration(CatalogRepository tasks, StepRepository steps,
+                                 FlowRepository flows,
                                  TransactionRunner transactions, CreateTask create,
                                  UpdateTask update, IdGenerator ids) {
         this.tasks = tasks;
+        this.steps = steps;
         this.flows = flows;
         this.transactions = transactions;
         this.create = create;
@@ -64,7 +67,7 @@ public final class SaveTaskConfiguration {
             taskId = requestedId;
         }
 
-        List<TaskStepTemplate> templates = tasks.templates(taskId);
+        List<TaskStepTemplate> templates = steps.templates(taskId);
         if (templates.size() != draft.stepKeys.size())
             throw new IllegalStateException("Gespeicherte Schritte passen nicht zum Ablauf");
         Map<String, String> stepIds = new HashMap<>();
@@ -133,7 +136,7 @@ public final class SaveTaskConfiguration {
             List<StepTransition> transitions = flows.stepTransitions(task.id);
             List<StepResourceLease> leases = flows.stepResourceLeases(task.id);
             if (transitions.isEmpty() && leases.isEmpty()) continue;
-            new StepFlowDefinition(task.id, tasks.templates(task.id), transitions, leases, resources);
+            new StepFlowDefinition(task.id, steps.templates(task.id), transitions, leases, resources);
         }
     }
 

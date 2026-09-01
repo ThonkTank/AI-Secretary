@@ -11,7 +11,6 @@ import android.content.Context;
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.FlowResourceState;
 import de.thonktank.autosecretary.domain.model.FlowRunResourceSnapshot;
@@ -32,7 +31,6 @@ import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
@@ -65,7 +63,7 @@ public final class StepFlowRuntimeRobolectricTest {
     private static final long ONE_DAY = 24L * 60L * 60L * 1_000L;
 
     private AppDatabase database;
-    private TaskStore repository;
+    private RoomRepositoryFixture repository;
     private SequenceIds ids;
     private MutableMoment moments;
     private ApplicationUseCaseComposition tasks;
@@ -83,18 +81,17 @@ public final class StepFlowRuntimeRobolectricTest {
                         queries.add(sql);
                 }, Runnable::run)
                 .build();
-        repository = new RoomTaskRepository(database);
+        repository = new RoomRepositoryFixture(database);
         ids = new SequenceIds();
         moments = new MutableMoment(1_000_000L);
         clock = new Clock() {
             @Override public LocalDate today() { return TODAY; }
             @Override public LocalTime time() { return LocalTime.NOON; }
         };
-        tasks = new ApplicationUseCaseComposition(repository, repository, repository, clock,
-                moments, ids,
+        tasks = new ApplicationUseCaseComposition(database, clock, moments, ids,
                 de.thonktank.autosecretary.domain.repository.ComboPolicySource.defaults());
         tasks.catalog.create.execute(laundryTask());
-        task = repository.allTasks().get(0);
+        task = repository.catalog.allTasks().get(0);
         tasks.flows.saveCapacityResource.execute("washer", "Waschmaschine", 1);
         tasks.flows.saveCapacityResource.execute("dry", "Trockenplatz", 2);
         tasks.flows.saveStepFlowDefinition.execute(task.id, transitions(), leases(task));
@@ -112,7 +109,7 @@ public final class StepFlowRuntimeRobolectricTest {
         assertEquals(2, countResources(FlowResourceState.RESERVED));
 
         tasks.today.toggleStep.execute(openStep(first).id);
-        first = repository.findFlowRun(first.id);
+        first = repository.flows.findFlowRun(first.id);
         assertEquals(StepFlowRunState.WAITING_TIME, first.state);
         assertEquals(1, first.currentPosition);
         assertEquals(2, countResources(first.id, FlowResourceState.ACTIVE));
@@ -121,13 +118,13 @@ public final class StepFlowRuntimeRobolectricTest {
 
         moments.advance(TWO_HOURS);
         assertTrue(tasks.flows.activateReadyFlows.execute());
-        first = repository.findFlowRun(first.id);
+        first = repository.flows.findFlowRun(first.id);
         assertEquals(StepFlowRunState.OFFERED, first.state);
-        assertEquals(2, repository.occurrenceSteps(first.currentSheetOccurrenceId).size());
+        assertEquals(2, repository.steps.occurrenceSteps(first.currentSheetOccurrenceId).size());
         assertEquals("Aufhängen", openStep(first).text);
 
         tasks.today.toggleStep.execute(openStep(first).id);
-        first = repository.findFlowRun(first.id);
+        first = repository.flows.findFlowRun(first.id);
         StepFlowRun second = offeredRun();
         assertFalse(first.id.equals(second.id));
         assertEquals(StepFlowRunState.WAITING_TIME, first.state);
@@ -139,14 +136,14 @@ public final class StepFlowRuntimeRobolectricTest {
         tasks.today.toggleStep.execute(openStep(second).id);
         moments.advance(TWO_HOURS);
         tasks.flows.activateReadyFlows.execute();
-        second = repository.findFlowRun(second.id);
+        second = repository.flows.findFlowRun(second.id);
         assertEquals("Aufhängen", openStep(second).text);
         tasks.today.toggleStep.execute(openStep(second).id);
         assertEquals(0, countRuns(StepFlowRunState.OFFERED));
 
         moments.advance(ONE_DAY - TWO_HOURS);
         tasks.flows.activateReadyFlows.execute();
-        first = repository.findFlowRun(first.id);
+        first = repository.flows.findFlowRun(first.id);
         assertEquals("Abhängen", openStep(first).text);
         tasks.today.toggleStep.execute(openStep(first).id);
 
@@ -165,34 +162,34 @@ public final class StepFlowRuntimeRobolectricTest {
         assertTrue(dashboard.tasks.isEmpty());
         assertEquals(4, dashboard.flowRuns.size());
         assertEquals(StepFlowRunState.WAITING_TIME,
-                repository.findFlowRun(first.id).state);
+                repository.flows.findFlowRun(first.id).state);
     }
 
     @Test public void partialHarvestMovesUntouchedSuccessorImmediatelyAndUndoRestoresSheet() {
         tasks.flows.activateReadyFlows.execute();
         StepFlowRun run = offeredRun();
-        Occurrence original = repository.findOccurrence(run.currentSheetOccurrenceId);
+        Occurrence original = repository.today.findOccurrence(run.currentSheetOccurrenceId);
         tasks.today.toggleStep.execute(openStep(run).id);
         moments.advance(TWO_HOURS);
         tasks.flows.activateReadyFlows.execute();
-        run = repository.findFlowRun(run.id);
+        run = repository.flows.findFlowRun(run.id);
         assertEquals("Aufhängen", openStep(run).text);
 
         assertFalse(tasks.today.harvest.execute(original.id).bookings.isEmpty());
-        Occurrence harvested = repository.findOccurrence(original.id);
-        run = repository.findFlowRun(run.id);
+        Occurrence harvested = repository.today.findOccurrence(original.id);
+        run = repository.flows.findFlowRun(run.id);
         String replacementId = run.currentSheetOccurrenceId;
         assertEquals(OccurrenceState.HARVESTED_WITH_MISSED_STEPS, harvested.state);
         assertFalse(original.id.equals(replacementId));
         assertEquals("Aufhängen", openStep(run).text);
-        assertTrue(repository.flowRunResources(run.id).stream()
+        assertTrue(repository.flows.flowRunResources(run.id).stream()
                 .allMatch(value -> value.state == FlowResourceState.ACTIVE));
 
         assertFalse(tasks.today.undoOccurrence.execute(original.id).bookings.isEmpty());
-        run = repository.findFlowRun(run.id);
+        run = repository.flows.findFlowRun(run.id);
         assertEquals(original.id, run.currentSheetOccurrenceId);
-        assertEquals(OccurrenceState.OPEN, repository.findOccurrence(original.id).state);
-        assertNull(repository.findOccurrence(replacementId));
+        assertEquals(OccurrenceState.OPEN, repository.today.findOccurrence(original.id).state);
+        assertNull(repository.today.findOccurrence(replacementId));
         assertEquals("Aufhängen", openStep(run).text);
     }
 
@@ -203,15 +200,15 @@ public final class StepFlowRuntimeRobolectricTest {
         tasks.today.toggleStep.execute(firstStepId);
         moments.advance(TWO_HOURS);
         tasks.flows.activateReadyFlows.execute();
-        run = repository.findFlowRun(run.id);
-        assertEquals(2, repository.occurrenceSteps(run.currentSheetOccurrenceId).size());
+        run = repository.flows.findFlowRun(run.id);
+        assertEquals(2, repository.steps.occurrenceSteps(run.currentSheetOccurrenceId).size());
 
         assertFalse(tasks.today.toggleStep.execute(firstStepId).bookings.isEmpty());
-        run = repository.findFlowRun(run.id);
+        run = repository.flows.findFlowRun(run.id);
         assertEquals(0, run.currentPosition);
         assertEquals(StepFlowRunState.OFFERED, run.state);
-        assertEquals(1, repository.occurrenceSteps(run.currentSheetOccurrenceId).size());
-        assertFalse(repository.findOccurrenceStep(firstStepId).done);
+        assertEquals(1, repository.steps.occurrenceSteps(run.currentSheetOccurrenceId).size());
+        assertFalse(repository.steps.findOccurrenceStep(firstStepId).done);
         assertEquals(2, countResources(run.id, FlowResourceState.RESERVED));
     }
 
@@ -235,18 +232,18 @@ public final class StepFlowRuntimeRobolectricTest {
 
         tasks.today.toggleStep.execute(openStep(first).id, chosen);
 
-        first = repository.findFlowRun(first.id);
+        first = repository.flows.findFlowRun(first.id);
         assertEquals(Long.valueOf(1_000_000L + chosen), first.readyAtEpochMillis);
-        assertEquals(Long.valueOf(chosen), repository.flowRunSteps(first.id).get(0)
+        assertEquals(Long.valueOf(chosen), repository.flows.flowRunSteps(first.id).get(0)
                 .chosenDelayMillis);
-        StepTransition remembered = repository.stepTransitions(task.id).stream()
+        StepTransition remembered = repository.flows.stepTransitions(task.id).stream()
                 .filter(value -> value.sourceStepId.equals("colors"))
                 .findFirst().orElseThrow(AssertionError::new);
         assertEquals(chosen, remembered.delay.proposedDelayMillis());
-        StepFlowRun other = repository.activeFlowRuns().stream()
+        StepFlowRun other = repository.flows.activeFlowRuns().stream()
                 .filter(value -> value.seedStepId.equals("whites"))
                 .findFirst().orElseThrow(AssertionError::new);
-        assertEquals(TWO_HOURS, repository.flowRunSteps(other.id).get(0)
+        assertEquals(TWO_HOURS, repository.flows.flowRunSteps(other.id).get(0)
                 .delayAfter.proposedDelayMillis());
     }
 
@@ -257,18 +254,18 @@ public final class StepFlowRuntimeRobolectricTest {
 
         tasks.today.defer.execute(firstSheet);
 
-        first = repository.findFlowRun(first.id);
+        first = repository.flows.findFlowRun(first.id);
         StepFlowRun second = offeredRun();
         assertEquals(StepFlowRunState.WAITING_RESOURCE, first.state);
-        assertNull(repository.findOccurrence(firstSheet));
+        assertNull(repository.today.findOccurrence(firstSheet));
         assertFalse(first.id.equals(second.id));
         assertTrue(first.queueOrder > second.queueOrder);
 
         String secondSheet = second.currentSheetOccurrenceId;
         assertTrue(tasks.flows.cancelFlowRun.execute(second.id));
 
-        assertEquals(StepFlowRunState.CANCELLED, repository.findFlowRun(second.id).state);
-        assertNull(repository.findOccurrence(secondSheet));
+        assertEquals(StepFlowRunState.CANCELLED, repository.flows.findFlowRun(second.id).state);
+        assertNull(repository.today.findOccurrence(secondSheet));
         StepFlowRun third = offeredRun();
         assertFalse(second.id.equals(third.id));
         assertEquals(2, countResources(third.id, FlowResourceState.RESERVED));
@@ -277,7 +274,7 @@ public final class StepFlowRuntimeRobolectricTest {
     @Test public void queueOrderAndReadyTimeCanBeAdjustedExplicitly() {
         tasks.flows.activateReadyFlows.execute();
         StepFlowRun first = offeredRun();
-        StepFlowRun preferred = repository.activeFlowRuns().stream()
+        StepFlowRun preferred = repository.flows.activeFlowRuns().stream()
                 .filter(value -> value.state == StepFlowRunState.WAITING_RESOURCE)
                 .reduce((left, right) -> right).orElseThrow(AssertionError::new);
         assertTrue(tasks.flows.reorderFlowRun.execute(preferred.id, first.id));
@@ -286,10 +283,10 @@ public final class StepFlowRuntimeRobolectricTest {
 
         StepFlowRun run = offeredRun();
         tasks.today.toggleStep.execute(openStep(run).id);
-        run = repository.findFlowRun(run.id);
+        run = repository.flows.findFlowRun(run.id);
         assertEquals(StepFlowRunState.WAITING_TIME, run.state);
         assertTrue(tasks.flows.adjustFlowRunReadyAt.execute(run.id, moments.nowEpochMillis()));
-        run = repository.findFlowRun(run.id);
+        run = repository.flows.findFlowRun(run.id);
         assertEquals(StepFlowRunState.OFFERED, run.state);
         assertEquals("Aufhängen", openStep(run).text);
     }
@@ -352,14 +349,14 @@ public final class StepFlowRuntimeRobolectricTest {
 
         tasks.today.completeRemainingSteps.execute(sheetId);
 
-        run = repository.findFlowRun(run.id);
+        run = repository.flows.findFlowRun(run.id);
         assertEquals(StepFlowRunState.WAITING_TIME, run.state);
-        assertEquals(1, repository.occurrenceSteps(sheetId).size());
-        assertTrue(repository.occurrenceSteps(sheetId).get(0).done);
+        assertEquals(1, repository.steps.occurrenceSteps(sheetId).size());
+        assertTrue(repository.steps.occurrenceSteps(sheetId).get(0).done);
     }
 
     private StepFlowRun offeredRun() {
-        for (StepFlowRun run : repository.activeFlowRuns())
+        for (StepFlowRun run : repository.flows.activeFlowRuns())
             if (run.state == StepFlowRunState.OFFERED) return run;
         throw new AssertionError("No offered run");
     }
@@ -372,34 +369,34 @@ public final class StepFlowRuntimeRobolectricTest {
 
     private List<OccurrenceStep> openSteps(String occurrenceId) {
         List<OccurrenceStep> result = new ArrayList<>();
-        for (OccurrenceStep step : repository.occurrenceSteps(occurrenceId))
+        for (OccurrenceStep step : repository.steps.occurrenceSteps(occurrenceId))
             if (!step.done) result.add(step);
         return result;
     }
 
     private int countRuns(StepFlowRunState state) {
         int result = 0;
-        for (StepFlowRun run : repository.activeFlowRuns()) if (run.state == state) result++;
+        for (StepFlowRun run : repository.flows.activeFlowRuns()) if (run.state == state) result++;
         return result;
     }
 
     private int countResources(FlowResourceState state) {
         int result = 0;
-        for (StepFlowRun run : repository.activeFlowRuns())
+        for (StepFlowRun run : repository.flows.activeFlowRuns())
             result += countResources(run.id, state);
         return result;
     }
 
     private int countResources(String runId, FlowResourceState state) {
         int result = 0;
-        for (FlowRunResourceSnapshot resource : repository.flowRunResources(runId))
+        for (FlowRunResourceSnapshot resource : repository.flows.flowRunResources(runId))
             if (resource.state == state) result++;
         return result;
     }
 
     private int consumingUnits(String resourceId) {
         int result = 0;
-        for (FlowRunResourceSnapshot value : repository.consumingFlowResources())
+        for (FlowRunResourceSnapshot value : repository.flows.consumingFlowResources())
             if (resourceId.equals(value.resourceId)) result += value.units;
         return result;
     }

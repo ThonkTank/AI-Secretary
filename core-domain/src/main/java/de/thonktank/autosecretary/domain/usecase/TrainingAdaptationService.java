@@ -10,36 +10,36 @@ import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
-import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
 import de.thonktank.autosecretary.domain.training.TrainingAdaptationEngine;
 
 /** Applies one completed occurrence-step observation to its reusable template. */
 final class TrainingAdaptationService {
-    private final OccurrenceExecutionRepository occurrences;
+    private final StepRepository steps;
     private final TrainingRepository training;
     private final Clock clock;
     private final IdGenerator ids;
     private final TrainingAdaptationEngine engine = new TrainingAdaptationEngine();
 
-    TrainingAdaptationService(OccurrenceExecutionRepository occurrences,
+    TrainingAdaptationService(StepRepository steps,
                               TrainingRepository training, Clock clock, IdGenerator ids) {
-        this.occurrences = occurrences; this.training = training;
+        this.steps = steps; this.training = training;
         this.clock = clock; this.ids = ids;
     }
 
     void evaluate(String occurrenceStepId) {
-        OccurrenceStep step = occurrences.findOccurrenceStep(occurrenceStepId);
+        OccurrenceStep step = steps.findOccurrenceStep(occurrenceStepId);
         if (step == null || !step.done || step.sourceTemplateId == null
                 || !(step.prescription.amount instanceof StepAmount.SetsReps)) return;
-        TaskStepTemplate template = training.findTemplate(step.sourceTemplateId);
+        TaskStepTemplate template = steps.findTemplate(step.sourceTemplateId);
         if (template == null || !template.assistantEnabled()
                 || !(template.prescription.amount instanceof StepAmount.SetsReps)) return;
         if (training.openTrainingLoadRequest(template.id) != null) return;
         if (!template.prescription.amount.equals(step.prescription.amount)
                 || !template.prescription.plannedLoad()
                 .equals(step.prescription.plannedLoad())) {
-            training.updateTrainingTemplate(template.withTraining(template.prescription,
+            steps.updateTemplate(template.withTraining(template.prescription,
                     new TrainingAssistantProfile(template.assistantProfile.policy,
                             TrainingAssistantState.calibrating())));
             return;
@@ -50,7 +50,7 @@ final class TrainingAdaptationService {
         StepPrescription before = template.prescription;
         TrainingDecision result = engine.evaluate(before, template.assistantProfile,
                 step.repetitionProgress.results, effective);
-        training.updateTrainingTemplate(template.withTraining(result.nextPrescription,
+        steps.updateTemplate(template.withTraining(result.nextPrescription,
                 new TrainingAssistantProfile(template.assistantProfile.policy,
                         result.nextState)));
         if (result.action == TrainingDecision.Action.REQUEST_NEXT_LOAD) {

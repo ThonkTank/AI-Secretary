@@ -15,7 +15,11 @@ import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
-import de.thonktank.autosecretary.data.local.TaskStore;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.FlowRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
+import de.thonktank.autosecretary.domain.repository.TrainingRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
@@ -27,12 +31,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 
 /**
  * Cross-use-case execution store for completion acceptance tests. Management use cases use
  * focused schedule/step doubles and cannot reach this aggregate by accident.
  */
-public final class InMemoryExecutionRepository implements TaskStore {
+public final class InMemoryExecutionRepository {
+    public final CatalogRepository catalog = adapter(CatalogRepository.class);
+    public final StepRepository steps = adapter(StepRepository.class);
+    public final TodayRepository today = adapter(TodayRepository.class);
+    public final FlowRepository flows = adapter(FlowRepository.class);
+    public final TrainingRepository training = adapter(TrainingRepository.class);
+    public final TransactionRunner transactions = adapter(TransactionRunner.class);
     private Map<TaskId, Task> tasks = new LinkedHashMap<>();
     private Map<String, TaskStepTemplate> templates = new LinkedHashMap<>();
     private Map<String, TaskScheduleEntry> schedule = new LinkedHashMap<>();
@@ -48,7 +61,35 @@ public final class InMemoryExecutionRepository implements TaskStore {
     private boolean failTrainingAdjustmentInsert;
     private int xp;
 
-    @Override public synchronized <T> T inTransaction(TransactionRunner.Transaction<T> operation) {
+    private <T> T adapter(Class<T> port) {
+        Object value = Proxy.newProxyInstance(port.getClassLoader(), new Class<?>[]{port},
+                (proxy, method, arguments) -> invokePort(port, proxy, method, arguments));
+        return port.cast(value);
+    }
+
+    private Object invokePort(Class<?> port, Object proxy, Method method, Object[] arguments)
+            throws Throwable {
+        if (method.getDeclaringClass() == Object.class) {
+            if ("toString".equals(method.getName())) return port.getSimpleName() + "Fake";
+            if ("hashCode".equals(method.getName())) return System.identityHashCode(proxy);
+            if ("equals".equals(method.getName())) return proxy == arguments[0];
+        }
+        try {
+            Method implementation = getClass().getMethod(method.getName(), method.getParameterTypes());
+            return implementation.invoke(this, arguments);
+        } catch (NoSuchMethodException missing) {
+            if (List.class.isAssignableFrom(method.getReturnType())) return new ArrayList<>();
+            if (method.getReturnType() == boolean.class) return false;
+            if (method.getReturnType() == void.class)
+                throw new UnsupportedOperationException(port.getSimpleName() + '.'
+                        + method.getName() + " is not supported by this test fixture");
+            return null;
+        } catch (InvocationTargetException failure) {
+            throw failure.getCause();
+        }
+    }
+
+    public synchronized <T> T inTransaction(TransactionRunner.Transaction<T> operation) {
         Snapshot before = snapshot();
         try {
             return operation.execute();
@@ -58,16 +99,16 @@ public final class InMemoryExecutionRepository implements TaskStore {
         }
     }
 
-    @Override public synchronized void insertTask(Task task) { tasks.put(task.id, task); }
-    @Override public synchronized void updateTask(Task task) { tasks.put(task.id, task); }
-    @Override public synchronized Task findTask(TaskId id) { return tasks.get(id); }
-    @Override public synchronized List<Task> activeTasks() {
+    public synchronized void insertTask(Task task) { tasks.put(task.id, task); }
+    public synchronized void updateTask(Task task) { tasks.put(task.id, task); }
+    public synchronized Task findTask(TaskId id) { return tasks.get(id); }
+    public synchronized List<Task> activeTasks() {
         List<Task> result = new ArrayList<>();
         for (Task task : tasks.values()) if (!task.archived && !task.conditionDone) result.add(task);
         return result;
     }
-    @Override public synchronized List<Task> allTasks() { return new ArrayList<>(tasks.values()); }
-    @Override public synchronized void deleteTask(TaskId id) {
+    public synchronized List<Task> allTasks() { return new ArrayList<>(tasks.values()); }
+    public synchronized void deleteTask(TaskId id) {
         tasks.remove(id);
         deleteTemplates(id);
         schedule.values().removeIf(value -> value.taskId.equals(id));
@@ -85,24 +126,27 @@ public final class InMemoryExecutionRepository implements TaskStore {
         comboObligations.values().removeIf(value -> value.taskId.equals(id));
     }
 
-    @Override public synchronized void insertTemplates(List<TaskStepTemplate> values) {
+    public synchronized void insertTemplates(List<TaskStepTemplate> values) {
         for (TaskStepTemplate value : values) templates.put(value.id, value);
     }
-    @Override public synchronized void deleteTemplates(TaskId taskId) {
+    public synchronized void deleteTemplates(TaskId taskId) {
         templates.values().removeIf(value -> value.taskId.equals(taskId));
     }
-    @Override public synchronized void deleteTemplate(String id) { templates.remove(id); }
-    @Override public synchronized List<TaskStepTemplate> templates(TaskId taskId) {
+    public synchronized void deleteTemplate(String id) { templates.remove(id); }
+    public synchronized void updateTemplate(TaskStepTemplate template) {
+        templates.put(template.id, template);
+    }
+    public synchronized List<TaskStepTemplate> templates(TaskId taskId) {
         List<TaskStepTemplate> result = new ArrayList<>();
         for (TaskStepTemplate value : templates.values())
             if (value.taskId.equals(taskId)) result.add(value);
         result.sort(Comparator.comparingInt(value -> value.position));
         return result;
     }
-    @Override public synchronized TaskStepTemplate findTemplate(String id) {
+    public synchronized TaskStepTemplate findTemplate(String id) {
         return templates.get(id);
     }
-    @Override public synchronized List<TaskStepTemplate> templatesFor(List<TaskId> taskIds) {
+    public synchronized List<TaskStepTemplate> templatesFor(List<TaskId> taskIds) {
         Set<TaskId> selected = new HashSet<>(taskIds);
         List<TaskStepTemplate> result = new ArrayList<>();
         for (TaskStepTemplate value : templates.values())
@@ -111,33 +155,33 @@ public final class InMemoryExecutionRepository implements TaskStore {
                 .thenComparingInt(value -> value.position));
         return result;
     }
-    @Override public synchronized void putScheduleEntries(List<TaskScheduleEntry> values) {
+    public synchronized void putScheduleEntries(List<TaskScheduleEntry> values) {
         for (TaskScheduleEntry value : values) schedule.put(value.id, value);
     }
-    @Override public synchronized void deleteScheduleEntry(String id) { schedule.remove(id); }
-    @Override public synchronized List<TaskScheduleEntry> scheduleEntries() {
+    public synchronized void deleteScheduleEntry(String id) { schedule.remove(id); }
+    public synchronized List<TaskScheduleEntry> scheduleEntries() {
         List<TaskScheduleEntry> result = new ArrayList<>(schedule.values());
         result.sort(scheduleOrder());
         return result;
     }
-    @Override public synchronized List<TaskScheduleEntry> scheduleEntries(TaskId taskId) {
+    public synchronized List<TaskScheduleEntry> scheduleEntries(TaskId taskId) {
         List<TaskScheduleEntry> result = new ArrayList<>();
         for (TaskScheduleEntry value : schedule.values())
             if (value.taskId.equals(taskId)) result.add(value);
         result.sort(scheduleOrder());
         return result;
     }
-    @Override public synchronized TaskScheduleEntry findScheduleEntry(String id) {
+    public synchronized TaskScheduleEntry findScheduleEntry(String id) {
         return schedule.get(id);
     }
-    @Override public synchronized List<TaskScheduleEntry> scheduleEntries(TaskSlot slot) {
+    public synchronized List<TaskScheduleEntry> scheduleEntries(TaskSlot slot) {
         List<TaskScheduleEntry> result = new ArrayList<>();
         for (TaskScheduleEntry value : schedule.values())
             if (value.slot == slot) result.add(value);
         result.sort(scheduleOrder());
         return result;
     }
-    @Override public synchronized List<TaskScheduleEntry> scheduleEntriesFor(List<TaskId> taskIds) {
+    public synchronized List<TaskScheduleEntry> scheduleEntriesFor(List<TaskId> taskIds) {
         Set<TaskId> selected = new HashSet<>(taskIds);
         List<TaskScheduleEntry> result = new ArrayList<>();
         for (TaskScheduleEntry value : schedule.values())
@@ -146,23 +190,27 @@ public final class InMemoryExecutionRepository implements TaskStore {
         return result;
     }
 
-    @Override public synchronized void insertOccurrence(Occurrence occurrence) {
+    public synchronized void insertOccurrence(Occurrence occurrence) {
         occurrences.putIfAbsent(occurrence.id, occurrence);
     }
-    @Override public synchronized void updateOccurrence(Occurrence occurrence) {
+    public synchronized void updateOccurrence(Occurrence occurrence) {
         occurrences.put(occurrence.id, occurrence);
     }
-    @Override public synchronized Occurrence findOccurrence(String id) {
+    public synchronized void deleteOccurrence(String id) {
+        occurrences.remove(id);
+        occurrenceSteps.values().removeIf(value -> value.occurrenceId.equals(id));
+    }
+    public synchronized Occurrence findOccurrence(String id) {
         return occurrences.get(id);
     }
-    @Override public synchronized Occurrence findOccurrence(TaskId taskId, LocalDate scheduledOn,
+    public synchronized Occurrence findOccurrence(TaskId taskId, LocalDate scheduledOn,
                                                             TaskSlot slot) {
         for (Occurrence value : occurrences.values())
             if (value.taskId.equals(taskId) && value.scheduledOn.equals(scheduledOn)
                     && value.slot == slot) return value;
         return null;
     }
-    @Override public synchronized List<Occurrence> openOccurrences(TaskId taskId,
+    public synchronized List<Occurrence> openOccurrences(TaskId taskId,
                                                                    LocalDate scheduledOn) {
         List<Occurrence> result = new ArrayList<>();
         for (Occurrence value : occurrences.values())
@@ -170,7 +218,7 @@ public final class InMemoryExecutionRepository implements TaskStore {
                     && value.state == OccurrenceState.OPEN) result.add(value);
         return result;
     }
-    @Override public synchronized List<Occurrence> openOccurrences(TaskId taskId) {
+    public synchronized List<Occurrence> openOccurrences(TaskId taskId) {
         List<Occurrence> result = new ArrayList<>();
         for (Occurrence value : occurrences.values())
             if (value.taskId.equals(taskId) && value.state == OccurrenceState.OPEN)
@@ -179,20 +227,20 @@ public final class InMemoryExecutionRepository implements TaskStore {
                 .thenComparingInt(value -> value.slot.rank));
         return result;
     }
-    @Override public synchronized Occurrence openOccurrence(TaskId taskId, TaskSlot slot) {
+    public synchronized Occurrence openOccurrence(TaskId taskId, TaskSlot slot) {
         for (Occurrence value : openOccurrences(taskId))
             if (value.slot == slot) return value;
         return null;
     }
-    @Override public synchronized Occurrence openOccurrence(TaskId taskId) {
+    public synchronized Occurrence openOccurrence(TaskId taskId) {
         for (Occurrence value : occurrences.values())
             if (value.taskId.equals(taskId) && value.state == OccurrenceState.OPEN) return value;
         return null;
     }
-    @Override public synchronized List<Occurrence> openOccurrences() {
+    public synchronized List<Occurrence> openOccurrences() {
         return byState(OccurrenceState.OPEN);
     }
-    @Override public synchronized List<Occurrence> openOccurrences(TaskSlot slot) {
+    public synchronized List<Occurrence> openOccurrences(TaskSlot slot) {
         List<Occurrence> result = new ArrayList<>();
         for (Occurrence value : occurrences.values())
             if (value.slot == slot && value.state == OccurrenceState.OPEN) result.add(value);
@@ -200,43 +248,43 @@ public final class InMemoryExecutionRepository implements TaskStore {
                 .thenComparing(value -> value.scheduledOn).thenComparing(value -> value.id));
         return result;
     }
-    @Override public synchronized List<Occurrence> allOccurrences() {
+    public synchronized List<Occurrence> allOccurrences() {
         return new ArrayList<>(occurrences.values());
     }
-    @Override public synchronized List<Occurrence> occurrences(TaskId taskId) {
+    public synchronized List<Occurrence> occurrences(TaskId taskId) {
         List<Occurrence> result = new ArrayList<>();
         for (Occurrence value : occurrences.values())
             if (value.taskId.equals(taskId)) result.add(value);
         return result;
     }
-    @Override public synchronized Occurrence earliestOpenOccurrence(TaskId taskId) {
+    public synchronized Occurrence earliestOpenOccurrence(TaskId taskId) {
         return occurrences(taskId).stream().filter(value -> value.state == OccurrenceState.OPEN)
                 .min(Comparator.comparing(value -> value.scheduledOn)).orElse(null);
     }
-    @Override public synchronized Occurrence latestCompletedOccurrence(TaskId taskId) {
+    public synchronized Occurrence latestCompletedOccurrence(TaskId taskId) {
         return occurrences(taskId).stream()
                 .filter(value -> value.state.isHarvested())
                 .max(Comparator.comparing((Occurrence value) -> value.completedOn)
                         .thenComparing(value -> value.scheduledOn)).orElse(null);
     }
-    @Override public synchronized List<Occurrence> completedOccurrences(LocalDate date) {
+    public synchronized List<Occurrence> completedOccurrences(LocalDate date) {
         List<Occurrence> result = new ArrayList<>();
         for (Occurrence value : occurrences.values())
             if (value.state.isHarvested() && date.equals(value.completedOn))
                 result.add(value);
         return result;
     }
-    @Override public synchronized void insertOccurrenceSteps(List<OccurrenceStep> values) {
+    public synchronized void insertOccurrenceSteps(List<OccurrenceStep> values) {
         for (OccurrenceStep value : values) occurrenceSteps.put(value.id, value);
     }
-    @Override public synchronized List<OccurrenceStep> occurrenceSteps(String occurrenceId) {
+    public synchronized List<OccurrenceStep> occurrenceSteps(String occurrenceId) {
         List<OccurrenceStep> result = new ArrayList<>();
         for (OccurrenceStep value : occurrenceSteps.values())
             if (value.occurrenceId.equals(occurrenceId)) result.add(value);
         result.sort(Comparator.comparingInt(value -> value.position));
         return result;
     }
-    @Override public synchronized List<OccurrenceStep> occurrenceStepsFor(
+    public synchronized List<OccurrenceStep> occurrenceStepsFor(
             List<String> occurrenceIds) {
         Set<String> selected = new HashSet<>(occurrenceIds);
         List<OccurrenceStep> result = new ArrayList<>();
@@ -246,13 +294,14 @@ public final class InMemoryExecutionRepository implements TaskStore {
                 .thenComparingInt(value -> value.position));
         return result;
     }
-    @Override public synchronized OccurrenceStep findOccurrenceStep(String id) {
+    public synchronized OccurrenceStep findOccurrenceStep(String id) {
         return occurrenceSteps.get(id);
     }
-    @Override public synchronized void updateOccurrenceStep(OccurrenceStep step) {
+    public synchronized void updateOccurrenceStep(OccurrenceStep step) {
         occurrenceSteps.put(step.id, step);
     }
-    @Override public synchronized void updateOccurrenceStepPositions(
+    public synchronized void deleteOccurrenceStep(String id) { occurrenceSteps.remove(id); }
+    public synchronized void updateOccurrenceStepPositions(
             List<TodayStepPositionUpdate> updates) {
         for (TodayStepPositionUpdate update : updates) {
             OccurrenceStep step = occurrenceSteps.get(update.stepId);
@@ -260,24 +309,24 @@ public final class InMemoryExecutionRepository implements TaskStore {
                 occurrenceSteps.put(step.id, step.relocate(step.occurrenceId, update.position));
         }
     }
-    @Override public synchronized void assignRewardBookings(String occurrenceStepId,
+    public synchronized void assignRewardBookings(String occurrenceStepId,
                                                              String occurrenceId) {
         for (RewardBooking value : bookings.values())
             if (occurrenceStepId.equals(value.occurrenceStepId))
                 rewardAssignments.put(value.id, occurrenceId);
     }
 
-    @Override public synchronized int xp() { return xp; }
-    @Override public synchronized void setXp(int value) { xp = Math.max(0, value); }
-    @Override public synchronized ComboProgress combo(String ownerId) { return combos.get(ownerId); }
-    @Override public synchronized void putCombo(ComboProgress combo) {
+    public synchronized int xp() { return xp; }
+    public synchronized void setXp(int value) { xp = Math.max(0, value); }
+    public synchronized ComboProgress combo(String ownerId) { return combos.get(ownerId); }
+    public synchronized void putCombo(ComboProgress combo) {
         combos.put(combo.ownerId, combo);
     }
-    @Override public synchronized List<ComboProgress> combos() {
+    public synchronized List<ComboProgress> combos() {
         return new ArrayList<>(combos.values());
     }
 
-    @Override public synchronized void insertRewardBooking(RewardBooking booking) {
+    public synchronized void insertRewardBooking(RewardBooking booking) {
         if (bookings.containsKey(booking.id))
             throw new IllegalStateException("Duplicate reward booking " + booking.id);
         if (booking.reversesBookingId != null)
@@ -286,7 +335,7 @@ public final class InMemoryExecutionRepository implements TaskStore {
                     throw new IllegalStateException("Reward booking already reversed");
         bookings.put(booking.id, booking);
     }
-    @Override public synchronized List<RewardBooking> rewardBookings(String occurrenceId) {
+    public synchronized List<RewardBooking> rewardBookings(String occurrenceId) {
         List<RewardBooking> result = new ArrayList<>();
         for (RewardBooking value : bookings.values())
             if (effectiveOccurrence(value).equals(occurrenceId))
@@ -294,7 +343,7 @@ public final class InMemoryExecutionRepository implements TaskStore {
         result.sort(bookingOrder());
         return result;
     }
-    @Override public synchronized List<RewardBooking> rewardBookings(
+    public synchronized List<RewardBooking> rewardBookings(
             List<String> occurrenceIds) {
         Set<String> selected = new HashSet<>(occurrenceIds);
         List<RewardBooking> result = new ArrayList<>();
@@ -305,39 +354,35 @@ public final class InMemoryExecutionRepository implements TaskStore {
         return result;
     }
 
-    @Override public synchronized List<ComboObligation> comboObligations() {
+    public synchronized List<ComboObligation> comboObligations() {
         return new ArrayList<>(comboObligations.values());
     }
 
-    @Override public synchronized void insertComboObligations(List<ComboObligation> values) {
+    public synchronized void insertComboObligations(List<ComboObligation> values) {
         for (ComboObligation value : values) comboObligations.putIfAbsent(value.id, value);
     }
 
-    @Override public synchronized void updateComboObligation(ComboObligation value) {
+    public synchronized void updateComboObligation(ComboObligation value) {
         if (comboObligations.containsKey(value.id)) comboObligations.put(value.id, value);
     }
 
-    @Override public synchronized ComboDecayEvent comboDecayEvent(String ownerId,
+    public synchronized ComboDecayEvent comboDecayEvent(String ownerId,
                                                                    LocalDate eventOn) {
         return comboDecayEvents.get(decayKey(ownerId, eventOn));
     }
 
-    @Override public synchronized void insertComboDecayEvent(ComboDecayEvent event) {
+    public synchronized void insertComboDecayEvent(ComboDecayEvent event) {
         String key = decayKey(event.ownerId, event.eventOn);
         if (comboDecayEvents.putIfAbsent(key, event) != null)
             throw new IllegalStateException("Duplicate combo decay event " + key);
     }
 
-    @Override public synchronized void updateTrainingTemplate(TaskStepTemplate template) {
-        templates.put(template.id, template);
-    }
-
-    @Override public synchronized double effectiveSetsSince(TrainingMuscleGroup muscle,
+    public synchronized double effectiveSetsSince(TrainingMuscleGroup muscle,
                                                              LocalDate start, LocalDate end) {
         return 0.0;
     }
 
-    @Override public synchronized void insertTrainingAdjustment(TrainingAdjustment adjustment) {
+    public synchronized void insertTrainingAdjustment(TrainingAdjustment adjustment) {
         if (failTrainingAdjustmentInsert) {
             failTrainingAdjustmentInsert = false;
             throw new IllegalStateException("Injected training adjustment failure");
@@ -349,7 +394,7 @@ public final class InMemoryExecutionRepository implements TaskStore {
         failTrainingAdjustmentInsert = true;
     }
 
-    @Override public synchronized TrainingAdjustment latestTrainingAdjustment(String templateId) {
+    public synchronized TrainingAdjustment latestTrainingAdjustment(String templateId) {
         TrainingAdjustment latest = null;
         for (TrainingAdjustment value : trainingAdjustments.values()) {
             if (!templateId.equals(value.templateId)) continue;
@@ -358,7 +403,7 @@ public final class InMemoryExecutionRepository implements TaskStore {
         return latest;
     }
 
-    @Override public synchronized List<TrainingAdjustment> recentTrainingAdjustments(
+    public synchronized List<TrainingAdjustment> recentTrainingAdjustments(
             String templateId, int limit) {
         List<TrainingAdjustment> result = new ArrayList<>();
         for (TrainingAdjustment value : trainingAdjustments.values())
@@ -368,11 +413,11 @@ public final class InMemoryExecutionRepository implements TaskStore {
         return new ArrayList<>(result.subList(0, Math.min(Math.max(limit, 0), result.size())));
     }
 
-    @Override public synchronized void updateTrainingAdjustment(TrainingAdjustment adjustment) {
+    public synchronized void updateTrainingAdjustment(TrainingAdjustment adjustment) {
         trainingAdjustments.put(adjustment.id, adjustment);
     }
 
-    @Override public synchronized long nextTrainingAuditOrder() {
+    public synchronized long nextTrainingAuditOrder() {
         long maximum = 0;
         for (TrainingAdjustment value : trainingAdjustments.values())
             maximum = Math.max(maximum, value.auditOrder);
@@ -381,13 +426,13 @@ public final class InMemoryExecutionRepository implements TaskStore {
         return maximum + 1;
     }
 
-    @Override public synchronized void insertTrainingLoadRequest(TrainingLoadRequest request) {
+    public synchronized void insertTrainingLoadRequest(TrainingLoadRequest request) {
         if (openTrainingLoadRequest(request.templateId) != null)
             throw new IllegalStateException("An open training load request already exists");
         trainingLoadRequests.put(request.id, request);
     }
 
-    @Override public synchronized TrainingLoadRequest openTrainingLoadRequest(String templateId) {
+    public synchronized TrainingLoadRequest openTrainingLoadRequest(String templateId) {
         TrainingLoadRequest latest = null;
         for (TrainingLoadRequest value : trainingLoadRequests.values()) {
             if (!templateId.equals(value.templateId)
@@ -397,7 +442,7 @@ public final class InMemoryExecutionRepository implements TaskStore {
         return latest;
     }
 
-    @Override public synchronized List<TrainingLoadRequest> recentTrainingLoadRequests(
+    public synchronized List<TrainingLoadRequest> recentTrainingLoadRequests(
             String templateId, int limit) {
         List<TrainingLoadRequest> result = new ArrayList<>();
         for (TrainingLoadRequest value : trainingLoadRequests.values())
@@ -407,7 +452,7 @@ public final class InMemoryExecutionRepository implements TaskStore {
         return new ArrayList<>(result.subList(0, Math.min(Math.max(limit, 0), result.size())));
     }
 
-    @Override public synchronized void updateTrainingLoadRequest(TrainingLoadRequest request) {
+    public synchronized void updateTrainingLoadRequest(TrainingLoadRequest request) {
         trainingLoadRequests.put(request.id, request);
     }
 

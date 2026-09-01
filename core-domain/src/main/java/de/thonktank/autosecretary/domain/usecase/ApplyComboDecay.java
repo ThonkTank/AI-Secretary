@@ -7,9 +7,8 @@ import de.thonktank.autosecretary.domain.model.ComboObligation;
 import de.thonktank.autosecretary.domain.model.ComboPolicy;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
-import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
-import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.time.LocalDate;
@@ -23,24 +22,20 @@ import java.util.TreeSet;
 
 /** Books decay only for unresolved genuine schedule dates, never for neutral carry days. */
 public final class ApplyComboDecay {
-    private final RewardLedgerRepository ledger;
-    private final ComboObligationRepository obligations;
+    private final TodayRepository today;
     private final TransactionRunner transactions;
     private final ComboPolicySource policies;
     private final Clock clock;
 
-    public ApplyComboDecay(RewardLedgerRepository ledger,
-                    ComboObligationRepository obligations, TransactionRunner transactions,
+    public ApplyComboDecay(TodayRepository today, TransactionRunner transactions,
                     Clock clock) {
-        this(ledger, obligations, transactions, clock, ComboPolicySource.defaults());
+        this(today, transactions, clock, ComboPolicySource.defaults());
     }
 
-    public ApplyComboDecay(RewardLedgerRepository ledger,
-                    ComboObligationRepository obligations, TransactionRunner transactions,
+    public ApplyComboDecay(TodayRepository today, TransactionRunner transactions,
                     Clock clock,
                     ComboPolicySource policies) {
-        this.ledger = ledger;
-        this.obligations = obligations;
+        this.today = today;
         this.transactions = transactions;
         this.policies = policies;
         this.clock = clock;
@@ -50,7 +45,7 @@ public final class ApplyComboDecay {
         return transactions.inTransaction(() -> {
             ComboPolicy policy = policies.current();
             Map<String, List<ComboObligation>> openByOwner = new LinkedHashMap<>();
-            for (ComboObligation obligation : obligations.comboObligations())
+            for (ComboObligation obligation : today.comboObligations())
                 if (obligation.state == ComboObligation.State.OPEN)
                     openByOwner.computeIfAbsent(obligation.ownerId,
                             ignored -> new ArrayList<>()).add(obligation);
@@ -69,16 +64,16 @@ public final class ApplyComboDecay {
                              ComboPolicy policy) {
         ComboObligation representative = representative(values, eventOn);
         if (representative == null
-                || obligations.comboDecayEvent(representative.ownerId, eventOn) != null)
+                || today.comboDecayEvent(representative.ownerId, eventOn) != null)
             return false;
         String bookingId = null;
-        ComboProgress current = ledger.combo(representative.ownerId);
+        ComboProgress current = today.combo(representative.ownerId);
         if (current != null && policy.decayPoints > 0) {
             ComboProgress.Change change = current.change(-policy.decayPoints, eventOn);
-            ledger.putCombo(change.progress);
+            today.putCombo(change.progress);
             if (change.appliedDelta != 0) {
                 bookingId = bookingId(representative.ownerId, eventOn);
-                ledger.insertRewardBooking(new RewardBooking(bookingId, bookingId,
+                today.insertRewardBooking(new RewardBooking(bookingId, bookingId,
                         representative.occurrenceId, null, representative.ownerId,
                         RewardBooking.Kind.COMBO_DECAY,
                         representative.kind == ComboProgress.Kind.TASK
@@ -86,7 +81,7 @@ public final class ApplyComboDecay {
                         0, change.appliedDelta, eventOn, null));
             }
         }
-        obligations.insertComboDecayEvent(new ComboDecayEvent(representative.ownerId,
+        today.insertComboDecayEvent(new ComboDecayEvent(representative.ownerId,
                 eventOn, bookingId));
         return true;
     }

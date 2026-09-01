@@ -40,7 +40,7 @@ ignorieren sie; produktive Inserts und Updates schreiben dort nur den leeren Str
 Migration kann die Spalte entfernen, sobald ausreichend Releasegenerationen Version 8 passiert
 haben.
 
-`RoomTaskRepository` lädt Ergebniszeilen geordnet und baut daraus die Domainliste. Beim Schreiben
+`RoomStepRepository` lädt Ergebniszeilen geordnet und baut daraus die Domainliste. Beim Schreiben
 vergleicht es vorhandene und gewünschte Slots: neue oder veränderte Slots werden einzeln
 upserted, nur entfernte Endslots werden gelöscht. Eine Korrektur schreibt somit genau die
 betroffene Zeile. Domain- und Repository-API enthalten keine Komma-Repräsentation mehr; der alte

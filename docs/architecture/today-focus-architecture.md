@@ -46,15 +46,15 @@ bei Notizen, Wiederholungen, versteckten Zeilen und Kartenrotation.
 
 ## Domain- und Persistenzgrenze
 
-`:core-domain` enthält Modelle, Ports und Use Cases ohne Android-Abhängigkeit. Use Cases hängen
-nur von Capability-Ports ab. `TodayStepOrder` ist eine reine Permutationsfunktion;
-`TodayStepOrderRepository` persistiert ausschließlich geänderte Positionen. Schrittausführung
-und Occurrence-Abschluss sind in `StepExecutionService` beziehungsweise
-`OccurrenceCompletionService` getrennt.
+`:core-domain` enthält Modelle, fünf fachliche Persistenzports und Use Cases ohne
+Android-Abhängigkeit. `TodayStepOrder` ist eine reine Permutationsfunktion; `MoveTodayStep`
+liest die Occurrence über `TodayRepository` und persistiert ausschließlich geänderte
+Schrittpositionen über `StepRepository`. Schrittausführung und Occurrence-Abschluss sind in
+`StepExecutionService` beziehungsweise `OccurrenceCompletionService` getrennt.
 
-`ApplicationTaskRepository` bündelt die Ports nur für `RoomTaskRepository` am Composition Root.
-Schema 14, Ledger, Wiederholungstabellen, Templates und andere Occurrences bleiben beim Reorder
-unverändert.
+Die Composition erzeugt `CatalogRepository`, `StepRepository`, `TodayRepository`,
+`FlowRepository` und `TrainingRepository` als getrennte Room-Adapter. Schema 22, Ledger,
+Wiederholungstabellen, Templates und andere Occurrences bleiben beim Reorder unverändert.
 
 ## Android-App-Grenze
 

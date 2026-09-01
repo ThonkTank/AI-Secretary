@@ -75,35 +75,30 @@ erzeugen keine zweite Blattform und persistieren keinen Reorderzustand.
 
 Die Domain besitzt keinen aggregierten Repository-Vertrag. `AppContainer` setzt vier sichtbare
 Bündel zusammen: `CatalogUseCases`, `TodayUseCases`, `FlowUseCases` und `TrainingUseCases`.
-Transaktionale Abläufe erhalten `TransactionRunner` getrennt von ihren kleinen Fachports:
+Transaktionale Abläufe erhalten `TransactionRunner` getrennt von genau fünf Fachports:
 
-- `DashboardReadRepository`
-- `OccurrenceExecutionRepository`
-- `RewardLedgerRepository`
-- `MaterializationRepository`
-- `TodayStepOrderRepository`
-- `TaskDefinitionRepository`
-- `TaskScheduleRepository`
-- `StepOrganizationRepository`
-- `TrainingRepository`
-- `StepFlowDefinitionRepository` und `StepFlowRunRepository`
+- `CatalogRepository` für Tasks, Katalog und Zeitplan;
+- `StepRepository` für Vorlagen, materialisierte Schritte und deren Reihenfolge;
+- `TodayRepository` für Occurrences, Rewards, Kombos und Verpflichtungen;
+- `FlowRepository` für Definitionen, Runs und Kapazitäten;
+- `TrainingRepository` für Trainingsvolumen, Anpassungen, Lastfragen und Auditspur.
 
 Use Cases dürfen diese Fähigkeiten weder über Mehrfachport-Typparameter noch über
 `instanceof`-Sondierung wieder zu einem impliziten Sammelvertrag verbinden.
 
 Schrittausführung liegt in `StepExecutionService`, Occurrence-Abschluss, Ernte und Undo in
 `OccurrenceCompletionService`. `RoomTransactionRunner` besitzt die Room-Transaktionsgrenze;
-`RoomStepRepository` besitzt Vorlagen-, Snapshot- und Satzresultatzeilen,
-`RoomTrainingRepository` Trainingsprofil, Lastfragen und Auditspur. Der infrastrukturelle
-`TaskStore` ist nur ein Implementierungsdetail des Room-Gateways und kein Domain- oder
-Präsentationsvertrag. Reorder schreibt nur geänderte Positionsspalten innerhalb einer
-Transaktion; diese Invariante gilt auch unter Schema 22 unverändert.
+`CatalogDao`, `StepDao`, `TodayDao`, `FlowDao` und `TrainingDao` werden jeweils von genau einem
+gleichnamigen Room-Adapter besessen. `ApplicationUseCaseComposition` erzeugt diese fünf Adapter
+und den `RoomTransactionRunner` direkt aus `AppDatabase` jeweils genau einmal. Reorder schreibt
+nur geänderte Positionsspalten innerhalb einer Transaktion; diese Invariante gilt auch unter
+Schema 22 unverändert.
 
 ## Autoritative Zustände
 
 | Zustand | Owner | Persistenz |
 |---|---|---:|
-| Taskdefinition und Zeitplan | Domain + Capability-Port | ja |
+| Taskdefinition und Zeitplan | Domain + `CatalogRepository` | ja |
 | Occurrence-/Schrittfortschritt | Domain-Use-Case | ja |
 | Rewardbuchungen | unveränderliches Ledger | ja |
 | Today-Fokus/Timeline/History | `TodayUiModel` | nein, Projektion |

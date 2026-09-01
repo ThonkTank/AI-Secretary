@@ -38,7 +38,7 @@ normalisiert. Schema 13 entfernt Slot, Zeitmaske und die alte Definitionsreihenf
 `task_schedule_entries` die einzige persistente Zeitplanungswahrheit.
 
 Ein Reorder liest und normalisiert ausschließlich Quell- und Zielslot über den schmalen
-`TaskScheduleRepository`-Port. Ein passendes offenes Heute-Vorkommen wechselt Slot und Rang
+`CatalogRepository` und `TodayRepository`. Ein passendes offenes Heute-Vorkommen wechselt Slot und Rang
 sofort. Abgeschlossene oder geerntete Vorkommen bleiben historische Snapshots. `CreateTask`,
 `UpdateTask`, Today-Verschieben und Alles-Sortierung delegieren auf `TaskScheduleService`; ein
 zweiter Legacy-Mutationspfad existiert nicht. Create und Update erhalten Definitionen und
@@ -48,7 +48,7 @@ Today-/Ausführungsrepository nicht. Erst der Composition Root bündelt die Port
 
 Ein verschobener oder getauschter Schritt behält seine Template-ID, Definition, Kombo und
 Position relativ zum Ziel. `MoveTaskStep` und `SwapTaskSteps` hängen nur vom
-`StepOrganizationRepository`-Port ab. Für offene Quell- und Zielvorkommen derselben Tageszeit
+`CatalogRepository`, `StepRepository` und `TodayRepository` ab. Für offene Quell- und Zielvorkommen derselben Tageszeit
 wird der heutige Schrittzustand samt aktueller Reward-Zuordnung mitverschoben. Existiert kein
 passendes Zielvorkommen, ändert sich nur die Definition für künftige Materialisierungen; der
 unzuordenbare heutige Snapshot bleibt bestehen. Geerntete und abgeschlossene Historie wird nie

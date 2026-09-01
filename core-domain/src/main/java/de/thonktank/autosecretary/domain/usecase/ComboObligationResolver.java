@@ -4,7 +4,7 @@ import de.thonktank.autosecretary.domain.model.ComboObligation;
 import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.Task;
-import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -13,9 +13,9 @@ import java.util.List;
 
 /** Resolves attendance obligations independently from the points awarded for that attendance. */
 final class ComboObligationResolver {
-    private final ComboObligationRepository repository;
+    private final TodayRepository repository;
 
-    ComboObligationResolver(ComboObligationRepository repository) {
+    ComboObligationResolver(TodayRepository repository) {
         this.repository = repository;
     }
 

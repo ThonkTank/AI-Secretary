@@ -8,7 +8,6 @@ import android.content.Context;
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 
-import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.FlowConfigurationDraft;
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -24,7 +23,6 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.data.local.TaskStore;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 
 import org.junit.After;
@@ -46,19 +44,19 @@ import java.util.Map;
 @Config(sdk = 35)
 public final class StepFlowSetupRobolectricTest {
     private AppDatabase database;
-    private TaskStore repository;
+    private RoomRepositoryFixture repository;
     private ApplicationUseCaseComposition tasks;
 
     @Before public void setUp() {
         Context context = ApplicationProvider.getApplicationContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
                 .allowMainThreadQueries().build();
-        repository = new RoomTaskRepository(database);
+        repository = new RoomRepositoryFixture(database);
         Clock clock = new Clock() {
             @Override public LocalDate today() { return LocalDate.of(2026, 8, 25); }
             @Override public LocalTime time() { return LocalTime.NOON; }
         };
-        tasks = new ApplicationUseCaseComposition(repository, repository, repository, clock,
+        tasks = new ApplicationUseCaseComposition(database, clock,
                 new SequenceIds(), de.thonktank.autosecretary.domain.repository.ComboPolicySource.defaults());
         tasks.catalog.create.execute(TaskDefinition.basic("Wäsche", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0,
@@ -68,7 +66,7 @@ public final class StepFlowSetupRobolectricTest {
     @After public void tearDown() { database.close(); }
 
     @Test public void combinedEditorSaveCreatesConvergingLaundryFlowAndSharedResources() {
-        int taskCount = repository.allTasks().size();
+        int taskCount = repository.catalog.allTasks().size();
         TaskDefinition definition = TaskDefinition.basic("Wäsche-Test", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Arrays.asList(
                         "Buntwäsche starten", "Weißwäsche starten", "Wäsche aufhängen",
@@ -100,22 +98,22 @@ public final class StepFlowSetupRobolectricTest {
                 tasks.catalog.saveTaskConfiguration.execute(null, definition,
                         new FlowConfigurationDraft(keys, links, resources, leases));
 
-        assertEquals(taskCount + 1, repository.allTasks().size());
-        assertEquals(3, repository.stepTransitions(saved).size());
-        assertEquals(4, repository.stepResourceLeases(saved).size());
-        List<TaskStepTemplate> savedSteps = repository.templates(saved);
+        assertEquals(taskCount + 1, repository.catalog.allTasks().size());
+        assertEquals(3, repository.flows.stepTransitions(saved).size());
+        assertEquals(4, repository.flows.stepResourceLeases(saved).size());
+        List<TaskStepTemplate> savedSteps = repository.steps.templates(saved);
         assertEquals(StepActivationKind.SCHEDULED, savedSteps.get(0).activationKind);
         assertEquals(StepActivationKind.SCHEDULED, savedSteps.get(1).activationKind);
         assertEquals(StepActivationKind.FOLLOW_UP, savedSteps.get(2).activationKind);
         assertEquals(StepActivationKind.FOLLOW_UP, savedSteps.get(3).activationKind);
-        assertEquals(1, repository.capacityResources().stream()
+        assertEquals(1, repository.flows.capacityResources().stream()
                 .filter(value -> value.name.equals("Waschmaschine")).findFirst().get().capacity);
-        assertEquals(2, repository.capacityResources().stream()
+        assertEquals(2, repository.flows.capacityResources().stream()
                 .filter(value -> value.name.equals("Wäscheständer")).findFirst().get().capacity);
     }
 
     @Test public void invalidCombinedEditorSaveRollsBackTaskAndNewResource() {
-        int taskCount = repository.allTasks().size();
+        int taskCount = repository.catalog.allTasks().size();
         TaskDefinition definition = TaskDefinition.basic("Ungültiger Ablauf",
                 TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
                 Arrays.asList("Start", "Ende"));
@@ -131,14 +129,14 @@ public final class StepFlowSetupRobolectricTest {
         assertThrows(IllegalArgumentException.class,
                 () -> tasks.catalog.saveTaskConfiguration.execute(null, definition, draft));
 
-        assertEquals(taskCount, repository.allTasks().size());
-        assertEquals(0, repository.capacityResources().stream()
+        assertEquals(taskCount, repository.catalog.allTasks().size());
+        assertEquals(0, repository.flows.capacityResources().stream()
                 .filter(value -> value.name.equals("Nur einer")).count());
     }
 
     @Test public void setupDerivesRolesAtomicallyAndSurvivesNormalTaskEdits() {
-        de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
-        List<TaskStepTemplate> steps = repository.templates(task.id);
+        de.thonktank.autosecretary.domain.model.Task task = repository.catalog.allTasks().get(0);
+        List<TaskStepTemplate> steps = repository.steps.templates(task.id);
         String wash = steps.get(0).id;
         String hang = steps.get(1).id;
         String takeDown = steps.get(2).id;
@@ -154,9 +152,9 @@ public final class StepFlowSetupRobolectricTest {
 
         assertEquals(2, tasks.flows.loadStepFlowSetup.execute(task.id).transitions.size());
         assertEquals(StepActivationKind.SCHEDULED,
-                repository.templates(task.id).get(0).activationKind);
+                repository.steps.templates(task.id).get(0).activationKind);
         assertEquals(StepActivationKind.FOLLOW_UP,
-                repository.templates(task.id).get(1).activationKind);
+                repository.steps.templates(task.id).get(1).activationKind);
 
         TaskDetails details = tasks.catalog.loadTaskDetails.execute(task.id);
         List<TaskStepDefinition> definitions = new ArrayList<>();
@@ -167,20 +165,20 @@ public final class StepFlowSetupRobolectricTest {
                 details.boundUntilOn, details.boundWeeks, details.remainingCount,
                 details.deadlineOn, details.note, definitions));
 
-        assertEquals(2, repository.stepTransitions(task.id).size());
-        assertEquals(1, repository.stepResourceLeases(task.id).size());
+        assertEquals(2, repository.flows.stepTransitions(task.id).size());
+        assertEquals(1, repository.flows.stepResourceLeases(task.id).size());
         assertEquals(StepActivationKind.FOLLOW_UP,
-                repository.templates(task.id).get(1).activationKind);
+                repository.steps.templates(task.id).get(1).activationKind);
 
         Map<String, StepActivationKind> invalid = roles(steps, hang, takeDown);
         assertThrows(IllegalArgumentException.class, () -> tasks.flows.saveStepFlowSetup.execute(
                 task.id, invalid, java.util.Collections.emptyList(), leases));
-        assertEquals(2, repository.stepTransitions(task.id).size());
+        assertEquals(2, repository.flows.stepTransitions(task.id).size());
     }
 
     @Test public void shrinkingResourceBelowAnExistingRuleRollsBack() {
-        de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
-        List<TaskStepTemplate> steps = repository.templates(task.id);
+        de.thonktank.autosecretary.domain.model.Task task = repository.catalog.allTasks().get(0);
+        List<TaskStepTemplate> steps = repository.steps.templates(task.id);
         tasks.flows.saveCapacityResource.execute("rack", "Wäscheständer", 2);
         Map<String, StepActivationKind> roles = roles(steps, steps.get(1).id, steps.get(2).id);
         tasks.flows.saveStepFlowSetup.execute(task.id, roles, Arrays.asList(
@@ -194,18 +192,18 @@ public final class StepFlowSetupRobolectricTest {
         assertThrows(IllegalArgumentException.class,
                 () -> tasks.flows.saveCapacityResource.execute("rack", "Wäscheständer", 1));
 
-        assertEquals(2, repository.findCapacityResource("rack").capacity);
+        assertEquals(2, repository.flows.findCapacityResource("rack").capacity);
     }
 
     @Test public void changingFlowRolesPreservesCustomRestTimerPolicy() {
-        de.thonktank.autosecretary.domain.model.Task task = repository.allTasks().get(0);
-        List<TaskStepTemplate> steps = new ArrayList<>(repository.templates(task.id));
+        de.thonktank.autosecretary.domain.model.Task task = repository.catalog.allTasks().get(0);
+        List<TaskStepTemplate> steps = new ArrayList<>(repository.steps.templates(task.id));
         TaskStepTemplate first = steps.get(0);
         steps.set(0, de.thonktank.autosecretary.testing.StepTestFixtures.template(first.id, first.taskId, first.position, first.text,
                 first.weekdayMask, first.intervalDays, StepAmount.setsReps(3, 8),
                 RestTimerPolicy.custom(75), first.note, first.activationKind));
-        repository.insertTemplates(steps);
-        steps = repository.templates(task.id);
+        repository.steps.insertTemplates(steps);
+        steps = repository.steps.templates(task.id);
 
         tasks.flows.saveStepFlowSetup.execute(task.id, roles(steps, steps.get(1).id),
                 java.util.Collections.singletonList(new StepTransition(steps.get(0).id,
@@ -213,9 +211,9 @@ public final class StepFlowSetupRobolectricTest {
                 java.util.Collections.emptyList());
 
         assertEquals(RestTimerPolicy.Mode.CUSTOM,
-                repository.templates(task.id).get(0).prescription.rest.mode);
+                repository.steps.templates(task.id).get(0).prescription.rest.mode);
         assertEquals(Integer.valueOf(75),
-                repository.templates(task.id).get(0).prescription.rest.customSeconds);
+                repository.steps.templates(task.id).get(0).prescription.rest.customSeconds);
     }
 
     private static Map<String, StepActivationKind> roles(List<TaskStepTemplate> steps,

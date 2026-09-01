@@ -4,18 +4,21 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskDetails;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
-import de.thonktank.autosecretary.domain.repository.TaskDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
 
 public final class LoadTaskDetails {
-    private final TaskDefinitionRepository repository;
+    private final CatalogRepository catalog;
+    private final StepRepository steps;
 
-    public LoadTaskDetails(TaskDefinitionRepository repository) {
-        this.repository = repository;
+    public LoadTaskDetails(CatalogRepository catalog, StepRepository steps) {
+        this.catalog = catalog;
+        this.steps = steps;
     }
 
     public TaskDetails execute(TaskId id) {
-        Task task = repository.findTask(id);
-        return task == null ? null : new TaskDetails(task, repository.templates(id),
-                new TaskSchedule(repository.scheduleEntries(id)));
+        Task task = catalog.findTask(id);
+        return task == null ? null : new TaskDetails(task, steps.templates(id),
+                new TaskSchedule(catalog.scheduleEntries(id)));
     }
 }

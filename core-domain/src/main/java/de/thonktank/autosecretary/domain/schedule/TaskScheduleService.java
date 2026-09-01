@@ -9,6 +9,8 @@ import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,13 +19,16 @@ import java.util.Map;
 
 /** The sole application service allowed to mutate persisted task placements. */
 public final class TaskScheduleService {
-    private final TaskScheduleRepository repository;
+    private final CatalogRepository catalog;
+    private final TodayRepository today;
     private final TransactionRunner transactions;
     private final IdGenerator ids;
 
-    public TaskScheduleService(TaskScheduleRepository repository, TransactionRunner transactions,
+    public TaskScheduleService(CatalogRepository catalog, TodayRepository today,
+                               TransactionRunner transactions,
                                IdGenerator ids) {
-        this.repository = repository;
+        this.catalog = catalog;
+        this.today = today;
         this.transactions = transactions;
         this.ids = ids;
     }
@@ -35,11 +40,11 @@ public final class TaskScheduleService {
     public void create(Task task, List<TaskSlot> desiredSlots) {
         List<TaskScheduleEntry> entries = new ArrayList<>();
         for (TaskSlot slot : desiredSlots) {
-            TaskSchedule current = new TaskSchedule(repository.scheduleEntries(slot));
+            TaskSchedule current = new TaskSchedule(catalog.scheduleEntries(slot));
             entries.add(new TaskScheduleEntry(ids.nextId(), task.id, slot,
                     current.nextOrder(slot)));
         }
-        repository.putScheduleEntries(entries);
+        catalog.putScheduleEntries(entries);
     }
 
     public void sync(Task task, TaskDefinition definition) {
@@ -47,7 +52,7 @@ public final class TaskScheduleService {
     }
 
     public void sync(Task task, List<TaskSlot> desiredSlots) {
-        TaskSchedule current = new TaskSchedule(repository.scheduleEntries(task.id));
+        TaskSchedule current = new TaskSchedule(catalog.scheduleEntries(task.id));
         Map<TaskSlot, TaskScheduleEntry> existing = new HashMap<>();
         for (TaskScheduleEntry entry : current.placements(task.id))
             existing.put(entry.slot, entry);
@@ -56,42 +61,42 @@ public final class TaskScheduleService {
             TaskScheduleEntry retained = existing.remove(slot);
             writes.add(retained == null
                     ? new TaskScheduleEntry(ids.nextId(), task.id, slot,
-                    new TaskSchedule(repository.scheduleEntries(slot)).nextOrder(slot))
+                    new TaskSchedule(catalog.scheduleEntries(slot)).nextOrder(slot))
                     : retained);
         }
         for (TaskScheduleEntry removed : existing.values())
-            repository.deleteScheduleEntry(removed.id);
-        repository.putScheduleEntries(writes);
+            catalog.deleteScheduleEntry(removed.id);
+        catalog.putScheduleEntries(writes);
     }
 
     public ScheduleMoveResult move(ScheduleMoveRequest request) {
         return transactions.inTransaction(() -> {
-            TaskScheduleEntry moving = repository.findScheduleEntry(request.entryId.value);
+            TaskScheduleEntry moving = catalog.findScheduleEntry(request.entryId.value);
             if (moving == null) return ScheduleMoveResult.NOT_FOUND;
             List<TaskScheduleEntry> affected = new ArrayList<>(
-                    repository.scheduleEntries(moving.slot));
+                    catalog.scheduleEntries(moving.slot));
             if (moving.slot != request.targetSlot)
-                affected.addAll(repository.scheduleEntries(request.targetSlot));
+                affected.addAll(catalog.scheduleEntries(request.targetSlot));
             TaskSchedule schedule = new TaskSchedule(affected);
-            Task task = repository.findTask(moving.taskId);
+            Task task = catalog.findTask(moving.taskId);
             if (task == null || task.archived || task.conditionDone)
                 return ScheduleMoveResult.REJECTED_INACTIVE_TASK;
             if (moving.slot != request.targetSlot && schedule.contains(
                     moving.taskId, request.targetSlot))
                 return ScheduleMoveResult.REJECTED_DUPLICATE_SLOT;
 
-            Occurrence open = repository.openOccurrence(moving.taskId, moving.slot);
+            Occurrence open = today.openOccurrence(moving.taskId, moving.slot);
             if (open != null && moving.slot != request.targetSlot
-                    && repository.findOccurrence(moving.taskId, open.scheduledOn,
+                    && today.findOccurrence(moving.taskId, open.scheduledOn,
                     request.targetSlot) != null)
                 return ScheduleMoveResult.REJECTED_TODAY_SLOT_OCCUPIED;
 
             TaskSchedule.Mutation mutation = schedule.move(request.entryId.value,
                     request.targetSlot, request.beforeEntryId.map(value -> value.value).orElse(null));
             if (!mutation.changed) return ScheduleMoveResult.NOT_FOUND;
-            repository.putScheduleEntries(mutation.writes);
+            catalog.putScheduleEntries(mutation.writes);
             if (open != null && mutation.sourceSlot != mutation.targetSlot)
-                repository.updateOccurrence(open.moveTo(mutation.targetSlot, open.sortOrder));
+                today.updateOccurrence(open.moveTo(mutation.targetSlot, open.sortOrder));
             reconcileOpenOrders(mutation.schedule, mutation.sourceSlot, mutation.targetSlot);
             return ScheduleMoveResult.MOVED;
         });
@@ -111,12 +116,12 @@ public final class TaskScheduleService {
         }
         Map<TaskSlot, Integer> tail = new HashMap<>();
         for (TaskSlot slot : affected) {
-            for (Occurrence occurrence : repository.openOccurrences(slot)) {
+            for (Occurrence occurrence : today.openOccurrences(slot)) {
                 Integer rank = ranks.get(key(occurrence.taskId, occurrence.slot));
                 int value = rank == null
                         ? slotSizes.get(slot) + tail.merge(slot, 1, Integer::sum) : rank;
                 if (occurrence.sortOrder != value)
-                    repository.updateOccurrence(occurrence.moveTo(value));
+                    today.updateOccurrence(occurrence.moveTo(value));
             }
         }
     }

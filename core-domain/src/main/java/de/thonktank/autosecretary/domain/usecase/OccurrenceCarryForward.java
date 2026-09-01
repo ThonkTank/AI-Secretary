@@ -5,7 +5,7 @@ import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.repository.MaterializationRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ import java.util.Set;
 
 /** Rolls stale open work into a carry-forward plan and marks its source historical. */
 final class OccurrenceCarryForward {
-    Result collect(MaterializationRepository repository, LocalDate today,
+    Result collect(TodayRepository repository, LocalDate today,
                    List<Occurrence> history,
                    Map<String, List<OccurrenceStep>> stepsByOccurrence) {
         List<Occurrence> values = new ArrayList<>(history);

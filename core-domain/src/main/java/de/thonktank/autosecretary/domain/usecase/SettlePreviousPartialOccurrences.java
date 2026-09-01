@@ -7,40 +7,37 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
-import de.thonktank.autosecretary.domain.repository.DashboardReadRepository;
-import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
-import de.thonktank.autosecretary.domain.repository.RewardLedgerRepository;
-import de.thonktank.autosecretary.domain.repository.ComboObligationRepository;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 /** Idempotently closes and harvests positive work left open across a day boundary. */
 public final class SettlePreviousPartialOccurrences {
-    private final DashboardReadRepository dashboard;
-    private final OccurrenceExecutionRepository occurrences;
-    private final RewardLedgerRepository rewards;
+    private final StepRepository steps;
+    private final TodayRepository today;
     private final Clock clock;
     private final FinishStepForToday finishStep;
     private final OccurrenceCompletionService completion;
 
-    public SettlePreviousPartialOccurrences(DashboardReadRepository dashboard,
-            OccurrenceExecutionRepository occurrences, RewardLedgerRepository rewards, ComboObligationRepository obligations,
+    public SettlePreviousPartialOccurrences(CatalogRepository catalog, StepRepository steps,
+            TodayRepository today,
             TransactionRunner transactions, Clock clock,
             ComboPolicySource policies) {
-        this.dashboard = dashboard;
-        this.occurrences = occurrences;
-        this.rewards = rewards;
+        this.steps = steps;
+        this.today = today;
         this.clock = clock;
-        finishStep = new FinishStepForToday(occurrences, rewards, obligations, transactions, clock, policies);
-        completion = new OccurrenceCompletionService(occurrences, rewards, obligations, transactions, clock,
+        finishStep = new FinishStepForToday(catalog, steps, today, transactions, clock, policies);
+        completion = new OccurrenceCompletionService(catalog, steps, today, transactions, clock,
                 policies);
     }
 
     public boolean execute() {
         boolean changed = false;
-        for (Occurrence occurrence : dashboard.openOccurrences()) {
+        for (Occurrence occurrence : today.openOccurrences()) {
             if (occurrence.kind == OccurrenceKind.FLOW_SHEET) continue;
             if (!occurrence.scheduledOn.isBefore(clock.today())) continue;
-            for (OccurrenceStep step : occurrences.occurrenceSteps(occurrence.id)) {
+            for (OccurrenceStep step : steps.occurrenceSteps(occurrence.id)) {
                 if (!step.done && positivePartial(step)) {
                     RewardReceipt receipt = finishStep.execute(step.id);
                     changed |= !receipt.bookings.isEmpty();
@@ -65,7 +62,7 @@ public final class SettlePreviousPartialOccurrences {
 
     private int vesselXp(String occurrenceId) {
         int total = 0;
-        for (RewardBooking booking : rewards.rewardBookings(occurrenceId))
+        for (RewardBooking booking : today.rewardBookings(occurrenceId))
             if (booking.target == RewardBooking.Target.VESSEL) total += booking.xpDelta;
         return total;
     }

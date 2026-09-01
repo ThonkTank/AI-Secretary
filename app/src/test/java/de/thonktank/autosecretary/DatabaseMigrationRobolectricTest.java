@@ -28,7 +28,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
 
-import de.thonktank.autosecretary.data.local.RoomTaskRepository;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
@@ -744,17 +743,18 @@ public final class DatabaseMigrationRobolectricTest {
             assertTrue(cursor.moveToFirst());
             assertEquals(2, cursor.getInt(0));
         }
-        RoomTaskRepository migratedRepository = new RoomTaskRepository(migrated);
-        RewardReceipt undo = new UndoOccurrence(migratedRepository, migratedRepository,
-                migratedRepository, migratedRepository,
+        RoomRepositoryFixture migratedRepository = new RoomRepositoryFixture(migrated);
+        RewardReceipt undo = new UndoOccurrence(migratedRepository.catalog,
+                migratedRepository.steps, migratedRepository.today,
+                migratedRepository.transactions,
                 new Clock() {
             @Override public LocalDate today() { return LocalDate.of(2026, 8, 17); }
             @Override public LocalTime time() { return LocalTime.NOON; }
         }).execute("done-v4");
         assertEquals(0, undo.xp);
-        assertEquals(137, new RoomTaskRepository(migrated).xp());
+        assertEquals(137, new RoomRepositoryFixture(migrated).today.xp());
         assertEquals(OccurrenceState.COMPLETED,
-                new RoomTaskRepository(migrated).findOccurrence("done-v4").state);
+                new RoomRepositoryFixture(migrated).today.findOccurrence("done-v4").state);
         migrated.close();
     }
 
@@ -826,12 +826,12 @@ public final class DatabaseMigrationRobolectricTest {
             assertTrue(cursor.moveToFirst());
             assertEquals("12,1200,0", cursor.getString(0));
         }
-        RoomTaskRepository repository = new RoomTaskRepository(migrated);
+        RoomRepositoryFixture repository = new RoomRepositoryFixture(migrated);
         de.thonktank.autosecretary.domain.model.OccurrenceStep valid =
-                repository.findOccurrenceStep("valid-step");
+                repository.steps.findOccurrenceStep("valid-step");
         assertEquals(Arrays.asList(12, 1_200, 0),
                 valid.repetitionProgress.repetitions());
-        assertTrue(repository.findOccurrenceStep("malformed-step")
+        assertTrue(repository.steps.findOccurrenceStep("malformed-step")
                 .repetitionProgress.repetitions().isEmpty());
         assertTrue(ShadowLog.getLogsForTag("DatabaseMigrations").stream()
                 .anyMatch(item -> item.msg.contains("malformed-step")));
@@ -846,12 +846,12 @@ public final class DatabaseMigrationRobolectricTest {
         database.execSQL("CREATE TRIGGER audit_repetition_insert AFTER INSERT ON "
                 + "repetition_results BEGIN INSERT INTO repetition_write_audit(slotIndex) "
                 + "VALUES (NEW.slotIndex); END");
-        repository.updateOccurrenceStep(valid.correctRepetitionResult(1, 13));
+        repository.steps.updateOccurrenceStep(valid.correctRepetitionResult(1, 13));
         try (Cursor cursor = database.query("SELECT slotIndex FROM repetition_write_audit")) {
             assertEquals(1, cursor.getCount());
             assertTrue(cursor.moveToFirst()); assertEquals(1, cursor.getInt(0));
         }
-        assertEquals(Arrays.asList(12, 13, 0), repository.findOccurrenceStep("valid-step")
+        assertEquals(Arrays.asList(12, 13, 0), repository.steps.findOccurrenceStep("valid-step")
                 .repetitionProgress.repetitions());
         try (Cursor cursor = database.query("SELECT actualRepetitions FROM occurrence_steps "
                 + "WHERE id='valid-step'")) {

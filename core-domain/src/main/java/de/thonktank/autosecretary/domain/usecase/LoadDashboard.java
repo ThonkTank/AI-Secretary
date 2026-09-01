@@ -8,7 +8,10 @@ import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.repository.DashboardReadRepository;
+import de.thonktank.autosecretary.domain.repository.CatalogRepository;
+import de.thonktank.autosecretary.domain.repository.FlowRepository;
+import de.thonktank.autosecretary.domain.repository.StepRepository;
+import de.thonktank.autosecretary.domain.repository.TodayRepository;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
 import de.thonktank.autosecretary.domain.model.TrainingContext;
 
@@ -27,45 +30,48 @@ import de.thonktank.autosecretary.domain.model.FlowRunSummary;
 import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.StepFlowRun;
 import de.thonktank.autosecretary.domain.model.StepFlowRunState;
-import de.thonktank.autosecretary.domain.repository.StepFlowRunRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 public final class LoadDashboard {
-    private final DashboardReadRepository repository;
-    private final StepFlowRunRepository flowRepository;
+    private final CatalogRepository catalog;
+    private final StepRepository steps;
+    private final TodayRepository today;
+    private final FlowRepository flowRepository;
     private final LoadTrainingContext loadTrainingContext;
 
-    public LoadDashboard(DashboardReadRepository repository,
-                         StepFlowRunRepository flowRepository) {
-        this(repository, flowRepository, null, null);
+    public LoadDashboard(CatalogRepository catalog, StepRepository steps,
+                         TodayRepository today, FlowRepository flowRepository) {
+        this(catalog, steps, today, flowRepository, null, null);
     }
 
-    public LoadDashboard(DashboardReadRepository repository,
-                         StepFlowRunRepository flowRepository,
+    public LoadDashboard(CatalogRepository catalog, StepRepository steps,
+                         TodayRepository today, FlowRepository flowRepository,
                          TrainingRepository trainingRepository,
                          TransactionRunner transactions) {
-        this.repository = repository;
+        this.catalog = catalog;
+        this.steps = steps;
+        this.today = today;
         this.flowRepository = flowRepository;
         this.loadTrainingContext = trainingRepository == null ? null
-                : new LoadTrainingContext(trainingRepository, transactions);
+                : new LoadTrainingContext(steps, trainingRepository, transactions);
     }
 
     public Dashboard execute(LocalDate today) {
         Map<TaskId, Task> tasks = new HashMap<>();
-        for (Task task : repository.allTasks()) tasks.put(task.id, task);
+        for (Task task : catalog.allTasks()) tasks.put(task.id, task);
         List<StepFlowRun> activeFlowRuns = flowRepository.activeFlowRuns();
         Map<String, StepFlowRunState> flowStates = new HashMap<>();
         for (StepFlowRun run : activeFlowRuns) flowStates.put(run.id, run.state);
-        TaskSchedule schedule = new TaskSchedule(repository.scheduleEntries());
-        List<Occurrence> open = repository.openOccurrences();
-        List<Occurrence> completed = repository.completedOccurrences(today);
+        TaskSchedule schedule = new TaskSchedule(catalog.scheduleEntries());
+        List<Occurrence> open = this.today.openOccurrences();
+        List<Occurrence> completed = this.today.completedOccurrences(today);
         List<String> occurrenceIds = new ArrayList<>();
         for (Occurrence occurrence : open) occurrenceIds.add(occurrence.id);
         for (Occurrence occurrence : completed) occurrenceIds.add(occurrence.id);
         Map<String, List<OccurrenceStep>> steps = groupSteps(
-                repository.occurrenceStepsFor(occurrenceIds));
+                this.steps.occurrenceStepsFor(occurrenceIds));
         Map<String, List<RewardBooking>> rewards = groupRewards(
-                repository.rewardBookings(occurrenceIds));
+                this.today.rewardBookings(occurrenceIds));
 
         List<DashboardTask> result = new ArrayList<>();
         Set<TaskId> included = new HashSet<>();
@@ -120,7 +126,7 @@ public final class LoadDashboard {
                         ? Integer.MAX_VALUE : item.occurrence.sortOrder)
                 .thenComparingLong(item -> item.task.catalogOrder));
         Map<String, ComboProgress> combos = new HashMap<>();
-        for (ComboProgress combo : repository.combos()) combos.put(combo.ownerId, combo);
+        for (ComboProgress combo : this.today.combos()) combos.put(combo.ownerId, combo);
         List<FlowRunSummary> flowRuns = LoadFlowRuns.summaries(tasks, flowRepository,
                 activeFlowRuns);
         Map<String, TrainingContext> trainingContexts = new HashMap<>();
@@ -131,7 +137,7 @@ public final class LoadDashboard {
                     TrainingContext context = loadTrainingContext.execute(step.sourceTemplateId);
                     if (context != null) trainingContexts.put(step.sourceTemplateId, context);
                 }
-        return new Dashboard(repository.xp(), result, combos, flowRuns, trainingContexts);
+        return new Dashboard(this.today.xp(), result, combos, flowRuns, trainingContexts);
     }
 
     private static DashboardTask item(Task task, Occurrence occurrence,

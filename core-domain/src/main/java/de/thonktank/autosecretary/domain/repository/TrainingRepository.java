@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.domain.repository;
 
-import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
@@ -10,8 +9,6 @@ import java.util.List;
 
 /** Narrow persistence capability for detailed training logs and adaptation audit. */
 public interface TrainingRepository {
-    TaskStepTemplate findTemplate(String id);
-    void updateTrainingTemplate(TaskStepTemplate template);
     double effectiveSetsSince(TrainingMuscleGroup muscle, LocalDate start, LocalDate end);
     void insertTrainingAdjustment(TrainingAdjustment adjustment);
     TrainingAdjustment latestTrainingAdjustment(String templateId);
