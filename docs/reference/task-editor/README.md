@@ -88,7 +88,8 @@ ein Aktualisierungspfad für die autoritativen Referenzbaselines.
 Phase 5b montiert diesen Renderer über den produktiven `TaskEditorCoordinator`; der frühere
 View-Renderer, sein XML und seine reine View-Orchestrierung sind entfernt. Dieselbe Hostgrenze
 trägt die bestehenden Save-/Delete-/Close-Actions zum einzigen `TaskEditorViewModel`. Die
-automatisierte Prüfung ist keine neue menschliche oder physische Gerätefreigabe.
+automatisierte Matrix ist der normative technische Releasevertrag; eine bewusste visuelle
+Neugestaltung benötigt weiterhin einen gesonderten Design-Handoff.
 
 ### Erneute menschliche Freigabe
 

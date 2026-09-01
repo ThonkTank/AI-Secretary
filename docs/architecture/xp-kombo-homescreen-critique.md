@@ -426,11 +426,12 @@ entfernt. Bestehende Tests decken Reduced Motion und die WCAG-Kontraste der Tage
 Negativ war, dass die programmgesteuerte View-Hierarchie keine semantische Struktur mitliefert.
 Rollen, Reihenfolge, Fokus und Zustände mussten einzeln nachgerüstet werden; ein visuell
 anklickbares Textlabel war zugleich ein zu kleines und doppeltes TalkBack-Ziel. Robolectric kann
-Node-Metadaten und Tastaturverhalten beweisen, aber weder echte TalkBack-Ansagen noch Switch
-Access, Scannerbefunde, OEM-Schriftmetriken oder Bedienung auf einem physischen Gerät. Ein
-instrumentierter Accessibility-Scanner und manuelle TalkBack-Runden bleiben daher notwendig.
+Node-Metadaten und Tastaturverhalten beweisen, aber weder tatsächliche TalkBack-Ansagen noch
+Switch-Access- oder OEM-Schriftverhalten vollständig simulieren. Instrumentierung und der
+Accessibility-Scanner ergänzen deshalb die automatisierte Matrix; nicht automatisierbare
+Beobachtungen sind dokumentierte Produktgrenzen und kein zusätzlicher Release-Gate.
 
-### Phase 7 ergänzt Dauerlast, aber kein vollständiges Geräte-Performancegate
+### Phase 7 ergänzt Dauerlast, aber kein vollständiges Hardware-Performancebild
 
 Ein deterministischer Dauerlastfall lädt 240 Tasks, 2.880 offene Schritte, 240 Kombos und 4.800
 historische Vorkommen über den In-Memory-Port. Er besitzt ein großzügiges Zehn-Sekunden-Limit,
