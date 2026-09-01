@@ -83,12 +83,14 @@ final class StepFlowEntityMapper {
     }
 
     FlowRunStepEntity toEntity(FlowRunStepSnapshot value) {
-        StoredAmount amount = stored(value.amount);
+        StoredAmount amount = stored(value.prescription.amount);
+        ResistanceLoad load = value.prescription.plannedLoad();
         return new FlowRunStepEntity(value.id, value.runId, value.position,
                 value.sourceTemplateId, value.text, amount.kind.storageCode(), amount.sets,
-                amount.repetitions, amount.durationSeconds, value.restTimerPolicy.mode.name(),
-                value.restTimerPolicy.customSeconds, value.plannedLoad.mode.name(),
-                value.plannedLoad.unit.name(), value.plannedLoad.milliUnits, value.targetRir,
+                amount.repetitions, amount.durationSeconds,
+                value.prescription.rest.mode.name(),
+                value.prescription.rest.customSeconds, load.mode.name(),
+                load.unit.name(), load.milliUnits, value.prescription.targetRir(),
                 value.note,
                 value.delayAfter == null ? null : value.delayAfter.mode.name(),
                 value.delayAfter == null ? null : value.delayAfter.defaultDelayMillis,

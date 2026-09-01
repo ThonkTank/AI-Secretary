@@ -63,12 +63,12 @@ public final class TodayStepExecutionTest {
 
         OccurrenceStep changed = repository.findOccurrenceStep("sets");
         assertFalse(changed.done);
-        assertEquals(Collections.singletonList(12), changed.repetitionProgress.actualRepetitions);
+        assertEquals(Collections.singletonList(12), changed.repetitionProgress.repetitions());
         assertEquals(Arrays.asList("sets", "done", "first", "last"), ids());
 
         advance.execute("sets");
         assertEquals(Arrays.asList(12, 12), repository.findOccurrenceStep("sets")
-                .repetitionProgress.actualRepetitions);
+                .repetitionProgress.repetitions());
         AdvanceTodayStepResult completed = advance.execute("sets");
         assertEquals(AdvanceTodayStepResult.Status.STEP_COMPLETED, completed.status);
         assertEquals(Integer.valueOf(12), completed.recordedPlanValue);
@@ -79,7 +79,7 @@ public final class TodayStepExecutionTest {
                 .mapToInt(value -> value.xpDelta).sum());
         assertTrue(repository.findOccurrenceStep("sets").done);
         assertEquals(Arrays.asList(12, 12, 12), repository.findOccurrenceStep("sets")
-                .repetitionProgress.actualRepetitions);
+                .repetitionProgress.repetitions());
     }
 
     @Test public void todayMoveReordersOnlyOpenSlotsAndPreservesCompletedSlot() {
@@ -138,7 +138,7 @@ public final class TodayStepExecutionTest {
         assertEquals(StepExecutionResult.Status.RECORDED, result.status);
         assertTrue(result.changed());
         assertEquals(Collections.singletonList(11),
-                result.step.repetitionProgress.actualRepetitions);
+                result.step.repetitionProgress.repetitions());
         assertEquals(4, result.rewardReceipt.xp);
         assertFalse(result.rewardReceipt.transactionId.isEmpty());
     }

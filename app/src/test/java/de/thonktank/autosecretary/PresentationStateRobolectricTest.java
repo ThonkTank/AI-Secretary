@@ -386,14 +386,14 @@ public final class PresentationStateRobolectricTest {
         viewModel.dispatch(TodayAction.adjustRepetition(stepId, 1));
 
         assertEquals(14, value().repetitionInput.value);
-        assertTrue(repository.findOccurrenceStep(stepId).repetitionProgress.actualRepetitions
+        assertTrue(repository.findOccurrenceStep(stepId).repetitionProgress.repetitions()
                 .isEmpty());
 
         viewModel.dispatch(TodayAction.submitRepetition(stepId));
 
         assertNull(value().repetitionInput.stepId);
         assertEquals(Collections.singletonList(14),
-                repository.findOccurrenceStep(stepId).repetitionProgress.actualRepetitions);
+                repository.findOccurrenceStep(stepId).repetitionProgress.repetitions());
     }
 
     @Test public void todayMenuRequestRestoresAndTransitionsAtomically() {

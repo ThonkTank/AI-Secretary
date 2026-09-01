@@ -29,40 +29,41 @@ public final class TrainingDecision {
     public final Action action;
     public final Reason reason;
     public final int ruleVersion;
-    public final StepAmount.SetsReps prescription;
-    public final ResistanceLoad load;
-    public final TrainingAssistantState state;
+    public final StepPrescription nextPrescription;
+    public final TrainingAssistantState nextState;
     public final LoadDirection loadDirection;
 
     public TrainingDecision(Action action, Reason reason,
-                            StepAmount.SetsReps prescription, ResistanceLoad load,
-                            TrainingAssistantState state, LoadDirection loadDirection) {
-        if (action == null || reason == null || prescription == null || load == null
-                || state == null || action == Action.REQUEST_NEXT_LOAD != (loadDirection != null))
+                            StepPrescription nextPrescription,
+                            TrainingAssistantState nextState, LoadDirection loadDirection) {
+        if (action == null || reason == null || nextPrescription == null
+                || nextPrescription.training == null || nextState == null
+                || action == Action.REQUEST_NEXT_LOAD != (loadDirection != null))
             throw new IllegalArgumentException("Complete consistent training decision required");
         this.action = action;
         this.reason = reason;
         this.ruleVersion = RULE_VERSION;
-        this.prescription = prescription;
-        this.load = load;
-        this.state = state;
+        this.nextPrescription = nextPrescription;
+        this.nextState = nextState;
         this.loadDirection = loadDirection;
     }
 
-    public boolean changedFrom(StepAmount.SetsReps before, ResistanceLoad beforeLoad) {
-        return !prescription.equals(before) || !load.equals(beforeLoad);
+    public boolean changedFrom(StepPrescription before) {
+        return !nextPrescription.equals(before);
     }
 
     @Override public boolean equals(Object other) {
         if (!(other instanceof TrainingDecision)) return false;
         TrainingDecision value = (TrainingDecision) other;
         return action == value.action && reason == value.reason
-                && ruleVersion == value.ruleVersion && prescription.equals(value.prescription)
-                && load.equals(value.load) && state.equals(value.state)
+                && ruleVersion == value.ruleVersion
+                && nextPrescription.equals(value.nextPrescription)
+                && nextState.equals(value.nextState)
                 && loadDirection == value.loadDirection;
     }
 
     @Override public int hashCode() {
-        return Objects.hash(action, reason, ruleVersion, prescription, load, state, loadDirection);
+        return Objects.hash(action, reason, ruleVersion, nextPrescription, nextState,
+                loadDirection);
     }
 }

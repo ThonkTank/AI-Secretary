@@ -8,9 +8,7 @@ import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
 import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
-import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.repository.OccurrenceExecutionRepository;
 import de.thonktank.autosecretary.domain.repository.TrainingRepository;
@@ -33,41 +31,42 @@ final class TrainingAdaptationService {
     void evaluate(String occurrenceStepId) {
         OccurrenceStep step = occurrences.findOccurrenceStep(occurrenceStepId);
         if (step == null || !step.done || step.sourceTemplateId == null
-                || !(step.amount instanceof StepAmount.SetsReps)) return;
+                || !(step.prescription.amount instanceof StepAmount.SetsReps)) return;
         TaskStepTemplate template = training.findTemplate(step.sourceTemplateId);
         if (template == null || !template.assistantEnabled()
-                || !(template.amount instanceof StepAmount.SetsReps)) return;
+                || !(template.prescription.amount instanceof StepAmount.SetsReps)) return;
         if (training.openTrainingLoadRequest(template.id) != null) return;
-        TrainingAssistantConfig config = template.legacyTrainingConfig();
-        if (!template.amount.equals(step.amount)
-                || !config.load.equals(step.plannedLoad)) {
+        if (!template.prescription.amount.equals(step.prescription.amount)
+                || !template.prescription.plannedLoad()
+                .equals(step.prescription.plannedLoad())) {
             training.updateTrainingTemplate(template.withTraining(template.prescription,
                     new TrainingAssistantProfile(template.assistantProfile.policy,
                             TrainingAssistantState.calibrating())));
             return;
         }
-        double effective = config.primaryMuscle == null ? 0
-                : training.effectiveSetsSince(config.primaryMuscle,
+        double effective = template.assistantProfile.policy.primaryMuscle == null ? 0
+                : training.effectiveSetsSince(template.assistantProfile.policy.primaryMuscle,
                 clock.today().minusDays(6), clock.today());
-        StepAmount.SetsReps before = (StepAmount.SetsReps) template.amount;
-        TrainingDecision result = engine.evaluate(before,
-                config, template.assistantProfile.state,
+        StepPrescription before = template.prescription;
+        TrainingDecision result = engine.evaluate(before, template.assistantProfile,
                 step.repetitionProgress.results, effective);
-        StepPrescription next = new StepPrescription(result.prescription,
-                template.prescription.rest,
-                new TrainingPrescription(result.load, config.targetRir));
-        training.updateTrainingTemplate(template.withTraining(next,
-                new TrainingAssistantProfile(template.assistantProfile.policy, result.state)));
+        training.updateTrainingTemplate(template.withTraining(result.nextPrescription,
+                new TrainingAssistantProfile(template.assistantProfile.policy,
+                        result.nextState)));
         if (result.action == TrainingDecision.Action.REQUEST_NEXT_LOAD) {
             training.insertTrainingLoadRequest(TrainingLoadRequest.open(ids.nextId(), template.id,
-                    step.id, result.loadDirection, result.load, clock.today(),
+                    step.id, result.loadDirection, result.nextPrescription.training.load,
+                    clock.today(),
                     training.nextTrainingAuditOrder(), result.ruleVersion));
             return;
         }
-        if (!result.changedFrom(before, config.load)) return;
+        if (!result.changedFrom(before)) return;
+        StepAmount.SetsReps beforeAmount = (StepAmount.SetsReps) before.amount;
+        StepAmount.SetsReps afterAmount =
+                (StepAmount.SetsReps) result.nextPrescription.amount;
         training.insertTrainingAdjustment(new TrainingAdjustment(ids.nextId(), template.id,
-                step.id, result.reason, before, config.load,
-                result.prescription, result.load, clock.today(),
+                step.id, result.reason, beforeAmount, before.training.load,
+                afterAmount, result.nextPrescription.training.load, clock.today(),
                 TrainingAdjustment.State.APPLIED, training.nextTrainingAuditOrder(),
                 result.ruleVersion));
     }

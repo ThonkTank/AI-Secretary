@@ -57,7 +57,7 @@ public final class WidgetDashboardMapper {
             boolean done = item.done || step.done;
             if (!done) remaining++;
             steps.add(WidgetStepUiModel.of(step.id, step.text,
-                    stepTexts.format(step.amount, step.note), done));
+                    stepTexts.format(step.prescription.amount, step.note), done));
         }
         LocalDate due = task.deadlineOn == null || item.occurrence == null
                 ? item.occurrence == null ? null : item.occurrence.scheduledOn : task.deadlineOn;

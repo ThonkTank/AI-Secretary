@@ -27,6 +27,6 @@ public final class FocusStepUiModelTest {
         FocusStepUiModel explicitlyCompleted = FocusTaskFixtures.step("step", "Kniebeugen")
                 .amount("2 × 12").done(true).repetition(open).earnedXp(10).build();
         assertEquals(Collections.singletonList(12),
-                explicitlyCompleted.repetitionProgress.actualRepetitions);
+                explicitlyCompleted.repetitionProgress.repetitions);
     }
 }

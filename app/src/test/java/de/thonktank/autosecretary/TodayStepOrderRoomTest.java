@@ -77,7 +77,7 @@ public final class TodayStepOrderRoomTest {
         assertEquals(0, auditCount(sql, "task_steps"));
         assertEquals(0, auditCount(sql, "repetition_results"));
         assertEquals(Collections.singletonList(9), repository.findOccurrenceStep(steps.get(0).id)
-                .repetitionProgress.actualRepetitions);
+                .repetitionProgress.repetitions());
         assertEquals(5, repository.templates(occurrence.taskId).size());
 
         TodayStepMoveResult noChange = new MoveTodayStep(repository, repository).execute(
@@ -88,7 +88,7 @@ public final class TodayStepOrderRoomTest {
 
     private static OccurrenceStep withDone(OccurrenceStep step, boolean done) {
         return de.thonktank.autosecretary.testing.StepTestFixtures.occurrence(step.id, step.occurrenceId, step.position, step.text, done,
-                step.amount, step.note, Collections.emptyList(), step.sourceTemplateId,
+                step.prescription, step.note, Collections.emptyList(), step.sourceTemplateId,
                 step.comboOwnerId);
     }
 

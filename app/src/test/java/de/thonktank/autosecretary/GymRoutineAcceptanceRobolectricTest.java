@@ -83,7 +83,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
         assertEquals("3 × 12", focus.steps.get(0).amountLabel);
         assertEquals("23kg, Sitz 5", focus.steps.get(0).note);
         assertEquals(12, focus.steps.get(0).repetitionProgress.plannedRepetitions);
-        assertTrue(focus.steps.get(0).repetitionProgress.actualRepetitions.isEmpty());
+        assertTrue(focus.steps.get(0).repetitionProgress.repetitions.isEmpty());
         assertEquals("20 Wdh.", focus.steps.get(1).amountLabel);
         assertEquals("2 Min.", focus.steps.get(2).amountLabel);
         assertEquals("Bauch fest", focus.steps.get(2).note);

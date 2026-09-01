@@ -40,7 +40,7 @@ public final class FocusStepUiModel {
         if (repetitionProgress != null && amountLabel.isEmpty())
             throw new IllegalArgumentException("Repetition progress requires an amount label");
         if (status != FocusStepStatus.COMPLETED && repetitionProgress != null
-                && repetitionProgress.actualRepetitions.size()
+                && repetitionProgress.repetitions.size()
                 == repetitionProgress.slotCount)
             throw new IllegalArgumentException("Complete repetition results cannot remain open");
         if (status == FocusStepStatus.COMPLETED

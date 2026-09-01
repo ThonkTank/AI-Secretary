@@ -14,10 +14,6 @@ public final class TaskStepDefinition {
     public final String note;
     public final StepActivationKind activationKind;
 
-    /** Read-only projections of the canonical grouped value. */
-    public final StepAmount amount;
-    public final RestTimerPolicy restTimerPolicy;
-
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
                               int intervalDays, StepPrescription prescription,
                               TrainingAssistantPolicy assistantPolicy, String note,
@@ -45,8 +41,6 @@ public final class TaskStepDefinition {
             throw new IllegalArgumentException(
                     "An enabled assistant needs a positive numeric starting load");
         this.assistantPolicy = assistantPolicy;
-        this.amount = prescription.amount;
-        this.restTimerPolicy = prescription.rest;
         this.note = note == null ? "" : note;
         this.activationKind = Objects.requireNonNull(activationKind, "activationKind");
     }

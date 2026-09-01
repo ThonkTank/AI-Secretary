@@ -14,12 +14,6 @@ public final class FlowRunStepSnapshot {
     public final FlowDelayPolicy delayAfter;
     public final Long chosenDelayMillis;
 
-    /** Read-only projections of the canonical grouped value. */
-    public final StepAmount amount;
-    public final RestTimerPolicy restTimerPolicy;
-    public final ResistanceLoad plannedLoad;
-    public final int targetRir;
-
     public FlowRunStepSnapshot(String id, String runId, int position, String sourceTemplateId,
                                String text, StepPrescription prescription, String note,
                                FlowDelayPolicy delayAfter, Long chosenDelayMillis) {
@@ -37,10 +31,6 @@ public final class FlowRunStepSnapshot {
         this.sourceTemplateId = sourceTemplateId;
         this.text = text.trim();
         this.prescription = prescription;
-        this.amount = prescription.amount;
-        this.restTimerPolicy = prescription.rest;
-        this.plannedLoad = prescription.plannedLoad();
-        this.targetRir = prescription.targetRir();
         this.note = note == null ? "" : note;
         this.delayAfter = delayAfter;
         this.chosenDelayMillis = chosenDelayMillis;

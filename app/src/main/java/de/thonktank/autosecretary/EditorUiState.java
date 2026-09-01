@@ -330,7 +330,8 @@ public final class EditorUiState {
         for (EditorStepState step : draft.steps)
             result.append('|').append(step.id).append(':').append(step.text).append(':')
                     .append(step.cadenceMode).append(':').append(step.weekdayMask).append(':')
-                    .append(step.intervalDays).append(':').append(step.amount).append(':')
+                    .append(step.intervalDays).append(':')
+                    .append(step.prescription.amount).append(':')
                     .append(step.note);
         return result.toString();
     }

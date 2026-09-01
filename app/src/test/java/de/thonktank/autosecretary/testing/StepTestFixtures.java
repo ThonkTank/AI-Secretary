@@ -12,7 +12,6 @@ import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
@@ -67,6 +66,13 @@ public final class StepTestFixtures {
     }
 
     public static TaskStepTemplate template(String id, TaskId taskId, int position, String text,
+                                            int weekdays, StepPrescription prescription,
+                                            String note) {
+        return new TaskStepTemplate(id, taskId, position, text, weekdays, 0, prescription,
+                null, note, StepActivationKind.SCHEDULED);
+    }
+
+    public static TaskStepTemplate template(String id, TaskId taskId, int position, String text,
                                             int weekdays, int interval, StepAmount amount,
                                             String note) {
         return new TaskStepTemplate(id, taskId, position, text, weekdays, interval,
@@ -86,21 +92,6 @@ public final class StepTestFixtures {
                                             StepActivationKind activation) {
         return new TaskStepTemplate(id, taskId, position, text, weekdays, interval,
                 new StepPrescription(amount, rest, null), null, note, activation);
-    }
-
-    public static TaskStepTemplate template(String id, TaskId taskId, int position, String text,
-                                            int weekdays, int interval, StepAmount amount,
-                                            RestTimerPolicy rest, TrainingAssistantConfig config,
-                                            TrainingAssistantState state, String note,
-                                            StepActivationKind activation) {
-        TrainingAssistantProfile profile = config.enabled ? new TrainingAssistantProfile(
-                new TrainingAssistantPolicy(config.minSets, config.maxSets,
-                        config.minRepetitions, config.maxRepetitions,
-                        config.automaticWeeklySetCeiling, config.primaryMuscle,
-                        config.secondaryMuscles), state) : null;
-        return new TaskStepTemplate(id, taskId, position, text, weekdays, interval,
-                StepPrescription.restore(amount, rest, config.load, config.targetRir), profile,
-                note, activation);
     }
 
     public static TaskStepTemplate template(String id, TaskId taskId, int position, String text,
@@ -133,6 +124,16 @@ public final class StepTestFixtures {
         return new OccurrenceStep(id, occurrenceId, position, text, done,
                 StepPrescription.forAmount(amount), note, results(repetitions), sourceTemplateId,
                 comboOwnerId, null, CarryForwardReason.NONE);
+    }
+
+    public static OccurrenceStep occurrence(String id, String occurrenceId, int position,
+                                            String text, boolean done,
+                                            StepPrescription prescription, String note,
+                                            List<Integer> repetitions, String sourceTemplateId,
+                                            String comboOwnerId) {
+        return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
+                results(repetitions), sourceTemplateId, comboOwnerId, null,
+                CarryForwardReason.NONE);
     }
 
     public static OccurrenceStep occurrence(String id, String occurrenceId, int position,

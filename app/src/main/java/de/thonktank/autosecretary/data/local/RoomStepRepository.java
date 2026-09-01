@@ -69,7 +69,7 @@ public final class RoomStepRepository {
             for (OccurrenceStep step : steps) {
                 List<Integer> values = step.repetitionProgress == null
                         ? java.util.Collections.emptyList()
-                        : step.repetitionProgress.actualRepetitions;
+                        : step.repetitionProgress.repetitions();
                 for (int index = 0; index < values.size(); index++)
                     results.add(new RepetitionResultEntity(step.id, index, values.get(index)));
             }

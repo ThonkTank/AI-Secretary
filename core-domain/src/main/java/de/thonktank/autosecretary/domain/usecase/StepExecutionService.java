@@ -192,7 +192,7 @@ public final class StepExecutionService {
                         openIds(step.occurrenceId), reward);
             }
 
-            Integer planned = plannedValue(step.amount);
+            Integer planned = plannedValue(step.prescription.amount);
             if (planned == null)
                 return advance(AdvanceTodayStepResult.Status.NO_PLANNED_VALUE, null,
                         openIds(step.occurrenceId), RewardReceipt.none());
@@ -258,7 +258,7 @@ public final class StepExecutionService {
             return completeStep(occurrence, step, transactionId);
         if (occurrence == null || occurrence.state != OccurrenceState.OPEN || step.done)
             return RewardReceipt.none();
-        Integer planned = plannedValue(step.amount);
+        Integer planned = plannedValue(step.prescription.amount);
         if (planned == null) return completeStep(occurrence, step, transactionId);
         OccurrenceStep changed = step;
         while (!changed.done) changed = changed.recordRepetitionResult(planned);
@@ -294,8 +294,8 @@ public final class StepExecutionService {
                 occurrence.scheduledOn.equals(clock.today()));
         int plannedXp = frozenPlan == null ? calculated.xp : frozenPlan;
         long numerator = 0;
-        for (Integer actual : step.repetitionProgress.actualRepetitions) numerator += actual;
-        long denominator = plannedTotal(step.amount);
+        for (SetResult actual : step.repetitionProgress.results) numerator += actual.repetitions;
+        long denominator = plannedTotal(step.prescription.amount);
         int desiredXp = numerator == 0 || denominator <= 0 ? 0
                 : Math.toIntExact((plannedXp * numerator + denominator - 1) / denominator);
         int desiredCombo = desiredXp <= 0 ? 0

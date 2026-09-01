@@ -25,8 +25,6 @@ public final class RepetitionProgress {
 
     public final int plannedSlots;
     public final List<SetResult> results;
-    /** Read-only projection of {@link #results}; never persisted independently. */
-    public final List<Integer> actualRepetitions;
     public final Completion completion;
 
     private RepetitionProgress(int plannedSlots, List<SetResult> results,
@@ -38,12 +36,10 @@ public final class RepetitionProgress {
         if (results.size() > plannedSlots)
             throw new IllegalArgumentException("Confirmed repetitions exceed planned slots");
         List<SetResult> checked = new ArrayList<>();
-        List<Integer> repetitions = new ArrayList<>();
         for (SetResult value : results) {
             if (value == null)
                 throw new IllegalArgumentException("Confirmed set results are required");
             checked.add(value);
-            repetitions.add(value.repetitions);
         }
         if (completion == Completion.IN_PROGRESS && checked.size() == plannedSlots)
             throw new IllegalArgumentException("Complete repetition results cannot remain open");
@@ -51,7 +47,6 @@ public final class RepetitionProgress {
             throw new IllegalArgumentException("Result completion requires every planned slot");
         this.plannedSlots = plannedSlots;
         this.results = Collections.unmodifiableList(checked);
-        this.actualRepetitions = Collections.unmodifiableList(repetitions);
         this.completion = completion;
     }
 
@@ -63,16 +58,6 @@ public final class RepetitionProgress {
                 ? Completion.RESULTS_COMPLETE
                 : storedDone ? Completion.COMPLETED_WITHOUT_RESULTS : Completion.IN_PROGRESS;
         return new RepetitionProgress(plannedSlots, results, completion);
-    }
-
-    /** Compatibility reader for callers that have only historical repetition values. */
-    public static RepetitionProgress restore(int plannedSlots, List<Integer> repetitions,
-                                             boolean storedDone) {
-        List<SetResult> results = new ArrayList<>();
-        if (repetitions != null)
-            for (Integer value : repetitions)
-                results.add(SetResult.restore(value == null ? -1 : value, null));
-        return restoreResults(plannedSlots, results, storedDone);
     }
 
     public static RepetitionProgress forAmount(StepAmount amount, List<SetResult> results,
@@ -87,6 +72,13 @@ public final class RepetitionProgress {
     }
 
     public boolean completed() { return completion != Completion.IN_PROGRESS; }
+
+    /** Immutable projection for repetition-only consumers. */
+    public List<Integer> repetitions() {
+        List<Integer> repetitions = new ArrayList<>();
+        for (SetResult result : results) repetitions.add(result.repetitions);
+        return Collections.unmodifiableList(repetitions);
+    }
 
     /** Zero-based next slot, or -1 when every planned result is present. */
     public int nextOpenSlotIndex() {

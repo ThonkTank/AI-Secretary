@@ -213,9 +213,9 @@ public final class StepFlowSetupRobolectricTest {
                 java.util.Collections.emptyList());
 
         assertEquals(RestTimerPolicy.Mode.CUSTOM,
-                repository.templates(task.id).get(0).restTimerPolicy.mode);
+                repository.templates(task.id).get(0).prescription.rest.mode);
         assertEquals(Integer.valueOf(75),
-                repository.templates(task.id).get(0).restTimerPolicy.customSeconds);
+                repository.templates(task.id).get(0).prescription.rest.customSeconds);
     }
 
     private static Map<String, StepActivationKind> roles(List<TaskStepTemplate> steps,

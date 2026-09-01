@@ -115,7 +115,7 @@ public final class DomainModelTest {
             TaskStepEntity stored = mapper.toEntity(template);
             TaskStepTemplate restored = mapper.toDomain(stored);
 
-            assertEquals(amount, restored.amount);
+            assertEquals(amount, restored.prescription.amount);
             assertEquals(amount.kind().storageCode(), stored.amountKind);
             if (amount instanceof StepAmount.SetsReps) {
                 assertEquals(Integer.valueOf(3), stored.plannedSets);
@@ -138,10 +138,10 @@ public final class DomainModelTest {
                 .recordRepetitionResult(0);
 
         assertEquals(java.util.Arrays.asList(0, 999),
-                second.repetitionProgress.actualRepetitions);
+                second.repetitionProgress.repetitions());
         assertEquals(true, second.done);
         assertEquals(java.util.Collections.singletonList(0),
-                single.repetitionProgress.actualRepetitions);
+                single.repetitionProgress.repetitions());
         assertEquals(true, single.done);
         assertThrows(IllegalArgumentException.class, () -> first.recordRepetitionResult(1000));
     }
@@ -150,6 +150,6 @@ public final class DomainModelTest {
         OccurrenceStep legacy = de.thonktank.autosecretary.testing.StepTestFixtures.occurrence("legacy", "occ", 0, "Beinpresse", false,
                 StepAmount.setsReps(2, 12), "", Arrays.asList(1_200));
 
-        assertEquals(Arrays.asList(1_200), legacy.repetitionProgress.actualRepetitions);
+        assertEquals(Arrays.asList(1_200), legacy.repetitionProgress.repetitions());
     }
 }

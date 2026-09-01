@@ -197,12 +197,18 @@ public final class UiComponentRobolectricTest {
 
         EditorStepState exercise = EditorStepState.blank(1).withText("Rudern")
                 .withAmount(de.thonktank.autosecretary.domain.model.StepAmount.setsReps(3, 12))
-                .withTrainingAssistant(
-                        de.thonktank.autosecretary.domain.model.TrainingAssistantConfig.defaults(
-                                de.thonktank.autosecretary.domain.model.ResistanceLoad.numeric(
-                                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
-                                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG,
-                                        0), null));
+                .withTraining(new de.thonktank.autosecretary.domain.model.StepPrescription(
+                                de.thonktank.autosecretary.domain.model.StepAmount
+                                        .setsReps(3, 12),
+                                de.thonktank.autosecretary.domain.model.RestTimerPolicy.inherit(),
+                                new de.thonktank.autosecretary.domain.model.TrainingPrescription(
+                                        de.thonktank.autosecretary.domain.model.ResistanceLoad
+                                                .numeric(
+                                                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
+                                                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG,
+                                                        0), 2)),
+                        de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy
+                                .defaults(null));
         EditorUiState missingLoad = base.draft("Training", TaskSlot.LATER, null,
                 Recurrence.ONCE, 1, 0, 0,
                 de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
