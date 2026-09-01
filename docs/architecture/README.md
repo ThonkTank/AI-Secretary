@@ -34,9 +34,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-024: Terminbewusste Kombos und echte Verpflichtungen](adr-024-terminbewusste-kombos.md)
 - [ADR-025: Mengenbasierte Schritt-Rewards und Tagesabschluss](adr-025-mengenbasierte-schritt-rewards.md)
 - [ADR-026: Getrennte State-Owner für Today und App-Shell](adr-026-today-und-shell-state-owner.md)
-- [ADR-027: Deterministischer adaptiver Trainingsassistent](adr-027-adaptiver-trainingsassistent.md)
-- [ADR-028: Eindeutige Schritt-, Satz- und Trainingsentscheidungsgrenzen](adr-028-schritt-und-trainingsgrenzen.md)
-- [ADR-029: Fokussierte Composition, Transaktionen und Room-Adapter](adr-029-fokussierte-composition-und-room-adapter.md)
+- [ADR-030: Minimale Trainingsarchitektur und automatisierter Abschluss](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -61,10 +59,10 @@ Vorprüfungen, Phasenergebnisse und Selbstkritik werden getrennt im
 festgehalten.
 
 Die verbindliche
-[Roadmap zur Schritt- und Trainingsarchitektur](training-assistant-cleanup-roadmap.md) bereinigt
-den adaptiven Trainingsassistenten in getrennten, kompatibilitätserhaltenden Phasen. Ihr
-[Ausführungsprotokoll](training-assistant-cleanup-progress.md) hält Phasenpläne, Nachweise und
-Korrekturrunden separat fest.
+[Roadmap zum minimalen Trainingsassistenten](training-assistant-minimal-roadmap.md) reduziert
+Schritt-, Trainings-, Ergebnis- und Persistenzgrenzen ohne Übergangsarchitektur. Ihr kompaktes
+[Ausführungsprotokoll](training-assistant-minimal-execution.md) hält Phasenstatus, Plan,
+Validierung und Abweichungen separat fest.
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.

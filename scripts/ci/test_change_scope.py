@@ -33,6 +33,22 @@ class ChangeScopeTest(unittest.TestCase):
                     classify([path]),
                 )
 
+    def test_phase_zero_contract_and_archive_changes_skip_product_publish(self):
+        self.assertEqual(
+            ChangeScope(True, True, False),
+            classify(
+                [
+                    "docs/architecture/training-assistant-minimal-roadmap.md",
+                    "docs/architecture/adr-030-minimale-trainingsarchitektur-und-"
+                    "automatisierter-abschluss.md",
+                    "docs/archive/training-assistant-cleanup-2026-08/"
+                    "training-assistant-cleanup-progress.md",
+                    "scripts/ci/removed-obsolete-runner.sh",
+                    "scripts/ci/removed-obsolete-contract.py",
+                ]
+            ),
+        )
+
     def test_signed_upgrade_probe_and_fixtures_require_release(self):
         for path in (
             "app/src/androidTest/java/de/thonktank/autosecretary/"

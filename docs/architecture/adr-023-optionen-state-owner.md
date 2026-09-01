@@ -49,5 +49,6 @@ geschlossen, damit begonnene I/O nicht hart unterbrochen wird, während Resultat
 beendeten Owners nicht mehr publiziert werden.
 
 Die Java-View und die Androidadapter bleiben bis zum Compose-Cutover in Phase 7 erhalten. Der
-echte Installationspfad und die visuelle Abnahme auf einem physischen Gerät bleiben ein eigenes,
-ausdrücklich offenes Gate.
+Releaseabschluss richtet sich nach
+[ADR-030](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md); diese
+Entscheidung führt keinen eigenen nachgelagerten Gate-Zustand.

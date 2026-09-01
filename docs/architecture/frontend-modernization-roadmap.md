@@ -66,11 +66,12 @@ Branch behoben. Größere kohärente Restarbeiten werden als unmittelbar folgend
 geplant und umgesetzt; sie dürfen nicht stillschweigend in eine spätere Fachphase verschoben
 werden.
 
-Eine Phase ist **implementiert**, wenn ihr Pull Request grün geprüft und per Squash nach `main`
-übernommen wurde. Bei UI-relevanten Phasen ist sie erst **vollständig abgeschlossen**, wenn die
-aus dem exakten Merge-Commit veröffentlichte APK über den In-App-Updater auf einem physischen
-Gerät installiert und dort abgenommen wurde. Ohne verfügbares Gerät lautet der Status ausdrücklich
-„Geräteabnahme ausstehend“; die nächste UI-Cutover-Phase wartet.
+Eine Phase ist **implementiert**, wenn ihr Pull Request grün geprüft, per Squash nach `main`
+übernommen und der anwendbare Main-Workflow für den exakten Squash-Stand grün wurde.
+Produktwirksame Phasen sind **veröffentlicht**, wenn derselbe Stand zusätzlich
+Produktionsupgrade, Packaging und Publish vollständig bestanden hat. Der Abschluss folgt
+[ADR-030](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md); ein
+nachgelagerter offener Acceptance-Zustand wird nicht geführt.
 
 ## Zielarchitektur und Schnittstellen
 
@@ -143,7 +144,8 @@ Events entfallen. Bestehende Views werden bis zu ihrem Cutover nur über dünne 
 Wizard, Detailseiten, Prompts, Validierung, Fokus, Scrollposition, adaptive Darstellung und
 Barrierefreiheit werden mit dem bestehenden Reducer und Formatter in Compose umgesetzt. Save,
 Delete und Close sind wiederholungs- und recreation-sicher. Nach Side-by-Side-, Golden- und
-Geräteabnahme werden `TaskEditorView` und seine reine View-Orchestrierung entfernt.
+automatisierter Interaktionsabnahme werden `TaskEditorView` und seine reine View-Orchestrierung
+entfernt.
 
 ### Phase 6 – Alles-Tab in Compose
 
@@ -155,7 +157,7 @@ Vertrag. Nach Abnahme werden RecyclerView und Legacy-Controls entfernt.
 
 Theme, Kalenderberechtigung, Fokuspräferenzen und Updatefluss werden Compose-basiert. Android-
 Systemnavigation bleibt eine Host-Verantwortung; Installationsanfragen besitzen stabile IDs und
-Bestätigung. Die Abnahme umfasst den echten In-App-Updatepfad.
+Bestätigung. Die Abnahme umfasst Produktionsupgrade sowie Paket-, Signatur- und Updater-Verträge.
 
 ### Phase 8 – Today in Compose
 
@@ -176,7 +178,7 @@ Legacy-Views sind nur noch für RemoteViews-Widgets und ausdrücklich freigegebe
 zulässig. Architekturtests sichern diese Allowlist. Die vollständige Host-, Instrumentierungs-,
 Golden-, Animations-, Gesten- und Upgradematrix läuft gegen die Baseline. Größe, Startzeit,
 Eingabelatenz, Frames und Speicher werden verglichen. Der Freeze endet erst nach Merge,
-Veröffentlichung und Geräteabnahme.
+vollständiger automatisierter Matrix und Veröffentlichung.
 
 ## Dauerhafte Abnahmematrix
 

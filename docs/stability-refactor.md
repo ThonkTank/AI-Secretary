@@ -214,8 +214,8 @@ Die installierte Emulatorversion 37.1.11 wurde mit den vorhandenen AVDs
 mit KVM/SwiftShader nach etwa zehn Sekunden als auch ohne Beschleunigung nach ungefähr
 einer Minute im nativen Prozess `qemu-system-x86_64-headless` mit `SIGSEGV` ab. API 35
 erreicht ohne Beschleunigung nach rund 80 Sekunden ADB, stürzt aber vor dem Start des
-Package-Managers ebenfalls mit `SIGSEGV` ab. Ein physisches Gerät ist nicht verbunden;
-lokale Instrumentierung konnte deshalb nicht ehrlich als ausgeführt markiert werden.
+Package-Managers ebenfalls mit `SIGSEGV` ab. Es stand keine lauffähige lokale Android-Zielinstanz
+bereit; lokale Instrumentierung konnte deshalb nicht als ausgeführt markiert werden.
 
 Als sichere Alternativen laufen Robolectric-Tests ausdrücklich auf API 26 und API 35,
 beide Instrumentierungs-APKs werden lokal gebaut, und die CI enthält echte Emulatorjobs

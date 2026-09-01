@@ -29,22 +29,20 @@ Signing-Lineage-Strategie beschreibt das
 
 ## Abschlusszustände einer Änderung
 
-Die drei Zustände werden bewusst getrennt gemeldet:
+Die zwei automatisiert belegbaren Zustände werden bewusst getrennt gemeldet:
 
 - **Implementiert:** Der beabsichtigte Code- und Dokumentationsstand ist committed, der Pull
-  Request hat alle vorgeschriebenen Prüfungen bestanden und wurde nach `main` übernommen. Dieser
-  Zustand allein beweist noch keine veröffentlichte oder installierte App-Version.
+  Request hat alle vorgeschriebenen Prüfungen bestanden, wurde per Squash nach `main` übernommen
+  und der anwendbare Main-Workflow für den exakten Squash-Stand ist grün. Dieser Zustand allein
+  beweist bei einer nicht produktwirksamen Änderung bewusst keine neue App-Version.
 - **Veröffentlicht:** Der Workflow für den exakten `main`-Commit ist vollständig grün. Tag,
   Release-Metadaten und `AutoSecretary.apk` sind stabil veröffentlicht und zeigen nachweislich auf
-  diesen Commit.
-- **Auf Gerät abgenommen:** Bei einer UI-relevanten Änderung wurde die veröffentlichte APK über
-  den In-App-Updater auf einem physischen Gerät installiert. Installierte Version, Datenerhalt und
-  die betroffenen Interaktionen wurden dort geprüft.
+  diesen Commit. Produktionsupgrade, Packaging, Signatur-, Hash-, Paket-, Versions- und
+  Trust-Prüfungen wurden auf genau diesem Artefakt ausgeführt.
 
-Eine UI-relevante Phase gilt erst mit dem dritten Zustand als vollständig abgeschlossen. Ist kein
-autorisiertes Gerät verfügbar, darf der sichere Releaseprozess weiterlaufen; der Status muss dann
-ausdrücklich **Geräteabnahme ausstehend** lauten und darf nicht als vollständiger Abschluss
-bezeichnet werden.
+Für UI-relevante Änderungen gehören normale und animationsaktive Instrumentierung, Goldens,
+Accessibility-, Interaktions-, Upgrade- und Updater-Verträge zur automatisierten Matrix. Es gibt
+keinen zusätzlichen manuellen Freigabeschritt nach einer vollständig grünen Veröffentlichung.
 
 ## Automatischer Ablauf
 

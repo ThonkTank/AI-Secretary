@@ -51,5 +51,6 @@ während Latest-read-Pipelines weiterhin veraltete Reads verdrängen dürfen.
 Die Java-Views und der aggregierende Renderer bleiben nur bis zu den jeweiligen Compose-
 Cutovern bestehen. `AppShellViewModel` ist eine bewusste Zwischenarchitektur und wird in Phase 9
 durch Navigation 3 ersetzt. Visuelle Gestaltung, Domainverhalten, Room-Schema und
-Update-/Signaturvertrag ändern sich durch diese Entscheidung nicht. Die physische Geräteabnahme
-bleibt ein separates offenes Gate.
+Update-/Signaturvertrag ändern sich durch diese Entscheidung nicht. Der Releaseabschluss folgt
+[ADR-030](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md) ohne separaten
+offenen Folgezustand.
