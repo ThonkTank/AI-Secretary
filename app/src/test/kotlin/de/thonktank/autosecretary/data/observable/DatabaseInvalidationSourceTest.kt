@@ -1,9 +1,10 @@
-package de.thonktank.autosecretary.data.local
+package de.thonktank.autosecretary.data.observable
 
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.thonktank.autosecretary.AppDatabase
+import de.thonktank.autosecretary.data.local.StatsEntity
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.runBlocking
@@ -22,7 +23,7 @@ import java.util.concurrent.Executor
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
-class RoomInvalidationSourceTest {
+class DatabaseInvalidationSourceTest {
     private val directExecutor = Executor { command -> command.run() }
     private val schema20Tables = setOf(
         "tasks",
@@ -61,7 +62,7 @@ class RoomInvalidationSourceTest {
 
     @Test
     fun initialEmissionContainsTheCompleteSchema20TableContract() = runBlocking {
-        val emissions = RoomInvalidationSource(database).changes.produceIn(this)
+        val emissions = DatabaseInvalidationSource(database).changes.produceIn(this)
 
         assertEquals(schema20Tables, emissions.next())
         emissions.cancel()
@@ -69,7 +70,7 @@ class RoomInvalidationSourceTest {
 
     @Test
     fun committedTransactionEmitsAfterBothWrites() = runBlocking {
-        val emissions = RoomInvalidationSource(database).changes.produceIn(this)
+        val emissions = DatabaseInvalidationSource(database).changes.produceIn(this)
         emissions.next()
 
         try {
@@ -87,7 +88,7 @@ class RoomInvalidationSourceTest {
 
     @Test
     fun rolledBackTransactionDoesNotEmitOrPersistAChange() = runBlocking {
-        val emissions = RoomInvalidationSource(database).changes.produceIn(this)
+        val emissions = DatabaseInvalidationSource(database).changes.produceIn(this)
         emissions.next()
 
         try {

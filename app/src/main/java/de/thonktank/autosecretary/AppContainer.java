@@ -5,10 +5,10 @@ import android.content.Context;
 
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.data.local.DatabaseFactory;
-import de.thonktank.autosecretary.data.local.RoomInvalidationSource;
 import de.thonktank.autosecretary.data.observable.AndroidMinuteTicker;
 import de.thonktank.autosecretary.data.observable.CalendarInvalidationSource;
 import de.thonktank.autosecretary.data.observable.ClockInvalidationSource;
+import de.thonktank.autosecretary.data.observable.DatabaseInvalidationSource;
 import de.thonktank.autosecretary.data.observable.PreferenceInvalidationSource;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
@@ -43,7 +43,7 @@ import de.thonktank.autosecretary.timer.TimerNotificationPublisher;
 
 public final class AppContainer {
     public final AppDatabase database;
-    public final RoomInvalidationSource databaseInvalidations;
+    public final DatabaseInvalidationSource databaseInvalidations;
     public final Clock clock;
     public final ZoneIdProvider zones;
     public final IdGenerator ids;
@@ -79,7 +79,7 @@ public final class AppContainer {
         this.ids = ids;
         this.logger = logger;
         this.database = databases.create(app);
-        this.databaseInvalidations = new RoomInvalidationSource(database);
+        this.databaseInvalidations = new DatabaseInvalidationSource(database);
         this.uiPreferences = new UiPreferences(app, logger);
         ApplicationUseCaseComposition useCases = new ApplicationUseCaseComposition(database,
                 clock, ids, uiPreferences);

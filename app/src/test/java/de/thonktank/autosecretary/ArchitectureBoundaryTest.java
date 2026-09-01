@@ -201,6 +201,25 @@ public final class ArchitectureBoundaryTest {
         assertFalse(Files.exists(main("domain/steps/StepOrganization" + "Repository.java")));
     }
 
+    @Test public void domainAndPresentationImportNeitherRoomNorDataLocalTypes()
+            throws Exception {
+        for (Path boundary : new Path[]{
+                Path.of("../core-domain/src/main/java/de/thonktank/autosecretary/domain"),
+                Path.of("../today-core/src/main/java/de/thonktank/autosecretary/presentation"),
+                Path.of("src/main/java/de/thonktank/autosecretary/presentation"),
+                Path.of("src/main/kotlin/de/thonktank/autosecretary/presentation")}) {
+            forEachProductionSource(boundary, source -> {
+                for (String line : read(source).split("\\R")) {
+                    String value = line.trim();
+                    if (!value.startsWith("import ")) continue;
+                    assertFalse(source + " imports data.local", value.contains(".data.local."));
+                    assertFalse(source + " imports a Room type",
+                            value.matches(".*\\.Room[A-Za-z0-9_]*;?"));
+                }
+            });
+        }
+    }
+
     @Test public void todayOrderIsPureAndStepExecutionHasItsOwnService() throws Exception {
         String order = read(main("domain/today/TodayStepOrder.java"));
         assertFalse(order.contains("domain.repository"));
@@ -381,6 +400,45 @@ public final class ArchitectureBoundaryTest {
         assertFalse(decision.contains("public final TrainingAssistantState state"));
     }
 
+    @Test public void trainingAssistantUiHasOnePanelActionAndHandlerOwner() throws Exception {
+        String row = read(main("ui/today/FocusStepRowView.java"));
+        String panel = read(main("ui/today/TrainingAssistantPanelView.java"));
+        String action = read(main("presentation/today/TrainingAssistantUiAction.java"));
+        String todayAction = read(main("presentation/today/TodayAction.java"));
+        String handler = read(main("presentation/today/TrainingAssistantActionHandler.java"));
+        String viewModel = read(main("presentation/today/TodayViewModel.java"));
+
+        assertTrue(row.contains("new TrainingAssistantPanelView"));
+        assertTrue(row.contains("assistantPanel.bind("));
+        assertFalse(row.contains("parseLoad("));
+        assertFalse(row.contains("loadQuestion"));
+        assertFalse(row.contains("undoAdjustment"));
+        assertTrue(panel.contains("TrainingAssistantUiAction.ApplyLoad"));
+        assertTrue(panel.contains("TrainingAssistantUiAction.NoHigherLoad"));
+        assertTrue(panel.contains("TrainingAssistantUiAction.Later"));
+        assertTrue(panel.contains("TrainingAssistantUiAction.Undo"));
+        assertTrue(action.contains("public final String rawLoad"));
+        assertTrue(action.contains("ResistanceLoad.Mode currentMode"));
+        assertTrue(action.contains("ResistanceLoad.Unit currentUnit"));
+        assertTrue(todayAction.contains("TRAINING_ASSISTANT"));
+        assertFalse(todayAction.contains("APPLY_" + "TRAINING_LOAD"));
+        assertFalse(todayAction.contains("NO_HIGHER_" + "TRAINING_LOAD"));
+        assertFalse(todayAction.contains("LATER_" + "TRAINING_LOAD"));
+        assertFalse(todayAction.contains("UNDO_" + "TRAINING_ADJUSTMENT"));
+        assertTrue(handler.contains(
+                "TrainingAssistantActionHandler(TrainingUseCases training)"));
+        assertFalse(handler.contains("UiTextProvider"));
+        assertFalse(handler.contains("TodayUiModel"));
+        assertTrue(handler.contains("new BigDecimal"));
+        assertTrue(handler.contains("replace(',', '.')"));
+        assertTrue(handler.contains("movePointRight(3).longValueExact()"));
+        assertTrue(viewModel.contains("trainingAssistantActions.handle(action)"));
+        assertFalse(viewModel.contains("ResolveTrainingLoadRequest"));
+        assertFalse(viewModel.contains("ResistanceLoad"));
+        assertFalse(viewModel.contains("resolveTrainingLoadRequest"));
+        assertFalse(viewModel.contains("undoLatestTrainingAdjustment"));
+    }
+
     private static Path main(String relative) {
         for (String module : new String[]{"../core-domain", "../today-core", "."}) {
             Path source = Path.of(module, "src/main/java/de/thonktank/autosecretary",
@@ -394,6 +452,17 @@ public final class ArchitectureBoundaryTest {
         try (Stream<Path> files = Files.walk(directory)) {
             for (Path source : (Iterable<Path>) files.filter(value -> value.toString()
                     .endsWith(".java"))::iterator) consumer.accept(source);
+        }
+    }
+
+    private static void forEachProductionSource(Path directory, CheckedConsumer consumer)
+            throws Exception {
+        if (!Files.isDirectory(directory)) return;
+        try (Stream<Path> files = Files.walk(directory)) {
+            for (Path source : (Iterable<Path>) files.filter(value -> {
+                String name = value.toString();
+                return name.endsWith(".java") || name.endsWith(".kt");
+            })::iterator) consumer.accept(source);
         }
     }
 

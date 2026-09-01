@@ -84,22 +84,26 @@ Die App bleibt bewusst ein Android-Modul. Innerhalb dieses Moduls markieren Pake
 belastbaren Verantwortungsgrenzen:
 
 - `domain.model` und `domain.usecase`: fachliche Typen und Ausführungsabläufe;
-- `domain.schedule` und `domain.steps`: Zeitplatzierungs- und Schrittverwaltungs-Commands mit
-  eigenen Persistenzports;
+- `domain.schedule` und `domain.steps`: Zeitplatzierungs- und Schrittverwaltungsregeln auf den
+  benannten Katalog-, Schritt- und Today-Ports;
 - `presentation.alltasks`: Katalogzustand, Filter, flaches Listenmodell und Verwaltungs-UI;
-- `presentation.today`: verbraucherspezifische Today-Projektionen;
+- `presentation.today`: verbraucherspezifische Today-Projektionen, geschlossene Aktionen und der
+  fokussierte Trainingsassistentenhandler;
+- `presentation.editor`: zustandsloser Compose-Editor mit eigener
+  `TrainingAssistantEditorSection` auf kanonischen Typen;
 - `presentation`: gemeinsam genutzte Präsentationsadapter und lokalisierte Textformatierung;
 - `editor`: reine, Android-unabhängige Zustandsübergänge des Aufgabeneditors;
 - `widget`: direkte Domain-zu-Widget-Projektion und größenabhängige UI-Modelle;
-- `domain.repository`: kleine Definition-, Ausführungs-, Flow- und Trainingsports ohne
-  Transaktionsvererbung; Management-Commands hängen ausschließlich von ihren Slice-Ports ab;
+- `domain.repository`: exakt `CatalogRepository`, `StepRepository`, `TodayRepository`,
+  `FlowRepository` und `TrainingRepository` ohne Transaktionsvererbung;
 - `domain.transaction`: unabhängiger atomarer Ausführungsport;
-- `data.local`: Room-DAO, Entities, Mapper, fokussierte Schritt-/Trainingsadapter und der
-  infrastrukturelle Gateway;
+- `data.local`: fünf fokussierte Room-DAOs und Einzelportadapter, Entities, Mapper sowie der
+  getrennte `RoomTransactionRunner`; ein Sammelgateway existiert nicht;
+- `ui.today`: Fokus-/Timeline-Views und `TrainingAssistantPanelView` als Owner seiner Controls;
 - Root-Paket: Android-Views, Lifecycle-/Composition-Root und historisch noch nicht verschobene
-  kleine Adapter.
+kleine Adapter.
 
 Neue fachlich reine Typen sollen direkt in die passende Grenze eingeordnet werden. Bestehende
 Root-Klassen werden nur bei konkreter Bearbeitung verschoben; eine mechanische Massenverschiebung
 ist ausdrücklich nicht Teil dieses Refactorings. Zusätzliche Gradle-Module, ein DI-Framework,
-Compose oder ein generisches Design-System sind dafür nicht vorgesehen.
+Ein weiteres DI-Framework oder generisches Design-System ist dafür nicht vorgesehen.

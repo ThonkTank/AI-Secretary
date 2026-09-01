@@ -1,6 +1,6 @@
 # Today-/Fokus-Architektur
 
-Stand: 2026-08-21, Datenbankschema 14
+Aktueller Stand: 2026-09-01, Datenbankschema 22
 
 ## Zustands- und Aktionsvertrag
 
@@ -11,7 +11,9 @@ TodayAction → TodayCoordinator → TodayReducer → TodayFeatureState
                                   └───────────→ TodayCommand
 ```
 
-Actions tragen nur IDs, konkrete Eingabewerte oder ID-Reihenfolgen. Fokus-, Timeline- und
+Actions tragen nur IDs, konkrete typisierte Eingaben oder ID-Reihenfolgen. Die
+`TrainingAssistantUiAction` liegt als geschlossene Unteraktion in `TodayAction`; ApplyLoad trägt
+Rohtext, aktuelle Lastart und Einheit statt eines in der View geparsten Zahlenwerts. Fokus-, Timeline- und
 Tageshistorie sind disjunkte Teile von `TodayUiModel`; ein allgemeiner `TaskSnapshot` oder eine
 überlappende `tasks`-Liste existiert nicht. `DashboardEvent` transportiert keine Today-Aktion.
 
@@ -31,6 +33,20 @@ Long Press, Drag und die vier Accessibilitybewegungen emittieren dieselben
 `BEGIN_REORDER`-/`PREVIEW_REORDER`-/`DROP_REORDER`-Intents. `FocusStepListLayout` besitzt nur
 Zeilenwiederverwendung, Höhenbudget, Messung/Layout und Android-Ereignisübersetzung.
 `EdgeAutoScroller` arbeitet frame- und zeitbasiert, nicht proportional zur Drag-Eventrate.
+
+## Trainingsassistent in Editor und Fokus
+
+`TrainingAssistantPanelView` besitzt in Today Status, Lastfrage, Antwortfeld, Verlauf und Undo.
+`FocusStepRowView` bindet ausschließlich diesen Owner; die Last-, RIR- und Safety-Controls der
+normalen Satzaufnahme bleiben Teil der Zeile. `TrainingAssistantActionHandler` erhält nur
+`TrainingUseCases` und übernimmt Punkt/Komma, exakte Milli-Units, Validierung und Domain-
+Ergebnismapping. `TodayViewModel` ordnet Completed, Feedback und Rejected lediglich seinem
+bestehenden Command-/Feedbackkanal zu.
+
+Im Compose-Editor besitzt `TrainingAssistantEditorSection` alle Assistentencontrols. Sie erhält
+direkt `StepPrescription`, nullable `TrainingAssistantPolicy` und `TrainingAssistantState` und
+liefert ausschließlich Prescription und nullable Policy zurück; ein paralleles UI-Adaptermodell
+existiert nicht.
 
 ## Rewards und Jahresringe
 
@@ -58,9 +74,9 @@ Wiederholungstabellen, Templates und andere Occurrences bleiben beim Reorder unv
 
 ## Android-App-Grenze
 
-`MainActivity` besitzt Lifecycle, Navigation, Berechtigungen und Dialoge. `TaskViewModel`
-implementiert fokussierte Command-Handler und delegiert den geschlossenen Dispatch an
-`TodayCommandDispatcher`; es enthält keinen Today-Command-Switch. Completion, Advance, Undo,
+`MainActivity` besitzt Lifecycle, Navigation, Berechtigungen und Dialoge. `TodayViewModel`
+implementiert fokussierte Command-Handler und delegiert allgemeine Today-Aktionen über
+`TodayCommandDispatcher`; Assistentenaktionen gehen an den einzelnen typisierten Handler. Completion, Advance, Undo,
 Harvest und Defer laden nur die Today-Projektion neu. Kalender-, Editor-, Options- und
 Updatezustand bleiben erhalten.
 
@@ -69,4 +85,5 @@ Updatezustand bleiben erhalten.
 Reine Modulkompilierung ersetzt Importscans für Domain und Today-Kern. Unit-/Robolectrictests
 decken Fachregeln, State Machine, Room, Komponenten, Accessibility und unveränderte Goldens ab.
 Der Instrumentationstestpfad prüft echte Pointer-Long-Press-/Drag-/Drop-Ereignisse,
-Randscrollen, Accessibilityaktionen und Recreation. CI führt ihn auf API 26 und API 35 aus.
+Randscrollen, Accessibilityaktionen und Recreation. CI führt normale und animationsaktive
+Instrumentierung auf API 26, 35 und 37 aus.

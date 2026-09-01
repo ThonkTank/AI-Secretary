@@ -24,10 +24,7 @@ public final class TodayAction {
         ADJUST_TRAINING_LOAD,
         ADJUST_TRAINING_RIR,
         TOGGLE_TRAINING_SAFETY,
-        APPLY_TRAINING_LOAD,
-        NO_HIGHER_TRAINING_LOAD,
-        LATER_TRAINING_LOAD,
-        UNDO_TRAINING_ADJUSTMENT,
+        TRAINING_ASSISTANT,
         EDIT_REPETITION,
         SUBMIT_REPETITION,
         START_DURATION_TIMER,
@@ -61,6 +58,7 @@ public final class TodayAction {
     public final List<String> order;
     public final TaskActionTarget target;
     public final TaskSlot slot;
+    public final TrainingAssistantUiAction trainingAssistantAction;
 
     private TodayAction(Kind kind, String id, String relatedId,
                         String text, int value, List<String> order,
@@ -71,6 +69,13 @@ public final class TodayAction {
     private TodayAction(Kind kind, String id, String relatedId,
                         String text, int value, long longValue, List<String> order,
                         TaskActionTarget target, TaskSlot slot) {
+        this(kind, id, relatedId, text, value, longValue, order, target, slot, null);
+    }
+
+    private TodayAction(Kind kind, String id, String relatedId,
+                        String text, int value, long longValue, List<String> order,
+                        TaskActionTarget target, TaskSlot slot,
+                        TrainingAssistantUiAction trainingAssistantAction) {
         if (kind == null) throw new IllegalArgumentException("Today action kind is required");
         this.kind = kind;
         this.id = id == null ? "" : id;
@@ -81,6 +86,7 @@ public final class TodayAction {
         this.order = Collections.unmodifiableList(new ArrayList<>(order));
         this.target = target;
         this.slot = slot;
+        this.trainingAssistantAction = trainingAssistantAction;
     }
 
     public static TodayAction completeOccurrence(String occurrenceId) {
@@ -155,22 +161,10 @@ public final class TodayAction {
         return identified(Kind.TOGGLE_TRAINING_SAFETY, stepId);
     }
 
-    public static TodayAction applyTrainingLoad(String templateId, long milliUnits) {
-        if (milliUnits <= 0) throw new IllegalArgumentException("Positive load is required");
-        return new TodayAction(Kind.APPLY_TRAINING_LOAD, requiredId(templateId), null,
-                null, 0, milliUnits, Collections.emptyList(), null, null);
-    }
-
-    public static TodayAction noHigherTrainingLoad(String templateId) {
-        return identified(Kind.NO_HIGHER_TRAINING_LOAD, templateId);
-    }
-
-    public static TodayAction laterTrainingLoad(String templateId) {
-        return identified(Kind.LATER_TRAINING_LOAD, templateId);
-    }
-
-    public static TodayAction undoTrainingAdjustment(String templateId) {
-        return identified(Kind.UNDO_TRAINING_ADJUSTMENT, templateId);
+    public static TodayAction trainingAssistant(TrainingAssistantUiAction action) {
+        if (action == null) throw new IllegalArgumentException("Training action is required");
+        return new TodayAction(Kind.TRAINING_ASSISTANT, action.templateId, null,
+                null, 0, 0L, Collections.emptyList(), null, null, action);
     }
 
     public static TodayAction submitRepetition(String stepId) {

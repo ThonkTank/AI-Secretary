@@ -27,8 +27,6 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TrainingObservation;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
-import de.thonktank.autosecretary.domain.usecase.ResolveTrainingLoadRequest;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
@@ -70,7 +68,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private static final String SAVED_TIMER_PERMISSION_WARNED = "today_timer_permission_warned";
     private final TodayUseCases today;
     private final CatalogUseCases catalog;
-    private final TrainingUseCases training;
+    private final TrainingAssistantActionHandler trainingAssistantActions;
     private final DashboardPresenter dashboard;
     private final CalendarDataSource calendar;
     private final UiPreferences preferences;
@@ -129,7 +127,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                   ExecutorService worker, @Nullable Executor collectionExecutor) {
         this.today = today;
         this.catalog = catalog;
-        this.training = training;
+        this.trainingAssistantActions = new TrainingAssistantActionHandler(training);
         this.dashboard = dashboard;
         this.calendar = calendar;
         this.preferences = preferences;
@@ -230,17 +228,8 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
             case ACKNOWLEDGE_REWARD:
                 publishRewards(rewardQueue.acknowledge(action.id));
                 return;
-            case APPLY_TRAINING_LOAD:
-                applyTrainingLoad(action.id, action.longValue);
-                return;
-            case NO_HIGHER_TRAINING_LOAD:
-                resolveNoHigherLoad(action.id);
-                return;
-            case LATER_TRAINING_LOAD:
-                deferTrainingLoad(action.id);
-                return;
-            case UNDO_TRAINING_ADJUSTMENT:
-                undoTrainingAdjustment(action.id);
+            case TRAINING_ASSISTANT:
+                handleTrainingAssistant(action.trainingAssistantAction);
                 return;
             default:
                 todayCoordinator.emit(action);
@@ -347,78 +336,17 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 () -> catalog.delete.execute(TaskId.of(taskId)));
     }
 
-    private void applyTrainingLoad(String templateId, long milliUnits) {
-        ResistanceLoad currentLoad = trainingLoad(templateId);
-        if (currentLoad == null || !currentLoad.adjustable()) {
-            trainingFeedback(R.string.training_request_no_longer_open);
-            return;
-        }
-        ResistanceLoad answer = ResistanceLoad.numeric(currentLoad.mode, currentLoad.unit,
-                milliUnits);
-        run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
-            ResolveTrainingLoadRequest.Result result =
-                    training.resolveTrainingLoadRequest.applyConcreteLoad(templateId, answer);
-            requireResolved(result);
+    private void handleTrainingAssistant(TrainingAssistantUiAction action) {
+        run(command(UiCommand.Kind.TRAINING_ASSISTANT, action.templateId), () -> {
+            TrainingAssistantActionHandler.Result result =
+                    trainingAssistantActions.handle(action);
+            if (result instanceof TrainingAssistantActionHandler.Feedback) {
+                trainingFeedback(((TrainingAssistantActionHandler.Feedback) result).message);
+            } else if (result instanceof TrainingAssistantActionHandler.Rejected) {
+                throw new IllegalArgumentException(texts.text(
+                        ((TrainingAssistantActionHandler.Rejected) result).message));
+            }
         });
-    }
-
-    private void resolveNoHigherLoad(String templateId) {
-        run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
-            ResolveTrainingLoadRequest.Result result =
-                    training.resolveTrainingLoadRequest.noHigherLoad(templateId);
-            requireResolved(result);
-        });
-    }
-
-    private void deferTrainingLoad(String templateId) {
-        run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
-            ResolveTrainingLoadRequest.Result result =
-                    training.resolveTrainingLoadRequest.later(templateId);
-            if (result != ResolveTrainingLoadRequest.Result.DEFERRED)
-                throw new IllegalArgumentException(
-                        texts.text(R.string.training_request_no_longer_open));
-            trainingFeedback(R.string.training_request_deferred);
-        });
-    }
-
-    private void undoTrainingAdjustment(String templateId) {
-        run(command(UiCommand.Kind.TRAINING_ASSISTANT, templateId), () -> {
-            if (!training.undoLatestTrainingAdjustment.execute(templateId))
-                throw new IllegalArgumentException(
-                        texts.text(R.string.training_undo_no_longer_available));
-        });
-    }
-
-    private void requireResolved(ResolveTrainingLoadRequest.Result result) {
-        switch (result) {
-            case APPLIED:
-            case SETS_ADDED:
-            case HELD:
-                return;
-            case INVALID_LOAD:
-                throw new IllegalArgumentException(texts.text(R.string.training_load_invalid));
-            case WRONG_DIRECTION:
-                throw new IllegalArgumentException(texts.text(R.string.training_load_wrong_direction));
-            case JUMP_TOO_LARGE:
-                throw new IllegalArgumentException(texts.text(R.string.training_load_jump_too_large));
-            case NO_OPEN_REQUEST:
-            case DEFERRED:
-            default:
-                throw new IllegalArgumentException(
-                        texts.text(R.string.training_request_no_longer_open));
-        }
-    }
-
-    @Nullable private ResistanceLoad trainingLoad(String templateId) {
-        TodayUiModel today;
-        synchronized (stateLock) { today = current.today(); }
-        if (today.focus == null) return null;
-        for (de.thonktank.autosecretary.presentation.today.FocusStepUiModel step
-                : today.focus.steps)
-            if (step.trainingContext != null
-                    && step.trainingContext.templateId.equals(templateId))
-                return step.trainingContext.openCurrentLoad;
-        return null;
     }
 
     private void trainingFeedback(int stringId) {

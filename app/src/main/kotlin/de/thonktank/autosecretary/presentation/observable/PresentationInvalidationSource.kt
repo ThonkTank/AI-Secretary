@@ -1,10 +1,10 @@
 package de.thonktank.autosecretary.presentation.observable
 
 import de.thonktank.autosecretary.calendar.CalendarPolicy
-import de.thonktank.autosecretary.data.local.RoomInvalidationSource
 import de.thonktank.autosecretary.data.observable.CalendarInvalidationSource
 import de.thonktank.autosecretary.data.observable.ClockInvalidationSource
 import de.thonktank.autosecretary.data.observable.ClockSnapshot
+import de.thonktank.autosecretary.data.observable.DatabaseInvalidationSource
 import de.thonktank.autosecretary.data.observable.PreferenceInvalidationSource
 import de.thonktank.autosecretary.data.preferences.DisplayPreferences
 import java.io.Closeable
@@ -78,7 +78,7 @@ class PresentationInvalidationSource internal constructor(
     sharingDispatcher: CoroutineDispatcher,
 ) : Closeable {
     constructor(
-        databaseInvalidations: RoomInvalidationSource,
+        databaseInvalidations: DatabaseInvalidationSource,
         calendarInvalidations: CalendarInvalidationSource,
         preferenceInvalidations: PreferenceInvalidationSource,
         clockInvalidations: ClockInvalidationSource,
@@ -93,7 +93,7 @@ class PresentationInvalidationSource internal constructor(
 
     /** Deterministic Java-friendly construction for tests without changing source ownership. */
     constructor(
-        databaseInvalidations: RoomInvalidationSource,
+        databaseInvalidations: DatabaseInvalidationSource,
         calendarInvalidations: CalendarInvalidationSource,
         preferenceInvalidations: PreferenceInvalidationSource,
         clockInvalidations: ClockInvalidationSource,

@@ -35,7 +35,9 @@ Neugestaltung bleiben während der Migration eingefroren.
   gepinnt und aktualisiert.
 - Die APK darf innerhalb dokumentierter Budgets wachsen. Ein Technikwechsel ohne Größenprüfung
   ist nicht zulässig.
-- Bestehende Goldens und physische Abnahmen bleiben der visuelle Vertrag.
+- Bestehende Goldens und die automatisierte Matrix aus
+  [ADR-030](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md) bleiben der
+  visuelle Vertrag.
 - StateFlow ersetzt LiveData nicht mechanisch: zuerst werden Zustandsbesitz und Ereignissemantik
   bereinigt, dann wird der Screen migriert.
 - Ein Screen darf während des Übergangs View oder Compose rendern, aber nie zwei unabhängig

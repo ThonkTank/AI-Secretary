@@ -36,7 +36,7 @@ import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.calendar.CalendarDataSource;
 import de.thonktank.autosecretary.calendar.CalendarResult;
-import de.thonktank.autosecretary.data.local.RoomInvalidationSource;
+import de.thonktank.autosecretary.data.observable.DatabaseInvalidationSource;
 import de.thonktank.autosecretary.data.observable.CalendarInvalidationSource;
 import de.thonktank.autosecretary.data.observable.ClockInvalidationSource;
 import de.thonktank.autosecretary.data.observable.PreferenceInvalidationSource;
@@ -724,7 +724,7 @@ public final class PresentationStateRobolectricTest {
         if (invalidationSource != null) invalidationSource.close();
         calendarInvalidations = new CalendarInvalidationSource(calendar);
         invalidationSource = new PresentationInvalidationSource(
-                new RoomInvalidationSource(database), calendarInvalidations,
+                new DatabaseInvalidationSource(database), calendarInvalidations,
                 new PreferenceInvalidationSource(preferences),
                 new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
         return new TodayViewModel(tasks.today, tasks.catalog, tasks.training, presenter, calendar,
@@ -757,7 +757,7 @@ public final class PresentationStateRobolectricTest {
             };
             calendarInvalidations = new CalendarInvalidationSource(calendar);
             invalidationSource = new PresentationInvalidationSource(
-                    new RoomInvalidationSource(database), calendarInvalidations,
+                    new DatabaseInvalidationSource(database), calendarInvalidations,
                     new PreferenceInvalidationSource(preferences),
                     new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
         }

@@ -346,7 +346,7 @@ Phase 6 hat eine hardwarefreundliche Variante ohne Software-Halo und Blur geprü
 101.821 Pixel und verletzte damit die bestehende Null-Pixel-Toleranz. Deshalb bleiben diese
 Effekte bewusst erhalten. Trotz dieser Restschuld wurden Draw-Median und p95 schneller. Ein
 späterer Austausch erfordert einen explizit freigegebenen visuellen Vertrag und zusätzlich ein
-Performance-Gate auf einem schwachen physischen Referenzgerät.
+reproduzierbares automatisiertes Performance-Budget in der vorgeschriebenen CI-Matrix.
 
 ### Phase 6 verbessert: Layoutkoordinaten am Renderer-Rand
 
