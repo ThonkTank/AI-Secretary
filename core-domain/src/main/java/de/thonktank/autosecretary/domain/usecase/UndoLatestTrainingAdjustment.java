@@ -30,7 +30,7 @@ public final class UndoLatestTrainingAdjustment {
             TrainingAdjustment adjustment = repository.latestTrainingAdjustment(templateId);
             if (template == null || adjustment == null
                     || adjustment.state != TrainingAdjustment.State.APPLIED
-                    || !template.amount.equals(adjustment.after)
+                    || !template.prescription.amount.equals(adjustment.after)
                     || !template.prescription.plannedLoad().equals(adjustment.afterLoad)
                     || template.assistantProfile == null) return false;
             StepPrescription before = new StepPrescription(adjustment.before,

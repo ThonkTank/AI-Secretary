@@ -89,14 +89,14 @@ public final class TaskEditorTextFormatter {
         if (step.cadenceMode == StepCadenceMode.WEEKDAYS) values.add(days(step.weekdayMask));
         else if (step.cadenceMode == StepCadenceMode.INTERVAL && step.intervalDays != null)
             values.add(texts.text(R.string.rhythm_every_n_value, step.intervalDays));
-        String amount = stepFormatter.format(step.amount, "");
+        String amount = stepFormatter.format(step.prescription.amount, "");
         if (!amount.isEmpty()) values.add(amount);
-        if (step.restTimerPolicy.mode == RestTimerPolicy.Mode.INHERIT)
+        if (step.prescription.rest.mode == RestTimerPolicy.Mode.INHERIT)
             values.add(texts.text(R.string.rest_timer_inherit_summary));
-        else if (step.restTimerPolicy.mode == RestTimerPolicy.Mode.CUSTOM)
+        else if (step.prescription.rest.mode == RestTimerPolicy.Mode.CUSTOM)
             values.add(texts.text(R.string.rest_timer_custom_summary, stepFormatter.format(
                     de.thonktank.autosecretary.domain.model.StepAmount.duration(
-                            step.restTimerPolicy.customSeconds), "")));
+                            step.prescription.rest.customSeconds), "")));
         return join(values);
     }
 

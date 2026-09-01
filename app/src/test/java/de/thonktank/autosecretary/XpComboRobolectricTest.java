@@ -318,7 +318,7 @@ public final class XpComboRobolectricTest {
         OccurrenceStep early = repository.findOccurrenceStep(step.id);
         assertTrue(early.done);
         assertEquals(Collections.singletonList(5),
-                early.repetitionProgress.actualRepetitions);
+                early.repetitionProgress.repetitions());
 
         new CorrectRepetitionResult(repository, repository, repository, repository, clock).execute(step.id, 0, 6);
         assertEquals(2, vesselXp(occurrence.id, step.id));
@@ -333,7 +333,7 @@ public final class XpComboRobolectricTest {
         new RecordRepetitionResult(repository, repository, repository, repository, clock).execute(nextStep.id, 5);
         new CompleteRemainingSteps(repository, repository, repository, repository, clock).execute(next.id);
         assertEquals(Arrays.asList(5, 10, 10), repository.findOccurrenceStep(nextStep.id)
-                .repetitionProgress.actualRepetitions);
+                .repetitionProgress.repetitions());
         assertEquals(13, vesselXp(next.id, nextStep.id));
     }
 
@@ -352,7 +352,7 @@ public final class XpComboRobolectricTest {
         assertEquals(2, repository.xp());
         assertEquals(OccurrenceState.COMPLETED, repository.findOccurrence(occurrence.id).state);
         assertEquals(Collections.singletonList(5), repository.findOccurrenceStep(step.id)
-                .repetitionProgress.actualRepetitions);
+                .repetitionProgress.repetitions());
         assertFalse(settle.execute());
         assertEquals(2, repository.xp());
     }

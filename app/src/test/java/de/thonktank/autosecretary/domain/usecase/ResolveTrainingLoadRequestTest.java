@@ -47,7 +47,7 @@ public final class ResolveTrainingLoadRequestTest {
         assertNull(repository.openTrainingLoadRequest(template.id));
         TaskStepTemplate changed = repository.findTemplate(template.id);
         assertEquals(Long.valueOf(55_000), changed.prescription.plannedLoad().milliUnits);
-        assertEquals(8, ((StepAmount.SetsReps) changed.amount).repetitions);
+        assertEquals(8, ((StepAmount.SetsReps) changed.prescription.amount).repetitions);
         assertEquals(TrainingDecision.Reason.LOAD_APPLIED,
                 repository.latestTrainingAdjustment(template.id).reason);
     }
@@ -88,7 +88,8 @@ public final class ResolveTrainingLoadRequestTest {
                 useCase.noHigherLoad(template.id));
 
         assertNull(repository.openTrainingLoadRequest(template.id));
-        StepAmount.SetsReps changed = (StepAmount.SetsReps) repository.findTemplate(template.id).amount;
+        StepAmount.SetsReps changed = (StepAmount.SetsReps) repository
+                .findTemplate(template.id).prescription.amount;
         assertEquals(3, changed.sets);
         assertEquals(8, changed.repetitions);
     }

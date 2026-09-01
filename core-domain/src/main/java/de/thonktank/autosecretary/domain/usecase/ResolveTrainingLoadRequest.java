@@ -6,7 +6,6 @@ import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingDecision;
@@ -75,7 +74,7 @@ public final class ResolveTrainingLoadRequest {
         if (delta * 100L > beforeMilli * TrainingAdaptationEngine.MAXIMUM_LOAD_JUMP_PERCENT)
             return Result.JUMP_TOO_LARGE;
 
-        StepAmount.SetsReps before = (StepAmount.SetsReps) template.amount;
+        StepAmount.SetsReps before = (StepAmount.SetsReps) template.prescription.amount;
         int repetitions = request.direction == TrainingDecision.LoadDirection.PROGRESS
                 ? template.assistantProfile.policy.minRepetitions : before.repetitions;
         StepAmount.SetsReps after = (StepAmount.SetsReps) StepAmount.setsReps(
@@ -105,24 +104,24 @@ public final class ResolveTrainingLoadRequest {
             return Result.NO_OPEN_REQUEST;
         if (request.direction != TrainingDecision.LoadDirection.PROGRESS)
             return Result.WRONG_DIRECTION;
-        TrainingAssistantConfig config = template.legacyTrainingConfig();
-        double effective = config.primaryMuscle == null ? 0
-                : repository.effectiveSetsSince(config.primaryMuscle,
+        double effective = template.assistantProfile.policy.primaryMuscle == null ? 0
+                : repository.effectiveSetsSince(template.assistantProfile.policy.primaryMuscle,
                 clock.today().minusDays(6), clock.today());
-        StepAmount.SetsReps before = (StepAmount.SetsReps) template.amount;
-        TrainingDecision decision = engine.progressSetsAfterUnavailableLoad(before, config,
-                template.assistantProfile.state, effective);
+        StepAmount.SetsReps before =
+                (StepAmount.SetsReps) template.prescription.amount;
+        TrainingDecision decision = engine.progressSetsAfterUnavailableLoad(
+                template.prescription, template.assistantProfile, effective);
         repository.updateTrainingLoadRequest(request.resolve(
                 TrainingLoadRequest.Resolution.NO_HIGHER_LOAD, clock.today()));
-        StepPrescription next = new StepPrescription(decision.prescription,
-                template.prescription.rest,
-                new TrainingPrescription(decision.load, template.prescription.targetRir()));
-        repository.updateTrainingTemplate(template.withTraining(next,
-                new TrainingAssistantProfile(template.assistantProfile.policy, decision.state)));
+        repository.updateTrainingTemplate(template.withTraining(decision.nextPrescription,
+                new TrainingAssistantProfile(template.assistantProfile.policy,
+                        decision.nextState)));
         if (decision.action != TrainingDecision.Action.APPLY) return Result.HELD;
+        StepAmount.SetsReps after =
+                (StepAmount.SetsReps) decision.nextPrescription.amount;
         repository.insertTrainingAdjustment(new TrainingAdjustment(ids.nextId(), template.id,
                 request.sourceOccurrenceStepId, decision.reason, before, request.currentLoad,
-                decision.prescription, decision.load, clock.today(),
+                after, decision.nextPrescription.training.load, clock.today(),
                 TrainingAdjustment.State.APPLIED, repository.nextTrainingAuditOrder(),
                 decision.ruleVersion));
         return Result.SETS_ADDED;

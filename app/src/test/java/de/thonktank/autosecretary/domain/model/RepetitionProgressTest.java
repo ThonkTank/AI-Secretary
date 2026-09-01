@@ -12,7 +12,7 @@ import java.util.Collections;
 
 public final class RepetitionProgressTest {
     @Test public void resultsAdvanceTheNextSlotAndDeriveCompletion() {
-        RepetitionProgress empty = RepetitionProgress.restore(
+        RepetitionProgress empty = RepetitionProgress.restoreResults(
                 2, Collections.emptyList(), false);
         RepetitionProgress first = empty.record(0);
         RepetitionProgress complete = first.record(999);
@@ -23,13 +23,13 @@ public final class RepetitionProgressTest {
         assertEquals(-1, complete.nextOpenSlotIndex());
         assertTrue(complete.completed());
         assertEquals(RepetitionProgress.Completion.RESULTS_COMPLETE, complete.completion);
-        assertEquals(Arrays.asList(0, 999), complete.actualRepetitions);
+        assertEquals(Arrays.asList(0, 999), complete.repetitions());
         assertEquals(Arrays.asList(SetResult.repetitions(0), SetResult.repetitions(999)),
                 complete.results);
     }
 
     @Test public void oneBoundaryOwnsValidationForNewAndCorrectedValues() {
-        RepetitionProgress empty = RepetitionProgress.restore(
+        RepetitionProgress empty = RepetitionProgress.restoreResults(
                 2, Collections.emptyList(), false);
         RepetitionProgress one = empty.record(10);
 
@@ -37,43 +37,43 @@ public final class RepetitionProgressTest {
         assertThrows(IllegalArgumentException.class, () -> empty.record(1_000));
         assertThrows(IllegalArgumentException.class, () -> one.correct(0, -1));
         assertThrows(IllegalArgumentException.class, () -> one.correct(0, 1_000));
-        assertEquals(Collections.singletonList(12), one.correct(0, 12).actualRepetitions);
+        assertEquals(Collections.singletonList(12), one.correct(0, 12).repetitions());
         assertEquals(0, RepetitionProgress.clampInput(-5));
         assertEquals(999, RepetitionProgress.clampInput(2_000));
     }
 
     @Test public void legacyValuesRemainReadableButCannotBeRecordedAgain() {
-        RepetitionProgress legacy = RepetitionProgress.restore(
-                2, Collections.singletonList(1_200), false);
+        RepetitionProgress legacy = RepetitionProgress.restoreResults(2,
+                Collections.singletonList(SetResult.restore(1_200, null)), false);
 
-        assertEquals(Collections.singletonList(1_200), legacy.actualRepetitions);
+        assertEquals(Collections.singletonList(1_200), legacy.repetitions());
         assertEquals(1, legacy.nextOpenSlotIndex());
         assertThrows(IllegalArgumentException.class, () -> legacy.record(1_200));
         assertThrows(IllegalArgumentException.class, () -> legacy.correct(0, 1_200));
     }
 
     @Test public void completionWithoutResultsIsExplicitAndReversible() {
-        RepetitionProgress partial = RepetitionProgress.restore(
-                3, Collections.singletonList(12), false);
+        RepetitionProgress partial = RepetitionProgress.restoreResults(3,
+                Collections.singletonList(SetResult.repetitions(12)), false);
         RepetitionProgress completed = partial.completeWithoutResults();
         RepetitionProgress reopened = completed.reopen();
 
         assertEquals(RepetitionProgress.Completion.COMPLETED_WITHOUT_RESULTS,
                 completed.completion);
         assertTrue(completed.completed());
-        assertEquals(Collections.singletonList(12), completed.actualRepetitions);
+        assertEquals(Collections.singletonList(12), completed.repetitions());
         assertEquals(RepetitionProgress.Completion.IN_PROGRESS, reopened.completion);
-        assertEquals(Collections.singletonList(12), reopened.actualRepetitions);
+        assertEquals(Collections.singletonList(12), reopened.repetitions());
     }
 
     @Test public void restoreCanonicalizesFormerlyContradictoryFullOpenProgress() {
-        RepetitionProgress restored = RepetitionProgress.restore(
-                2, Arrays.asList(10, 11), false);
+        RepetitionProgress restored = RepetitionProgress.restoreResults(2,
+                Arrays.asList(SetResult.repetitions(10), SetResult.repetitions(11)), false);
         RepetitionProgress reopened = restored.reopen();
 
         assertTrue(restored.completed());
         assertEquals(RepetitionProgress.Completion.RESULTS_COMPLETE, restored.completion);
-        assertEquals(Collections.singletonList(10), reopened.actualRepetitions);
+        assertEquals(Collections.singletonList(10), reopened.repetitions());
         assertFalse(reopened.completed());
     }
 
@@ -94,8 +94,8 @@ public final class RepetitionProgressTest {
                 1, Collections.singletonList(result), false);
 
         assertEquals(Collections.singletonList(result), progress.results);
-        assertEquals(Collections.singletonList(12), progress.actualRepetitions);
+        assertEquals(Collections.singletonList(12), progress.repetitions());
         assertThrows(UnsupportedOperationException.class,
-                () -> progress.actualRepetitions.add(11));
+                () -> progress.repetitions().add(11));
     }
 }

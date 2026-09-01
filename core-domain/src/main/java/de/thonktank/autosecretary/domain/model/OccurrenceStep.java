@@ -17,12 +17,6 @@ public final class OccurrenceStep {
     public final String originOccurrenceId;
     public final CarryForwardReason carryForwardReason;
 
-    /** Read-only projections of the canonical grouped value. */
-    public final StepAmount amount;
-    public final RestTimerPolicy restTimerPolicy;
-    public final ResistanceLoad plannedLoad;
-    public final int targetRir;
-
     public OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
                           StepPrescription prescription, String note,
                           List<SetResult> setResults, String sourceTemplateId,
@@ -41,10 +35,6 @@ public final class OccurrenceStep {
         this.position = checked.position;
         this.text = checked.text;
         this.prescription = checked.prescription;
-        this.amount = prescription.amount;
-        this.restTimerPolicy = prescription.rest;
-        this.plannedLoad = prescription.plannedLoad();
-        this.targetRir = prescription.targetRir();
         this.note = checked.note;
         this.repetitionProgress = progress;
         this.done = progress == null ? done : progress.completed();

@@ -21,7 +21,7 @@ public final class RestTimerPolicyTest {
         TaskStepDefinition duration = de.thonktank.autosecretary.testing.StepTestFixtures.definition("run", 1, "Laufen", 0, 0,
                 StepAmount.duration(600), "");
 
-        assertEquals(RestTimerPolicy.Mode.INHERIT, sets.restTimerPolicy.mode);
-        assertEquals(RestTimerPolicy.Mode.OFF, duration.restTimerPolicy.mode);
+        assertEquals(RestTimerPolicy.Mode.INHERIT, sets.prescription.rest.mode);
+        assertEquals(RestTimerPolicy.Mode.OFF, duration.prescription.rest.mode);
     }
 }

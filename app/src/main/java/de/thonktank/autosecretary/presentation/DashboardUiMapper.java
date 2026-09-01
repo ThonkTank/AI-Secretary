@@ -177,11 +177,11 @@ public final class DashboardUiMapper {
             int plannedXp = item.plannedXp(step.id,
                     earnedXp > 0 ? earnedXp : reward.resultXp);
             FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, step.text,
-                    stepTexts.compactAmount(step.amount), step.note, status, action, repetition,
-                    reward, earnedXp, plannedXp);
-            if (step.amount instanceof StepAmount.Duration)
+                    stepTexts.compactAmount(step.prescription.amount), step.note, status, action,
+                    repetition, reward, earnedXp, plannedXp);
+            if (step.prescription.amount instanceof StepAmount.Duration)
                 mapped = mapped.withDurationSeconds(
-                        ((StepAmount.Duration) step.amount).seconds);
+                        ((StepAmount.Duration) step.prescription.amount).seconds);
             TrainingContext training = step.sourceTemplateId == null ? null
                     : dashboard.trainingContexts.get(step.sourceTemplateId);
             if (training != null) mapped = mapped.withTrainingContext(training(training));
@@ -295,15 +295,16 @@ public final class DashboardUiMapper {
     }
 
     private static RepetitionProgressUiModel repetition(OccurrenceStep step) {
-        if (step.amount instanceof StepAmount.SetsReps) {
-            StepAmount.SetsReps amount = (StepAmount.SetsReps) step.amount;
+        if (step.prescription.amount instanceof StepAmount.SetsReps) {
+            StepAmount.SetsReps amount = (StepAmount.SetsReps) step.prescription.amount;
             return RepetitionProgressUiModel.trainingSets(amount.sets, amount.repetitions,
-                    step.repetitionProgress.actualRepetitions, step.plannedLoad, step.targetRir);
+                    step.repetitionProgress.repetitions(), step.prescription.plannedLoad(),
+                    step.prescription.targetRir());
         }
-        if (step.amount instanceof StepAmount.Repetitions)
+        if (step.prescription.amount instanceof StepAmount.Repetitions)
             return RepetitionProgressUiModel.single(
-                    ((StepAmount.Repetitions) step.amount).repetitions,
-                    step.repetitionProgress.actualRepetitions);
+                    ((StepAmount.Repetitions) step.prescription.amount).repetitions,
+                    step.repetitionProgress.repetitions());
         return null;
     }
 

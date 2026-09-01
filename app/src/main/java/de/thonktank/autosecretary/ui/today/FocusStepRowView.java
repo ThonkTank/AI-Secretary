@@ -283,7 +283,7 @@ public final class FocusStepRowView extends LinearLayout {
                     delta -> events.emit(TodayAction.adjustRepetition(step.id, delta)));
             barsScroll.setVisibility(progress.showsBars() ? VISIBLE : GONE);
             if (progress.showsBars()) bars.bind(step.id, progress.slotCount,
-                    progress.actualRepetitions, editingIndex, palette,
+                    progress.repetitions, editingIndex, palette,
                     index -> events.emit(TodayAction.editRepetition(step.id, index)));
             reward.setContentDescription(progress.kind == RepetitionProgressUiModel.Kind.SINGLE
                     ? getContext().getString(R.string.content_confirm_repetitions, current)

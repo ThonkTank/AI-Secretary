@@ -830,9 +830,9 @@ public final class DatabaseMigrationRobolectricTest {
         de.thonktank.autosecretary.domain.model.OccurrenceStep valid =
                 repository.findOccurrenceStep("valid-step");
         assertEquals(Arrays.asList(12, 1_200, 0),
-                valid.repetitionProgress.actualRepetitions);
+                valid.repetitionProgress.repetitions());
         assertTrue(repository.findOccurrenceStep("malformed-step")
-                .repetitionProgress.actualRepetitions.isEmpty());
+                .repetitionProgress.repetitions().isEmpty());
         assertTrue(ShadowLog.getLogsForTag("DatabaseMigrations").stream()
                 .anyMatch(item -> item.msg.contains("malformed-step")));
 
@@ -852,7 +852,7 @@ public final class DatabaseMigrationRobolectricTest {
             assertTrue(cursor.moveToFirst()); assertEquals(1, cursor.getInt(0));
         }
         assertEquals(Arrays.asList(12, 13, 0), repository.findOccurrenceStep("valid-step")
-                .repetitionProgress.actualRepetitions);
+                .repetitionProgress.repetitions());
         try (Cursor cursor = database.query("SELECT actualRepetitions FROM occurrence_steps "
                 + "WHERE id='valid-step'")) {
             assertTrue(cursor.moveToFirst()); assertEquals("", cursor.getString(0));

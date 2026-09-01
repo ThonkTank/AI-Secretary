@@ -13,10 +13,6 @@ public final class TaskStepTemplate {
     public final String note;
     public final StepActivationKind activationKind;
 
-    /** Read-only projections of the canonical grouped value. */
-    public final StepAmount amount;
-    public final RestTimerPolicy restTimerPolicy;
-
     public TaskStepTemplate(String id, TaskId taskId, int position, String text,
                             int weekdayMask, int intervalDays, StepPrescription prescription,
                             TrainingAssistantProfile assistantProfile, String note,
@@ -34,8 +30,6 @@ public final class TaskStepTemplate {
         this.intervalDays = checked.intervalDays;
         this.prescription = checked.prescription;
         this.assistantProfile = assistantProfile;
-        this.amount = prescription.amount;
-        this.restTimerPolicy = prescription.rest;
         this.note = checked.note;
         this.activationKind = checked.activationKind;
     }
@@ -54,14 +48,4 @@ public final class TaskStepTemplate {
 
     public boolean assistantEnabled() { return assistantProfile != null; }
 
-    /** Transitional engine input removed with the load-request phase. */
-    public TrainingAssistantConfig legacyTrainingConfig() {
-        if (assistantProfile == null) return TrainingAssistantConfig.disabled();
-        TrainingAssistantPolicy policy = assistantProfile.policy;
-        TrainingPrescription training = prescription.training;
-        return new TrainingAssistantConfig(true, policy.minSets, policy.maxSets,
-                policy.minRepetitions, policy.maxRepetitions, training.targetRir,
-                policy.automaticWeeklySetCeiling, training.load, policy.primaryMuscle,
-                policy.secondaryMuscles);
-    }
 }

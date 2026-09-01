@@ -49,7 +49,8 @@ public final class UndoLatestTrainingAdjustmentTest {
                 new FixedClock());
 
         assertTrue(useCase.execute(template.id));
-        assertEquals(11, ((StepAmount.SetsReps) repository.findTemplate(template.id).amount)
+        assertEquals(11, ((StepAmount.SetsReps) repository.findTemplate(template.id)
+                .prescription.amount)
                 .repetitions);
         assertEquals(TrainingAssistantState.Status.CALIBRATING,
                 repository.findTemplate(template.id).assistantProfile.state.status);

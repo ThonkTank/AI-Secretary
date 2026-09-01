@@ -88,7 +88,7 @@ public final class TaskEditorFeatureRobolectricTest {
                 Recurrence.WEEKDAYS, 0, TaskBoundKind.FOREVER, null, Collections.emptyList()));
         TaskStepDefinition none = de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 0, "Schritt", 0,
                 StepAmount.none(), "Notiz");
-        assertEquals(StepAmount.none(), none.amount);
+        assertEquals(StepAmount.none(), none.prescription.amount);
         assertThrows(IllegalArgumentException.class, () -> de.thonktank.autosecretary.testing.StepTestFixtures.definition(
                 null, 0, "Schritt", 0, StepAmount.setsReps(0, 12), ""));
     }
@@ -154,7 +154,7 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(stableId, snapshot.sourceTemplateId);
         assertEquals("Neu", template.text);
         assertEquals("Alt", snapshot.text);
-        assertEquals(3, ((StepAmount.SetsReps) snapshot.amount).sets);
+        assertEquals(3, ((StepAmount.SetsReps) snapshot.prescription.amount).sets);
         assertEquals("23 kg", snapshot.note);
     }
 
@@ -276,14 +276,14 @@ public final class TaskEditorFeatureRobolectricTest {
         record.execute(step.id, 10); record.execute(step.id, 11);
 
         OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
-        assertEquals(Arrays.asList(10, 11), restored.repetitionProgress.actualRepetitions);
+        assertEquals(Arrays.asList(10, 11), restored.repetitionProgress.repetitions());
         assertTrue(restored.repetitionProgress.results.stream()
                 .allMatch(value -> value.training == null));
         assertFalse(restored.done);
         CorrectRepetitionResult correct = new CorrectRepetitionResult(repository, repository, repository, repository);
         assertEquals(-2, correct.execute(step.id, 0, 0).xp);
         assertEquals(Arrays.asList(0, 11),
-                repository.findOccurrenceStep(step.id).repetitionProgress.actualRepetitions);
+                repository.findOccurrenceStep(step.id).repetitionProgress.repetitions());
         assertThrows(IllegalArgumentException.class,
                 () -> correct.execute(step.id, 0, 1_000));
         assertEquals(3, record.execute(step.id, 12).xp);
@@ -294,7 +294,7 @@ public final class TaskEditorFeatureRobolectricTest {
         OccurrenceStep editedDone = repository.findOccurrenceStep(step.id);
         assertTrue(editedDone.done);
         assertEquals(Arrays.asList(9, 11, 12),
-                editedDone.repetitionProgress.actualRepetitions);
+                editedDone.repetitionProgress.repetitions());
         assertEquals(9, vesselXp(occurrence.id));
 
         assertTrue(repository.findOccurrenceStep(step.id).done);
@@ -324,7 +324,7 @@ public final class TaskEditorFeatureRobolectricTest {
         OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
 
         assertEquals(Arrays.asList(first, second), restored.repetitionProgress.results);
-        assertEquals(Arrays.asList(12, 11), restored.repetitionProgress.actualRepetitions);
+        assertEquals(Arrays.asList(12, 11), restored.repetitionProgress.repetitions());
         SetResult corrected = new SetResult(10, TrainingObservation.user(load, 3));
         new CorrectSetResult(repository, repository, repository, repository, repository, clock, ComboPolicySource.defaults())
                 .execute(step.id, 1, corrected);
@@ -351,7 +351,7 @@ public final class TaskEditorFeatureRobolectricTest {
         new CompleteRemainingSteps(repository, repository, repository, repository, clock).execute(step.occurrenceId);
         assertTrue(repository.findOccurrenceStep(step.id).done);
         assertEquals(Arrays.asList(13, 15, 15), repository.findOccurrenceStep(step.id)
-                .repetitionProgress.actualRepetitions);
+                .repetitionProgress.repetitions());
         assertEquals(de.thonktank.autosecretary.domain.model.RepetitionProgress.Completion
                         .RESULTS_COMPLETE,
                 repository.findOccurrenceStep(step.id).repetitionProgress.completion);
@@ -360,7 +360,7 @@ public final class TaskEditorFeatureRobolectricTest {
         clock.date = TODAY.plusDays(1);
         new MaterializeDueOccurrences(repository, repository, repository, repository, repository, clock, ids).execute();
         OccurrenceStep next = repository.occurrenceSteps(repository.openOccurrences().get(0).id).get(0);
-        assertTrue(next.repetitionProgress.actualRepetitions.isEmpty());
+        assertTrue(next.repetitionProgress.repetitions().isEmpty());
         assertFalse(next.done);
     }
 
@@ -378,7 +378,7 @@ public final class TaskEditorFeatureRobolectricTest {
 
         OccurrenceStep restored = new RoomTaskRepository(database).findOccurrenceStep(step.id);
         assertTrue(restored.done);
-        assertEquals(Collections.singletonList(0), restored.repetitionProgress.actualRepetitions);
+        assertEquals(Collections.singletonList(0), restored.repetitionProgress.repetitions());
         assertEquals(0, repository.combo(step.comboOwnerId).points);
         assertEquals(0, new RecordRepetitionResult(repository, repository, repository, repository, clock).execute(step.id, 1).xp);
 

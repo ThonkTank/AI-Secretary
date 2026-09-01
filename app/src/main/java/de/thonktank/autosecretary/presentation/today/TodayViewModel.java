@@ -748,7 +748,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private void startRestTimerAfterRecordedSet(StepExecutionResult result) {
         if (timers == null || result.status != StepExecutionResult.Status.RECORDED
                 || result.step == null) return;
-        int seconds = result.step.restTimerPolicy.effectiveSeconds(
+        int seconds = result.step.prescription.rest.effectiveSeconds(
                 preferences.restTimerDefaultSeconds());
         if (seconds < 1) return;
         timers.start(result.step.id, result.step.text, TimerSession.Kind.REST, seconds);

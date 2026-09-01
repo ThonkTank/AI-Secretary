@@ -42,9 +42,11 @@ import de.thonktank.autosecretary.domain.model.RestTimerPolicy
 import de.thonktank.autosecretary.domain.model.ResistanceLoad
 import de.thonktank.autosecretary.domain.model.StepAmount
 import de.thonktank.autosecretary.domain.model.StepAmountKind
-import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig
+import de.thonktank.autosecretary.domain.model.StepPrescription
+import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup
+import de.thonktank.autosecretary.domain.model.TrainingPrescription
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer
 import de.thonktank.autosecretary.presentation.TaskEditorTextFormatter
 
@@ -260,13 +262,13 @@ internal fun EditorStepDetailPage(
     Label(R.string.step_amount_label, palette, Modifier.padding(top = 24.dp, bottom = 10.dp))
     ChipFlow {
         amountChoices.forEach { (label, kind) ->
-            EditorChip(label, step.amount.kind() == kind, palette) {
-                updateStep(state, index, step.withAmount(selectedAmount(kind, step.amount)), dispatcher)
+            EditorChip(label, step.prescription.amount.kind() == kind, palette) {
+                updateStep(state, index, step.withAmount(selectedAmount(kind, step.prescription.amount)), dispatcher)
             }
         }
     }
     AmountInputs(state, step, index, palette, dispatcher)
-    if (step.amount is StepAmount.SetsReps) {
+    if (step.prescription.amount is StepAmount.SetsReps) {
         TrainingAssistantInputs(state, step, index, palette, dispatcher)
         RestTimerInputs(state, step, index, palette, dispatcher)
     }
@@ -292,33 +294,46 @@ private fun TrainingAssistantInputs(
     palette: DayPalette,
     dispatcher: TaskEditorComposeDispatcher,
 ) {
-    val config = step.trainingAssistant
+    val policy = step.assistantPolicy
+    val training = step.prescription.training
+    val enabled = policy != null
     Label(R.string.training_assistant_label, palette, Modifier.padding(top = 22.dp, bottom = 10.dp))
     ChipFlow {
-        EditorChip(R.string.training_assistant_off, !config.enabled, palette) {
-            updateStep(state, index, step.withTrainingAssistant(TrainingAssistantConfig.disabled()), dispatcher)
+        EditorChip(R.string.training_assistant_off, !enabled, palette) {
+            updateStep(
+                state,
+                index,
+                step.withTraining(
+                    StepPrescription(step.prescription.amount, step.prescription.rest, null),
+                    null,
+                ),
+                dispatcher,
+            )
         }
-        EditorChip(R.string.training_assistant_automatic, config.enabled, palette) {
-            if (!config.enabled) {
+        EditorChip(R.string.training_assistant_automatic, enabled, palette) {
+            if (!enabled) {
+                val load = ResistanceLoad.numeric(
+                    ResistanceLoad.Mode.EXTERNAL,
+                    ResistanceLoad.Unit.KG,
+                    0,
+                )
                 updateStep(
                     state,
                     index,
-                    step.withTrainingAssistant(
-                        TrainingAssistantConfig.defaults(
-                            ResistanceLoad.numeric(
-                                ResistanceLoad.Mode.EXTERNAL,
-                                ResistanceLoad.Unit.KG,
-                                0,
-                            ),
-                            null,
+                    step.withTraining(
+                        StepPrescription(
+                            step.prescription.amount,
+                            step.prescription.rest,
+                            TrainingPrescription(load, 2),
                         ),
+                        TrainingAssistantPolicy.defaults(null),
                     ),
                     dispatcher,
                 )
             }
         }
     }
-    if (!config.enabled) {
+    if (policy == null || training == null) {
         EditorText(
             stringResource(R.string.training_assistant_explanation),
             Color.argb(palette.muted),
@@ -349,54 +364,54 @@ private fun TrainingAssistantInputs(
     Label(R.string.training_load_mode, palette, Modifier.padding(top = 18.dp, bottom = 8.dp))
     ChipFlow {
         trainingLoadModes.forEach { (label, mode) ->
-            EditorChip(label, config.load.mode == mode, palette) {
+            EditorChip(label, training.load.mode == mode, palette) {
                 val load = if (mode == ResistanceLoad.Mode.BODYWEIGHT) {
                     ResistanceLoad.bodyweight()
                 } else {
                     ResistanceLoad.numeric(
                         mode,
-                        if (config.load.unit == ResistanceLoad.Unit.LB) ResistanceLoad.Unit.LB
+                        if (training.load.unit == ResistanceLoad.Unit.LB) ResistanceLoad.Unit.LB
                         else ResistanceLoad.Unit.KG,
-                        config.load.milliUnits ?: 0,
+                        training.load.milliUnits ?: 0,
                     )
                 }
-                updateTraining(state, step, index, config, load = load, dispatcher = dispatcher)
+                updateTraining(state, step, index, policy, training, load = load, dispatcher = dispatcher)
             }
         }
     }
-    if (config.load.adjustable()) {
+    if (training.load.adjustable()) {
         Row(
             Modifier.fillMaxWidth().padding(top = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
             NumberInput(
-                ((config.load.milliUnits ?: 0L) / 1000L).toInt(),
+                ((training.load.milliUnits ?: 0L) / 1000L).toInt(),
                 R.string.training_load_value,
                 palette,
                 { value ->
                     val load = ResistanceLoad.numeric(
-                        config.load.mode,
-                        config.load.unit,
+                        training.load.mode,
+                        training.load.unit,
                         (value ?: 0).coerceAtLeast(0) * 1000L,
                     )
-                    updateTraining(state, step, index, config, load = load, dispatcher = dispatcher)
+                    updateTraining(state, step, index, policy, training, load = load, dispatcher = dispatcher)
                 },
                 Modifier.weight(1f),
                 focusTag("training-load", step.id),
             )
             ChipFlow(Modifier.weight(1f)) {
-                EditorChip(R.string.training_unit_kg, config.load.unit == ResistanceLoad.Unit.KG, palette) {
+                EditorChip(R.string.training_unit_kg, training.load.unit == ResistanceLoad.Unit.KG, palette) {
                     updateTraining(
-                        state, step, index, config,
-                        load = ResistanceLoad.numeric(config.load.mode, ResistanceLoad.Unit.KG, config.load.milliUnits ?: 0),
+                        state, step, index, policy, training,
+                        load = ResistanceLoad.numeric(training.load.mode, ResistanceLoad.Unit.KG, training.load.milliUnits ?: 0),
                         dispatcher = dispatcher,
                     )
                 }
-                EditorChip(R.string.training_unit_lb, config.load.unit == ResistanceLoad.Unit.LB, palette) {
+                EditorChip(R.string.training_unit_lb, training.load.unit == ResistanceLoad.Unit.LB, palette) {
                     updateTraining(
-                        state, step, index, config,
-                        load = ResistanceLoad.numeric(config.load.mode, ResistanceLoad.Unit.LB, config.load.milliUnits ?: 0),
+                        state, step, index, policy, training,
+                        load = ResistanceLoad.numeric(training.load.mode, ResistanceLoad.Unit.LB, training.load.milliUnits ?: 0),
                         dispatcher = dispatcher,
                     )
                 }
@@ -413,18 +428,18 @@ private fun TrainingAssistantInputs(
         verticalAlignment = Alignment.Bottom,
     ) {
         NumberInput(
-            config.targetRir,
+            training.targetRir,
             R.string.training_target_rir,
             palette,
-            { value -> updateTraining(state, step, index, config, targetRir = (value ?: 2).coerceIn(0, 5), dispatcher = dispatcher) },
+            { value -> updateTraining(state, step, index, policy, training, targetRir = (value ?: 2).coerceIn(0, 5), dispatcher = dispatcher) },
             Modifier.weight(1f),
             focusTag("training-rir", step.id),
         )
         NumberInput(
-            config.automaticWeeklySetCeiling,
+            policy.automaticWeeklySetCeiling,
             R.string.training_weekly_ceiling,
             palette,
-            { value -> updateTraining(state, step, index, config, ceiling = (value ?: 10).coerceAtLeast(1), dispatcher = dispatcher) },
+            { value -> updateTraining(state, step, index, policy, training, ceiling = (value ?: 10).coerceAtLeast(1), dispatcher = dispatcher) },
             Modifier.weight(1f),
             focusTag("training-ceiling", step.id),
         )
@@ -433,18 +448,18 @@ private fun TrainingAssistantInputs(
     Label(R.string.training_primary_muscle, palette, Modifier.padding(top = 18.dp, bottom = 8.dp))
     ChipFlow {
         TrainingMuscleGroup.values().forEach { muscle ->
-            EditorChip(trainingMuscleLabel(muscle), config.primaryMuscle == muscle, palette) {
-                updateTraining(state, step, index, config, primary = muscle, dispatcher = dispatcher)
+            EditorChip(trainingMuscleLabel(muscle), policy.primaryMuscle == muscle, palette) {
+                updateTraining(state, step, index, policy, training, primary = muscle, dispatcher = dispatcher)
             }
         }
     }
     Label(R.string.training_secondary_muscles, palette, Modifier.padding(top = 14.dp, bottom = 8.dp))
     ChipFlow {
-        TrainingMuscleGroup.values().filter { it != config.primaryMuscle }.forEach { muscle ->
-            EditorChip(trainingMuscleLabel(muscle), config.secondaryMuscles.contains(muscle), palette) {
-                val selected = config.secondaryMuscles.toMutableSet()
+        TrainingMuscleGroup.values().filter { it != policy.primaryMuscle }.forEach { muscle ->
+            EditorChip(trainingMuscleLabel(muscle), policy.secondaryMuscles.contains(muscle), palette) {
+                val selected = policy.secondaryMuscles.toMutableSet()
                 if (!selected.add(muscle)) selected.remove(muscle)
-                updateTraining(state, step, index, config, secondaries = selected, dispatcher = dispatcher)
+                updateTraining(state, step, index, policy, training, secondaries = selected, dispatcher = dispatcher)
             }
         }
     }
@@ -454,26 +469,29 @@ private fun updateTraining(
     state: EditorUiState,
     step: EditorStepState,
     index: Int,
-    current: TrainingAssistantConfig,
-    load: ResistanceLoad = current.load,
-    targetRir: Int = current.targetRir,
-    ceiling: Int = current.automaticWeeklySetCeiling,
-    primary: TrainingMuscleGroup? = current.primaryMuscle,
-    secondaries: Set<TrainingMuscleGroup> = current.secondaryMuscles,
+    currentPolicy: TrainingAssistantPolicy,
+    currentTraining: TrainingPrescription,
+    load: ResistanceLoad = currentTraining.load,
+    targetRir: Int = currentTraining.targetRir,
+    ceiling: Int = currentPolicy.automaticWeeklySetCeiling,
+    primary: TrainingMuscleGroup? = currentPolicy.primaryMuscle,
+    secondaries: Set<TrainingMuscleGroup> = currentPolicy.secondaryMuscles,
     dispatcher: TaskEditorComposeDispatcher,
 ) = updateStep(
     state,
     index,
-    step.withTrainingAssistant(
-        TrainingAssistantConfig(
-            true,
-            current.minSets,
-            current.maxSets,
-            current.minRepetitions,
-            current.maxRepetitions,
-            targetRir,
+    step.withTraining(
+        StepPrescription(
+            step.prescription.amount,
+            step.prescription.rest,
+            TrainingPrescription(load, targetRir),
+        ),
+        TrainingAssistantPolicy(
+            currentPolicy.minSets,
+            currentPolicy.maxSets,
+            currentPolicy.minRepetitions,
+            currentPolicy.maxRepetitions,
             ceiling,
-            load,
             primary,
             secondaries,
         ),
@@ -555,7 +573,7 @@ private fun AmountInputs(
     palette: DayPalette,
     dispatcher: TaskEditorComposeDispatcher,
 ) {
-    when (val amount = step.amount) {
+    when (val amount = step.prescription.amount) {
         is StepAmount.None -> Unit
         is StepAmount.SetsReps -> Row(
             Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -628,18 +646,18 @@ private fun RestTimerInputs(
 ) {
     Label(R.string.step_rest_timer_label, palette, Modifier.padding(top = 20.dp, bottom = 10.dp))
     ChipFlow {
-        EditorChip(R.string.rest_timer_inherit, step.restTimerPolicy.mode == RestTimerPolicy.Mode.INHERIT, palette) {
+        EditorChip(R.string.rest_timer_inherit, step.prescription.rest.mode == RestTimerPolicy.Mode.INHERIT, palette) {
             updateStep(state, index, step.withRestTimerPolicy(RestTimerPolicy.inherit()), dispatcher)
         }
-        EditorChip(R.string.rest_timer_custom, step.restTimerPolicy.mode == RestTimerPolicy.Mode.CUSTOM, palette) {
+        EditorChip(R.string.rest_timer_custom, step.prescription.rest.mode == RestTimerPolicy.Mode.CUSTOM, palette) {
             updateStep(state, index, step.withRestTimerPolicy(RestTimerPolicy.custom(60)), dispatcher)
         }
-        EditorChip(R.string.rest_timer_off, step.restTimerPolicy.mode == RestTimerPolicy.Mode.OFF, palette) {
+        EditorChip(R.string.rest_timer_off, step.prescription.rest.mode == RestTimerPolicy.Mode.OFF, palette) {
             updateStep(state, index, step.withRestTimerPolicy(RestTimerPolicy.off()), dispatcher)
         }
     }
-    if (step.restTimerPolicy.mode == RestTimerPolicy.Mode.CUSTOM) {
-        val total = step.restTimerPolicy.customSeconds ?: 60
+    if (step.prescription.rest.mode == RestTimerPolicy.Mode.CUSTOM) {
+        val total = step.prescription.rest.customSeconds ?: 60
         DurationInputs(
             minutes = total / 60,
             seconds = total % 60,

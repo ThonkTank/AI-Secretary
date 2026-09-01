@@ -1,9 +1,10 @@
 package de.thonktank.autosecretary.domain.training;
 
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.StepAmount;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.TrainingObservation;
@@ -20,22 +21,22 @@ public final class TrainingAdaptationEngine {
 
     public enum Signal { INELIGIBLE, READY_UP, HOLD, TOO_HARD, SAFETY_PAUSE }
 
-    public TrainingDecision evaluate(StepAmount.SetsReps current,
-                                     TrainingAssistantConfig config,
-                                     TrainingAssistantState state, List<SetResult> sets,
+    public TrainingDecision evaluate(StepPrescription current,
+                                     TrainingAssistantProfile profile, List<SetResult> sets,
                                      double projectedPrimaryWeeklySets) {
-        if (current == null || config == null || state == null || sets == null)
+        if (current == null || !(current.amount instanceof StepAmount.SetsReps)
+                || current.training == null || profile == null || sets == null)
             throw new IllegalArgumentException("Complete adaptation input is required");
-        if (!config.enabled || state.status == TrainingAssistantState.Status.DISABLED)
-            return decision(TrainingDecision.Action.HOLD, TrainingDecision.Reason.NONE,
-                    current, config.load, TrainingAssistantState.disabled(), null);
-        Signal signal = classify(current, config, sets);
+        StepAmount.SetsReps amount = (StepAmount.SetsReps) current.amount;
+        TrainingAssistantPolicy policy = profile.policy;
+        TrainingAssistantState state = profile.state;
+        Signal signal = classify(current, profile, sets);
         if (signal == Signal.INELIGIBLE)
             return decision(TrainingDecision.Action.HOLD, TrainingDecision.Reason.NONE,
-                    current, config.load, state, null);
+                    current, state, null);
         if (signal == Signal.SAFETY_PAUSE)
             return decision(TrainingDecision.Action.PAUSE, TrainingDecision.Reason.SAFETY_PAUSE,
-                    current, config.load, new TrainingAssistantState(
+                    current, new TrainingAssistantState(
                             TrainingAssistantState.Status.PAUSED,
                             state.eligibleObservations, 0, 0), null);
 
@@ -48,31 +49,36 @@ public final class TrainingAdaptationEngine {
         TrainingAssistantState next = new TrainingAssistantState(status, observations, ready, hard);
         if (status != TrainingAssistantState.Status.ACTIVE)
             return decision(TrainingDecision.Action.HOLD, TrainingDecision.Reason.CALIBRATING,
-                    current, config.load, next, null);
+                    current, next, null);
         if (state.status == TrainingAssistantState.Status.CALIBRATING)
             return decision(TrainingDecision.Action.HOLD, TrainingDecision.Reason.CALIBRATING,
-                    current, config.load,
+                    current,
                     new TrainingAssistantState(status, observations, 0, 0), null);
         if (ready >= REQUIRED_STREAK)
-            return progress(current, config, next, projectedPrimaryWeeklySets);
-        if (hard >= REQUIRED_STREAK) return regress(current, config, next);
+            return progress(current, policy, next, projectedPrimaryWeeklySets);
+        if (hard >= REQUIRED_STREAK) return regress(current, policy, next);
         return decision(TrainingDecision.Action.HOLD, TrainingDecision.Reason.NONE,
-                current, config.load, next, null);
+                current, next, null);
     }
 
-    public Signal classify(StepAmount.SetsReps current, TrainingAssistantConfig config,
+    public Signal classify(StepPrescription current, TrainingAssistantProfile profile,
                            List<SetResult> sets) {
-        if (sets.size() != current.sets) return Signal.INELIGIBLE;
+        if (current == null || !(current.amount instanceof StepAmount.SetsReps)
+                || current.training == null || profile == null || sets == null)
+            throw new IllegalArgumentException("Complete classification input is required");
+        StepAmount.SetsReps amount = (StepAmount.SetsReps) current.amount;
+        if (sets.size() != amount.sets) return Signal.INELIGIBLE;
         List<Integer> rirs = new ArrayList<>();
         int missed = 0;
         for (SetResult set : sets) {
             TrainingObservation observation = set.training;
             if (observation == null || observation.origin != TrainingObservation.Origin.USER
-                    || observation.rir == null || !observation.load.equals(config.load))
+                    || observation.rir == null
+                    || !observation.load.equals(current.training.load))
                 return Signal.INELIGIBLE;
             if (observation.safety == TrainingObservation.Safety.PAIN_OR_TECHNIQUE)
                 return Signal.SAFETY_PAUSE;
-            if (set.repetitions < current.repetitions) missed++;
+            if (set.repetitions < amount.repetitions) missed++;
             rirs.add(observation.rir);
         }
         Collections.sort(rirs);
@@ -80,66 +86,69 @@ public final class TrainingAdaptationEngine {
         if (missed * 2 > sets.size() || median == 0) return Signal.TOO_HARD;
         boolean allReached = missed == 0;
         boolean anyFailure = rirs.get(0) == 0;
-        return allReached && median >= config.targetRir && !anyFailure
+        return allReached && median >= current.training.targetRir && !anyFailure
                 ? Signal.READY_UP : Signal.HOLD;
     }
 
-    private TrainingDecision progress(StepAmount.SetsReps current,
-                                      TrainingAssistantConfig config,
+    private TrainingDecision progress(StepPrescription current,
+                                      TrainingAssistantPolicy policy,
                                       TrainingAssistantState state, double projectedSets) {
+        StepAmount.SetsReps amount = (StepAmount.SetsReps) current.amount;
         TrainingAssistantState reset = resetStreaks(state);
-        if (current.repetitions < config.maxRepetitions)
+        if (amount.repetitions < policy.maxRepetitions)
             return decision(TrainingDecision.Action.APPLY,
                     TrainingDecision.Reason.REPETITIONS_INCREASED,
-                    setsReps(current.sets, current.repetitions + 1), config.load, reset, null);
-        if (config.load.adjustable())
+                    withAmount(current, amount.sets, amount.repetitions + 1), reset, null);
+        if (current.training.load.adjustable())
             return decision(TrainingDecision.Action.REQUEST_NEXT_LOAD,
-                    TrainingDecision.Reason.NEXT_LOAD_REQUIRED, current, config.load, reset,
+                    TrainingDecision.Reason.NEXT_LOAD_REQUIRED, current, reset,
                     TrainingDecision.LoadDirection.PROGRESS);
-        return progressSets(current, config, reset, projectedSets);
+        return progressSets(current, policy, reset, projectedSets);
     }
 
-    private TrainingDecision progressSets(StepAmount.SetsReps current,
-                                          TrainingAssistantConfig config,
+    private TrainingDecision progressSets(StepPrescription current,
+                                          TrainingAssistantPolicy policy,
                                           TrainingAssistantState state, double projectedSets) {
-        if (current.sets < config.maxSets && config.primaryMuscle != null
-                && projectedSets + 1 <= config.automaticWeeklySetCeiling)
+        StepAmount.SetsReps amount = (StepAmount.SetsReps) current.amount;
+        if (amount.sets < policy.maxSets && policy.primaryMuscle != null
+                && projectedSets + 1 <= policy.automaticWeeklySetCeiling)
             return decision(TrainingDecision.Action.APPLY, TrainingDecision.Reason.SET_ADDED,
-                    setsReps(current.sets + 1, config.minRepetitions), config.load, state, null);
-        TrainingDecision.Reason reason = current.sets < config.maxSets
-                && config.primaryMuscle != null ? TrainingDecision.Reason.VOLUME_LIMIT
+                    withAmount(current, amount.sets + 1, policy.minRepetitions), state, null);
+        TrainingDecision.Reason reason = amount.sets < policy.maxSets
+                && policy.primaryMuscle != null ? TrainingDecision.Reason.VOLUME_LIMIT
                 : TrainingDecision.Reason.BOUNDARY_REACHED;
         return decision(TrainingDecision.Action.HOLD, reason,
-                current, config.load, state, null);
+                current, state, null);
     }
 
-    private TrainingDecision regress(StepAmount.SetsReps current,
-                                     TrainingAssistantConfig config,
+    private TrainingDecision regress(StepPrescription current,
+                                     TrainingAssistantPolicy policy,
                                      TrainingAssistantState state) {
+        StepAmount.SetsReps amount = (StepAmount.SetsReps) current.amount;
         TrainingAssistantState reset = resetStreaks(state);
-        if (current.sets > config.minSets)
+        if (amount.sets > policy.minSets)
             return decision(TrainingDecision.Action.APPLY, TrainingDecision.Reason.SET_REMOVED,
-                    setsReps(current.sets - 1, current.repetitions), config.load, reset, null);
-        if (current.repetitions > config.minRepetitions)
+                    withAmount(current, amount.sets - 1, amount.repetitions), reset, null);
+        if (amount.repetitions > policy.minRepetitions)
             return decision(TrainingDecision.Action.APPLY,
                     TrainingDecision.Reason.REPETITIONS_REDUCED,
-                    setsReps(current.sets, current.repetitions - 1), config.load, reset, null);
-        if (config.load.adjustable())
+                    withAmount(current, amount.sets, amount.repetitions - 1), reset, null);
+        if (current.training.load.adjustable())
             return decision(TrainingDecision.Action.REQUEST_NEXT_LOAD,
-                    TrainingDecision.Reason.LOWER_LOAD_REQUIRED, current, config.load, reset,
+                    TrainingDecision.Reason.LOWER_LOAD_REQUIRED, current, reset,
                     TrainingDecision.LoadDirection.REGRESS);
         return decision(TrainingDecision.Action.PAUSE,
-                TrainingDecision.Reason.BOUNDARY_REACHED, current, config.load,
+                TrainingDecision.Reason.BOUNDARY_REACHED, current,
                 new TrainingAssistantState(TrainingAssistantState.Status.PAUSED,
                         state.eligibleObservations, 0, 0), null);
     }
 
     public TrainingDecision progressSetsAfterUnavailableLoad(
-            StepAmount.SetsReps current, TrainingAssistantConfig config,
-            TrainingAssistantState state, double projectedSets) {
-        if (current == null || config == null || state == null)
+            StepPrescription current, TrainingAssistantProfile profile, double projectedSets) {
+        if (current == null || !(current.amount instanceof StepAmount.SetsReps)
+                || current.training == null || profile == null)
             throw new IllegalArgumentException("Complete load fallback input is required");
-        return progressSets(current, config, resetStreaks(state), projectedSets);
+        return progressSets(current, profile.policy, resetStreaks(profile.state), projectedSets);
     }
 
     private static TrainingAssistantState resetStreaks(TrainingAssistantState value) {
@@ -148,14 +157,15 @@ public final class TrainingAdaptationEngine {
 
     private static TrainingDecision decision(TrainingDecision.Action action,
                                              TrainingDecision.Reason reason,
-                                             StepAmount.SetsReps prescription,
-                                             ResistanceLoad load,
+                                             StepPrescription prescription,
                                              TrainingAssistantState state,
                                              TrainingDecision.LoadDirection direction) {
-        return new TrainingDecision(action, reason, prescription, load, state, direction);
+        return new TrainingDecision(action, reason, prescription, state, direction);
     }
 
-    private static StepAmount.SetsReps setsReps(int sets, int repetitions) {
-        return (StepAmount.SetsReps) StepAmount.setsReps(sets, repetitions);
+    private static StepPrescription withAmount(StepPrescription current,
+                                               int sets, int repetitions) {
+        return new StepPrescription(StepAmount.setsReps(sets, repetitions), current.rest,
+                current.training);
     }
 }

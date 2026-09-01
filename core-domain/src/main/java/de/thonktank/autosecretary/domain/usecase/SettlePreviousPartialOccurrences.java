@@ -55,10 +55,11 @@ public final class SettlePreviousPartialOccurrences {
     }
 
     private static boolean positivePartial(OccurrenceStep step) {
-        if (step.repetitionProgress == null
-                || step.repetitionProgress.actualRepetitions.isEmpty()) return false;
+        if (step.repetitionProgress == null || step.repetitionProgress.results.isEmpty())
+            return false;
         int total = 0;
-        for (Integer value : step.repetitionProgress.actualRepetitions) total += value;
+        for (de.thonktank.autosecretary.domain.model.SetResult value
+                : step.repetitionProgress.results) total += value.repetitions;
         return total > 0;
     }
 

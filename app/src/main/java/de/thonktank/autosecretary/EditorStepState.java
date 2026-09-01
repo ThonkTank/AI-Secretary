@@ -3,12 +3,10 @@ package de.thonktank.autosecretary;
 import java.util.Objects;
 
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantConfig;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
 import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
@@ -20,9 +18,6 @@ public final class EditorStepState {
     public final StepCadenceMode cadenceMode;
     public final int weekdayMask;
     public final Integer intervalDays;
-    public final StepAmount amount;
-    public final RestTimerPolicy restTimerPolicy;
-    public final TrainingAssistantConfig trainingAssistant;
     public final StepPrescription prescription;
     public final TrainingAssistantPolicy assistantPolicy;
     public final TrainingAssistantState assistantState;
@@ -57,9 +52,6 @@ public final class EditorStepState {
         this.assistantPolicy = assistantPolicy;
         this.assistantState = assistantPolicy == null ? TrainingAssistantState.disabled()
                 : Objects.requireNonNull(assistantState, "assistantState");
-        this.amount = prescription.amount;
-        this.restTimerPolicy = prescription.rest;
-        this.trainingAssistant = legacyTrainingConfig(prescription, assistantPolicy);
         this.note = note == null ? "" : note;
         this.activationKind = activationKind == null
                 ? StepActivationKind.SCHEDULED : activationKind;
@@ -83,20 +75,14 @@ public final class EditorStepState {
     }
 
     static EditorStepState fromStored(String id, String text, StepCadenceMode cadenceMode,
-                                      int weekdayMask, Integer intervalDays, StepAmount amount,
-                                      RestTimerPolicy rest, TrainingAssistantConfig assistant,
+                                      int weekdayMask, Integer intervalDays,
+                                      StepPrescription prescription,
+                                      TrainingAssistantPolicy assistantPolicy,
                                       TrainingAssistantState assistantState,
                                       String note, StepActivationKind activationKind) {
-        TrainingAssistantConfig resolved = assistant == null
-                ? TrainingAssistantConfig.disabled() : assistant;
-        boolean sets = amount instanceof StepAmount.SetsReps;
-        StepPrescription prescription = StepPrescription.restore(amount,
-                sets ? rest : RestTimerPolicy.off(),
-                sets && resolved.enabled ? resolved.load : ResistanceLoad.unspecified(),
-                resolved.targetRir);
         return new EditorStepState(id, text, cadenceMode, weekdayMask, intervalDays,
-                prescription, sets ? policy(resolved) : null,
-                sets && resolved.enabled ? assistantState : TrainingAssistantState.disabled(),
+                prescription, assistantPolicy,
+                assistantPolicy == null ? TrainingAssistantState.disabled() : assistantState,
                 note, activationKind);
     }
 
@@ -119,23 +105,6 @@ public final class EditorStepState {
                 once || followUp || cadenceMode != StepCadenceMode.WEEKDAYS ? 0 : weekdayMask,
                 once || followUp || cadenceMode != StepCadenceMode.INTERVAL ? 0 : intervalDays,
                 prescription, assistantPolicy, note, resolved);
-    }
-
-    private static TrainingAssistantPolicy policy(TrainingAssistantConfig value) {
-        return value.enabled ? new TrainingAssistantPolicy(value.minSets, value.maxSets,
-                value.minRepetitions, value.maxRepetitions,
-                value.automaticWeeklySetCeiling, value.primaryMuscle,
-                value.secondaryMuscles) : null;
-    }
-
-    private static TrainingAssistantConfig legacyTrainingConfig(
-            StepPrescription prescription, TrainingAssistantPolicy policy) {
-        if (policy == null) return TrainingAssistantConfig.disabled();
-        return new TrainingAssistantConfig(true, policy.minSets, policy.maxSets,
-                policy.minRepetitions, policy.maxRepetitions,
-                prescription.training.targetRir,
-                policy.automaticWeeklySetCeiling, prescription.training.load,
-                policy.primaryMuscle, policy.secondaryMuscles);
     }
 
     public EditorStepState withText(String value) {
@@ -166,10 +135,10 @@ public final class EditorStepState {
 
     public EditorStepState withAmount(StepAmount value) {
         RestTimerPolicy rest = value instanceof StepAmount.SetsReps
-                ? amount instanceof StepAmount.SetsReps ? restTimerPolicy
+                ? prescription.amount instanceof StepAmount.SetsReps ? prescription.rest
                 : RestTimerPolicy.inherit() : RestTimerPolicy.off();
         boolean retainsTraining = value instanceof StepAmount.SetsReps
-                && amount instanceof StepAmount.SetsReps;
+                && prescription.amount instanceof StepAmount.SetsReps;
         return copy(text, cadenceMode, weekdayMask, intervalDays,
                 new StepPrescription(value, rest,
                         retainsTraining ? prescription.training : null),
@@ -178,20 +147,18 @@ public final class EditorStepState {
 
     public EditorStepState withRestTimerPolicy(RestTimerPolicy value) {
         return copy(text, cadenceMode, weekdayMask, intervalDays,
-                new StepPrescription(amount, value, prescription.training), assistantPolicy,
+                new StepPrescription(prescription.amount, value, prescription.training),
+                assistantPolicy,
                 note);
     }
 
-    public EditorStepState withTrainingAssistant(TrainingAssistantConfig value) {
-        TrainingAssistantConfig resolved = value == null
-                ? TrainingAssistantConfig.disabled() : value;
-        TrainingAssistantPolicy nextPolicy = policy(resolved);
-        TrainingAssistantState nextState = nextPolicy == null
+    public EditorStepState withTraining(StepPrescription value,
+                                        TrainingAssistantPolicy policy) {
+        TrainingAssistantState nextState = policy == null
                 ? TrainingAssistantState.disabled()
                 : assistantPolicy == null ? TrainingAssistantState.calibrating() : assistantState;
         return copy(text, cadenceMode, weekdayMask, intervalDays,
-                StepPrescription.restore(amount, restTimerPolicy, resolved.load,
-                        resolved.targetRir), nextPolicy, nextState, note);
+                value, policy, nextState, note);
     }
 
     public EditorStepState withNote(String value) {

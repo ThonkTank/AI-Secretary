@@ -49,7 +49,7 @@ public final class LoadTrainingContext {
         boolean current = latest != null
                 && latest.state == TrainingAdjustment.State.APPLIED
                 && latest.auditOrder == latestOrder
-                && template.amount.equals(latest.after)
+                && template.prescription.amount.equals(latest.after)
                 && template.prescription.plannedLoad().equals(latest.afterLoad);
         return new TrainingContext(templateId, template.assistantProfile.state, open, latest,
                 history, current);

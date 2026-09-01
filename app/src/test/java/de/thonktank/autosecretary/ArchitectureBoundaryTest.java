@@ -324,6 +324,33 @@ public final class ArchitectureBoundaryTest {
         assertFalse(editor.contains("public boolean ongoing"));
     }
 
+    @Test public void trainingDomainHasOneCanonicalStepAndResultLanguage() throws Exception {
+        assertFalse(Files.exists(main("domain/model/TrainingAssistant" + "Config.java")));
+        String template = read(main("domain/model/TaskStepTemplate.java"));
+        String definition = read(main("domain/model/TaskStepDefinition.java"));
+        String occurrence = read(main("domain/model/OccurrenceStep.java"));
+        String flow = read(main("domain/model/FlowRunStepSnapshot.java"));
+        for (String source : new String[]{template, definition, occurrence, flow}) {
+            assertTrue(source.contains("public final StepPrescription prescription"));
+            assertFalse(source.contains("public final StepAmount amount"));
+            assertFalse(source.contains("public final RestTimerPolicy restTimerPolicy"));
+            assertFalse(source.contains("public final ResistanceLoad plannedLoad"));
+            assertFalse(source.contains("public final int targetRir"));
+            assertFalse(source.contains("legacyTraining" + "Config"));
+        }
+        String progress = read(main("domain/model/RepetitionProgress.java"));
+        assertTrue(progress.contains("public final List<SetResult> results"));
+        assertTrue(progress.contains("public List<Integer> repetitions()"));
+        assertFalse(progress.contains("actual" + "Repetitions"));
+        assertFalse(progress.contains("public static RepetitionProgress restore("));
+        String decision = read(main("domain/model/TrainingDecision.java"));
+        assertTrue(decision.contains("public final StepPrescription nextPrescription"));
+        assertTrue(decision.contains("public final TrainingAssistantState nextState"));
+        assertFalse(decision.contains("public final StepAmount.SetsReps prescription"));
+        assertFalse(decision.contains("public final ResistanceLoad load"));
+        assertFalse(decision.contains("public final TrainingAssistantState state"));
+    }
+
     private static Path main(String relative) {
         for (String module : new String[]{"../core-domain", "../today-core", "."}) {
             Path source = Path.of(module, "src/main/java/de/thonktank/autosecretary",

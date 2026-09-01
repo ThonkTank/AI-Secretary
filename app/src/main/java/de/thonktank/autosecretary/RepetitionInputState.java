@@ -47,8 +47,8 @@ public final class RepetitionInputState {
 
     public RepetitionInputState edit(FocusStepUiModel step, int index) {
         if (step.repetitionProgress == null || index < 0
-                || index >= step.repetitionProgress.actualRepetitions.size()) return this;
-        return active(step, step.repetitionProgress.actualRepetitions.get(index), index,
+                || index >= step.repetitionProgress.repetitions.size()) return this;
+        return active(step, step.repetitionProgress.repetitions.get(index), index,
                 loadFor(step), rirFor(step), safetyFor(step));
     }
 
