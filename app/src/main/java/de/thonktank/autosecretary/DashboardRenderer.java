@@ -241,9 +241,10 @@ public final class DashboardRenderer {
         }
         content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
                 style.dimen(R.dimen.page_end), style.dp(26));
-        focus.bind(focusTask, dashboard.timeline.size() > 0, palette,
-                focusStepLimit, state.repetitionInput, state.feature.reorder,
-                state.timers, todayActions);
+        FocusCardUiModel focusModel = new FocusCardUiModel(focusTask, state.feature.focus,
+                palette, focusStepLimit, state.repetitionInput, state.feature.reorder,
+                state.timers);
+        focus.bind(focusModel, dashboard.timeline.size() > 0, todayActions);
         bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
         int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
         more.setText(context.getResources().getQuantityString(

@@ -301,8 +301,8 @@ public final class UiComponentRobolectricTest {
         Context context = ApplicationProvider.getApplicationContext();
         UiStyle style = new UiStyle(context);
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(DashboardFixtures.taskWithSteps(), true,
-                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), event -> { });
+        focus.bind(FocusCardTestModels.of(DashboardFixtures.taskWithSteps(),
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), true, event -> { });
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(500), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -370,7 +370,8 @@ public final class UiComponentRobolectricTest {
         assertEquals(new LeafShape(8, 56, 8, 56), headerLeaf.shape());
 
         FocusTaskView focus = new FocusTaskView(activity);
-        focus.bind(DashboardFixtures.taskWithSteps(), false, palette, event -> { });
+        focus.bind(FocusCardTestModels.of(DashboardFixtures.taskWithSteps(), palette),
+                false, event -> { });
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(800), View.MeasureSpec.EXACTLY));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -437,16 +438,20 @@ public final class UiComponentRobolectricTest {
         TodayUiModel dashboard = new TodayUiModel(
                 new de.thonktank.autosecretary.domain.model.XpProgress(0),
                 task, Collections.emptyList(), Collections.emptyList());
+        de.thonktank.autosecretary.presentation.today.TodayFeatureState feature =
+                de.thonktank.autosecretary.presentation.today.TodayFeatureState.idle(dashboard);
         RepetitionInputReducer reducer = new RepetitionInputReducer();
         FocusTaskView focus = new FocusTaskView(context);
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
         TodayActionSink events = event -> {
-            RepetitionInputReducer.Result result = reducer.reduce(input.get(), dashboard, event);
+            RepetitionInputReducer.Result result = reducer.reduce(
+                    input.get(), feature.focus, event);
             input.set(result.state);
             if (result.submission != null) submitted.set(result.submission);
         };
-        focus.bind(task, false, palette, FocusStepLimit.AUTO,
-                input.get(), events);
+        focus.bind(FocusCardTestModels.of(feature, palette, FocusStepLimit.AUTO,
+                input.get(), de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty()),
+                false, events);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -456,7 +461,9 @@ public final class UiComponentRobolectricTest {
         assertEquals(13, input.get().valueFor(set));
         assertEquals("12", ((TextView) focus.findViewById(R.id.rep_stepper_value))
                 .getText().toString());
-        focus.bind(task, false, palette, FocusStepLimit.AUTO, input.get(), events);
+        focus.bind(FocusCardTestModels.of(feature, palette, FocusStepLimit.AUTO,
+                input.get(), de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty()),
+                false, events);
         assertEquals("13", ((TextView) focus.findViewById(R.id.rep_stepper_value))
                 .getText().toString());
         DewDotView dew = firstDew(focus);
@@ -466,8 +473,9 @@ public final class UiComponentRobolectricTest {
         assertFalse(submitted.get().correction());
         assertNull(input.get().stepId);
 
-        focus.bind(task, false, palette, FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), events);
+        focus.bind(FocusCardTestModels.of(feature, palette, FocusStepLimit.AUTO,
+                RepetitionInputState.idle(),
+                de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty()), false, events);
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
@@ -496,8 +504,8 @@ public final class UiComponentRobolectricTest {
                         .recurrence(Recurrence.DAILY).combo(2).rewardBase(5)
                         .harvestReady(true).steps(Arrays.asList(set, next)).build();
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(task, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                event -> { });
+        focus.bind(FocusCardTestModels.of(task,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), false, event -> { });
         java.util.List<String> texts = new java.util.ArrayList<>();
         for (View view : descendants(focus))
             if (view.getVisibility() == View.VISIBLE && view instanceof TextView)
@@ -528,8 +536,8 @@ public final class UiComponentRobolectricTest {
         java.util.concurrent.atomic.AtomicReference<TodayAction> emitted =
                 new java.util.concurrent.atomic.AtomicReference<>();
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(task, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                emitted::set);
+        focus.bind(FocusCardTestModels.of(task,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), false, emitted::set);
 
         EditText answer = first(focus, EditText.class);
         assertNotNull(answer);

@@ -291,7 +291,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         RepetitionInputReducer.Submission submission;
         synchronized (stateLock) {
             RepetitionInputReducer.Result result = repetitionInputReducer.reduce(
-                    current.repetitionInput, current.today(), action);
+                    current.repetitionInput, current.feature.focus, action);
             submission = result.submission;
             if (result.state != current.repetitionInput) {
                 publish(current.withRepetitionInput(result.state));

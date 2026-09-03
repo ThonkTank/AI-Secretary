@@ -10,20 +10,24 @@ public final class TodayFeatureState {
     public enum Feedback { REORDER_FAILED, REORDER_INTERRUPTED }
 
     public final TodayUiModel today;
+    public final FocusStepListUiModel focus;
     public final Reorder reorder;
     public final Feedback feedback;
+    public final String selectedStepId;
 
-    public TodayFeatureState(TodayUiModel today, Reorder reorder,
-                             Feedback feedback) {
+    TodayFeatureState(TodayUiModel today, Reorder reorder,
+                      Feedback feedback, String selectedStepId) {
         if (today == null || reorder == null)
             throw new IllegalArgumentException("Today feature state is required");
         this.today = today;
         this.reorder = reorder;
         this.feedback = feedback;
+        this.selectedStepId = selectedStepId;
+        this.focus = new TodayFocusProjector().project(today, selectedStepId, reorder);
     }
 
     public static TodayFeatureState idle(TodayUiModel today) {
-        return new TodayFeatureState(today, Reorder.idle(openStepIds(today)), null);
+        return new TodayFeatureState(today, Reorder.idle(openStepIds(today)), null, null);
     }
 
     public static List<String> openStepIds(TodayUiModel today) {

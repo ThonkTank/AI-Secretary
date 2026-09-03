@@ -42,6 +42,7 @@ public final class TodayAction {
         CONFIRM_CLOSE_TASK,
         ACKNOWLEDGE_REQUEST,
         ACKNOWLEDGE_REWARD,
+        SELECT_STEP,
         BEGIN_REORDER,
         PREVIEW_REORDER,
         CANCEL_REORDER,
@@ -236,6 +237,10 @@ public final class TodayAction {
 
     public static TodayAction acknowledgeReward(String rewardId) {
         return identified(Kind.ACKNOWLEDGE_REWARD, rewardId);
+    }
+
+    public static TodayAction selectStep(String stepId) {
+        return identified(Kind.SELECT_STEP, stepId);
     }
 
     public static TodayAction beginReorder(String stepId, List<String> canonicalOrder) {

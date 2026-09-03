@@ -99,8 +99,8 @@ public final class GymRoutineAcceptanceRobolectricTest {
                 completeRest.execute(action.id);
             }
         };
-        view.bind(focus, false,
-                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
+        view.bind(FocusCardTestModels.of(focus,
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT)), false, actions);
 
         List<String> texts = visibleTexts(view);
         assertTrue(texts.contains("23kg, Sitz 5"));
@@ -110,16 +110,16 @@ public final class GymRoutineAcceptanceRobolectricTest {
 
         for (int set = 0; set < 3; set++) {
             FocusTaskUiModel current = dashboard(repository, clock, context).focus;
-            view.bind(current, false,
-                    DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
+            view.bind(FocusCardTestModels.of(current,
+                    DayPalette.at(clock.time(), DayPalette.Mode.LIGHT)), false, actions);
             assertTrue(firstDew(view).performClick());
         }
 
         FocusTaskUiModel advanced = dashboard(repository, clock, context).focus;
         assertTrue(advanced.steps.get(0).isDone());
         assertEquals("Liegestütze", advanced.nextAction);
-        view.bind(advanced, false,
-                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
+        view.bind(FocusCardTestModels.of(advanced,
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT)), false, actions);
         texts = visibleTexts(view);
         assertTrue(!texts.contains("Beinpresse"));
         assertTrue(texts.contains("Liegestütze"));
@@ -131,8 +131,8 @@ public final class GymRoutineAcceptanceRobolectricTest {
         FocusTaskUiModel completed = dashboard(repository, clock, context).focus;
         assertEquals(0, completed.remainingSteps);
         assertTrue(completed.steps.stream().allMatch(FocusStepUiModel::isDone));
-        view.bind(completed, false,
-                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT), actions);
+        view.bind(FocusCardTestModels.of(completed,
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT)), false, actions);
         assertTrue(visibleTexts(view).contains("4 fertig"));
         assertTrue(!visibleTexts(view).contains("Rest erledigen"));
     }

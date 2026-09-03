@@ -49,6 +49,9 @@ public final class TodayCoordinator implements TodayActionSink {
     @Override public synchronized void emit(TodayAction action) {
         if (action == null) throw new IllegalArgumentException("Today action is required");
         switch (action.kind) {
+            case SELECT_STEP:
+                apply(reducer.select(state, action.id));
+                return;
             case BEGIN_REORDER:
                 apply(reducer.begin(state, action.id, action.order));
                 return;

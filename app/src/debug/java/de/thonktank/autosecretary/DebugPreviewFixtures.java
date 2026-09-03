@@ -15,7 +15,6 @@ import de.thonktank.autosecretary.domain.model.XpProgress;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.RewardTextFormatter;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
-import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
@@ -138,9 +137,9 @@ public final class DebugPreviewFixtures {
     private static FocusStepUiModel step(String id, String title, boolean done,
                                          RewardBreakdown reward, int grainLevel) {
         return FocusStepUiModel.executableWithGrainLevel(id, title, "", "",
-                done ? FocusStepStatus.COMPLETED : FocusStepStatus.AVAILABLE,
+                done,
                 done ? StepExecutionUiAction.none()
-                        : StepExecutionUiAction.advancePlannedRepetitions(id),
+                        : StepExecutionUiAction.toggle(id),
                 null, reward, grainLevel, done ? reward.resultXp : 0);
     }
 
@@ -207,20 +206,16 @@ public final class DebugPreviewFixtures {
 
         FocusTaskUiModel focus(boolean allowDefer) {
             List<FocusStepUiModel> explicit = new ArrayList<>();
-            boolean activeAssigned = false;
             int remaining = 0;
             for (FocusStepUiModel step : steps) {
                 if (step.isDone()) explicit.add(step);
                 else {
-                    FocusStepStatus status = activeAssigned ? FocusStepStatus.AVAILABLE
-                            : FocusStepStatus.ACTIVE;
                     explicit.add(FocusStepUiModel.executableWithGrainLevel(step.id, step.title,
-                            step.amountLabel, step.note, status,
-                            activeAssigned ? StepExecutionUiAction.advancePlannedRepetitions(step.id)
-                                    : StepExecutionUiAction.toggle(step.id),
+                            step.amountLabel, step.note, false,
+                            step.repetitionProgress == null ? StepExecutionUiAction.toggle(step.id)
+                                    : StepExecutionUiAction.submitRepetition(step.id),
                             step.repetitionProgress, step.reward, step.grainLevel,
                             step.earnedXp));
-                    activeAssigned = true;
                     remaining++;
                 }
             }

@@ -46,6 +46,20 @@ public final class TodayCoordinatorTest {
         assertEquals(7_200_000L, commands.get(0).longValue);
     }
 
+    @Test public void selectingAVisibleStepPublishesLocallyWithoutACommand() {
+        List<TodayCommand> commands = new ArrayList<>();
+        List<de.thonktank.autosecretary.presentation.today.TodayFeatureState> states =
+                new ArrayList<>();
+        TodayCoordinator coordinator = new TodayCoordinator(today(), commands::add, states::add);
+
+        coordinator.emit(TodayAction.selectStep("c"));
+
+        assertTrue(commands.isEmpty());
+        assertEquals(1, states.size());
+        assertEquals("c", states.get(0).selectedStepId);
+        assertEquals("c", states.get(0).focus.rows.get(0).id());
+    }
+
     @Test public void screenOwnerAndCoreDispatcherContainEveryActionKind() throws Exception {
         String coordinator = new String(Files.readAllBytes(Path.of(
                 "../today-core/src/main/java/de/thonktank/autosecretary/presentation/today/TodayCoordinator.java")),

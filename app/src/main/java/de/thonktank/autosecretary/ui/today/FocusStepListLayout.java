@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
+import de.thonktank.autosecretary.presentation.today.FocusStepRowMode;
+import de.thonktank.autosecretary.presentation.today.FocusStepRowUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
@@ -31,6 +31,7 @@ public final class FocusStepListLayout extends ViewGroup {
     private final TextView moreStatus;
     private final List<FocusStepRowView> rows = new ArrayList<>();
     private final List<String> rowIds = new ArrayList<>();
+    private final List<String> reorderIds = new ArrayList<>();
     private final TodayActionSink actions;
     private final EdgeAutoScroller autoScroller;
     private DayPalette palette;
@@ -66,46 +67,45 @@ public final class FocusStepListLayout extends ViewGroup {
     void bind(FocusCardUiModel model) {
         palette = model.palette;
         reorder = model.reorder;
-        List<FocusStepUiModel> openSteps = new ArrayList<>();
-        int doneCount = 0;
-        for (FocusStepUiModel step : model.task.steps) {
-            if (step.isDone()) {
-                doneCount++;
-                if (step.trainingContext != null
-                        && step.trainingContext.hasOpenLoadRequest()) openSteps.add(step);
-            } else openSteps.add(step);
-        }
         rowIds.clear();
-        for (FocusStepUiModel step : openSteps) rowIds.add(step.id);
-        doneStatus.setText(doneCount == 0 ? "" : getResources().getQuantityString(
-                R.plurals.focus_steps_done, doneCount, doneCount));
+        reorderIds.clear();
+        for (FocusStepRowUiModel row : model.steps.rows) {
+            rowIds.add(row.id());
+            if (row.mode != FocusStepRowMode.ASSISTANT) reorderIds.add(row.id());
+        }
+        doneStatus.setText(model.steps.doneCount == 0 ? "" : getResources().getQuantityString(
+                R.plurals.focus_steps_done, model.steps.doneCount, model.steps.doneCount));
         doneStatus.setTextColor(model.palette.done);
-        doneStatus.setVisibility(doneCount == 0 ? GONE : VISIBLE);
+        doneStatus.setVisibility(model.steps.doneCount == 0 ? GONE : VISIBLE);
         WoodGrainView.applyTextHalo(doneStatus, model.palette.leaf1);
 
-        while (rows.size() < openSteps.size()) {
+        while (rows.size() < model.steps.rows.size()) {
             FocusStepRowView row = new FocusStepRowView(getContext());
             addView(row, getChildCount() - 1, new MarginLayoutParams(-1, -2));
             rows.add(row);
         }
         for (int index = 0; index < rows.size(); index++) {
             FocusStepRowView row = rows.get(index);
-            if (index >= openSteps.size()) {
+            if (index >= model.steps.rows.size()) {
                 row.setVisibility(GONE);
                 continue;
             }
-            FocusStepUiModel step = openSteps.get(index);
-            boolean assistantQuestion = step.isDone() && step.trainingContext != null
-                    && step.trainingContext.hasOpenLoadRequest();
-            row.bind(step, step.status == FocusStepStatus.ACTIVE || assistantQuestion, model.palette,
+            FocusStepRowUiModel projected = model.steps.rows.get(index);
+            row.bind(projected, model.palette,
                     model.repetitionInput, model.timers, actions);
-            row.setOnStepLongClickListener(view -> beginReorder(row, step.id));
+            boolean reorderable = projected.mode != FocusStepRowMode.ASSISTANT;
+            row.setOnTitleClickListener(projected.mode == FocusStepRowMode.COMPACT
+                    ? view -> emit(TodayAction.selectStep(projected.id())) : null);
+            row.setOnStepLongClickListener(reorderable
+                    ? view -> beginReorder(row, projected.id()) : null);
             final int renderedIndex = index;
-            row.configureReorderAccessibility(step.id, step.title, index > 0,
-                    index < openSteps.size() - 1,
+            row.configureAccessibility(projected.id(), projected.step.title,
+                    reorderable && index > 0,
+                    reorderable && index < reorderIds.size() - 1,
+                    projected.mode == FocusStepRowMode.COMPACT,
                     (stepId, actionId) -> accessibilityMove(stepId, renderedIndex, actionId));
         }
-        int availableFollowing = Math.max(0, openSteps.size() - 1);
+        int availableFollowing = Math.max(0, model.steps.rows.size() - 1);
         maximumFollowing = model.stepLimit.automatic() ? availableFollowing
                 : Math.min(model.stepLimit.maximumFollowingSteps, availableFollowing);
         applyVisibleFollowing(isReordering() ? availableFollowing : maximumFollowing);
@@ -204,8 +204,8 @@ public final class FocusStepListLayout extends ViewGroup {
     }
 
     private boolean beginReorder(FocusStepRowView row, String stepId) {
-        if (rowIds.size() < 2) return false;
-        emit(TodayAction.beginReorder(stepId, rowIds));
+        if (reorderIds.size() < 2) return false;
+        emit(TodayAction.beginReorder(stepId, reorderIds));
         ClipData data = ClipData.newPlainText("today-step", stepId);
         boolean started = row.startDragAndDrop(data, new View.DragShadowBuilder(row), stepId, 0);
         if (!started) emit(TodayAction.cancelReorder(stepId));
@@ -234,13 +234,13 @@ public final class FocusStepListLayout extends ViewGroup {
     }
 
     private void emitPreview(String stepId, int target) {
-        List<String> preview = movedOrder(rowIds, stepId, target);
-        if (!preview.equals(rowIds)) emit(TodayAction.previewReorder(stepId, preview));
+        List<String> preview = movedOrder(reorderIds, stepId, target);
+        if (!preview.equals(reorderIds)) emit(TodayAction.previewReorder(stepId, preview));
     }
 
     private int targetIndex(float y) {
-        int target = Math.max(0, rowIds.size() - 1);
-        for (int index = 0; index < rowIds.size(); index++) {
+        int target = Math.max(0, reorderIds.size() - 1);
+        for (int index = 0; index < reorderIds.size(); index++) {
             FocusStepRowView row = rows.get(index);
             if (y < row.getTop() + row.getHeight() / 2f) return index;
         }
@@ -248,21 +248,26 @@ public final class FocusStepListLayout extends ViewGroup {
     }
 
     private String beforeStepId(String movingStepId) {
-        int index = rowIds.indexOf(movingStepId);
-        return index >= 0 && index + 1 < rowIds.size() ? rowIds.get(index + 1) : null;
+        int index = reorderIds.indexOf(movingStepId);
+        return index >= 0 && index + 1 < reorderIds.size() ? reorderIds.get(index + 1) : null;
     }
 
     private boolean accessibilityMove(String stepId, int index, int actionId) {
+        if (actionId == R.id.action_today_step_select) {
+            emit(TodayAction.selectStep(stepId));
+            announceForAccessibility(getContext().getString(R.string.a11y_today_step_selected));
+            return true;
+        }
         int target;
         if (actionId == R.id.action_today_step_up && index > 0) target = index - 1;
-        else if (actionId == R.id.action_today_step_down && index < rowIds.size() - 1)
+        else if (actionId == R.id.action_today_step_down && index < reorderIds.size() - 1)
             target = index + 1;
         else if (actionId == R.id.action_today_step_front && index > 0) target = 0;
-        else if (actionId == R.id.action_today_step_back && index < rowIds.size() - 1)
-            target = rowIds.size() - 1;
+        else if (actionId == R.id.action_today_step_back && index < reorderIds.size() - 1)
+            target = reorderIds.size() - 1;
         else return false;
-        List<String> preview = movedOrder(rowIds, stepId, target);
-        emit(TodayAction.beginReorder(stepId, rowIds));
+        List<String> preview = movedOrder(reorderIds, stepId, target);
+        emit(TodayAction.beginReorder(stepId, reorderIds));
         emit(TodayAction.previewReorder(stepId, preview));
         int movedIndex = preview.indexOf(stepId);
         String before = movedIndex + 1 < preview.size() ? preview.get(movedIndex + 1) : null;

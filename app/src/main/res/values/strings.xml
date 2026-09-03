@@ -127,6 +127,8 @@
     <string name="a11y_today_step_front">Für heute ganz nach vorn verschieben</string>
     <string name="a11y_today_step_back">Für heute ganz nach hinten verschieben</string>
     <string name="a11y_today_step_moved">Heutige Schritt-Reihenfolge geändert.</string>
+    <string name="a11y_today_step_select">Schritt nach vorn holen</string>
+    <string name="a11y_today_step_selected">Schritt nach vorn geholt.</string>
     <string name="a11y_editor_chip">%1$s</string>
     <string name="a11y_editor_chip_selected">%1$s, ausgewählt</string>
     <string name="a11y_editor_move_up">nach oben</string>

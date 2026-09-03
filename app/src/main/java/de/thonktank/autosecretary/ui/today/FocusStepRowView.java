@@ -17,6 +17,7 @@ import java.util.List;
 
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepRowUiModel;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
@@ -176,14 +177,11 @@ public final class FocusStepRowView extends LinearLayout {
         body.addView(timerControls, timerParams);
     }
 
-    public void bind(FocusStepUiModel step, boolean active, DayPalette palette,
-                     RepetitionInputState input, TodayActionSink events) {
-        bind(step, active, palette, input, TimerManager.Snapshot.empty(), events);
-    }
-
-    public void bind(FocusStepUiModel step, boolean active, DayPalette palette,
+    public void bind(FocusStepRowUiModel row, DayPalette palette,
                      RepetitionInputState input, TimerManager.Snapshot timers,
                      TodayActionSink events) {
+        FocusStepUiModel step = row.step;
+        boolean active = row.expanded();
         topLine.setVisibility(active ? VISIBLE : GONE);
         bottomLine.setVisibility(active ? VISIBLE : GONE);
         int divider = UiStyle.alpha(palette.dot, .45f);
@@ -219,7 +217,7 @@ public final class FocusStepRowView extends LinearLayout {
         boolean restBlocks = timer != null && timer.kind == TimerSession.Kind.REST
                 && (timer.state == TimerSession.State.RUNNING
                 || timer.state == TimerSession.State.PAUSED);
-        boolean editsRepetitions = step.executionAction.kind
+        boolean editsRepetitions = row.action.kind
                 == StepExecutionUiAction.Kind.SUBMIT_REPETITION;
         controls.setVisibility(editsRepetitions && !restBlocks ? VISIBLE : GONE);
         if (editsRepetitions) {
@@ -237,14 +235,14 @@ public final class FocusStepRowView extends LinearLayout {
                             ? R.string.content_update_set : R.string.content_confirm_set,
                     editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber(), current));
             bindTrainingInputs(step, progress, input, palette, events);
-        } else if (step.executionAction.kind == StepExecutionUiAction.Kind.TOGGLE) {
+        } else if (row.action.kind == StepExecutionUiAction.Kind.TOGGLE) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step, step.title, step.reward.resultXp));
-        } else if (step.executionAction.kind == StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY) {
+        } else if (row.action.kind == StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step_with_delay, step.title,
                     step.reward.resultXp));
-        } else if (step.executionAction.kind
+        } else if (row.action.kind
                 == StepExecutionUiAction.Kind.ADVANCE_PLANNED_REPETITIONS) {
             StringBuilder description = new StringBuilder(step.title);
             if (!step.amountLabel.isEmpty()) description.append(", ").append(step.amountLabel);
@@ -257,10 +255,10 @@ public final class FocusStepRowView extends LinearLayout {
             reward.setContentDescription(description.toString());
         }
         if (!editsRepetitions) trainingScroll.setVisibility(GONE);
-        reward.setOnClickListener(step.executionAction.kind == StepExecutionUiAction.Kind.NONE
+        reward.setOnClickListener(row.action.kind == StepExecutionUiAction.Kind.NONE
                 || restBlocks
-                ? null : view -> emitExecution(step.executionAction, events));
-        reward.setActionEnabled(step.executionAction.kind != StepExecutionUiAction.Kind.NONE
+                ? null : view -> emitExecution(row.action, events));
+        reward.setActionEnabled(row.action.kind != StepExecutionUiAction.Kind.NONE
                 && !restBlocks);
         bindTimer(step, timer, timers.elapsedRealtime, palette, events);
     }
@@ -425,16 +423,25 @@ public final class FocusStepRowView extends LinearLayout {
 
     void setOnStepLongClickListener(OnLongClickListener listener) {
         body.setOnLongClickListener(listener);
+        title.setOnLongClickListener(listener);
     }
 
-    void configureReorderAccessibility(String stepId, String title, boolean canMoveUp,
-                                       boolean canMoveDown, ReorderAction action) {
+    void setOnTitleClickListener(OnClickListener listener) {
+        title.setClickable(listener != null);
+        title.setOnClickListener(listener);
+    }
+
+    void configureAccessibility(String stepId, String title, boolean canMoveUp,
+                                boolean canMoveDown, boolean canSelect,
+                                ReorderAction action) {
         body.setFocusable(true);
         body.setContentDescription(getContext().getString(R.string.a11y_today_step_row, title));
         body.setAccessibilityDelegate(new View.AccessibilityDelegate() {
             @Override public void onInitializeAccessibilityNodeInfo(
                     View host, AccessibilityNodeInfo info) {
                 super.onInitializeAccessibilityNodeInfo(host, info);
+                if (canSelect) info.addAction(accessibilityAction(
+                        R.id.action_today_step_select, R.string.a11y_today_step_select));
                 if (canMoveUp) {
                     info.addAction(accessibilityAction(R.id.action_today_step_up,
                             R.string.a11y_step_up));
