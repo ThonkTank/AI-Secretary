@@ -355,7 +355,7 @@ public final class FocusTaskViewTest {
         bindFeature(view, state[0], FocusStepLimit.ONE, sink);
         // Robolectric does not establish a platform drag session, but the public long-click
         // still proves that the view emits Begin and compensating Cancel when start is refused.
-        assertFalse(stepBody(view, context, "Vier").performLongClick());
+        assertFalse(firstText(view, "Eins").performLongClick());
         assertEquals(TodayAction.Kind.BEGIN_REORDER, events.todayActions().get(0).kind);
         assertEquals(TodayAction.Kind.CANCEL_REORDER, events.todayActions().get(1).kind);
 

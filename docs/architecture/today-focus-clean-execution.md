@@ -149,3 +149,25 @@ keine Status-, Promotion-, Doppelaktions- oder View-Sortierwahrheit.
 - Der aktive alte Frontend-Checkout steht unverändert auf `5438e733`.
 - Es wurde keine inhaltliche Abweichung gefunden; eine Korrekturrunde war lokal nicht
   erforderlich. PR, Squash-Merge und exakter Main-Workflow bleiben das Remote-Gate der Phase.
+
+### Korrekturrunde 1 – API-26-Langdruckziel
+
+Plan: Die erste PR-Ausführung 33747178136 bestand Quality sowie Instrumentierung auf API 35 und
+37. Auf API 26 scheiterten in normaler und aktivierter Animation ausschließlich die drei
+zeigerbasierten Today-Langdrucktests; Accessibility-Reorder und alle übrigen Tests waren grün.
+Beide Diagnoseartefakte zeigen, dass der Zeiger im Titelbereich der ersten Zeile lag und keine
+`BEGIN_REORDER`-Aktion entstand. Der Titel wurde für die neue lokale Auswahl zum eigenen
+Tap-Ziel; auf API 26 übernimmt dieses Kind den Pointer, ohne den Langdruck an den Zeilenkörper
+weiterzureichen.
+
+Korrektur: Der Titel erhält denselben Langdrucklistener wie der Zeilenkörper. Ein kurzer Tap bleibt
+ausschließlich bei kompakten Titeln die lokale Auswahl; ein Langdruck auf Titel oder Restzeile
+startet weiterhin denselben Reorder-Pfad. Ein Robolectric-Test prüft beide Listener auf einer
+kompakten Zeile. Danach werden fokussierte Tests, vollständiger lokaler Gradle-Gate und alle
+PR-Matrixjobs erneut ausgeführt.
+
+Ergebnis: Titel und Zeilenkörper teilen den identischen Langdrucklistener; der Test verwendet den
+Titel der expandierten ersten Zeile als Langdruckziel und belegt `BEGIN_REORDER` plus
+kompensierendes `CANCEL_REORDER`, wenn Robolectric keinen Plattform-Drag startet. Der fokussierte
+Testblock einschließlich Instrumentierungs-APK ist grün. Der vollständige lokale Gradle-Gate ist
+erneut grün in 14 min 32 s. Die Wiederholung der vollständigen PR-Matrix steht aus.

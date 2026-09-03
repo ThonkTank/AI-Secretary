@@ -423,6 +423,7 @@ public final class FocusStepRowView extends LinearLayout {
 
     void setOnStepLongClickListener(OnLongClickListener listener) {
         body.setOnLongClickListener(listener);
+        title.setOnLongClickListener(listener);
     }
 
     void setOnTitleClickListener(OnClickListener listener) {
