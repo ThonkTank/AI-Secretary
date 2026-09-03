@@ -112,7 +112,7 @@ public final class StepFlowDefinitionTest {
                 TrainingAssistantPolicy.defaults(TrainingMuscleGroup.CHEST),
                 TrainingAssistantState.calibrating());
         TaskStepTemplate press = de.thonktank.autosecretary.testing.StepTestFixtures.template("press", TASK, 0, "Bankdrücken",
-                0, 0, prescription, profile, "",
+                0, 0, prescription, profile, "Nur diese Bank",
                 StepActivationKind.SCHEDULED);
         StepFlowDefinition definition = new StepFlowDefinition(TASK,
                 Collections.singletonList(press), Collections.emptyList(),
@@ -124,6 +124,8 @@ public final class StepFlowDefinitionTest {
 
         assertEquals(load, snapshot.steps.get(0).prescription.plannedLoad());
         assertEquals(2, snapshot.steps.get(0).prescription.targetRir());
+        assertEquals("press", snapshot.steps.get(0).sourceTemplateId);
+        assertEquals("Nur diese Bank", snapshot.steps.get(0).note);
     }
 
     private static StepFlowDefinition laundryDefinition() {

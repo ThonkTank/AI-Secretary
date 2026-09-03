@@ -377,6 +377,115 @@ public final class DatabaseMigrationRobolectricTest {
         migrated.close();
     }
 
+    @Test public void migrationNineteenThroughTwentyTwoKeepsStepIdentityAndMetadata() {
+        SupportSQLiteOpenHelper.Configuration configuration =
+                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
+                        .callback(new SupportSQLiteOpenHelper.Callback(19) {
+                            @Override public void onCreate(SupportSQLiteDatabase database) {
+                                ExportedRoomSchemaFixture.create(database, 19);
+                                database.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,"
+                                        + "weekdayMask,ongoing,conditionText,conditionDone,archived,"
+                                        + "nextDueOn,catalogOrder,hasCompletedOccurrence,boundKind,"
+                                        + "note,missedOccurrenceMode) VALUES ('gym','Gym','DAILY',1,"
+                                        + "0,0,'',0,0,'2026-09-03',1,0,'FOREVER','','COLLAPSE')");
+                                database.execSQL("INSERT INTO task_steps(id,taskId,position,text,"
+                                        + "weekdayMask,intervalDays,amountKind,plannedSets,plannedReps,"
+                                        + "restTimerMode,note) VALUES ('roman-template','gym',0,"
+                                        + "'Römische Liege',0,0,'SETS_REPS',3,12,'INHERIT','')");
+                                database.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,"
+                                        + "sortOrder,slot) VALUES ('gym-today','gym','2026-09-03',"
+                                        + "'OPEN',1,'MORNING')");
+                                database.execSQL("INSERT INTO occurrence_steps(id,occurrenceId,position,"
+                                        + "text,done,amountKind,plannedSets,plannedReps,restTimerMode,"
+                                        + "note,actualRepetitions,sourceTemplateId,comboOwnerId,"
+                                        + "carryForwardReason) VALUES ('roman-step','gym-today',0,"
+                                        + "'Römische Liege',0,'SETS_REPS',3,12,'INHERIT','',"
+                                        + "'10','roman-template','step:roman-template','NONE')");
+                            }
+                            @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                            int oldVersion, int newVersion) { }
+                        }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
+                .create(configuration);
+        helper.getWritableDatabase();
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.from(19)).allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        assertEquals(DatabaseContract.VERSION, database.getVersion());
+        try (Cursor cursor = database.query("SELECT id,text,note,sourceTemplateId,amountKind,"
+                + "plannedSets,plannedReps,actualRepetitions,plannedLoadMode,targetRir "
+                + "FROM occurrence_steps WHERE id='roman-step'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("roman-step", cursor.getString(0));
+            assertEquals("Römische Liege", cursor.getString(1));
+            assertEquals("", cursor.getString(2));
+            assertEquals("roman-template", cursor.getString(3));
+            assertEquals("SETS_REPS", cursor.getString(4));
+            assertEquals(3, cursor.getInt(5));
+            assertEquals(12, cursor.getInt(6));
+            assertEquals("10", cursor.getString(7));
+            assertEquals("UNSPECIFIED", cursor.getString(8));
+            assertEquals(2, cursor.getInt(9));
+        }
+        migrated.close();
+    }
+
+    @Test public void migrationEightThroughTwentyTwoKeepsLegacySnapshotMetadata() {
+        SupportSQLiteOpenHelper.Configuration configuration =
+                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
+                        .callback(new SupportSQLiteOpenHelper.Callback(8) {
+                            @Override public void onCreate(SupportSQLiteDatabase database) {
+                                ExportedRoomSchemaFixture.create(database, 8);
+                                database.execSQL("INSERT INTO tasks(id,title,slot,recurrence,"
+                                        + "intervalDays,weekdayMask,ongoing,conditionText,conditionDone,"
+                                        + "archived,nextDueOn,lastScheduledOn,lastCompletedOn,displayOrder,"
+                                        + "hasCompletedOccurrence,timeOfDayMask,boundKind,boundUntilOn,"
+                                        + "deadlineOn,note) VALUES ('gym','Gym','MORNING','DAILY',1,0,"
+                                        + "0,'',0,0,'2026-09-03','','',1,0,1,'FOREVER','','','')");
+                                database.execSQL("INSERT INTO task_steps(id,taskId,position,text,"
+                                        + "weekdayMask,amountKind,plannedSets,plannedReps,note) VALUES "
+                                        + "('machine-template','gym',0,'Brustpresse',0,'SETS_REPS',"
+                                        + "3,12,'23 kg, Sitz 2')");
+                                database.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,"
+                                        + "sortOrder,completedOn,slot) VALUES ('gym-today','gym',"
+                                        + "'2026-09-03','OPEN',1,'','MORNING')");
+                                database.execSQL("INSERT INTO occurrence_steps(id,occurrenceId,position,"
+                                        + "text,done,amountKind,plannedSets,plannedReps,note,"
+                                        + "actualRepetitions,sourceTemplateId,comboOwnerId) VALUES "
+                                        + "('machine-step','gym-today',0,'Brustpresse',0,'SETS_REPS',"
+                                        + "3,12,'23 kg, Sitz 2','10,11','machine-template',"
+                                        + "'step:machine-template')");
+                            }
+                            @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                            int oldVersion, int newVersion) { }
+                        }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
+                .create(configuration);
+        helper.getWritableDatabase();
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.from(8)).allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        assertEquals(DatabaseContract.VERSION, database.getVersion());
+        try (Cursor cursor = database.query("SELECT id,text,note,sourceTemplateId,amountKind,"
+                + "plannedSets,plannedReps,actualRepetitions FROM occurrence_steps "
+                + "WHERE id='machine-step'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("machine-step", cursor.getString(0));
+            assertEquals("Brustpresse", cursor.getString(1));
+            assertEquals("23 kg, Sitz 2", cursor.getString(2));
+            assertEquals("machine-template", cursor.getString(3));
+            assertEquals("SETS_REPS", cursor.getString(4));
+            assertEquals(3, cursor.getInt(5));
+            assertEquals(12, cursor.getInt(6));
+            assertEquals("10,11", cursor.getString(7));
+        }
+        migrated.close();
+    }
+
     @Test public void migrationTwentyOneToTwentyTwoKeepsDependentRowsAndRemovesIncrement() {
         SupportSQLiteOpenHelper.Configuration configuration =
                 SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)

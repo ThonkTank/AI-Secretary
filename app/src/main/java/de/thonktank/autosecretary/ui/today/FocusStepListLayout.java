@@ -11,7 +11,9 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepRowMode;
 import de.thonktank.autosecretary.presentation.today.FocusStepRowUiModel;
@@ -30,6 +32,7 @@ public final class FocusStepListLayout extends ViewGroup {
     private final TextView doneStatus;
     private final TextView moreStatus;
     private final List<FocusStepRowView> rows = new ArrayList<>();
+    private final Map<String, FocusStepRowView> rowCache = new LinkedHashMap<>();
     private final List<String> rowIds = new ArrayList<>();
     private final List<String> reorderIds = new ArrayList<>();
     private final TodayActionSink actions;
@@ -38,6 +41,7 @@ public final class FocusStepListLayout extends ViewGroup {
     private int maximumFollowing;
     private int visibleFollowing;
     private TodayFeatureState.Reorder reorder;
+    private String occurrenceId;
     private ReorderModeListener reorderModeListener = active -> { };
 
     interface ReorderModeListener { void onReorderModeChanged(boolean active); }
@@ -67,6 +71,12 @@ public final class FocusStepListLayout extends ViewGroup {
     void bind(FocusCardUiModel model) {
         palette = model.palette;
         reorder = model.reorder;
+        if (!model.steps.occurrenceId.equals(occurrenceId)) {
+            for (FocusStepRowView row : rowCache.values()) removeView(row);
+            rowCache.clear();
+            rows.clear();
+            occurrenceId = model.steps.occurrenceId;
+        }
         rowIds.clear();
         reorderIds.clear();
         for (FocusStepRowUiModel row : model.steps.rows) {
@@ -79,32 +89,37 @@ public final class FocusStepListLayout extends ViewGroup {
         doneStatus.setVisibility(model.steps.doneCount == 0 ? GONE : VISIBLE);
         WoodGrainView.applyTextHalo(doneStatus, model.palette.leaf1);
 
-        while (rows.size() < model.steps.rows.size()) {
-            FocusStepRowView row = new FocusStepRowView(getContext());
-            addView(row, getChildCount() - 1, new MarginLayoutParams(-1, -2));
-            rows.add(row);
-        }
-        for (int index = 0; index < rows.size(); index++) {
-            FocusStepRowView row = rows.get(index);
-            if (index >= model.steps.rows.size()) {
-                row.setVisibility(GONE);
-                continue;
-            }
+        Map<String, FocusStepRowView> retained = new LinkedHashMap<>();
+        rows.clear();
+        for (int index = 0; index < model.steps.rows.size(); index++) {
             FocusStepRowUiModel projected = model.steps.rows.get(index);
+            String key = rowKey(model.steps.occurrenceId, projected.id());
+            FocusStepRowView row = rowCache.get(key);
+            if (row == null) row = new FocusStepRowView(getContext());
+            final FocusStepRowView boundRow = row;
+            retained.put(key, row);
+            rows.add(row);
+            if (row.getParent() == null)
+                addView(row, getChildCount() - 1, new MarginLayoutParams(-1, -2));
             row.bind(projected, model.palette,
                     model.repetitionInput, model.timers, actions);
             boolean reorderable = projected.mode != FocusStepRowMode.ASSISTANT;
-            row.setOnTitleClickListener(projected.mode == FocusStepRowMode.COMPACT
-                    ? view -> emit(TodayAction.selectStep(projected.id())) : null);
-            row.setOnStepLongClickListener(reorderable
-                    ? view -> beginReorder(row, projected.id()) : null);
             final int renderedIndex = index;
-            row.configureAccessibility(projected.id(), projected.step.title,
+            row.bindInteractions(projected.id(), projected.step.title,
+                    projected.mode == FocusStepRowMode.COMPACT
+                            ? view -> emit(TodayAction.selectStep(projected.id())) : null,
+                    reorderable ? view -> beginReorder(boundRow, projected.id()) : null,
                     reorderable && index > 0,
                     reorderable && index < reorderIds.size() - 1,
                     projected.mode == FocusStepRowMode.COMPACT,
                     (stepId, actionId) -> accessibilityMove(stepId, renderedIndex, actionId));
         }
+        for (Map.Entry<String, FocusStepRowView> entry : rowCache.entrySet())
+            if (!retained.containsKey(entry.getKey())) removeView(entry.getValue());
+        rowCache.clear();
+        rowCache.putAll(retained);
+        for (FocusStepRowView row : rows) bringChildToFront(row);
+        bringChildToFront(moreStatus);
         int availableFollowing = Math.max(0, model.steps.rows.size() - 1);
         maximumFollowing = model.stepLimit.automatic() ? availableFollowing
                 : Math.min(model.stepLimit.maximumFollowingSteps, availableFollowing);
@@ -297,6 +312,10 @@ public final class FocusStepListLayout extends ViewGroup {
 
     private boolean isReordering() {
         return reorder != null && reorder.phase != TodayFeatureState.Reorder.Phase.IDLE;
+    }
+
+    private static String rowKey(String occurrenceId, String stepId) {
+        return occurrenceId + '\u0000' + stepId;
     }
 
     void registerRewardAnchors(RewardAnchorRegistry registry) {

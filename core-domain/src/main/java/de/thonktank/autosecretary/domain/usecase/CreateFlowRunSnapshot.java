@@ -23,8 +23,12 @@ import java.util.Map;
 /** Resolves a definition into an edit-proof linear runtime snapshot. */
 public final class CreateFlowRunSnapshot {
     private final IdGenerator ids;
+    private final StepSnapshotFactory snapshots;
 
-    public CreateFlowRunSnapshot(IdGenerator ids) { this.ids = ids; }
+    public CreateFlowRunSnapshot(IdGenerator ids) {
+        this.ids = ids;
+        snapshots = new StepSnapshotFactory(ids);
+    }
 
     public FlowRunSnapshot execute(StepFlowDefinition definition, String seedStepId,
                                    String sourceKey, LocalDate scheduledOn, TaskSlot slot,
@@ -41,8 +45,7 @@ public final class CreateFlowRunSnapshot {
             positions.put(template.id, index);
             StepTransition transition = definition.transitionAfter(template.id);
             FlowDelayPolicy delay = transition == null ? null : transition.delay;
-            steps.add(new FlowRunStepSnapshot(ids.nextId(), runId, index, template.id,
-                    template.text, template.prescription, template.note, delay, null));
+            steps.add(snapshots.flowRun(template, runId, index, delay));
         }
         Map<String, CapacityResource> resourceById = new HashMap<>();
         for (CapacityResource resource : definition.resources)

@@ -182,6 +182,19 @@ public final class FocusStepRowView extends LinearLayout {
                      TodayActionSink events) {
         FocusStepUiModel step = row.step;
         boolean active = row.expanded();
+        bindSurface(step, active, palette);
+        bindText(step, active, palette);
+        bindAssistant(step, active, palette, events);
+        TimerSession timer = timers.forStep(step.id);
+        boolean restBlocks = timer != null && timer.kind == TimerSession.Kind.REST
+                && (timer.state == TimerSession.State.RUNNING
+                || timer.state == TimerSession.State.PAUSED);
+        bindRepetition(row, step, input, palette, events, restBlocks);
+        bindAction(row.action, step, input, events, restBlocks);
+        bindTimer(step, timer, timers.elapsedRealtime, palette, events);
+    }
+
+    private void bindSurface(FocusStepUiModel step, boolean active, DayPalette palette) {
         topLine.setVisibility(active ? VISIBLE : GONE);
         bottomLine.setVisibility(active ? VISIBLE : GONE);
         int divider = UiStyle.alpha(palette.dot, .45f);
@@ -192,34 +205,40 @@ public final class FocusStepRowView extends LinearLayout {
         reward.bind(false, false, palette, step.reward.resultXp);
         grainLevel = step.grainLevel;
         reward.setActiveOutline(active);
+    }
+
+    private void bindText(FocusStepUiModel step, boolean active, DayPalette palette) {
         title.setText(step.title);
         title.setTextColor(palette.ink);
         amount.setText(step.amountLabel);
         amount.setTextColor(palette.muted);
         amount.setVisibility(!active && !step.amountLabel.isEmpty() ? VISIBLE : GONE);
-        boolean hasMenu = step.repetitionProgress != null && !step.isDone();
-        menu.setVisibility(hasMenu ? VISIBLE : GONE);
         menu.setTextColor(palette.muted);
         menu.setContentDescription(getContext().getString(
                 R.string.content_step_actions, step.title));
-        menu.setOnClickListener(hasMenu ? view -> showStepMenu(view, step, events) : null);
         note.setText(step.note);
         note.setTextColor(palette.hint);
         note.setVisibility(step.note.isEmpty() ? GONE : VISIBLE);
         WoodGrainView.applyTextHalo(title, palette.leaf1);
         WoodGrainView.applyTextHalo(amount, palette.leaf1);
         WoodGrainView.applyTextHalo(note, palette.leaf1);
+    }
+
+    private void bindAssistant(FocusStepUiModel step, boolean active, DayPalette palette,
+                               TodayActionSink events) {
         assistantPanel.bind(step.trainingContext, active, palette,
                 action -> events.emit(TodayAction.trainingAssistant(action)));
+    }
 
+    private void bindRepetition(FocusStepRowUiModel row, FocusStepUiModel step,
+                                RepetitionInputState input, DayPalette palette,
+                                TodayActionSink events, boolean restBlocks) {
         RepetitionProgressUiModel progress = step.repetitionProgress;
-        TimerSession timer = timers.forStep(step.id);
-        boolean restBlocks = timer != null && timer.kind == TimerSession.Kind.REST
-                && (timer.state == TimerSession.State.RUNNING
-                || timer.state == TimerSession.State.PAUSED);
         boolean editsRepetitions = row.action.kind
                 == StepExecutionUiAction.Kind.SUBMIT_REPETITION;
         controls.setVisibility(editsRepetitions && !restBlocks ? VISIBLE : GONE);
+        barsScroll.setVisibility(GONE);
+        trainingScroll.setVisibility(GONE);
         if (editsRepetitions) {
             int current = input.valueFor(step);
             int editingIndex = input.editingIndexFor(step);
@@ -229,20 +248,38 @@ public final class FocusStepRowView extends LinearLayout {
             if (progress.showsBars()) bars.bind(step.id, progress.slotCount,
                     progress.repetitions, editingIndex, palette,
                     index -> events.emit(TodayAction.editRepetition(step.id, index)));
+            bindTrainingInputs(step, progress, input, palette, events);
+        } else {
+            stepper.bind(0, palette, null);
+            bars.bind(step.id, 0, java.util.Collections.emptyList(), -1, palette, null);
+            bindTrainingInputs(step, null, input, palette, events);
+        }
+    }
+
+    private void bindAction(StepExecutionUiAction action, FocusStepUiModel step,
+                            RepetitionInputState input, TodayActionSink events,
+                            boolean restBlocks) {
+        boolean hasMenu = step.repetitionProgress != null && !step.isDone();
+        menu.setVisibility(hasMenu ? VISIBLE : GONE);
+        menu.setOnClickListener(hasMenu ? view -> showStepMenu(view, step, events) : null);
+        reward.setContentDescription(null);
+        RepetitionProgressUiModel progress = step.repetitionProgress;
+        if (action.kind == StepExecutionUiAction.Kind.SUBMIT_REPETITION && progress != null) {
+            int current = input.valueFor(step);
+            int editingIndex = input.editingIndexFor(step);
             reward.setContentDescription(progress.kind == RepetitionProgressUiModel.Kind.SINGLE
                     ? getContext().getString(R.string.content_confirm_repetitions, current)
                     : getContext().getString(editingIndex >= 0
                             ? R.string.content_update_set : R.string.content_confirm_set,
                     editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber(), current));
-            bindTrainingInputs(step, progress, input, palette, events);
-        } else if (row.action.kind == StepExecutionUiAction.Kind.TOGGLE) {
+        } else if (action.kind == StepExecutionUiAction.Kind.TOGGLE) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step, step.title, step.reward.resultXp));
-        } else if (row.action.kind == StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY) {
+        } else if (action.kind == StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step_with_delay, step.title,
                     step.reward.resultXp));
-        } else if (row.action.kind
+        } else if (action.kind
                 == StepExecutionUiAction.Kind.ADVANCE_PLANNED_REPETITIONS) {
             StringBuilder description = new StringBuilder(step.title);
             if (!step.amountLabel.isEmpty()) description.append(", ").append(step.amountLabel);
@@ -254,13 +291,11 @@ public final class FocusStepRowView extends LinearLayout {
                     .append(getContext().getString(R.string.action_complete));
             reward.setContentDescription(description.toString());
         }
-        if (!editsRepetitions) trainingScroll.setVisibility(GONE);
-        reward.setOnClickListener(row.action.kind == StepExecutionUiAction.Kind.NONE
+        reward.setOnClickListener(action.kind == StepExecutionUiAction.Kind.NONE
                 || restBlocks
-                ? null : view -> emitExecution(row.action, events));
-        reward.setActionEnabled(row.action.kind != StepExecutionUiAction.Kind.NONE
+                ? null : view -> emitExecution(action, events));
+        reward.setActionEnabled(action.kind != StepExecutionUiAction.Kind.NONE
                 && !restBlocks);
-        bindTimer(step, timer, timers.elapsedRealtime, palette, events);
     }
 
     private void bindTrainingInputs(FocusStepUiModel step, RepetitionProgressUiModel progress,
@@ -268,15 +303,30 @@ public final class FocusStepRowView extends LinearLayout {
                                     TodayActionSink events) {
         boolean visible = progress != null && progress.detailedTraining();
         trainingScroll.setVisibility(visible ? VISIBLE : GONE);
-        if (!visible) return;
-        ResistanceLoad load = input.loadFor(step);
-        int rir = input.rirFor(step);
-        boolean flagged = input.safetyFor(step);
         bindTrainingLink(loadMinus, palette);
         bindTrainingLink(loadPlus, palette);
         bindTrainingLink(rirMinus, palette);
         bindTrainingLink(rirPlus, palette);
         bindTrainingLink(safety, palette);
+        loadMinus.setOnClickListener(null);
+        loadPlus.setOnClickListener(null);
+        rirMinus.setOnClickListener(null);
+        rirPlus.setOnClickListener(null);
+        safety.setOnClickListener(null);
+        if (!visible) {
+            loadLabel.setText("");
+            rirLabel.setText("");
+            safety.setText("");
+            loadMinus.setVisibility(GONE);
+            loadPlus.setVisibility(GONE);
+            rirMinus.setVisibility(GONE);
+            rirPlus.setVisibility(GONE);
+            safety.setVisibility(GONE);
+            return;
+        }
+        ResistanceLoad load = input.loadFor(step);
+        int rir = input.rirFor(step);
+        boolean flagged = input.safetyFor(step);
         loadLabel.setText(formatLoad(load));
         loadLabel.setTextColor(palette.ink);
         rirLabel.setText(getContext().getString(R.string.training_rir_value, rir));
@@ -285,6 +335,9 @@ public final class FocusStepRowView extends LinearLayout {
         boolean adjustable = load.adjustable();
         loadMinus.setVisibility(adjustable ? VISIBLE : GONE);
         loadPlus.setVisibility(adjustable ? VISIBLE : GONE);
+        rirMinus.setVisibility(VISIBLE);
+        rirPlus.setVisibility(VISIBLE);
+        safety.setVisibility(VISIBLE);
         loadMinus.setOnClickListener(adjustable ? view -> events.emit(
                 TodayAction.adjustTrainingLoad(step.id, -delta)) : null);
         loadPlus.setOnClickListener(adjustable ? view -> events.emit(
@@ -328,11 +381,23 @@ public final class FocusStepRowView extends LinearLayout {
                            DayPalette palette, TodayActionSink events) {
         boolean durationAvailable = timer == null && step.durationSeconds > 0;
         timerControls.setVisibility(durationAvailable || timer != null ? VISIBLE : GONE);
-        if (timerControls.getVisibility() == GONE) return;
+        timerLabel.setText("");
+        timerPrimary.setText("");
+        timerPrimary.setVisibility(GONE);
+        timerPrimary.setOnClickListener(null);
+        timerSecondary.setText("");
+        timerSecondary.setVisibility(GONE);
+        timerSecondary.setOnClickListener(null);
         timerLabel.setTextColor(palette.ink);
         timerPrimary.bind(palette.hint, palette.dot);
         timerSecondary.bind(palette.hint, palette.dot);
         WoodGrainView.applyTextHalo(timerLabel, palette.leaf1);
+        if (timerControls.getVisibility() == GONE) {
+            body.animate().cancel();
+            body.setScaleX(1f);
+            body.setScaleY(1f);
+            return;
+        }
         if (durationAvailable) {
             timerLabel.setText(formatSeconds(step.durationSeconds));
             timerPrimary.setVisibility(VISIBLE);
@@ -421,19 +486,21 @@ public final class FocusStepRowView extends LinearLayout {
         popup.show();
     }
 
-    void setOnStepLongClickListener(OnLongClickListener listener) {
-        body.setOnLongClickListener(listener);
-        title.setOnLongClickListener(listener);
+    void bindInteractions(String stepId, String stepTitle, OnClickListener titleClick,
+                          OnLongClickListener longClick, boolean canMoveUp,
+                          boolean canMoveDown, boolean canSelect, ReorderAction action) {
+        title.setClickable(titleClick != null);
+        title.setOnClickListener(titleClick);
+        title.setLongClickable(longClick != null);
+        body.setLongClickable(longClick != null);
+        body.setOnLongClickListener(longClick);
+        title.setOnLongClickListener(longClick);
+        bindAccessibility(stepId, stepTitle, canMoveUp, canMoveDown, canSelect, action);
     }
 
-    void setOnTitleClickListener(OnClickListener listener) {
-        title.setClickable(listener != null);
-        title.setOnClickListener(listener);
-    }
-
-    void configureAccessibility(String stepId, String title, boolean canMoveUp,
-                                boolean canMoveDown, boolean canSelect,
-                                ReorderAction action) {
+    private void bindAccessibility(String stepId, String title, boolean canMoveUp,
+                                   boolean canMoveDown, boolean canSelect,
+                                   ReorderAction action) {
         body.setFocusable(true);
         body.setContentDescription(getContext().getString(R.string.a11y_today_step_row, title));
         body.setAccessibilityDelegate(new View.AccessibilityDelegate() {

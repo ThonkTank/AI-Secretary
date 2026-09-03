@@ -66,6 +66,26 @@ public final class TodayViewArchitectureTest {
         assertFalse(task.contains("bind(FocusTaskUiModel task"));
     }
 
+    @Test public void focusRowsUseStableIdentityAndCompleteBindersWithoutGlobalReset() throws Exception {
+        String list = source("ui/today/FocusStepListLayout.java");
+        String row = source("ui/today/FocusStepRowView.java");
+        String assistant = source("ui/today/TrainingAssistantPanelView.java");
+
+        assertTrue(list.contains("Map<String, FocusStepRowView> rowCache"));
+        assertTrue(list.contains("rowKey(model.steps.occurrenceId, projected.id())"));
+        assertTrue(list.contains("if (!model.steps.occurrenceId.equals(occurrenceId))"));
+        assertFalse(list.contains("while (rows.size() <"));
+        assertTrue(row.contains("bindSurface("));
+        assertTrue(row.contains("bindText("));
+        assertTrue(row.contains("bindAssistant("));
+        assertTrue(row.contains("bindRepetition("));
+        assertTrue(row.contains("bindAction("));
+        assertTrue(row.contains("bindTimer("));
+        assertTrue(row.contains("bindInteractions("));
+        assertFalse(row.contains("resetForBind"));
+        assertFalse(assistant.contains("resetForBind"));
+    }
+
     private static String source(String name) throws Exception {
         return new String(Files.readAllBytes(Path.of(
                 "src/main/java/de/thonktank/autosecretary", name)), StandardCharsets.UTF_8);

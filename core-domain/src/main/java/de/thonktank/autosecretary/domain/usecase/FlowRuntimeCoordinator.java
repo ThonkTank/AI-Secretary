@@ -3,7 +3,6 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.MomentSource;
 import de.thonktank.autosecretary.domain.model.CapacityResource;
-import de.thonktank.autosecretary.domain.model.CarryForwardReason;
 import de.thonktank.autosecretary.domain.model.FlowResourceState;
 import de.thonktank.autosecretary.domain.model.FlowRunResourceSnapshot;
 import de.thonktank.autosecretary.domain.model.FlowRunStepSnapshot;
@@ -39,6 +38,7 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
     private final Clock clock;
     private final MomentSource moments;
     private final IdGenerator ids;
+    private final StepSnapshotFactory snapshots;
 
     public FlowRuntimeCoordinator(StepRepository steps, TodayRepository today,
                                   FlowRepository flows,
@@ -51,6 +51,7 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
         this.clock = clock;
         this.moments = moments;
         this.ids = ids;
+        snapshots = new StepSnapshotFactory(ids);
     }
 
     public boolean activateReady() {
@@ -241,10 +242,8 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
                         clock.today(), occurrence.slot, occurrence.sortOrder, run.id,
                         run.nextSheetSequence);
                 today.insertOccurrence(replacement);
-                OccurrenceStep carried = new OccurrenceStep(ids.nextId(), replacement.id, 0,
-                        open.text, false, open.prescription, open.note,
-                        Collections.emptyList(), open.sourceTemplateId, open.comboOwnerId,
-                        occurrence.id, CarryForwardReason.UNFINISHED_STEP);
+                OccurrenceStep carried = snapshots.carryForward(open, replacement.id, 0,
+                        occurrence.id);
                 steps.insertOccurrenceSteps(Collections.singletonList(carried));
                 flows.updateFlowRun(run.offerOnSheet(replacement.id,
                         run.nextSheetSequence, now));
@@ -350,10 +349,7 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
             int position = 0;
             for (OccurrenceStep value : steps.occurrenceSteps(sheet.id))
                 position = Math.max(position, value.position + 1);
-            OccurrenceStep step = new OccurrenceStep(ids.nextId(), sheet.id, position,
-                    snapshot.text, false, snapshot.prescription, snapshot.note,
-                    Collections.emptyList(), snapshot.sourceTemplateId,
-                    "step:" + snapshot.sourceTemplateId, null, CarryForwardReason.NONE);
+            OccurrenceStep step = snapshots.fromFlow(snapshot, sheet.id, position);
             steps.insertOccurrenceSteps(Collections.singletonList(step));
         }
         flows.updateFlowRun(existingSheet

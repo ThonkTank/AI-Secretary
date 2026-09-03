@@ -105,7 +105,7 @@ public final class StepTestFixtures {
 
     public static OccurrenceStep occurrence(String id, String occurrenceId, int position,
                                             String text, boolean done) {
-        return new OccurrenceStep(id, occurrenceId, position, text, done,
+        return OccurrenceStep.rehydrate(id, occurrenceId, position, text, done,
                 StepPrescription.forAmount(StepAmount.none()), "", List.of(), null,
                 "step:" + id, null, CarryForwardReason.NONE);
     }
@@ -121,7 +121,7 @@ public final class StepTestFixtures {
                                             String text, boolean done, StepAmount amount,
                                             String note, List<Integer> repetitions,
                                             String sourceTemplateId, String comboOwnerId) {
-        return new OccurrenceStep(id, occurrenceId, position, text, done,
+        return OccurrenceStep.rehydrate(id, occurrenceId, position, text, done,
                 StepPrescription.forAmount(amount), note, results(repetitions), sourceTemplateId,
                 comboOwnerId, null, CarryForwardReason.NONE);
     }
@@ -131,7 +131,7 @@ public final class StepTestFixtures {
                                             StepPrescription prescription, String note,
                                             List<Integer> repetitions, String sourceTemplateId,
                                             String comboOwnerId) {
-        return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
+        return OccurrenceStep.rehydrate(id, occurrenceId, position, text, done, prescription, note,
                 results(repetitions), sourceTemplateId, comboOwnerId, null,
                 CarryForwardReason.NONE);
     }
@@ -142,7 +142,7 @@ public final class StepTestFixtures {
                                             List<Integer> repetitions, String sourceTemplateId,
                                             String comboOwnerId, String originOccurrenceId,
                                             CarryForwardReason reason) {
-        return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
+        return OccurrenceStep.rehydrate(id, occurrenceId, position, text, done, prescription, note,
                 results(repetitions), sourceTemplateId, comboOwnerId, originOccurrenceId, reason);
     }
 
@@ -152,7 +152,7 @@ public final class StepTestFixtures {
                                                    List<SetResult> results,
                                                    String sourceTemplateId,
                                                    String comboOwnerId) {
-        return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
+        return OccurrenceStep.rehydrate(id, occurrenceId, position, text, done, prescription, note,
                 results, sourceTemplateId, comboOwnerId, null, CarryForwardReason.NONE);
     }
 

@@ -15,6 +15,8 @@ import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -40,7 +42,10 @@ import java.util.Collections;
 import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TrainingDecision;
+import de.thonktank.autosecretary.presentation.today.TrainingContextUiModel;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.timer.TimerManager;
 import de.thonktank.autosecretary.timer.TimerSession;
@@ -177,6 +182,116 @@ public final class FocusTaskViewTest {
         assertTrue(visibleTexts(row).contains("1:00"));
         assertTrue(firstText(row, "Pause überspringen").performClick());
         assertEquals("rest:sets", events.lastToday(TodayAction.Kind.RESET_TIMER).id);
+    }
+
+    @Test public void sameStepRebindFullyClearsEveryOptionalRegionAndListener() {
+        Context context = ApplicationProvider.getApplicationContext();
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        ResistanceLoad weightedLoad = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
+                ResistanceLoad.Unit.KG, 23_000);
+        TrainingContextUiModel assistant = new TrainingContextUiModel("template-roman",
+                "Aktiv", "Zuletzt angepasst", TrainingDecision.LoadDirection.PROGRESS,
+                weightedLoad, Collections.singletonList("3 × 12 angewendet"), true);
+        FocusStepUiModel weighted = FocusTaskFixtures.step("roman", "Römische Liege")
+                .amount("3 × 12").note("23 kg, Sitz 2")
+                .repetition(RepetitionProgressUiModel.trainingSets(3, 12,
+                        Collections.singletonList(10), weightedLoad, 2))
+                .build().withTrainingContext(assistant).withDurationSeconds(90);
+        FocusStepUiModel bodyweight = FocusTaskFixtures.step("roman", "Römische Liege")
+                .amount("3 × 12")
+                .repetition(RepetitionProgressUiModel.trainingSets(3, 12,
+                        Collections.emptyList(), ResistanceLoad.bodyweight(), 2)).build();
+        FocusStepUiModel plain = FocusTaskFixtures.step("roman", "Römische Liege").build();
+        TodayActionRecorder events = new TodayActionRecorder();
+        FocusStepRowView row = new FocusStepRowView(context);
+
+        row.bind(FocusStepRowUiModel.expanded(weighted), palette,
+                RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
+        assertTrue(visibleTexts(row).contains("23 kg, Sitz 2"));
+        assertTrue(visibleTexts(row).stream()
+                .anyMatch(value -> value.startsWith("23") && value.endsWith("kg")));
+        assertTrue(visibleTexts(row).contains("Aktiv · Zuletzt angepasst"));
+
+        row.bind(FocusStepRowUiModel.expanded(bodyweight), palette,
+                RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
+        assertTrue(visibleTexts(row).contains("KG"));
+        assertFalse(visibleTexts(row).stream()
+                .anyMatch(value -> value.startsWith("23") && value.endsWith("kg")));
+        assertFalse(visibleTexts(row).contains("23 kg, Sitz 2"));
+
+        row.bind(FocusStepRowUiModel.expanded(plain), palette,
+                RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
+        List<String> visible = visibleTexts(row);
+        assertTrue(visible.contains("Römische Liege"));
+        assertFalse(visible.contains("3 × 12"));
+        assertFalse(visible.contains("KG"));
+        assertFalse(visible.contains("Aktiv · Zuletzt angepasst"));
+        assertFalse(visible.contains("1:30"));
+        int before = events.todayActions().size();
+        row.findViewById(R.id.rep_stepper_increment).performClick();
+        TextView apply = firstText(row, "Anwenden");
+        assertTrue(apply != null);
+        apply.performClick();
+        assertEquals(before, events.todayActions().size());
+    }
+
+    @Test public void rowCacheUsesOccurrenceAndStepIdentityInsteadOfDisplayPosition() {
+        Context context = ApplicationProvider.getApplicationContext();
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        FocusTaskView view = new FocusTaskView(context);
+        FocusTaskUiModel first = FocusTaskFixtures.task("routine", "Routine")
+                .occurrence("occ-1").steps(Arrays.asList(
+                        FocusStepUiModel.of("a", "Eins", false),
+                        FocusStepUiModel.of("b", "Zwei", false),
+                        FocusStepUiModel.of("c", "Drei", false))).build();
+        view.bind(FocusCardTestModels.of(first, palette), false, event -> { });
+        FocusStepRowView rowA = stepRow(view, context, "Eins");
+        FocusStepRowView rowC = stepRow(view, context, "Drei");
+
+        FocusTaskUiModel reordered = FocusTaskFixtures.task("routine", "Routine")
+                .occurrence("occ-1").steps(Arrays.asList(
+                        FocusStepUiModel.of("c", "Drei", false),
+                        FocusStepUiModel.of("a", "Eins", false),
+                        FocusStepUiModel.of("b", "Zwei", false))).build();
+        view.bind(FocusCardTestModels.of(reordered, palette), false, event -> { });
+        assertSame(rowA, stepRow(view, context, "Eins"));
+        assertSame(rowC, stepRow(view, context, "Drei"));
+
+        FocusTaskUiModel nextOccurrence = FocusTaskFixtures.task("routine", "Routine")
+                .occurrence("occ-2").steps(Collections.singletonList(
+                        FocusStepUiModel.of("a", "Eins", false))).build();
+        view.bind(FocusCardTestModels.of(nextOccurrence, palette), false, event -> { });
+        assertNotSame(rowA, stepRow(view, context, "Eins"));
+    }
+
+    @Test public void ninthBodyweightStepNeverInheritsMetadataFromEightCompletedRows() {
+        Context context = ApplicationProvider.getApplicationContext();
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        FocusTaskView view = new FocusTaskView(context);
+        List<FocusStepUiModel> steps = new ArrayList<>();
+        for (int index = 0; index < 8; index++)
+            steps.add(FocusTaskFixtures.step("machine-" + index, "Gerät " + index)
+                    .amount("3 × 12").note((20 + index) + " kg, Sitz " + index).build());
+        steps.add(FocusTaskFixtures.step("roman", "Römische Liege").build());
+
+        for (int completed = 0; completed <= 8; completed++) {
+            List<FocusStepUiModel> state = new ArrayList<>();
+            for (int index = 0; index < steps.size(); index++) {
+                FocusStepUiModel source = steps.get(index);
+                state.add(index < completed
+                        ? FocusStepUiModel.of(source.id, source.title, true) : source);
+            }
+            FocusTaskUiModel task = FocusTaskFixtures.task("gym", "Gym")
+                    .occurrence("gym-today").steps(state).build();
+            view.bind(FocusCardTestModels.of(task, palette), false, event -> { });
+        }
+
+        List<String> visible = visibleTexts(view);
+        assertTrue(visible.contains("Römische Liege"));
+        for (int index = 0; index < 8; index++) {
+            assertFalse(visible.contains((20 + index) + " kg, Sitz " + index));
+            assertFalse(visible.contains("3 × 12"));
+        }
     }
 
     @Test public void reboundFutureRowAdvancesWithItsPlannedValueWithoutShowingEditor() {
@@ -476,6 +591,14 @@ public final class FocusTaskViewTest {
         View result = findByContentDescription(root, expected);
         if (result == null) throw new AssertionError("Missing step body " + title);
         return result;
+    }
+
+    private static FocusStepRowView stepRow(View root, Context context, String title) {
+        View current = stepBody(root, context, title);
+        while (current != null && !(current instanceof FocusStepRowView))
+            current = current.getParent() instanceof View ? (View) current.getParent() : null;
+        if (current == null) throw new AssertionError("Missing row " + title);
+        return (FocusStepRowView) current;
     }
 
     private static View findByContentDescription(View root, CharSequence expected) {

@@ -14,9 +14,9 @@ public final class FlowRunStepSnapshot {
     public final FlowDelayPolicy delayAfter;
     public final Long chosenDelayMillis;
 
-    public FlowRunStepSnapshot(String id, String runId, int position, String sourceTemplateId,
-                               String text, StepPrescription prescription, String note,
-                               FlowDelayPolicy delayAfter, Long chosenDelayMillis) {
+    private FlowRunStepSnapshot(String id, String runId, int position, String sourceTemplateId,
+                                String text, StepPrescription prescription, String note,
+                                FlowDelayPolicy delayAfter, Long chosenDelayMillis) {
         if (blank(id) || blank(runId) || position < 0 || blank(sourceTemplateId)
                 || blank(text) || prescription == null)
             throw new IllegalArgumentException("Flow run step snapshot is incomplete");
@@ -34,6 +34,15 @@ public final class FlowRunStepSnapshot {
         this.note = note == null ? "" : note;
         this.delayAfter = delayAfter;
         this.chosenDelayMillis = chosenDelayMillis;
+    }
+
+    /** Complete persistence/test-fixture boundary. Product creation uses StepSnapshotFactory. */
+    public static FlowRunStepSnapshot rehydrate(
+            String id, String runId, int position, String sourceTemplateId,
+            String text, StepPrescription prescription, String note,
+            FlowDelayPolicy delayAfter, Long chosenDelayMillis) {
+        return new FlowRunStepSnapshot(id, runId, position, sourceTemplateId, text,
+                prescription, note, delayAfter, chosenDelayMillis);
     }
 
     public FlowRunStepSnapshot chooseDelay(long delayMillis) {

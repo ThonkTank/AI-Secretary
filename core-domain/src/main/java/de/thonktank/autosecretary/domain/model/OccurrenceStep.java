@@ -17,11 +17,11 @@ public final class OccurrenceStep {
     public final String originOccurrenceId;
     public final CarryForwardReason carryForwardReason;
 
-    public OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
-                          StepPrescription prescription, String note,
-                          List<SetResult> setResults, String sourceTemplateId,
-                          String comboOwnerId, String originOccurrenceId,
-                          CarryForwardReason carryForwardReason) {
+    private OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
+                           StepPrescription prescription, String note,
+                           List<SetResult> setResults, String sourceTemplateId,
+                           String comboOwnerId, String originOccurrenceId,
+                           CarryForwardReason carryForwardReason) {
         if (id == null || id.isEmpty() || occurrenceId == null || occurrenceId.isEmpty()
                 || setResults == null || comboOwnerId == null)
             throw new IllegalArgumentException(
@@ -45,6 +45,17 @@ public final class OccurrenceStep {
                 ? null : originOccurrenceId;
         this.carryForwardReason = carryForwardReason == null
                 ? CarryForwardReason.NONE : carryForwardReason;
+    }
+
+    /** Complete persistence/test-fixture boundary. Product creation uses StepSnapshotFactory. */
+    public static OccurrenceStep rehydrate(
+            String id, String occurrenceId, int position, String text, boolean done,
+            StepPrescription prescription, String note, List<SetResult> setResults,
+            String sourceTemplateId, String comboOwnerId, String originOccurrenceId,
+            CarryForwardReason carryForwardReason) {
+        return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
+                setResults, sourceTemplateId, comboOwnerId, originOccurrenceId,
+                carryForwardReason);
     }
 
     public OccurrenceStep complete() {

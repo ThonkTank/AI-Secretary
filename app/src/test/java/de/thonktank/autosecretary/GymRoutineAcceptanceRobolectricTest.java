@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -33,6 +34,10 @@ import java.util.List;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
+import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
+import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
@@ -45,6 +50,7 @@ import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
+import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
 import de.thonktank.autosecretary.presentation.DashboardUiMapper;
 import de.thonktank.autosecretary.testing.InMemoryExecutionRepository;
@@ -135,6 +141,56 @@ public final class GymRoutineAcceptanceRobolectricTest {
                 DayPalette.at(clock.time(), DayPalette.Mode.LIGHT)), false, actions);
         assertTrue(visibleTexts(view).contains("4 fertig"));
         assertTrue(!visibleTexts(view).contains("Rest erledigen"));
+    }
+
+    @Test public void romanChairIsCleanAfterEightDistinctMachineStepsComplete() {
+        Context context = ApplicationProvider.getApplicationContext();
+        InMemoryExecutionRepository repository = new InMemoryExecutionRepository();
+        FixedClock clock = new FixedClock();
+        SequenceIds ids = new SequenceIds();
+        List<TaskStepDefinition> definitions = new ArrayList<>();
+        for (int index = 0; index < 8; index++)
+            definitions.add(de.thonktank.autosecretary.testing.StepTestFixtures.definition(
+                    "machine-" + index, index, "Gerät " + index, 0, 0,
+                    StepAmount.none(), (20 + index) + " kg, Sitz " + index));
+        StepPrescription bodyweight = new StepPrescription(StepAmount.setsReps(3, 12),
+                RestTimerPolicy.inherit(), new TrainingPrescription(
+                ResistanceLoad.bodyweight(), 2));
+        definitions.add(new TaskStepDefinition("roman-chair", 8, "Römische Liege", 0, 0,
+                bodyweight, null, "", de.thonktank.autosecretary.domain.model.StepActivationKind.SCHEDULED));
+        TaskDefinition gym = new TaskDefinition("Gym", null, TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
+                null, null, null, null, "", definitions);
+        new CreateTask(repository.catalog, repository.steps, repository.today,
+                repository.transactions, clock, ids).execute(gym);
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today,
+                repository.flows, repository.transactions, clock, ids).execute();
+        List<de.thonktank.autosecretary.domain.model.OccurrenceStep> materialized =
+                repository.occurrenceSteps(repository.openOccurrences().get(0).id);
+        for (int index = 0; index < 8; index++) {
+            assertEquals("machine-" + index, materialized.get(index).sourceTemplateId);
+            assertEquals((20 + index) + " kg, Sitz " + index, materialized.get(index).note);
+            new ToggleStep(repository.catalog, repository.steps, repository.today,
+                    repository.transactions, clock).execute(materialized.get(index).id);
+        }
+        assertEquals("roman-chair", materialized.get(8).sourceTemplateId);
+        assertEquals("", materialized.get(8).note);
+        assertEquals(ResistanceLoad.bodyweight(),
+                materialized.get(8).prescription.plannedLoad());
+
+        TodayUiModel dashboard = dashboard(repository, clock, context);
+        FocusStepUiModel roman = dashboard.focus.steps.stream()
+                .filter(value -> value.id.equals(materialized.get(8).id))
+                .findFirst().orElseThrow();
+        assertEquals("", roman.note);
+        assertEquals("3 × 12", roman.amountLabel);
+        FocusTaskView view = new FocusTaskView(context);
+        view.bind(FocusCardTestModels.of(dashboard.focus,
+                DayPalette.at(clock.time(), DayPalette.Mode.LIGHT)), false, action -> { });
+        List<String> visible = visibleTexts(view);
+        assertTrue(visible.contains("Römische Liege"));
+        for (int index = 0; index < 8; index++)
+            assertFalse(visible.contains((20 + index) + " kg, Sitz " + index));
     }
 
     private static TodayUiModel dashboard(InMemoryExecutionRepository repository, Clock clock,
