@@ -187,7 +187,7 @@ Publish sind erfolgreich. Phase 1 ist damit implementiert und Phase 2 freigegebe
 
 ## Phase 2 – Stabile Zeilenidentität und atomare Metadaten
 
-Status: in Arbeit
+Status: implementiert
 
 ### Plan
 
@@ -290,3 +290,15 @@ Ergebnis: Der fokussierte View- und Architekturtestblock ist grün. Der erneute 
 ist in 20 min 4 s grün; 541 Tests bestehen ohne Fehler oder Abbruch, bei einem bestehenden Skip.
 Es wurde keine weitere lokale Abweichung gefunden. Phase 2 bleibt bis zum Remote-Gate
 `in Arbeit`.
+
+### Korrekturrunde 2 – Status nach dem Remote-Gate
+
+Plan: Nach grünem Pull Request, Squash-Merge und exaktem Main-Workflow wird ausschließlich der
+Phase-2-Status auf `implementiert` gesetzt und der Remote-Nachweis ergänzt. Implementierung,
+lokale Validierung und Auditbefunde bleiben unverändert.
+
+Ergebnis: PR 320 wurde als `66da944fda8ba44207eac0712cdaeae50e4bf902` nach `main`
+gesquasht. Die vollständige PR-Matrix 33760930254 ist grün: Quality sowie normale und animierte
+Instrumentierung auf API 26, 35 und 37 bestehen. Der exakte Main-Workflow 33762642029 ist
+vollständig grün; Quality, dieselbe Instrumentierungsmatrix, Packaging, Upgrade auf API 26, 35
+und 37 sowie Publish sind erfolgreich. Phase 2 ist damit implementiert und Phase 3 freigegeben.
