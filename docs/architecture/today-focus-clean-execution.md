@@ -184,3 +184,109 @@ Ergebnis: PR 318 wurde als `bbe7820a3807d4bc0835f136bc369f743a6049e0` nach `main
 gesquasht. Der exakte Main-Workflow 33751400918 ist vollständig grün; Quality, normale und
 animierte Instrumentierung auf API 26, 35 und 37, Packaging, Upgrade auf API 26, 35 und 37 sowie
 Publish sind erfolgreich. Phase 1 ist damit implementiert und Phase 2 freigegeben.
+
+## Phase 2 – Stabile Zeilenidentität und atomare Metadaten
+
+Status: in Arbeit
+
+### Plan
+
+Ergebnis: Eine sichtbare Schrittzeile gehört während ihrer gesamten Lebenszeit zu genau einer
+Kombination aus Occurrence- und Schritt-ID. Jeder Bind-Vorgang beschreibt alle Teilbereiche samt
+leerem Zustand vollständig. Neue Occurrence- und Flow-Snapshots entstehen atomar über eine
+gemeinsame Factory; der vollständige Konstruktor ist nur noch eine benannte Rehydrationsgrenze.
+
+Reihenfolge:
+
+1. Den positionsbasierten Zeilencache durch einen Cache für `occurrenceId + stepId` ersetzen und
+   ihn bei Occurrence-Wechsel vollständig verwerfen. Layout, Reward-Anker, Grain-Anker und
+   Reorder-Ziele konsumieren dieselbe sichtbare ID-Reihenfolge.
+2. `FocusStepRowView.bind` in immer aufgerufene Teilbinder für Identität/Text, Aktion,
+   Wiederholung, Training, Assistent, Timer, Listener und Accessibility zerlegen. Jeder Teilbinder
+   setzt Text, Sichtbarkeit, Aktivierung und Listener sowohl für den belegten als auch den leeren
+   Zustand; ein globales Reset wird nicht eingeführt.
+3. Eine gemeinsame `StepSnapshotFactory` für Template-, Carry-forward-, Flow- und
+   Flow-Angebots-Snapshots einführen. `OccurrenceStep.rehydrate` und
+   `FlowRunStepSnapshot.rehydrate` bleiben die einzigen vollständigen Feldgrenzen für Persistenz
+   und Tests; produktive Assembler kombinieren keine Felder mehr positionsweise.
+4. Rebind-Matrix, Neun-Schritte-Szenario, eindeutige Metadaten durch Materialisierung, Move,
+   Carry-forward, Flow und Dashboard sowie die Migrationspfade 8→22 und 19→20→21→22
+   automatisiert belegen.
+5. Negative Architektur-Scans, unveränderte Schema-/Migrationshashes, den vollständigen
+   Gradle-Gate und getrennte Plan-/Roadmap-Audits ausführen; danach PR, Squash-Merge und exakten
+   Main-Workflow abwarten.
+
+Abnahme: Derselbe Zeilenschlüssel besteht die Zustandswechsel Notiz→leer, Menge→leer,
+Training→Körpergewicht, Wiederholung→normal, Timer→leer und Assistent→leer ohne Resttexte,
+Restlistener oder Restansichten. Nach acht Abschlüssen ist „Römische Liege“ sauber aktiv.
+`sourceTemplateId`, Notiz und vollständige Prescription bleiben auf allen Snapshot-Pfaden an
+derselben stabilen ID; Schema 22 und vorhandene Migrationen werden nicht verändert.
+
+### Implementierung und Validierung
+
+- `FocusStepListLayout` hält Zeilen in einem Cache aus Occurrence- und stabiler Schritt-ID. Ein
+  Wechsel des Aufgabenblatts verwirft den Cache vollständig; sichtbare Zeilen, Reward-Anker,
+  Grain-Anker und Reorder-Ziele verwenden dieselbe ID-Reihenfolge.
+- `FocusStepRowView.bind` bindet Oberfläche, Text, Assistent, Wiederholung, Aktion, Training und
+  Timer vollständig. Nicht vorhandene Inhalte leeren Text, Sichtbarkeit, Zustand, Animationen und
+  Listener; Interaktion und Accessibility werden bei jedem Bind neu gesetzt.
+- `StepSnapshotFactory` ist die einzige produktive Erzeugungsgrenze für Template-,
+  Carry-forward-, Flow- und Flow-Angebots-Snapshots. Sie übernimmt Text, komplette Prescription,
+  Notiz und `sourceTemplateId` gemeinsam. Vollständige Konstruktoren sind privat;
+  `rehydrate` ist die benannte Persistenz- und Testgrenze.
+- Die Rebind-Matrix, das reale Neun-Schritte-Trainingsszenario sowie Materialisierung, Move,
+  Carry-forward, Flow, Dashboard-Mapping und die Migrationspfade 8→22 und 19→20→21→22 sind
+  durch fokussierte Tests abgedeckt.
+- Vollständiger Gate
+  `./gradlew testInstrumentationUnitTest lintDebug assembleDebug
+  assembleInstrumentationAndroidTest assembleRelease`: grün in 20 min 4 s.
+- Testresultat: 541 Tests, 0 Fehler, 0 Abbrüche, 1 bestehender Skip.
+- Schema 22 bleibt
+  `b4f8f0a32b84cfcbc5e70a02018cc1b6bbe120682e98061a8e7773f0f75563e2`; Migrationen bleiben
+  `bed6d1c550acbe78ffd724b3057f011366a7447ef3d89854c88841a9aa6b1d9a`.
+
+### Plan-Audit
+
+- Schritt 1 erfüllt: Zeilen werden nach Occurrence- und Schritt-ID wiederverwendet; alle
+  sichtbarkeitsabhängigen Verbraucher folgen derselben Reihenfolge.
+- Schritt 2 erfüllt: Jeder Teilbereich besitzt einen immer aufgerufenen Binder mit explizitem
+  Leerzustand. Ein globales Reset und alte Restlistener existieren nicht.
+- Schritt 3 erfüllt: Alle produktiven Snapshot-Pfade verwenden die gemeinsame Factory;
+  Persistenzmapper verwenden ausschließlich die benannten Rehydrationsgrenzen.
+- Schritt 4 erfüllt: Rebind-, Neun-Schritte-, Metadaten-, Move-, Carry-forward-, Flow-,
+  Dashboard- und Migrationstests sind grün.
+- Schritt 5 lokal erfüllt: Architektur-Scans, unveränderte Hashes und vollständiger Gate sind
+  grün. PR, Squash-Merge und exakter Main-Workflow bleiben das Remote-Gate der Phase.
+
+### Roadmap-Audit und Abweichungen
+
+- Die Zeileninstanz bleibt bei lokaler Auswahl und Reorder desselben Aufgabenblatts an ihrer
+  stabilen ID; beim Aufgabenblattwechsel entsteht eine neue Instanz.
+- Notiz→leer, Menge→leer, gewichtetes Training→Körpergewicht, Wiederholung→normal,
+  Timer→leer und Assistent→leer sind einschließlich nicht mehr auslösbarer Listener belegt.
+- Nach acht Abschlüssen ist „Römische Liege“ die aktive neunte Zeile ohne Notiz und ohne
+  Trainingslast; die eindeutigen Metadaten der anderen Schritte bleiben an ihren IDs.
+- Produktionsscans finden direkte vollständige Konstruktoraufrufe nur innerhalb der beiden
+  Modellklassen. Produktive Rehydration liegt ausschließlich in der Snapshot-Factory und den
+  Persistenzmappern; `resetForBind` existiert nicht.
+- Room-Schema und Migrationsimplementierung sind unverändert. Es gibt keine Titel-, Positions-
+  oder `kg`-Heuristik und keine Bereinigung historischer Snapshots.
+- Der aktive alte Frontend-Checkout steht unverändert auf `5438e733`.
+
+### Korrekturrunde 1 – stabile Reihenfolge ohne View-Detach
+
+Plan: Der erste vollständige Gate war grün. Der anschließende Plan-Audit zeigte jedoch, dass
+stabile Zeileninstanzen beim lokalen Umordnen mit `removeView` und `addView` kurz vom Parent
+getrennt wurden. Identität und Daten blieben zwar korrekt, laufende Gesten oder
+View-Animationen konnten durch den Detach aber unnötig unterbrochen werden.
+
+Korrektur: Vorhandene Zeilen bleiben dauerhaft im selben Parent und werden mit
+`bringChildToFront` in die projizierte Reihenfolge gebracht. Nur neue IDs werden hinzugefügt,
+entfernte IDs gelöscht und ein Aufgabenblattwechsel verwirft den gesamten Cache. Ein fokussierter
+View-Test belegt Instanzidentität und Reihenfolge; danach wurde der vollständige Gate erneut
+ausgeführt.
+
+Ergebnis: Der fokussierte View- und Architekturtestblock ist grün. Der erneute vollständige Gate
+ist in 20 min 4 s grün; 541 Tests bestehen ohne Fehler oder Abbruch, bei einem bestehenden Skip.
+Es wurde keine weitere lokale Abweichung gefunden. Phase 2 bleibt bis zum Remote-Gate
+`in Arbeit`.

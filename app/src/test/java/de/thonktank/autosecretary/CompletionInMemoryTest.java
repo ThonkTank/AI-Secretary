@@ -12,15 +12,23 @@ import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
+import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
+import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
+import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.usecase.CloseOngoingTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
@@ -178,6 +186,56 @@ public final class CompletionInMemoryTest {
         assertEquals(yesterday.id, carried.originOccurrenceId);
         assertEquals(de.thonktank.autosecretary.domain.model.CarryForwardReason.UNFINISHED_STEP,
                 carried.carryForwardReason);
+    }
+
+    @Test public void carryForwardKeepsUniqueTemplateMetadataThroughDashboardMapping() {
+        StepPrescription bodyweight = new StepPrescription(StepAmount.setsReps(3, 12),
+                RestTimerPolicy.inherit(), new TrainingPrescription(
+                ResistanceLoad.bodyweight(), 2));
+        List<TaskStepDefinition> definitions = Arrays.asList(
+                de.thonktank.autosecretary.testing.StepTestFixtures.definition(
+                        "machine-template", 0, "Brustpresse", 0, 0, StepAmount.none(),
+                        "23 kg, Sitz 2", StepActivationKind.SCHEDULED),
+                new TaskStepDefinition("roman-template", 1, "Römische Liege", 0, 0,
+                        bodyweight, null, "", StepActivationKind.SCHEDULED));
+        TaskDefinition definition = new TaskDefinition("Gym", null, TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
+                null, null, null, null, "", definitions);
+        TaskId taskId = new CreateTask(repository.catalog, repository.steps, repository.today,
+                repository.transactions, clock, this::nextId).execute(definition);
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today,
+                repository.flows, repository.transactions, clock, this::nextId).execute();
+        Occurrence first = repository.openOccurrences().get(0);
+        OccurrenceStep machine = repository.occurrenceSteps(first.id).get(0);
+        new ToggleStep(repository.catalog, repository.steps, repository.today,
+                repository.transactions, clock).execute(machine.id);
+
+        clock.set(TODAY.plusDays(1));
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today,
+                repository.flows, repository.transactions, clock, this::nextId).execute();
+        Occurrence current = repository.openOccurrences().get(0);
+        List<OccurrenceStep> carried = repository.occurrenceSteps(current.id);
+        OccurrenceStep roman = carried.stream()
+                .filter(value -> "roman-template".equals(value.sourceTemplateId))
+                .findFirst().orElseThrow();
+        OccurrenceStep freshMachine = carried.stream()
+                .filter(value -> "machine-template".equals(value.sourceTemplateId))
+                .findFirst().orElseThrow();
+
+        assertEquals("", roman.note);
+        assertEquals(ResistanceLoad.bodyweight(), roman.prescription.plannedLoad());
+        assertEquals(first.id, roman.originOccurrenceId);
+        assertEquals("23 kg, Sitz 2", freshMachine.note);
+        Dashboard dashboard = new LoadDashboard(repository.catalog, repository.steps,
+                repository.today, repository.flows).execute(clock.today());
+        de.thonktank.autosecretary.domain.model.DashboardTask mapped = dashboard.tasks.stream()
+                .filter(value -> value.task.id.equals(taskId)).findFirst().orElseThrow();
+        assertEquals("", mapped.steps.stream()
+                .filter(value -> "roman-template".equals(value.sourceTemplateId))
+                .findFirst().orElseThrow().note);
+        assertEquals("23 kg, Sitz 2", mapped.steps.stream()
+                .filter(value -> "machine-template".equals(value.sourceTemplateId))
+                .findFirst().orElseThrow().note);
     }
 
     @Test(timeout = 10_000L)

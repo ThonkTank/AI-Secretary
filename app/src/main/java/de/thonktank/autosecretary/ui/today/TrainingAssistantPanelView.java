@@ -91,11 +91,31 @@ public final class TrainingAssistantPanelView {
 
     public void bind(TrainingContextUiModel context, boolean active, DayPalette palette,
                      Consumer<TrainingAssistantUiAction> actions) {
+        bindTrainingLink(applyLoadAnswer, palette);
+        bindTrainingLink(unavailableLoadAnswer, palette);
+        bindTrainingLink(laterLoadAnswer, palette);
+        bindTrainingLink(undoAdjustment, palette);
+        summary.setText("");
+        loadQuestion.setText("");
+        loadQuestion.setVisibility(android.view.View.GONE);
+        loadAnswer.setVisibility(android.view.View.GONE);
+        applyLoadAnswer.setVisibility(android.view.View.GONE);
+        applyLoadAnswer.setOnClickListener(null);
+        unavailableLoadAnswer.setVisibility(android.view.View.GONE);
+        unavailableLoadAnswer.setOnClickListener(null);
+        laterLoadAnswer.setVisibility(android.view.View.GONE);
+        laterLoadAnswer.setOnClickListener(null);
+        history.removeAllViews();
+        historyTitle.setVisibility(android.view.View.GONE);
+        history.setVisibility(android.view.View.GONE);
+        undoAdjustment.setVisibility(android.view.View.GONE);
+        undoAdjustment.setOnClickListener(null);
         summary.setVisibility(context == null ? android.view.View.GONE : android.view.View.VISIBLE);
         details.setVisibility(context != null && active
                 ? android.view.View.VISIBLE : android.view.View.GONE);
         if (context == null) {
             boundTemplateId = null;
+            loadAnswer.setText("");
             return;
         }
         String summaryText = context.latestAdjustmentLabel.isEmpty() ? context.statusLabel
@@ -103,11 +123,11 @@ public final class TrainingAssistantPanelView {
         summary.setText(summaryText);
         summary.setTextColor(palette.muted);
         WoodGrainView.applyTextHalo(summary, palette.leaf1);
-        if (!active) return;
-        bindTrainingLink(applyLoadAnswer, palette);
-        bindTrainingLink(unavailableLoadAnswer, palette);
-        bindTrainingLink(laterLoadAnswer, palette);
-        bindTrainingLink(undoAdjustment, palette);
+        if (!context.templateId.equals(boundTemplateId)) loadAnswer.setText("");
+        if (!active) {
+            boundTemplateId = context.templateId;
+            return;
+        }
         boolean open = context.hasOpenLoadRequest();
         loadQuestion.setVisibility(open ? android.view.View.VISIBLE : android.view.View.GONE);
         loadAnswer.setVisibility(open ? android.view.View.VISIBLE : android.view.View.GONE);
@@ -127,7 +147,6 @@ public final class TrainingAssistantPanelView {
             loadQuestion.setTextColor(palette.ink);
             loadAnswer.setTextColor(palette.ink);
             loadAnswer.setHintTextColor(palette.hint);
-            if (!context.templateId.equals(boundTemplateId)) loadAnswer.setText("");
             unavailableLoadAnswer.setText(R.string.training_load_no_higher);
             applyLoadAnswer.setOnClickListener(view -> actions.accept(
                     new TrainingAssistantUiAction.ApplyLoad(
@@ -143,7 +162,6 @@ public final class TrainingAssistantPanelView {
             });
         }
         boundTemplateId = context.templateId;
-        history.removeAllViews();
         historyTitle.setTextColor(palette.muted);
         historyTitle.setVisibility(context.historyLabels.isEmpty()
                 ? android.view.View.GONE : android.view.View.VISIBLE);

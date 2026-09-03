@@ -439,6 +439,49 @@ public final class ArchitectureBoundaryTest {
         assertFalse(viewModel.contains("undoLatestTrainingAdjustment"));
     }
 
+    @Test public void stepSnapshotsHaveOneFactoryAndNamedRehydrationBoundaries()
+            throws Exception {
+        Path domain = Path.of("../core-domain/src/main/java");
+        Path factory = domain.resolve(
+                "de/thonktank/autosecretary/domain/usecase/StepSnapshotFactory.java");
+        String factorySource = read(factory);
+        assertTrue(factorySource.contains("fromTemplate("));
+        assertTrue(factorySource.contains("carryForward("));
+        assertTrue(factorySource.contains("fromFlow("));
+        assertTrue(factorySource.contains("flowRun("));
+
+        forEachProductionSource(domain, source -> {
+            String name = source.getFileName().toString();
+            String value = read(source);
+            if (!name.equals("OccurrenceStep.java"))
+                assertFalse(source + " creates OccurrenceStep directly",
+                        value.contains("new OccurrenceStep("));
+            if (!name.equals("FlowRunStepSnapshot.java"))
+                assertFalse(source + " creates FlowRunStepSnapshot directly",
+                        value.contains("new FlowRunStepSnapshot("));
+            if (!name.equals("StepSnapshotFactory.java")) {
+                assertFalse(source + " crosses occurrence rehydration boundary",
+                        value.contains("OccurrenceStep.rehydrate("));
+                assertFalse(source + " crosses flow rehydration boundary",
+                        value.contains("FlowRunStepSnapshot.rehydrate("));
+            }
+        });
+        forEachProductionSource(Path.of("src/main/java"), source -> {
+            String value = read(source);
+            boolean mapper = source.endsWith(Path.of("TaskEntityMapper.java"))
+                    || source.endsWith(Path.of("StepFlowEntityMapper.java"));
+            assertFalse(source + " creates a snapshot directly",
+                    value.contains("new OccurrenceStep(")
+                            || value.contains("new FlowRunStepSnapshot("));
+            if (!mapper) {
+                assertFalse(source + " crosses occurrence rehydration boundary",
+                        value.contains("OccurrenceStep.rehydrate("));
+                assertFalse(source + " crosses flow rehydration boundary",
+                        value.contains("FlowRunStepSnapshot.rehydrate("));
+            }
+        });
+    }
+
     private static Path main(String relative) {
         for (String module : new String[]{"../core-domain", "../today-core", "."}) {
             Path source = Path.of(module, "src/main/java/de/thonktank/autosecretary",

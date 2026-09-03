@@ -3,7 +3,6 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
-import de.thonktank.autosecretary.domain.model.CarryForwardReason;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
@@ -25,11 +24,13 @@ final class OccurrenceAssembler {
     private final StepRepository steps;
     private final TodayRepository today;
     private final IdGenerator ids;
+    private final StepSnapshotFactory snapshots;
 
     OccurrenceAssembler(StepRepository steps, TodayRepository today, IdGenerator ids) {
         this.steps = steps;
         this.today = today;
         this.ids = ids;
+        snapshots = new StepSnapshotFactory(ids);
     }
 
     Result assemble(Task task, LocalDate today, List<Occurrence> history,
@@ -51,21 +52,21 @@ final class OccurrenceAssembler {
         boolean changed = false;
         for (TaskSlot slot : targetSlots) {
             if (carry.open.containsKey(slot)) continue;
-            List<OccurrenceStep> snapshots = new ArrayList<>();
             Set<String> sourceIds = new HashSet<>();
             List<OccurrenceStep> carried = carry.carry.get(slot);
             if (carried != null) for (OccurrenceStep step : carried) {
-                snapshots.add(copyStep(step, ids.nextId(), "pending:" + task.id.value,
-                        carry.originOccurrenceIds.get(slot)));
                 if (step.sourceTemplateId != null) sourceIds.add(step.sourceTemplateId);
             }
+            List<TaskStepTemplate> freshSnapshots = new ArrayList<>();
             List<TaskStepTemplate> fresh = planned.stepsBySlot.get(slot);
             if (fresh != null) for (TaskStepTemplate template : fresh) {
                 if (sourceIds.contains(template.id)) continue;
-                snapshots.add(snapshot(template, ids.nextId(), "pending:" + task.id.value));
+                freshSnapshots.add(template);
                 sourceIds.add(template.id);
             }
-            if (snapshots.isEmpty() && carried == null && fresh == null
+            boolean hasSnapshots = carried != null && !carried.isEmpty()
+                    || !freshSnapshots.isEmpty();
+            if (!hasSnapshots && carried == null && fresh == null
                     && !planned.stepsBySlot.containsKey(slot)) continue;
             int order = carried != null && !carried.isEmpty()
                     ? OccurrenceCarryForward.carryOrder(history, slot)
@@ -76,38 +77,19 @@ final class OccurrenceAssembler {
             this.today.insertOccurrence(occurrence);
             active.put(slot, occurrence);
             globalNextOrders.put(slot, Math.max(globalNextOrders.getOrDefault(slot, 0), order));
-            if (!snapshots.isEmpty()) {
-                List<OccurrenceStep> positioned = new ArrayList<>();
-                for (int index = 0; index < snapshots.size(); index++) {
-                    OccurrenceStep step = snapshots.get(index);
-                    positioned.add(new OccurrenceStep(step.id, occurrence.id, index, step.text,
-                            step.done, step.prescription, step.note,
-                            step.repetitionProgress == null ? Collections.emptyList()
-                                    : step.repetitionProgress.results,
-                            step.sourceTemplateId, step.comboOwnerId,
-                            step.originOccurrenceId, step.carryForwardReason));
-                }
-                steps.insertOccurrenceSteps(positioned);
+            if (hasSnapshots) {
+                List<OccurrenceStep> materialized = new ArrayList<>();
+                if (carried != null) for (OccurrenceStep step : carried)
+                    materialized.add(snapshots.carryForward(step, occurrence.id,
+                            materialized.size(), carry.originOccurrenceIds.get(slot)));
+                for (TaskStepTemplate template : freshSnapshots)
+                    materialized.add(snapshots.fromTemplate(template, occurrence.id,
+                            materialized.size()));
+                steps.insertOccurrenceSteps(materialized);
             }
             changed = true;
         }
         return new Result(changed, active);
-    }
-
-    private OccurrenceStep copyStep(OccurrenceStep step, String id, String comboOwner,
-                                    String originOccurrenceId) {
-        return new OccurrenceStep(id, "pending", 0, step.text, false, step.prescription, step.note,
-                step.repetitionProgress == null ? Collections.emptyList()
-                        : step.repetitionProgress.results,
-                step.sourceTemplateId,
-                step.comboOwnerId == null ? comboOwner : step.comboOwnerId,
-                originOccurrenceId, CarryForwardReason.UNFINISHED_STEP);
-    }
-
-    private OccurrenceStep snapshot(TaskStepTemplate template, String id, String comboOwner) {
-        return new OccurrenceStep(id, "pending", 0, template.text, false,
-                template.prescription, template.note, Collections.emptyList(), template.id,
-                "step:" + template.id, null, CarryForwardReason.NONE);
     }
 
     static final class Result {

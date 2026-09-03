@@ -18,9 +18,12 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.ScheduleEntryId;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
@@ -163,6 +166,39 @@ public final class AllTasksFeatureRobolectricTest {
         assertEquals(first.id, repository.steps.templates(task.id).get(1).id);
         assertEquals(second.id, repository.steps.occurrenceSteps(occurrence(task.id).id)
                 .get(0).sourceTemplateId);
+    }
+
+    @Test public void crossTaskMoveKeepsTheSnapshotPayloadAttachedToItsStableId() {
+        TaskDefinition sourceDefinition = new TaskDefinition("Quelle", null, TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit,
+                de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
+                null, null, null, null, "", java.util.Collections.singletonList(
+                de.thonktank.autosecretary.testing.StepTestFixtures.definition(
+                        "stable-source", 0, "Römische Liege", 0, 0,
+                        StepAmount.repetitions(20), "Eigene Notiz",
+                        StepActivationKind.SCHEDULED)));
+        new CreateTask(repository.catalog, repository.steps, repository.today,
+                repository.transactions, clock, ids).execute(sourceDefinition);
+        create("Ziel", TaskSlot.MORNING, Recurrence.DAILY, Arrays.asList("Zielschritt"));
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today,
+                repository.flows, repository.transactions, clock, ids).execute();
+        Task source = repository.catalog.allTasks().stream()
+                .filter(value -> value.title.equals("Quelle")).findFirst().orElseThrow();
+        Task target = repository.catalog.allTasks().stream()
+                .filter(value -> value.title.equals("Ziel")).findFirst().orElseThrow();
+        OccurrenceStep before = repository.steps.occurrenceSteps(occurrence(source.id).id).get(0);
+
+        assertEquals(StepTransferResult.DEFINITION_AND_TODAY_MOVED,
+                new MoveTaskStep(repository.catalog, repository.steps, repository.today,
+                        repository.transactions).execute(new StepMoveRequest(
+                        TaskStepId.of("stable-source"), target.id, java.util.Optional.empty())));
+
+        OccurrenceStep after = repository.steps.findOccurrenceStep(before.id);
+        assertEquals(before.id, after.id);
+        assertEquals("stable-source", after.sourceTemplateId);
+        assertEquals("Römische Liege", after.text);
+        assertEquals("Eigene Notiz", after.note);
+        assertEquals(before.prescription, after.prescription);
     }
 
     @Test public void moveWithoutMatchingTodaySlotLeavesTheSourceSnapshotUntouched() {

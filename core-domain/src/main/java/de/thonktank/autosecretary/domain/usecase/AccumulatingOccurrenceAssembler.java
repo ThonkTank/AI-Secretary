@@ -1,7 +1,5 @@
 package de.thonktank.autosecretary.domain.usecase;
 
-import de.thonktank.autosecretary.domain.model.ComboProgress;
-import de.thonktank.autosecretary.domain.model.CarryForwardReason;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
@@ -22,12 +20,14 @@ final class AccumulatingOccurrenceAssembler {
     private final StepRepository steps;
     private final TodayRepository today;
     private final IdGenerator ids;
+    private final StepSnapshotFactory snapshots;
 
     AccumulatingOccurrenceAssembler(StepRepository steps, TodayRepository today,
                                     IdGenerator ids) {
         this.steps = steps;
         this.today = today;
         this.ids = ids;
+        snapshots = new StepSnapshotFactory(ids);
     }
 
     Result assemble(Task task, DueDatePlanner.Plan planned,
@@ -47,10 +47,7 @@ final class AccumulatingOccurrenceAssembler {
             List<OccurrenceStep> steps = new ArrayList<>();
             for (int index = 0; index < due.templates.size(); index++) {
                 TaskStepTemplate template = due.templates.get(index);
-                steps.add(new OccurrenceStep(ids.nextId(), occurrence.id, index, template.text,
-                        false, template.prescription, template.note,
-                        Collections.emptyList(), template.id,
-                        ComboProgress.stepOwner(template.id), null, CarryForwardReason.NONE));
+                steps.add(snapshots.fromTemplate(template, occurrence.id, index));
             }
             if (!steps.isEmpty()) this.steps.insertOccurrenceSteps(steps);
             changed = true;

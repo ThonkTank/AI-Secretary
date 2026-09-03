@@ -104,6 +104,8 @@ public final class StepFlowRuntimeRobolectricTest {
         assertTrue(tasks.flows.activateReadyFlows.execute());
         StepFlowRun first = offeredRun();
         assertEquals("colors", first.seedStepId);
+        assertEquals("Notiz:colors", openStep(first).note);
+        assertEquals("colors", openStep(first).sourceTemplateId);
         assertEquals(1, countRuns(StepFlowRunState.OFFERED));
         assertEquals(3, countRuns(StepFlowRunState.WAITING_RESOURCE));
         assertEquals(2, countResources(FlowResourceState.RESERVED));
@@ -122,6 +124,8 @@ public final class StepFlowRuntimeRobolectricTest {
         assertEquals(StepFlowRunState.OFFERED, first.state);
         assertEquals(2, repository.steps.occurrenceSteps(first.currentSheetOccurrenceId).size());
         assertEquals("Aufhängen", openStep(first).text);
+        assertEquals("Notiz:hang", openStep(first).note);
+        assertEquals("hang", openStep(first).sourceTemplateId);
 
         tasks.today.toggleStep.execute(openStep(first).id);
         first = repository.flows.findFlowRun(first.id);
@@ -417,7 +421,8 @@ public final class StepFlowRuntimeRobolectricTest {
 
     private static TaskStepDefinition step(String id, String text, StepActivationKind kind,
                                            int position) {
-        return de.thonktank.autosecretary.testing.StepTestFixtures.definition(id, position, text, 0, 0, StepAmount.none(), "", kind);
+        return de.thonktank.autosecretary.testing.StepTestFixtures.definition(id, position, text,
+                0, 0, StepAmount.none(), "Notiz:" + id, kind);
     }
 
     private static List<StepTransition> transitions() {

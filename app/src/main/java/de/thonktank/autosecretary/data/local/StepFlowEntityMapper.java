@@ -72,7 +72,7 @@ final class StepFlowEntityMapper {
         FlowDelayPolicy delay = value.delayMode == null ? null : new FlowDelayPolicy(
                 FlowDelayPolicy.Mode.valueOf(value.delayMode), value.defaultDelayMillis,
                 value.lastUsedDelayMillis);
-        return new FlowRunStepSnapshot(value.id, value.runId, value.position,
+        return FlowRunStepSnapshot.rehydrate(value.id, value.runId, value.position,
                 value.sourceTemplateId, value.text, StepPrescription.restore(
                 amount(value.amountKind, value.plannedSets,
                 value.plannedReps, value.plannedDurationSeconds),

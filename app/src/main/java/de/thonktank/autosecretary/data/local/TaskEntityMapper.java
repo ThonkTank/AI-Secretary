@@ -130,7 +130,7 @@ public final class TaskEntityMapper {
     }
 
     public OccurrenceStep toDomain(OccurrenceStepEntity entity, List<SetResult> results) {
-        return new OccurrenceStep(entity.id, entity.occurrenceId, entity.position, entity.text,
+        return OccurrenceStep.rehydrate(entity.id, entity.occurrenceId, entity.position, entity.text,
                 entity.done, StepPrescription.restore(
                 StepAmount.fromStorage(StepAmountKind.fromStorage(entity.amountKind),
                         entity.plannedSets, entity.plannedReps,
