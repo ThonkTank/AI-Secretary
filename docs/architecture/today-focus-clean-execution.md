@@ -75,7 +75,7 @@ Phase 0 ist damit implementiert und Phase 1 freigegeben.
 
 ## Phase 1 – Eine einzige Fokusprojektion
 
-Status: in Arbeit
+Status: implementiert
 
 ### Plan
 
@@ -170,4 +170,17 @@ Ergebnis: Titel und Zeilenkörper teilen den identischen Langdrucklistener; der 
 Titel der expandierten ersten Zeile als Langdruckziel und belegt `BEGIN_REORDER` plus
 kompensierendes `CANCEL_REORDER`, wenn Robolectric keinen Plattform-Drag startet. Der fokussierte
 Testblock einschließlich Instrumentierungs-APK ist grün. Der vollständige lokale Gradle-Gate ist
-erneut grün in 14 min 32 s. Die Wiederholung der vollständigen PR-Matrix steht aus.
+erneut grün in 14 min 32 s. Die vollständige Wiederholung der PR-Matrix 33749738904 ist grün:
+Quality, normale Instrumentierung und Instrumentierung mit Animationen bestehen jeweils auf API
+26, 35 und 37; Instrumentation- und Pull-Request-Gate sind erfolgreich.
+
+### Korrekturrunde 2 – Status nach dem Remote-Gate
+
+Plan: Nach grünem Pull Request, Squash-Merge und exaktem Main-Workflow wird ausschließlich der
+Phase-1-Status auf `implementiert` gesetzt und der Remote-Nachweis ergänzt. Die früheren
+Implementierungs-, Validierungs-, Audit- und Korrekturbefunde bleiben unverändert.
+
+Ergebnis: PR 318 wurde als `bbe7820a3807d4bc0835f136bc369f743a6049e0` nach `main`
+gesquasht. Der exakte Main-Workflow 33751400918 ist vollständig grün; Quality, normale und
+animierte Instrumentierung auf API 26, 35 und 37, Packaging, Upgrade auf API 26, 35 und 37 sowie
+Publish sind erfolgreich. Phase 1 ist damit implementiert und Phase 2 freigegeben.
