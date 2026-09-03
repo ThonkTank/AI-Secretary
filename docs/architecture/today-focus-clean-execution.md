@@ -9,7 +9,7 @@ umgeschrieben.
 
 ## Phase 0 – Zielvertrag und reproduzierbare Ausgangslage
 
-Status: in Arbeit
+Status: implementiert
 
 ### Plan
 
@@ -60,3 +60,15 @@ Remote-Abschluss erfolgt anschließend über Pull Request, Squash-Merge und Main
 - Es wurde keine inhaltliche Abweichung gefunden; eine Korrekturrunde war nicht erforderlich.
 - Der lokale Stand erfüllt Phase 0. Pull Request, Squash-Merge und Main-Workflow stehen als
   Remote-Gate noch aus; bis dahin bleibt der Status `in Arbeit`.
+
+### Korrekturrunde 1 – Status nach dem Remote-Gate
+
+Plan: Nach grünem Pull Request, Squash-Merge und Main-Workflow wird ausschließlich der
+Phase-0-Status auf `implementiert` gesetzt. Die früheren lokalen Nachweise und der damalige
+Audittext bleiben unverändert. Produkt-, Schema-, Migrations-, Ressourcen- und Golden-Dateien
+werden nicht geändert.
+
+Ergebnis: PR 316 wurde als `c81416c802a26458f31355365c7683425da3202b` nach `main`
+gesquasht. Der exakte Main-Workflow 33742146087 ist grün; Quality, Instrumentierung, Upgrade,
+Packaging und Publish wurden für die reine Dokumentationsphase vertragsgemäß übersprungen.
+Phase 0 ist damit implementiert und Phase 1 freigegeben.
