@@ -3,6 +3,7 @@ package de.thonktank.autosecretary;
 import de.thonktank.autosecretary.ui.today.*;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepRowUiModel;
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
@@ -59,8 +60,8 @@ public final class FocusTaskViewTest {
 
         FocusTaskView view = new FocusTaskView(context);
         TodayActionSink actions = event -> { };
-        view.bind(task, false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                actions);
+        view.bind(FocusCardTestModels.of(task,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), false, actions);
 
         assertTrue(visibleTexts(view).contains("23 kg, Sitz 5"));
         assertTrue(visibleTexts(view).contains("12"));
@@ -75,8 +76,9 @@ public final class FocusTaskViewTest {
         TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
-        row.bind(step, true, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                RepetitionInputState.idle(), events);
+        row.bind(FocusStepRowUiModel.expanded(step),
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+                RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
 
         assertTrue(visibleTexts(row).contains("Beinpresse"));
         assertTrue(visibleTexts(row).contains("23 kg"));
@@ -99,8 +101,9 @@ public final class FocusTaskViewTest {
                         3, 12, Collections.singletonList(10))).build();
         TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
-        row.bind(step, true, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                RepetitionInputState.idle(), events);
+        row.bind(FocusStepRowUiModel.expanded(step),
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+                RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
 
         View menu = findByContentDescription(row,
                 context.getString(R.string.content_step_actions, "Beinpresse"));
@@ -124,8 +127,9 @@ public final class FocusTaskViewTest {
         TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
-        row.bind(repetitions, true, palette,
-                RepetitionInputState.idle().adjust(repetitions, -3), events);
+        row.bind(FocusStepRowUiModel.expanded(repetitions), palette,
+                RepetitionInputState.idle().adjust(repetitions, -3),
+                TimerManager.Snapshot.empty(), events);
 
         assertEquals(View.VISIBLE, ((View) barsScrollParent(row)).getVisibility());
         View barsScroll = (View) row.findViewById(R.id.set_bars).getParent();
@@ -135,7 +139,8 @@ public final class FocusTaskViewTest {
 
         FocusStepUiModel duration = FocusTaskFixtures.step("duration", "Planke")
                 .amount("45 Sek.").note("ruhig atmen").build();
-        row.bind(duration, true, palette, RepetitionInputState.idle(), events);
+        row.bind(FocusStepRowUiModel.expanded(duration), palette,
+                RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
 
         assertEquals(View.GONE, ((View) barsScrollParent(row)).getVisibility());
         row.rewardAnchor().performClick();
@@ -150,7 +155,7 @@ public final class FocusTaskViewTest {
         FocusStepUiModel duration = FocusTaskFixtures.step("duration", "Laufen")
                 .amount("10 Min.").build().withDurationSeconds(600);
 
-        row.bind(duration, true, palette, RepetitionInputState.idle(),
+        row.bind(FocusStepRowUiModel.expanded(duration), palette, RepetitionInputState.idle(),
                 TimerManager.Snapshot.empty(), events);
         assertTrue(visibleTexts(row).contains("10:00"));
         assertTrue(firstText(row, "Start").performClick());
@@ -164,7 +169,7 @@ public final class FocusTaskViewTest {
         TimerSession rest = new TimerSession("rest:sets", "sets", "Liegestütze",
                 TimerSession.Kind.REST, TimerSession.State.RUNNING, 60, 60_000,
                 160_000, 260_000, 123, false);
-        row.bind(sets, true, palette, RepetitionInputState.idle(),
+        row.bind(FocusStepRowUiModel.expanded(sets), palette, RepetitionInputState.idle(),
                 TimerManager.Snapshot.of(Collections.singletonList(rest), 100_000,
                         true, true), events);
 
@@ -182,14 +187,16 @@ public final class FocusTaskViewTest {
                         3, 12, Collections.singletonList(10))).build();
         FocusStepUiModel future = FocusTaskFixtures.step("future", "Später")
                 .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
-                        3, 12, Collections.emptyList())).available().build();
+                        3, 12, Collections.emptyList())).build();
         TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
 
-        row.bind(active, true, palette, RepetitionInputState.idle(), events);
+        row.bind(FocusStepRowUiModel.expanded(active), palette, RepetitionInputState.idle(),
+                TimerManager.Snapshot.empty(), events);
         assertTrue(row.rewardAnchor().isClickable());
         assertTrue(row.rewardAnchor().isFocusable());
-        row.bind(future, false, palette, RepetitionInputState.idle(), events);
+        row.bind(FocusStepRowUiModel.compact(future), palette, RepetitionInputState.idle(),
+                TimerManager.Snapshot.empty(), events);
 
         assertTrue(row.rewardAnchor().isClickable());
         assertTrue(row.rewardAnchor().isFocusable());
@@ -218,9 +225,9 @@ public final class FocusTaskViewTest {
         FocusTaskView view = new FocusTaskView(context);
         TodayActionSink actions = event -> { };
 
-        view.bind(task, false,
+        view.bind(FocusCardTestModels.of(task,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.ONE,
-                RepetitionInputState.idle(), actions);
+                RepetitionInputState.idle()), false, actions);
 
         List<String> texts = visibleTexts(view);
         assertTrue(texts.contains("Eins"));
@@ -234,9 +241,9 @@ public final class FocusTaskViewTest {
         assertTrue(dews.get(1).getContentDescription() + " / " + dews.size(),
                 dews.get(1).isClickable());
 
-        view.bind(task, false,
+        view.bind(FocusCardTestModels.of(task,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), FocusStepLimit.THREE,
-                RepetitionInputState.idle(), actions);
+                RepetitionInputState.idle()), false, actions);
 
         texts = visibleTexts(view);
         assertTrue(texts.contains("Vier"));
@@ -266,6 +273,7 @@ public final class FocusTaskViewTest {
         assertTrue(hasAction(secondInfo, R.id.action_today_step_down));
         assertTrue(hasAction(secondInfo, R.id.action_today_step_front));
         assertTrue(hasAction(secondInfo, R.id.action_today_step_back));
+        assertTrue(hasAction(secondInfo, R.id.action_today_step_select));
         secondInfo.recycle();
 
         assertMove(stepBody(view, context, "Zwei"), R.id.action_today_step_up,
@@ -276,6 +284,41 @@ public final class FocusTaskViewTest {
                 events, "first", "third");
         assertMove(stepBody(view, context, "Zwei"), R.id.action_today_step_back,
                 events, "second", null);
+    }
+
+    @Test public void titleClickSelectsWithoutPersistingAndAccessibilityUsesSameAction() {
+        Context context = ApplicationProvider.getApplicationContext();
+        FocusTaskUiModel task = FocusTaskFixtures.task("routine", "Routine")
+                .occurrence("today").steps(Arrays.asList(
+                        FocusStepUiModel.of("a", "Eins", false),
+                        FocusStepUiModel.of("b", "Zwei", false),
+                        FocusStepUiModel.of("c", "Drei", false))).build();
+        TodayUiModel today = new TodayUiModel(
+                new de.thonktank.autosecretary.domain.model.XpProgress(0), task,
+                Collections.emptyList(), Collections.emptyList());
+        TodayReducer reducer = new TodayReducer();
+        TodayFeatureState[] state = {TodayFeatureState.idle(today)};
+        TodayActionRecorder events = new TodayActionRecorder();
+        TodayActionSink sink = action -> {
+            events.emit(action);
+            if (action.kind == TodayAction.Kind.SELECT_STEP)
+                state[0] = reducer.select(state[0], action.id).state;
+        };
+        FocusTaskView view = new FocusTaskView(context);
+        bindFeature(view, state[0], FocusStepLimit.AUTO, sink);
+
+        assertTrue(firstText(view, "Drei").performClick());
+        assertEquals(TodayAction.Kind.SELECT_STEP, events.todayActions().get(0).kind);
+        assertEquals("c", state[0].selectedStepId);
+        bindFeature(view, state[0], FocusStepLimit.AUTO, sink);
+        assertEquals(Arrays.asList("Drei", "Eins", "Zwei"), visibleStepTitles(view));
+
+        View second = stepBody(view, context, "Zwei");
+        int before = events.todayActions().size();
+        assertTrue(second.performAccessibilityAction(R.id.action_today_step_select, null));
+        assertEquals(before + 1, events.todayActions().size());
+        assertEquals(TodayAction.Kind.SELECT_STEP, events.todayActions().get(before).kind);
+        assertEquals("b", state[0].selectedStepId);
     }
 
     @Test public void longPressAndPublicActionsShowPreviewCancelAndPersistOneDrop() {
@@ -349,20 +392,20 @@ public final class FocusTaskViewTest {
         int shortHeight = Math.round(430 * context.getResources().getDisplayMetrics().density);
         int tallHeight = Math.round(720 * context.getResources().getDisplayMetrics().density);
 
-        view.bind(task, false, palette, FocusStepLimit.FIVE,
-                RepetitionInputState.idle(), actions);
+        view.bind(FocusCardTestModels.of(task, palette, FocusStepLimit.FIVE,
+                RepetitionInputState.idle()), false, actions);
         measureExactly(view, width, shortHeight);
         int shortManual = ViewTestQueries.visibleFollowingStepRows(view);
         assertTrue(shortManual < 5);
 
-        view.bind(task, false, palette, FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), actions);
+        view.bind(FocusCardTestModels.of(task, palette, FocusStepLimit.AUTO,
+                RepetitionInputState.idle()), false, actions);
         measureExactly(view, width, tallHeight);
         int tallAutomatic = ViewTestQueries.visibleFollowingStepRows(view);
         assertTrue(tallAutomatic > shortManual);
 
-        view.bind(task, false, palette, FocusStepLimit.ONE,
-                RepetitionInputState.idle(), actions);
+        view.bind(FocusCardTestModels.of(task, palette, FocusStepLimit.ONE,
+                RepetitionInputState.idle()), false, actions);
         measureExactly(view, width, tallHeight);
         assertEquals(1, ViewTestQueries.visibleFollowingStepRows(view));
     }
@@ -450,9 +493,9 @@ public final class FocusTaskViewTest {
     private static void bindFeature(FocusTaskView view, TodayFeatureState state,
                                     FocusStepLimit limit,
                                     de.thonktank.autosecretary.presentation.today.TodayActionSink sink) {
-        view.bind(state.today.focus, false,
+        view.bind(FocusCardTestModels.of(state,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO), limit,
-                RepetitionInputState.idle(), state.reorder, sink);
+                RepetitionInputState.idle(), TimerManager.Snapshot.empty()), false, sink);
     }
 
     private static List<String> visibleStepTitles(View root) {

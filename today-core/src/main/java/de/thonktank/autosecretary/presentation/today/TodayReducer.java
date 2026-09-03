@@ -30,7 +30,7 @@ public final class TodayReducer {
                 || !canonicalOrder.contains(movingStepId)) return unchanged(current);
         TodayFeatureState.Reorder reorder = TodayFeatureState.Reorder.dragging(
                 canonicalOrder, canonicalOrder, movingStepId);
-        return changed(current, current.today, reorder, null, null);
+        return changed(current.today, reorder, null, null, null);
     }
 
     public Result preview(TodayFeatureState current, String movingStepId,
@@ -39,18 +39,17 @@ public final class TodayReducer {
         if (reorder.phase != TodayFeatureState.Reorder.Phase.DRAGGING
                 || !movingStepId.equals(reorder.movingStepId)
                 || !validOrder(reorder.canonicalOrder, previewOrder)) return unchanged(current);
-        return changed(current, applyOpenOrder(current.today, previewOrder),
+        return changed(current.today,
                 TodayFeatureState.Reorder.dragging(reorder.canonicalOrder, previewOrder,
-                        movingStepId), null, null);
+                        movingStepId), null, null, null);
     }
 
     public Result cancel(TodayFeatureState current, String movingStepId) {
         TodayFeatureState.Reorder reorder = current.reorder;
         if (reorder.phase != TodayFeatureState.Reorder.Phase.DRAGGING
                 || !movingStepId.equals(reorder.movingStepId)) return unchanged(current);
-        TodayUiModel restored = applyOpenOrder(current.today, reorder.canonicalOrder);
-        return changed(current, restored, TodayFeatureState.Reorder.idle(
-                reorder.canonicalOrder), null, null);
+        return changed(current.today, TodayFeatureState.Reorder.idle(
+                reorder.canonicalOrder), null, null, null);
     }
 
     public Result drop(TodayFeatureState current, String movingStepId,
@@ -63,7 +62,7 @@ public final class TodayReducer {
                 || commandId == null || commandId.isEmpty()) return unchanged(current);
         TodayFeatureState.Reorder persisting = TodayFeatureState.Reorder.persisting(
                 reorder.canonicalOrder, reorder.previewOrder, movingStepId, commandId);
-        return changed(current, current.today, persisting, null,
+        return changed(current.today, persisting, null, null,
                 TodayCommand.reorder(commandId, movingStepId, beforeStepId));
     }
 
@@ -74,30 +73,42 @@ public final class TodayReducer {
                 || !commandId.equals(reorder.commandId)) return unchanged(current);
         List<String> confirmed = result.openStepIds;
         TodayUiModel today = applyOpenOrder(current.today, confirmed);
-        return changed(current, today, TodayFeatureState.Reorder.idle(confirmed), null, null);
+        return changed(today, TodayFeatureState.Reorder.idle(confirmed), null,
+                null, null);
     }
 
     public Result failed(TodayFeatureState current, String commandId) {
         TodayFeatureState.Reorder reorder = current.reorder;
         if (reorder.phase != TodayFeatureState.Reorder.Phase.PERSISTING
                 || !commandId.equals(reorder.commandId)) return unchanged(current);
-        TodayUiModel restored = applyOpenOrder(current.today, reorder.canonicalOrder);
-        return changed(current, restored, TodayFeatureState.Reorder.idle(
-                reorder.canonicalOrder), TodayFeatureState.Feedback.REORDER_FAILED, null);
+        return changed(current.today, TodayFeatureState.Reorder.idle(
+                reorder.canonicalOrder), TodayFeatureState.Feedback.REORDER_FAILED, null, null);
+    }
+
+    public Result select(TodayFeatureState current, String stepId) {
+        if (current.reorder.phase != TodayFeatureState.Reorder.Phase.IDLE
+                || !TodayFeatureState.openStepIds(current.today).contains(stepId)
+                || stepId.equals(current.selectedStepId)) return unchanged(current);
+        return changed(current.today, current.reorder, null, stepId, null);
     }
 
     public Result rebind(TodayFeatureState current, TodayUiModel today) {
         boolean interrupted = current.reorder.phase != TodayFeatureState.Reorder.Phase.IDLE;
+        String selected = sameFocus(current.today, today)
+                && TodayFeatureState.openStepIds(today).contains(current.selectedStepId)
+                ? current.selectedStepId : null;
         return new Result(new TodayFeatureState(today,
                 TodayFeatureState.Reorder.idle(TodayFeatureState.openStepIds(today)),
-                interrupted ? TodayFeatureState.Feedback.REORDER_INTERRUPTED : null), null);
+                interrupted ? TodayFeatureState.Feedback.REORDER_INTERRUPTED : null,
+                selected), null);
     }
 
-    private static Result changed(TodayFeatureState old, TodayUiModel today,
+    private static Result changed(TodayUiModel today,
                                   TodayFeatureState.Reorder reorder,
                                   TodayFeatureState.Feedback feedback,
+                                  String selectedStepId,
                                   TodayCommand command) {
-        return new Result(new TodayFeatureState(today, reorder, feedback), command);
+        return new Result(new TodayFeatureState(today, reorder, feedback, selectedStepId), command);
     }
 
     private static Result unchanged(TodayFeatureState state) {
@@ -109,6 +120,16 @@ public final class TodayReducer {
             return false;
         Set<String> expected = new HashSet<>(canonical);
         return expected.size() == canonical.size() && expected.equals(new HashSet<>(candidate));
+    }
+
+    private static boolean sameFocus(TodayUiModel before, TodayUiModel after) {
+        if (before.focus == null || after.focus == null) return before.focus == after.focus;
+        String beforeId = focusIdentity(before.focus);
+        return beforeId.equals(focusIdentity(after.focus));
+    }
+
+    private static String focusIdentity(FocusTaskUiModel focus) {
+        return focus.occurrenceId().isEmpty() ? focus.taskId() : focus.occurrenceId();
     }
 
     static TodayUiModel applyOpenOrder(TodayUiModel today, List<String> openOrder) {
@@ -131,10 +152,11 @@ public final class TodayReducer {
                 .overdue(focus.overdue)
                 .allowDefer(focus.allowDefer)
                 .harvestReady(focus.harvestReady)
+                .backlogCount(focus.backlogCount)
                 .reward(focus.reward, focus.vessel)
                 .grainLevel(focus.grainLevel)
                 .build();
         return new TodayUiModel(today.xpProgress, updatedFocus, today.timeline,
-                today.completedToday);
+                today.completedToday, today.flowRuns);
     }
 }

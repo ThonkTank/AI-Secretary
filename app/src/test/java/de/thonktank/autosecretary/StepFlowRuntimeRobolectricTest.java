@@ -307,8 +307,8 @@ public final class StepFlowRuntimeRobolectricTest {
         assertEquals("Wäsche waschen", today.focus.title());
         assertEquals("Buntwäsche", today.focus.steps.get(0).title);
         assertEquals(StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY,
-                today.focus.steps.get(0).executionAction.kind);
-        assertEquals(TWO_HOURS, today.focus.steps.get(0).executionAction
+                today.focus.steps.get(0).activeAction.kind);
+        assertEquals(TWO_HOURS, today.focus.steps.get(0).activeAction
                 .proposedDelayMillis);
 
         WidgetDashboardUiModel widget = new WidgetDashboardMapper(

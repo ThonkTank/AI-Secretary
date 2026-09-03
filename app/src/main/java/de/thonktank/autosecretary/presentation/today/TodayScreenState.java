@@ -52,7 +52,7 @@ public final class TodayScreenState {
 
     public TodayScreenState withFeature(TodayFeatureState value) {
         return copy(value, false, runningActions,
-                repetitionInput.reconcile(value.today.focus), focusStepLimit,
+                repetitionInput.reconcile(value.focus), focusStepLimit,
                 timers, rewards, requests);
     }
 

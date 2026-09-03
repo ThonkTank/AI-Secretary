@@ -10,7 +10,6 @@ import de.thonktank.autosecretary.domain.model.RewardBreakdown;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.RewardTextFormatter;
-import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
@@ -77,27 +76,21 @@ final class FocusTaskFixtures {
 
         FocusTaskUiModel build() {
             List<FocusStepUiModel> explicit = new ArrayList<>();
-            boolean activeAssigned = false;
             int remaining = 0;
             for (FocusStepUiModel step : steps) {
                 if (step.isDone()) explicit.add(step);
                 else {
-                    FocusStepStatus status = activeAssigned ? FocusStepStatus.AVAILABLE
-                            : FocusStepStatus.ACTIVE;
-                    StepExecutionUiAction action = activeAssigned
-                            ? StepExecutionUiAction.advancePlannedRepetitions(step.id)
-                            : step.repetitionProgress == null
+                    StepExecutionUiAction action = step.repetitionProgress == null
                             ? StepExecutionUiAction.toggle(step.id)
                             : StepExecutionUiAction.submitRepetition(step.id);
                     FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, step.title,
-                            step.amountLabel, step.note, status, action,
+                            step.amountLabel, step.note, false, action,
                             step.repetitionProgress, step.reward, step.earnedXp);
                     if (step.durationSeconds > 0)
                         mapped = mapped.withDurationSeconds(step.durationSeconds);
                     if (step.trainingContext != null)
                         mapped = mapped.withTrainingContext(step.trainingContext);
                     explicit.add(mapped);
-                    activeAssigned = true;
                     remaining++;
                 }
             }
@@ -128,7 +121,6 @@ final class FocusTaskFixtures {
         private int comboStage;
         private int baseXp = 10;
         private Integer earnedXp;
-        private boolean available;
 
         private StepBuilder(String id, String title) { this.id = id; this.title = title; }
         StepBuilder amount(String value) { amount = value; return this; }
@@ -140,15 +132,12 @@ final class FocusTaskFixtures {
         StepBuilder combo(int value) { comboStage = value; return this; }
         StepBuilder baseXp(int value) { baseXp = value; return this; }
         StepBuilder earnedXp(int value) { earnedXp = value; return this; }
-        StepBuilder available() { available = true; return this; }
 
         FocusStepUiModel build() {
             RewardBreakdown reward = RewardBreakdown.fromStage(baseXp, comboStage);
             return FocusStepUiModel.executable(id, title, amount, note,
-                    done ? FocusStepStatus.COMPLETED
-                            : available ? FocusStepStatus.AVAILABLE : FocusStepStatus.ACTIVE,
+                    done,
                     done ? StepExecutionUiAction.none()
-                            : available ? StepExecutionUiAction.advancePlannedRepetitions(id)
                             : repetition == null ? StepExecutionUiAction.toggle(id)
                             : StepExecutionUiAction.submitRepetition(id),
                     repetition, reward,

@@ -3,7 +3,8 @@ package de.thonktank.autosecretary;
 import androidx.annotation.Nullable;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepListUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepRowUiModel;
 import de.thonktank.autosecretary.domain.model.RepetitionProgress;
 import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 
@@ -90,14 +91,12 @@ public final class RepetitionInputState {
         return new RepetitionInputState(step.id, value, index, load, rir, safety);
     }
 
-    public RepetitionInputState reconcile(@Nullable FocusTaskUiModel focus) {
+    public RepetitionInputState reconcile(@Nullable FocusStepListUiModel focus) {
         if (stepId == null) return this;
         if (focus != null) {
-            for (FocusStepUiModel step : focus.steps) {
-                if (step.isDone()) continue;
-                return stepId.equals(step.id) && step.repetitionProgress != null
-                        ? this : idle();
-            }
+            FocusStepRowUiModel row = focus.expandedRow();
+            if (row != null && stepId.equals(row.id())
+                    && row.step.repetitionProgress != null) return this;
         }
         return idle();
     }

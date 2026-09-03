@@ -23,4 +23,5 @@
     <item name="action_today_step_down" type="id" />
     <item name="action_today_step_front" type="id" />
     <item name="action_today_step_back" type="id" />
+    <item name="action_today_step_select" type="id" />
 </resources>

@@ -63,8 +63,8 @@ public final class FocusTaskViewGoldenRobolectricTest {
         FrameLayout root = new FrameLayout(activity);
         root.setBackgroundColor(palette.background);
         FocusTaskView view = new FocusTaskView(activity);
-        view.bind(task, false, palette, limit,
-                RepetitionInputState.idle(), event -> { });
+        view.bind(FocusCardTestModels.of(task, palette, limit,
+                RepetitionInputState.idle()), false, event -> { });
         root.addView(view, new FrameLayout.LayoutParams(-1, -1));
         activity.setContentView(root);
 
@@ -137,7 +137,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 .repetition(RepetitionProgressUiModel.sets(3, 12,
                         Arrays.asList(12, 12))).build().withTrainingContext(training);
         FocusStepUiModel curl = FocusTaskFixtures.step("curl", "Beinbeuger")
-                .amount("3 × 12").note("32 kg, Sitz 5").available().build();
+                .amount("3 × 12").note("32 kg, Sitz 5").build();
         return FocusTaskFixtures.task("gym-assistant", "Gym")
                 .occurrence("gym-assistant-today").slot(TaskSlot.MORNING)
                 .recurrence(Recurrence.DAILY).steps(Arrays.asList(press, curl)).build();

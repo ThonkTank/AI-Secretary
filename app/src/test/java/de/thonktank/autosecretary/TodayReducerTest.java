@@ -34,13 +34,55 @@ public final class TodayReducerTest {
         TodayReducer.Result preview = reducer.preview(begun.state, "a",
                 Arrays.asList("b", "a", "c"));
         assertEquals(Arrays.asList("b", "a", "c"), preview.state.reorder.previewOrder);
-        assertEquals(Arrays.asList("b", "a", "c"), openIds(preview.state.today));
+        assertEquals(canonical, openIds(preview.state.today));
+        assertEquals(Arrays.asList("b", "a", "c"), projectedIds(preview.state));
         assertNull(preview.command);
 
         TodayReducer.Result cancelled = reducer.cancel(preview.state, "a");
         assertEquals(TodayFeatureState.Reorder.Phase.IDLE, cancelled.state.reorder.phase);
         assertEquals(canonical, openIds(cancelled.state.today));
+        assertEquals(canonical, projectedIds(cancelled.state));
         assertNull(cancelled.command);
+    }
+
+    @Test public void selectingStepChangesOnlyTheLocalProjection() {
+        TodayFeatureState state = TodayFeatureState.idle(today("a", "b", "c"));
+
+        TodayReducer.Result selected = reducer.select(state, "c");
+
+        assertSame(state.today, selected.state.today);
+        assertEquals("c", selected.state.selectedStepId);
+        assertEquals(canonical, openIds(selected.state.today));
+        assertEquals(Arrays.asList("c", "a", "b"), projectedIds(selected.state));
+        assertEquals(de.thonktank.autosecretary.presentation.today.FocusStepRowMode.EXPANDED,
+                selected.state.focus.rows.get(0).mode);
+        assertEquals(de.thonktank.autosecretary.presentation.today.FocusStepRowMode.COMPACT,
+                selected.state.focus.rows.get(1).mode);
+        assertNull(selected.command);
+    }
+
+    @Test public void selectionSurvivesSameOccurrenceAndClearsAtEveryBoundary() {
+        TodayFeatureState selected = reducer.select(
+                TodayFeatureState.idle(today("a", "b", "c")), "c").state;
+
+        TodayFeatureState rebound = reducer.rebind(selected, today("a", "b", "c")).state;
+        assertEquals("c", rebound.selectedStepId);
+
+        TodayFeatureState completed = reducer.rebind(rebound, todayWithSteps("occurrence",
+                FocusTaskFixtures.simpleStep("a", "a", false),
+                FocusTaskFixtures.simpleStep("b", "b", false),
+                FocusTaskFixtures.simpleStep("c", "c", true))).state;
+        assertNull(completed.selectedStepId);
+
+        TodayFeatureState removed = reducer.rebind(rebound, today("a", "b")).state;
+        assertNull(removed.selectedStepId);
+
+        TodayFeatureState otherOccurrence = reducer.rebind(selected,
+                todayFor("other-occurrence", "a", "b", "c")).state;
+        assertNull(otherOccurrence.selectedStepId);
+
+        TodayFeatureState reordering = reducer.begin(selected, "a", canonical).state;
+        assertNull(reordering.selectedStepId);
     }
 
     @Test public void dropEmitsExactlyOneCommandAndDuplicateDropIsIgnored() {
@@ -96,16 +138,33 @@ public final class TodayReducerTest {
     }
 
     private static TodayUiModel today(String... ids) {
+        return todayFor("occurrence", ids);
+    }
+
+    private static TodayUiModel todayFor(String occurrenceId, String... ids) {
         java.util.ArrayList<de.thonktank.autosecretary.presentation.today.FocusStepUiModel> steps =
                 new java.util.ArrayList<>();
         for (String id : ids) steps.add(FocusTaskFixtures.simpleStep(id, id, false));
+        return todayWithSteps(occurrenceId, steps.toArray(
+                new de.thonktank.autosecretary.presentation.today.FocusStepUiModel[0]));
+    }
+
+    private static TodayUiModel todayWithSteps(String occurrenceId,
+            de.thonktank.autosecretary.presentation.today.FocusStepUiModel... steps) {
         FocusTaskUiModel focus = FocusTaskFixtures.task("task", "Task")
-                .occurrence("occurrence").steps(steps).build();
+                .occurrence(occurrenceId).steps(Arrays.asList(steps)).build();
         return new TodayUiModel(new XpProgress(0), focus, Collections.emptyList(),
                 Collections.emptyList());
     }
 
     private static List<String> openIds(TodayUiModel model) {
         return TodayFeatureState.openStepIds(model);
+    }
+
+    private static List<String> projectedIds(TodayFeatureState state) {
+        java.util.ArrayList<String> ids = new java.util.ArrayList<>();
+        for (de.thonktank.autosecretary.presentation.today.FocusStepRowUiModel row
+                : state.focus.rows) ids.add(row.id());
+        return ids;
     }
 }

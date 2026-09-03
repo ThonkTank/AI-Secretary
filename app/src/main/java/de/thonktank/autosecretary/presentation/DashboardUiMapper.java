@@ -30,7 +30,6 @@ import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.domain.model.TrainingHistoryEntry;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
-import de.thonktank.autosecretary.presentation.today.FocusStepStatus;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
@@ -152,7 +151,6 @@ public final class DashboardUiMapper {
 
     private List<FocusStepUiModel> focusSteps(DashboardTask item, Dashboard dashboard) {
         List<FocusStepUiModel> steps = new ArrayList<>();
-        boolean activeAssigned = false;
         FlowRunSummary flow = flowFor(item, dashboard);
         for (OccurrenceStep step : item.steps) {
             if (item.done && !step.done) continue;
@@ -160,12 +158,8 @@ public final class DashboardUiMapper {
             ComboProgress combo = dashboard.combos.get(step.comboOwnerId);
             RewardBreakdown reward = RewardPolicy.step(combo);
             RepetitionProgressUiModel repetition = repetition(step);
-            FocusStepStatus status = done ? FocusStepStatus.COMPLETED
-                    : activeAssigned ? FocusStepStatus.AVAILABLE : FocusStepStatus.ACTIVE;
             StepExecutionUiAction action;
             if (done) action = StepExecutionUiAction.none();
-            else if (activeAssigned)
-                action = StepExecutionUiAction.advancePlannedRepetitions(step.id);
             else if (repetition != null)
                 action = StepExecutionUiAction.submitRepetition(step.id);
             else if (flow != null && flow.delayAfter != null
@@ -177,7 +171,7 @@ public final class DashboardUiMapper {
             int plannedXp = item.plannedXp(step.id,
                     earnedXp > 0 ? earnedXp : reward.resultXp);
             FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, step.text,
-                    stepTexts.compactAmount(step.prescription.amount), step.note, status, action,
+                    stepTexts.compactAmount(step.prescription.amount), step.note, done, action,
                     repetition, reward, earnedXp, plannedXp);
             if (step.prescription.amount instanceof StepAmount.Duration)
                 mapped = mapped.withDurationSeconds(
@@ -186,7 +180,6 @@ public final class DashboardUiMapper {
                     : dashboard.trainingContexts.get(step.sourceTemplateId);
             if (training != null) mapped = mapped.withTrainingContext(training(training));
             steps.add(mapped);
-            if (!done) activeAssigned = true;
         }
         return steps;
     }

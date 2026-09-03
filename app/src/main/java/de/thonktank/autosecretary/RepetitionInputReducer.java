@@ -1,11 +1,10 @@
 package de.thonktank.autosecretary;
 
-import de.thonktank.autosecretary.presentation.today.TodayUiModel;
-
 import androidx.annotation.Nullable;
 
+import de.thonktank.autosecretary.presentation.today.FocusStepListUiModel;
+import de.thonktank.autosecretary.presentation.today.FocusStepRowUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
-import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 
 /** Pure reducer for repetition drafts and submissions. */
@@ -42,14 +41,14 @@ public final class RepetitionInputReducer {
         }
     }
 
-    public Result reduce(RepetitionInputState current, TodayUiModel dashboard,
+    public Result reduce(RepetitionInputState current, FocusStepListUiModel focus,
                          TodayAction action) {
-        if (current == null || dashboard == null || action == null)
-            throw new IllegalArgumentException("Reducer state, dashboard and event are required");
+        if (current == null || focus == null || action == null)
+            throw new IllegalArgumentException("Reducer state, focus and event are required");
         String stepId = stepId(action);
-        FocusStepUiModel active = activeRepetitionStep(dashboard);
+        FocusStepUiModel active = activeRepetitionStep(focus);
         if (stepId == null || active == null || !active.id.equals(stepId))
-            return new Result(current.reconcile(dashboard.focus), null);
+            return new Result(current.reconcile(focus), null);
         if (action.kind == TodayAction.Kind.ADJUST_REPETITION) {
             return new Result(current.adjust(active, action.value), null);
         }
@@ -84,11 +83,8 @@ public final class RepetitionInputReducer {
         }
     }
 
-    @Nullable private static FocusStepUiModel activeRepetitionStep(TodayUiModel dashboard) {
-        FocusTaskUiModel focus = dashboard.focus;
-        if (focus == null) return null;
-        for (FocusStepUiModel step : focus.steps)
-            if (!step.isDone()) return step.repetitionProgress == null ? null : step;
-        return null;
+    @Nullable private static FocusStepUiModel activeRepetitionStep(FocusStepListUiModel focus) {
+        FocusStepRowUiModel row = focus.expandedRow();
+        return row == null || row.step.repetitionProgress == null ? null : row.step;
     }
 }

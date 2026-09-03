@@ -327,9 +327,10 @@ public final class TodayInteractionInstrumentationTest {
 
         void render() {
             TodayFeatureState value = state.get();
-            list.bind(new FocusCardUiModel(value.today.focus,
+            list.bind(new FocusCardUiModel(value.today.focus, value.focus,
                     DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT),
-                    FocusStepLimit.AUTO, RepetitionInputState.idle(), value.reorder));
+                    FocusStepLimit.AUTO, RepetitionInputState.idle(), value.reorder,
+                    de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty()));
         }
 
         List<FocusStepRowView> rows() {

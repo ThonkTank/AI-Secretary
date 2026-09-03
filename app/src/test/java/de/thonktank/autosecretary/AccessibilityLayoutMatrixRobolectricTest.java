@@ -77,8 +77,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         TodayActionRecorder events = new TodayActionRecorder();
         FocusTaskView focus = new FocusTaskView(context);
         FocusTaskUiModel task = setTask(false);
-        focus.bind(task, false, palette(), FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), events);
+        focus.bind(FocusCardTestModels.of(task, palette(), FocusStepLimit.AUTO,
+                RepetitionInputState.idle()), false, events);
         measure(focus, dp(context, 360), dp(context, 2_400));
 
         XpVesselView vessel = first(focus, XpVesselView.class);
@@ -170,8 +170,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     private static void renderRepetitionControls(Context context, int widthDp, float fontScale,
                                                  DayPalette palette) {
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(setTask(false), false, palette, FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), event -> { });
+        focus.bind(FocusCardTestModels.of(setTask(false), palette, FocusStepLimit.AUTO,
+                RepetitionInputState.idle()), false, event -> { });
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
         int available = dp(context, widthDp) - horizontalPagePadding;
@@ -196,8 +196,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
     private static void renderDynamicLimit(Context context, int widthDp, float fontScale,
                                            DayPalette palette) {
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(longTask(), false, palette, FocusStepLimit.FIVE,
-                RepetitionInputState.idle(), event -> { });
+        focus.bind(FocusCardTestModels.of(longTask(), palette, FocusStepLimit.FIVE,
+                RepetitionInputState.idle()), false, event -> { });
         int horizontalPagePadding = context.getResources().getDimensionPixelSize(
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
         int availableWidth = dp(context, widthDp) - horizontalPagePadding;
@@ -293,8 +293,8 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
 
     private static int visibleFollowingRows(Context context) {
         FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(longTask(), false, palette(), FocusStepLimit.AUTO,
-                RepetitionInputState.idle(), event -> { });
+        focus.bind(FocusCardTestModels.of(longTask(), palette(), FocusStepLimit.AUTO,
+                RepetitionInputState.idle()), false, event -> { });
         measureExactly(focus, dp(context, 330), dp(context, 540));
         return ViewTestQueries.visibleFollowingStepRows(focus);
     }
