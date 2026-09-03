@@ -35,6 +35,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-025: Mengenbasierte Schritt-Rewards und Tagesabschluss](adr-025-mengenbasierte-schritt-rewards.md)
 - [ADR-026: Getrennte State-Owner für Today und App-Shell](adr-026-today-und-shell-state-owner.md)
 - [ADR-030: Minimale Trainingsarchitektur und automatisierter Abschluss](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md)
+- [ADR-031: Fokusprojektion, Zeilenidentität und Grain-Geometrie](adr-031-fokusprojektion-zeilenidentitaet-und-grain-geometrie.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -63,6 +64,12 @@ Die verbindliche
 Schritt-, Trainings-, Ergebnis- und Persistenzgrenzen ohne Übergangsarchitektur. Ihr kompaktes
 [Ausführungsprotokoll](training-assistant-minimal-execution.md) hält Phasenstatus, Plan,
 Validierung und Abweichungen separat fest.
+
+Die verbindliche
+[Roadmap zur sauberen Heute-Aufgabenblatt-Architektur](today-focus-clean-roadmap.md) führt
+Fokusprojektion, Zeilenidentität, Snapshot-Zuordnung und Grain-Geometrie in vier einzeln
+prüfbaren Phasen zusammen. Das getrennte
+[Ausführungsprotokoll](today-focus-clean-execution.md) hält Pläne, Nachweise und Audits fest.
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
