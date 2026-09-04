@@ -463,3 +463,53 @@ abgebrochene Versuch hatte zuvor weder Quelltext noch Tests ausgeführt.
 - Dieser Audit ist noch nicht der abschließende Freigabeaudit: Nach der Geräteabnahme werden deren
   Befunde ergänzt und der vollständige Cross-Phase-Check unmittelbar vor dem finalen PR erneut
   bestätigt.
+
+### Korrekturrunde 4 – physisches Geräte-Gate aufgehoben
+
+Plan: Der Owner hebt die physische Geräteabnahme ausdrücklich als Freigabegate auf. Die
+kanonische Roadmap wird entsprechend präzisiert, ohne die historischen Pläne, Befunde oder den
+damaligen Blocker im append-only Ausführungsprotokoll umzuschreiben. An die Stelle des Gerätes
+tritt keine schwächere Einzelprüfung: Die bereits vorhandenen Geometrie-, Render- und
+Golden-Abnahmen müssen gemeinsam alle gemeldeten Ansichten abdecken. Danach werden der finale
+Cross-Phase-Audit, eine lokale Abschlussvalidierung, PR, Checks, Squash-Merge und der exakte
+Main-Workflow in dieser Reihenfolge ausgeführt.
+
+Ergebnis: Die kanonische Roadmap nennt nun die automatisierte visuelle Abnahme und stellt klar,
+dass ein physisches Gerät kein Freigabegate ist. Die Goldens für Textgeometrie,
+Satz-/Wiederholungsringe, Aufgabenblattabstand und XP-Füllstände wurden erneut direkt geprüft.
+Der vollständige lokale Gate am endgültigen PR-Inhalt ist grün; da nur Roadmap und
+Ausführungsprotokoll seit dem vorherigen Lauf geändert wurden, waren die Produktaufgaben
+erwartungsgemäß aktuell.
+
+### Abschließender Cross-Phase-Audit
+
+- Phase 0 ist nachweislich abgeschlossen: Zielvertrag, ADR-031, Roadmap, getrenntes
+  Ausführungsprotokoll und reproduzierbare Baselines wurden über PR 316 gemergt; der exakte
+  Main-Workflow 33742146087 ist grün.
+- Phase 1 ist nachweislich abgeschlossen: `:today-core` besitzt Auswahl, Reihenfolge, Zeilenmodus
+  und ausführbare Aktion. Kanonische Reihenfolge, Reorder-Preview und temporäre Auswahl sind
+  getrennt; entfernte Status-, Promotions- und Doppelaktionsfelder fehlen im Produktionscode.
+  PR 318 und der exakte Main-Workflow 33751400918 sind grün.
+- Phase 2 ist nachweislich abgeschlossen: Zeilenidentität verwendet Occurrence- und stabile
+  Schritt-ID, alle Teilbinder beschreiben den leeren Zustand vollständig, und
+  `StepSnapshotFactory` ist die produktive Materialisierungsgrenze. Schema 22 und Migrationen
+  besitzen weiterhin die festgelegten Hashes. PR 320 und der exakte Main-Workflow 33762642029
+  sind grün.
+- Phase 3 erfüllt den Zielvertrag: `GrainOcclusion` liefert sichtbare Zeilenrechtecke,
+  `LeafSurface` verarbeitet ausschließlich Geometrie, der Titelabstand beträgt 12 dp, und das
+  XP-Gefäß verwendet einen gemeinsamen Innenkreis für Füllung und Kreissehne ohne Software-
+  Schatten oder degenerierte Randlinie.
+- Die automatisierte Sichtabnahme deckt kurze, gewichtete, leere, mehrzeilige und ellipsierte
+  Texte, Satz-/Wiederholungsringe, den Aufgabenblattabstand sowie XP bei 0, 25, 50 und 100 Prozent
+  ab. Die geprüften Bilder zeigen keine der gemeldeten Masken-, Ring-, Rechteck- oder
+  Linienartefakte.
+- Der vollständige Gate ist am finalen Inhalt grün: 551 Tests, 0 Fehler, 0 Abbrüche, 1 bestehender
+  Skip; Lint, Debug-, Instrumentierungs- und Release-Build bestehen. `git diff --check` und alle
+  negativen Architektur-Scans sind sauber.
+- Der alte Frontend-Checkout und der unveröffentlichte Referenzbranch wurden nicht verändert.
+  Es gibt keinen Versionssprung, keine Veröffentlichung und keine Datenbereinigung.
+
+Audit-Ergebnis: Keine offene lokale Abweichung gegenüber Roadmap, ADR-031, Entfernungslisten,
+Snapshot-Vertrag oder sichtbaren Abnahmekriterien. Phase 3 ist bereit für den finalen Pull
+Request; Implementierungsstatus und Roadmap-Abschluss folgen erst nach grünen PR-Checks,
+Squash-Merge und grünem exaktem Main-Workflow.

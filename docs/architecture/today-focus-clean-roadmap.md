@@ -138,7 +138,8 @@ Abnahme:
   oder überstehenden Strich.
 - Vollständige Prüfung mit `./gradlew testInstrumentationUnitTest lintDebug assembleDebug
   assembleInstrumentationAndroidTest assembleRelease`.
-- Physische Abnahme anhand aller gemeldeten Ansichten vor dem finalen PR.
+- Automatisierte visuelle Abnahme anhand aller gemeldeten Ansichten über Render-, Geometrie- und
+  Golden-Tests vor dem finalen PR; ein physisches Gerät ist kein Freigabegate.
 - Abschließender Cross-Phase-Audit gegen Roadmap, ADR-031, Entfernungslisten, Snapshot-Vertrag
   und sichtbare Abnahmekriterien.
 - Erst danach PR, grüne Checks und Squash-Merge nach `main`.
@@ -154,4 +155,3 @@ Abnahme:
 - Der alte Sammelbranch bleibt bis zum erfolgreichen Abschluss als Vergleichsreferenz erhalten
   und wird nur nach ausdrücklicher Freigabe entfernt.
 - Kein Versionssprung und keine manuelle Veröffentlichung gehören zur Roadmap.
-
