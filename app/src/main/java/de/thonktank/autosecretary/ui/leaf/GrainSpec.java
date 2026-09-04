@@ -8,19 +8,20 @@ import java.util.List;
 
 /** Immutable description of grain sources; geometry is resolved by LeafSurface after layout. */
 public abstract class GrainSpec {
-    final List<View> fadedText;
+    final List<GrainOcclusion> occlusions;
 
-    private GrainSpec(List<? extends View> fadedText) {
-        this.fadedText = immutableViews(fadedText);
+    private GrainSpec(List<? extends GrainOcclusion> occlusions) {
+        this.occlusions = immutableOcclusions(occlusions);
     }
 
     public static Corner corner(LeafShape.Corner corner, float ratio,
-                                List<? extends View> fadedText) {
-        return new Corner(corner, ratio, fadedText);
+                                List<? extends GrainOcclusion> occlusions) {
+        return new Corner(corner, ratio, occlusions);
     }
 
-    public static Anchors anchors(List<Anchor> anchors, List<? extends View> fadedText) {
-        return new Anchors(anchors, fadedText);
+    public static Anchors anchors(List<Anchor> anchors,
+                                  List<? extends GrainOcclusion> occlusions) {
+        return new Anchors(anchors, occlusions);
     }
 
     public static Anchor anchor(View target, int level) {
@@ -35,8 +36,9 @@ public abstract class GrainSpec {
         final LeafShape.Corner corner;
         final float ratio;
 
-        private Corner(LeafShape.Corner corner, float ratio, List<? extends View> fadedText) {
-            super(fadedText);
+        private Corner(LeafShape.Corner corner, float ratio,
+                       List<? extends GrainOcclusion> occlusions) {
+            super(occlusions);
             if (corner == null) throw new IllegalArgumentException("corner == null");
             this.corner = corner;
             this.ratio = Math.max(0f, Math.min(1f, ratio));
@@ -46,8 +48,8 @@ public abstract class GrainSpec {
     public static final class Anchors extends GrainSpec {
         final List<Anchor> anchors;
 
-        private Anchors(List<Anchor> anchors, List<? extends View> fadedText) {
-            super(fadedText);
+        private Anchors(List<Anchor> anchors, List<? extends GrainOcclusion> occlusions) {
+            super(occlusions);
             this.anchors = Collections.unmodifiableList(new ArrayList<>(anchors));
         }
     }
@@ -67,7 +69,8 @@ public abstract class GrainSpec {
         }
     }
 
-    private static List<View> immutableViews(List<? extends View> values) {
+    private static List<GrainOcclusion> immutableOcclusions(
+            List<? extends GrainOcclusion> values) {
         return Collections.unmodifiableList(new ArrayList<>(values));
     }
 }

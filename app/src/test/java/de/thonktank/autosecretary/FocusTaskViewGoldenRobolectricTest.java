@@ -55,6 +55,11 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 false, 824, 1500, 1);
     }
 
+    @Test public void repetitionRingGeometryStaysAlignedAcrossControls() throws Exception {
+        render("repetition-rings", repetitionRingTask(), FocusStepLimit.AUTO,
+                false, 824, 900, 0);
+    }
+
     private static void render(String name, FocusTaskUiModel task, FocusStepLimit limit,
                                boolean allowDefer,
                                int width, int height, int following) throws Exception {
@@ -159,6 +164,16 @@ public final class FocusTaskViewGoldenRobolectricTest {
                         step("stretch", "Dehnen", "",
                                 "Waden und Hüfte, ohne Eile", false, null),
                         shower)).build();
+    }
+
+    private static FocusTaskUiModel repetitionRingTask() {
+        FocusStepUiModel row = FocusTaskFixtures.step("row", "Rudern (Obere Griffe)")
+                .amount("3 × 12").note("25 kg, Sitz 6, Polster 1")
+                .repetition(RepetitionProgressUiModel.sets(3, 12,
+                        Collections.singletonList(12))).combo(8).build();
+        return FocusTaskFixtures.task("rings", "Gym").occurrence("rings-today")
+                .slot(TaskSlot.MORNING).recurrence(Recurrence.DAILY).combo(8)
+                .steps(Collections.singletonList(row)).build();
     }
 
     private static FocusStepUiModel step(String id, String title, String amount, String note,

@@ -302,3 +302,164 @@ gesquasht. Die vollständige PR-Matrix 33760930254 ist grün: Quality sowie norm
 Instrumentierung auf API 26, 35 und 37 bestehen. Der exakte Main-Workflow 33762642029 ist
 vollständig grün; Quality, dieselbe Instrumentierungsmatrix, Packaging, Upgrade auf API 26, 35
 und 37 sowie Publish sind erfolgreich. Phase 2 ist damit implementiert und Phase 3 freigegeben.
+
+## Phase 3 – Präzise Grain- und Gefäßgeometrie
+
+Status: in Arbeit
+
+### Plan
+
+Ergebnis: Grain-Abschwächung folgt ausschließlich der tatsächlich sichtbaren Geometrie jeder
+gerenderten Textzeile. Das XP-Gefäß besitzt eine gemeinsame mathematische Kreisgeometrie für
+Füllung, Wasserlinie und Clip; rechteckige Software-Schatten entfallen.
+
+Reihenfolge:
+
+1. `GrainOcclusion` als explizite Geometriequelle für Textzeilen und bewusst flächige
+   Nicht-Text-Elemente einführen. `GrainSpec` akzeptiert keine rohen Text-Views mehr;
+   `LeafSurface` löst nur noch die von den Quellen gelieferten Rechtecke auf.
+2. Textrechtecke aus dem finalen Android-`Layout` ableiten: tatsächliche linke/rechte
+   Zeilenausdehnung, Compound-/Extended-Padding, vertikale Ausrichtung, Scrolloffset,
+   Leerzeilen, Ellipsierung sowie Clipping an View und Vorfahren berücksichtigen.
+3. Alle Header-, Aufgabenblatt-, Schritt- und Aufgabenblattlisten-Grain-Quellen auf den neuen
+   Vertrag umstellen und den Titel-Schritt-Abstand von 24 auf 12 dp reduzieren.
+4. `XpVesselView` auf einen gemeinsamen Innenkreis-Clip umstellen. Die Wasserlinie verwendet die
+   Kreissehne an exakt derselben Füllhöhe, wird bei 0 und 100 Prozent nicht gezeichnet; Software-
+   Layer und Combo-Schatten werden entfernt.
+5. Geometrie-, Pixel-, Render- und Golden-Tests für kurze, gewichtete, leere, mehrzeilige und
+   ellipsierte Texte, Satz-/Wiederholungszeilen, 12-dp-Abstand und XP-Füllstände 0/25/50/100
+   ergänzen beziehungsweise aktualisieren.
+6. Fokussierte Tests, vollständigen Gradle-Gate sowie getrennte Plan-, Roadmap- und
+   phasenübergreifende Audits ausführen. Anschließend die vorgeschriebene physische Abnahme
+   anhand der gemeldeten Ansichten durchführen; erst danach darf der finale PR entstehen.
+
+Abnahme: Außerhalb sichtbarer Glyphenzeilen bleibt das Grain unverändert; Leerzeilen und der
+unbeschriftete Rest einer gewichteten Zeile maskieren nichts. Satz-/Wiederholungszeilen besitzen
+keine versetzten oder doppelten Ringe. Der Titelabstand beträgt 12 dp. XP-Füllung und Wasserlinie
+bleiben in allen vier Referenzzuständen im Innenkreis, ohne degenerierte Linie, rechteckigen
+Schatten oder überstehenden Strich.
+
+### Korrekturrunde 1 – plattformgetreue Geometrie-Testmetriken
+
+Plan: Der erste fokussierte Testlauf kompiliert die neue Produktionsgeometrie, meldet aber zwei
+Fehler im neuen Test-Harness. Der Architekturtest sucht `dimens.xml` relativ zur Repository-Wurzel,
+während Gradle den Test mit dem App-Modul als Arbeitsverzeichnis ausführt. Der Textgeometrietest
+fordert außerdem pauschal mehr als 20 px vertikalen Versatz; Android bestimmt diesen Wert jedoch
+aus Extended Padding, finaler `Layout`-Höhe und vertikaler Gravity.
+
+Korrektur: Die Ressourcenauflösung erhält denselben wurzel-/modulunabhängigen Pfadvertrag wie die
+Quelltextprüfungen. Die vertikale Erwartung wird aus den tatsächlichen Android-Layoutmetriken
+berechnet; Padding, Gravity und Scroll bleiben weiterhin separat belegt. Danach wird der gesamte
+fokussierte Block erneut ausgeführt.
+
+Ergebnis: Ressourcenpfad und vertikale Erwartung sind plattformgetreu. Alle neun fokussierten
+Geometrie-, Abstand- und Architekturtests sind grün; eine Produktionskorrektur war für diese
+beiden Test-Harness-Abweichungen nicht erforderlich.
+
+### Korrekturrunde 2 – erneute Sichtprüfung eines Golden-Zustands
+
+Plan: Nach der Sichtprüfung hat der geschützte Golden-Update-Lauf alle vier Aufgabenblatt- und
+zehn der elf geänderten Homescreen-Baselines übernommen. Der Zustand `later` wurde abgelehnt,
+weil sein frisches Rendering nicht mehr bitgenau zum zuvor erzeugten Expected-/Actual-/Diff-
+Triplet passte. Der Schutzmechanismus darf nicht umgangen werden.
+
+Korrektur: `later` wird erneut ohne Update-Flag gerendert, das neue Actual-/Diff-Bild separat
+geprüft und erst danach in einem zweiten Update-Lauf übernommen. Anschließend laufen alle
+betroffenen Golden-Kataloge noch einmal ohne Update-Flags.
+
+Ergebnis: Der frische `later`-Diff betrifft ausschließlich die beabsichtigte zeilenweise
+Grain-Abschwächung im Kopfblatt und wurde visuell freigegeben. Der zweite geschützte Update-Lauf
+ist grün. Anschließend bestehen die neuen Focus-Rendering-, bestehenden Focus-Task- und
+Homescreen-Golden-Kataloge gemeinsam read-only in 1 min 21 s.
+
+### Korrekturrunde 3 – aktualisierte lokale JDK-Laufzeit
+
+Plan: Der erneute vollständige Gate startete nicht, weil der zuvor verwendete Pfad
+`/usr/lib/jvm/java-21-openjdk` nach einer Systemaktualisierung nur noch Dokumentation, aber keine
+Java-Binärdateien enthält. Dies ist eine lokale Umgebungsabweichung; Quelltext und Tests wurden
+nicht ausgeführt und werden nicht verändert.
+
+Korrektur: Der Gate wird mit dem aktuell installierten vollständigen JDK unter
+`/usr/lib/jvm/java-25-openjdk` und weiterhin mit dem festgelegten Android-SDK erneut ausgeführt.
+Die Validierungskommandos und der geprüfte Produktstand bleiben unverändert.
+
+Ergebnis: Mit JDK 25 startete derselbe Gate unverändert und war in 7 min 21 s grün. Der
+abgebrochene Versuch hatte zuvor weder Quelltext noch Tests ausgeführt.
+
+### Implementierung und lokale Validierung
+
+- `GrainSpec` konsumiert ausschließlich `GrainOcclusion`-Quellen. Textquellen lösen pro
+  sichtbarer Layoutzeile ein lokales Rechteck aus tatsächlicher Zeilenbreite, Compound- und
+  Extended-Padding, vertikaler Ausrichtung und Scrolloffset auf. Leerzeilen werden übersprungen;
+  Ellipsierung sowie Clipping an View und Vorfahren werden berücksichtigt.
+- `LeafSurface` kennt keine `TextView` mehr und verarbeitet nur die bereits aufgelösten
+  Rechtecke. Die bewusst flächigen Wiederholungsbalken verwenden eine ausdrücklich benannte
+  Bounds-Occlusion.
+- Header, Aufgabenblätter, Fokuskarte, Schrittlisten, Schrittzeilen und Wiederholungssteuerung
+  verwenden denselben Occlusion-Vertrag. Der Titel-Schritt-Abstand beträgt exakt 12 dp.
+- `XpVesselView` berechnet Füllhöhe und Kreissehne aus derselben Kreisgleichung und clippt
+  Füllung sowie Linie an denselben Innenkreis. Bei 0 und 100 Prozent wird keine Linie gezeichnet;
+  Software-Layer und Combo-Schatten existieren nicht mehr.
+- Geometrie- und Golden-Tests decken kurze, gewichtete, leere, mehrzeilige und ellipsierte Texte,
+  Vorfahren-Clipping, Satz-/Wiederholungsringe, den 12-dp-Abstand und XP-Füllstände 0, 25, 50 und
+  100 Prozent ab. Alle neuen und angepassten Goldens wurden vor Übernahme einzeln visuell geprüft
+  und anschließend ohne Update-Flags erneut ausgeführt.
+- Vollständiger Gate
+  `./gradlew testInstrumentationUnitTest lintDebug assembleDebug
+  assembleInstrumentationAndroidTest assembleRelease`: grün in 7 min 21 s auf dem finalen
+  Testbestand.
+- Testresultat: 551 Tests, 0 Fehler, 0 Abbrüche, 1 bestehender Skip.
+- Schema 22 bleibt
+  `b4f8f0a32b84cfcbc5e70a02018cc1b6bbe120682e98061a8e7773f0f75563e2`; Migrationen bleiben
+  `bed6d1c550acbe78ffd724b3057f011366a7447ef3d89854c88841a9aa6b1d9a`.
+
+### Plan-Audit
+
+- Schritt 1 erfüllt: `GrainOcclusion` trennt Textgeometrie von absichtlich flächiger Geometrie;
+  `GrainSpec` akzeptiert keine View-Liste mehr.
+- Schritt 2 erfüllt: Die Textrechtecke werden aus dem finalen Android-Layout samt Breite,
+  Padding, Gravity, Scroll, Leerzeilen, Ellipsierung und sichtbarem Vorfahren-Clip gewonnen.
+- Schritt 3 erfüllt: Alle vorgesehenen Today-Grain-Quellen sind umgestellt; der Abstandstest
+  belegt 12 dp.
+- Schritt 4 erfüllt: Innenkreis, Füllfläche und Kreissehne teilen eine Geometrie; die beiden
+  Randzustände besitzen keine Wasserlinie und der alte Schatten-/Softwarepfad ist entfernt.
+- Schritt 5 erfüllt: Geometrie-, Render- und Golden-Abnahmen einschließlich einer eigenen
+  Satz-/Wiederholungsansicht sind grün.
+- Schritt 6 lokal erfüllt: fokussierte Tests, finaler vollständiger Gate sowie getrennte Audits
+  sind grün. Die physische Abnahme, der finale PR und das Remote-Gate bleiben ausdrücklich offen.
+
+### Roadmap-Audit und Abweichungen
+
+- Außerhalb der tatsächlich sichtbaren Glyphenzeilen wird keine Text-Occlusion erzeugt. Eine
+  gewichtete kurze Zeile maskiert ihren unbeschrifteten Rest nicht; eine leere Layoutzeile
+  erzeugt überhaupt kein Rechteck.
+- Mehrzeilige und ellipsierte Texte bleiben innerhalb ihrer sichtbaren View- und
+  Vorfahren-Grenzen. `LeafSurface` enthält weder `TextView` noch eine Text-Sonderbehandlung.
+- Das eigene Satz-/Wiederholungs-Golden zeigt ein einziges ausgerichtetes Ringsystem über Titel,
+  Menge und aktiven Bedienelementen; es gibt keine duplizierte oder versetzte Ringquelle.
+- Die XP-Goldens für 0, 25, 50 und 100 Prozent zeigen keinen rechteckigen Schatten und keine über
+  den Innenkreis hinausreichende Wasserlinie. Die mathematischen Randzustände sind zusätzlich
+  direkt getestet.
+- Negative Produktionsscans finden keine alten `fadedText`-/`grainTextViews`-Verträge, keine
+  lokale Focus-Promotion, kein `resetForBind` und in `XpVesselView` weder `setLayerType`,
+  `setShadowLayer` noch `clipRect`.
+- Room-Schema, Migrationen und Snapshot-Semantik sind unverändert. Es wurde keine Titel-,
+  Positions- oder KG-Heuristik eingeführt.
+- Einziger offener Roadmap-Punkt ist die vorgeschriebene physische Abnahme: Am Host ist aktuell
+  kein Android-Gerät per ADB verbunden. Deshalb werden Phase 3, finaler Cross-Phase-Audit, PR und
+  Squash-Merge noch nicht als abgeschlossen markiert.
+
+### Phasenübergreifender Audit – lokaler Stand
+
+- ADR-031 ist im aktuellen Code durch genau eine Fokusprojektion in `:today-core`, getrennte
+  kanonische/Preview-/Auswahlzustände, genau einen Zeilenmodus und eine ausführbare Aktion je
+  Zeile umgesetzt.
+- Zeilen werden über Occurrence- und stabile Schritt-ID wiederverwendet; vollständige Teilbinder
+  verhindern Restzustände. Snapshot-Erzeugung läuft über `StepSnapshotFactory`, während die
+  benannten `rehydrate`-Grenzen Persistenz und Testfixtures vorbehalten bleiben.
+- Grain- und Gefäßgeometrie entsprechen nun demselben ADR-Zielvertrag. Die Entfernungslisten aller
+  drei Produktphasen sind im Produktionscode leer, der vollständige lokale Gate ist grün und der
+  alte aktive Frontend-Checkout bleibt unangetastet.
+- Dieser Audit ist noch nicht der abschließende Freigabeaudit: Nach der Geräteabnahme werden deren
+  Befunde ergänzt und der vollständige Cross-Phase-Check unmittelbar vor dem finalen PR erneut
+  bestätigt.

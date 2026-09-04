@@ -53,6 +53,23 @@ import de.thonktank.autosecretary.timer.TimerSession;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class FocusTaskViewTest {
+    @Test public void titleToStepsGapIsTwelveDp() {
+        Context context = ApplicationProvider.getApplicationContext();
+        FocusTaskView view = new FocusTaskView(context);
+        view.bind(FocusCardTestModels.of(DashboardFixtures.taskWithSteps(),
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), false, event -> { });
+        view.measure(View.MeasureSpec.makeMeasureSpec(new UiStyle(context).dp(330),
+                        View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(new UiStyle(context).dp(700),
+                        View.MeasureSpec.AT_MOST));
+        view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+        FocusCardView card = findFirst(view, FocusCardView.class);
+
+        assertTrue(card != null && card.getChildCount() >= 2);
+        assertEquals(new UiStyle(context).dp(12),
+                card.getChildAt(1).getTop() - card.getChildAt(0).getBottom());
+    }
+
     @Test public void plannedRepetitionsAndNoteStayVisibleBelowTheExercise() {
         Context context = ApplicationProvider.getApplicationContext();
         FocusStepUiModel step = FocusTaskFixtures.step("step-1", "Beinpresse")
@@ -91,7 +108,7 @@ public final class FocusTaskViewTest {
         assertFalse(firstText(row, "23 kg").hasOnClickListeners());
         assertTrue(row.rewardAnchor().getContentDescription().toString()
                 .contains("Satz 1 mit 12 Wiederholungen"));
-        assertTrue(row.grainTextViews().size() >= 4);
+        assertTrue(row.grainOcclusions().size() >= 4);
         View plus = row.findViewById(R.id.rep_stepper_increment);
         assertTrue(plus.performClick());
         TodayAction adjustment = events.lastToday(TodayAction.Kind.ADJUST_REPETITION);

@@ -20,6 +20,7 @@ import java.util.List;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.GrainOcclusion;
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 /** Content-only focus card. Decoration and transition effects live outside this view. */
@@ -231,15 +232,15 @@ public final class FocusCardView extends ViewGroup {
         List<GrainSpec.Anchor> anchors = new ArrayList<>();
         anchors.add(grainAnchor(mainRewardAnchor(), task.grainLevel));
         anchors.addAll(steps.grainAnchors());
-        return GrainSpec.anchors(anchors, grainTextViews());
+        return GrainSpec.anchors(anchors, grainOcclusions());
     }
 
-    List<View> grainTextViews() {
-        List<View> faded = new ArrayList<>();
-        faded.add(title);
-        faded.addAll(steps.grainTextViews());
-        if (primary.getVisibility() == VISIBLE) faded.add(primary);
-        if (later.getVisibility() == VISIBLE) faded.add(later);
+    List<GrainOcclusion> grainOcclusions() {
+        List<GrainOcclusion> faded = new ArrayList<>();
+        faded.add(GrainOcclusion.text(title));
+        faded.addAll(steps.grainOcclusions());
+        if (primary.getVisibility() == VISIBLE) faded.add(GrainOcclusion.text(primary));
+        if (later.getVisibility() == VISIBLE) faded.add(GrainOcclusion.text(later));
         return faded;
     }
 

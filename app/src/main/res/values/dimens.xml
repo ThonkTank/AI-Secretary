@@ -23,7 +23,7 @@
     <dimen name="focus_card_padding_end">28dp</dimen>
     <dimen name="focus_card_padding_vertical">24dp</dimen>
     <dimen name="focus_card_compact_padding_bottom">30dp</dimen>
-    <dimen name="focus_card_steps_gap">24dp</dimen>
+    <dimen name="focus_card_steps_gap">12dp</dimen>
     <dimen name="focus_card_actions_gap">22dp</dimen>
     <dimen name="focus_card_compact_actions_gap">30dp</dimen>
     <dimen name="focus_card_compact_min_height">205dp</dimen>
