@@ -305,7 +305,7 @@ und 37 sowie Publish sind erfolgreich. Phase 2 ist damit implementiert und Phase
 
 ## Phase 3 – Präzise Grain- und Gefäßgeometrie
 
-Status: in Arbeit
+Status: implementiert
 
 ### Plan
 
@@ -513,3 +513,26 @@ Audit-Ergebnis: Keine offene lokale Abweichung gegenüber Roadmap, ADR-031, Entf
 Snapshot-Vertrag oder sichtbaren Abnahmekriterien. Phase 3 ist bereit für den finalen Pull
 Request; Implementierungsstatus und Roadmap-Abschluss folgen erst nach grünen PR-Checks,
 Squash-Merge und grünem exaktem Main-Workflow.
+
+### Korrekturrunde 5 – Status nach dem Remote-Gate
+
+Plan: Nach grünem Pull Request, Squash-Merge und exaktem Main-Workflow wird ausschließlich der
+Phase-3-Status auf `implementiert` gesetzt und der Remote-Nachweis ergänzt. Die historischen
+Pläne, lokalen Validierungen, Audits, Korrekturrunden und die dokumentierte Aufhebung des
+physischen Gates bleiben unverändert.
+
+Ergebnis: PR 322 wurde als `b9058d00697365cc3c095641d5ca364cd832c2f0` nach `main`
+gesquasht. Die vollständige PR-Matrix 33866979505 ist grün: Quality sowie normale und animierte
+Instrumentierung auf API 26, 35 und 37 bestehen. Der exakte Main-Workflow 33868723651 für
+denselben Squash-Commit ist vollständig grün; Quality, dieselbe Instrumentierungsmatrix,
+Packaging, Upgrade auf API 26, 35 und 37 sowie Publish sind erfolgreich. Phase 3 ist damit
+implementiert.
+
+## Roadmap-Abschluss
+
+Status: implementiert
+
+Alle vier Phasen sind über getrennte Themenbranches, Pull Requests, Squash-Merges und grüne
+exakte Main-Workflows abgeschlossen. Der abschließende Cross-Phase-Audit weist keine offene
+Abweichung gegen Roadmap oder ADR-031 aus. Das physische Geräte-Gate wurde durch ausdrückliche
+Owner-Entscheidung entfernt; die automatisierten visuellen Abnahmen bleiben vollständig grün.
