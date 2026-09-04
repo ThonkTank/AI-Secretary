@@ -6,7 +6,7 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.RectF;
+import android.graphics.Path;
 import android.view.View;
 import android.view.animation.PathInterpolator;
 
@@ -15,6 +15,7 @@ import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 public final class XpVesselView extends View {
     private final UiStyle style;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Path innerClip = new Path();
     private DayPalette palette;
     private int result;
     private int base;
@@ -24,7 +25,6 @@ public final class XpVesselView extends View {
     private float displayedFill;
     private boolean ready;
     private boolean bound;
-    private int comboStage;
     private ValueAnimator pulse;
     private ValueAnimator fillAnimator;
     private float pulseAlpha;
@@ -33,7 +33,6 @@ public final class XpVesselView extends View {
         super(context); style = new UiStyle(context);
         setMinimumWidth(style.dp(68)); setMinimumHeight(style.dp(68)); setClickable(true);
         AccessibilityRoles.button(this);
-        setLayerType(LAYER_TYPE_SOFTWARE, null);
     }
 
     public void setPalette(DayPalette palette) {
@@ -52,7 +51,6 @@ public final class XpVesselView extends View {
                 : Math.min(1f, model.earnedXp / (float) model.plannedXp);
         this.fill = nextFill;
         this.ready = model.ready;
-        this.comboStage = model.reward.comboStage;
         setActivated(model.ready);
         animateFill(nextFill);
         setEnabled(model.ready);
@@ -104,25 +102,25 @@ public final class XpVesselView extends View {
         float cx = getWidth() / 2f, cy = getHeight() / 2f;
         float r = Math.min(getWidth(), getHeight()) / 2f;
         paint.setStyle(Paint.Style.FILL); paint.setColor(palette.leaf1);
-        if (comboStage >= 5) {
-            float alpha = Math.min(.46f, .16f + .04f * comboStage);
-            paint.setShadowLayer(style.dp(10 + 2 * comboStage), 0f, 0f,
-                    UiStyle.alpha(palette.light, alpha));
-        }
         canvas.drawCircle(cx, cy, r, paint);
-        paint.clearShadowLayer();
         paint.setColor(UiStyle.alpha(ready ? palette.light : palette.accent, .34f));
         float inner = r - style.dp(2.5f);
-        float surface = cy + inner - 2 * inner * displayedFill;
-        int save = canvas.save(); canvas.clipRect(cx - inner, surface,
-                cx + inner, cy + inner); canvas.drawCircle(cx, cy, inner, paint); canvas.restoreToCount(save);
-        if (displayedFill > 0f) {
+        float fraction = Math.max(0f, Math.min(1f, displayedFill));
+        FillGeometry fillGeometry = fillGeometry(cx, cy, inner, fraction);
+        innerClip.reset();
+        innerClip.addCircle(cx, cy, inner, Path.Direction.CW);
+        int save = canvas.save();
+        canvas.clipPath(innerClip);
+        canvas.drawRect(cx - inner, fillGeometry.surfaceY, cx + inner, cy + inner, paint);
+        if (fillGeometry.drawSurface) {
             paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(style.dp(1.5f));
             paint.setColor(UiStyle.alpha(ready ? palette.lightText : palette.accentText, .35f));
-            canvas.drawLine(cx - inner * .72f, surface + style.dp(1),
-                    cx + inner * .72f, surface + style.dp(1), paint);
+            canvas.drawLine(fillGeometry.chordLeft, fillGeometry.surfaceY,
+                    fillGeometry.chordRight, fillGeometry.surfaceY, paint);
         }
+        canvas.restoreToCount(save);
         if (ready && pulseAlpha > 0f) {
+            paint.setStyle(Paint.Style.FILL);
             paint.setColor(UiStyle.alpha(palette.light, .12f * pulseAlpha));
             canvas.drawCircle(cx, cy, r - style.dp(5), paint);
         }
@@ -136,6 +134,32 @@ public final class XpVesselView extends View {
         paint.setTypeface(style.sans); paint.setTextSize(style.dp(9));
         canvas.drawText(breakdownLabel, cx,
                 cy + style.dp(12), paint);
+    }
+
+    static FillGeometry fillGeometry(float centerX, float centerY, float radius,
+                                     float fraction) {
+        float clamped = Math.max(0f, Math.min(1f, fraction));
+        float surfaceY = centerY + radius - 2f * radius * clamped;
+        float fromCenter = surfaceY - centerY;
+        float halfChord = (float) Math.sqrt(Math.max(0f,
+                radius * radius - fromCenter * fromCenter));
+        return new FillGeometry(surfaceY, centerX - halfChord, centerX + halfChord,
+                clamped > 0f && clamped < 1f);
+    }
+
+    static final class FillGeometry {
+        final float surfaceY;
+        final float chordLeft;
+        final float chordRight;
+        final boolean drawSurface;
+
+        FillGeometry(float surfaceY, float chordLeft, float chordRight,
+                     boolean drawSurface) {
+            this.surfaceY = surfaceY;
+            this.chordLeft = chordLeft;
+            this.chordRight = chordRight;
+            this.drawSurface = drawSurface;
+        }
     }
 
     @Override protected void onDetachedFromWindow() {

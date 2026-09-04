@@ -20,6 +20,7 @@ import java.util.Arrays;
 
 import de.thonktank.autosecretary.domain.model.XpProgress;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.GrainOcclusion;
 import de.thonktank.autosecretary.ui.leaf.LeafShape;
 import de.thonktank.autosecretary.ui.leaf.LeafSurface;
 
@@ -79,7 +80,8 @@ public final class HeaderView extends FrameLayout {
         leaf.bindSurface(palette, palette.leaf2, palette.leaf2Edge, 7, .7f);
         add.setTextColor(palette.lightText); add.setBackground(style.pill(palette.light, 24));
         leaf.setGrainSpec(GrainSpec.corner(LeafShape.Corner.TOP_RIGHT, value.ratio,
-                Arrays.asList(greeting, level, progress)));
+                Arrays.asList(GrainOcclusion.text(greeting), GrainOcclusion.text(level),
+                        GrainOcclusion.text(progress))));
     }
 
     public void playRewardGlint(DayPalette palette) {

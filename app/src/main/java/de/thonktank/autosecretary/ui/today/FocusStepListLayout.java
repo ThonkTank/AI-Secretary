@@ -21,6 +21,7 @@ import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.GrainOcclusion;
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 /**
@@ -332,13 +333,15 @@ public final class FocusStepListLayout extends ViewGroup {
         return Collections.unmodifiableList(anchors);
     }
 
-    List<View> grainTextViews() {
-        List<View> views = new ArrayList<>();
-        if (doneStatus.getVisibility() == VISIBLE) views.add(doneStatus);
+    List<GrainOcclusion> grainOcclusions() {
+        List<GrainOcclusion> views = new ArrayList<>();
+        if (doneStatus.getVisibility() == VISIBLE)
+            views.add(GrainOcclusion.text(doneStatus));
         for (int index = 0; index < rowIds.size() && index < rows.size(); index++)
             if (rows.get(index).getVisibility() == VISIBLE)
-                views.addAll(rows.get(index).grainTextViews());
-        if (moreStatus.getVisibility() == VISIBLE) views.add(moreStatus);
+                views.addAll(rows.get(index).grainOcclusions());
+        if (moreStatus.getVisibility() == VISIBLE)
+            views.add(GrainOcclusion.text(moreStatus));
         return views;
     }
 

@@ -86,7 +86,7 @@ public class LeafSurface extends FrameLayout {
         GrainSpec spec = grainSpec;
         DayPalette colors = palette;
         if (spec == null || colors == null || getWidth() <= 0 || getHeight() <= 0) return;
-        List<RectF> faded = visibleBounds(spec.fadedText);
+        List<RectF> faded = resolveOcclusions(spec.occlusions);
         if (spec instanceof GrainSpec.Corner) {
             GrainSpec.Corner corner = (GrainSpec.Corner) spec;
             PointF center = shape.cornerCenter(corner.corner, getWidth(), getHeight(),
@@ -109,13 +109,10 @@ public class LeafSurface extends FrameLayout {
         grain.bind(colors, resolved, faded);
     }
 
-    private List<RectF> visibleBounds(List<View> views) {
-        if (views.isEmpty()) return Collections.emptyList();
+    private List<RectF> resolveOcclusions(List<GrainOcclusion> occlusions) {
+        if (occlusions.isEmpty()) return Collections.emptyList();
         List<RectF> result = new ArrayList<>();
-        for (View view : views) {
-            if (view != null && view.isShown() && view.getWidth() > 0 && view.getHeight() > 0)
-                result.add(localBounds(view));
-        }
+        for (GrainOcclusion occlusion : occlusions) result.addAll(occlusion.resolve(this));
         return result;
     }
 
@@ -137,6 +134,32 @@ public class LeafSurface extends FrameLayout {
             current = parentView;
         }
         return new RectF(left, top, left + descendant.getWidth(), top + descendant.getHeight());
+    }
+
+    boolean clipToVisibleBounds(RectF bounds, View descendant) {
+        if (!isDescendant(descendant))
+            throw new IllegalArgumentException("Grain target must be inside its LeafSurface");
+        if (!bounds.intersect(0f, 0f, getWidth(), getHeight())) return false;
+        View current = descendant;
+        while (current != this) {
+            android.view.ViewParent parent = current.getParent();
+            if (!(parent instanceof View)) return false;
+            View parentView = (View) parent;
+            if (parentView instanceof android.view.ViewGroup
+                    && ((android.view.ViewGroup) parentView).getClipChildren()) {
+                RectF clip = localBounds(parentView);
+                android.view.ViewGroup group = (android.view.ViewGroup) parentView;
+                if (group.getClipToPadding()) {
+                    clip.left += group.getPaddingLeft();
+                    clip.top += group.getPaddingTop();
+                    clip.right -= group.getPaddingRight();
+                    clip.bottom -= group.getPaddingBottom();
+                }
+                if (!bounds.intersect(clip)) return false;
+            }
+            current = parentView;
+        }
+        return bounds.width() > 0f && bounds.height() > 0f;
     }
 
     private boolean isDescendant(View target) {

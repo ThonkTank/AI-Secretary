@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.ui.today;
 import de.thonktank.autosecretary.*;
 
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
+import de.thonktank.autosecretary.ui.leaf.GrainOcclusion;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -76,7 +77,10 @@ public final class RepStepperView extends LinearLayout {
         WoodGrainView.applyTextHalo(value, palette.leaf1);
     }
 
-    List<View> grainTextViews() { return Arrays.asList(minusVisual, value, plusVisual); }
+    List<GrainOcclusion> grainOcclusions() {
+        return Arrays.asList(GrainOcclusion.text(minusVisual), GrainOcclusion.text(value),
+                GrainOcclusion.text(plusVisual));
+    }
 
     private TextView visual(String text) {
         TextView visual = style.sans(text, 18, 0, false);

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.GrainOcclusion;
 import de.thonktank.autosecretary.ui.leaf.LeafShape;
 import de.thonktank.autosecretary.ui.leaf.LeafSurface;
 
@@ -86,9 +87,12 @@ public final class TaskLeafView extends LeafSurface {
         menu.setVisibility(VISIBLE); menu.setTextColor(palette.dot);
         menu.setOnClickListener(view -> showMenu.accept(task));
         bindProgress(task, palette);
-        List<View> faded = new ArrayList<>();
-        faded.add(title); faded.add(marker); faded.add(softTime);
-        if (progress.getVisibility() == VISIBLE) faded.add(progressLabel);
+        List<GrainOcclusion> faded = new ArrayList<>();
+        faded.add(GrainOcclusion.text(title));
+        faded.add(GrainOcclusion.text(marker));
+        faded.add(GrainOcclusion.text(softTime));
+        if (progress.getVisibility() == VISIBLE)
+            faded.add(GrainOcclusion.text(progressLabel));
         setGrainSpec(GrainSpec.anchors(Collections.singletonList(
                 GrainSpec.sizedAnchor(dot, dot.grainWidth(), dot.grainHeight(),
                         task.comboStage)), faded));

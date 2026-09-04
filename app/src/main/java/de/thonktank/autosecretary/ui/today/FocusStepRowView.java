@@ -23,6 +23,7 @@ import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.ui.leaf.GrainSpec;
+import de.thonktank.autosecretary.ui.leaf.GrainOcclusion;
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 import de.thonktank.autosecretary.timer.TimerManager;
 import de.thonktank.autosecretary.timer.TimerSession;
@@ -545,19 +546,22 @@ public final class FocusStepRowView extends LinearLayout {
 
     public View rewardAnchor() { return reward; }
 
-    public List<View> grainTextViews() {
-        List<View> views = new ArrayList<>();
-        views.add(title);
-        if (amount.getVisibility() == VISIBLE) views.add(amount);
-        if (note.getVisibility() == VISIBLE) views.add(note);
+    public List<GrainOcclusion> grainOcclusions() {
+        List<GrainOcclusion> views = new ArrayList<>();
+        views.add(GrainOcclusion.text(title));
+        if (amount.getVisibility() == VISIBLE) views.add(GrainOcclusion.text(amount));
+        if (note.getVisibility() == VISIBLE) views.add(GrainOcclusion.text(note));
         if (controls.getVisibility() == VISIBLE) {
-            views.addAll(stepper.grainTextViews());
-            if (barsScroll.getVisibility() == VISIBLE) views.add(bars);
+            views.addAll(stepper.grainOcclusions());
+            if (barsScroll.getVisibility() == VISIBLE)
+                views.add(GrainOcclusion.bounds(bars));
         }
         if (timerControls.getVisibility() == VISIBLE) {
-            views.add(timerLabel);
-            if (timerPrimary.getVisibility() == VISIBLE) views.add(timerPrimary);
-            if (timerSecondary.getVisibility() == VISIBLE) views.add(timerSecondary);
+            views.add(GrainOcclusion.text(timerLabel));
+            if (timerPrimary.getVisibility() == VISIBLE)
+                views.add(GrainOcclusion.text(timerPrimary));
+            if (timerSecondary.getVisibility() == VISIBLE)
+                views.add(GrainOcclusion.text(timerSecondary));
         }
         return views;
     }
