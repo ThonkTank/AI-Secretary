@@ -5,6 +5,7 @@ import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import de.thonktank.autosecretary.presentation.editor.TaskEditorComposeHostView
+import de.thonktank.autosecretary.presentation.editor.TrainingHistoryUiModel
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -19,9 +20,15 @@ class TaskEditorComposeHarnessActivity : ComponentActivity(), TaskEditorComposeH
         private set
     var today: LocalDate = LocalDate.of(2026, 8, 23)
         private set
+    var trainingHistory: Map<String, TrainingHistoryUiModel> = emptyMap()
+        private set
     var saveCount: Int = 0
         private set
     var deleteCount: Int = 0
+        private set
+    var undoCount: Int = 0
+        private set
+    var lastUndoStepId: String? = null
         private set
     var dismissCount: Int = 0
         private set
@@ -53,10 +60,16 @@ class TaskEditorComposeHarnessActivity : ComponentActivity(), TaskEditorComposeH
         super.onSaveInstanceState(outState)
     }
 
-    fun render(value: EditorUiState, palette: DayPalette = this.palette, today: LocalDate = this.today) {
+    fun render(
+        value: EditorUiState,
+        palette: DayPalette = this.palette,
+        today: LocalDate = this.today,
+        trainingHistory: Map<String, TrainingHistoryUiModel> = this.trainingHistory,
+    ) {
         state = value
         this.palette = palette
         this.today = today
+        this.trainingHistory = trainingHistory
         bind()
     }
 
@@ -77,6 +90,11 @@ class TaskEditorComposeHarnessActivity : ComponentActivity(), TaskEditorComposeH
         bind()
     }
 
+    override fun onUndoTrainingAdjustment(stepId: String) {
+        undoCount++
+        lastUndoStepId = stepId
+    }
+
     override fun onDismiss() {
         dismissCount++
         state = EditorUiState.closed()
@@ -84,6 +102,6 @@ class TaskEditorComposeHarnessActivity : ComponentActivity(), TaskEditorComposeH
     }
 
     private fun bind() {
-        editor.bind(state, palette, today, this)
+        editor.bind(state, trainingHistory, palette, today, this)
     }
 }

@@ -109,22 +109,23 @@ public final class PresentationContractsRobolectricTest {
                     @Override public void onDraftChanged(EditorUiState draft) { }
                     @Override public void onSave(EditorUiState draft) { }
                     @Override public void onDelete(String taskId) { }
+                    @Override public void onUndoTrainingAdjustment(String stepId) { }
                     @Override public void onDismiss() { }
                 });
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
 
-        coordinator.render(EditorUiState.create(), palette, LocalDate.of(2026, 8, 19));
+        coordinator.render(screen(EditorUiState.create()), palette, LocalDate.of(2026, 8, 19));
         assertEquals(View.INVISIBLE, dashboard.getVisibility());
         assertEquals(2, root.getChildCount());
         assertTrue(root.getChildAt(1) instanceof TaskEditorComposeHostView);
         assertEquals(R.id.task_editor_compose_host, root.getChildAt(1).getId());
 
-        coordinator.render(EditorUiState.closed(), palette, LocalDate.of(2026, 8, 19));
+        coordinator.render(screen(EditorUiState.closed()), palette, LocalDate.of(2026, 8, 19));
         assertEquals(View.VISIBLE, dashboard.getVisibility());
         assertEquals(1, root.getChildCount());
         assertFalse(coordinator.handleBack());
 
-        coordinator.render(EditorUiState.create(), palette, LocalDate.of(2026, 8, 19));
+        coordinator.render(screen(EditorUiState.create()), palette, LocalDate.of(2026, 8, 19));
         assertEquals(View.INVISIBLE, dashboard.getVisibility());
         assertEquals(2, root.getChildCount());
 
@@ -145,12 +146,13 @@ public final class PresentationContractsRobolectricTest {
                     @Override public void onDraftChanged(EditorUiState draft) { }
                     @Override public void onSave(EditorUiState draft) { }
                     @Override public void onDelete(String taskId) { }
+                    @Override public void onUndoTrainingAdjustment(String stepId) { }
                     @Override public void onDismiss() { }
                 });
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
 
         coordinator.deferNextOpen();
-        coordinator.render(EditorUiState.create(), palette, LocalDate.of(2026, 8, 24));
+        coordinator.render(screen(EditorUiState.create()), palette, LocalDate.of(2026, 8, 24));
 
         assertEquals(View.VISIBLE, dashboard.getVisibility());
         assertEquals(1, root.getChildCount());
@@ -168,5 +170,9 @@ public final class PresentationContractsRobolectricTest {
         return RewardEffect.from(RewardReceipt.of("transaction",
                         Collections.singletonList(booking), RewardReceipt.Target.HEAD),
                 new UiCommand(UiCommand.Kind.COMPLETE, "occurrence"));
+    }
+
+    private static TaskEditorScreenState screen(EditorUiState state) {
+        return new TaskEditorScreenState(state, Collections.emptyMap(), Collections.emptyList());
     }
 }

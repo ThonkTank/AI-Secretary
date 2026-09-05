@@ -10,7 +10,7 @@ import de.thonktank.autosecretary.presentation.editor.TaskEditorComposeHostView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
-import de.thonktank.autosecretary.presentation.today.TrainingContextUiModel;
+import de.thonktank.autosecretary.presentation.today.TrainingPromptUiModel;
 import de.thonktank.autosecretary.presentation.today.TrainingAssistantUiAction;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
@@ -57,6 +57,7 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadow.api.Shadow;
 import org.robolectric.shadows.ShadowAlertDialog;
 import org.robolectric.shadows.ShadowLooper;
+import org.robolectric.shadows.ShadowPopupMenu;
 import org.robolectric.shadows.ShadowValueAnimator;
 
 import java.time.LocalDate;
@@ -455,16 +456,17 @@ public final class UiComponentRobolectricTest {
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
-        View plus = focus.findViewById(R.id.rep_stepper_increment);
+        assertTrue(focus.findViewById(R.id.training_repetitions_value).performClick());
+        View plus = focus.findViewById(R.id.inline_value_increment);
         assertNotNull(plus);
         plus.performClick();
         assertEquals(13, input.get().valueFor(set));
-        assertEquals("12", ((TextView) focus.findViewById(R.id.rep_stepper_value))
+        assertEquals("12 Wdh.", ((TextView) focus.findViewById(R.id.inline_value_current))
                 .getText().toString());
         focus.bind(FocusCardTestModels.of(feature, palette, FocusStepLimit.AUTO,
                 input.get(), de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty()),
                 false, events);
-        assertEquals("13", ((TextView) focus.findViewById(R.id.rep_stepper_value))
+        assertEquals("13 Wdh.", ((TextView) focus.findViewById(R.id.inline_value_current))
                 .getText().toString());
         DewDotView dew = firstDew(focus);
         assertNotNull(dew);
@@ -479,12 +481,23 @@ public final class UiComponentRobolectricTest {
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
-        SetBarsView bars = focus.findViewById(R.id.set_bars);
-        assertNotNull(bars);
-        float x = style.dp(11), y = style.dp(20);
-        bars.dispatchTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, x, y, 0));
-        bars.dispatchTouchEvent(MotionEvent.obtain(0, 1, MotionEvent.ACTION_UP, x, y, 0));
-        focus.findViewById(R.id.rep_stepper_increment).performClick();
+        TextView menu = descendants(focus).stream()
+                .filter(view -> view instanceof TextView)
+                .map(view -> (TextView) view)
+                .filter(view -> "⋮".contentEquals(view.getText()))
+                .findFirst().orElse(null);
+        assertNotNull(menu);
+        assertTrue(menu.performClick());
+        android.widget.PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
+        assertNotNull(popup);
+        assertTrue(((ShadowPopupMenu) Shadow.extract(popup)).getOnMenuItemClickListener()
+                .onMenuItemClick(popup.getMenu().getItem(0)));
+        focus.bind(FocusCardTestModels.of(feature, palette, FocusStepLimit.AUTO,
+                input.get(), de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty()),
+                false, events);
+        assertEquals(View.VISIBLE,
+                focus.findViewById(R.id.training_inline_editor).getVisibility());
+        focus.findViewById(R.id.inline_value_increment).performClick();
         firstDew(focus).performClick();
         assertEquals(0, submitted.get().editingIndex);
         assertEquals(11, submitted.get().value);
@@ -521,14 +534,14 @@ public final class UiComponentRobolectricTest {
                 de.thonktank.autosecretary.domain.model.ResistanceLoad.numeric(
                         de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
                         de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG, 50_000);
-        TrainingContextUiModel training = new TrainingContextUiModel("template-press",
-                "Aktiv", "Zuletzt: Wiederholungen erhöht",
+        TrainingPromptUiModel training = new TrainingPromptUiModel("template-press",
                 de.thonktank.autosecretary.domain.model.TrainingDecision.LoadDirection.PROGRESS,
-                load, Arrays.asList("Frage offen", "3 × 12 angewendet"), false);
+                load);
         FocusStepUiModel set = FocusTaskFixtures.step("set-step", "Beinpresse")
                 .amount("3 × 12").note("50 kg")
-                .repetition(RepetitionProgressUiModel.sets(3, 12, Collections.emptyList()))
-                .build().withTrainingContext(training);
+                .repetition(RepetitionProgressUiModel.trainingSets(3, 12,
+                        Collections.emptyList(), load, 2))
+                .build().withTrainingPrompt(training);
         de.thonktank.autosecretary.presentation.today.FocusTaskUiModel task =
                 FocusTaskFixtures.task("training", "Training")
                         .occurrence("training-today").slot(TaskSlot.MORNING)
@@ -539,6 +552,13 @@ public final class UiComponentRobolectricTest {
         focus.bind(FocusCardTestModels.of(task,
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), false, emitted::set);
 
+        TextView answerToggle = descendants(focus).stream()
+                .filter(view -> view instanceof TextView)
+                .map(view -> (TextView) view)
+                .filter(view -> "Antworten".contentEquals(view.getText()))
+                .findFirst().orElse(null);
+        assertNotNull(answerToggle);
+        assertTrue(answerToggle.performClick());
         EditText answer = first(focus, EditText.class);
         assertNotNull(answer);
         answer.setText("52,5");

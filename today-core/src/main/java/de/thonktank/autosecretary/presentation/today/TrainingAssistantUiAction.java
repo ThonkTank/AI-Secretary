@@ -2,7 +2,7 @@ package de.thonktank.autosecretary.presentation.today;
 
 import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 
-/** Typed boundary for the four interactions owned by the Today training-assistant panel. */
+/** Typed boundary for the three interactions owned by the Today training-assistant question. */
 public abstract class TrainingAssistantUiAction {
     public final String templateId;
 
@@ -34,9 +34,5 @@ public abstract class TrainingAssistantUiAction {
 
     public static final class Later extends TrainingAssistantUiAction {
         public Later(String templateId) { super(templateId); }
-    }
-
-    public static final class Undo extends TrainingAssistantUiAction {
-        public Undo(String templateId) { super(templateId); }
     }
 }

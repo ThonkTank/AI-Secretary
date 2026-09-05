@@ -416,7 +416,8 @@ public final class ArchitectureBoundaryTest {
         assertTrue(panel.contains("TrainingAssistantUiAction.ApplyLoad"));
         assertTrue(panel.contains("TrainingAssistantUiAction.NoHigherLoad"));
         assertTrue(panel.contains("TrainingAssistantUiAction.Later"));
-        assertTrue(panel.contains("TrainingAssistantUiAction.Undo"));
+        assertFalse(panel.contains("TrainingAssistantUiAction.Undo"));
+        assertFalse(action.contains("class Undo"));
         assertTrue(action.contains("public final String rawLoad"));
         assertTrue(action.contains("ResistanceLoad.Mode currentMode"));
         assertTrue(action.contains("ResistanceLoad.Unit currentUnit"));

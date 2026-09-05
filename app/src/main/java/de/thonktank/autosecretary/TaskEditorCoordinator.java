@@ -19,7 +19,7 @@ public final class TaskEditorCoordinator {
     private int bottomInset;
     private boolean deferredOpen;
     private boolean disposed;
-    private EditorUiState pendingState;
+    private TaskEditorScreenState pendingState;
     private DayPalette pendingPalette;
     private LocalDate pendingToday;
 
@@ -37,8 +37,9 @@ public final class TaskEditorCoordinator {
         if (editor != null) editor.setContentInsets(topInset, bottomInset);
     }
 
-    public void render(EditorUiState state, DayPalette palette, LocalDate today) {
+    public void render(TaskEditorScreenState screen, DayPalette palette, LocalDate today) {
         if (disposed) return;
+        EditorUiState state = screen.content;
         if (!state.open) {
             deferredOpen = false;
             clearPendingOpen();
@@ -47,12 +48,12 @@ public final class TaskEditorCoordinator {
             return;
         }
         if (deferredOpen) {
-            pendingState = state;
+            pendingState = screen;
             pendingPalette = palette;
             pendingToday = today;
             return;
         }
-        renderOpen(state, palette, today);
+        renderOpen(screen, palette, today);
     }
 
     public void deferNextOpen() {
@@ -63,7 +64,7 @@ public final class TaskEditorCoordinator {
         if (disposed) return;
         deferredOpen = false;
         if (pendingState == null) return;
-        EditorUiState state = pendingState;
+        TaskEditorScreenState state = pendingState;
         DayPalette palette = pendingPalette;
         LocalDate today = pendingToday;
         clearPendingOpen();
@@ -78,7 +79,8 @@ public final class TaskEditorCoordinator {
         dashboard.setVisibility(View.VISIBLE);
     }
 
-    private void renderOpen(EditorUiState state, DayPalette palette, LocalDate today) {
+    private void renderOpen(TaskEditorScreenState screen, DayPalette palette, LocalDate today) {
+        EditorUiState state = screen.content;
         dashboard.setVisibility(View.INVISIBLE);
         if (state.loading) return;
         if (editor == null) {
@@ -87,7 +89,7 @@ public final class TaskEditorCoordinator {
             editor.setContentInsets(topInset, bottomInset);
             root.addView(editor, new FrameLayout.LayoutParams(-1, -1));
         }
-        editor.bind(state, palette, today, listener);
+        editor.bind(state, screen.trainingHistoryByStepId, palette, today, listener);
     }
 
     public boolean handleBack() {

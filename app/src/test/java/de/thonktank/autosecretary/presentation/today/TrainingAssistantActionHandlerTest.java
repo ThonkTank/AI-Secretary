@@ -76,7 +76,7 @@ public final class TrainingAssistantActionHandlerTest {
         assertNotNull(fixture.repository.openTrainingLoadRequest(fixture.template.id));
     }
 
-    @Test public void noHigherLoadCompletesAndUndoIsExactlyOnce() {
+    @Test public void noHigherLoadCompletesTheTodayQuestion() {
         Fixture fixture = new Fixture();
 
         TrainingAssistantActionHandler.Result noHigher = fixture.handler.handle(
@@ -87,15 +87,6 @@ public final class TrainingAssistantActionHandlerTest {
         assertEquals(3, ((StepAmount.SetsReps) fixture.repository
                 .findTemplate(fixture.template.id).prescription.amount).sets);
 
-        TrainingAssistantActionHandler.Result undo = fixture.handler.handle(
-                new TrainingAssistantUiAction.Undo(fixture.template.id));
-        TrainingAssistantActionHandler.Result secondUndo = fixture.handler.handle(
-                new TrainingAssistantUiAction.Undo(fixture.template.id));
-
-        assertTrue(undo instanceof TrainingAssistantActionHandler.Completed);
-        assertEquals(2, ((StepAmount.SetsReps) fixture.repository
-                .findTemplate(fixture.template.id).prescription.amount).sets);
-        assertRejected(secondUndo, R.string.training_undo_no_longer_available);
     }
 
     private static void assertRejected(TrainingAssistantActionHandler.Result result,

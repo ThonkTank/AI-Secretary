@@ -1,6 +1,6 @@
 # ADR-015: Virtuelle Accessibility-Knoten für Satzkorrekturen
 
-- Status: angenommen
+- Status: ersetzt durch ADR-032
 - Datum: 2026-08-20
 
 ## Kontext

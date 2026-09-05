@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.test.filters.SdkSuppress
 import de.thonktank.autosecretary.domain.model.Recurrence
+import de.thonktank.autosecretary.presentation.editor.TrainingHistoryUiModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -185,6 +186,46 @@ class TaskEditorComposeInstrumentationTest {
             .assertTextEquals("Kalibriert 0/3")
         compose.onNodeWithText("Bitte ein Startgewicht größer als 0 eingeben.")
             .assertExists()
+    }
+
+    @Test
+    fun trainingHistoryIsStepLocalCollapsibleAndProtectsDirtyDrafts() {
+        val clean = cleanTrainingAssistantEditorState()
+        val history = mapOf(
+            "press" to TrainingHistoryUiModel(
+                "press",
+                listOf("Wiederholungen erhöht · 3 × 11 → 3 × 12"),
+                true,
+            ),
+        )
+        compose.runOnUiThread { compose.activity.render(clean, trainingHistory = history) }
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Wiederholungen erhöht · 3 × 11 → 3 × 12")
+            .assertDoesNotExist()
+        compose.onNodeWithTag("task-editor:training-history:press")
+            .performScrollTo()
+            .performClick()
+        compose.onNodeWithText("Wiederholungen erhöht · 3 × 11 → 3 × 12")
+            .assertExists()
+        compose.onNodeWithTag("task-editor:training-undo:press").performClick()
+        assertEquals(1, compose.activity.undoCount)
+        assertEquals("press", compose.activity.lastUndoStepId)
+
+        val dirty = de.thonktank.autosecretary.editor.TaskEditorStateReducer.updateTitle(
+            clean,
+            "Gym geändert",
+        )
+        compose.runOnUiThread { compose.activity.render(dirty, trainingHistory = history) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("task-editor:training-undo:press").assertIsNotEnabled()
+        compose.onNodeWithText(
+            "Zum Rückgängigmachen zuerst speichern oder Änderungen verwerfen.",
+        ).assertExists()
+
+        compose.runOnUiThread { compose.activity.render(clean, trainingHistory = emptyMap()) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("task-editor:training-history:press").assertDoesNotExist()
     }
 
     @Test

@@ -98,6 +98,7 @@ class TaskEditorComposeDispatcherTest {
             onDraftChanged = { draft = it },
             onSave = { saved = it },
             onDelete = { },
+            onUndoTrainingAdjustment = { },
             onDismiss = { dismisses++ },
         )
     }

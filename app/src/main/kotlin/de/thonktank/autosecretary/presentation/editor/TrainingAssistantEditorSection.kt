@@ -2,15 +2,26 @@ package de.thonktank.autosecretary.presentation.editor
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.R
@@ -239,6 +250,82 @@ internal fun TrainingAssistantEditorSection(
                     training,
                     secondaries = selected,
                     onChange = onChange,
+                )
+            }
+        }
+    }
+}
+
+/** Persisted training audit belongs to the existing step editor, never to Today. */
+@Composable
+internal fun TrainingHistorySection(
+    history: TrainingHistoryUiModel?,
+    dirty: Boolean,
+    stepId: String,
+    palette: DayPalette,
+    onUndo: () -> Unit,
+) {
+    if (history == null || history.entries.isEmpty()) return
+    var expanded by rememberSaveable(stepId) { mutableStateOf(false) }
+    val toggleDescription = stringResource(if (expanded) {
+        R.string.content_collapse_training_history
+    } else {
+        R.string.content_expand_training_history
+    })
+    Column(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clickable(role = Role.Button) { expanded = !expanded }
+                .semantics {
+                    contentDescription = toggleDescription
+                    role = Role.Button
+                }
+                .testTag("task-editor:training-history:$stepId"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            EditorText(
+                stringResource(R.string.training_history_toggle),
+                Color.argb(palette.ink2),
+                17,
+                Modifier.weight(1f),
+                serif = false,
+            )
+            EditorText(
+                if (expanded) "⌃" else "⌄",
+                Color.argb(palette.muted),
+                18,
+                serif = false,
+            )
+        }
+        if (expanded) {
+            history.entries.forEachIndexed { index, entry ->
+                EditorText(
+                    entry,
+                    Color.argb(palette.muted),
+                    14,
+                    Modifier.padding(top = if (index == 0) 4.dp else 8.dp),
+                    serif = false,
+                )
+            }
+            if (dirty && history.canUndo) {
+                EditorText(
+                    stringResource(R.string.training_history_dirty_hint),
+                    Color.argb(palette.muted),
+                    14,
+                    Modifier.padding(top = 10.dp),
+                    italic = true,
+                )
+            }
+            if (history.canUndo) {
+                EditorButton(
+                    text = stringResource(R.string.training_undo),
+                    palette = palette,
+                    onClick = onUndo,
+                    enabled = !dirty,
+                    modifier = Modifier.padding(top = 6.dp)
+                        .testTag("task-editor:training-undo:$stepId"),
                 )
             }
         }

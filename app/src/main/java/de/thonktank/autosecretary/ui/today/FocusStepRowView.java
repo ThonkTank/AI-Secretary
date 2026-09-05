@@ -6,8 +6,8 @@ import android.content.Context;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -41,19 +41,18 @@ public final class FocusStepRowView extends LinearLayout {
     private final TextView menu;
     private final TextView note;
     private final LinearLayout controls;
-    private final RepStepperView stepper;
-    private final HorizontalScrollView barsScroll;
-    private final SetBarsView bars;
-    private final LinearLayout.LayoutParams controlsParams;
-    private final HorizontalScrollView trainingScroll;
-    private final LinearLayout trainingControls;
-    private final TextLinkView loadMinus;
-    private final TextView loadLabel;
-    private final TextLinkView loadPlus;
-    private final TextLinkView rirMinus;
-    private final TextView rirLabel;
-    private final TextLinkView rirPlus;
+    private final RepStepperView singleStepper;
+    private final LinearLayout progressHeader;
+    private final TextView progressPosition;
+    private final TextView progressDone;
+    private final SetDotsView dots;
+    private final EditorFlowLayout values;
+    private final TextLinkView repetitionsValue;
+    private final TextLinkView loadValue;
+    private final TextLinkView rirValue;
     private final TextLinkView safety;
+    private final InlineValueEditorView inlineEditor;
+    private final LinearLayout.LayoutParams controlsParams;
     private final TrainingAssistantPanelView assistantPanel;
     private final LinearLayout timerControls;
     private final TextView timerLabel;
@@ -61,6 +60,18 @@ public final class FocusStepRowView extends LinearLayout {
     private final TextLinkView timerSecondary;
     private String lastAnimatedTimerId;
     private int grainLevel;
+    private String boundStepId;
+    private boolean boundExpanded;
+    private boolean boundQuestionOpen;
+    private int boundResultCount = -1;
+    private String boundMode;
+    private EditorKind activeEditor = EditorKind.NONE;
+    private FocusStepUiModel boundStep;
+    private RepetitionInputState boundInput;
+    private DayPalette boundPalette;
+    private TodayActionSink boundEvents;
+
+    private enum EditorKind { NONE, REPETITIONS, LOAD, RIR, ANSWER }
 
     interface ReorderAction {
         boolean perform(String stepId, int actionId);
@@ -111,51 +122,42 @@ public final class FocusStepRowView extends LinearLayout {
         body.addView(note, noteParams);
 
         controls = new LinearLayout(context);
-        controls.setGravity(Gravity.CENTER_VERTICAL);
-        stepper = new RepStepperView(context);
-        controls.addView(stepper, new LinearLayout.LayoutParams(-2, style.dp(44)));
-        barsScroll = new HorizontalScrollView(context);
-        barsScroll.setHorizontalScrollBarEnabled(false);
-        barsScroll.setFillViewport(false);
-        bars = new SetBarsView(context);
-        barsScroll.addView(bars, new HorizontalScrollView.LayoutParams(-2, style.dp(44)));
-        LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(0, style.dp(44), 1);
-        barParams.setMargins(style.dp(14), 0, 0, 0);
-        controls.addView(barsScroll, barParams);
-        controlsParams = new LinearLayout.LayoutParams(-1, style.dp(44));
+        controls.setOrientation(VERTICAL);
+        singleStepper = new RepStepperView(context);
+        controls.addView(singleStepper, new LinearLayout.LayoutParams(-2, style.dp(44)));
+        progressHeader = new LinearLayout(context);
+        progressHeader.setGravity(Gravity.CENTER_VERTICAL);
+        progressHeader.setPadding(0, 0, style.dp(16), 0);
+        progressPosition = style.sans("", 15, 0, false);
+        progressDone = style.sans("", 15, 0, true);
+        progressDone.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        progressHeader.addView(progressPosition, new LinearLayout.LayoutParams(0, -2, 1));
+        progressHeader.addView(progressDone, new LinearLayout.LayoutParams(-2, -2));
+        controls.addView(progressHeader, new LinearLayout.LayoutParams(-1, -2));
+        dots = new SetDotsView(context);
+        controls.addView(dots, new LinearLayout.LayoutParams(-1, -2));
+        values = new EditorFlowLayout(context);
+        values.setId(R.id.training_values);
+        repetitionsValue = valueLink();
+        repetitionsValue.setId(R.id.training_repetitions_value);
+        loadValue = valueLink();
+        loadValue.setId(R.id.training_load_value_today);
+        rirValue = valueLink();
+        rirValue.setId(R.id.training_rir_value_today);
+        safety = valueLink();
+        safety.setId(R.id.training_safety_value);
+        values.addView(repetitionsValue,
+                new ViewGroup.LayoutParams(-2, style.dp(44)));
+        values.addView(loadValue, new ViewGroup.LayoutParams(-2, style.dp(44)));
+        values.addView(rirValue, new ViewGroup.LayoutParams(-2, style.dp(44)));
+        values.addView(safety, new ViewGroup.LayoutParams(-2, style.dp(44)));
+        controls.addView(values, new LinearLayout.LayoutParams(-1, -2));
+        inlineEditor = new InlineValueEditorView(context);
+        inlineEditor.setId(R.id.training_inline_editor);
+        controls.addView(inlineEditor, new LinearLayout.LayoutParams(-1, -2));
+        controlsParams = new LinearLayout.LayoutParams(-1, -2);
         controlsParams.setMargins(style.dp(52), style.dp(10), 0, 0);
         body.addView(controls, controlsParams);
-
-        trainingScroll = new HorizontalScrollView(context);
-        trainingScroll.setHorizontalScrollBarEnabled(false);
-        trainingScroll.setFillViewport(false);
-        trainingControls = new LinearLayout(context);
-        trainingControls.setGravity(Gravity.CENTER_VERTICAL);
-        loadMinus = trainingLink("−");
-        loadLabel = style.sans("", 15, 0, true);
-        loadLabel.setGravity(Gravity.CENTER);
-        loadPlus = trainingLink("+");
-        rirMinus = trainingLink("−");
-        rirLabel = style.sans("", 15, 0, true);
-        rirLabel.setGravity(Gravity.CENTER);
-        rirPlus = trainingLink("+");
-        safety = trainingLink(context.getString(R.string.training_safety_ok));
-        trainingControls.addView(loadMinus, compactControl());
-        trainingControls.addView(loadLabel, new LinearLayout.LayoutParams(style.dp(84), style.dp(44)));
-        trainingControls.addView(loadPlus, compactControl());
-        LinearLayout.LayoutParams rirMinusParams = compactControl();
-        rirMinusParams.leftMargin = style.dp(10);
-        trainingControls.addView(rirMinus, rirMinusParams);
-        trainingControls.addView(rirLabel, new LinearLayout.LayoutParams(style.dp(58), style.dp(44)));
-        trainingControls.addView(rirPlus, compactControl());
-        LinearLayout.LayoutParams safetyParams = new LinearLayout.LayoutParams(-2, style.dp(44));
-        safetyParams.leftMargin = style.dp(10);
-        trainingControls.addView(safety, safetyParams);
-        trainingScroll.addView(trainingControls,
-                new HorizontalScrollView.LayoutParams(-2, style.dp(44)));
-        LinearLayout.LayoutParams trainingParams = new LinearLayout.LayoutParams(-1, style.dp(44));
-        trainingParams.setMargins(style.dp(52), style.dp(5), 0, 0);
-        body.addView(trainingScroll, trainingParams);
 
         assistantPanel = new TrainingAssistantPanelView(context, body);
 
@@ -183,14 +185,38 @@ public final class FocusStepRowView extends LinearLayout {
                      TodayActionSink events) {
         FocusStepUiModel step = row.step;
         boolean active = row.expanded();
+        int resultCount = step.repetitionProgress == null
+                ? -1 : step.repetitionProgress.repetitions.size();
+        String mode = step.repetitionProgress == null ? "none"
+                : step.repetitionProgress.kind.name() + ':'
+                + step.repetitionProgress.plannedLoad.mode.name();
+        boolean questionOpen = active && step.trainingPrompt != null;
+        boolean resetTransient = !step.id.equals(boundStepId) || !active
+                || boundExpanded != active
+                || boundQuestionOpen && !questionOpen
+                || !mode.equals(boundMode)
+                || boundResultCount >= 0 && resultCount != boundResultCount;
+        if (resetTransient) {
+            activeEditor = EditorKind.NONE;
+            assistantPanel.resetTransientState();
+        }
+        boundStepId = step.id;
+        boundExpanded = active;
+        boundQuestionOpen = questionOpen;
+        boundResultCount = resultCount;
+        boundMode = mode;
+        boundStep = step;
+        boundInput = input;
+        boundPalette = palette;
+        boundEvents = events;
         bindSurface(step, active, palette);
         bindText(step, active, palette);
-        bindAssistant(step, active, palette, events);
         TimerSession timer = timers.forStep(step.id);
         boolean restBlocks = timer != null && timer.kind == TimerSession.Kind.REST
                 && (timer.state == TimerSession.State.RUNNING
                 || timer.state == TimerSession.State.PAUSED);
         bindRepetition(row, step, input, palette, events, restBlocks);
+        bindAssistant(step, active, palette, events);
         bindAction(row.action, step, input, events, restBlocks);
         bindTimer(step, timer, timers.elapsedRealtime, palette, events);
     }
@@ -227,7 +253,8 @@ public final class FocusStepRowView extends LinearLayout {
 
     private void bindAssistant(FocusStepUiModel step, boolean active, DayPalette palette,
                                TodayActionSink events) {
-        assistantPanel.bind(step.trainingContext, active, palette,
+        assistantPanel.bind(step.id, step.trainingPrompt, active,
+                activeEditor == EditorKind.ANSWER, palette, this::toggleAnswer,
                 action -> events.emit(TodayAction.trainingAssistant(action)));
     }
 
@@ -238,22 +265,42 @@ public final class FocusStepRowView extends LinearLayout {
         boolean editsRepetitions = row.action.kind
                 == StepExecutionUiAction.Kind.SUBMIT_REPETITION;
         controls.setVisibility(editsRepetitions && !restBlocks ? VISIBLE : GONE);
-        barsScroll.setVisibility(GONE);
-        trainingScroll.setVisibility(GONE);
         if (editsRepetitions) {
-            int current = input.valueFor(step);
             int editingIndex = input.editingIndexFor(step);
-            stepper.bind(current, palette,
-                    delta -> events.emit(TodayAction.adjustRepetition(step.id, delta)));
-            barsScroll.setVisibility(progress.showsBars() ? VISIBLE : GONE);
-            if (progress.showsBars()) bars.bind(step.id, progress.slotCount,
-                    progress.repetitions, editingIndex, palette,
-                    index -> events.emit(TodayAction.editRepetition(step.id, index)));
-            bindTrainingInputs(step, progress, input, palette, events);
+            boolean sets = progress.showsBars();
+            singleStepper.setVisibility(sets ? GONE : VISIBLE);
+            singleStepper.bind(sets ? 0 : input.valueFor(step), palette, sets ? null
+                    : delta -> events.emit(TodayAction.adjustRepetition(step.id, delta)));
+            progressHeader.setVisibility(sets ? VISIBLE : GONE);
+            dots.setVisibility(sets ? VISIBLE : GONE);
+            if (sets) {
+                int completed = progress.repetitions.size();
+                int position = editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber();
+                progressPosition.setText(getContext().getString(
+                        R.string.training_set_position, position, progress.slotCount));
+                progressDone.setText(getContext().getString(
+                        R.string.training_sets_done, completed, progress.slotCount));
+                progressPosition.setTextColor(palette.ink2);
+                progressDone.setTextColor(palette.ink);
+                WoodGrainView.applyTextHalo(progressPosition, palette.leaf1);
+                WoodGrainView.applyTextHalo(progressDone, palette.leaf1);
+                dots.bind(step.id, progress.slotCount, progress.repetitions,
+                        editingIndex, palette);
+                bindValueControls(step, progress, input, palette, events);
+                bindInlineEditor(step, progress, input, palette, events);
+            } else {
+                dots.bind(step.id, 0, java.util.Collections.emptyList(), -1, palette);
+                values.setVisibility(GONE);
+                inlineEditor.setVisibility(GONE);
+            }
         } else {
-            stepper.bind(0, palette, null);
-            bars.bind(step.id, 0, java.util.Collections.emptyList(), -1, palette, null);
-            bindTrainingInputs(step, null, input, palette, events);
+            singleStepper.setVisibility(GONE);
+            singleStepper.bind(0, palette, null);
+            progressHeader.setVisibility(GONE);
+            dots.setVisibility(GONE);
+            values.setVisibility(GONE);
+            inlineEditor.setVisibility(GONE);
+            dots.bind(step.id, 0, java.util.Collections.emptyList(), -1, palette);
         }
     }
 
@@ -299,73 +346,103 @@ public final class FocusStepRowView extends LinearLayout {
                 && !restBlocks);
     }
 
-    private void bindTrainingInputs(FocusStepUiModel step, RepetitionProgressUiModel progress,
-                                    RepetitionInputState input, DayPalette palette,
-                                    TodayActionSink events) {
-        boolean visible = progress != null && progress.detailedTraining();
-        trainingScroll.setVisibility(visible ? VISIBLE : GONE);
-        bindTrainingLink(loadMinus, palette);
-        bindTrainingLink(loadPlus, palette);
-        bindTrainingLink(rirMinus, palette);
-        bindTrainingLink(rirPlus, palette);
-        bindTrainingLink(safety, palette);
-        loadMinus.setOnClickListener(null);
-        loadPlus.setOnClickListener(null);
-        rirMinus.setOnClickListener(null);
-        rirPlus.setOnClickListener(null);
-        safety.setOnClickListener(null);
-        if (!visible) {
-            loadLabel.setText("");
-            rirLabel.setText("");
-            safety.setText("");
-            loadMinus.setVisibility(GONE);
-            loadPlus.setVisibility(GONE);
-            rirMinus.setVisibility(GONE);
-            rirPlus.setVisibility(GONE);
-            safety.setVisibility(GONE);
-            return;
-        }
+    private void bindValueControls(FocusStepUiModel step, RepetitionProgressUiModel progress,
+                                   RepetitionInputState input, DayPalette palette,
+                                   TodayActionSink events) {
+        values.setVisibility(VISIBLE);
+        bindValueLink(repetitionsValue,
+                getContext().getString(R.string.training_repetitions_value,
+                        input.valueFor(step)), EditorKind.REPETITIONS, true, palette);
+        boolean training = progress.detailedTraining();
+        loadValue.setVisibility(training ? VISIBLE : GONE);
+        rirValue.setVisibility(training ? VISIBLE : GONE);
+        safety.setVisibility(training ? VISIBLE : GONE);
+        if (!training) return;
         ResistanceLoad load = input.loadFor(step);
         int rir = input.rirFor(step);
         boolean flagged = input.safetyFor(step);
-        loadLabel.setText(formatLoad(load));
-        loadLabel.setTextColor(palette.ink);
-        rirLabel.setText(getContext().getString(R.string.training_rir_value, rir));
-        rirLabel.setTextColor(palette.ink);
-        int delta = load.unit == ResistanceLoad.Unit.LB ? 5_000 : 1_000;
         boolean adjustable = load.adjustable();
-        loadMinus.setVisibility(adjustable ? VISIBLE : GONE);
-        loadPlus.setVisibility(adjustable ? VISIBLE : GONE);
-        rirMinus.setVisibility(VISIBLE);
-        rirPlus.setVisibility(VISIBLE);
-        safety.setVisibility(VISIBLE);
-        loadMinus.setOnClickListener(adjustable ? view -> events.emit(
-                TodayAction.adjustTrainingLoad(step.id, -delta)) : null);
-        loadPlus.setOnClickListener(adjustable ? view -> events.emit(
-                TodayAction.adjustTrainingLoad(step.id, delta)) : null);
-        rirMinus.setOnClickListener(rir > 0 ? view -> events.emit(
-                TodayAction.adjustTrainingRir(step.id, -1)) : null);
-        rirPlus.setOnClickListener(rir < 5 ? view -> events.emit(
-                TodayAction.adjustTrainingRir(step.id, 1)) : null);
+        bindValueLink(loadValue, formatLoad(load), EditorKind.LOAD, adjustable, palette);
+        bindValueLink(rirValue, getContext().getString(R.string.training_rir_value, rir),
+                EditorKind.RIR, true, palette);
         safety.setText(flagged ? R.string.training_safety_flagged : R.string.training_safety_ok);
-        safety.setTextColor(flagged ? palette.bad : palette.hint);
+        safety.bind(flagged ? palette.bad : palette.hint, palette.dot);
+        safety.setClickable(true);
+        safety.setFocusable(true);
+        safety.setContentDescription(safety.getText());
         safety.setOnClickListener(view -> events.emit(TodayAction.toggleTrainingSafety(step.id)));
     }
 
-    private TextLinkView trainingLink(String text) {
+    private void bindInlineEditor(FocusStepUiModel step, RepetitionProgressUiModel progress,
+                                  RepetitionInputState input, DayPalette palette,
+                                  TodayActionSink events) {
+        inlineEditor.setVisibility(activeEditor == EditorKind.REPETITIONS
+                || activeEditor == EditorKind.LOAD || activeEditor == EditorKind.RIR
+                ? VISIBLE : GONE);
+        if (activeEditor == EditorKind.REPETITIONS) {
+            int current = input.valueFor(step);
+            inlineEditor.bind(getContext().getString(R.string.training_edit_repetitions),
+                    getContext().getString(R.string.training_repetitions_value, current),
+                    current > 0, current < 999, palette,
+                    () -> events.emit(TodayAction.adjustRepetition(step.id, -1)),
+                    () -> events.emit(TodayAction.adjustRepetition(step.id, 1)));
+        } else if (activeEditor == EditorKind.LOAD && progress.detailedTraining()) {
+            ResistanceLoad load = input.loadFor(step);
+            long delta = load.unit == ResistanceLoad.Unit.LB ? 5_000 : 1_000;
+            long amount = load.milliUnits == null ? 0L : load.milliUnits;
+            inlineEditor.bind(getContext().getString(R.string.training_edit_load),
+                    formatLoad(load), amount > 0, load.adjustable(), palette,
+                    () -> events.emit(TodayAction.adjustTrainingLoad(step.id, (int) -delta)),
+                    () -> events.emit(TodayAction.adjustTrainingLoad(step.id, (int) delta)));
+        } else if (activeEditor == EditorKind.RIR && progress.detailedTraining()) {
+            int rir = input.rirFor(step);
+            inlineEditor.bind(getContext().getString(R.string.training_edit_rir),
+                    getContext().getString(R.string.training_rir_value, rir),
+                    rir > 0, rir < 5, palette,
+                    () -> events.emit(TodayAction.adjustTrainingRir(step.id, -1)),
+                    () -> events.emit(TodayAction.adjustTrainingRir(step.id, 1)));
+        }
+    }
+
+    private TextLinkView valueLink() {
         TextLinkView view = new TextLinkView(getContext());
-        view.setText(text);
-        view.setGravity(Gravity.CENTER);
+        view.setTextSize(16);
         AccessibilityRoles.button(view);
         return view;
     }
 
-    private LinearLayout.LayoutParams compactControl() {
-        return new LinearLayout.LayoutParams(style.dp(36), style.dp(44));
+    private void bindValueLink(TextLinkView view, String text, EditorKind kind,
+                               boolean editable, DayPalette palette) {
+        view.setText(text);
+        view.setContentDescription(text);
+        view.bind(activeEditor == kind ? palette.ink : editable ? palette.accent : palette.ink2,
+                editable ? activeEditor == kind ? palette.accent : palette.dot : palette.leaf1);
+        view.setOnClickListener(editable ? ignored -> selectEditor(kind) : null);
+        view.setClickable(editable);
+        view.setFocusable(editable);
+        WoodGrainView.applyTextHalo(view, palette.leaf1);
     }
 
-    private static void bindTrainingLink(TextLinkView view, DayPalette palette) {
-        view.bind(palette.hint, palette.dot);
+    private void selectEditor(EditorKind kind) {
+        activeEditor = activeEditor == kind ? EditorKind.NONE : kind;
+        refreshTransientViews();
+    }
+
+    private void toggleAnswer() {
+        activeEditor = activeEditor == EditorKind.ANSWER ? EditorKind.NONE : EditorKind.ANSWER;
+        refreshTransientViews();
+    }
+
+    private void refreshTransientViews() {
+        if (boundStep == null || boundInput == null || boundPalette == null
+                || boundEvents == null || !boundExpanded) return;
+        RepetitionProgressUiModel progress = boundStep.repetitionProgress;
+        if (progress != null) {
+            bindValueControls(boundStep, progress, boundInput, boundPalette, boundEvents);
+            bindInlineEditor(boundStep, progress, boundInput, boundPalette, boundEvents);
+        }
+        bindAssistant(boundStep, true, boundPalette, boundEvents);
+        requestLayout();
     }
 
     private String formatLoad(ResistanceLoad load) {
@@ -479,8 +556,24 @@ public final class FocusStepRowView extends LinearLayout {
 
     private void showStepMenu(View anchor, FocusStepUiModel step, TodayActionSink events) {
         PopupMenu popup = new PopupMenu(getContext(), anchor);
-        popup.getMenu().add(R.string.action_finish_today);
+        int editBase = 1_000;
+        if (step.repetitionProgress != null) {
+            for (int index = 0; index < step.repetitionProgress.repetitions.size(); index++) {
+                popup.getMenu().add(0, editBase + index, index,
+                        getContext().getString(R.string.content_edit_set, index + 1));
+            }
+        }
+        int finishId = 1;
+        int finishOrder = step.repetitionProgress == null ? 0
+                : step.repetitionProgress.repetitions.size();
+        popup.getMenu().add(0, finishId, finishOrder, R.string.action_finish_today);
         popup.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() >= editBase) {
+                activeEditor = EditorKind.REPETITIONS;
+                events.emit(TodayAction.editRepetition(step.id,
+                        item.getItemId() - editBase));
+                return true;
+            }
             events.emit(TodayAction.finishStep(step.id));
             return true;
         });
@@ -552,9 +645,23 @@ public final class FocusStepRowView extends LinearLayout {
         if (amount.getVisibility() == VISIBLE) views.add(GrainOcclusion.text(amount));
         if (note.getVisibility() == VISIBLE) views.add(GrainOcclusion.text(note));
         if (controls.getVisibility() == VISIBLE) {
-            views.addAll(stepper.grainOcclusions());
-            if (barsScroll.getVisibility() == VISIBLE)
-                views.add(GrainOcclusion.bounds(bars));
+            if (singleStepper.getVisibility() == VISIBLE)
+                views.addAll(singleStepper.grainOcclusions());
+            if (progressHeader.getVisibility() == VISIBLE) {
+                views.add(GrainOcclusion.text(progressPosition));
+                views.add(GrainOcclusion.text(progressDone));
+            }
+            if (dots.getVisibility() == VISIBLE) views.add(GrainOcclusion.bounds(dots));
+            if (repetitionsValue.getVisibility() == VISIBLE)
+                views.add(GrainOcclusion.text(repetitionsValue));
+            if (loadValue.getVisibility() == VISIBLE)
+                views.add(GrainOcclusion.text(loadValue));
+            if (rirValue.getVisibility() == VISIBLE)
+                views.add(GrainOcclusion.text(rirValue));
+            if (safety.getVisibility() == VISIBLE)
+                views.add(GrainOcclusion.text(safety));
+            if (inlineEditor.getVisibility() == VISIBLE)
+                views.add(GrainOcclusion.bounds(inlineEditor));
         }
         if (timerControls.getVisibility() == VISIBLE) {
             views.add(GrainOcclusion.text(timerLabel));
