@@ -32,10 +32,12 @@ class TaskEditorComposeHostView @JvmOverloads constructor(
         fun onDraftChanged(draft: EditorUiState)
         fun onSave(draft: EditorUiState)
         fun onDelete(taskId: String)
+        fun onUndoTrainingAdjustment(stepId: String)
         fun onDismiss()
     }
 
     private var editorState by mutableStateOf(EditorUiState.closed())
+    private var trainingHistory by mutableStateOf<Map<String, TrainingHistoryUiModel>>(emptyMap())
     private var palette by mutableStateOf(DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO))
     private var today by mutableStateOf(LocalDate.now())
     private var listener: Listener? = null
@@ -48,12 +50,14 @@ class TaskEditorComposeHostView @JvmOverloads constructor(
 
     fun bind(
         state: EditorUiState,
+        trainingHistory: Map<String, TrainingHistoryUiModel>,
         palette: DayPalette,
         today: LocalDate,
         listener: Listener,
     ) {
         this.listener = listener
         this.editorState = state
+        this.trainingHistory = trainingHistory
         this.palette = palette
         this.today = today
     }
@@ -86,6 +90,7 @@ class TaskEditorComposeHostView @JvmOverloads constructor(
         CompositionLocalProvider(LocalEditorFocusedInputTag provides focusedInputTag) {
             TaskEditorComposeScreen(
                 editorState,
+                trainingHistory,
                 palette,
                 today,
                 remember(listener) { callbacks() },
@@ -99,6 +104,7 @@ class TaskEditorComposeHostView @JvmOverloads constructor(
         onDraftChanged = { listener?.onDraftChanged(it) },
         onSave = { listener?.onSave(it) },
         onDelete = { listener?.onDelete(it) },
+        onUndoTrainingAdjustment = { listener?.onUndoTrainingAdjustment(it) },
         onDismiss = { listener?.onDismiss() },
     )
 }

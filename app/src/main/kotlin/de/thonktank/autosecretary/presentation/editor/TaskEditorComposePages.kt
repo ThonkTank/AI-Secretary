@@ -48,6 +48,7 @@ import java.time.ZoneId
 @Composable
 internal fun EditorPageContent(
     state: EditorUiState,
+    trainingHistory: Map<String, TrainingHistoryUiModel>,
     palette: DayPalette,
     today: LocalDate,
     layout: EditorLayout,
@@ -57,7 +58,13 @@ internal fun EditorPageContent(
 ) {
     Column(modifier) {
         when {
-            state.expandedStepId != null -> EditorStepDetailPage(state, palette, layout, dispatcher)
+            state.expandedStepId != null -> EditorStepDetailPage(
+                state,
+                trainingHistory[state.expandedStepId],
+                palette,
+                layout,
+                dispatcher,
+            )
             state.page == EditorUiState.Page.TITLE -> EditorTitlePage(state, palette, today, dispatcher)
             state.page == EditorUiState.Page.SCHEDULE -> EditorSchedulePage(state, palette, layout, dispatcher)
             state.page == EditorUiState.Page.STEPS -> EditorStepsPage(state, palette, layout, formatter, dispatcher)

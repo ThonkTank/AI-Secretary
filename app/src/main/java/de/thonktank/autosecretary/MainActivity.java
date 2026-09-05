@@ -85,7 +85,8 @@ public class MainActivity extends ComponentActivity {
     private LinearLayout dashboardContent;
     private AllTasksUiState allTasksState = AllTasksUiState.empty();
     private TaskEditorScreenState editorState = new TaskEditorScreenState(
-            EditorUiState.closed(), java.util.Collections.emptyList());
+            EditorUiState.closed(), java.util.Collections.emptyMap(),
+            java.util.Collections.emptyList());
     private String handledAllTasksRequestId;
     private String handledEditorRequestId;
     private String handledOptionsRequestId;
@@ -150,6 +151,9 @@ public class MainActivity extends ComponentActivity {
                     }
                     @Override public void onDelete(String taskId) {
                         editorViewModel.dispatch(TaskEditorAction.delete(taskId));
+                    }
+                    @Override public void onUndoTrainingAdjustment(String stepId) {
+                        editorViewModel.dispatch(TaskEditorAction.undoTrainingAdjustment(stepId));
                     }
                     @Override public void onDismiss() {
                         editorViewModel.dispatch(TaskEditorAction.dismiss());
@@ -283,7 +287,7 @@ public class MainActivity extends ComponentActivity {
                 getWindow().getDecorView());
         controller.setAppearanceLightStatusBars(light);
         controller.setAppearanceLightNavigationBars(light);
-        editorCoordinator.render(editorState.content, shellState.palette,
+        editorCoordinator.render(editorState, shellState.palette,
                 container.clock.today());
     }
 
@@ -340,7 +344,7 @@ public class MainActivity extends ComponentActivity {
         if (state == null) return;
         editorState = state;
         if (shellState != null)
-            editorCoordinator.render(state.content, shellState.palette, container.clock.today());
+            editorCoordinator.render(state, shellState.palette, container.clock.today());
         TaskEditorRequest request = state.firstRequest();
         if (request == null) {
             handledEditorRequestId = null;

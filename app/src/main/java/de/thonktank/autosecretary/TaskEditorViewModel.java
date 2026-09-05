@@ -9,19 +9,27 @@ import androidx.lifecycle.viewmodel.CreationExtras;
 
 import de.thonktank.autosecretary.domain.model.TaskDetails;
 import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.StepFlowSetup;
+import de.thonktank.autosecretary.domain.model.TrainingContext;
 import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
 import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
 import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
+import de.thonktank.autosecretary.domain.usecase.TrainingUseCases;
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.UiTextProvider;
+import de.thonktank.autosecretary.presentation.editor.TrainingHistoryUiMapper;
+import de.thonktank.autosecretary.presentation.editor.TrainingHistoryUiModel;
 
 import java.time.LocalTime;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,9 +48,11 @@ public final class TaskEditorViewModel extends ViewModel {
     private final CatalogUseCases catalog;
     private final FlowUseCases flows;
     private final TodayUseCases today;
+    private final TrainingUseCases training;
     private final Clock clock;
     private final AppLogger logger;
     private final UiTextProvider texts;
+    private final TrainingHistoryUiMapper trainingHistoryMapper;
     private final FlowWakeScheduler wakeScheduler;
     private final SavedStateHandle savedState;
     private final ExecutorService worker;
@@ -57,21 +67,25 @@ public final class TaskEditorViewModel extends ViewModel {
     private long openGeneration;
 
     TaskEditorViewModel(CatalogUseCases catalog, FlowUseCases flows, TodayUseCases today,
+                        TrainingUseCases training,
                         Clock clock, AppLogger logger, UiTextProvider texts,
                         SavedStateHandle savedState, ExecutorService worker) {
-        this(catalog, flows, today, clock, logger, texts, savedState, worker, null);
+        this(catalog, flows, today, training, clock, logger, texts, savedState, worker, null);
     }
 
     TaskEditorViewModel(CatalogUseCases catalog, FlowUseCases flows, TodayUseCases today,
+                        TrainingUseCases training,
                         Clock clock, AppLogger logger, UiTextProvider texts,
                         SavedStateHandle savedState, ExecutorService worker,
                         FlowWakeScheduler wakeScheduler) {
         this.catalog = catalog;
         this.flows = flows;
         this.today = today;
+        this.training = training;
         this.clock = clock;
         this.logger = logger;
         this.texts = texts;
+        trainingHistoryMapper = new TrainingHistoryUiMapper(texts);
         this.savedState = savedState;
         this.worker = worker;
         this.wakeScheduler = wakeScheduler;
@@ -86,7 +100,7 @@ public final class TaskEditorViewModel extends ViewModel {
         requestSequence = restoredSequence == null ? 0L : restoredSequence;
         for (TaskEditorRequest request : requests)
             requestSequence = Math.max(requestSequence, sequenceOf(request.id));
-        current = new TaskEditorScreenState(editor, requests);
+        current = new TaskEditorScreenState(editor, Collections.emptyMap(), requests);
         state = StateFlowKt.MutableStateFlow(current);
         if (editor.open && editor.loading)
             open(editor.taskId, null, false);
@@ -113,6 +127,8 @@ public final class TaskEditorViewModel extends ViewModel {
             dismiss();
         else if (action instanceof TaskEditorAction.RequestAcknowledged)
             acknowledgeRequest(((TaskEditorAction.RequestAcknowledged) action).requestId);
+        else if (action instanceof TaskEditorAction.UndoTrainingAdjustment)
+            undoTrainingAdjustment(((TaskEditorAction.UndoTrainingAdjustment) action).stepId);
         else throw new IllegalArgumentException("Unsupported editor action " + action.getClass());
     }
 
@@ -155,10 +171,11 @@ public final class TaskEditorViewModel extends ViewModel {
                 }
                 StepFlowSetup setup = flows.loadStepFlowSetup.execute(TaskId.of(taskId));
                 EditorUiState loaded = EditorUiState.edit(details, TaskFlowDraft.from(setup));
+                Map<String, TrainingHistoryUiModel> history = trainingHistory(details);
                 if (addStep) loaded = TaskEditorStateReducer.addStep(loaded);
                 else if (stepId != null) loaded = TaskEditorStateReducer.expandStep(loaded, stepId);
                 finish(key);
-                publishIfCurrent(generation, loaded);
+                publishIfCurrent(generation, loaded, history);
             } catch (RuntimeException error) {
                 finish(key);
                 failLoad(generation, texts.text(R.string.error_editor_load), error);
@@ -255,6 +272,70 @@ public final class TaskEditorViewModel extends ViewModel {
         });
     }
 
+    private void undoTrainingAdjustment(String stepId) {
+        EditorUiState editor;
+        TrainingHistoryUiModel history;
+        long generation;
+        synchronized (lock) {
+            editor = current.content;
+            history = current.trainingHistoryByStepId.get(stepId);
+            generation = openGeneration;
+            if (editor.dirty) {
+                enqueueLocked(new TaskEditorRequest(nextRequestIdLocked(),
+                        texts.text(R.string.training_history_dirty_hint)));
+                return;
+            }
+        }
+        if (history == null || !history.canUndo) {
+            synchronized (lock) {
+                enqueueLocked(new TaskEditorRequest(nextRequestIdLocked(),
+                        texts.text(R.string.training_undo_no_longer_available)));
+            }
+            return;
+        }
+        UiCommand key = new UiCommand(UiCommand.Kind.TRAINING_ASSISTANT, history.templateId);
+        if (!begin(key)) return;
+        worker.execute(() -> {
+            try {
+                if (!training.undoLatestTrainingAdjustment.execute(history.templateId)) {
+                    finish(key);
+                    rejectUndo(generation, R.string.training_undo_no_longer_available);
+                    return;
+                }
+                TaskDetails details = catalog.loadTaskDetails.execute(TaskId.of(editor.taskId));
+                StepFlowSetup setup = flows.loadStepFlowSetup.execute(TaskId.of(editor.taskId));
+                EditorUiState refreshed = EditorUiState.edit(details, TaskFlowDraft.from(setup))
+                        .withPage(editor.page, editor.returnToSummary)
+                        .withExpandedStep(editor.expandedStepId);
+                Map<String, TrainingHistoryUiModel> histories = trainingHistory(details);
+                finish(key);
+                publishIfCurrent(generation, refreshed, histories);
+            } catch (RuntimeException error) {
+                finish(key);
+                logger.error("TaskEditorViewModel", "Training undo failed", error);
+                rejectUndo(generation, R.string.training_undo_no_longer_available);
+            }
+        });
+    }
+
+    private Map<String, TrainingHistoryUiModel> trainingHistory(TaskDetails details) {
+        Map<String, TrainingHistoryUiModel> result = new LinkedHashMap<>();
+        for (TaskStepTemplate step : details.stepTemplates) {
+            if (!step.assistantEnabled()) continue;
+            TrainingContext context = training.loadTrainingContext.execute(step.id);
+            TrainingHistoryUiModel mapped = trainingHistoryMapper.map(context);
+            if (mapped != null) result.put(step.id, mapped);
+        }
+        return result;
+    }
+
+    private void rejectUndo(long generation, int message) {
+        synchronized (lock) {
+            if (generation != openGeneration) return;
+            enqueueLocked(new TaskEditorRequest(nextRequestIdLocked(), texts.text(message)));
+        }
+    }
+
     private boolean begin(UiCommand key) {
         synchronized (lock) { return running.add(key); }
     }
@@ -276,7 +357,18 @@ public final class TaskEditorViewModel extends ViewModel {
     private void publishIfCurrent(long generation, EditorUiState value) {
         synchronized (lock) {
             if (generation != openGeneration) return;
-            current = current.withContent(value);
+            current = value.open ? current.withContent(value)
+                    : current.withContentAndHistory(value, Collections.emptyMap());
+            persistContent();
+            state.setValue(current);
+        }
+    }
+
+    private void publishIfCurrent(long generation, EditorUiState value,
+                                  Map<String, TrainingHistoryUiModel> history) {
+        synchronized (lock) {
+            if (generation != openGeneration) return;
+            current = current.withContentAndHistory(value, history);
             persistContent();
             state.setValue(current);
         }
@@ -284,7 +376,10 @@ public final class TaskEditorViewModel extends ViewModel {
 
     private void setContent(EditorUiState value) {
         synchronized (lock) {
-            current = current.withContent(value);
+            boolean differentTask = !Objects.equals(current.content.taskId, value.taskId);
+            current = !value.open || value.loading || differentTask
+                    ? current.withContentAndHistory(value, Collections.emptyMap())
+                    : current.withContent(value);
             persistContent();
             state.setValue(current);
         }
@@ -357,7 +452,7 @@ public final class TaskEditorViewModel extends ViewModel {
             if (!modelClass.isAssignableFrom(TaskEditorViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
             return (T) new TaskEditorViewModel(container.catalog, container.flows,
-                    container.today, container.clock, container.logger,
+                    container.today, container.training, container.clock, container.logger,
                     container.texts, SavedStateHandleSupport.createSavedStateHandle(extras),
                     workers.get(), container.flowWakeScheduler);
         }

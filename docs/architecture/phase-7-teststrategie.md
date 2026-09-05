@@ -102,7 +102,7 @@ Betroffene Fokusoberfläche einschließlich Golden und Accessibility:
 ```bash
 ./gradlew testInstrumentationUnitTest \
   --tests '*FocusTaskViewTest' --tests '*FocusTaskViewGoldenRobolectricTest' \
-  --tests '*AccessibilityLayoutMatrixRobolectricTest' --tests '*SetBarsViewTest'
+  --tests '*AccessibilityLayoutMatrixRobolectricTest' --tests '*SetDotsViewTest'
 ```
 
 Verbindliches Abschluss-Gate:

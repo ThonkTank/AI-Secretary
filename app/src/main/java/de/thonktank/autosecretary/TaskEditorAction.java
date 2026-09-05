@@ -37,6 +37,12 @@ public abstract class TaskEditorAction {
             this.requestId = requiredText(requestId);
         }
     }
+    public static final class UndoTrainingAdjustment extends TaskEditorAction {
+        public final String stepId;
+        private UndoTrainingAdjustment(String stepId) {
+            this.stepId = requiredText(stepId);
+        }
+    }
 
     public static TaskEditorAction openNew() { return new Open(null, null, false); }
     public static TaskEditorAction open(String taskId) {
@@ -53,6 +59,9 @@ public abstract class TaskEditorAction {
     public static TaskEditorAction dismiss() { return new Dismiss(); }
     public static TaskEditorAction acknowledgeRequest(String requestId) {
         return new RequestAcknowledged(requestId);
+    }
+    public static TaskEditorAction undoTrainingAdjustment(String stepId) {
+        return new UndoTrainingAdjustment(stepId);
     }
 
     private static String requiredText(String value) {

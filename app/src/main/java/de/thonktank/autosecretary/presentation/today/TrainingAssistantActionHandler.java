@@ -31,10 +31,6 @@ public final class TrainingAssistantActionHandler {
                     ? new Feedback(R.string.training_request_deferred)
                     : new Rejected(R.string.training_request_no_longer_open);
         }
-        if (action instanceof TrainingAssistantUiAction.Undo)
-            return training.undoLatestTrainingAdjustment.execute(action.templateId)
-                    ? Completed.INSTANCE
-                    : new Rejected(R.string.training_undo_no_longer_available);
         throw new IllegalArgumentException("Unsupported training action");
     }
 

@@ -22,12 +22,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.FlowRunSummary;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
-import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 import de.thonktank.autosecretary.domain.model.TrainingContext;
-import de.thonktank.autosecretary.domain.model.TrainingDecision;
-import de.thonktank.autosecretary.domain.model.TrainingHistoryEntry;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
@@ -41,7 +36,7 @@ import de.thonktank.autosecretary.presentation.today.TimelineStepUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
-import de.thonktank.autosecretary.presentation.today.TrainingContextUiModel;
+import de.thonktank.autosecretary.presentation.today.TrainingPromptUiModel;
 
 public final class DashboardUiMapper {
     private final UiTextProvider texts;
@@ -178,106 +173,17 @@ public final class DashboardUiMapper {
                         ((StepAmount.Duration) step.prescription.amount).seconds);
             TrainingContext training = step.sourceTemplateId == null ? null
                     : dashboard.trainingContexts.get(step.sourceTemplateId);
-            if (training != null) mapped = mapped.withTrainingContext(training(training));
+            TrainingPromptUiModel prompt = training == null ? null : trainingPrompt(training);
+            if (prompt != null) mapped = mapped.withTrainingPrompt(prompt);
             steps.add(mapped);
         }
         return steps;
     }
 
-    private TrainingContextUiModel training(TrainingContext value) {
-        List<String> history = new ArrayList<>();
-        for (TrainingHistoryEntry entry : value.history) history.add(history(entry));
+    private TrainingPromptUiModel trainingPrompt(TrainingContext value) {
         TrainingLoadRequest request = value.openLoadRequest;
-        return new TrainingContextUiModel(value.templateId, status(value.state),
-                value.latestAdjustment == null ? "" : adjustment(value.latestAdjustment),
-                request == null ? null : request.direction,
-                request == null ? null : request.currentLoad, history, value.canUndo);
-    }
-
-    private String status(TrainingAssistantState state) {
-        if (state.status == TrainingAssistantState.Status.CALIBRATING)
-            return texts.text(R.string.training_status_calibrating,
-                    Math.min(3, state.eligibleObservations));
-        if (state.status == TrainingAssistantState.Status.ACTIVE)
-            return texts.text(R.string.training_status_active);
-        if (state.status == TrainingAssistantState.Status.PAUSED)
-            return texts.text(R.string.training_status_paused);
-        return texts.text(R.string.training_assistant_off);
-    }
-
-    private String history(TrainingHistoryEntry value) {
-        if (value.kind == TrainingHistoryEntry.Kind.ADJUSTMENT) {
-            String label = reason(value.reason);
-            String change = prescription(value.before, value.beforeLoad) + " → "
-                    + prescription(value.after, value.afterLoad);
-            if (value.adjustmentState == TrainingAdjustment.State.UNDONE)
-                return texts.text(R.string.training_history_undone, label, change);
-            return texts.text(R.string.training_history_applied, label, change);
-        }
-        String direction = value.loadDirection == TrainingDecision.LoadDirection.PROGRESS
-                ? texts.text(R.string.training_direction_higher)
-                : texts.text(R.string.training_direction_lower);
-        String state;
-        if (value.requestState == TrainingLoadRequest.State.OPEN)
-            state = texts.text(R.string.training_request_open);
-        else if (value.requestResolution == TrainingLoadRequest.Resolution.LOAD_APPLIED)
-            state = texts.text(R.string.training_request_load_applied);
-        else if (value.requestResolution == TrainingLoadRequest.Resolution.NO_HIGHER_LOAD)
-            state = texts.text(R.string.training_request_unavailable);
-        else if (value.requestResolution == TrainingLoadRequest.Resolution.MANUAL_CHANGE)
-            state = texts.text(R.string.training_request_manual_change);
-        else if (value.requestResolution
-                == TrainingLoadRequest.Resolution.SET_RESULT_CORRECTED)
-            state = texts.text(R.string.training_request_result_corrected);
-        else if (value.requestResolution == TrainingLoadRequest.Resolution.UNDONE)
-            state = texts.text(R.string.training_request_undone);
-        else state = texts.text(R.string.training_request_cancelled);
-        return texts.text(R.string.training_history_request, direction,
-                formatLoad(value.beforeLoad), state);
-    }
-
-    private String adjustment(TrainingAdjustment value) {
-        return texts.text(R.string.training_latest_adjustment, reason(value.reason),
-                prescription(value.before, value.beforeLoad),
-                prescription(value.after, value.afterLoad));
-    }
-
-    private String prescription(StepAmount.SetsReps amount, ResistanceLoad load) {
-        return texts.text(R.string.training_prescription_value, amount.sets,
-                amount.repetitions, formatLoad(load));
-    }
-
-    private String formatLoad(ResistanceLoad load) {
-        if (load.mode == ResistanceLoad.Mode.BODYWEIGHT)
-            return texts.text(R.string.training_load_bodyweight_short);
-        if (load.mode == ResistanceLoad.Mode.UNSPECIFIED) return "–";
-        double amount = (load.milliUnits == null ? 0L : load.milliUnits) / 1000d;
-        String prefix = load.mode == ResistanceLoad.Mode.BODYWEIGHT_PLUS ? "+"
-                : load.mode == ResistanceLoad.Mode.ASSISTED_BODYWEIGHT ? "−" : "";
-        return prefix + String.format(Locale.getDefault(), "%.1f %s", amount,
-                load.unit == ResistanceLoad.Unit.LB ? "lb" : "kg");
-    }
-
-    private String reason(TrainingDecision.Reason value) {
-        switch (value) {
-            case REPETITIONS_INCREASED: return texts.text(R.string.training_reason_reps_up);
-            case LOAD_APPLIED: return texts.text(R.string.training_reason_load_applied);
-            case SET_ADDED: return texts.text(R.string.training_reason_set_added);
-            case REPETITIONS_REDUCED: return texts.text(R.string.training_reason_reps_down);
-            case SET_REMOVED: return texts.text(R.string.training_reason_set_removed);
-            case SAFETY_PAUSE: return texts.text(R.string.training_reason_safety_pause);
-            case VOLUME_LIMIT: return texts.text(R.string.training_reason_volume_limit);
-            case BOUNDARY_REACHED: return texts.text(R.string.training_reason_boundary);
-            case CALIBRATING: return texts.text(R.string.training_reason_calibrating);
-            case MANUAL_CHANGE: return texts.text(R.string.training_reason_manual);
-            case SET_RESULT_CORRECTED:
-                return texts.text(R.string.training_reason_corrected);
-            case UNDONE: return texts.text(R.string.training_reason_undone);
-            case NEXT_LOAD_REQUIRED: return texts.text(R.string.training_direction_higher);
-            case LOWER_LOAD_REQUIRED: return texts.text(R.string.training_direction_lower);
-            case NONE:
-            default: return texts.text(R.string.training_reason_held);
-        }
+        return request == null ? null : new TrainingPromptUiModel(value.templateId,
+                request.direction, request.currentLoad);
     }
 
     private static FlowRunSummary flowFor(DashboardTask item, Dashboard dashboard) {

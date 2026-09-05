@@ -44,11 +44,11 @@ und `GymRoutineAcceptanceRobolectricTest.authoredGymDetailsSurviveMaterializatio
 
 ### Korrektur eines gespeicherten Satzes
 
-1. `SetBarsView` liefert den Index eines gespeicherten Satzes.
+1. Das ausreichend große Schrittmenü liefert den Index eines gespeicherten Satzes; die
+   `SetDotsView` bleibt eine beschriebene Fortschrittsanzeige ohne kleine Klickziele.
 2. `RepetitionInputState.edit` übernimmt dessen Ist-Wert und Index in den Draft.
-3. `FocusStepRowView.commit` emittiert bei gesetztem Index
-   `onEditRepetition(stepId, index, value)`.
-4. `TaskViewModel.editStepRepetition` ruft `EditStepProgress` auf.
+3. Die Bestätigung emittiert bei gesetztem Index die typisierte Satzkorrektur.
+4. Das Today-ViewModel führt den vorhandenen Korrektur-Use-Case aus.
 5. Der Use Case kopiert die vollständige Ist-Wert-Liste, ersetzt den Index und speichert den
    gesamten `OccurrenceStep` erneut.
 

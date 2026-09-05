@@ -16,7 +16,19 @@
     <item name="rep_stepper_decrement" type="id" />
     <item name="rep_stepper_value" type="id" />
     <item name="rep_stepper_increment" type="id" />
-    <item name="set_bars" type="id" />
+    <item name="set_dots" type="id" />
+    <item name="training_values" type="id" />
+    <item name="training_repetitions_value" type="id" />
+    <item name="training_load_value_today" type="id" />
+    <item name="training_rir_value_today" type="id" />
+    <item name="training_safety_value" type="id" />
+    <item name="training_inline_editor" type="id" />
+    <item name="inline_value_decrement" type="id" />
+    <item name="inline_value_current" type="id" />
+    <item name="inline_value_increment" type="id" />
+    <item name="training_answer_toggle" type="id" />
+    <item name="training_answer_input" type="id" />
+    <item name="training_answer_actions" type="id" />
     <item name="all_tasks_compose_host" type="id" />
     <item name="task_editor_compose_host" type="id" />
     <item name="action_today_step_up" type="id" />

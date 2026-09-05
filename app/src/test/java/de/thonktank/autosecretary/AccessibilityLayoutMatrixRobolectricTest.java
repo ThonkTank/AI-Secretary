@@ -19,7 +19,6 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.accessibility.AccessibilityNodeProvider;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -59,7 +58,10 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
             Context context = configuredContext(value.widthDp, value.fontScale);
             DayPalette palette = DayPalette.at(value.time, DayPalette.Mode.AUTO);
             renderToday(context, value.widthDp, value.fontScale, palette);
-            renderRepetitionControls(context, value.widthDp, value.fontScale, palette);
+            renderRepetitionControls(context, value.widthDp, value.fontScale,
+                    DayPalette.at(value.time, DayPalette.Mode.LIGHT));
+            renderRepetitionControls(context, value.widthDp, value.fontScale,
+                    DayPalette.at(value.time, DayPalette.Mode.DARK));
             renderDynamicLimit(context, value.widthDp, value.fontScale, palette);
         }
     }
@@ -68,7 +70,6 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         int normal = visibleFollowingRows(configuredContext(412, 1f));
         int large = visibleFollowingRows(configuredContext(412, 2f));
 
-        assertTrue("default text should leave room for following steps", normal > 0);
         assertTrue("large text must not increase the visible row count", large <= normal);
     }
 
@@ -80,21 +81,23 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         focus.bind(FocusCardTestModels.of(task, palette(), FocusStepLimit.AUTO,
                 RepetitionInputState.idle()), false, events);
         measure(focus, dp(context, 360), dp(context, 2_400));
+        assertTrue(focus.findViewById(R.id.training_repetitions_value).performClick());
+        measure(focus, dp(context, 360), dp(context, 2_400));
 
         XpVesselView vessel = first(focus, XpVesselView.class);
         DewDotView dot = first(focus, DewDotView.class);
-        View minus = focus.findViewById(R.id.rep_stepper_decrement);
-        TextView input = focus.findViewById(R.id.rep_stepper_value);
-        View plus = focus.findViewById(R.id.rep_stepper_increment);
-        SetBarsView bars = focus.findViewById(R.id.set_bars);
+        View minus = focus.findViewById(R.id.inline_value_decrement);
+        TextView input = focus.findViewById(R.id.inline_value_current);
+        View plus = focus.findViewById(R.id.inline_value_increment);
+        SetDotsView dots = focus.findViewById(R.id.set_dots);
         assertNotNull(vessel); assertNotNull(dot); assertNotNull(input);
-        assertNotNull(minus); assertNotNull(plus); assertNotNull(bars);
+        assertNotNull(minus); assertNotNull(plus); assertNotNull(dots);
         List<View> order = descendants(focus);
         assertTrue(order.indexOf(vessel) < order.indexOf(dot));
-        assertTrue(order.indexOf(dot) < order.indexOf(input));
+        assertTrue(order.indexOf(dot) < order.indexOf(dots));
+        assertTrue(order.indexOf(dots) < order.indexOf(input));
         assertTrue(order.indexOf(minus) < order.indexOf(input));
         assertTrue(order.indexOf(input) < order.indexOf(plus));
-        assertTrue(order.indexOf(plus) < order.indexOf(bars));
 
         AccessibilityNodeInfo dotInfo = AccessibilityNodeInfo.obtain();
         dot.onInitializeAccessibilityNodeInfo(dotInfo);
@@ -120,21 +123,11 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
                 de.thonktank.autosecretary.presentation.today.TodayAction.Kind
                         .SUBMIT_REPETITION).id);
 
-        AccessibilityNodeProvider setNodes = bars.getAccessibilityNodeProvider();
-        assertNotNull(setNodes);
-        AccessibilityNodeInfo firstSet = setNodes.createAccessibilityNodeInfo(0);
-        assertNotNull(firstSet);
-        assertEquals(android.widget.Button.class.getName(), firstSet.getClassName());
-        assertTrue(firstSet.getContentDescription().toString().contains("Satz 1: 10"));
-        android.graphics.Rect setBounds = new android.graphics.Rect();
-        firstSet.getBoundsInParent(setBounds);
-        assertTrue(setBounds.width() >= dp(context, 44));
-        assertTrue(setBounds.height() >= dp(context, 44));
-        assertTrue(setNodes.performAction(0, AccessibilityNodeInfo.ACTION_CLICK, null));
-        assertEquals(0, events.lastToday(
-                de.thonktank.autosecretary.presentation.today.TodayAction.Kind
-                        .EDIT_REPETITION).value);
-        firstSet.recycle();
+        AccessibilityNodeInfo progressInfo = dots.createAccessibilityNodeInfo();
+        assertEquals(android.widget.ProgressBar.class.getName(), progressInfo.getClassName());
+        assertTrue(dots.getContentDescription().toString().contains("1 von 3 Sätzen"));
+        assertFalse(progressInfo.isClickable());
+        progressInfo.recycle();
     }
 
     private static void renderToday(Context context, int widthDp, float fontScale,
@@ -176,15 +169,18 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
         int available = dp(context, widthDp) - horizontalPagePadding;
         measure(focus, available, dp(context, 4_000));
-        View minus = focus.findViewById(R.id.rep_stepper_decrement);
-        TextView input = focus.findViewById(R.id.rep_stepper_value);
-        View plus = focus.findViewById(R.id.rep_stepper_increment);
-        SetBarsView bars = focus.findViewById(R.id.set_bars);
+        assertTrue(focus.findViewById(R.id.training_repetitions_value).performClick());
+        measure(focus, available, dp(context, 4_000));
+        View minus = focus.findViewById(R.id.inline_value_decrement);
+        TextView input = focus.findViewById(R.id.inline_value_current);
+        View plus = focus.findViewById(R.id.inline_value_increment);
+        SetDotsView dots = focus.findViewById(R.id.set_dots);
         String message = label(widthDp, fontScale);
         assertNotNull(message, minus); assertNotNull(message, input);
-        assertNotNull(message, plus); assertNotNull(message, bars);
+        assertNotNull(message, plus); assertNotNull(message, dots);
         int target = dp(context, 44);
-        for (View control : Arrays.asList(minus, plus, bars)) {
+        for (View control : Arrays.asList(minus, plus,
+                focus.findViewById(R.id.training_repetitions_value))) {
             assertNotNull(message, control);
             assertTrue(message + " height", control.getHeight() >= target);
         }

@@ -19,7 +19,7 @@ public final class FocusStepUiModel {
     public final int plannedXp;
     /** Positive only for a duration step; zero for every other amount type. */
     public final int durationSeconds;
-    public final TrainingContextUiModel trainingContext;
+    public final TrainingPromptUiModel trainingPrompt;
 
     private FocusStepUiModel(String id, String title, boolean done) {
         this(id, title, "", "", done,
@@ -33,7 +33,7 @@ public final class FocusStepUiModel {
                              StepExecutionUiAction activeAction,
                              RepetitionProgressUiModel repetitionProgress,
                              RewardBreakdown reward, int grainLevel, int earnedXp, int plannedXp,
-                             int durationSeconds, TrainingContextUiModel trainingContext) {
+                             int durationSeconds, TrainingPromptUiModel trainingPrompt) {
         if (id == null || id.isEmpty() || title == null || title.trim().isEmpty()
                 || amountLabel == null || note == null
                 || activeAction == null || reward == null)
@@ -66,7 +66,7 @@ public final class FocusStepUiModel {
         this.earnedXp = Math.max(0, earnedXp);
         this.plannedXp = Math.max(0, plannedXp);
         this.durationSeconds = Math.max(0, durationSeconds);
-        this.trainingContext = trainingContext;
+        this.trainingPrompt = trainingPrompt;
     }
 
     public static FocusStepUiModel of(String id, String title,
@@ -108,10 +108,10 @@ public final class FocusStepUiModel {
     public FocusStepUiModel withDurationSeconds(int seconds) {
         return new FocusStepUiModel(id, title, amountLabel, note, done, activeAction,
                 repetitionProgress, reward, grainLevel, earnedXp, plannedXp, seconds,
-                trainingContext);
+                trainingPrompt);
     }
 
-    public FocusStepUiModel withTrainingContext(TrainingContextUiModel value) {
+    public FocusStepUiModel withTrainingPrompt(TrainingPromptUiModel value) {
         return new FocusStepUiModel(id, title, amountLabel, note, done, activeAction,
                 repetitionProgress, reward, grainLevel, earnedXp, plannedXp, durationSeconds,
                 value);

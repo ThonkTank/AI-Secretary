@@ -22,8 +22,7 @@ public final class TodayFocusProjector {
             if (!step.isDone()) open.add(step);
             else {
                 doneCount++;
-                if (step.trainingContext != null
-                        && step.trainingContext.hasOpenLoadRequest()) assistants.add(step);
+                if (step.trainingPrompt != null) assistants.add(step);
             }
         }
 

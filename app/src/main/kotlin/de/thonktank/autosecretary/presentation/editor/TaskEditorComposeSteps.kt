@@ -226,6 +226,7 @@ private fun MoveButton(
 @Composable
 internal fun EditorStepDetailPage(
     state: EditorUiState,
+    trainingHistory: TrainingHistoryUiModel?,
     palette: DayPalette,
     layout: EditorLayout,
     dispatcher: TaskEditorComposeDispatcher,
@@ -273,6 +274,13 @@ internal fun EditorStepDetailPage(
         ) { prescription, policy ->
             updateStep(state, index, step.withTraining(prescription, policy), dispatcher)
         }
+        TrainingHistorySection(
+            history = trainingHistory,
+            dirty = state.dirty,
+            stepId = step.id,
+            palette = palette,
+            onUndo = { dispatcher.undoTrainingAdjustment(step.id) },
+        )
         RestTimerInputs(state, step, index, palette, dispatcher)
     }
     if (state.hasStepIssue(ValidationIssue.Field.STEP_AMOUNT, step.id)) {

@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.ui.today;
 import android.content.Context;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -15,24 +16,24 @@ import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.UiStyle;
 import de.thonktank.autosecretary.domain.model.ResistanceLoad;
+import de.thonktank.autosecretary.domain.model.TrainingDecision;
 import de.thonktank.autosecretary.presentation.today.TrainingAssistantUiAction;
-import de.thonktank.autosecretary.presentation.today.TrainingContextUiModel;
+import de.thonktank.autosecretary.presentation.today.TrainingPromptUiModel;
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
-/** Owns Today assistant status, load question, answer field, history and undo controls. */
+/** Renders only the actionable Today question; history belongs to the task editor. */
 public final class TrainingAssistantPanelView {
     private final Context context;
     private final UiStyle style;
-    private final TextView summary;
-    private final LinearLayout details;
-    private final TextView loadQuestion;
+    private final LinearLayout panel;
+    private final TextView question;
+    private final TextLinkView answerToggle;
+    private final LinearLayout answer;
     private final EditText loadAnswer;
     private final TextLinkView applyLoadAnswer;
     private final TextLinkView unavailableLoadAnswer;
     private final TextLinkView laterLoadAnswer;
-    private final TextView historyTitle;
-    private final LinearLayout history;
-    private final TextLinkView undoAdjustment;
+    private String boundStepId;
     private String boundTemplateId;
 
     public TrainingAssistantPanelView(Context context, LinearLayout host) {
@@ -41,30 +42,32 @@ public final class TrainingAssistantPanelView {
         this.context = context;
         style = new UiStyle(context);
 
-        summary = style.sans("", 14, 0, false);
-        summary.setMaxLines(3);
-        LinearLayout.LayoutParams summaryParams = new LinearLayout.LayoutParams(-1, -2);
-        summaryParams.setMargins(style.dp(52), style.dp(6), 0, 0);
-        host.addView(summary, summaryParams);
+        panel = new LinearLayout(context);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        question = style.sans("", 16, 0, true);
+        question.setMaxLines(4);
+        panel.addView(question, new LinearLayout.LayoutParams(-1, -2));
+        answerToggle = trainingLink(context.getString(R.string.training_answer));
+        answerToggle.setId(R.id.training_answer_toggle);
+        panel.addView(answerToggle, new LinearLayout.LayoutParams(-2, style.dp(44)));
 
-        details = new LinearLayout(context);
-        details.setOrientation(LinearLayout.VERTICAL);
-        loadQuestion = style.sans("", 15, 0, true);
-        details.addView(loadQuestion, new LinearLayout.LayoutParams(-1, -2));
+        answer = new LinearLayout(context);
+        answer.setId(R.id.training_answer_actions);
+        answer.setOrientation(LinearLayout.VERTICAL);
         LinearLayout loadAnswerRow = new LinearLayout(context);
         loadAnswerRow.setGravity(Gravity.CENTER_VERTICAL);
         loadAnswer = new EditText(context);
+        loadAnswer.setId(R.id.training_answer_input);
         loadAnswer.setSingleLine(true);
         loadAnswer.setTextSize(16);
         loadAnswer.setInputType(InputType.TYPE_CLASS_NUMBER
                 | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         loadAnswer.setHint(context.getString(R.string.training_load_answer_hint));
-        loadAnswerRow.addView(loadAnswer,
-                new LinearLayout.LayoutParams(0, style.dp(48), 1));
+        loadAnswerRow.addView(loadAnswer, new LinearLayout.LayoutParams(0, style.dp(48), 1));
         applyLoadAnswer = trainingLink(context.getString(R.string.training_load_apply));
         loadAnswerRow.addView(applyLoadAnswer,
                 new LinearLayout.LayoutParams(-2, style.dp(48)));
-        details.addView(loadAnswerRow, new LinearLayout.LayoutParams(-1, -2));
+        answer.addView(loadAnswerRow, new LinearLayout.LayoutParams(-1, -2));
         LinearLayout answerActions = new LinearLayout(context);
         answerActions.setGravity(Gravity.CENTER_VERTICAL);
         unavailableLoadAnswer = trainingLink("");
@@ -73,110 +76,72 @@ public final class TrainingAssistantPanelView {
                 new LinearLayout.LayoutParams(0, style.dp(44), 1));
         answerActions.addView(laterLoadAnswer,
                 new LinearLayout.LayoutParams(-2, style.dp(44)));
-        details.addView(answerActions, new LinearLayout.LayoutParams(-1, -2));
-        historyTitle = style.sans(context.getString(R.string.training_history_title), 14, 0, true);
-        LinearLayout.LayoutParams historyTitleParams = new LinearLayout.LayoutParams(-1, -2);
-        historyTitleParams.topMargin = style.dp(8);
-        details.addView(historyTitle, historyTitleParams);
-        history = new LinearLayout(context);
-        history.setOrientation(LinearLayout.VERTICAL);
-        details.addView(history, new LinearLayout.LayoutParams(-1, -2));
-        undoAdjustment = trainingLink(context.getString(R.string.training_undo));
-        details.addView(undoAdjustment,
-                new LinearLayout.LayoutParams(-2, style.dp(44)));
-        LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(-1, -2);
-        detailsParams.setMargins(style.dp(52), style.dp(6), 0, 0);
-        host.addView(details, detailsParams);
+        answer.addView(answerActions, new LinearLayout.LayoutParams(-1, -2));
+        panel.addView(answer, new LinearLayout.LayoutParams(-1, -2));
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(style.dp(52), style.dp(6), 0, 0);
+        host.addView(panel, params);
     }
 
-    public void bind(TrainingContextUiModel context, boolean active, DayPalette palette,
+    public void bind(String stepId, TrainingPromptUiModel value, boolean active,
+                     boolean answerExpanded,
+                     DayPalette palette, Runnable toggleAnswer,
                      Consumer<TrainingAssistantUiAction> actions) {
+        boolean open = value != null && active;
+        panel.setVisibility(open ? View.VISIBLE : View.GONE);
+        answer.setVisibility(open && answerExpanded ? View.VISIBLE : View.GONE);
+        bindTrainingLink(answerToggle, palette);
         bindTrainingLink(applyLoadAnswer, palette);
         bindTrainingLink(unavailableLoadAnswer, palette);
         bindTrainingLink(laterLoadAnswer, palette);
-        bindTrainingLink(undoAdjustment, palette);
-        summary.setText("");
-        loadQuestion.setText("");
-        loadQuestion.setVisibility(android.view.View.GONE);
-        loadAnswer.setVisibility(android.view.View.GONE);
-        applyLoadAnswer.setVisibility(android.view.View.GONE);
+        answerToggle.setOnClickListener(null);
         applyLoadAnswer.setOnClickListener(null);
-        unavailableLoadAnswer.setVisibility(android.view.View.GONE);
         unavailableLoadAnswer.setOnClickListener(null);
-        laterLoadAnswer.setVisibility(android.view.View.GONE);
         laterLoadAnswer.setOnClickListener(null);
-        history.removeAllViews();
-        historyTitle.setVisibility(android.view.View.GONE);
-        history.setVisibility(android.view.View.GONE);
-        undoAdjustment.setVisibility(android.view.View.GONE);
-        undoAdjustment.setOnClickListener(null);
-        summary.setVisibility(context == null ? android.view.View.GONE : android.view.View.VISIBLE);
-        details.setVisibility(context != null && active
-                ? android.view.View.VISIBLE : android.view.View.GONE);
-        if (context == null) {
-            boundTemplateId = null;
+        if (!open) {
+            question.setText("");
+            if (value == null || !active || !stepId.equals(boundStepId)
+                    || !value.templateId.equals(boundTemplateId))
+                loadAnswer.setText("");
+            boundStepId = stepId;
+            boundTemplateId = value == null ? null : value.templateId;
+            return;
+        }
+        if (!stepId.equals(boundStepId) || !value.templateId.equals(boundTemplateId))
             loadAnswer.setText("");
-            return;
-        }
-        String summaryText = context.latestAdjustmentLabel.isEmpty() ? context.statusLabel
-                : context.statusLabel + " · " + context.latestAdjustmentLabel;
-        summary.setText(summaryText);
-        summary.setTextColor(palette.muted);
-        WoodGrainView.applyTextHalo(summary, palette.leaf1);
-        if (!context.templateId.equals(boundTemplateId)) loadAnswer.setText("");
-        if (!active) {
-            boundTemplateId = context.templateId;
-            return;
-        }
-        boolean open = context.hasOpenLoadRequest();
-        loadQuestion.setVisibility(open ? android.view.View.VISIBLE : android.view.View.GONE);
-        loadAnswer.setVisibility(open ? android.view.View.VISIBLE : android.view.View.GONE);
-        applyLoadAnswer.setVisibility(open ? android.view.View.VISIBLE : android.view.View.GONE);
-        boolean unavailableChoice = open && context.openDirection
-                == de.thonktank.autosecretary.domain.model.TrainingDecision.LoadDirection.PROGRESS;
-        unavailableLoadAnswer.setVisibility(unavailableChoice
-                ? android.view.View.VISIBLE : android.view.View.GONE);
-        laterLoadAnswer.setVisibility(open ? android.view.View.VISIBLE : android.view.View.GONE);
-        if (open) {
-            loadQuestion.setText(this.context.getString(
-                    context.openDirection
-                            == de.thonktank.autosecretary.domain.model.TrainingDecision.LoadDirection.PROGRESS
-                            ? R.string.training_load_question_higher
-                            : R.string.training_load_question_lower,
-                    formatLoad(context.openCurrentLoad)));
-            loadQuestion.setTextColor(palette.ink);
-            loadAnswer.setTextColor(palette.ink);
-            loadAnswer.setHintTextColor(palette.hint);
-            unavailableLoadAnswer.setText(R.string.training_load_no_higher);
-            applyLoadAnswer.setOnClickListener(view -> actions.accept(
-                    new TrainingAssistantUiAction.ApplyLoad(
-                            context.templateId,
-                            loadAnswer.getText().toString(),
-                            context.openCurrentLoad.mode,
-                            context.openCurrentLoad.unit)));
-            unavailableLoadAnswer.setOnClickListener(unavailableChoice ? view -> actions.accept(
-                    new TrainingAssistantUiAction.NoHigherLoad(context.templateId)) : null);
-            laterLoadAnswer.setOnClickListener(view -> {
-                details.setVisibility(android.view.View.GONE);
-                actions.accept(new TrainingAssistantUiAction.Later(context.templateId));
-            });
-        }
-        boundTemplateId = context.templateId;
-        historyTitle.setTextColor(palette.muted);
-        historyTitle.setVisibility(context.historyLabels.isEmpty()
-                ? android.view.View.GONE : android.view.View.VISIBLE);
-        history.setVisibility(context.historyLabels.isEmpty()
-                ? android.view.View.GONE : android.view.View.VISIBLE);
-        for (String label : context.historyLabels) {
-            TextView item = style.sans("· " + label, 13, 0, false);
-            item.setTextColor(palette.hint);
-            item.setPadding(0, style.dp(2), 0, style.dp(2));
-            history.addView(item, new LinearLayout.LayoutParams(-1, -2));
-        }
-        undoAdjustment.setVisibility(context.canUndo
-                ? android.view.View.VISIBLE : android.view.View.GONE);
-        undoAdjustment.setOnClickListener(context.canUndo ? view -> actions.accept(
-                new TrainingAssistantUiAction.Undo(context.templateId)) : null);
+        boundStepId = stepId;
+        boundTemplateId = value.templateId;
+        question.setText(context.getString(
+                value.direction == TrainingDecision.LoadDirection.PROGRESS
+                        ? R.string.training_load_question_higher
+                        : R.string.training_load_question_lower,
+                formatLoad(value.currentLoad)));
+        question.setTextColor(palette.ink);
+        WoodGrainView.applyTextHalo(question, palette.leaf1);
+        answerToggle.setText(answerExpanded
+                ? R.string.training_answer_close : R.string.training_answer);
+        answerToggle.setContentDescription(context.getString(answerExpanded
+                ? R.string.training_answer_close : R.string.training_answer));
+        answerToggle.setOnClickListener(ignored -> toggleAnswer.run());
+        loadAnswer.setTextColor(palette.ink);
+        loadAnswer.setHintTextColor(palette.hint);
+        unavailableLoadAnswer.setText(R.string.training_load_no_higher);
+        applyLoadAnswer.setOnClickListener(ignored -> actions.accept(
+                new TrainingAssistantUiAction.ApplyLoad(value.templateId,
+                        loadAnswer.getText().toString(), value.currentLoad.mode,
+                        value.currentLoad.unit)));
+        boolean unavailableChoice = value.direction
+                == TrainingDecision.LoadDirection.PROGRESS;
+        unavailableLoadAnswer.setVisibility(unavailableChoice ? View.VISIBLE : View.GONE);
+        unavailableLoadAnswer.setOnClickListener(unavailableChoice ? ignored -> actions.accept(
+                new TrainingAssistantUiAction.NoHigherLoad(value.templateId)) : null);
+        laterLoadAnswer.setOnClickListener(ignored -> actions.accept(
+                new TrainingAssistantUiAction.Later(value.templateId)));
+    }
+
+    public void resetTransientState() {
+        loadAnswer.setText("");
     }
 
     private TextLinkView trainingLink(String text) {

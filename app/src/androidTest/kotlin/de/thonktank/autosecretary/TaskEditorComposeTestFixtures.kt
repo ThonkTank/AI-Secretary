@@ -12,6 +12,15 @@ import de.thonktank.autosecretary.domain.model.RestTimerPolicy
 import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy
 import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup
 import de.thonktank.autosecretary.domain.model.TrainingPrescription
+import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile
+import de.thonktank.autosecretary.domain.model.TrainingAssistantState
+import de.thonktank.autosecretary.domain.model.Task
+import de.thonktank.autosecretary.domain.model.TaskDetails
+import de.thonktank.autosecretary.domain.model.TaskId
+import de.thonktank.autosecretary.domain.model.TaskSchedule
+import de.thonktank.autosecretary.domain.model.TaskScheduleEntry
+import de.thonktank.autosecretary.domain.model.TaskStepTemplate
+import java.time.LocalDate
 
 internal fun taskEditorComposeReferenceState(): EditorUiState {
     val steps = listOf(
@@ -75,4 +84,38 @@ internal fun trainingAssistantEditorState(): EditorUiState {
         listOf(step), step.id, 2,
     ).withPage(EditorUiState.Page.STEPS, false)
         .withValidationAttempt(EditorUiState.Page.STEPS, step.id, setOf(issue))
+}
+
+internal fun cleanTrainingAssistantEditorState(): EditorUiState {
+    val id = TaskId.of("gym")
+    val date = LocalDate.of(2026, 8, 23)
+    val task = Task.restore(
+        id, "Gym", Recurrence.DAILY, 1, 0, false, "", false, false,
+        date, null, null, date, 1_024L, false, null, TaskBoundKind.FOREVER,
+        null, null, null, null, "",
+    )
+    val load = ResistanceLoad.numeric(
+        ResistanceLoad.Mode.EXTERNAL,
+        ResistanceLoad.Unit.KG,
+        50_000,
+    )
+    val template = TaskStepTemplate(
+        "press", id, 0, "Beinpresse", 0, 0,
+        StepPrescription(
+            StepAmount.setsReps(3, 12),
+            RestTimerPolicy.inherit(),
+            TrainingPrescription(load, 2),
+        ),
+        TrainingAssistantProfile(
+            TrainingAssistantPolicy.defaults(TrainingMuscleGroup.QUADRICEPS),
+            TrainingAssistantState(TrainingAssistantState.Status.ACTIVE, 5, 0, 0),
+        ),
+        "", StepActivationKind.SCHEDULED,
+    )
+    val schedule = TaskSchedule(listOf(TaskScheduleEntry(
+        "gym-morning", id, TaskSlot.MORNING, 1_024L,
+    )))
+    return EditorUiState.edit(TaskDetails(task, listOf(template), schedule))
+        .withPage(EditorUiState.Page.STEPS, false)
+        .withExpandedStep(template.id)
 }

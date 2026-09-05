@@ -44,7 +44,7 @@ import java.util.Collections;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class DashboardTrainingContextProjectionRobolectricTest {
-    @Test public void mapperLocalizesStatusQuestionHistoryAndUndoCapability() {
+    @Test public void mapperProjectsOnlyTheOpenTodayQuestion() {
         LocalDate today = LocalDate.of(2026, 8, 31);
         TaskId taskId = TaskId.of("gym");
         Task task = Task.restore(taskId, "Gym", Recurrence.DAILY, 1, 0,
@@ -81,13 +81,10 @@ public final class DashboardTrainingContextProjectionRobolectricTest {
                 new AndroidUiTextProvider(android)).map(dashboard, today);
         FocusStepUiModel mapped = todayModel.focus.steps.get(0);
 
-        assertNotNull(mapped.trainingContext);
-        assertEquals("Kalibriert 2/3", mapped.trainingContext.statusLabel);
-        assertTrue(mapped.trainingContext.latestAdjustmentLabel
-                .contains("Wiederholungen erhöht"));
-        assertEquals(2, mapped.trainingContext.historyLabels.size());
-        assertTrue(mapped.trainingContext.historyLabels.get(0).contains("offen"));
-        assertTrue(mapped.trainingContext.historyLabels.get(1).startsWith("Rückgängig"));
-        assertFalse(mapped.trainingContext.canUndo);
+        assertNotNull(mapped.trainingPrompt);
+        assertEquals("press-template", mapped.trainingPrompt.templateId);
+        assertEquals(TrainingDecision.LoadDirection.PROGRESS,
+                mapped.trainingPrompt.direction);
+        assertEquals(load, mapped.trainingPrompt.currentLoad);
     }
 }

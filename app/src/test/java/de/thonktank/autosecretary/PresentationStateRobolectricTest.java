@@ -53,6 +53,16 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepId;
 import de.thonktank.autosecretary.domain.model.StepAmount;
+import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
+import de.thonktank.autosecretary.domain.model.ResistanceLoad;
+import de.thonktank.autosecretary.domain.model.StepActivationKind;
+import de.thonktank.autosecretary.domain.model.StepPrescription;
+import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
+import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
+import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
+import de.thonktank.autosecretary.domain.model.TrainingDecision;
+import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
+import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.schedule.ScheduleMoveRequest;
@@ -297,6 +307,65 @@ public final class PresentationStateRobolectricTest {
         assertFalse(editorValue().dirty);
         assertEquals(1, editorValue().flowDraft.resources.size());
         assertEquals("Wäscheständer", editorValue().flowDraft.resources.get(0).name);
+    }
+
+    @Test public void editorTrainingHistoryStaysWithTheStepAndUndoReloadsItInPlace() {
+        TaskStepTemplate template = trainingTemplateWithAdjustment("editor-adjustment");
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
+
+        editorViewModel.dispatch(TaskEditorAction.open(template.taskId.value, template.id, false));
+
+        TaskEditorScreenState opened = editorViewModel.state().getValue();
+        assertEquals(template.id, opened.content.expandedStepId);
+        assertEquals(1, opened.trainingHistoryByStepId.get(template.id).entries.size());
+        assertTrue(opened.trainingHistoryByStepId.get(template.id).canUndo);
+        try {
+            opened.trainingHistoryByStepId.clear();
+            fail("training history projection must be immutable");
+        } catch (UnsupportedOperationException expected) {
+            assertFalse(opened.trainingHistoryByStepId.isEmpty());
+        }
+
+        EditorUiState clean = opened.content;
+        EditorUiState dirty = de.thonktank.autosecretary.editor.TaskEditorStateReducer
+                .updateTitle(clean, "Gym geändert");
+        editorViewModel.dispatch(TaskEditorAction.draftChanged(dirty));
+        editorViewModel.dispatch(TaskEditorAction.undoTrainingAdjustment(template.id));
+
+        assertEquals(TrainingAdjustment.State.APPLIED,
+                repository.training.latestTrainingAdjustment(template.id).state);
+        assertTrue(editorViewModel.state().getValue().firstRequest().message
+                .contains("zuerst speichern"));
+        editorViewModel.dispatch(TaskEditorAction.acknowledgeRequest(
+                editorViewModel.state().getValue().firstRequest().id));
+        editorViewModel.dispatch(TaskEditorAction.draftChanged(clean));
+
+        editorViewModel.dispatch(TaskEditorAction.undoTrainingAdjustment(template.id));
+
+        TaskEditorScreenState undone = editorViewModel.state().getValue();
+        assertEquals(template.id, undone.content.expandedStepId);
+        assertEquals(11, ((StepAmount.SetsReps) undone.content.stepStates.get(0)
+                .prescription.amount).repetitions);
+        assertFalse(undone.trainingHistoryByStepId.get(template.id).canUndo);
+        assertTrue(undone.trainingHistoryByStepId.get(template.id).entries.get(0)
+                .startsWith("Rückgängig"));
+    }
+
+    @Test public void editorReportsAnUndoThatBecameStaleWithoutLeavingTheStep() {
+        TaskStepTemplate template = trainingTemplateWithAdjustment("stale-adjustment");
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
+        editorViewModel.dispatch(TaskEditorAction.open(template.taskId.value, template.id, false));
+        assertTrue(editorViewModel.state().getValue().trainingHistoryByStepId
+                .get(template.id).canUndo);
+        assertTrue(tasks.training.undoLatestTrainingAdjustment.execute(template.id));
+
+        editorViewModel.dispatch(TaskEditorAction.undoTrainingAdjustment(template.id));
+
+        assertEquals(template.id, editorValue().expandedStepId);
+        TaskEditorRequest request = editorViewModel.state().getValue().firstRequest();
+        assertNotNull(request);
+        assertEquals(context.getString(R.string.training_undo_no_longer_available),
+                request.message);
     }
 
     @Test public void dismissingAStillLoadingEditorPreventsStaleReopen() {
@@ -769,8 +838,38 @@ public final class PresentationStateRobolectricTest {
 
     private TaskEditorViewModel newEditorViewModel(SavedStateHandle handle,
                                                     AbstractExecutorService worker) {
-        return new TaskEditorViewModel(tasks.catalog, tasks.flows, tasks.today, clock, logger,
+        return new TaskEditorViewModel(tasks.catalog, tasks.flows, tasks.today, tasks.training,
+                clock, logger,
                 new AndroidUiTextProvider(context), handle, worker);
+    }
+
+    private TaskStepTemplate trainingTemplateWithAdjustment(String adjustmentId) {
+        ResistanceLoad load = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
+                ResistanceLoad.Unit.KG, 50_000);
+        StepPrescription prescription = new StepPrescription(StepAmount.setsReps(3, 12),
+                RestTimerPolicy.inherit(), new TrainingPrescription(load, 2));
+        TaskDefinition definition = new TaskDefinition("Gym " + adjustmentId, null,
+                TaskSlot.MORNING, Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit,
+                TaskBoundKind.FOREVER, null, null, null, null, "",
+                Collections.singletonList(
+                        de.thonktank.autosecretary.testing.StepTestFixtures.definition(
+                                null, 0, "Beinpresse", 0, 0, prescription,
+                                TrainingAssistantPolicy.defaults(
+                                        TrainingMuscleGroup.QUADRICEPS), "",
+                                StepActivationKind.SCHEDULED)));
+        tasks.catalog.create.execute(definition);
+        Task task = repository.catalog.allTasks().stream()
+                .filter(value -> value.title.equals(definition.title))
+                .findFirst().orElseThrow(AssertionError::new);
+        TaskStepTemplate template = repository.steps.templates(task.id).get(0);
+        repository.training.insertTrainingAdjustment(new TrainingAdjustment(
+                adjustmentId, template.id, "occurrence-step",
+                TrainingDecision.Reason.REPETITIONS_INCREASED,
+                (StepAmount.SetsReps) StepAmount.setsReps(3, 11), load,
+                (StepAmount.SetsReps) StepAmount.setsReps(3, 12), load, clock.today(),
+                TrainingAdjustment.State.APPLIED, repository.training.nextTrainingAuditOrder(),
+                TrainingDecision.RULE_VERSION));
+        return template;
     }
 
     private void refreshDatabase() {

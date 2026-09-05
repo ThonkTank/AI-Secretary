@@ -110,9 +110,10 @@ public final class GymRoutineAcceptanceRobolectricTest {
 
         List<String> texts = visibleTexts(view);
         assertTrue(texts.contains("23kg, Sitz 5"));
-        assertTrue(texts.contains("12"));
+        assertTrue(texts.contains("12 Wdh."));
         assertTrue(contentDescriptions(view).stream()
-                .anyMatch(value -> value.contains("Satz 1 mit 12 Wiederholungen")));
+                .anyMatch(value -> value.contains("0 von 3 Sätzen abgeschlossen")
+                        && value.contains("Satz 1 ist aktuell")));
 
         for (int set = 0; set < 3; set++) {
             FocusTaskUiModel current = dashboard(repository, clock, context).focus;
