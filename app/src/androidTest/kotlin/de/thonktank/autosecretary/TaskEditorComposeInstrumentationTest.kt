@@ -208,7 +208,9 @@ class TaskEditorComposeInstrumentationTest {
             .performClick()
         compose.onNodeWithText("Wiederholungen erhöht · 3 × 11 → 3 × 12")
             .assertExists()
-        compose.onNodeWithTag("task-editor:training-undo:press").performClick()
+        compose.onNodeWithTag("task-editor:training-undo:press")
+            .performScrollTo()
+            .performClick()
         assertEquals(1, compose.activity.undoCount)
         assertEquals("press", compose.activity.lastUndoStepId)
 
