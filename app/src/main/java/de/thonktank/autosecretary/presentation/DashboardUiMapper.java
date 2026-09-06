@@ -121,8 +121,9 @@ public final class DashboardUiMapper {
                 .ongoing(task.ongoing)
                 .overdue(overdue(item, today))
                 .backlogCount(item.backlogCount)
-                .allowDefer(allowDefer)
-                .harvestReady(!steps.isEmpty() && collected > 0)
+                .allowDefer(allowDefer && !item.flowAggregate)
+                .flowAggregate(item.flowAggregate)
+                .harvestReady(!item.flowAggregate && !steps.isEmpty() && collected > 0)
                 .reward(reward, XpVesselUiModel.quantitative(reward, done, steps.size(),
                         collected, planned, !steps.isEmpty() && collected > 0, rewardTexts))
                 .build();
@@ -146,7 +147,6 @@ public final class DashboardUiMapper {
 
     private List<FocusStepUiModel> focusSteps(DashboardTask item, Dashboard dashboard) {
         List<FocusStepUiModel> steps = new ArrayList<>();
-        FlowRunSummary flow = flowFor(item, dashboard);
         for (OccurrenceStep step : item.steps) {
             if (item.done && !step.done) continue;
             boolean done = item.done || step.done;
@@ -154,6 +154,7 @@ public final class DashboardUiMapper {
             RewardBreakdown reward = RewardPolicy.step(combo);
             RepetitionProgressUiModel repetition = repetition(step);
             StepExecutionUiAction action;
+            FlowRunSummary flow = item.flowRunByStepId.get(step.id);
             if (done) action = StepExecutionUiAction.none();
             else if (repetition != null)
                 action = StepExecutionUiAction.submitRepetition(step.id);
@@ -165,7 +166,9 @@ public final class DashboardUiMapper {
             int earnedXp = item.earnedXp(step.id);
             int plannedXp = item.plannedXp(step.id,
                     earnedXp > 0 ? earnedXp : reward.resultXp);
-            FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, step.text,
+            String title = flow != null && flow.currentPosition > 0
+                    ? flow.seedTitle + ": " + step.text : step.text;
+            FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, title,
                     stepTexts.compactAmount(step.prescription.amount), step.note, done, action,
                     repetition, reward, earnedXp, plannedXp);
             if (step.prescription.amount instanceof StepAmount.Duration)
@@ -184,13 +187,6 @@ public final class DashboardUiMapper {
         TrainingLoadRequest request = value.openLoadRequest;
         return request == null ? null : new TrainingPromptUiModel(value.templateId,
                 request.direction, request.currentLoad);
-    }
-
-    private static FlowRunSummary flowFor(DashboardTask item, Dashboard dashboard) {
-        if (item.occurrence == null) return null;
-        for (FlowRunSummary flow : dashboard.flowRuns)
-            if (item.occurrence.id.equals(flow.currentSheetOccurrenceId)) return flow;
-        return null;
     }
 
     private static RepetitionProgressUiModel repetition(OccurrenceStep step) {

@@ -6,6 +6,7 @@ import de.thonktank.autosecretary.SystemMomentSource;
 import de.thonktank.autosecretary.domain.model.FlowRunSnapshot;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.StepFlowDefinition;
+import de.thonktank.autosecretary.domain.model.StepFlowRun;
 import de.thonktank.autosecretary.domain.model.StepResourceLease;
 import de.thonktank.autosecretary.domain.model.StepTransition;
 import de.thonktank.autosecretary.domain.model.Occurrence;
@@ -175,6 +176,13 @@ public final class MaterializeDueOccurrences {
                 String sourceKey = "flow:" + task.id.value + ':' + template.id + ':'
                         + due.scheduledOn + ':' + due.slot.storageCode;
                 if (flows.findFlowRunBySourceKey(sourceKey) != null) continue;
+                boolean alreadyPendingOrRunning = false;
+                for (StepFlowRun active : flows.activeFlowRuns(task.id))
+                    if (active.seedStepId.equals(template.id)) {
+                        alreadyPendingOrRunning = true;
+                        break;
+                    }
+                if (alreadyPendingOrRunning) continue;
                 long rank = scheduleRanks.getOrDefault(
                         task.id.value + '|' + due.slot.name(), 0);
                 long queueOrder = rank * 1_000_000_000L

@@ -6,8 +6,10 @@ public final class WidgetStepUiModel {
     public final String title;
     public final String subtitle;
     public final boolean done;
+    public final boolean requiresApp;
 
-    private WidgetStepUiModel(String id, String title, String subtitle, boolean done) {
+    private WidgetStepUiModel(String id, String title, String subtitle, boolean done,
+                              boolean requiresApp) {
         if (id == null || id.isEmpty() || title == null || title.trim().isEmpty()
                 || subtitle == null)
             throw new IllegalArgumentException("Widget step content is required");
@@ -15,9 +17,15 @@ public final class WidgetStepUiModel {
         this.title = title;
         this.subtitle = subtitle;
         this.done = done;
+        this.requiresApp = requiresApp;
     }
 
     public static WidgetStepUiModel of(String id, String title, String subtitle, boolean done) {
-        return new WidgetStepUiModel(id, title, subtitle, done);
+        return new WidgetStepUiModel(id, title, subtitle, done, false);
+    }
+
+    public static WidgetStepUiModel requiringApp(String id, String title, String subtitle,
+                                                  boolean done) {
+        return new WidgetStepUiModel(id, title, subtitle, done, true);
     }
 }

@@ -138,7 +138,8 @@ public final class WidgetRemoteViewsFactory {
                 views.setTextColor(STEP_SUBTITLES[i], step.done
                         ? model.palette.done : model.palette.muted);
             }
-            views.setOnClickPendingIntent(STEP_DOTS[i], toggleStep(step.id));
+            views.setOnClickPendingIntent(STEP_DOTS[i], step.requiresApp
+                    ? openApp() : toggleStep(step.id));
             String fullLabel = step.title + (hasSubtitle ? ", " + step.subtitle : "");
             views.setContentDescription(STEP_DOTS[i],
                     context.getString(R.string.widget_toggle_step, fullLabel));
@@ -154,7 +155,8 @@ public final class WidgetRemoteViewsFactory {
         views.setImageViewBitmap(R.id.widget_action_background,
                 forests.button(model.size, model.palette));
         PendingIntent action;
-        if (model.primaryAction == WidgetUiModel.PrimaryAction.OPEN_EDITOR) action = openEditor();
+        if (model.primaryAction == WidgetUiModel.PrimaryAction.OPEN_APP) action = openApp();
+        else if (model.primaryAction == WidgetUiModel.PrimaryAction.OPEN_EDITOR) action = openEditor();
         else if (model.primaryAction == WidgetUiModel.PrimaryAction.CONFIRM_CLOSE)
             action = confirmClose(model.primaryActionId, model.taskTitle);
         else action = complete(model.primaryActionId);

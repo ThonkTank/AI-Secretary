@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.LinkedHashMap;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
@@ -60,8 +61,10 @@ public final class LoadDashboard {
         Map<TaskId, Task> tasks = new HashMap<>();
         for (Task task : catalog.allTasks()) tasks.put(task.id, task);
         List<StepFlowRun> activeFlowRuns = flowRepository.activeFlowRuns();
-        Map<String, StepFlowRunState> flowStates = new HashMap<>();
-        for (StepFlowRun run : activeFlowRuns) flowStates.put(run.id, run.state);
+        List<FlowRunSummary> allFlowRuns = LoadFlowRuns.summaries(tasks, flowRepository,
+                activeFlowRuns);
+        Map<String, FlowRunSummary> flowById = new HashMap<>();
+        for (FlowRunSummary run : allFlowRuns) flowById.put(run.id, run);
         TaskSchedule schedule = new TaskSchedule(catalog.scheduleEntries());
         List<Occurrence> open = this.today.openOccurrences();
         List<Occurrence> completed = this.today.completedOccurrences(today);
@@ -84,12 +87,51 @@ public final class LoadDashboard {
             openCounts.put(key, openCounts.getOrDefault(key, 0) + 1);
         }
         Set<String> accumulatedSlots = new HashSet<>();
+        Map<String, FlowAggregate> flowAggregates = new LinkedHashMap<>();
+        for (Occurrence occurrence : open) {
+            if (occurrence.kind != OccurrenceKind.FLOW_SHEET) continue;
+            Task task = tasks.get(occurrence.taskId);
+            FlowRunSummary run = flowById.get(occurrence.flowRunId);
+            if (task == null || task.archived || task.conditionDone || run == null) continue;
+            boolean visible = run.state == StepFlowRunState.OFFERED
+                    || run.state == StepFlowRunState.PENDING_START && run.startable;
+            if (!visible) continue;
+            OccurrenceStep current = null;
+            for (OccurrenceStep step : steps.getOrDefault(occurrence.id,
+                    java.util.Collections.emptyList()))
+                if (!step.done && run.currentStepId.equals(step.sourceTemplateId)) {
+                    current = step;
+                    break;
+                }
+            if (current == null) continue;
+            String key = occurrence.taskId.value + '|' + occurrence.slot.name();
+            flowAggregates.computeIfAbsent(key,
+                    ignored -> new FlowAggregate(task, occurrence)).entries.add(
+                    new FlowEntry(current, run));
+        }
+        for (FlowAggregate aggregate : flowAggregates.values()) {
+            aggregate.entries.sort(Comparator
+                    .comparingInt((FlowEntry value) -> value.run.state
+                            == StepFlowRunState.PENDING_START ? 1 : 0)
+                    .thenComparingLong(value -> value.run.queueOrder));
+            List<OccurrenceStep> aggregateSteps = new ArrayList<>();
+            Map<String, FlowRunSummary> runByStep = new LinkedHashMap<>();
+            for (FlowEntry entry : aggregate.entries) {
+                aggregateSteps.add(entry.step);
+                runByStep.put(entry.step.id, entry.run);
+            }
+            if (!aggregateSteps.isEmpty()) {
+                result.add(new DashboardTask(aggregate.task, aggregate.occurrence, aggregateSteps,
+                        false, java.util.Collections.emptyMap(), 0,
+                        aggregate.occurrence.slot, 0, java.util.Collections.emptyMap(), true,
+                        runByStep));
+                included.add(aggregate.task.id);
+            }
+        }
         for (Occurrence occurrence : open) {
             Task task = tasks.get(occurrence.taskId);
             if (task == null || task.archived || task.conditionDone) continue;
-            if (occurrence.kind == OccurrenceKind.FLOW_SHEET
-                    && flowStates.get(occurrence.flowRunId) != StepFlowRunState.OFFERED
-                    && flowStates.containsKey(occurrence.flowRunId)) continue;
+            if (occurrence.kind == OccurrenceKind.FLOW_SHEET) continue;
             String key = occurrence.taskId.value + '|' + occurrence.slot.name();
             if (occurrence.kind != OccurrenceKind.FLOW_SHEET
                     && task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE
@@ -108,6 +150,7 @@ public final class LoadDashboard {
                 included.add(task.id);
             }
         for (Occurrence occurrence : completed) {
+            if (occurrence.kind == OccurrenceKind.FLOW_SHEET) continue;
             Task task = tasks.get(occurrence.taskId);
             if (task == null) continue;
             result.add(item(task, occurrence, steps, rewards, true, 0));
@@ -127,8 +170,9 @@ public final class LoadDashboard {
                 .thenComparingLong(item -> item.task.catalogOrder));
         Map<String, ComboProgress> combos = new HashMap<>();
         for (ComboProgress combo : this.today.combos()) combos.put(combo.ownerId, combo);
-        List<FlowRunSummary> flowRuns = LoadFlowRuns.summaries(tasks, flowRepository,
-                activeFlowRuns);
+        List<FlowRunSummary> flowRuns = new ArrayList<>();
+        for (FlowRunSummary run : allFlowRuns)
+            if (run.state != StepFlowRunState.PENDING_START) flowRuns.add(run);
         Map<String, TrainingContext> trainingContexts = new HashMap<>();
         if (loadTrainingContext != null) for (DashboardTask item : result)
             for (OccurrenceStep step : item.steps)
@@ -172,5 +216,26 @@ public final class LoadDashboard {
         for (RewardBooking booking : values)
             result.computeIfAbsent(booking.occurrenceId, ignored -> new ArrayList<>()).add(booking);
         return result;
+    }
+
+    private static final class FlowAggregate {
+        final Task task;
+        final Occurrence occurrence;
+        final List<FlowEntry> entries = new ArrayList<>();
+
+        FlowAggregate(Task task, Occurrence occurrence) {
+            this.task = task;
+            this.occurrence = occurrence;
+        }
+    }
+
+    private static final class FlowEntry {
+        final OccurrenceStep step;
+        final FlowRunSummary run;
+
+        FlowEntry(OccurrenceStep step, FlowRunSummary run) {
+            this.step = step;
+            this.run = run;
+        }
     }
 }

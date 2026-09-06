@@ -10,7 +10,7 @@ import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.WidgetSizeClassifier;
 
 public final class WidgetUiModel {
-    public enum PrimaryAction { NONE, OPEN_EDITOR, COMPLETE_OCCURRENCE, CONFIRM_CLOSE }
+    public enum PrimaryAction { NONE, OPEN_APP, OPEN_EDITOR, COMPLETE_OCCURRENCE, CONFIRM_CLOSE }
 
     public static final class CalendarItem {
         public final String time;
