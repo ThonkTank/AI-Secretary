@@ -31,6 +31,7 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.R
+import de.thonktank.autosecretary.domain.model.FlowRunSummary
 
 @Composable
 internal fun AllTasksComposeScreen(
@@ -40,6 +41,8 @@ internal fun AllTasksComposeScreen(
     modifier: Modifier = Modifier,
     dragSourceKey: String? = null,
     forcedOpenFilter: AllTasksFilterMenu? = null,
+    flowRuns: List<FlowRunSummary> = emptyList(),
+    onOpenFlowRuns: () -> Unit = { },
 ) {
     var openFilter by remember { mutableStateOf<AllTasksFilterMenu?>(null) }
     var openTaskMenu by remember { mutableStateOf<String?>(null) }
@@ -104,6 +107,7 @@ internal fun AllTasksComposeScreen(
             .padding(start = pageStart, top = 16.dp, end = pageEnd),
     ) {
         Column(Modifier.fillMaxSize()) {
+            AllTasksRunningFlows(flowRuns, palette, onOpenFlowRuns)
             AllTasksComposeControls(
                 state = state,
                 palette = palette,

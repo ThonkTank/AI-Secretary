@@ -110,9 +110,13 @@ public final class FlowRunsActivity extends ComponentActivity {
                     params(-1, -2, 7, 0));
 
         EditorFlowLayout actions = new EditorFlowLayout(this);
-        if (run.state == StepFlowRunState.OFFERED)
+        if (run.state == StepFlowRunState.OFFERED) {
             actions.addView(action(R.string.flow_run_defer, busy,
                     () -> viewModel.dispatch(FlowRunsAction.defer(run.id))));
+            if (run.arrivalDelayMillis != null)
+                actions.addView(action(R.string.flow_run_not_ready, busy,
+                        () -> postpone(run)));
+        }
         if (run.state == StepFlowRunState.WAITING_TIME) {
             actions.addView(action(R.string.flow_run_ready_now, busy,
                     () -> viewModel.dispatch(FlowRunsAction.readyAt(
@@ -164,6 +168,12 @@ public final class FlowRunsActivity extends ComponentActivity {
         FlowDurationDialog.show(this, getString(R.string.flow_adjust_prompt_title), proposed,
                 delay -> viewModel.dispatch(FlowRunsAction.readyAt(
                         run.id, System.currentTimeMillis() + delay)));
+    }
+
+    private void postpone(FlowRunSummary run) {
+        FlowDurationDialog.show(this, getString(R.string.flow_postpone_prompt_title),
+                run.arrivalDelayMillis == null ? 0L : run.arrivalDelayMillis,
+                delay -> viewModel.dispatch(FlowRunsAction.postpone(run.id, delay)));
     }
 
     private void confirmCancel(FlowRunSummary run) {

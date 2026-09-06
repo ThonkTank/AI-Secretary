@@ -55,6 +55,10 @@ public final class FlowRunsViewModel extends ViewModel {
                     change(() -> flows.adjustFlowRunReadyAt.execute(
                             action.runId, action.epochMillis));
                     return;
+                case POSTPONE:
+                    change(() -> flows.postponeFlowRun.execute(
+                            action.runId, action.epochMillis));
+                    return;
                 case MOVE_BEFORE:
                     change(() -> flows.reorderFlowRun.execute(
                             action.runId, action.beforeRunId));
