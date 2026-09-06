@@ -237,9 +237,11 @@ public final class FocusStepRowView extends LinearLayout {
     private void bindText(FocusStepUiModel step, boolean active, DayPalette palette) {
         title.setText(step.title);
         title.setTextColor(palette.ink);
-        amount.setText(step.amountLabel);
-        amount.setTextColor(palette.muted);
-        amount.setVisibility(!active && !step.amountLabel.isEmpty() ? VISIBLE : GONE);
+        String trailing = step.contextLabel.isEmpty() ? step.amountLabel : step.contextLabel;
+        amount.setText(trailing);
+        amount.setTextColor(step.contextLabel.isEmpty() ? palette.muted : palette.accent);
+        amount.setVisibility(!trailing.isEmpty()
+                && (!active || !step.contextLabel.isEmpty()) ? VISIBLE : GONE);
         menu.setTextColor(palette.muted);
         menu.setContentDescription(getContext().getString(
                 R.string.content_step_actions, step.title));

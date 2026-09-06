@@ -22,6 +22,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.FlowRunSummary;
+import de.thonktank.autosecretary.domain.model.StepFlowRunState;
 import de.thonktank.autosecretary.domain.model.TrainingContext;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
@@ -174,6 +175,9 @@ public final class DashboardUiMapper {
             if (step.prescription.amount instanceof StepAmount.Duration)
                 mapped = mapped.withDurationSeconds(
                         ((StepAmount.Duration) step.prescription.amount).seconds);
+            if (flow != null) mapped = mapped.withContextLabel(texts.text(
+                    flow.state == StepFlowRunState.PENDING_START
+                            ? R.string.flow_step_start : R.string.flow_step_running));
             TrainingContext training = step.sourceTemplateId == null ? null
                     : dashboard.trainingContexts.get(step.sourceTemplateId);
             TrainingPromptUiModel prompt = training == null ? null : trainingPrompt(training);

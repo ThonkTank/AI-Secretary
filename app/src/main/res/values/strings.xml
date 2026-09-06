@@ -556,6 +556,9 @@
     <string name="all_flow_ready">%1$s ist bereit.</string>
     <string name="all_flow_waiting_time">%1$s wartet noch %2$s.</string>
     <string name="all_flow_waiting_capacity">%1$s wartet auf Kapazität.</string>
+    <string name="flow_sheet_hint">Wähle einen Waschgang. Laufende Schritte stehen zuerst.</string>
+    <string name="flow_step_start">Starten</string>
+    <string name="flow_step_running">Läuft</string>
     <string name="flow_resource_active">belegt</string>
     <string name="flow_resource_reserved">reserviert</string>
     <string name="flow_resource_released">frei</string>
