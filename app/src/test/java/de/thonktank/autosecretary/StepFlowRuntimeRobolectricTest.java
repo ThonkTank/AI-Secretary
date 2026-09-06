@@ -202,7 +202,9 @@ public final class StepFlowRuntimeRobolectricTest {
                 tasks.today.loadDashboard.execute(TODAY), TODAY);
         assertNotNull(takeDown.focus);
         assertEquals("Buntwäsche: Abhängen", takeDown.focus.steps.get(0).title);
+        assertEquals("Läuft", takeDown.focus.steps.get(0).contextLabel);
         assertEquals(4, takeDown.focus.steps.size());
+        assertEquals("Starten", takeDown.focus.steps.get(1).contextLabel);
 
         colors = repository.flows.findFlowRun(colors.id);
         tasks.today.toggleStep.execute(openStep(colors).id);
@@ -408,6 +410,7 @@ public final class StepFlowRuntimeRobolectricTest {
         assertNotNull(today.focus);
         assertEquals("Wäsche waschen", today.focus.title());
         assertEquals("Buntwäsche", today.focus.steps.get(0).title);
+        assertEquals("Starten", today.focus.steps.get(0).contextLabel);
         assertEquals(StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY,
                 today.focus.steps.get(0).activeAction.kind);
         assertEquals(TWO_HOURS, today.focus.steps.get(0).activeAction
