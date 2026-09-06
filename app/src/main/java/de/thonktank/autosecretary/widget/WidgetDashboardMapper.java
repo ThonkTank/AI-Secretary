@@ -56,8 +56,15 @@ public final class WidgetDashboardMapper {
         for (OccurrenceStep step : item.steps) {
             boolean done = item.done || step.done;
             if (!done) remaining++;
-            steps.add(WidgetStepUiModel.of(step.id, step.text,
-                    stepTexts.format(step.prescription.amount, step.note), done));
+            de.thonktank.autosecretary.domain.model.FlowRunSummary flow =
+                    item.flowRunByStepId.get(step.id);
+            String title = flow != null && flow.currentPosition > 0
+                    ? flow.seedTitle + ": " + step.text : step.text;
+            steps.add(item.flowAggregate
+                    ? WidgetStepUiModel.requiringApp(step.id, title,
+                            stepTexts.format(step.prescription.amount, step.note), done)
+                    : WidgetStepUiModel.of(step.id, title,
+                            stepTexts.format(step.prescription.amount, step.note), done));
         }
         LocalDate due = task.deadlineOn == null || item.occurrence == null
                 ? item.occurrence == null ? null : item.occurrence.scheduledOn : task.deadlineOn;
@@ -66,8 +73,10 @@ public final class WidgetDashboardMapper {
         int action = terminal ? R.string.condition_met
                 : steps.isEmpty() ? R.string.action_complete
                 : remaining == 0 ? R.string.action_complete_all : R.string.action_complete_rest;
-        return WidgetTaskUiModel.of(task.id.value,
-                item.occurrence == null ? "" : item.occurrence.id, task.title, overdue, terminal,
+        if (item.flowAggregate) return WidgetTaskUiModel.requiringApp(task.id.value,
+                item.occurrence == null ? "" : item.occurrence.id, task.title, overdue,
                 texts.text(action), steps);
+        return WidgetTaskUiModel.of(task.id.value, item.occurrence == null ? ""
+                : item.occurrence.id, task.title, overdue, terminal, texts.text(action), steps);
     }
 }

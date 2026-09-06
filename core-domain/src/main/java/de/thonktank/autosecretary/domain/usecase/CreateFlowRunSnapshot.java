@@ -36,7 +36,7 @@ public final class CreateFlowRunSnapshot {
         List<TaskStepTemplate> path = definition.resolvedPath(seedStepId);
         String runId = ids.nextId();
         StepFlowRun run = new StepFlowRun(runId, definition.taskId, seedStepId, sourceKey,
-                scheduledOn, slot, StepFlowRunState.WAITING_RESOURCE, 0, null, null,
+                scheduledOn, slot, StepFlowRunState.PENDING_START, 0, null, null,
                 queueOrder, 0, nowEpochMillis, nowEpochMillis);
         List<FlowRunStepSnapshot> steps = new ArrayList<>();
         Map<String, Integer> positions = new HashMap<>();

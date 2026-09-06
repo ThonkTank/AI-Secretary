@@ -144,7 +144,8 @@ public final class FocusCardView extends ViewGroup {
         style.shadow(primary, model.palette, 5, .7f);
         primary.setOnClickListener(view -> events.emit(
                 TodayAction.completeRemaining(task.occurrenceId())));
-        primary.setVisibility(vessel && task.remainingSteps > 0 ? VISIBLE : GONE);
+        primary.setVisibility(vessel && task.remainingSteps > 0 && !task.flowAggregate
+                ? VISIBLE : GONE);
         later.setVisibility(task.allowDefer ? VISIBLE : GONE);
         later.bind(model.palette.hint, model.palette.dot);
         later.setOnClickListener(view -> {

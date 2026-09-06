@@ -94,7 +94,7 @@ public final class StepFlowMaterializationRobolectricTest {
                 .filter(value -> value.activationKind == StepActivationKind.FOLLOW_UP).count());
     }
 
-    @Test public void overdueFlowSeedsQueueEachDueInsteadOfDroppingBlockedLoads() {
+    @Test public void overdueFlowSeedsKeepOnePendingCandidatePerLaundryType() {
         Clock startedEarlier = new Clock() {
             @Override public LocalDate today() { return TODAY.minusDays(2); }
             @Override public LocalTime time() { return LocalTime.NOON; }
@@ -111,7 +111,9 @@ public final class StepFlowMaterializationRobolectricTest {
                 () -> 1_777_000L, ids);
 
         assertTrue(materialize.execute());
-        assertEquals(12, repository.flows.activeFlowRuns(task.id).size());
+        assertEquals(4, repository.flows.activeFlowRuns(task.id).size());
+        assertTrue(repository.flows.activeFlowRuns(task.id).stream().allMatch(
+                run -> run.state == de.thonktank.autosecretary.domain.model.StepFlowRunState.PENDING_START));
         assertTrue(repository.today.openOccurrences().isEmpty());
         assertFalse(materialize.execute());
     }

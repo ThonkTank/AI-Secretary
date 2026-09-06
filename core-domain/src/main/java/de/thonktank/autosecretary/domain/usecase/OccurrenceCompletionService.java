@@ -95,6 +95,7 @@ public final class OccurrenceCompletionService {
             Occurrence occurrence = today.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
+            if (occurrence.kind == OccurrenceKind.FLOW_SHEET) return RewardReceipt.none();
             for (OccurrenceStep step : steps.occurrenceSteps(occurrenceId))
                 if (!step.done) bookings.addAll(stepExecution.completeWithPlannedResults(
                         occurrence, step,
@@ -109,6 +110,7 @@ public final class OccurrenceCompletionService {
             Occurrence occurrence = today.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
+            if (occurrence.kind == OccurrenceKind.FLOW_SHEET) return RewardReceipt.none();
             Task task = catalog.findTask(occurrence.taskId);
             if (task == null) return RewardReceipt.none();
             String transactionId = newId();

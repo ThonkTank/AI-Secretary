@@ -84,6 +84,7 @@ public final class WidgetPresenter {
                 ? firstCalendar(data.calendar) : null;
         WidgetUiModel.PrimaryAction action = size == WidgetSizeClassifier.Size.LARGE
                 ? WidgetUiModel.PrimaryAction.NONE
+                : focus.requiresApp ? WidgetUiModel.PrimaryAction.OPEN_APP
                 : focus.terminalCondition ? WidgetUiModel.PrimaryAction.CONFIRM_CLOSE
                 : WidgetUiModel.PrimaryAction.COMPLETE_OCCURRENCE;
         String actionId = focus.terminalCondition ? focus.taskId : focus.occurrenceId;

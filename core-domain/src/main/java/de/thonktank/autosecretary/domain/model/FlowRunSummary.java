@@ -31,6 +31,7 @@ public final class FlowRunSummary {
     public final String seedStepId;
     public final String seedTitle;
     public final String currentStepTitle;
+    public final String currentStepId;
     public final int currentPosition;
     public final int totalSteps;
     public final FlowDelayPolicy delayAfter;
@@ -38,15 +39,19 @@ public final class FlowRunSummary {
     public final Long readyAtEpochMillis;
     public final String currentSheetOccurrenceId;
     public final long queueOrder;
+    public final boolean startable;
     public final List<Resource> resources;
 
     public FlowRunSummary(String id, TaskId taskId, String taskTitle, String seedStepId,
-                          String seedTitle, String currentStepTitle, StepFlowRunState state,
+                          String seedTitle, String currentStepId, String currentStepTitle,
+                          StepFlowRunState state,
                           Long readyAtEpochMillis, String currentSheetOccurrenceId,
                           long queueOrder, int currentPosition, int totalSteps,
-                          FlowDelayPolicy delayAfter, List<Resource> resources) {
+                          FlowDelayPolicy delayAfter, List<Resource> resources,
+                          boolean startable) {
         if (id == null || taskId == null || taskTitle == null || seedStepId == null
-                || seedTitle == null || currentStepTitle == null || state == null
+                || seedTitle == null || currentStepId == null || currentStepTitle == null
+                || state == null
                 || resources == null)
             throw new IllegalArgumentException("Flow run summary is incomplete");
         if (currentPosition < 0 || totalSteps < 1 || currentPosition >= totalSteps)
@@ -56,6 +61,7 @@ public final class FlowRunSummary {
         this.taskTitle = taskTitle;
         this.seedStepId = seedStepId;
         this.seedTitle = seedTitle;
+        this.currentStepId = currentStepId;
         this.currentStepTitle = currentStepTitle;
         this.currentPosition = currentPosition;
         this.totalSteps = totalSteps;
@@ -64,6 +70,7 @@ public final class FlowRunSummary {
         this.readyAtEpochMillis = readyAtEpochMillis;
         this.currentSheetOccurrenceId = currentSheetOccurrenceId;
         this.queueOrder = queueOrder;
+        this.startable = startable;
         this.resources = Collections.unmodifiableList(new ArrayList<>(resources));
     }
 }
