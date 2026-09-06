@@ -40,6 +40,7 @@ public final class FlowRunSummary {
     public final String currentSheetOccurrenceId;
     public final long queueOrder;
     public final boolean startable;
+    public final Long arrivalDelayMillis;
     public final List<Resource> resources;
 
     public FlowRunSummary(String id, TaskId taskId, String taskTitle, String seedStepId,
@@ -48,7 +49,7 @@ public final class FlowRunSummary {
                           Long readyAtEpochMillis, String currentSheetOccurrenceId,
                           long queueOrder, int currentPosition, int totalSteps,
                           FlowDelayPolicy delayAfter, List<Resource> resources,
-                          boolean startable) {
+                          boolean startable, Long arrivalDelayMillis) {
         if (id == null || taskId == null || taskTitle == null || seedStepId == null
                 || seedTitle == null || currentStepId == null || currentStepTitle == null
                 || state == null
@@ -71,6 +72,7 @@ public final class FlowRunSummary {
         this.currentSheetOccurrenceId = currentSheetOccurrenceId;
         this.queueOrder = queueOrder;
         this.startable = startable;
+        this.arrivalDelayMillis = arrivalDelayMillis;
         this.resources = Collections.unmodifiableList(new ArrayList<>(resources));
     }
 }

@@ -4,7 +4,7 @@ import androidx.annotation.Nullable;
 
 /** Closed interaction boundary for the operational flow-run screen. */
 public final class FlowRunsAction {
-    public enum Kind { REFRESH, DEFER, READY_AT, MOVE_BEFORE, CANCEL, ACKNOWLEDGE_ERROR }
+    public enum Kind { REFRESH, DEFER, READY_AT, POSTPONE, MOVE_BEFORE, CANCEL, ACKNOWLEDGE_ERROR }
 
     public final Kind kind;
     public final String runId;
@@ -32,6 +32,11 @@ public final class FlowRunsAction {
 
     public static FlowRunsAction defer(String runId) {
         return new FlowRunsAction(Kind.DEFER, required(runId), null, 0L, 0L);
+    }
+
+    public static FlowRunsAction postpone(String runId, long delayMillis) {
+        if (delayMillis < 0L) throw new IllegalArgumentException("Delay is required");
+        return new FlowRunsAction(Kind.POSTPONE, required(runId), null, delayMillis, 0L);
     }
 
     public static FlowRunsAction moveBefore(String runId, @Nullable String beforeRunId) {

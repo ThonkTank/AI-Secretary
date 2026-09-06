@@ -69,6 +69,13 @@ public final class LoadFlowRuns {
             if (steps.isEmpty() || run.currentPosition >= steps.size()) continue;
             FlowRunStepSnapshot seed = steps.get(0);
             FlowRunStepSnapshot current = steps.get(run.currentPosition);
+            Long arrivalDelay = null;
+            if (run.currentPosition > 0) {
+                FlowRunStepSnapshot previous = steps.get(run.currentPosition - 1);
+                if (previous.delayAfter != null) arrivalDelay = previous.chosenDelayMillis == null
+                        ? previous.delayAfter.proposedDelayMillis()
+                        : previous.chosenDelayMillis;
+            }
             List<FlowRunSummary.Resource> resources = new ArrayList<>();
             List<FlowRunResourceSnapshot> snapshots = resourcesByRun.getOrDefault(run.id,
                     java.util.Collections.emptyList());
@@ -80,7 +87,7 @@ public final class LoadFlowRuns {
                     seed.text, current.sourceTemplateId, current.text, run.state,
                     run.readyAtEpochMillis,
                     run.currentSheetOccurrenceId, run.queueOrder, run.currentPosition,
-                    steps.size(), current.delayAfter, resources, startable));
+                    steps.size(), current.delayAfter, resources, startable, arrivalDelay));
         }
         return result;
     }

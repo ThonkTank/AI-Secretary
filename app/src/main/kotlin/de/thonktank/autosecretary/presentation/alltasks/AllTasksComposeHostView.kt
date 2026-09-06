@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.domain.model.ScheduleEntryId
+import de.thonktank.autosecretary.domain.model.FlowRunSummary
 import de.thonktank.autosecretary.domain.model.TaskId
 import de.thonktank.autosecretary.domain.model.TaskStepId
 import de.thonktank.autosecretary.domain.schedule.ScheduleMoveRequest
@@ -34,6 +35,8 @@ class AllTasksComposeHostView @JvmOverloads constructor(
     private var transientEpoch by mutableIntStateOf(0)
     private var dragSourceKey by mutableStateOf<String?>(null)
     private var forcedOpenFilter by mutableStateOf<AllTasksFilterMenu?>(null)
+    private var flowRuns by mutableStateOf<List<FlowRunSummary>>(emptyList())
+    private var openFlowRuns: Runnable? = null
 
     init {
         setViewCompositionStrategy(
@@ -41,14 +44,19 @@ class AllTasksComposeHostView @JvmOverloads constructor(
         )
     }
 
+    @JvmOverloads
     fun bind(
         state: AllTasksUiState,
         palette: DayPalette,
         actions: AllTasksActionSink,
+        flowRuns: List<FlowRunSummary> = emptyList(),
+        openFlowRuns: Runnable = Runnable { },
     ) {
         this.actions = actions
         this.screenState = state
         this.palette = palette
+        this.flowRuns = flowRuns
+        this.openFlowRuns = openFlowRuns
     }
 
     fun setDragSourceForTest(key: String?) {
@@ -57,6 +65,12 @@ class AllTasksComposeHostView @JvmOverloads constructor(
 
     fun openFilterForTest(name: String?) {
         forcedOpenFilter = name?.let(AllTasksFilterMenu::valueOf)
+    }
+
+    fun runningFlowCountForTest(): Int = flowRuns.size
+
+    fun openFlowRunsForTest() {
+        openFlowRuns?.run()
     }
 
     fun dispatchDropForTest(sourceKey: String, targetKey: String): Boolean =
@@ -68,6 +82,7 @@ class AllTasksComposeHostView @JvmOverloads constructor(
 
     fun dispose() {
         actions = null
+        openFlowRuns = null
         disposeComposition()
     }
 
@@ -80,6 +95,8 @@ class AllTasksComposeHostView @JvmOverloads constructor(
                 callbacks = callbacks(),
                 dragSourceKey = dragSourceKey,
                 forcedOpenFilter = forcedOpenFilter,
+                flowRuns = flowRuns,
+                onOpenFlowRuns = { openFlowRuns?.run() },
             )
         }
     }

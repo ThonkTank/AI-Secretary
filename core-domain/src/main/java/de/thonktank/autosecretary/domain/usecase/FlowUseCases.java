@@ -11,6 +11,7 @@ public final class FlowUseCases {
     public final DeferFlowRun deferFlowRun;
     public final CancelFlowRun cancelFlowRun;
     public final AdjustFlowRunReadyAt adjustFlowRunReadyAt;
+    public final PostponeFlowRun postponeFlowRun;
     public final ReorderFlowRun reorderFlowRun;
     public final LoadFlowRuns loadFlowRuns;
 
@@ -22,6 +23,7 @@ public final class FlowUseCases {
                         ActivateReadyFlows activateReadyFlows,
                         DeferFlowRun deferFlowRun, CancelFlowRun cancelFlowRun,
                         AdjustFlowRunReadyAt adjustFlowRunReadyAt,
+                        PostponeFlowRun postponeFlowRun,
                         ReorderFlowRun reorderFlowRun, LoadFlowRuns loadFlowRuns) {
         this.saveCapacityResource = saveCapacityResource;
         this.saveStepFlowDefinition = saveStepFlowDefinition;
@@ -32,6 +34,7 @@ public final class FlowUseCases {
         this.deferFlowRun = deferFlowRun;
         this.cancelFlowRun = cancelFlowRun;
         this.adjustFlowRunReadyAt = adjustFlowRunReadyAt;
+        this.postponeFlowRun = postponeFlowRun;
         this.reorderFlowRun = reorderFlowRun;
         this.loadFlowRuns = loadFlowRuns;
     }

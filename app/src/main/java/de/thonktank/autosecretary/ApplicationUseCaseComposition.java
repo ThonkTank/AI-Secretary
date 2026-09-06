@@ -19,6 +19,7 @@ import de.thonktank.autosecretary.domain.steps.SwapTaskSteps;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 import de.thonktank.autosecretary.domain.usecase.ActivateReadyFlows;
 import de.thonktank.autosecretary.domain.usecase.AdjustFlowRunReadyAt;
+import de.thonktank.autosecretary.domain.usecase.PostponeFlowRun;
 import de.thonktank.autosecretary.domain.usecase.AdvanceTodayStep;
 import de.thonktank.autosecretary.domain.usecase.ApplyComboDecay;
 import de.thonktank.autosecretary.domain.usecase.CancelFlowRun;
@@ -163,7 +164,8 @@ final class ApplicationUseCaseComposition {
                         transactions),
                 new LoadCapacityResources(flowRepository), new ActivateReadyFlows(flowRuntime),
                 new DeferFlowRun(flowRuntime), new CancelFlowRun(flowRuntime),
-                new AdjustFlowRunReadyAt(flowRuntime), new ReorderFlowRun(flowRuntime),
+                new AdjustFlowRunReadyAt(flowRuntime), new PostponeFlowRun(flowRuntime),
+                new ReorderFlowRun(flowRuntime),
                 new LoadFlowRuns(catalogRepository, flowRepository));
     }
 }

@@ -120,6 +120,23 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
         });
     }
 
+    public boolean postponeOffered(String runId, long delayMillis) {
+        if (delayMillis < 0L)
+            throw new IllegalArgumentException("Delay must not be negative");
+        return transactions.inTransaction(() -> {
+            StepFlowRun run = flows.findFlowRun(runId);
+            if (run == null || run.state != StepFlowRunState.OFFERED
+                    || run.currentPosition == 0) return false;
+            long now = moments.nowEpochMillis();
+            if (delayMillis == 0L)
+                flows.updateFlowRun(run.withState(StepFlowRunState.WAITING_RESOURCE, null, now));
+            else flows.updateFlowRun(run.withState(StepFlowRunState.WAITING_TIME,
+                    safeAdd(now, delayMillis), now));
+            activateReadyInside(now);
+            return true;
+        });
+    }
+
     public boolean reorder(String runId, long queueOrder) {
         if (queueOrder < 0L) throw new IllegalArgumentException("Queue order must not be negative");
         return transactions.inTransaction(() -> {

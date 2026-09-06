@@ -13,6 +13,9 @@ import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
 import de.thonktank.autosecretary.domain.model.XpProgress;
+import de.thonktank.autosecretary.domain.model.FlowRunSummary;
+import de.thonktank.autosecretary.domain.model.StepFlowRunState;
+import de.thonktank.autosecretary.domain.model.TaskId;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 
@@ -114,6 +117,43 @@ public final class DashboardCharacterizationTest {
         assertTrue(host.dispatchDropForTest(
                 "step:morning|MORNING:morning-step-0", "task:bed|MORNING"));
         assertTrue(actions.get(0) instanceof AllTasksAction.StepMoved);
+    }
+
+    @Test public void runningFlowsLiveInAllTasksAndNoLongerConsumeTodaySpace() {
+        Context context = ApplicationProvider.getApplicationContext();
+        LinearLayout shell = new LinearLayout(context);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(content);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        List<de.thonktank.autosecretary.presentation.options.OptionsAction> optionActions =
+                new ArrayList<>();
+        DashboardRenderer renderer = new DashboardRenderer(context, scroll, content,
+                action -> { }, optionActions::add, "test", new RewardAnchorRegistry(),
+                action -> { });
+        FlowRunSummary flow = new FlowRunSummary("run", TaskId.of("laundry"), "Wäsche",
+                "colors", "Buntwäsche", "take-down", "Abhängen",
+                StepFlowRunState.WAITING_TIME, System.currentTimeMillis() + 60_000L,
+                "sheet", 1L, 2, 4, null, Collections.emptyList(), true, 86_400_000L);
+        TodayUiModel base = DashboardFixtures.fullDashboard();
+        TodayUiModel withFlow = new TodayUiModel(base.xpProgress, base.focus, base.timeline,
+                base.completedToday, Collections.singletonList(flow));
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT);
+
+        renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.ALL_TASKS, palette),
+                TodayScreenStateFixtures.today(withFlow), AllTasksUiState.empty(),
+                options(palette));
+
+        AllTasksComposeHostView host = (AllTasksComposeHostView) shell.getChildAt(1);
+        assertEquals(1, host.runningFlowCountForTest());
+        host.openFlowRunsForTest();
+        assertEquals(1, optionActions.size());
+
+        renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.TODAY, palette),
+                TodayScreenStateFixtures.today(withFlow), AllTasksUiState.empty(),
+                options(palette));
+        assertFalse(containsViewType(content, FlowRunningStripView.class));
     }
 
     @Test public void calendarFixtureKeepsAllDayBeforeTimedEvents() {
@@ -227,5 +267,14 @@ public final class DashboardCharacterizationTest {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) collectText(group.getChildAt(i), result);
         }
+    }
+
+    private static boolean containsViewType(View view, Class<?> type) {
+        if (type.isInstance(view)) return true;
+        if (!(view instanceof ViewGroup)) return false;
+        ViewGroup group = (ViewGroup) view;
+        for (int index = 0; index < group.getChildCount(); index++)
+            if (containsViewType(group.getChildAt(index), type)) return true;
+        return false;
     }
 }

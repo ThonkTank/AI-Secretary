@@ -221,6 +221,39 @@ public final class StepFlowRuntimeRobolectricTest {
         assertTrue(after.tasks.get(0).steps.stream().noneMatch(step -> step.done));
     }
 
+    @Test public void notReadyPostponesOfferedTakeDownAndKeepsDryingPlace() {
+        tasks.flows.activateReadyFlows.execute();
+        StepFlowRun colors = offeredRun();
+        tasks.today.toggleStep.execute(openStep(colors).id, TWO_HOURS);
+        moments.advance(TWO_HOURS);
+        tasks.flows.activateReadyFlows.execute();
+        colors = repository.flows.findFlowRun(colors.id);
+        tasks.today.toggleStep.execute(openStep(colors).id, ONE_DAY);
+        moments.advance(ONE_DAY);
+        tasks.flows.activateReadyFlows.execute();
+        colors = repository.flows.findFlowRun(colors.id);
+        String takeDownStepId = openStep(colors).id;
+
+        assertTrue(tasks.flows.postponeFlowRun.execute(colors.id, ONE_DAY));
+
+        colors = repository.flows.findFlowRun(colors.id);
+        assertEquals(StepFlowRunState.WAITING_TIME, colors.state);
+        assertEquals(2, colors.currentPosition);
+        assertEquals(1, consumingUnits("dry"));
+        assertEquals(0, consumingUnits("washer"));
+        assertEquals(takeDownStepId, openStep(colors).id);
+        Dashboard waiting = tasks.today.loadDashboard.execute(TODAY);
+        assertEquals(1, waiting.tasks.size());
+        assertEquals(3, waiting.tasks.get(0).steps.size());
+
+        moments.advance(ONE_DAY);
+        assertTrue(tasks.flows.activateReadyFlows.execute());
+        colors = repository.flows.findFlowRun(colors.id);
+        assertEquals(StepFlowRunState.OFFERED, colors.state);
+        assertEquals(takeDownStepId, openStep(colors).id);
+        assertEquals(1, consumingUnits("dry"));
+    }
+
     @Test public void repeatedMaterializationKeepsOneCandidatePerLaundryType() {
         tasks.flows.activateReadyFlows.execute();
         tasks.today.materializeDue.execute();
