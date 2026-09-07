@@ -115,11 +115,10 @@ public final class FocusCardView extends ViewGroup {
 
         title.setText(task.title());
         title.setTextColor(model.palette.ink);
-        backlog.setText(task.flowAggregate ? getContext().getString(R.string.flow_sheet_hint)
-                : task.backlogCount == 0 ? "" : getContext().getString(
-                        R.string.today_backlog_count, task.backlogCount));
+        backlog.setText(task.backlogCount == 0 ? "" : getContext().getString(
+                R.string.today_backlog_count, task.backlogCount));
         backlog.setTextColor(model.palette.hint);
-        backlog.setVisibility(task.flowAggregate || task.backlogCount > 0 ? VISIBLE : GONE);
+        backlog.setVisibility(task.backlogCount == 0 ? GONE : VISIBLE);
         WoodGrainView.applyTextHalo(title, model.palette.leaf1);
         boolean vessel = !task.steps.isEmpty();
         ring.setVisibility(vessel ? VISIBLE : GONE);
