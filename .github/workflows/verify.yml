@@ -401,7 +401,7 @@ jobs:
 
   upgrade:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.package.outputs.already_published != 'true'
-    needs: [instrumentation, package]
+    needs: [package]
     runs-on: ubuntu-latest
     permissions:
       contents: read

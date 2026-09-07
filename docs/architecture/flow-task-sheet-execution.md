@@ -217,3 +217,37 @@ Nachweis fällt ohne Freigabe auf die bestehende Vollmatrix zurück, und es wird
 die Produktion wiederverwendet. Lokal besteht keine bekannte Roadmap-Diskrepanz. Pull-Request-
 Matrix, Squash-Merge und der erste exakte Main-Schnellpfad mit Package, drei Upgrades und Publish
 stehen noch aus; bis dahin bleibt Phase B `in Arbeit`.
+
+### Korrekturdurchlauf B.1 – nachgelagerte Release-Abhängigkeit
+
+Auslöser: PR #331 bestand Quality, alle sechs Geräte-/Animationsjobs sowie beide Sammelgates
+und wurde als `1a15497f53dec88032fb3876c5438d4da3b84317` nach `main` übernommen. Der exakte
+Main-Lauf `34107608930` bewies den Schnellpfad: `release_scope` und `instrumentation-gate` waren
+grün, während Quality und beide Instrumentierungsmatrizen übersprungen wurden. Package baute,
+signierte und validierte danach erfolgreich einen neuen Kandidaten für 0.2.156; dessen Plan
+enthält `action=create_draft`, `already_published=false` und den exakten Main-SHA.
+
+Abweichung: Upgrade und Publish wurden trotzdem übersprungen. Der Upgradejob nennt neben
+`package` noch den alten direkten Bedarf `instrumentation`. GitHub überspringt einen Job mit
+einem übersprungenen direkten Bedarf, bevor dessen eigene Bedingung ausgewertet wird. Diese
+Abhängigkeit ist im neuen Modell redundant, weil `package` bereits ein erfolgreiches
+`instrumentation-gate` voraussetzt.
+
+Korrekturplan vor Implementierung:
+
+1. Den direkten Bedarf von Upgrade auf `package` beschränken; die Sicherheitskette bleibt
+   transitiv `instrumentation-gate -> package -> upgrade -> publish`.
+2. Den Workflow-Vertrag um genau diese Abhängigkeitsregel und den weiterhin zwingenden
+   Package-Gate-Bezug erweitern.
+3. CI-/Release-Vertragstests, YAML-Parsing und Diff-Prüfung lokal wiederholen.
+4. Die Korrektur als eigenen PR erneut durch die volle Matrix schicken und squash-mergen.
+5. Den neuen exakten Main-Lauf nur dann als Phase-B-Abschluss akzeptieren, wenn der Schnellpfad,
+   Package, alle drei Upgradejobs und Publish tatsächlich erfolgreich sind und 0.2.156 auf dessen
+   Main-SHA veröffentlicht ist.
+
+Lokale Validierung und Audit: 24 CI-Skript- und 24 Release-/Workflow-Vertragstests sind grün;
+PyYAML bestätigt `upgrade.needs == [package]`, Package behält Quality beziehungsweise den
+Wiederverwendungsbeleg und `instrumentation-gate` als Voraussetzungen, Publish behält Package
+und Upgrade. `git diff --check` ist grün. Die Korrektur deckt damit die beobachtete Abweichung
+vollständig ab und ändert weder Beweisregeln noch Paket-, Upgrade- oder Publish-Inhalte.
+Remote-Gates und der tatsächliche Releaseabschluss stehen weiterhin aus.
