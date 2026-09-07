@@ -76,6 +76,7 @@ class ChangeScopeTest(unittest.TestCase):
             "release/release.properties",
             "scripts/ci/change_scope.py",
             "scripts/ci/prepare-preview-sdk-tools.sh",
+            "scripts/ci/reuse_pr_verification.py",
             "scripts/ci/run-upgrade-test.sh",
             "scripts/release/release_tool.py",
         ):
