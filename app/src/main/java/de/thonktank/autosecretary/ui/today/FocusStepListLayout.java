@@ -42,7 +42,7 @@ public final class FocusStepListLayout extends ViewGroup {
     private int maximumFollowing;
     private int visibleFollowing;
     private TodayFeatureState.Reorder reorder;
-    private String occurrenceId;
+    private String itemId;
     private ReorderModeListener reorderModeListener = active -> { };
 
     interface ReorderModeListener { void onReorderModeChanged(boolean active); }
@@ -72,11 +72,11 @@ public final class FocusStepListLayout extends ViewGroup {
     void bind(FocusCardUiModel model) {
         palette = model.palette;
         reorder = model.reorder;
-        if (!model.steps.occurrenceId.equals(occurrenceId)) {
+        if (!model.steps.itemId.equals(itemId)) {
             for (FocusStepRowView row : rowCache.values()) removeView(row);
             rowCache.clear();
             rows.clear();
-            occurrenceId = model.steps.occurrenceId;
+            itemId = model.steps.itemId;
         }
         rowIds.clear();
         reorderIds.clear();
@@ -94,7 +94,7 @@ public final class FocusStepListLayout extends ViewGroup {
         rows.clear();
         for (int index = 0; index < model.steps.rows.size(); index++) {
             FocusStepRowUiModel projected = model.steps.rows.get(index);
-            String key = rowKey(model.steps.occurrenceId, projected.id());
+            String key = rowKey(model.steps.itemId, projected.id());
             FocusStepRowView row = rowCache.get(key);
             if (row == null) row = new FocusStepRowView(getContext());
             final FocusStepRowView boundRow = row;
@@ -315,8 +315,8 @@ public final class FocusStepListLayout extends ViewGroup {
         return reorder != null && reorder.phase != TodayFeatureState.Reorder.Phase.IDLE;
     }
 
-    private static String rowKey(String occurrenceId, String stepId) {
-        return occurrenceId + '\u0000' + stepId;
+    private static String rowKey(String itemId, String stepId) {
+        return itemId + '\u0000' + stepId;
     }
 
     void registerRewardAnchors(RewardAnchorRegistry registry) {

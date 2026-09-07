@@ -66,7 +66,7 @@ final class OccurrenceCarryForward {
     private static Map<TaskSlot, Occurrence> latestOpen(List<Occurrence> values) {
         Map<TaskSlot, Occurrence> result = new HashMap<>();
         for (Occurrence value : values) if (value.state == OccurrenceState.OPEN
-                && value.kind != OccurrenceKind.FLOW_SHEET) {
+                && value.kind != OccurrenceKind.FLOW_STEP) {
             Occurrence current = result.get(value.slot);
             if (current == null || value.scheduledOn.isAfter(current.scheduledOn))
                 result.put(value.slot, value);
@@ -76,7 +76,7 @@ final class OccurrenceCarryForward {
 
     private static Occurrence latest(List<Occurrence> values, TaskSlot slot) {
         return values.stream().filter(value -> value.slot == slot
-                        && value.kind != OccurrenceKind.FLOW_SHEET)
+                        && value.kind != OccurrenceKind.FLOW_STEP)
                 .max(Comparator.comparing((Occurrence value) -> value.scheduledOn)
                         .thenComparing(value -> value.state == OccurrenceState.OPEN ? 1 : 0))
                 .orElse(null);
@@ -87,7 +87,7 @@ final class OccurrenceCarryForward {
                                                            LocalDate today) {
         Set<TaskSlot> result = new HashSet<>();
         for (Occurrence value : values)
-            if (value.kind != OccurrenceKind.FLOW_SHEET && !openSlots.contains(value.slot)
+            if (value.kind != OccurrenceKind.FLOW_STEP && !openSlots.contains(value.slot)
                     && value.scheduledOn.isBefore(today))
                 result.add(value.slot);
         return result;

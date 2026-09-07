@@ -37,19 +37,18 @@ public final class FlowRunSummary {
     public final FlowDelayPolicy delayAfter;
     public final StepFlowRunState state;
     public final Long readyAtEpochMillis;
-    public final String currentSheetOccurrenceId;
+    public final String currentExecutionOccurrenceId;
     public final long queueOrder;
-    public final boolean startable;
     public final Long arrivalDelayMillis;
     public final List<Resource> resources;
 
     public FlowRunSummary(String id, TaskId taskId, String taskTitle, String seedStepId,
                           String seedTitle, String currentStepId, String currentStepTitle,
                           StepFlowRunState state,
-                          Long readyAtEpochMillis, String currentSheetOccurrenceId,
+                          Long readyAtEpochMillis, String currentExecutionOccurrenceId,
                           long queueOrder, int currentPosition, int totalSteps,
                           FlowDelayPolicy delayAfter, List<Resource> resources,
-                          boolean startable, Long arrivalDelayMillis) {
+                          Long arrivalDelayMillis) {
         if (id == null || taskId == null || taskTitle == null || seedStepId == null
                 || seedTitle == null || currentStepId == null || currentStepTitle == null
                 || state == null
@@ -69,9 +68,8 @@ public final class FlowRunSummary {
         this.delayAfter = delayAfter;
         this.state = state;
         this.readyAtEpochMillis = readyAtEpochMillis;
-        this.currentSheetOccurrenceId = currentSheetOccurrenceId;
+        this.currentExecutionOccurrenceId = currentExecutionOccurrenceId;
         this.queueOrder = queueOrder;
-        this.startable = startable;
         this.arrivalDelayMillis = arrivalDelayMillis;
         this.resources = Collections.unmodifiableList(new ArrayList<>(resources));
     }

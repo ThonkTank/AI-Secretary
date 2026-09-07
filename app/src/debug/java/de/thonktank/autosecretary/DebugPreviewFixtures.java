@@ -192,7 +192,9 @@ public final class DebugPreviewFixtures {
         PreviewTask order(long value) { order = value; return this; }
 
         TaskActionTarget target() {
-            return TaskActionTarget.of(id, id + "-occurrence", title, slot,
+            return TaskActionTarget.of(id,
+                    de.thonktank.autosecretary.presentation.today.TodayItemTarget.occurrence(
+                            id + "-occurrence"), title, slot,
                     recurrence != Recurrence.ONCE, terminal);
         }
 
@@ -232,7 +234,7 @@ public final class DebugPreviewFixtures {
             List<TimelineStepUiModel> values = new ArrayList<>();
             for (FocusStepUiModel step : steps)
                 values.add(TimelineStepUiModel.completion(step.isDone()));
-            return TimelineTaskUiModel.of(target(), id, id + "-occurrence", title, slot,
+            return TimelineTaskUiModel.of(target(), id, title, slot,
                     softTime, values, terminal, overdue, order, reward());
         }
 

@@ -424,3 +424,295 @@ unterscheidbar; TalkBack-Beschreibung und numerischer Fortschrittsbereich bleibe
 Die visuelle Abnahme und das vollständige lokale Gate sind abgeschlossen. Es besteht keine
 bekannte Roadmap-Diskrepanz. Pull-Request-Matrix, Squash-Merge und der exakte Main-Releaseweg
 stehen noch aus; bis dahin bleibt Phase C `in Arbeit`.
+
+### Remote-Abschluss Phase C
+
+PR #334 prüfte Commit `dcaf5bc5eb4362872c616494266bf23997571200`. Quality, alle sechs
+normalen und animationsaktiven Gerätepfade auf API 26, 35 und 37,
+`instrumentation-gate` und `pull-request-gate` sind grün. Der PR wurde als
+`324205e914a73aea0a406b718509e1508afb6165` per Squash nach `main` übernommen.
+
+Der exakte Main-Lauf `34119239363` bewies anschließend den beschleunigten Zielpfad:
+
+- inhaltsgleicher grüner PR-Nachweis, `release_scope` und `instrumentation-gate` erfolgreich;
+- Quality und beide bereits im PR ausgeführten Gerätematrizen korrekt übersprungen;
+- neues Produktionspaket auf dem exakten Main-SHA erfolgreich;
+- Upgrades auf API 26, 35 und 37 jeweils erfolgreich;
+- Publish erfolgreich.
+
+Release `forest-android-1015701` / 0.2.157 ist öffentlich und keine Vorabversion. Tag,
+Release-Ziel und `release-metadata.json` nennen alle
+`324205e914a73aea0a406b718509e1508afb6165`. Die veröffentlichte APK ist 2.827.524 Byte groß;
+ihr SHA-256 `865db75b1f9305e84d4b9239bf17a112fac2e947f52ab5d98feb3d797bb63ed1`
+stimmt zwischen Asset und Metadaten überein. Phase C ist damit vollständig abgeschlossen.
+
+## Phase D – atomarer Ablauf-Cutover
+
+Status: in Arbeit
+
+### Vorprüfung
+
+- Ausgangspunkt ist `origin/main` auf `324205e9`, identisch mit dem abgeschlossenen
+  Phase-C-Stand und Release `forest-android-1015701` / 0.2.157. Die Arbeit läuft im separaten
+  Worktree `/tmp/autosecretary-flow-target-p3` auf
+  `codex/flow-target-p3-atomic-cutover`; der unabhängige Hauptcheckout bleibt unangetastet.
+- Die bestehende Materialisierung erzeugt für einen lediglich fälligen Startschritt bereits
+  einen vollständigen `StepFlowRun` im Zustand `PENDING_START`, einschließlich unveränderlicher
+  Schritt- und Ressourcensnapshots. Damit sind Kandidat und tatsächlich gestarteter Lauf im
+  Persistenzmodell nicht getrennt.
+- `FlowRuntimeCoordinator` erzeugt pro Run ein als `FLOW_SHEET` benanntes `Occurrence`, hält
+  dessen ID in `currentSheetOccurrenceId` und benutzt dasselbe Objekt zugleich als interne
+  Ausführungs-, Reward- und sichtbare Today-Identität. Untouched-Offer-Bereinigung und
+  Laufzustandskorrekturen kompensieren diese Mehrfachrolle im Laufzeitpfad.
+- `LoadDashboard` rekonstruiert das vermeintlich gemeinsame Blatt nachträglich über
+  `DashboardTask.flowAggregate` und `flowRunByStepId`. `FocusCardView`, Defer-Logik und Widget
+  leiten daraus Sonderverhalten beziehungsweise aus mehrdeutigen String-IDs ab; eine eigene,
+  stabil sortierbare Blattidentität existiert nicht.
+- `LoadFlowRuns` muss `PENDING_START` ausdrücklich aus dem Alles-Tab filtern. Kapazität und
+  Startbarkeit werden schon für diese vorläufigen Runs berechnet, während der eigentliche
+  Startpfad Reservierung, Zustandswechsel und Abschluss des Startschritts über mehrere
+  Runtime-Schritte verteilt.
+- Room-Schema 22 enthält weder Kandidaten noch Blattpositionen. `step_flow_runs` besitzt
+  `currentSheetOccurrenceId`, `occurrences` besitzt `kind='FLOW_SHEET'` und
+  `flowSheetSequence`; der unterstützte Produktionsupgradepfad beginnt weiterhin bei Schema 8.
+
+### Phasenplan
+
+Ziel: Fälligkeit, nutzergestartete Ausführung und sichtbare Today-Gruppierung werden als drei
+getrennte Modelle umgesetzt. Der Cutover bleibt ein einziger Produkt-PR, sodass kein
+Zwischenmodell veröffentlicht wird.
+
+Implementierungsfolge:
+
+1. Domänen- und Persistenzmodell um `FlowCandidate`, `FlowTaskSheetPlacement` und das
+   read-only `FlowTaskSheet` ergänzen. Ein Kandidat enthält ausschließlich Fälligkeit und
+   Reihenfolge; das Blatt besitzt eine stabile ID und Sortierposition pro Task/Slot.
+2. Materialisierung auf Kandidaten umstellen. Sie erzeugt weder Runs noch Snapshots oder
+   Ressourcenbelegung und dedupliziert über Source-Key sowie Task/Startschritt/Slot.
+3. `StartFlowCandidate` als atomaren Transaktionspfad implementieren: Kandidat und aktuelle
+   Definition erneut laden, gesamte Startkapazität prüfen, Run-/Schritt-/Ressourcensnapshots
+   anlegen, Startressourcen reservieren, Startschritt mit gewählter Dauer abschließen und erst
+   nach Erfolg den Kandidaten entfernen. Kapazitätsänderung oder veraltete Definition liefern
+   ein typisiertes Ergebnis und hinterlassen keinerlei Teillauf.
+4. Runtime auf die fünf echten Run-Zustände reduzieren. `PENDING_START` sowie alle
+   Legacy-Reconciliation- und Untouched-Candidate-Pfade entfernen; interne Run-Vorkommen in
+   `FLOW_STEP`, `currentExecutionOccurrenceId` und `nextExecutionSequence` umbenennen.
+5. `LoadDashboard` um ein erstes `FlowTaskSheet`-Read-Modell erweitern: angebotene aktive
+   Schritte zuerst, danach aktuell startbare Kandidaten; nicht startbare Kandidaten und leere
+   Blätter werden nicht projiziert. Der Alles-Tab liest ausschließlich echte Runs.
+6. Today-Präsentation und Aktionen typisieren: normale Occurrence, Blatt, Kandidat und
+   Run-Schritt erhalten eindeutige Targets. Kreis, Dauerabfrage, „Noch nicht fertig“ und
+   „Später“ dispatchen über diese Ziele; Defer verschiebt nur die persistierte Blattposition.
+   `flowAggregate`, `flowRunByStepId` und ID-Heuristiken entfallen vollständig.
+7. Widget auf dasselbe Blattmodell umstellen. Ablaufzeilen öffnen die App für erforderliche
+   Eingaben und können Zeitabfragen nicht per Widget-Shortcut umgehen.
+8. Schema 22 nach 23 migrieren: saubere ungestartete `PENDING_START`-Runs in Kandidaten
+   umwandeln, tatsächlich begonnene oder ressourcenbelegte Altdaten als echte Runs erhalten,
+   alte Einzelblattpositionen deterministisch konsolidieren und die alten Spalten/Werte durch
+   neu aufgebaute Tabellen entfernen. Der Pfad von Produktionsschema 8 bleibt lückenlos.
+9. Domain-, Transaktions-, Room-, Migrations-, Dashboard-, Alles-, Widget-, UI-, Golden- und
+   Accessibility-Tests auf das Zielmodell umstellen. Der verbindliche Wäsche-End-to-End-Fall
+   prüft vier Kandidaten, eine Waschmaschine, drei Trockenplätze, Dauerwahl, Warteverlängerung,
+   Defer, Neustart/Upgrade, Ressourceninvarianten und das Verschwinden des letzten Blatts.
+10. Vollständiges lokales Seriengate und getrennten Plan-/Roadmap-Audit ausführen. Jede gefundene
+    Abweichung wird vor der Korrektur hier protokolliert; anschließend folgen eigener Commit,
+    vollständige PR-Matrix, Squash-Merge und der exakte Main-Releaseweg.
+
+Abnahmekriterien:
+
+- Ohne Kreisaktion existieren nur Kandidat und Blattposition, aber kein Run, Snapshot,
+  Hintergrundstatus oder Ressourcenverbrauch.
+- Der Start ist vollständig atomar; bei fehlender Kapazität bleibt nur der unveränderte
+  Kandidat bestehen.
+- Pro Task/Slot wird höchstens ein nicht leeres gemeinsames Blatt sichtbar, mit stabiler
+  Defer-Reihenfolge und eindeutig zugeordneten aktiven Folgeschritten.
+- Nur echte Runs erscheinen in Alles; Zeit- und Ressourcenwartezeiten blockieren Heute nicht.
+- Die alten Zustände, Felder, Aggregate-Flags, Occurrence-Namen und mehrdeutigen Today-ID-Pfade
+  sind nach Migration und Cutover weder im Produktmodell noch im Laufzeitpfad vorhanden.
+- Migration 22→23 erhält laufende Ketten, gewählte Zeiten und Ressourcen; der unterstützte
+  Upgradepfad 8→23 sowie Neustart sind getestet.
+- Es gibt keine Wäsche-spezifische Produktlogik und keine Umgehung von Dauer-/Warteabfragen.
+
+### Korrekturdurchlauf D.1 – Exception-Hierarchie im atomaren Start
+
+Der erste frühe Kompilierlauf stoppte ausschließlich in `StartFlowCandidate`: Der neue
+Stale-Candidate-Schutz fing `FlowDefinitionException` und `IllegalArgumentException` gemeinsam,
+obwohl erstere bereits eine Unterklasse der zweiten ist. Es wurden noch keine Tests oder
+Schemaexporte ausgeführt.
+
+Korrekturplan: Der Catch wird auf die gemeinsame Oberklasse reduziert. Danach wird derselbe
+dreiteilige Kompilierlauf erneut ausgeführt; Produktvertrag und Fehlerstatus bleiben unverändert.
+
+### Korrekturdurchlauf D.2 – finale Blattplatzierung im Projektions-Builder
+
+Nach D.1 kompiliert der atomare Start; der nächste Compilerstopp liegt in `LoadDashboard`.
+Eine nur für fehlende Altdaten ergänzte lokale Blattplatzierung wird vor dem
+`computeIfAbsent`-Lambda neu zugewiesen und ist deshalb nicht effektiv final.
+
+Korrekturplan: Nach der Fallback-Auflösung wird eine finale lokale Referenz an den Builder
+übergeben. Projektion, Reihenfolge und Persistenzvertrag ändern sich dadurch nicht; anschließend
+läuft derselbe frühe Kompiliercheck erneut.
+
+### Korrekturdurchlauf D.3 – nachgelagerte Präsentationskonsumenten
+
+Nach D.2 sind Domain und Today-Core grün. Der App-Compiler findet sechs erwartete Restzugriffe
+auf die nun entfernten Übergangsfelder `flowAggregate` und `flowRunByStepId`, ausschließlich in
+Dashboard- und Widget-Mapping. Dies bestätigt, dass keine weitere Domain-Abhängigkeit besteht.
+
+Korrekturplan: Beide Mapper werden direkt auf `Dashboard.flowTaskSheets` umgestellt. Das
+Today-Mapping erhält typisierte Blatt-/Zeilenziele und explizite Aktionsfähigkeiten; das Widget
+projiziert Blattzeilen nur als App-Öffnung. Danach wird erneut über alle drei Module kompiliert.
+
+### Korrekturdurchlauf D.4 – Debug-Vorschau auf typisiertes Ziel umstellen
+
+Nach der Mapper-Umstellung sind alle Produktionsquellen bis zur App-Kompilierung grün. Einziger
+Compilerfehler ist eine Debug-Vorschau, die `TaskActionTarget` noch mit der früheren rohen
+Occurrence-ID konstruiert.
+
+Korrekturplan: Die Vorschau deklariert denselben Datensatz ausdrücklich als `OccurrenceTarget`.
+Es gibt keine Laufzeit- oder UI-Verhaltensänderung; danach wird der frühe Kompiliercheck erneut
+ausgeführt.
+
+### Korrekturdurchlauf D.5 – Übergangstests auf Zielmodell umstellen
+
+Die erste Testkompilierung nach dem produktiven Cutover fand 28 Verweise auf bewusst entfernte
+APIs. Der Großteil lag in der bisherigen Ablauf-Robolectric-Suite, die weiterhin vorläufige
+Runs, `PENDING_START` und aus `DashboardTask` rekonstruierte Aggregate erwartete; weitere
+Treffer waren reine Fixture-Konstruktoren.
+
+Korrektur: Die Ablauf-Suite wurde auf den verbindlichen End-to-End-Vertrag umgestellt und prüft
+nun Kandidaten ohne Runtime-Daten, atomaren Start, Dauer-Snapshot, eine Waschmaschine, drei
+Trockenplätze, gemeinsame Herkunftstitel, Warteverlängerung, Defer-Isolation, Widget-Grenze und
+Rekomposition. Materialisierungs- und Präsentationsfixtures wurden auf die typisierten Modelle
+gehoben. Die anschließende Testkompilierung reduzierte den Befund auf eine einzige, rein
+sprachliche Lambda-Finalitätsstelle.
+
+### Korrekturdurchlauf D.6 – stabile Run-ID im Wartezeit-Test
+
+Im Wartezeit-Test wird die lokale Run-Variable nach der Lambda-Prüfung erneut zugewiesen und ist
+daher nicht effektiv final. Korrekturplan: Die ID wird vor dem Streamvergleich als unveränderter
+String festgehalten; Testaussage und Produktcode bleiben unverändert. Danach wird erneut die
+gesamte Instrumentierungs-Testquelle kompiliert.
+
+### Korrekturdurchlauf D.7 – historische Spaltennamen und wartende Blattprojektion
+
+Der erste fokussierte Lauf führte 48 Tests aus. 32 Migrationsvarianten scheiterten an derselben
+Ursache: Die mechanische Runtime-Umbenennung hatte versehentlich auch die historischen
+16→17-DDL-Spalten umbenannt, sodass der 22→23-Schritt bei aus älteren Schemas aufgebauten
+Datenbanken den alten Namen nicht mehr fand. Drei neue Ablaufassertionen waren ebenfalls zu
+streng: Eine Kandidatenzeile hatte eine vom Action-Target abweichende Präfix-ID; während die
+Waschmaschine bis zum Abschluss von „Aufhängen“ belegt ist, ist korrekt nur der aktive Schritt
+sichtbar; und ein rein zeitwartender Run erzeugt absichtlich kein Today-Blatt.
+
+Korrekturplan: Historische Migrationen behalten bytegenau die Schema-22-Namen und ausschließlich
+22→23 benennt sie um. Kandidatenzeile und Kandidatenaktion teilen dieselbe ID. Die E2E-Aussagen
+werden an den verbindlichen Kapazitäts- und Nichtblockierungsvertrag angepasst: Kandidaten
+erscheinen nach Freigabe der Waschmaschine wieder, reine Wartezeit bleibt aus Today heraus.
+
+### Korrekturdurchlauf D.8 – fehlender statischer Testimport
+
+Der erste vollständige Suite-Start erreichte noch keine Testausführung: Der neu ergänzte
+Schema-22-Fixturetest verwendet einmal `assertFalse`, während die historische Testklasse diesen
+statischen Import bisher nicht benötigte.
+
+Korrekturplan: Ausschließlich den fehlenden JUnit-Import ergänzen und danach denselben
+vollständigen Testlauf neu starten.
+
+### Korrekturdurchlauf D.9 – Upgrade-Fixture und erweiterter Bulk-Lesevertrag
+
+Der zweite vollständige Suite-Lauf führte 560 Tests aus; 557 waren grün, einer übersprungen
+und zwei schlugen fehl. Die Produktions-Upgrade-Fixture benennt noch Schema 22 als Ziel, obwohl
+der zentrale Vertrag nun Schema 23 verlangt. Außerdem liegt der Dashboard-Leseaufwand konstant
+bei zwölf statt zehn Abfragen: Die beiden neuen erstklassigen Tabellen für Kandidaten und stabile
+Blattpositionen werden jeweils einmal zusätzlich in Bulk gelesen. Es gibt keinen datensatzabhängigen
+N+1-Anstieg in diesem Fixture.
+
+Korrekturplan: Die bestehende Produktions-Fixture wird auf Zielversion 23 gehoben und ihre
+Zielerwartungen gegen den Schema-23-Export geprüft, ohne die unveränderten Quelldaten umzuschreiben.
+Da die Fixture absichtlich keine Ablaufdaten sät, werden keine erfundenen Zielzeilen für die neuen
+Tabellen ergänzt. Der Query-Vertrag wird explizit auf höchstens zwölf Abfragen erweitert und prüft
+zusätzlich genau einen Bulk-Select für Kandidaten und Blattpositionen. Die Kandidatenprojektion
+wird zugleich vollständig gebündelt: Templates, Übergänge, Leases, Kapazitäten und Verbrauch
+werden pro Dashboard-Aufruf konstant geladen; auch Sortierung und Startbarkeitsprüfung dürfen
+keinen Einzel-Select pro Kandidat auslösen. Danach laufen zunächst beide betroffenen Tests und
+anschließend erneut die vollständige Suite.
+
+### Korrekturdurchlauf D.10 – Geräte-Fixture auf typisiertes Today-Ziel
+
+Das erste kombinierte Auslieferungsgate bestand Domain-/Today-Kompilierung, die vollständige
+560er Testsuite, Lint und das Debug-Paket. Erst die separate AndroidTest-Kompilierung fand eine
+einzelne Geräte-Fixture, die `TaskActionTarget` noch mit der entfernten rohen Occurrence-ID statt
+mit `TodayItemTarget` erzeugt. Produktquellen und bereits ausgeführte Tests waren nicht betroffen.
+
+Korrekturplan: Die Fixture deklariert denselben Datensatz ausdrücklich als
+`TodayItemTarget.occurrence`. Anschließend wird das gesamte serielle Auslieferungsgate ab seinem
+Anfang wiederholt, einschließlich Vollsuite, Lint, Debug-, Geräte-Test- und Release-Paket.
+
+### Korrekturdurchlauf D.11 – direkte Abnahme der Ein-Waschmaschine-Grenze
+
+Das grüne lokale Auslieferungsgate belegt die Implementierung der Kapazitätslogik, der
+Roadmap-Abgleich findet jedoch eine Nachweislücke: Die Grenze von drei Trockenplätzen wird direkt
+getestet, während die Ein-Waschmaschine-Grenze bisher nur implizit in sequenziellen Hilfsabläufen
+wirkt.
+
+Korrekturplan: Ein eigener End-to-End-Test startet einen Waschgang, prüft das sofortige
+Verschwinden aller weiteren Startangebote, versucht dennoch einen zweiten Kandidaten zu starten
+und verlangt `CAPACITY_CHANGED`, einen unveränderten Kandidaten sowie genau einen aktiven Run.
+Danach werden fokussierter Ablauf-Test, vollständige Suite und das betroffene Paketgate erneut
+ausgeführt.
+
+### Ergebnis und lokale Validierung Phase D
+
+- Fällige Ablaufstarts werden als persistierte `FlowCandidate`s materialisiert. Vor der
+  Kreisaktion existieren weder Run noch Snapshot, interne Ausführungs-Occurrence oder
+  Ressourcenverbrauch. Erst `StartFlowCandidate` prüft den aktuellen Vertrag und die Kapazität
+  erneut und führt Snapshot, Reservierung, Startschritt und Kandidatenentfernung atomar aus.
+- `StepFlowRunState.PENDING_START` ist aus dem Produktmodell entfernt. Interne Run-Datensätze
+  heißen `FLOW_STEP` und tragen ausschließlich Ausführungsidentität; Today projiziert sie nie als
+  eigenes Blatt.
+- `FlowTaskSheet` und `FlowTaskSheetPlacement` bilden pro Aufgabe/Slot ein stabiles gemeinsames
+  Today-Blatt. Angebotene Folgeschritte stehen vor startbaren Kandidaten, leere Blätter werden
+  nicht erzeugt, und „Später“ verschiebt ausschließlich die Blattposition.
+- Today-Aktionen verwenden `TodayItemTarget`; Kandidat und Run-Schritt besitzen eigene
+  Aktionsarten. Fokus-, Timeline- und Widgetmodelle verwenden für gemischte Identitäten
+  `itemId`. Das Wäscheblatt erlaubt weder Bulk-Abschluss noch direkte Widget-Ausführung.
+- Kandidaten, Definitionen, Ressourcenverbrauch und Blattpositionen werden für das Dashboard
+  gebündelt geladen. Der konstante Query-Vertrag umfasst die zwei neuen Tabellen ausdrücklich;
+  Kandidatenzahl und Sortierung erzeugen keine Einzelabfragen.
+- Die Schema-22→23-Migration trennt saubere ungestartete Runs in Kandidaten, erhält nachweislich
+  begonnene/wartende Runs und Ressourcen und konsolidiert alte Einzelpositionen. Der exportierte
+  Schema-23-Vertrag besitzt 23 Entitäten und die beiden neuen Tabellen; die Produktionsfixture
+  0.2.80 zielt auf Schema 23.
+- Der fokussierte Ablauf-/Migrationslauf sowie die nach jeder Korrektur betroffenen Tests sind
+  grün. Die abschließende Instrumentierungs-Unit-Suite meldet 561 Tests: 560 bestanden, einer
+  übersprungen, keine Fehler.
+- Das serielle Android-Auslieferungsgate ist grün:
+  `testInstrumentationUnitTest`, `lintDebug`, `assembleDebug`,
+  `assembleInstrumentationAndroidTest` und `assembleRelease`; Domain und Today-Core wurden im
+  selben Lauf kompiliert. Nach D.11 wurde die vollständige Suite erneut ausgeführt und alle
+  Paket-/Lint-Ergebnisse aus demselben Arbeitsbaum bestätigt.
+- Alle 24 Tests unter `scripts/ci` und alle 24 Tests unter `scripts/release` sind grün.
+  `git diff --check` meldet keine Whitespace-Fehler.
+
+### Plan-Audit Phase D
+
+Alle Bestandteile des Phasenplans sind umgesetzt: Kandidatenmodell und Room-Persistenz,
+atomarer Start, Entfernung des Vorstart-Runzustands, eigenes gemeinsames Blatt mit stabiler
+Position, typisierte Today-Ziele, interne Ausführungsbezeichnungen, Today-/Alles-/Widget-Cutover
+und Schema-23-Migration. Die Korrekturrunden D.1 bis D.11 dokumentieren jeden während
+Kompilierung, Tests und Audit gefundenen Unterschied vor seiner Korrektur. Produktive
+Negativscans finden die entfernten Zustände, Felder und Aggregate außerhalb der historischen
+22→23-Migration nicht mehr; Wäschebegriffe existieren nicht in der generischen Fachlogik.
+
+### Roadmap-Audit Phase D
+
+Der End-to-End-Vertrag ist vollständig abgedeckt: vier fällige Wäschearten bilden genau ein
+Blatt; der Kreis fordert die Waschdauer an; eine Waschmaschine und drei Trockenplätze werden
+direkt geprüft; Folgeschritte behalten Herkunftstitel; „Später“ verändert nur die Today-Reihenfolge;
+„Noch nicht fertig“ verschiebt den Folgeschritt bei gehaltener Ressource; Kandidaten erscheinen
+nicht als Hintergrundläufe; Rekomposition und Upgrade erhalten echte Runs; nicht sichtbare oder
+beendete Arbeit erzeugt kein leeres Blatt. Alte technische Begriffe bleiben ausschließlich in
+ADR, Roadmap, Migration und deren historischen Fixturetests als ausdrücklich benannter
+Schema-22-Quellvertrag erhalten. Lokal besteht keine offene Diskrepanz. Pull-Request-Gate,
+Squash-Merge, exakter Main-Workflow, Produktionsupgrade und Veröffentlichung stehen noch aus;
+bis dahin bleibt Phase D `in Arbeit`.

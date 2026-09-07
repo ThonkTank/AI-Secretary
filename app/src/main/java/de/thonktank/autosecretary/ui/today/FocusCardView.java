@@ -127,14 +127,14 @@ public final class FocusCardView extends ViewGroup {
             ring.setPalette(model.palette);
             ring.bind(task.vessel);
             ring.setOnClickListener(task.harvestReady
-                    ? view -> events.emit(TodayAction.harvest(task.occurrenceId())) : null);
+                    ? view -> events.emit(TodayAction.harvest(task.itemId())) : null);
         } else {
             taskDew.bind(false, false, model.palette, task.reward.resultXp);
             taskDew.setContentDescription(getContext().getString(
                     R.string.content_complete_task, task.title(), task.reward.resultXp));
             taskDew.setOnClickListener(view -> events.emit(task.terminalCondition()
                     ? TodayAction.requestClose(task.taskId(), task.title())
-                    : TodayAction.completeOccurrence(task.occurrenceId())));
+                    : TodayAction.completeOccurrence(task.itemId())));
         }
 
         steps.bind(model);
@@ -143,15 +143,14 @@ public final class FocusCardView extends ViewGroup {
         primary.setBackground(style.pill(model.palette.accent, 26));
         style.shadow(primary, model.palette, 5, .7f);
         primary.setOnClickListener(view -> events.emit(
-                TodayAction.completeRemaining(task.occurrenceId())));
-        primary.setVisibility(vessel && task.remainingSteps > 0 && !task.flowAggregate
+                TodayAction.completeRemaining(task.itemId())));
+        primary.setVisibility(vessel && task.remainingSteps > 0 && task.allowBulkComplete
                 ? VISIBLE : GONE);
         later.setVisibility(task.allowDefer ? VISIBLE : GONE);
         later.bind(model.palette.hint, model.palette.dot);
         later.setOnClickListener(view -> {
             onDefer.run();
-            events.emit(TodayAction.defer(task.occurrenceId().isEmpty()
-                    ? task.taskId() : task.occurrenceId()));
+            events.emit(TodayAction.defer(task.actionTarget));
         });
         requestLayout();
     }
@@ -218,13 +217,13 @@ public final class FocusCardView extends ViewGroup {
     void registerRewardAnchors(RewardAnchorRegistry registry, FocusTaskUiModel task) {
         if (!task.steps.isEmpty())
             registry.register(new RewardAnchorKey(RewardAnchorKey.Kind.VESSEL,
-                    task.occurrenceId()), ring);
+                    task.itemId()), ring);
         else registry.register(new RewardAnchorKey(task.terminalCondition()
                         ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE,
-                task.terminalCondition() ? task.taskId() : task.occurrenceId()), taskDew);
+                task.terminalCondition() ? task.taskId() : task.itemId()), taskDew);
         steps.registerRewardAnchors(registry);
         registry.register(new RewardAnchorKey(RewardAnchorKey.Kind.REST,
-                task.occurrenceId()), primary);
+                task.itemId()), primary);
     }
 
     View mainRewardAnchor() { return steps.getVisibility() == VISIBLE ? ring : taskDew; }

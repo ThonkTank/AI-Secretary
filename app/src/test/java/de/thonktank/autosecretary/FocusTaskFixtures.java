@@ -13,6 +13,7 @@ import de.thonktank.autosecretary.presentation.today.RewardTextFormatter;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
+import de.thonktank.autosecretary.presentation.today.TodayItemTarget;
 import de.thonktank.autosecretary.presentation.today.TimelineStepUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
@@ -36,7 +37,7 @@ final class FocusTaskFixtures {
         for (FocusStepUiModel step : source.steps)
             steps.add(TimelineStepUiModel.completion(step.isDone()));
         TaskActionTarget target = source.actionTarget;
-        return TimelineTaskUiModel.of(target, target.taskId, target.occurrenceId, target.title,
+        return TimelineTaskUiModel.of(target, target.taskId, target.title,
                 target.slot, softTime == null ? "" : softTime, steps,
                 target.terminalCondition, source.overdue, order, source.reward);
     }
@@ -53,7 +54,7 @@ final class FocusTaskFixtures {
         private boolean overdue;
         private boolean allowDefer;
         private boolean harvestReady;
-        private boolean flowAggregate;
+        private boolean flowTaskSheet;
         private int comboStage;
         private Integer rewardBase;
 
@@ -72,7 +73,7 @@ final class FocusTaskFixtures {
         Builder overdue(boolean value) { overdue = value; return this; }
         Builder allowDefer(boolean value) { allowDefer = value; return this; }
         Builder harvestReady(boolean value) { harvestReady = value; return this; }
-        Builder flowAggregate(boolean value) { flowAggregate = value; return this; }
+        Builder flowTaskSheet(boolean value) { flowTaskSheet = value; return this; }
         Builder combo(int value) { comboStage = value; return this; }
         Builder rewardBase(int value) { rewardBase = value; return this; }
 
@@ -103,12 +104,13 @@ final class FocusTaskFixtures {
             }
             RewardBreakdown reward = RewardBreakdown.fromStage(base, comboStage);
             boolean ready = harvestReady;
-            TaskActionTarget target = TaskActionTarget.of(id, occurrenceId, title, slot,
+            TaskActionTarget target = TaskActionTarget.of(id,
+                    TodayItemTarget.occurrence(occurrenceId), title, slot,
                     recurrence != Recurrence.ONCE, terminal);
             return FocusTaskUiModel.builder(target).nextAction("Nächster Schritt")
                     .steps(explicit, remaining).ongoing(ongoing).overdue(overdue)
                     .allowDefer(allowDefer).harvestReady(ready)
-                    .flowAggregate(flowAggregate)
+                    .allowBulkComplete(!flowTaskSheet)
                     .reward(reward, XpVesselUiModel.of(reward,
                             explicit.size() - remaining, explicit.size(), ready, REWARDS)).build();
         }

@@ -24,9 +24,9 @@ public class StepFlowRunEntity {
     @NonNull public String state;
     public int currentPosition;
     @Nullable public Long readyAtEpochMillis;
-    @Nullable public String currentSheetOccurrenceId;
+    @Nullable public String currentExecutionOccurrenceId;
     public long queueOrder;
-    public int nextSheetSequence;
+    public int nextExecutionSequence;
     public long createdAtEpochMillis;
     public long updatedAtEpochMillis;
 
@@ -35,8 +35,8 @@ public class StepFlowRunEntity {
                              @NonNull String scheduledOn, @NonNull String slot,
                              @NonNull String state, int currentPosition,
                              @Nullable Long readyAtEpochMillis,
-                             @Nullable String currentSheetOccurrenceId, long queueOrder,
-                             int nextSheetSequence, long createdAtEpochMillis,
+                             @Nullable String currentExecutionOccurrenceId, long queueOrder,
+                             int nextExecutionSequence, long createdAtEpochMillis,
                              long updatedAtEpochMillis) {
         this.id = id;
         this.taskId = taskId;
@@ -47,9 +47,9 @@ public class StepFlowRunEntity {
         this.state = state;
         this.currentPosition = currentPosition;
         this.readyAtEpochMillis = readyAtEpochMillis;
-        this.currentSheetOccurrenceId = currentSheetOccurrenceId;
+        this.currentExecutionOccurrenceId = currentExecutionOccurrenceId;
         this.queueOrder = queueOrder;
-        this.nextSheetSequence = nextSheetSequence;
+        this.nextExecutionSequence = nextExecutionSequence;
         this.createdAtEpochMillis = createdAtEpochMillis;
         this.updatedAtEpochMillis = updatedAtEpochMillis;
     }

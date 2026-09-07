@@ -84,7 +84,7 @@ public final class StepFlowDefinitionTest {
         FlowRunSnapshot snapshot = new CreateFlowRunSnapshot(
                 () -> "id-" + sequence.incrementAndGet()).execute(laundryDefinition(),
                 "colors", "due:colors", LocalDate.of(2026, 8, 25), TaskSlot.MORNING,
-                1_000L, 10_000L);
+                1_000L, "execution", 10_000L);
 
         assertEquals(Arrays.asList("Buntwäsche", "Aufhängen", "Abhängen", "Wegräumen"),
                 snapshot.steps.stream().map(value -> value.text)
@@ -120,7 +120,7 @@ public final class StepFlowDefinitionTest {
 
         FlowRunSnapshot snapshot = new CreateFlowRunSnapshot(() -> "snapshot").execute(
                 definition, "press", "due:press", LocalDate.of(2026, 8, 28),
-                TaskSlot.MORNING, 1_000L, 10_000L);
+                TaskSlot.MORNING, 1_000L, "execution", 10_000L);
 
         assertEquals(load, snapshot.steps.get(0).prescription.plannedLoad());
         assertEquals(2, snapshot.steps.get(0).prescription.targetRir());

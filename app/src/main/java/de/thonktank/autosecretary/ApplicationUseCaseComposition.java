@@ -32,6 +32,7 @@ import de.thonktank.autosecretary.domain.usecase.CorrectSetResult;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.DeferFlowRun;
 import de.thonktank.autosecretary.domain.usecase.DeferTask;
+import de.thonktank.autosecretary.domain.usecase.DeferFlowTaskSheet;
 import de.thonktank.autosecretary.domain.usecase.DeleteTask;
 import de.thonktank.autosecretary.domain.usecase.FinishStepForToday;
 import de.thonktank.autosecretary.domain.usecase.FlowRuntimeCoordinator;
@@ -56,6 +57,7 @@ import de.thonktank.autosecretary.domain.usecase.SaveStepFlowDefinition;
 import de.thonktank.autosecretary.domain.usecase.SaveStepFlowSetup;
 import de.thonktank.autosecretary.domain.usecase.SaveTaskConfiguration;
 import de.thonktank.autosecretary.domain.usecase.SettlePreviousPartialOccurrences;
+import de.thonktank.autosecretary.domain.usecase.StartFlowCandidate;
 import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 import de.thonktank.autosecretary.domain.usecase.TrainingUseCases;
@@ -111,10 +113,11 @@ final class ApplicationUseCaseComposition {
                 new ResolveTrainingLoadRequest(stepRepository, trainingRepository,
                         transactions, clock, ids), loadTrainingContext);
 
+        ToggleStep toggleStep = new ToggleStep(catalogRepository, stepRepository,
+                todayRepository, transactions, clock, policies, flowRuntime);
         today = new TodayUseCases(new DeferTask(catalogRepository, todayRepository,
-                transactions),
-                new ToggleStep(catalogRepository, stepRepository, todayRepository,
-                        transactions, clock, policies, flowRuntime),
+                transactions), new DeferFlowTaskSheet(flowRepository, todayRepository,
+                transactions, clock), toggleStep,
                 new AdvanceTodayStep(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies,
                         flowRuntime),
@@ -166,6 +169,8 @@ final class ApplicationUseCaseComposition {
                 new DeferFlowRun(flowRuntime), new CancelFlowRun(flowRuntime),
                 new AdjustFlowRunReadyAt(flowRuntime), new PostponeFlowRun(flowRuntime),
                 new ReorderFlowRun(flowRuntime),
-                new LoadFlowRuns(catalogRepository, flowRepository));
+                new LoadFlowRuns(catalogRepository, flowRepository),
+                new StartFlowCandidate(catalogRepository, stepRepository, todayRepository,
+                        flowRepository, transactions, clock, moments, ids, toggleStep));
     }
 }

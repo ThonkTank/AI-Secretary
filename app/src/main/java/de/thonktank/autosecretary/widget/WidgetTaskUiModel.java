@@ -7,7 +7,7 @@ import java.util.List;
 /** Task projection containing exactly the data consumed by widget layouts. */
 public final class WidgetTaskUiModel {
     public final String taskId;
-    public final String occurrenceId;
+    public final String itemId;
     public final String title;
     public final boolean overdue;
     public final boolean terminalCondition;
@@ -15,14 +15,14 @@ public final class WidgetTaskUiModel {
     public final List<WidgetStepUiModel> steps;
     public final boolean requiresApp;
 
-    private WidgetTaskUiModel(String taskId, String occurrenceId, String title, boolean overdue,
+    private WidgetTaskUiModel(String taskId, String itemId, String title, boolean overdue,
                               boolean terminalCondition, String primaryActionLabel,
                               List<WidgetStepUiModel> steps, boolean requiresApp) {
-        if (taskId == null || taskId.isEmpty() || occurrenceId == null || title == null
+        if (taskId == null || taskId.isEmpty() || itemId == null || title == null
                 || title.trim().isEmpty() || primaryActionLabel == null || steps == null)
             throw new IllegalArgumentException("Widget task content is required");
         this.taskId = taskId;
-        this.occurrenceId = occurrenceId;
+        this.itemId = itemId;
         this.title = title;
         this.overdue = overdue;
         this.terminalCondition = terminalCondition;
@@ -31,18 +31,18 @@ public final class WidgetTaskUiModel {
         this.requiresApp = requiresApp;
     }
 
-    public static WidgetTaskUiModel of(String taskId, String occurrenceId, String title,
+    public static WidgetTaskUiModel of(String taskId, String itemId, String title,
                                        boolean overdue, boolean terminalCondition,
                                        String primaryActionLabel,
                                        List<WidgetStepUiModel> steps) {
-        return new WidgetTaskUiModel(taskId, occurrenceId, title, overdue, terminalCondition,
+        return new WidgetTaskUiModel(taskId, itemId, title, overdue, terminalCondition,
                 primaryActionLabel, steps, false);
     }
 
-    public static WidgetTaskUiModel requiringApp(String taskId, String occurrenceId, String title,
+    public static WidgetTaskUiModel requiringApp(String taskId, String itemId, String title,
                                                   boolean overdue, String primaryActionLabel,
                                                   List<WidgetStepUiModel> steps) {
-        return new WidgetTaskUiModel(taskId, occurrenceId, title, overdue, false,
+        return new WidgetTaskUiModel(taskId, itemId, title, overdue, false,
                 primaryActionLabel, steps, true);
     }
 }

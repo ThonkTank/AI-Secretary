@@ -6,6 +6,10 @@ public final class StepExecutionUiAction {
         NONE,
         TOGGLE,
         TOGGLE_WITH_DELAY,
+        TOGGLE_FLOW_RUN_STEP,
+        TOGGLE_FLOW_RUN_STEP_WITH_DELAY,
+        START_FLOW_CANDIDATE,
+        START_FLOW_CANDIDATE_WITH_DELAY,
         SUBMIT_REPETITION,
         ADVANCE_PLANNED_REPETITIONS
     }
@@ -36,6 +40,26 @@ public final class StepExecutionUiAction {
                                                         long proposedDelayMillis) {
         return new StepExecutionUiAction(Kind.TOGGLE_WITH_DELAY, stepId,
                 proposedDelayMillis);
+    }
+
+    public static StepExecutionUiAction toggleFlowRunStep(String stepId) {
+        return new StepExecutionUiAction(Kind.TOGGLE_FLOW_RUN_STEP, stepId, 0L);
+    }
+
+    public static StepExecutionUiAction toggleFlowRunStepWithDelay(String stepId,
+                                                                   long delayMillis) {
+        return new StepExecutionUiAction(Kind.TOGGLE_FLOW_RUN_STEP_WITH_DELAY, stepId,
+                delayMillis);
+    }
+
+    public static StepExecutionUiAction startFlowCandidate(String candidateId) {
+        return new StepExecutionUiAction(Kind.START_FLOW_CANDIDATE, candidateId, 0L);
+    }
+
+    public static StepExecutionUiAction startFlowCandidateWithDelay(String candidateId,
+                                                                    long delayMillis) {
+        return new StepExecutionUiAction(Kind.START_FLOW_CANDIDATE_WITH_DELAY, candidateId,
+                delayMillis);
     }
 
     public static StepExecutionUiAction submitRepetition(String stepId) {

@@ -15,6 +15,8 @@ public final class TodayAction {
         COMPLETE_REMAINING,
         HARVEST,
         DEFER,
+        START_FLOW_CANDIDATE,
+        START_FLOW_CANDIDATE_WITH_DELAY,
         TOGGLE_STEP,
         TOGGLE_STEP_WITH_DELAY,
         FINISH_STEP,
@@ -107,8 +109,20 @@ public final class TodayAction {
         return identified(Kind.HARVEST, occurrenceId);
     }
 
-    public static TodayAction defer(String occurrenceOrTaskId) {
-        return identified(Kind.DEFER, occurrenceOrTaskId);
+    public static TodayAction defer(TaskActionTarget target) {
+        if (target == null) throw new IllegalArgumentException("Defer target is required");
+        return new TodayAction(Kind.DEFER, target.item.id, null, null, 0,
+                Collections.emptyList(), target, null);
+    }
+
+    public static TodayAction startFlowCandidate(String candidateId) {
+        return identified(Kind.START_FLOW_CANDIDATE, candidateId);
+    }
+
+    public static TodayAction startFlowCandidate(String candidateId, long delayMillis) {
+        if (delayMillis < 0L) throw new IllegalArgumentException("Delay must not be negative");
+        return new TodayAction(Kind.START_FLOW_CANDIDATE_WITH_DELAY, requiredId(candidateId),
+                null, null, 0, delayMillis, Collections.emptyList(), null, null);
     }
 
     public static TodayAction toggleStep(String stepId) {

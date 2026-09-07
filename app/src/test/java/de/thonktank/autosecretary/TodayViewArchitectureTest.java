@@ -72,8 +72,8 @@ public final class TodayViewArchitectureTest {
         String assistant = source("ui/today/TrainingAssistantPanelView.java");
 
         assertTrue(list.contains("Map<String, FocusStepRowView> rowCache"));
-        assertTrue(list.contains("rowKey(model.steps.occurrenceId, projected.id())"));
-        assertTrue(list.contains("if (!model.steps.occurrenceId.equals(occurrenceId))"));
+        assertTrue(list.contains("rowKey(model.steps.itemId, projected.id())"));
+        assertTrue(list.contains("if (!model.steps.itemId.equals(itemId))"));
         assertFalse(list.contains("while (rows.size() <"));
         assertTrue(row.contains("bindSurface("));
         assertTrue(row.contains("bindText("));

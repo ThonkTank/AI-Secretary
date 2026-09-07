@@ -38,7 +38,7 @@ public final class TodayFocusProjector {
         }
         for (FocusStepUiModel step : assistants)
             rows.add(FocusStepRowUiModel.assistant(step));
-        return new FocusStepListUiModel(focus.occurrenceId(), rows, doneCount);
+        return new FocusStepListUiModel(focus.itemId(), rows, doneCount);
     }
 
     private static List<FocusStepUiModel> selectedFirst(List<FocusStepUiModel> open,

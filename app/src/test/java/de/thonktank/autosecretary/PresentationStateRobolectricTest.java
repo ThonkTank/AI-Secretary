@@ -11,6 +11,7 @@ import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayScreenState;
 import de.thonktank.autosecretary.presentation.today.TodayRequest;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
+import de.thonktank.autosecretary.presentation.today.TodayItemTarget;
 import de.thonktank.autosecretary.presentation.today.TodayViewModel;
 import de.thonktank.autosecretary.presentation.legacy.LegacyStateFlowBinder;
 import de.thonktank.autosecretary.presentation.shell.AppShellAction;
@@ -152,7 +153,7 @@ public final class PresentationStateRobolectricTest {
         assertEquals("Urlaub", model.timeline.get(0).event.title);
         assertTrue(model.timeline.stream().filter(item -> item.task != null)
                 .noneMatch(item -> model.completedToday.stream().anyMatch(done ->
-                        done.occurrenceId.equals(item.task.occurrenceId))));
+                        done.occurrenceId.equals(item.task.itemId))));
         assertEquals(1, model.completedToday.size());
         assertEquals("occurrence-done", model.completedToday.get(0).occurrenceId);
         assertEquals("steps", model.focus.taskId());
@@ -466,7 +467,8 @@ public final class PresentationStateRobolectricTest {
     @Test public void todayMenuRequestRestoresAndTransitionsAtomically() {
         SavedStateHandle handle = new SavedStateHandle();
         viewModel = newViewModel(handle, new DirectExecutor());
-        TaskActionTarget target = TaskActionTarget.of("menu-task", "menu-occurrence",
+        TaskActionTarget target = TaskActionTarget.of("menu-task",
+                TodayItemTarget.occurrence("menu-occurrence"),
                 "Menüaufgabe", TaskSlot.MIDDAY, false, false);
 
         viewModel.dispatch(TodayAction.openTaskMenu(target));
@@ -565,7 +567,7 @@ public final class PresentationStateRobolectricTest {
         editorViewModel.dispatch(TaskEditorAction.openNew());
         preferences.setFocusStepLimit(FocusStepLimit.THREE);
         EditorUiState editorBefore = editorValue();
-        String occurrenceId = value().today().focus.occurrenceId();
+        String occurrenceId = value().today().focus.itemId();
         calendarLoads.set(0);
 
         viewModel.dispatch(TodayAction.completeOccurrence(occurrenceId));
@@ -578,7 +580,7 @@ public final class PresentationStateRobolectricTest {
         RewardEffect reward = value().rewards.first();
         assertNotNull(reward);
         viewModel.dispatch(TodayAction.openTaskMenu(TaskActionTarget.of(
-                "parallel-task", "parallel-occurrence", "Parallel",
+                "parallel-task", TodayItemTarget.occurrence("parallel-occurrence"), "Parallel",
                 TaskSlot.MIDDAY, false, false)));
         TodayUiModel afterCompletion = value().today();
         String requestId = value().firstRequest().id;

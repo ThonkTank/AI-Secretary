@@ -864,6 +864,87 @@ public final class DatabaseMigrations {
         }
     };
 
+    /** Separates due candidates, started runs and the shared Today sheet. */
+    public static final Migration MIGRATION_22_23 = new Migration(22, 23) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE flow_candidates (id TEXT NOT NULL, "
+                    + "taskId TEXT NOT NULL, seedStepId TEXT NOT NULL, sourceKey TEXT NOT NULL, "
+                    + "scheduledOn TEXT NOT NULL, slot TEXT NOT NULL, queueOrder INTEGER NOT NULL, "
+                    + "createdAtEpochMillis INTEGER NOT NULL, PRIMARY KEY(id), FOREIGN KEY(taskId) "
+                    + "REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE INDEX index_flow_candidates_taskId "
+                    + "ON flow_candidates(taskId)");
+            database.execSQL("CREATE UNIQUE INDEX index_flow_candidates_sourceKey "
+                    + "ON flow_candidates(sourceKey)");
+            database.execSQL("CREATE UNIQUE INDEX index_flow_candidates_taskId_seedStepId_slot "
+                    + "ON flow_candidates(taskId,seedStepId,slot)");
+            database.execSQL("CREATE INDEX "
+                    + "index_flow_candidates_slot_queueOrder_createdAtEpochMillis "
+                    + "ON flow_candidates(slot,queueOrder,createdAtEpochMillis)");
+
+            database.execSQL("CREATE TABLE flow_task_sheet_placements (id TEXT NOT NULL, "
+                    + "taskId TEXT NOT NULL, slot TEXT NOT NULL, displayOn TEXT NOT NULL, "
+                    + "sortOrder INTEGER NOT NULL, PRIMARY KEY(id), FOREIGN KEY(taskId) "
+                    + "REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+            database.execSQL("CREATE UNIQUE INDEX "
+                    + "index_flow_task_sheet_placements_taskId_slot "
+                    + "ON flow_task_sheet_placements(taskId,slot)");
+            database.execSQL("CREATE INDEX "
+                    + "index_flow_task_sheet_placements_slot_displayOn_sortOrder "
+                    + "ON flow_task_sheet_placements(slot,displayOn,sortOrder)");
+
+            database.execSQL("CREATE TEMP TABLE _clean_flow_candidates(id TEXT PRIMARY KEY)");
+            database.execSQL("INSERT INTO _clean_flow_candidates SELECT run.id "
+                    + "FROM step_flow_runs run WHERE run.state='PENDING_START' "
+                    + "AND run.currentPosition=0 "
+                    + "AND NOT EXISTS (SELECT 1 FROM flow_run_resources resource "
+                    + "WHERE resource.runId=run.id AND resource.state!='PLANNED') "
+                    + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
+                    + "JOIN occurrence_steps step ON step.occurrenceId=occurrence.id "
+                    + "WHERE occurrence.flowRunId=run.id AND step.done=1) "
+                    + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
+                    + "JOIN reward_bookings booking ON booking.occurrenceId=occurrence.id "
+                    + "WHERE occurrence.flowRunId=run.id)");
+
+            database.execSQL("INSERT OR IGNORE INTO flow_candidates(id,taskId,seedStepId,"
+                    + "sourceKey,scheduledOn,slot,queueOrder,createdAtEpochMillis) "
+                    + "SELECT run.id,run.taskId,run.seedStepId,run.sourceKey,run.scheduledOn,"
+                    + "run.slot,run.queueOrder,run.createdAtEpochMillis FROM step_flow_runs run "
+                    + "JOIN _clean_flow_candidates clean ON clean.id=run.id "
+                    + "ORDER BY run.queueOrder,run.createdAtEpochMillis,run.id");
+
+            database.execSQL("INSERT OR IGNORE INTO flow_task_sheet_placements(id,taskId,slot,"
+                    + "displayOn,sortOrder) SELECT 'flow-task-sheet:' || taskId || ':' || slot,"
+                    + "taskId,slot,MIN(scheduledOn),MIN(sortOrder) FROM occurrences "
+                    + "WHERE kind='FLOW_SHEET' GROUP BY taskId,slot");
+            database.execSQL("INSERT OR IGNORE INTO flow_task_sheet_placements(id,taskId,slot,"
+                    + "displayOn,sortOrder) SELECT 'flow-task-sheet:' || taskId || ':' || slot,"
+                    + "taskId,slot,MIN(scheduledOn),CAST(MIN(queueOrder / 1000000000) AS INTEGER) "
+                    + "FROM flow_candidates GROUP BY taskId,slot");
+
+            database.execSQL("DELETE FROM occurrences WHERE flowRunId IN "
+                    + "(SELECT id FROM _clean_flow_candidates)");
+            database.execSQL("DELETE FROM step_flow_runs WHERE id IN "
+                    + "(SELECT id FROM _clean_flow_candidates)");
+            database.execSQL("DROP TABLE _clean_flow_candidates");
+
+            database.execSQL("UPDATE step_flow_runs SET state=CASE "
+                    + "WHEN EXISTS (SELECT 1 FROM occurrences occurrence WHERE "
+                    + "occurrence.flowRunId=step_flow_runs.id AND occurrence.state='OPEN') "
+                    + "THEN 'OFFERED' WHEN readyAtEpochMillis IS NOT NULL THEN 'WAITING_TIME' "
+                    + "ELSE 'WAITING_RESOURCE' END WHERE state='PENDING_START'");
+            database.execSQL("UPDATE occurrences SET kind='FLOW_STEP', "
+                    + "sourceKey='flow-step:' || flowRunId || ':' || flowSheetSequence "
+                    + "WHERE kind='FLOW_SHEET'");
+            database.execSQL("ALTER TABLE occurrences RENAME COLUMN flowSheetSequence "
+                    + "TO flowExecutionSequence");
+            database.execSQL("ALTER TABLE step_flow_runs RENAME COLUMN currentSheetOccurrenceId "
+                    + "TO currentExecutionOccurrenceId");
+            database.execSQL("ALTER TABLE step_flow_runs RENAME COLUMN nextSheetSequence "
+                    + "TO nextExecutionSequence");
+        }
+    };
+
     /** Complete historical graph for migration fixtures and archive tests. */
     public static Migration[] all() {
         return from(1);
@@ -876,7 +957,7 @@ public final class DatabaseMigrations {
                 MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                 MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
                 MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
-                MIGRATION_20_21, MIGRATION_21_22};
+                MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

@@ -22,6 +22,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.XpProgress;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.FlowRunSummary;
+import de.thonktank.autosecretary.domain.model.FlowTaskSheet;
 import de.thonktank.autosecretary.domain.model.TrainingContext;
 import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
@@ -31,6 +32,7 @@ import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.RewardTextFormatter;
 import de.thonktank.autosecretary.presentation.today.StepExecutionUiAction;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
+import de.thonktank.autosecretary.presentation.today.TodayItemTarget;
 import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineStepUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
@@ -56,43 +58,37 @@ public final class DashboardUiMapper {
     }
 
     public TodayUiModel map(Dashboard dashboard, LocalDate today) {
-        DashboardTask focusSource = null;
-        DashboardTask fallbackFocus = null;
-        Set<String> actionableIds = new LinkedHashSet<>();
+        List<TodaySource> open = new ArrayList<>();
         for (DashboardTask item : dashboard.tasks) {
-            if (!item.done) {
-                if (fallbackFocus == null) fallbackFocus = item;
-                if (canOwnFocus(item)) {
-                    actionableIds.add(stableId(item));
-                    if (focusSource == null) focusSource = item;
-                }
-            }
+            if (!item.done) open.add(TodaySource.task(item));
         }
-        if (focusSource == null) focusSource = fallbackFocus;
+        for (FlowTaskSheet sheet : dashboard.flowTaskSheets) open.add(TodaySource.sheet(sheet));
+        open.sort(java.util.Comparator.comparing((TodaySource value) -> value.date())
+                .thenComparingInt(value -> value.slot().rank)
+                .thenComparingInt(TodaySource::order)
+                .thenComparing(TodaySource::id));
+        TodaySource focusSource = open.isEmpty() ? null : open.get(0);
 
         FocusTaskUiModel focus = focusSource == null ? null
-                : focus(focusSource, today, dashboard, actionableIds.size() > 1);
-        String focusId = focusSource == null ? null : stableId(focusSource);
+                : focusSource.sheet == null
+                ? focus(focusSource.task, today, dashboard, open.size() > 1)
+                : focus(focusSource.sheet, dashboard, open.size() > 1);
+        String focusId = focusSource == null ? null : focusSource.id();
         List<TimelineItemUiModel> timeline = new ArrayList<>();
         List<CompletedTaskUiModel> completed = new ArrayList<>();
+        for (TodaySource item : open) if (!item.id().equals(focusId))
+            timeline.add(TimelineItemUiModel.task(item.sheet == null
+                    ? timeline(item.task, today, dashboard)
+                    : timeline(item.sheet, dashboard)));
         for (DashboardTask item : dashboard.tasks) {
             if (item.done) {
                 if (item.occurrence != null)
                     completed.add(CompletedTaskUiModel.of(item.occurrence.id, item.task.title,
                             item.awardedXp, true));
-            } else if (!stableId(item).equals(focusId)) {
-                timeline.add(TimelineItemUiModel.task(timeline(item, today, dashboard)));
             }
         }
         return new TodayUiModel(new XpProgress(dashboard.xp), focus,
                 timeline, completed, dashboard.flowRuns);
-    }
-
-    private static boolean canOwnFocus(DashboardTask item) {
-        if (item.occurrence == null || item.occurrence.kind != OccurrenceKind.FLOW_SHEET)
-            return true;
-        for (OccurrenceStep step : item.steps) if (!step.done) return true;
-        return false;
     }
 
     private FocusTaskUiModel focus(DashboardTask item, LocalDate today, Dashboard dashboard,
@@ -122,10 +118,31 @@ public final class DashboardUiMapper {
                 .overdue(overdue(item, today))
                 .backlogCount(item.backlogCount)
                 .allowDefer(allowDefer)
-                .flowAggregate(item.flowAggregate)
-                .harvestReady(!item.flowAggregate && !steps.isEmpty() && collected > 0)
+                .allowBulkComplete(true)
+                .harvestReady(!steps.isEmpty() && collected > 0)
                 .reward(reward, XpVesselUiModel.quantitative(reward, done, steps.size(),
                         collected, planned, !steps.isEmpty() && collected > 0, rewardTexts))
+                .build();
+    }
+
+    private FocusTaskUiModel focus(FlowTaskSheet sheet, Dashboard dashboard,
+                                   boolean allowDefer) {
+        List<FocusStepUiModel> steps = flowSteps(sheet, dashboard);
+        int remaining = steps.size();
+        String next = steps.isEmpty() ? texts.text(R.string.next_all_done) : steps.get(0).title;
+        RewardBreakdown reward = RewardPolicy.routine(0, null);
+        return FocusTaskUiModel.builder(TaskActionTarget.of(sheet.task.id.value,
+                        TodayItemTarget.flowTaskSheet(sheet.placement.id), sheet.task.title,
+                        sheet.placement.slot, sheet.task.recurrence != Recurrence.ONCE, false))
+                .nextAction(next)
+                .steps(steps, remaining)
+                .ongoing(false)
+                .overdue(false)
+                .allowDefer(allowDefer)
+                .allowBulkComplete(false)
+                .harvestReady(false)
+                .reward(reward, XpVesselUiModel.quantitative(reward, 0, steps.size(),
+                        0, plannedXp(steps), false, rewardTexts))
                 .build();
     }
 
@@ -140,9 +157,21 @@ public final class DashboardUiMapper {
                 collectedXp(focusSteps));
         TaskSlot slot = item.displaySlot;
         return TimelineTaskUiModel.of(actionTarget(item), item.task.id.value,
-                item.occurrence == null ? "" : item.occurrence.id, item.task.title, slot,
+                item.task.title, slot,
                 softTime(slot, item.task.ongoing), steps, !item.task.conditionText.isEmpty(),
                 overdue(item, today), item.task.catalogOrder, reward);
+    }
+
+    private TimelineTaskUiModel timeline(FlowTaskSheet sheet, Dashboard dashboard) {
+        List<TimelineStepUiModel> steps = new ArrayList<>();
+        for (int index = 0; index < sheet.entries.size(); index++)
+            steps.add(TimelineStepUiModel.completion(false));
+        return TimelineTaskUiModel.of(TaskActionTarget.of(sheet.task.id.value,
+                        TodayItemTarget.flowTaskSheet(sheet.placement.id), sheet.task.title,
+                        sheet.placement.slot, sheet.task.recurrence != Recurrence.ONCE, false),
+                sheet.task.id.value, sheet.task.title, sheet.placement.slot,
+                softTime(sheet.placement.slot, false), steps, false, false,
+                sheet.placement.sortOrder, RewardBreakdown.fromStage(0, 0));
     }
 
     private List<FocusStepUiModel> focusSteps(DashboardTask item, Dashboard dashboard) {
@@ -154,21 +183,14 @@ public final class DashboardUiMapper {
             RewardBreakdown reward = RewardPolicy.step(combo);
             RepetitionProgressUiModel repetition = repetition(step);
             StepExecutionUiAction action;
-            FlowRunSummary flow = item.flowRunByStepId.get(step.id);
             if (done) action = StepExecutionUiAction.none();
             else if (repetition != null)
                 action = StepExecutionUiAction.submitRepetition(step.id);
-            else if (flow != null && flow.delayAfter != null
-                    && flow.delayAfter.mode == FlowDelayPolicy.Mode.REMEMBER_LAST)
-                action = StepExecutionUiAction.toggleWithDelay(step.id,
-                        flow.delayAfter.proposedDelayMillis());
             else action = StepExecutionUiAction.toggle(step.id);
             int earnedXp = item.earnedXp(step.id);
             int plannedXp = item.plannedXp(step.id,
                     earnedXp > 0 ? earnedXp : reward.resultXp);
-            String title = flow != null && flow.currentPosition > 0
-                    ? flow.seedTitle + ": " + step.text : step.text;
-            FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, title,
+            FocusStepUiModel mapped = FocusStepUiModel.executable(step.id, step.text,
                     stepTexts.compactAmount(step.prescription.amount), step.note, done, action,
                     repetition, reward, earnedXp, plannedXp);
             if (step.prescription.amount instanceof StepAmount.Duration)
@@ -181,6 +203,46 @@ public final class DashboardUiMapper {
             steps.add(mapped);
         }
         return steps;
+    }
+
+    private List<FocusStepUiModel> flowSteps(FlowTaskSheet sheet, Dashboard dashboard) {
+        List<FocusStepUiModel> result = new ArrayList<>();
+        for (FlowTaskSheet.Entry entry : sheet.entries) {
+            de.thonktank.autosecretary.domain.model.StepPrescription prescription;
+            String note;
+            String id;
+            StepExecutionUiAction action;
+            if (entry.kind == FlowTaskSheet.Entry.Kind.CANDIDATE) {
+                prescription = entry.candidateTemplate.prescription;
+                note = entry.candidateTemplate.note;
+                id = entry.targetId;
+                action = prescription.amount instanceof StepAmount.Duration
+                        ? StepExecutionUiAction.startFlowCandidateWithDelay(entry.targetId,
+                        ((StepAmount.Duration) prescription.amount).seconds * 1_000L)
+                        : StepExecutionUiAction.startFlowCandidate(entry.targetId);
+            } else {
+                prescription = entry.runStep.prescription;
+                note = entry.runStep.note;
+                id = entry.runStep.id;
+                action = entry.run.delayAfter != null
+                        && entry.run.delayAfter.mode == FlowDelayPolicy.Mode.REMEMBER_LAST
+                        ? StepExecutionUiAction.toggleFlowRunStepWithDelay(entry.runStep.id,
+                        entry.run.delayAfter.proposedDelayMillis())
+                        : StepExecutionUiAction.toggleFlowRunStep(entry.runStep.id);
+            }
+            ComboProgress combo = dashboard.combos.get(ComboProgress.stepOwner(
+                    entry.kind == FlowTaskSheet.Entry.Kind.CANDIDATE
+                            ? entry.candidateTemplate.id : entry.runStep.sourceTemplateId));
+            RewardBreakdown reward = RewardPolicy.step(combo);
+            FocusStepUiModel mapped = FocusStepUiModel.executable(id, entry.title,
+                    stepTexts.compactAmount(prescription.amount), note, false, action,
+                    null, reward, 0, reward.resultXp);
+            if (prescription.amount instanceof StepAmount.Duration)
+                mapped = mapped.withDurationSeconds(
+                        ((StepAmount.Duration) prescription.amount).seconds);
+            result.add(mapped);
+        }
+        return result;
     }
 
     private TrainingPromptUiModel trainingPrompt(TrainingContext value) {
@@ -233,7 +295,8 @@ public final class DashboardUiMapper {
 
     private static TaskActionTarget actionTarget(DashboardTask item) {
         return TaskActionTarget.of(item.task.id.value,
-                item.occurrence == null ? "" : item.occurrence.id, item.task.title,
+                item.occurrence == null ? TodayItemTarget.task(item.task.id.value)
+                        : TodayItemTarget.occurrence(item.occurrence.id), item.task.title,
                 item.displaySlot, item.task.recurrence != Recurrence.ONCE,
                 !item.task.conditionText.isEmpty());
     }
@@ -251,5 +314,25 @@ public final class DashboardUiMapper {
         if (slot == TaskSlot.MIDDAY) return texts.text(R.string.soft_time_midday);
         if (slot == TaskSlot.EVENING) return texts.text(R.string.soft_time_evening);
         return texts.text(R.string.soft_time_later);
+    }
+
+    private static final class TodaySource {
+        final DashboardTask task;
+        final FlowTaskSheet sheet;
+
+        private TodaySource(DashboardTask task, FlowTaskSheet sheet) {
+            this.task = task; this.sheet = sheet;
+        }
+
+        static TodaySource task(DashboardTask value) { return new TodaySource(value, null); }
+        static TodaySource sheet(FlowTaskSheet value) { return new TodaySource(null, value); }
+        String id() { return sheet == null ? stableId(task) : "flow-sheet:" + sheet.placement.id; }
+        LocalDate date() { return sheet == null
+                ? task.occurrence == null ? LocalDate.MAX : task.occurrence.scheduledOn
+                : sheet.placement.displayOn; }
+        TaskSlot slot() { return sheet == null ? task.displaySlot : sheet.placement.slot; }
+        int order() { return sheet == null
+                ? task.occurrence == null ? Integer.MAX_VALUE : task.occurrence.sortOrder
+                : sheet.placement.sortOrder; }
     }
 }

@@ -135,7 +135,7 @@ public final class DashboardCharacterizationTest {
         FlowRunSummary flow = new FlowRunSummary("run", TaskId.of("laundry"), "Wäsche",
                 "colors", "Buntwäsche", "take-down", "Abhängen",
                 StepFlowRunState.WAITING_TIME, System.currentTimeMillis() + 60_000L,
-                "sheet", 1L, 2, 4, null, Collections.emptyList(), true, 86_400_000L);
+                "sheet", 1L, 2, 4, null, Collections.emptyList(), 86_400_000L);
         TodayUiModel base = DashboardFixtures.fullDashboard();
         TodayUiModel withFlow = new TodayUiModel(base.xpProgress, base.focus, base.timeline,
                 base.completedToday, Collections.singletonList(flow));

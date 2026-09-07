@@ -296,10 +296,14 @@ public final class FocusStepRowView extends LinearLayout {
                     : getContext().getString(editingIndex >= 0
                             ? R.string.content_update_set : R.string.content_confirm_set,
                     editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber(), current));
-        } else if (action.kind == StepExecutionUiAction.Kind.TOGGLE) {
+        } else if (action.kind == StepExecutionUiAction.Kind.TOGGLE
+                || action.kind == StepExecutionUiAction.Kind.TOGGLE_FLOW_RUN_STEP
+                || action.kind == StepExecutionUiAction.Kind.START_FLOW_CANDIDATE) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step, step.title, step.reward.resultXp));
-        } else if (action.kind == StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY) {
+        } else if (action.kind == StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY
+                || action.kind == StepExecutionUiAction.Kind.TOGGLE_FLOW_RUN_STEP_WITH_DELAY
+                || action.kind == StepExecutionUiAction.Kind.START_FLOW_CANDIDATE_WITH_DELAY) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step_with_delay, step.title,
                     step.reward.resultXp));
@@ -511,12 +515,23 @@ public final class FocusStepRowView extends LinearLayout {
     private void emitExecution(StepExecutionUiAction action, TodayActionSink events) {
         switch (action.kind) {
             case TOGGLE:
+            case TOGGLE_FLOW_RUN_STEP:
                 events.emit(TodayAction.toggleStep(action.stepId));
                 return;
             case TOGGLE_WITH_DELAY:
+            case TOGGLE_FLOW_RUN_STEP_WITH_DELAY:
                 FlowDurationDialog.show(getContext(), getContext().getString(
                                 R.string.flow_delay_prompt_title), action.proposedDelayMillis,
                         delay -> events.emit(TodayAction.toggleStep(action.stepId, delay)));
+                return;
+            case START_FLOW_CANDIDATE:
+                events.emit(TodayAction.startFlowCandidate(action.stepId));
+                return;
+            case START_FLOW_CANDIDATE_WITH_DELAY:
+                FlowDurationDialog.show(getContext(), getContext().getString(
+                                R.string.flow_delay_prompt_title), action.proposedDelayMillis,
+                        delay -> events.emit(TodayAction.startFlowCandidate(
+                                action.stepId, delay)));
                 return;
             case SUBMIT_REPETITION:
                 events.emit(TodayAction.submitRepetition(action.stepId));

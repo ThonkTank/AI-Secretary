@@ -3,10 +3,10 @@ package de.thonktank.autosecretary.domain.usecase;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.MomentSource;
 import de.thonktank.autosecretary.SystemMomentSource;
-import de.thonktank.autosecretary.domain.model.FlowRunSnapshot;
+import de.thonktank.autosecretary.domain.model.FlowCandidate;
+import de.thonktank.autosecretary.domain.model.FlowTaskSheetPlacement;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.StepFlowDefinition;
-import de.thonktank.autosecretary.domain.model.StepFlowRun;
 import de.thonktank.autosecretary.domain.model.StepResourceLease;
 import de.thonktank.autosecretary.domain.model.StepTransition;
 import de.thonktank.autosecretary.domain.model.Occurrence;
@@ -109,7 +109,7 @@ public final class MaterializeDueOccurrences {
                                 Map<String, Integer> scheduleRanks) {
         DueDatePlanner.Plan planned = planner.throughToday(
                 task, schedule, today, history, templates);
-        FlowMaterialization flowMaterialization = materializeFlowRuns(task, templates, planned,
+        FlowMaterialization flowMaterialization = materializeFlowCandidates(task, templates, planned,
                 scheduleRanks);
         planned = flowMaterialization.ordinaryPlan;
         boolean changed = flowMaterialization.changed;
@@ -143,7 +143,7 @@ public final class MaterializeDueOccurrences {
         return changed;
     }
 
-    private FlowMaterialization materializeFlowRuns(Task task,
+    private FlowMaterialization materializeFlowCandidates(Task task,
                                                     List<TaskStepTemplate> templates,
                                                     DueDatePlanner.Plan planned,
                                                     Map<String, Integer> scheduleRanks) {
@@ -175,22 +175,23 @@ public final class MaterializeDueOccurrences {
                 containedFlow = true;
                 String sourceKey = "flow:" + task.id.value + ':' + template.id + ':'
                         + due.scheduledOn + ':' + due.slot.storageCode;
-                if (flows.findFlowRunBySourceKey(sourceKey) != null) continue;
-                boolean alreadyPendingOrRunning = false;
-                for (StepFlowRun active : flows.activeFlowRuns(task.id))
-                    if (active.seedStepId.equals(template.id)) {
-                        alreadyPendingOrRunning = true;
-                        break;
-                    }
-                if (alreadyPendingOrRunning) continue;
+                if (flows.findFlowCandidateBySourceKey(sourceKey) != null
+                        || flows.findFlowRunBySourceKey(sourceKey) != null) continue;
                 long rank = scheduleRanks.getOrDefault(
                         task.id.value + '|' + due.slot.name(), 0);
                 long queueOrder = rank * 1_000_000_000L
                         + due.scheduledOn.toEpochDay() * 1_000L + template.position;
-                FlowRunSnapshot snapshot = new CreateFlowRunSnapshot(ids).execute(definition,
-                        template.id, sourceKey, due.scheduledOn, due.slot, queueOrder,
+                FlowCandidate candidate = new FlowCandidate(ids.nextId(), task.id, template.id,
+                        sourceKey, due.scheduledOn, due.slot, queueOrder,
                         moments.nowEpochMillis());
-                changed |= flows.insertFlowRun(snapshot);
+                if (flows.insertFlowCandidate(candidate)) {
+                    changed = true;
+                    if (flows.findFlowTaskSheetPlacement(task.id, due.slot) == null)
+                        flows.putFlowTaskSheetPlacement(new FlowTaskSheetPlacement(
+                                FlowTaskSheetPlacement.stableId(task.id, due.slot), task.id,
+                                due.slot, clock.today(), (int) Math.max(0L,
+                                Math.min(Integer.MAX_VALUE, rank))));
+                }
             }
             if (!containedFlow || !ordinary.isEmpty()) {
                 ordinaryDues.add(new DueDatePlanner.PlannedDue(

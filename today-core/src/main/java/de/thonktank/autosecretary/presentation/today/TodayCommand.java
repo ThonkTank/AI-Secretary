@@ -9,6 +9,8 @@ public final class TodayCommand {
         COMPLETE_REMAINING,
         HARVEST,
         DEFER,
+        START_FLOW_CANDIDATE,
+        START_FLOW_CANDIDATE_WITH_DELAY,
         TOGGLE_STEP,
         TOGGLE_STEP_WITH_DELAY,
         FINISH_STEP,
@@ -35,6 +37,7 @@ public final class TodayCommand {
     public final String commandId;
     public final int value;
     public final long longValue;
+    public final TodayItemTarget itemTarget;
 
     TodayCommand(Kind kind, String id, String relatedId, String text,
                  String commandId, int value) {
@@ -43,6 +46,12 @@ public final class TodayCommand {
 
     TodayCommand(Kind kind, String id, String relatedId, String text,
                  String commandId, int value, long longValue) {
+        this(kind, id, relatedId, text, commandId, value, longValue, null);
+    }
+
+    TodayCommand(Kind kind, String id, String relatedId, String text,
+                 String commandId, int value, long longValue,
+                 TodayItemTarget itemTarget) {
         this.kind = kind;
         this.id = id;
         this.relatedId = relatedId;
@@ -50,11 +59,13 @@ public final class TodayCommand {
         this.commandId = commandId;
         this.value = value;
         this.longValue = longValue;
+        this.itemTarget = itemTarget;
     }
 
     static TodayCommand action(Kind kind, TodayAction action) {
         return new TodayCommand(kind, action.id, action.relatedId, action.text, null,
-                action.value, action.longValue);
+                action.value, action.longValue,
+                action.target == null ? null : action.target.item);
     }
 
     static TodayCommand reorder(String commandId, String stepId,

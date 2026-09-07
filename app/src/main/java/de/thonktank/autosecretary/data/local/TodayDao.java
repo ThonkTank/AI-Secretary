@@ -18,16 +18,16 @@ public interface TodayDao {
             + "AND slot = :slot LIMIT 1")
     OccurrenceEntity occurrence(String taskId, String scheduledOn, String slot);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state "
-            + "AND kind != 'FLOW_SHEET' LIMIT 1")
+            + "AND kind != 'FLOW_STEP' LIMIT 1")
     OccurrenceEntity openForTask(String taskId, String state);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND slot = :slot "
-            + "AND state = :state AND kind != 'FLOW_SHEET' ORDER BY scheduledOn LIMIT 1")
+            + "AND state = :state AND kind != 'FLOW_STEP' ORDER BY scheduledOn LIMIT 1")
     OccurrenceEntity openForTaskSlot(String taskId, String slot, String state);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state "
-            + "AND kind != 'FLOW_SHEET' ORDER BY scheduledOn, slot")
+            + "AND kind != 'FLOW_STEP' ORDER BY scheduledOn, slot")
     List<OccurrenceEntity> openOccurrencesForTask(String taskId, String state);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND scheduledOn = :scheduledOn "
-            + "AND state = :state AND kind != 'FLOW_SHEET'")
+            + "AND state = :state AND kind != 'FLOW_STEP'")
     List<OccurrenceEntity> occurrences(String taskId, String scheduledOn, String state);
     @Query("SELECT * FROM occurrences WHERE state = :state")
     List<OccurrenceEntity> occurrencesByState(String state);
@@ -38,10 +38,10 @@ public interface TodayDao {
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId")
     List<OccurrenceEntity> occurrencesForTask(String taskId);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state = :state "
-            + "AND kind != 'FLOW_SHEET' ORDER BY scheduledOn ASC LIMIT 1")
+            + "AND kind != 'FLOW_STEP' ORDER BY scheduledOn ASC LIMIT 1")
     OccurrenceEntity earliestOccurrence(String taskId, String state);
     @Query("SELECT * FROM occurrences WHERE taskId = :taskId AND state IN (:states) "
-            + "AND kind != 'FLOW_SHEET' ORDER BY completedOn DESC, scheduledOn DESC LIMIT 1")
+            + "AND kind != 'FLOW_STEP' ORDER BY completedOn DESC, scheduledOn DESC LIMIT 1")
     OccurrenceEntity latestCompletedOccurrence(String taskId, List<String> states);
     @Query("SELECT * FROM occurrences WHERE state IN (:states) AND completedOn = :date")
     List<OccurrenceEntity> completedOccurrences(List<String> states, String date);

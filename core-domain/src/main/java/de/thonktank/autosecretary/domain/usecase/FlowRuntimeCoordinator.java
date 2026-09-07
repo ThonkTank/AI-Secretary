@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Single transactional owner of admission, capacity, waits and sheet hand-off for flow flows.
+ * Single transactional owner of admission, capacity, waits and execution hand-off for flows.
  * Waiting runs have no occurrence step and therefore cannot block the normal Today focus.
  */
 public final class FlowRuntimeCoordinator implements FlowProgression {
@@ -72,14 +72,14 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
             StepFlowRun run = flows.findFlowRun(runId);
             if (run == null || run.state != StepFlowRunState.OFFERED) return false;
             long now = moments.nowEpochMillis();
-            String sheet = removeUntouchedOffer(run);
+            String executionId = removeUntouchedOffer(run);
             resetReservationsAt(run.id, run.currentPosition, now);
             long last = run.queueOrder;
             for (StepFlowRun value : flows.activeFlowRuns())
                 last = Math.max(last, value.queueOrder);
             StepFlowRun queued = run.withState(StepFlowRunState.WAITING_RESOURCE, null, now)
                     .reorder(last + REQUEUE_GAP, now);
-            if (sheet == null) queued = queued.clearCurrentSheet(now);
+            if (executionId == null) queued = queued.clearCurrentExecution(now);
             flows.updateFlowRun(queued);
             activateReadyInside(now);
             return true;
@@ -91,14 +91,13 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
             StepFlowRun run = flows.findFlowRun(runId);
             if (run == null || !run.state.active()) return false;
             long now = moments.nowEpochMillis();
-            if (run.state == StepFlowRunState.OFFERED
-                    || run.state == StepFlowRunState.PENDING_START) removeUntouchedOffer(run);
+            if (run.state == StepFlowRunState.OFFERED) removeUntouchedOffer(run);
             for (FlowRunResourceSnapshot resource : flows.flowRunResources(run.id))
                 if (resource.state != FlowResourceState.RELEASED)
                     flows.updateFlowRunResource(resourceState(resource,
                             FlowResourceState.RELEASED, now));
             flows.updateFlowRun(run.withState(StepFlowRunState.CANCELLED, null, now)
-                    .clearCurrentSheet(now));
+                    .clearCurrentExecution(now));
             activateReadyInside(now);
             return true;
         });
@@ -184,18 +183,12 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
 
     @Override public void onStepCompleted(Occurrence occurrence, OccurrenceStep step,
                                           Long chosenDelayMillis) {
-        if (!flowSheet(occurrence) || step == null) return;
+        if (!flowExecution(occurrence) || step == null) return;
         StepFlowRun run = flows.findFlowRun(occurrence.flowRunId);
-        if (run == null || (run.state != StepFlowRunState.OFFERED
-                && run.state != StepFlowRunState.PENDING_START)) return;
+        if (run == null || run.state != StepFlowRunState.OFFERED) return;
         FlowRunStepSnapshot current = stepAt(run.id, run.currentPosition);
         if (current == null || !current.sourceTemplateId.equals(step.sourceTemplateId)) return;
         long now = moments.nowEpochMillis();
-        if (run.state == StepFlowRunState.PENDING_START) {
-            if (!hasCapacity(run))
-                throw new IllegalStateException("Flow capacity changed before start");
-            reserveRequired(run, now);
-        }
         activateAcquiredResources(run.id, run.currentPosition, now);
         releaseResources(run.id, run.currentPosition, now);
         List<FlowRunStepSnapshot> path = flows.flowRunSteps(run.id);
@@ -218,7 +211,7 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
     }
 
     @Override public boolean canReopenStep(Occurrence occurrence, OccurrenceStep step) {
-        if (!flowSheet(occurrence)) return true;
+        if (!flowExecution(occurrence)) return true;
         StepFlowRun run = flows.findFlowRun(occurrence.flowRunId);
         if (run == null || step == null || step.sourceTemplateId == null) return false;
         int position = positionOf(run.id, step.sourceTemplateId);
@@ -227,16 +220,16 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
         if (run.currentPosition != position + 1) return false;
         if (run.state == StepFlowRunState.WAITING_TIME
                 || run.state == StepFlowRunState.WAITING_RESOURCE) return true;
-        if (run.state != StepFlowRunState.OFFERED || run.currentSheetOccurrenceId == null)
+        if (run.state != StepFlowRunState.OFFERED || run.currentExecutionOccurrenceId == null)
             return false;
-        Occurrence nextSheet = today.findOccurrence(run.currentSheetOccurrenceId);
-        if (nextSheet == null || nextSheet.state != OccurrenceState.OPEN) return false;
-        OccurrenceStep offered = offeredStep(run, nextSheet.id);
+        Occurrence nextExecution = today.findOccurrence(run.currentExecutionOccurrenceId);
+        if (nextExecution == null || nextExecution.state != OccurrenceState.OPEN) return false;
+        OccurrenceStep offered = offeredStep(run, nextExecution.id);
         return offered != null && !offered.done;
     }
 
     @Override public void onStepReopened(Occurrence occurrence, OccurrenceStep step) {
-        if (!flowSheet(occurrence) || step == null || step.sourceTemplateId == null) return;
+        if (!flowExecution(occurrence) || step == null || step.sourceTemplateId == null) return;
         StepFlowRun run = flows.findFlowRun(occurrence.flowRunId);
         if (run == null) return;
         int position = positionOf(run.id, step.sourceTemplateId);
@@ -245,7 +238,7 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
         if (run.state == StepFlowRunState.COMPLETED && run.currentPosition == position) {
             restoreResourcesAfterUndo(run.id, position, -1, now);
             flows.updateFlowRun(run.withState(StepFlowRunState.OFFERED, null, now)
-                    .withCurrentSheet(occurrence.id, now));
+                    .withCurrentExecution(occurrence.id, now));
             return;
         }
         if (run.currentPosition != position + 1) return;
@@ -255,50 +248,50 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
     }
 
     @Override public void onOccurrenceHarvested(Occurrence occurrence) {
-        if (!flowSheet(occurrence)) return;
+        if (!flowExecution(occurrence)) return;
         StepFlowRun run = flows.findFlowRun(occurrence.flowRunId);
         if (run == null) return;
         long now = moments.nowEpochMillis();
         if (run.state == StepFlowRunState.OFFERED) {
             OccurrenceStep open = offeredStep(run, occurrence.id);
             if (open != null && !open.done) {
-                Occurrence replacement = Occurrence.flowSheet(ids.nextId(), occurrence.taskId,
+                Occurrence replacement = Occurrence.flowStep(ids.nextId(), occurrence.taskId,
                         clock.today(), occurrence.slot, occurrence.sortOrder, run.id,
-                        run.nextSheetSequence);
+                        run.nextExecutionSequence);
                 today.insertOccurrence(replacement);
                 OccurrenceStep carried = snapshots.carryForward(open, replacement.id, 0,
                         occurrence.id);
                 steps.insertOccurrenceSteps(Collections.singletonList(carried));
-                flows.updateFlowRun(run.offerOnSheet(replacement.id,
-                        run.nextSheetSequence, now));
+                flows.updateFlowRun(run.offerExecution(replacement.id,
+                        run.nextExecutionSequence, now));
                 return;
             }
         }
-        flows.updateFlowRun(run.clearCurrentSheet(now));
+        flows.updateFlowRun(run.clearCurrentExecution(now));
     }
 
     @Override public boolean canReopenOccurrence(Occurrence occurrence) {
-        if (!flowSheet(occurrence)) return true;
+        if (!flowExecution(occurrence)) return true;
         StepFlowRun run = flows.findFlowRun(occurrence.flowRunId);
         if (run == null) return false;
-        if (run.currentSheetOccurrenceId == null || run.currentSheetOccurrenceId.equals(occurrence.id))
+        if (run.currentExecutionOccurrenceId == null || run.currentExecutionOccurrenceId.equals(occurrence.id))
             return true;
         if (run.state != StepFlowRunState.OFFERED) return false;
-        Occurrence replacement = today.findOccurrence(run.currentSheetOccurrenceId);
+        Occurrence replacement = today.findOccurrence(run.currentExecutionOccurrenceId);
         if (replacement == null || replacement.state != OccurrenceState.OPEN) return false;
         List<OccurrenceStep> snapshots = steps.occurrenceSteps(replacement.id);
         return snapshots.size() == 1 && !snapshots.get(0).done;
     }
 
     @Override public void onOccurrenceReopened(Occurrence occurrence) {
-        if (!flowSheet(occurrence)) return;
+        if (!flowExecution(occurrence)) return;
         StepFlowRun run = flows.findFlowRun(occurrence.flowRunId);
         if (run == null) return;
         long now = moments.nowEpochMillis();
-        if (run.currentSheetOccurrenceId != null
-                && !run.currentSheetOccurrenceId.equals(occurrence.id))
-            today.deleteOccurrence(run.currentSheetOccurrenceId);
-        flows.updateFlowRun(run.withCurrentSheet(occurrence.id, now));
+        if (run.currentExecutionOccurrenceId != null
+                && !run.currentExecutionOccurrenceId.equals(occurrence.id))
+            today.deleteOccurrence(run.currentExecutionOccurrenceId);
+        flows.updateFlowRun(run.withCurrentExecution(occurrence.id, now));
     }
 
     private boolean activateReadyInside(long now) {
@@ -307,16 +300,6 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
         for (StepFlowRun stale : active) {
             StepFlowRun run = flows.findFlowRun(stale.id);
             if (run == null || !run.state.active()) continue;
-            if (legacyUnstarted(run)) {
-                resetReservationsAt(run.id, run.currentPosition, now);
-                run = run.withState(StepFlowRunState.PENDING_START, null, now);
-                flows.updateFlowRun(run);
-                changed = true;
-            }
-            if (run.state == StepFlowRunState.PENDING_START) {
-                changed |= placeCandidate(run, now);
-                continue;
-            }
             if (run.state == StepFlowRunState.WAITING_TIME
                     && run.readyAtEpochMillis != null && run.readyAtEpochMillis <= now) {
                 run = run.withState(StepFlowRunState.WAITING_RESOURCE, null, now);
@@ -369,62 +352,26 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
     private void offer(StepFlowRun run, long now) {
         FlowRunStepSnapshot snapshot = stepAt(run.id, run.currentPosition);
         if (snapshot == null) return;
-        Occurrence sheet = run.currentSheetOccurrenceId == null ? null
-                : today.findOccurrence(run.currentSheetOccurrenceId);
-        boolean existingSheet = sheet != null && sheet.state == OccurrenceState.OPEN;
-        if (!existingSheet) {
+        Occurrence execution = run.currentExecutionOccurrenceId == null ? null
+                : today.findOccurrence(run.currentExecutionOccurrenceId);
+        boolean existingExecution = execution != null && execution.state == OccurrenceState.OPEN;
+        if (!existingExecution) {
             int order = (int) Math.max(0L, Math.min(Integer.MAX_VALUE,
                     run.queueOrder / 1_000_000_000L));
-            sheet = Occurrence.flowSheet(ids.nextId(), run.taskId, clock.today(), run.slot,
-                    order, run.id, run.nextSheetSequence);
-            today.insertOccurrence(sheet);
+            execution = Occurrence.flowStep(ids.nextId(), run.taskId, clock.today(), run.slot,
+                    order, run.id, run.nextExecutionSequence);
+            today.insertOccurrence(execution);
         }
-        if (offeredStep(run, sheet.id) == null) {
+        if (offeredStep(run, execution.id) == null) {
             int position = 0;
-            for (OccurrenceStep value : steps.occurrenceSteps(sheet.id))
+            for (OccurrenceStep value : steps.occurrenceSteps(execution.id))
                 position = Math.max(position, value.position + 1);
-            OccurrenceStep step = snapshots.fromFlow(snapshot, sheet.id, position);
+            OccurrenceStep step = snapshots.fromFlow(snapshot, execution.id, position);
             steps.insertOccurrenceSteps(Collections.singletonList(step));
         }
-        flows.updateFlowRun(existingSheet
-                ? run.offerOnExistingSheet(sheet.id, now)
-                : run.offerOnSheet(sheet.id, run.nextSheetSequence, now));
-    }
-
-    private boolean placeCandidate(StepFlowRun run, long now) {
-        FlowRunStepSnapshot snapshot = stepAt(run.id, run.currentPosition);
-        if (snapshot == null) return false;
-        Occurrence sheet = run.currentSheetOccurrenceId == null ? null
-                : today.findOccurrence(run.currentSheetOccurrenceId);
-        boolean existingSheet = sheet != null && sheet.state == OccurrenceState.OPEN;
-        boolean changed = false;
-        if (!existingSheet) {
-            int order = (int) Math.max(0L, Math.min(Integer.MAX_VALUE,
-                    run.queueOrder / 1_000_000_000L));
-            sheet = Occurrence.flowSheet(ids.nextId(), run.taskId, clock.today(), run.slot,
-                    order, run.id, run.nextSheetSequence);
-            today.insertOccurrence(sheet);
-            changed = true;
-        }
-        if (offeredStep(run, sheet.id) == null) {
-            OccurrenceStep step = snapshots.fromFlow(snapshot, sheet.id,
-                    steps.occurrenceSteps(sheet.id).size());
-            steps.insertOccurrenceSteps(Collections.singletonList(step));
-            changed = true;
-        }
-        if (existingSheet) return changed;
-        StepFlowRun placed = run.offerOnSheet(sheet.id, run.nextSheetSequence, now)
-                .withState(StepFlowRunState.PENDING_START, null, now);
-        flows.updateFlowRun(placed);
-        return true;
-    }
-
-    private boolean legacyUnstarted(StepFlowRun run) {
-        if (run.currentPosition != 0 || (run.state != StepFlowRunState.WAITING_RESOURCE
-                && run.state != StepFlowRunState.OFFERED)) return false;
-        if (run.currentSheetOccurrenceId == null) return true;
-        OccurrenceStep step = offeredStep(run, run.currentSheetOccurrenceId);
-        return step == null || !step.done;
+        flows.updateFlowRun(existingExecution
+                ? run.offerExistingExecution(execution.id, now)
+                : run.offerExecution(execution.id, run.nextExecutionSequence, now));
     }
 
     private void activateAcquiredResources(String runId, int position, long now) {
@@ -468,16 +415,16 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
     }
 
     private String removeUntouchedOffer(StepFlowRun run) {
-        if (run.currentSheetOccurrenceId == null) return null;
-        Occurrence sheet = today.findOccurrence(run.currentSheetOccurrenceId);
-        if (sheet == null || sheet.state != OccurrenceState.OPEN) return null;
-        OccurrenceStep offered = offeredStep(run, sheet.id);
+        if (run.currentExecutionOccurrenceId == null) return null;
+        Occurrence execution = today.findOccurrence(run.currentExecutionOccurrenceId);
+        if (execution == null || execution.state != OccurrenceState.OPEN) return null;
+        OccurrenceStep offered = offeredStep(run, execution.id);
         if (offered != null && !offered.done) steps.deleteOccurrenceStep(offered.id);
-        if (steps.occurrenceSteps(sheet.id).isEmpty()) {
-            today.deleteOccurrence(sheet.id);
+        if (steps.occurrenceSteps(execution.id).isEmpty()) {
+            today.deleteOccurrence(execution.id);
             return null;
         }
-        return sheet.id;
+        return execution.id;
     }
 
     private OccurrenceStep offeredStep(StepFlowRun run, String occurrenceId) {
@@ -537,8 +484,8 @@ public final class FlowRuntimeCoordinator implements FlowProgression {
                 reserved, activated, released);
     }
 
-    private static boolean flowSheet(Occurrence occurrence) {
-        return occurrence != null && occurrence.kind == OccurrenceKind.FLOW_SHEET;
+    private static boolean flowExecution(Occurrence occurrence) {
+        return occurrence != null && occurrence.kind == OccurrenceKind.FLOW_STEP;
     }
 
     private static long safeAdd(long left, long right) {
