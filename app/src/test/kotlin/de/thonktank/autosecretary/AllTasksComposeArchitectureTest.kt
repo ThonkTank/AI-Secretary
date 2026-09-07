@@ -30,6 +30,13 @@ class AllTasksComposeArchitectureTest {
         assertTrue(screen.contains("allTasksDragContainer("))
         assertFalse(screen.contains("allTasksDragSource("))
         assertTrue(screen.contains("withFrameNanos"))
+        assertTrue(screen.contains("activeDropKey == row.key"))
+        assertTrue(screen.contains("AllTasksComposeFilterSheet("))
+        assertTrue(screen.contains("state.mode == AllTasksUiState.Mode.LIST"))
+        assertFalse(sources.values.any { it.contains("filtersExpanded") })
+        val rows = sources.getValue("AllTasksComposeRows.kt")
+        assertTrue(rows.contains("callbacks.onEditTask(item.task.id.value)"))
+        assertTrue(rows.contains("height(if (selected) 12.dp else 0.dp)"))
         assertTrue(sources.getValue("AllTasksComposeDispatcher.kt")
             .contains("callbacks.onMoveStep"))
     }

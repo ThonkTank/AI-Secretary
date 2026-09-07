@@ -20,7 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -45,7 +47,7 @@ internal fun AllTasksComposeRow(
     palette: DayPalette,
     dispatcher: AllTasksComposeDispatcher,
     callbacks: AllTasksComposeCallbacks,
-    dragActive: Boolean,
+    dropIndicator: Boolean,
     selectedSwapStep: String?,
     onSelectSwap: (String?) -> Unit,
     onOpenTaskMenu: (String) -> Unit,
@@ -54,11 +56,12 @@ internal fun AllTasksComposeRow(
     val modifier = rowModifier
         .fillMaxWidth()
         .testTag("all-tasks:row:${row.key}")
+        .dropIndicator(palette, dropIndicator)
     when (row.kind) {
         AllTasksRow.Kind.TASK_HEADER -> TaskHeaderRow(
             row, palette, callbacks, onOpenTaskMenu, modifier,
         )
-        AllTasksRow.Kind.STEP_TARGET -> StepTargetRow(row, palette, dragActive, modifier)
+        AllTasksRow.Kind.STEP_TARGET -> StepTargetRow(modifier, dropIndicator)
         AllTasksRow.Kind.STEP -> StepRow(
             row,
             palette,
@@ -70,7 +73,7 @@ internal fun AllTasksComposeRow(
         )
         AllTasksRow.Kind.STEP_ADD -> AddStepRow(row, palette, callbacks, modifier)
         AllTasksRow.Kind.SLOT_HEADER -> SlotHeaderRow(row, palette, modifier)
-        AllTasksRow.Kind.SCHEDULE_TARGET -> ScheduleTargetRow(row, palette, modifier)
+        AllTasksRow.Kind.SCHEDULE_TARGET -> ScheduleTargetRow(modifier, dropIndicator)
         AllTasksRow.Kind.SCHEDULE -> ScheduleRow(row, palette, dispatcher, modifier)
         AllTasksRow.Kind.EMPTY -> EmptyRow(row, state, palette, modifier)
     }
@@ -87,7 +90,8 @@ private fun TaskHeaderRow(
     val item = row.task
     val resources = LocalResources.current
     val meta = taskMeta(item)
-    val shape = if (item.expanded) leafShape(42.dp, 8.dp, 0.dp, 0.dp) else leafShape()
+    val shape = if (item.expanded) leafShape(28.dp, 12.dp, 0.dp, 0.dp)
+    else leafShape(28.dp, 12.dp, 28.dp, 12.dp)
     Column(
         modifier = modifier
             .leaf(palette, shape)
@@ -98,39 +102,54 @@ private fun TaskHeaderRow(
                     meta,
                 )
             }
-            .padding(start = 18.dp, top = 14.dp, end = 8.dp,
-                bottom = if (item.expanded) 0.dp else 12.dp),
+            .padding(start = 16.dp, top = 11.dp, end = 6.dp,
+                bottom = if (item.expanded) 0.dp else 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                AllTasksText(item.task.title, color(palette.ink), 22, serif = true)
+                AllTasksText(item.task.title, color(palette.ink), 19, serif = true)
                 AllTasksText(
                     meta,
                     color(palette.hint),
-                    14,
-                    Modifier.padding(top = 3.dp),
+                    13,
+                    Modifier.padding(top = 1.dp),
                     maxLines = 1,
                 )
             }
+            AllTasksActionText(
+                "✎",
+                palette,
+                { callbacks.onEditTask(item.task.id.value) },
+                Modifier
+                    .size(44.dp)
+                    .testTag("all-tasks:edit:${item.cardKey}")
+                    .semantics {
+                        contentDescription = resources.getString(
+                            R.string.a11y_edit_task,
+                            item.task.title,
+                        )
+                    },
+                minHeight = 44.dp,
+            )
             AllTasksActionText(
                 "⋮",
                 palette,
                 { onOpenTaskMenu(item.task.id.value) },
                 Modifier
-                    .size(48.dp)
+                    .size(44.dp)
                     .semantics {
                         contentDescription = resources.getString(
                             R.string.a11y_task_menu,
                             item.task.title,
                         )
                     },
-                minHeight = 48.dp,
+                minHeight = 44.dp,
             )
         }
         val steps = stepLine(item)
         Box(
             modifier = Modifier
-                .heightIn(min = 44.dp)
+                .heightIn(min = 36.dp)
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -149,34 +168,14 @@ private fun TaskHeaderRow(
                 },
             contentAlignment = Alignment.CenterStart,
         ) {
-            AllTasksText(steps, color(palette.ink2), 15)
+            AllTasksText(steps, color(palette.ink2), 14)
         }
     }
 }
 
 @Composable
-private fun StepTargetRow(
-    row: AllTasksRow,
-    palette: DayPalette,
-    dragActive: Boolean,
-    modifier: Modifier,
-) {
-    if (!dragActive) {
-        Spacer(modifier.height(0.dp))
-        return
-    }
-    val description = stringResource(R.string.a11y_step_drop_target)
-    Box(
-        modifier = modifier
-            .height(44.dp)
-            .leaf(palette, leafShape(0.dp, 0.dp, 0.dp, 0.dp))
-            .semantics { contentDescription = description },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(2.dp)
-            .background(color(palette.light)))
-    }
-}
+private fun StepTargetRow(modifier: Modifier, selected: Boolean) =
+    Spacer(modifier.height(if (selected) 12.dp else 0.dp))
 
 @Composable
 private fun StepRow(
@@ -292,35 +291,16 @@ private fun SlotHeaderRow(row: AllTasksRow, palette: DayPalette, modifier: Modif
     AllTasksText(
         slotLabel(row.slot),
         color(palette.muted),
-        17,
-        modifier.padding(start = 4.dp, top = 12.dp, bottom = 6.dp).semantics { heading() },
+        18,
+        modifier.padding(start = 4.dp, top = 16.dp, bottom = 5.dp).semantics { heading() },
         serif = true,
-        italic = true,
+        bold = true,
     )
 }
 
 @Composable
-private fun ScheduleTargetRow(row: AllTasksRow, palette: DayPalette, modifier: Modifier) {
-    val resources = LocalResources.current
-    Box(
-        modifier = modifier
-            .heightIn(min = 48.dp)
-            .semantics {
-                contentDescription = resources.getString(
-                    R.string.a11y_schedule_drop_target,
-                    slotLabelPlain(resources, row.slot),
-                )
-            }
-            .padding(start = 56.dp, end = 8.dp),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        AllTasksText(
-            stringResource(R.string.all_schedule_insert_target),
-            color(palette.muted),
-            14,
-        )
-    }
-}
+private fun ScheduleTargetRow(modifier: Modifier, selected: Boolean) =
+    Spacer(modifier.height(if (selected) 12.dp else 0.dp))
 
 @Composable
 private fun ScheduleRow(
@@ -357,8 +337,9 @@ private fun ScheduleRow(
     }
     Row(
         modifier = modifier
-            .leaf(palette, leafShape(36.dp, 8.dp, 36.dp, 8.dp))
-            .defaultMinSize(minHeight = 56.dp)
+            .padding(bottom = 7.dp)
+            .leaf(palette, leafShape(22.dp, 10.dp, 22.dp, 10.dp))
+            .defaultMinSize(minHeight = 54.dp)
             .semantics {
                 contentDescription = resources.getString(
                     R.string.a11y_schedule_row,
@@ -368,13 +349,13 @@ private fun ScheduleRow(
                 )
                 customActions = actions
             }
-            .padding(start = 8.dp, top = 4.dp, end = 10.dp, bottom = 4.dp),
+            .padding(start = 8.dp, top = 3.dp, end = 10.dp, bottom = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         AllTasksText("☰", color(palette.dot), 20, Modifier.width(48.dp))
         Column(Modifier.weight(1f)) {
-            AllTasksText(row.schedule.title, color(palette.ink), 20, serif = true)
-            AllTasksText(recurrenceLabel(row.schedule.recurrence), color(palette.hint), 14)
+            AllTasksText(row.schedule.title, color(palette.ink), 18, serif = true)
+            AllTasksText(recurrenceLabel(row.schedule.recurrence), color(palette.hint), 13)
         }
     }
 }
@@ -430,11 +411,6 @@ internal fun AllTasksComposeTaskMenu(
 ) {
     Column(modifier.leaf(palette, level = 1, shape = leafShape(8.dp, 24.dp, 8.dp, 24.dp))) {
         AllTasksActionText(
-            stringResource(R.string.task_edit), palette,
-            { onClose(); callbacks.onEditTask(item.task.id.value) },
-            Modifier.fillMaxWidth(), minHeight = 48.dp,
-        )
-        AllTasksActionText(
             stringResource(R.string.task_delete), palette,
             { onClose(); callbacks.onDeleteTask(item.task.id.value, item.task.title) },
             Modifier.fillMaxWidth(), minHeight = 48.dp,
@@ -451,7 +427,7 @@ private fun taskMeta(item: AllTasksUiState.TaskItem): String {
             it.format(DateTimeFormatter.ofPattern("dd.MM.")),
         )
     } ?: resources.getString(R.string.all_no_due)
-    val base = "${slotLabel(item.slot)} · ${recurrenceLabel(item.task.recurrence)} · $timing"
+    val base = "${recurrenceLabel(item.task.recurrence)} · $timing"
     return if (item.archived) "$base · ${stringResource(R.string.all_archived)}" else base
 }
 
@@ -490,3 +466,16 @@ private fun recurrenceLabelPlain(
             de.thonktank.autosecretary.domain.model.Recurrence.WEEKDAYS -> R.string.rhythm_weekdays
         },
     )
+
+private fun Modifier.dropIndicator(palette: DayPalette, visible: Boolean): Modifier {
+    if (!visible) return this
+    return drawWithContent {
+        drawContent()
+        val inset = 12.dp.toPx()
+        drawRect(
+            color = color(palette.light),
+            topLeft = Offset(inset, 0f),
+            size = Size((size.width - inset * 2).coerceAtLeast(0f), 3.dp.toPx()),
+        )
+    }
+}

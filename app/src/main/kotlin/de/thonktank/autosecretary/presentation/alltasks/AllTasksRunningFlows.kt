@@ -4,10 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -32,69 +30,48 @@ internal fun AllTasksRunningFlows(
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(bottom = 14.dp)
-            .leaf(palette, level = 3)
+            .padding(top = 12.dp)
+            .leaf(palette, level = 2, shape = leafShape(22.dp, 10.dp, 22.dp, 10.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 role = Role.Button,
                 onClick = onOpen,
             )
-            .padding(horizontal = 18.dp, vertical = 15.dp)
+            .padding(horizontal = 14.dp, vertical = 11.dp)
             .testTag("all-tasks:running-flows"),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             AllTasksText(
                 resources.getQuantityString(R.plurals.flow_runs_heading, runs.size, runs.size),
                 color(palette.ink),
-                20,
+                16,
                 Modifier.weight(1f),
                 serif = true,
-                bold = true,
             )
-            AllTasksText(runs.size.toString(), color(palette.accent), 16, bold = true)
+            AllTasksText("›", color(palette.accent), 22, bold = true)
         }
-        runs.take(3).forEach { run ->
-            Row(
-                Modifier.fillMaxWidth().padding(top = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AllTasksText(
-                    run.seedTitle,
-                    color(palette.ink2),
-                    16,
-                    Modifier.weight(.9f),
-                    bold = true,
-                )
-                Spacer(Modifier.width(12.dp))
-                AllTasksText(
-                    flowStatus(run, resources),
-                    color(palette.hint),
-                    14,
-                    Modifier.weight(1.1f),
-                    maxLines = 2,
-                )
-            }
+        runs.take(2).forEach { run ->
+            AllTasksText(
+                "${run.seedTitle} · ${flowStatus(run, resources)}",
+                color(palette.ink2),
+                14,
+                Modifier.fillMaxWidth().padding(top = 4.dp),
+                maxLines = 1,
+            )
         }
-        if (runs.size > 3) {
+        if (runs.size > 2) {
             AllTasksText(
                 resources.getQuantityString(
                     R.plurals.flow_runs_more,
-                    runs.size - 3,
-                    runs.size - 3,
+                    runs.size - 2,
+                    runs.size - 2,
                 ),
                 color(palette.muted),
-                14,
-                Modifier.padding(top = 8.dp),
+                13,
+                Modifier.padding(top = 3.dp),
             )
         }
-        AllTasksText(
-            resources.getString(R.string.flow_runs_manage),
-            color(palette.accent),
-            15,
-            Modifier.padding(top = 10.dp),
-            bold = true,
-        )
     }
 }
 

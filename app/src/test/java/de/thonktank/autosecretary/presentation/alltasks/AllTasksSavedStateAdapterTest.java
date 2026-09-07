@@ -31,14 +31,14 @@ public final class AllTasksSavedStateAdapterTest {
                 EnumSet.of(TaskSlot.MORNING, TaskSlot.EVENING),
                 EnumSet.of(Recurrence.DAILY, Recurrence.WEEKDAYS), 4);
         AllTasksPresentationState expected = new AllTasksPresentationState(filter,
-                AllTasksUiState.Mode.LIST, Collections.singleton(cardKey), false);
+                AllTasksUiState.Mode.LIST, Collections.singleton(cardKey));
 
         Bundle encoded = adapter.encode(expected);
         AllTasksPresentationState restored = adapter.decode(encoded);
 
         assertEquals(expected, restored);
         assertEquals(new HashSet<>(Arrays.asList("query", "status", "slots", "recurrences",
-                "weekday", "mode", "expanded_cards", "filters_expanded")),
+                "weekday", "mode", "expanded_cards")),
                 encoded.keySet());
         assertFalse(encoded.containsKey("expanded"));
         assertFalse(encoded.containsKey("dropdown"));
@@ -48,11 +48,11 @@ public final class AllTasksSavedStateAdapterTest {
     @Test public void legacyTaskExpansionKeyIsDeliberatelyIgnored() {
         Bundle legacy = new Bundle();
         legacy.putStringArrayList("expanded", new ArrayList<>(Collections.singleton("task")));
+        legacy.putBoolean("filters_expanded", false);
 
         AllTasksPresentationState restored = adapter.decode(legacy);
 
         assertTrue(restored.expandedCardKeys.isEmpty());
-        assertTrue(restored.filtersExpanded);
         assertEquals(AllTasksUiState.Mode.LIST, restored.mode);
     }
 

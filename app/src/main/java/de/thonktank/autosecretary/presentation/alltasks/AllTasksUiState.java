@@ -32,7 +32,6 @@ public final class AllTasksUiState {
     public final int weekday;
     public final Mode mode;
     public final Set<String> expandedCardKeys;
-    public final boolean filtersExpanded;
     public final List<TaskItem> tasks;
     public final List<ScheduleItem> schedule;
     /** Placement-card count after status, before time/rhythm/search filters. */
@@ -52,7 +51,6 @@ public final class AllTasksUiState {
         this.weekday = this.filter.weekday;
         this.mode = this.presentation.mode;
         this.expandedCardKeys = this.presentation.expandedCardKeys;
-        this.filtersExpanded = this.presentation.filtersExpanded;
         this.taskPoolSize = countTaskPool();
         this.schedulePoolSize = countSchedulePool();
         this.tasks = Collections.unmodifiableList(projectTasks());
@@ -95,10 +93,6 @@ public final class AllTasksUiState {
     public AllTasksUiState toggleExpanded(String cardKey) {
         return new AllTasksUiState(catalog, presentation.toggleExpanded(cardKey));
     }
-    public AllTasksUiState withFiltersExpanded(boolean value) {
-        return new AllTasksUiState(catalog, presentation.withFiltersExpanded(value));
-    }
-
     private AllTasksUiState withFilter(AllTasksFilter value) {
         return new AllTasksUiState(catalog, presentation.withFilter(value));
     }

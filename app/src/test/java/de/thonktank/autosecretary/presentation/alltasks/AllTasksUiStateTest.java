@@ -4,7 +4,6 @@ import de.thonktank.autosecretary.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
@@ -42,18 +41,17 @@ public final class AllTasksUiStateTest {
                                 () -> EnumSet.noneOf(FilterField.class))));
     }
 
-    @Test public void presentationOwnsModeExpansionAndFilterVisibilityByValue() {
+    @Test public void presentationOwnsModeAndExpansionByValue() {
         String cardKey = AllTasksUiState.cardKey("gym", TaskSlot.MORNING);
         AllTasksPresentationState first = AllTasksPresentationState.defaults()
                 .withFilter(AllTasksFilter.defaults().withQuery("Gym"))
-                .toggleExpanded(cardKey).withFiltersExpanded(false);
+                .toggleExpanded(cardKey);
         AllTasksPresentationState same = new AllTasksPresentationState(
                 AllTasksFilter.defaults().withQuery("Gym"), AllTasksUiState.Mode.LIST,
-                Collections.singleton(cardKey), false);
+                Collections.singleton(cardKey));
 
         assertEquals(first, same);
         assertEquals(first.hashCode(), same.hashCode());
-        assertNotEquals(first, same.withFiltersExpanded(true));
         assertFalse(first.expandedCardKeys.isEmpty());
     }
 

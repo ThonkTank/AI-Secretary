@@ -12,7 +12,6 @@ data class AllTasksComposeCallbacks(
     val onRecurrences: (Set<Recurrence>) -> Unit,
     val onWeekday: (Int) -> Unit,
     val onMode: (AllTasksUiState.Mode) -> Unit,
-    val onFiltersExpanded: (Boolean) -> Unit,
     val onResetFilters: () -> Unit,
     val onToggleTask: (String) -> Unit,
     val onEditTask: (String) -> Unit,
