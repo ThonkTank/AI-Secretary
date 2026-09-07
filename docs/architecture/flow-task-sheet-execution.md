@@ -251,3 +251,41 @@ Wiederverwendungsbeleg und `instrumentation-gate` als Voraussetzungen, Publish b
 und Upgrade. `git diff --check` ist grün. Die Korrektur deckt damit die beobachtete Abweichung
 vollständig ab und ändert weder Beweisregeln noch Paket-, Upgrade- oder Publish-Inhalte.
 Remote-Gates und der tatsächliche Releaseabschluss stehen weiterhin aus.
+
+### Korrekturdurchlauf B.2 – explizite Auswertung nach übersprungenen Vorfahren
+
+Auslöser: Der Korrektur-PR #332 bestand erneut die vollständige PR-Matrix und wurde als
+`ffa5e6535221874136d7064fd5bbc63469557600` nach `main` übernommen. Im exakten Main-Lauf
+`34109759663` waren Schnellpfad, `instrumentation-gate` und Package erfolgreich; Upgrade und
+Publish blieben dennoch übersprungen. Release 0.2.156 existiert weiterhin nicht.
+
+Präzisierter Befund: GitHubs Standardauswertung propagiert übersprungene Vorfahren auch durch
+die erfolgreiche Package-Stufe, solange der nachgelagerte Job seine Bedingung nicht ausdrücklich
+mit `always()` auswertet. Nur die direkte Abhängigkeit zu entfernen war daher notwendig, aber
+nicht hinreichend.
+
+Korrekturplan vor Implementierung:
+
+1. Upgrade mit `always()` auswerten und zusätzlich explizit `needs.package.result == 'success'`
+   sowie `already_published != 'true'` verlangen.
+2. Publish ebenfalls mit `always()` auswerten und explizit erfolgreiche Package- und
+   Upgrade-Ergebnisse sowie `already_published != 'true'` verlangen.
+3. Den Workflow-Vertrag um diese vollständigen Resultat-Guards erweitern und die strukturelle
+   Kette lokal prüfen.
+4. Erneut eigener PR, vollständige PR-Matrix, Squash-Merge und exakter Main-Lauf. Phase B endet
+   erst mit drei erfolgreichen Upgradejobs, erfolgreichem Publish und dem auf denselben Main-SHA
+   veröffentlichten Release 0.2.156.
+
+Lokale Testkorrektur B.2.1: Der erste Vertragslauf scheiterte ausschließlich mit einem `NameError`,
+weil die neue `publish`-Sektionsvariable durch einen zu breiten Patch-Anker in einer benachbarten
+Testmethode angelegt worden war. Vor der Korrektur wurde kein Commit oder Remote-Lauf gestartet.
+Die Variable wird in die tatsächlich erweiterte Testmethode verschoben; Produktworkflow und
+Abnahmekriterien bleiben unverändert.
+
+Lokale Validierung und Audit B.2: Nach der Testkorrektur sind erneut 24 CI-Skript- und 24
+Release-/Workflow-Vertragstests grün. PyYAML bestätigt für Upgrade `always()`, ausschließlich
+Package als direkten Bedarf und ein explizit erfolgreiches Package-Resultat. Für Publish
+bestätigt es `always()`, Package und Upgrade als direkte Bedarfe sowie beide explizit
+erfolgreichen Resultate. `already_published`, Main-Ref und Nicht-PR-Grenzen bleiben erhalten;
+`git diff --check` ist grün. Damit ist die aus beiden realen Main-Läufen abgeleitete Lücke im
+Plan geschlossen. Remote-Gates und der tatsächliche Releaseabschluss stehen weiterhin aus.
