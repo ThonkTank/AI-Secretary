@@ -289,3 +289,138 @@ bestätigt es `always()`, Package und Upgrade als direkte Bedarfe sowie beide ex
 erfolgreichen Resultate. `already_published`, Main-Ref und Nicht-PR-Grenzen bleiben erhalten;
 `git diff --check` ist grün. Damit ist die aus beiden realen Main-Läufen abgeleitete Lücke im
 Plan geschlossen. Remote-Gates und der tatsächliche Releaseabschluss stehen weiterhin aus.
+
+### Remote-Abschluss Phase B
+
+PR #333 bestand Quality, alle sechs normalen und animationsaktiven Gerätepfade sowie
+`instrumentation-gate` und `pull-request-gate`. Er wurde als
+`e530f4c64cd10965332a492cd178dd17e5c7217d` per Squash nach `main` übernommen. Der exakte
+Main-Lauf `34112140336` bewies danach den vollständigen Zielpfad:
+
+- `release_scope` und `instrumentation-gate` erfolgreich;
+- Quality und beide dreifachen, bereits inhaltsgleich geprüften Instrumentierungsmatrizen
+  übersprungen;
+- Package auf dem exakten Main-SHA erfolgreich;
+- Upgrades auf API 26, 35 und 37 jeweils erfolgreich;
+- Publish erfolgreich.
+
+Release `forest-android-1015601` / 0.2.156 ist öffentlich und nicht als Vorabversion markiert.
+Tag, Release-Ziel und `release-metadata.json` nennen alle
+`e530f4c64cd10965332a492cd178dd17e5c7217d`; APK-Größe und SHA-256 stimmen zwischen Asset und
+Metadaten überein. Phase B ist damit einschließlich der beiden protokollierten
+Korrekturdurchläufe abgeschlossen.
+
+## Phase C – redundante Satztexte entfernen
+
+Status: in Arbeit
+
+### Vorprüfung
+
+- Ausgangspunkt ist `origin/main` auf `e530f4c6`, identisch mit dem abgeschlossenen
+  Phase-B-Stand. Die Arbeit läuft im separaten Worktree
+  `/tmp/autosecretary-flow-target-p2` auf `codex/flow-target-p2-set-dots`.
+- `FocusStepRowView` erzeugt oberhalb von `SetDotsView` ein eigenes `progressHeader` mit zwei
+  `TextView`s. Es berechnet dort lediglich die sichtbaren Texte `Satz x von y` und
+  `x/y erledigt`; die Fachaktion, Satzdaten und Editorauswahl liegen nicht in diesem Header.
+- `SetDotsView` besitzt bereits die vollständige visuelle Semantik: gefüllte bestätigte Punkte,
+  hervorgehobener aktueller Punkt und Auswahlring für einen bearbeiteten früheren Satz.
+- TalkBack bleibt unabhängig von den sichtbaren Texten: `SetDotsView` setzt eine vollständige
+  Inhaltsbeschreibung und einen numerischen `ProgressBar`-Bereich. `SetDotsViewTest` prüft
+  Fortschritt, aktuellen Satz, ausgewählten Satz und fehlende Klickaktion bereits direkt.
+- Betroffene visuelle Baselines sind die satzhaltigen Fokus-Goldens und die fünf responsive
+  Satzpunkt-Goldens. Der kontrollierte Updatevertrag verlangt zuerst einen fehlgeschlagenen Lauf
+  mit Expected/Actual/Diff-Triplets und erst danach den expliziten Komponenten-Update-Lauf.
+
+### Phasenplan
+
+Ziel: Die Punkte tragen allein die sichtbare Fortschrittsinformation; es gibt keinen sichtbaren
+Ersatztext. Auswahl, Eingabe, Aktionen und Accessibility bleiben unverändert.
+
+Implementierungsfolge:
+
+1. `progressHeader`, `progressPosition` und `progressDone` vollständig aus Konstruktion und
+   Binding von `FocusStepRowView` entfernen.
+2. Die dadurch unbenutzten Strings `training_set_position` und `training_sets_done` entfernen.
+3. Den vorhandenen View-Test um normale Satzprogression und Bearbeitung eines früheren Satzes
+   ergänzen: Beide redundanten Texte fehlen sichtbar, Punkte bleiben sichtbar und die
+   Accessibility-Beschreibung beziehungsweise der Auswahlzustand bleibt erhalten.
+4. Schnelle UI-, Accessibility- und Satzpunkttests ausführen. Danach die betroffenen Golden-
+   Abweichungen ohne Update erzeugen und die Expected/Actual/Diff-Artefakte visuell prüfen.
+5. Nur nach dieser Prüfung die Fokus-Goldens mit `UPDATE_FOCUS_TASK_GOLDENS=1` aktualisieren und
+   denselben Testsatz erneut ohne Update grün ausführen.
+6. Vollständiges lokales Seriengate sowie Plan-/Roadmap-Audit ausführen. Danach eigener PR,
+   vollständige PR-Matrix, Squash-Merge und exakter Main-Releaseweg.
+
+Abnahmekriterien:
+
+- In normaler Satzprogression und bei Korrektur eines früheren Satzes existieren weder
+  `Satz x von y` noch `x/y erledigt` als sichtbare Textzeilen.
+- Aktueller, bestätigter und ausgewählter Satz bleiben über die Punkte eindeutig dargestellt.
+- TalkBack-Inhaltsbeschreibung und numerischer Fortschrittsbereich bleiben vollständig.
+- Keine Eingabe-, Menü-, Timer-, Trainingsassistent- oder Ablaufdarstellung wird fachlich
+  geändert.
+
+### Korrekturdurchlauf C.1 – vollständige Zeilenentfernung und lokale JDK-Laufzeit
+
+Der erste fokussierte Testbefehl startete nicht. Die Vorprüfung fand noch drei späte
+`grainOcclusions()`-Referenzen auf den entfernten Header; außerdem enthält der historische Pfad
+`/usr/lib/jvm/java-21-openjdk` auf diesem Host keine Binärdateien mehr. Es wurde kein Test und
+kein Golden ausgeführt oder verändert.
+
+Korrekturplan vor Fortsetzung: Die drei Grain-Referenzen werden ebenfalls entfernt, weil die
+nicht mehr existierenden Texte auch keine Halo-Aussparung mehr besitzen dürfen. Die Tests laufen
+mit dem installierten vollständigen JDK 25 unter `/usr/lib/jvm/java-25-openjdk`; das Android-SDK
+bleibt `/home/aaron/Android/Sdk`. Produktziel und Testauswahl bleiben unverändert.
+
+### Korrekturdurchlauf C.2 – visueller Beleg für Satzkorrektur
+
+Der erste kontrolliert rote Golden-Lauf erzeugte Expected/Actual/Diff-Triplets für vier
+satzhaltige Fokusansichten und fünf responsive Satzpunktvarianten; die Ansicht ohne Satzmenge
+blieb pixelgleich. Die Sichtprüfung zeigt ausschließlich die beabsichtigte Entfernung beider
+Textzeilen und das geschlossene Aufrücken von Punkten und Eingabefeldern ohne Beschnitt oder
+Überlagerung.
+
+Audit-Abweichung: Der neue View-Test prüft die Korrektur eines früheren Satzes semantisch über
+Auswahlbeschreibung und Fortschrittswert, die bestehende Golden-Matrix bindet jedoch immer den
+normalen Eingabezustand. Der erhaltene Auswahlring wäre damit nicht pixelbasiert belegt.
+
+Korrekturplan vor Fortsetzung: Die Satzpunkt-Golden-Matrix erhält einen eigenen Fall mit drei
+Sätzen und ausgewähltem erstem, bereits gespeichertem Satz. Zuerst wird ohne Update das neue
+Actual erzeugt und visuell geprüft; erst danach werden dieser neue Golden und die neun bereits
+geprüften Diffs gemeinsam über den geschützten Komponenten-Updatepfad übernommen.
+
+### Lokale Validierung Phase C
+
+- Der neue Auswahlring-Golden lief zunächst kontrolliert rot, weil noch keine Baseline bestand.
+  Das erzeugte Actual wurde bei Originalauflösung geprüft: erster gespeicherter Satz mit
+  Auswahlring, zweiter gespeicherter Satz gefüllt, aktueller dritter Satz separat markiert;
+  keine redundanten Texte, kein Beschnitt und keine Überlagerung.
+- Nach dem expliziten Komponenten-Update sind die neun bereits geprüften Fokus-/Satzpunkt-
+  Baselines und der neue Auswahlring-Golden übernommen. Der anschließende Lauf beider Golden-
+  Klassen ohne Update ist grün. Die Ansicht ohne Satzmenge blieb pixelidentisch und unverändert.
+- Die vollständige betroffene UI-Gruppe aus `FocusTaskViewTest`, beiden Golden-Klassen,
+  `SetDotsViewTest` und der Accessibility-Layoutmatrix ist seriell grün.
+- Das breite lokale Seriengate aus Domain-/Today-Kompilierung, allen
+  `testInstrumentationUnitTest`-Tests, `lintDebug`, Debug-APK, Instrumentierungs-APK und
+  Release-APK ist grün: 566 Tests, keine Fehler oder Fehlschläge, ein vorgesehener Skip.
+- Die CI-Skript-Suite und die Release-/Workflow-Vertragssuite sind mit jeweils 24 Tests grün.
+  `git diff --check` meldet keine Abweichung; die entfernten View-Felder und String-Ressourcen
+  sind im Produkt- und Testquellbaum nicht mehr referenziert.
+
+### Plan-Audit Phase C
+
+Alle sechs geplanten Schritte sind im Diff und in den Belegen abgedeckt. Konstruktion, Binding
+und Grain-Aussparungen des redundanten Headers sind entfernt; die unbenutzten Texte sind aus den
+Ressourcen verschwunden. Ein View-Test deckt normalen Fortschritt und die Korrektur eines
+früheren Satzes semantisch ab. Die kontrolliert aktualisierte Bildmatrix deckt helle und dunkle
+Darstellung, beide Zielbreiten, erhöhte Schriftgrößen, Punktumbruch sowie den Auswahlring ab.
+Eingabefelder, Satzdaten, Aktionen, Timer und Trainingsassistent wurden fachlich nicht verändert.
+
+### Roadmap-Audit Phase C
+
+Die Phase entspricht vollständig dem isolierten Phase-C-Schnitt: Es existiert keine sichtbare
+Fortschrittszeile mehr; bestätigte, aktuelle und ausgewählte Sätze bleiben über die Punkte
+unterscheidbar; TalkBack-Beschreibung und numerischer Fortschrittsbereich bleiben erhalten.
+Die visuelle Abnahme und das vollständige lokale Gate sind abgeschlossen. Es besteht keine
+bekannte Roadmap-Diskrepanz. Pull-Request-Matrix, Squash-Merge und der exakte Main-Releaseweg
+stehen noch aus; bis dahin bleibt Phase C `in Arbeit`.

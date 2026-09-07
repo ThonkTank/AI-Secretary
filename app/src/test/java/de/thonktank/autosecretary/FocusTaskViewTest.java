@@ -159,6 +159,40 @@ public final class FocusTaskViewTest {
         assertEquals(1, adjustment.value);
     }
 
+    @Test public void setDotsCarryVisibleProgressWithoutRedundantText() {
+        Context context = ApplicationProvider.getApplicationContext();
+        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
+        FocusStepUiModel step = FocusTaskFixtures.step("step-sets", "Beinpresse")
+                .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
+                        3, 12, Collections.singletonList(10))).build();
+        FocusStepRowView row = new FocusStepRowView(context);
+
+        row.bind(FocusStepRowUiModel.expanded(step), palette, RepetitionInputState.idle(),
+                TimerManager.Snapshot.empty(), event -> { });
+
+        List<String> progressTexts = visibleTexts(row);
+        assertFalse(progressTexts.contains("Satz 2 von 3"));
+        assertFalse(progressTexts.contains("1/3 erledigt"));
+        SetDotsView dots = row.findViewById(R.id.set_dots);
+        assertEquals(View.VISIBLE, dots.getVisibility());
+        assertTrue(dots.getContentDescription().toString()
+                .contains("1 von 3 Sätzen abgeschlossen"));
+        assertTrue(dots.getContentDescription().toString().contains("Satz 2 ist aktuell"));
+
+        row.bind(FocusStepRowUiModel.expanded(step), palette,
+                RepetitionInputState.idle().edit(step, 0), TimerManager.Snapshot.empty(),
+                event -> { });
+
+        List<String> correctionTexts = visibleTexts(row);
+        assertFalse(correctionTexts.contains("Satz 1 von 3"));
+        assertFalse(correctionTexts.contains("1/3 erledigt"));
+        assertTrue(dots.getContentDescription().toString()
+                .contains("Satz 1 mit 10 Wiederholungen ausgewählt"));
+        AccessibilityNodeInfo info = dots.createAccessibilityNodeInfo();
+        assertEquals(1f, info.getRangeInfo().getCurrent(), 0f);
+        info.recycle();
+    }
+
     @Test public void quantitativeStepOffersTheTrailingFinishForTodayMenu() {
         Context context = ApplicationProvider.getApplicationContext();
         FocusStepUiModel step = FocusTaskFixtures.step("step-1", "Beinpresse")
