@@ -48,8 +48,19 @@ public final class SetDotsGoldenRobolectricTest {
         if (first != null) throw first;
     }
 
+    @Test public void selectedEarlierSetKeepsTheCorrectionRing() throws Exception {
+        verify(3, 412, 1f, DayPalette.Mode.LIGHT, 0,
+                "set-dots-selected-3-412dp-10-light");
+    }
+
     private static void verify(int sets, int widthDp, float fontScale,
                                DayPalette.Mode mode) throws Exception {
+        verify(sets, widthDp, fontScale, mode, -1, null);
+    }
+
+    private static void verify(int sets, int widthDp, float fontScale,
+                               DayPalette.Mode mode, int selectedIndex,
+                               String explicitName) throws Exception {
         Context base = ApplicationProvider.getApplicationContext();
         Configuration configuration = new Configuration(base.getResources().getConfiguration());
         configuration.screenWidthDp = widthDp;
@@ -64,7 +75,9 @@ public final class SetDotsGoldenRobolectricTest {
                 .build();
         FocusStepRowView row = new FocusStepRowView(context);
         row.setBackgroundColor(palette.leaf1);
-        row.bind(FocusStepRowUiModel.expanded(step), palette, RepetitionInputState.idle(),
+        RepetitionInputState input = selectedIndex < 0 ? RepetitionInputState.idle()
+                : RepetitionInputState.idle().edit(step, selectedIndex);
+        row.bind(FocusStepRowUiModel.expanded(step), palette, input,
                 TimerManager.Snapshot.empty(), event -> { });
         int width = Math.round((widthDp - 24) * context.getResources()
                 .getDisplayMetrics().density);
@@ -75,8 +88,8 @@ public final class SetDotsGoldenRobolectricTest {
         Bitmap actual = Bitmap.createBitmap(width, row.getMeasuredHeight(),
                 Bitmap.Config.ARGB_8888);
         row.draw(new Canvas(actual));
-        String name = "set-dots-" + sets + '-' + widthDp + "dp-"
-                + Math.round(fontScale * 10) + '-' + mode.name().toLowerCase();
+        String name = explicitName == null ? "set-dots-" + sets + '-' + widthDp + "dp-"
+                + Math.round(fontScale * 10) + '-' + mode.name().toLowerCase() : explicitName;
         GoldenAssertions.compare(SetDotsGoldenRobolectricTest.class,
                 "/golden/focus-task/" + name + ".png",
                 new File("src/test/resources/golden/focus-task", name + ".png"),

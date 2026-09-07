@@ -480,8 +480,6 @@
     <string name="content_sets_progress">%1$d von %2$d Sätzen abgeschlossen</string>
     <string name="content_set_current">Satz %1$d ist aktuell</string>
     <string name="content_set_selected">Satz %1$d mit %2$d Wiederholungen ausgewählt</string>
-    <string name="training_set_position">Satz %1$d von %2$d</string>
-    <string name="training_sets_done">%1$d/%2$d erledigt</string>
     <string name="training_repetitions_value">%1$d Wdh.</string>
     <string name="training_edit_repetitions">Wiederholungen</string>
     <string name="training_edit_load">Gewicht</string>

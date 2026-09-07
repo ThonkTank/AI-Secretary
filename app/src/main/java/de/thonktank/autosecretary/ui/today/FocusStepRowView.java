@@ -42,9 +42,6 @@ public final class FocusStepRowView extends LinearLayout {
     private final TextView note;
     private final LinearLayout controls;
     private final RepStepperView singleStepper;
-    private final LinearLayout progressHeader;
-    private final TextView progressPosition;
-    private final TextView progressDone;
     private final SetDotsView dots;
     private final EditorFlowLayout values;
     private final TextLinkView repetitionsValue;
@@ -125,15 +122,6 @@ public final class FocusStepRowView extends LinearLayout {
         controls.setOrientation(VERTICAL);
         singleStepper = new RepStepperView(context);
         controls.addView(singleStepper, new LinearLayout.LayoutParams(-2, style.dp(44)));
-        progressHeader = new LinearLayout(context);
-        progressHeader.setGravity(Gravity.CENTER_VERTICAL);
-        progressHeader.setPadding(0, 0, style.dp(16), 0);
-        progressPosition = style.sans("", 15, 0, false);
-        progressDone = style.sans("", 15, 0, true);
-        progressDone.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        progressHeader.addView(progressPosition, new LinearLayout.LayoutParams(0, -2, 1));
-        progressHeader.addView(progressDone, new LinearLayout.LayoutParams(-2, -2));
-        controls.addView(progressHeader, new LinearLayout.LayoutParams(-1, -2));
         dots = new SetDotsView(context);
         controls.addView(dots, new LinearLayout.LayoutParams(-1, -2));
         values = new EditorFlowLayout(context);
@@ -271,19 +259,8 @@ public final class FocusStepRowView extends LinearLayout {
             singleStepper.setVisibility(sets ? GONE : VISIBLE);
             singleStepper.bind(sets ? 0 : input.valueFor(step), palette, sets ? null
                     : delta -> events.emit(TodayAction.adjustRepetition(step.id, delta)));
-            progressHeader.setVisibility(sets ? VISIBLE : GONE);
             dots.setVisibility(sets ? VISIBLE : GONE);
             if (sets) {
-                int completed = progress.repetitions.size();
-                int position = editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber();
-                progressPosition.setText(getContext().getString(
-                        R.string.training_set_position, position, progress.slotCount));
-                progressDone.setText(getContext().getString(
-                        R.string.training_sets_done, completed, progress.slotCount));
-                progressPosition.setTextColor(palette.ink2);
-                progressDone.setTextColor(palette.ink);
-                WoodGrainView.applyTextHalo(progressPosition, palette.leaf1);
-                WoodGrainView.applyTextHalo(progressDone, palette.leaf1);
                 dots.bind(step.id, progress.slotCount, progress.repetitions,
                         editingIndex, palette);
                 bindValueControls(step, progress, input, palette, events);
@@ -296,7 +273,6 @@ public final class FocusStepRowView extends LinearLayout {
         } else {
             singleStepper.setVisibility(GONE);
             singleStepper.bind(0, palette, null);
-            progressHeader.setVisibility(GONE);
             dots.setVisibility(GONE);
             values.setVisibility(GONE);
             inlineEditor.setVisibility(GONE);
@@ -647,10 +623,6 @@ public final class FocusStepRowView extends LinearLayout {
         if (controls.getVisibility() == VISIBLE) {
             if (singleStepper.getVisibility() == VISIBLE)
                 views.addAll(singleStepper.grainOcclusions());
-            if (progressHeader.getVisibility() == VISIBLE) {
-                views.add(GrainOcclusion.text(progressPosition));
-                views.add(GrainOcclusion.text(progressDone));
-            }
             if (dots.getVisibility() == VISIBLE) views.add(GrainOcclusion.bounds(dots));
             if (repetitionsValue.getVisibility() == VISIBLE)
                 views.add(GrainOcclusion.text(repetitionsValue));
