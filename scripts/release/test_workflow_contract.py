@@ -72,6 +72,9 @@ PREVIEW_SDK_RUNNER = (
 UPGRADE_RUNNER = (ROOT / "scripts" / "ci" / "run-upgrade-test.sh").read_text(
     encoding="utf-8"
 )
+REUSE_PR_VERIFICATION = (
+    ROOT / "scripts" / "ci" / "reuse_pr_verification.py"
+).read_text(encoding="utf-8")
 UPGRADE_INSTRUMENTATION = (
     ROOT
     / "app"
@@ -380,6 +383,8 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("quality_required:", release_scope)
         self.assertIn("instrumentation_required:", release_scope)
         self.assertIn("release_required:", release_scope)
+        self.assertIn("reuse_pr_verification:", release_scope)
+        self.assertIn("scripts/ci/reuse_pr_verification.py", release_scope)
         self.assertIn("python3 scripts/ci/change_scope.py", release_scope)
         self.assertNotIn("app_changed", WORKFLOW)
         self.assertIn("outputs.quality_required == 'true'", quality)
@@ -389,6 +394,44 @@ class WorkflowContractTest(unittest.TestCase):
         )
         self.assertNotIn("github.event_name != 'pull_request'", instrumentation)
         self.assertIn("outputs.release_required == 'true'", package)
+
+    def test_main_reuses_only_content_identical_green_product_pr_verification(self):
+        release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
+            "\n  quality:", 1
+        )[0]
+        quality = WORKFLOW.split("\n  quality:", 1)[1].split(
+            "\n  instrumentation:", 1
+        )[0]
+        instrumentation = WORKFLOW.split("\n  instrumentation:", 1)[1].split(
+            "\n  animation-instrumentation:", 1
+        )[0]
+        animation = WORKFLOW.split("\n  animation-instrumentation:", 1)[1].split(
+            "\n  instrumentation-gate:", 1
+        )[0]
+        gate = WORKFLOW.split("\n  instrumentation-gate:", 1)[1].split(
+            "\n  pr-gate:", 1
+        )[0]
+        package = WORKFLOW.split("\n  package:", 1)[1].split("\n  upgrade:", 1)[0]
+
+        self.assertIn("actions: read", release_scope)
+        self.assertIn("pull-requests: read", release_scope)
+        self.assertIn("github.event_name == 'push'", release_scope)
+        self.assertIn("github.ref == 'refs/heads/main'", release_scope)
+        self.assertIn("--release-required", release_scope)
+        for job in (quality, instrumentation, animation):
+            self.assertIn(
+                "outputs.reuse_pr_verification != 'true'", job
+            )
+        self.assertIn("REUSE_PR_VERIFICATION", gate)
+        self.assertIn("needs.quality.result == 'success'", package)
+        self.assertIn("outputs.reuse_pr_verification == 'true'", package)
+        self.assertIn('REQUIRED_JOBS = ("quality", "instrumentation-gate", '
+                      '"pull-request-gate")', REUSE_PR_VERIFICATION)
+        self.assertIn('event_name != "push"', REUSE_PR_VERIFICATION)
+        self.assertIn('ref != "refs/heads/main"', REUSE_PR_VERIFICATION)
+        self.assertIn('pull.get("merge_commit_sha") == main_sha', REUSE_PR_VERIFICATION)
+        self.assertIn('head_trees.get(head_sha) != main_tree', REUSE_PR_VERIFICATION)
+        self.assertIn('ReuseDecision.denied("evidence_unavailable")', REUSE_PR_VERIFICATION)
 
     def test_signing_alias_and_passwords_are_independent_inputs(self):
         self.assertIn("SIGNING_KEY_ALIAS: ${{ secrets.KEYSTORE_ALIAS || 'release' }}", WORKFLOW)
