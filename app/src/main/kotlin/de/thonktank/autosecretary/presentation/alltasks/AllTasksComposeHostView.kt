@@ -34,7 +34,7 @@ class AllTasksComposeHostView @JvmOverloads constructor(
     private var actions: AllTasksActionSink? = null
     private var transientEpoch by mutableIntStateOf(0)
     private var dragSourceKey by mutableStateOf<String?>(null)
-    private var forcedOpenFilter by mutableStateOf<AllTasksFilterMenu?>(null)
+    private var forcedFilterSheet by mutableStateOf(false)
     private var flowRuns by mutableStateOf<List<FlowRunSummary>>(emptyList())
     private var openFlowRuns: Runnable? = null
 
@@ -63,8 +63,8 @@ class AllTasksComposeHostView @JvmOverloads constructor(
         dragSourceKey = key
     }
 
-    fun openFilterForTest(name: String?) {
-        forcedOpenFilter = name?.let(AllTasksFilterMenu::valueOf)
+    fun openFilterSheetForTest(open: Boolean) {
+        forcedFilterSheet = open
     }
 
     fun runningFlowCountForTest(): Int = flowRuns.size
@@ -94,7 +94,7 @@ class AllTasksComposeHostView @JvmOverloads constructor(
                 palette = palette,
                 callbacks = callbacks(),
                 dragSourceKey = dragSourceKey,
-                forcedOpenFilter = forcedOpenFilter,
+                forcedFilterSheet = forcedFilterSheet,
                 flowRuns = flowRuns,
                 onOpenFlowRuns = { openFlowRuns?.run() },
             )
@@ -108,7 +108,6 @@ class AllTasksComposeHostView @JvmOverloads constructor(
         onRecurrences = { emit(AllTasksAction.recurrencesChanged(it)) },
         onWeekday = { emit(AllTasksAction.weekdayChanged(it)) },
         onMode = { emit(AllTasksAction.modeChanged(it)) },
-        onFiltersExpanded = { emit(AllTasksAction.filtersExpandedChanged(it)) },
         onResetFilters = { emit(AllTasksAction.resetFilters()) },
         onToggleTask = { emit(AllTasksAction.cardToggled(it)) },
         onEditTask = { emit(AllTasksAction.editTask(TaskId.of(it))) },

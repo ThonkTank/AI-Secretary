@@ -11,7 +11,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
@@ -38,17 +37,16 @@ class AllTasksComposeInstrumentationTest {
         compose.onNodeWithText("Morgenroutine").assertDoesNotExist()
 
         compose.onNodeWithTag("all-tasks:search").performTextReplacement("")
-        compose.onNodeWithTag("all-tasks:filter:slots").performClick()
-        compose.onNodeWithTag("all-tasks:dropdown:slots").assertExists()
-        compose.onNodeWithText("Abend").performClick()
+        compose.onNodeWithTag("all-tasks:filters-button").performClick()
+        compose.onNodeWithTag("all-tasks:filter-sheet").assertExists()
+        compose.onNodeWithTag("all-tasks:filter:slot:EVENING").performClick()
         compose.waitUntil { compose.activity.state.slots == setOf(TaskSlot.EVENING) }
         compose.onNodeWithText("Bett machen").assertDoesNotExist()
-        compose.onNodeWithTag("all-tasks:overlay")
-            .performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithTag("all-tasks:filter-sheet:done").performClick()
 
-        compose.onNodeWithText("Sortieren").performClick()
+        compose.onNodeWithTag("all-tasks:mode").performClick()
         compose.waitUntil { compose.activity.state.mode == AllTasksUiState.Mode.SORT }
-        compose.onNodeWithText("Aufgaben").assertExists()
+        compose.onNodeWithText("Fertig").assertExists()
     }
 
     @Test
@@ -84,7 +82,7 @@ class AllTasksComposeInstrumentationTest {
     }
 
     @Test
-    fun dragTargetsAndDropMappingUseTheProjectedStableKeys() {
+    fun compactDragPresentationKeepsStableDropMappingWithoutPermanentTargetRows() {
         val expanded = AllTasksComposeFixture.state()
             .toggleExpanded(AllTasksUiState.cardKey("morning", TaskSlot.MORNING))
             .toggleExpanded(AllTasksUiState.cardKey("bed", TaskSlot.MORNING))
@@ -95,11 +93,8 @@ class AllTasksComposeInstrumentationTest {
             )
         }
         compose.waitForIdle()
-        assertTrue(
-            compose.onAllNodesWithContentDescription(
-                "Schritt an dieser Position ablegen.",
-            ).fetchSemanticsNodes().isNotEmpty(),
-        )
+        assertTrue(compose.onAllNodesWithText("Schritt hier einfügen")
+            .fetchSemanticsNodes().isEmpty())
 
         var handled = false
         compose.runOnUiThread {
@@ -128,11 +123,8 @@ class AllTasksComposeInstrumentationTest {
         source.performTouchInput { down(center) }
         compose.mainClock.advanceTimeBy(longPressDurationMillis())
         compose.waitForIdle()
-        assertTrue(
-            compose.onAllNodesWithContentDescription(
-                "Schritt an dieser Position ablegen.",
-            ).fetchSemanticsNodes().isNotEmpty(),
-        )
+        assertTrue(compose.onAllNodesWithText("Schritt hier einfügen")
+            .fetchSemanticsNodes().isEmpty())
         val sourceBounds = source.fetchSemanticsNode().boundsInRoot
         val targetCenter = compose.onNodeWithTag(
             "all-tasks:row:step:morning|MORNING:morning-step-1",
@@ -222,13 +214,13 @@ class AllTasksComposeInstrumentationTest {
             "Schritt zum Tauschen ausgewählt.",
             substring = true,
         ).assertExists()
-        compose.onNodeWithTag("all-tasks:filter:slots").performClick()
-        compose.onNodeWithTag("all-tasks:dropdown:slots").assertExists()
+        compose.onNodeWithTag("all-tasks:filters-button").performClick()
+        compose.onNodeWithTag("all-tasks:filter-sheet").assertExists()
 
         compose.activityRule.scenario.recreate()
         compose.waitForIdle()
 
-        compose.onNodeWithTag("all-tasks:dropdown:slots").assertDoesNotExist()
+        compose.onNodeWithTag("all-tasks:filter-sheet").assertDoesNotExist()
         compose.onNodeWithContentDescription(
             "Schritt zum Tauschen ausgewählt.",
             substring = true,
@@ -237,6 +229,13 @@ class AllTasksComposeInstrumentationTest {
             "all-tasks:row:step:morning|MORNING:morning-step-1",
         ).fetchSemanticsNode().config[SemanticsActions.CustomActions]
         assertFalse(restoredActions.any { it.label == "Mit ausgewähltem Schritt tauschen" })
+    }
+
+    @Test
+    fun directEditActionOpensTheExistingTaskEditorBoundary() {
+        compose.onNodeWithTag("all-tasks:edit:morning|MORNING").performClick()
+
+        compose.waitUntil { compose.activity.lastMove == "edit-task:morning" }
     }
 
     private fun longPressDurationMillis(): Long =

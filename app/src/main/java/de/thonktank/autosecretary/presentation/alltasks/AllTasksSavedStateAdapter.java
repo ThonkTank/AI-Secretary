@@ -19,7 +19,6 @@ public final class AllTasksSavedStateAdapter {
         value.putString("query", filter.query);
         value.putString("status", filter.status.name());
         value.putString("mode", presentation.mode.name());
-        value.putBoolean("filters_expanded", presentation.filtersExpanded);
         value.putInt("weekday", filter.weekday);
         ArrayList<String> slots = new ArrayList<>();
         for (TaskSlot slot : filter.slots) slots.add(slot.name());
@@ -45,9 +44,7 @@ public final class AllTasksSavedStateAdapter {
         return new AllTasksPresentationState(filter,
                 enumValue(AllTasksUiState.Mode.class, value.getString("mode"),
                         AllTasksUiState.Mode.LIST),
-                expanded == null ? Collections.emptySet() : new LinkedHashSet<>(expanded),
-                !value.containsKey("filters_expanded")
-                        || value.getBoolean("filters_expanded"));
+                expanded == null ? Collections.emptySet() : new LinkedHashSet<>(expanded));
     }
 
     private static <T extends Enum<T>> Set<T> decodeEnums(Class<T> type,

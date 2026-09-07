@@ -67,11 +67,22 @@ class AllTasksComposeDispatcherTest {
         assertEquals("schedule:morning-MORNING:MIDDAY:null", recorder.last)
     }
 
+    @Test
+    fun listProjectionGroupsVisiblePlacementCardsBySlot() {
+        val headers = AllTasksRow.project(AllTasksComposeFixture.state())
+            .filter { it.kind == AllTasksRow.Kind.SLOT_HEADER }
+
+        assertEquals(
+            listOf("task-slot:MORNING", "task-slot:MIDDAY", "task-slot:EVENING"),
+            headers.map { it.key },
+        )
+    }
+
     private class Recorder {
         var last: String? = null
         val callbacks = AllTasksComposeCallbacks(
             onQuery = {}, onStatus = {}, onSlots = {}, onRecurrences = {}, onWeekday = {},
-            onMode = {}, onFiltersExpanded = {}, onResetFilters = {}, onToggleTask = {},
+            onMode = {}, onResetFilters = {}, onToggleTask = {},
             onEditTask = {}, onEditStep = { _, _ -> }, onAddStep = {},
             onDeleteTask = { _, _ -> },
             onMoveSchedule = { entry, slot, before ->

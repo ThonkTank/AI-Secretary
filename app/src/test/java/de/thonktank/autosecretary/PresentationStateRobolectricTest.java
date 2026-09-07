@@ -606,7 +606,6 @@ public final class PresentationStateRobolectricTest {
         management.dispatch(AllTasksAction.modeChanged(AllTasksUiState.Mode.SORT));
         String cardKey = AllTasksUiState.cardKey("rotation-task", TaskSlot.MORNING);
         management.dispatch(AllTasksAction.cardToggled(cardKey));
-        management.dispatch(AllTasksAction.filtersExpandedChanged(false));
 
         android.os.Bundle stored = handle.get("all_tasks_filter");
         AllTasksPresentationState restored = new AllTasksSavedStateAdapter().decode(stored);
@@ -617,7 +616,6 @@ public final class PresentationStateRobolectricTest {
         assertEquals(4, restored.filter.weekday);
         assertEquals(AllTasksUiState.Mode.SORT, restored.mode);
         assertTrue(restored.expandedCardKeys.contains(cardKey));
-        assertFalse(restored.filtersExpanded);
         assertNotNull(management.state().getValue());
         management.onCleared();
 
@@ -625,7 +623,6 @@ public final class PresentationStateRobolectricTest {
         assertEquals("Gym", afterRotation.state().getValue().content.query);
         assertEquals(AllTasksUiState.Mode.SORT, afterRotation.state().getValue().content.mode);
         assertTrue(afterRotation.state().getValue().content.expandedCardKeys.contains(cardKey));
-        assertFalse(afterRotation.state().getValue().content.filtersExpanded);
         afterRotation.onCleared();
     }
 

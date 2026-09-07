@@ -38,6 +38,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-031: Fokusprojektion, Zeilenidentität und Grain-Geometrie](adr-031-fokusprojektion-zeilenidentitaet-und-grain-geometrie.md)
 - [ADR-032: Satzpunkte und Editorverlauf](adr-032-satzpunkte-und-editorverlauf.md)
 - [ADR-033: Ablaufkandidaten und gemeinsame Today-Blätter](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md)
+- [ADR-034: Mobile Aufgabenverwaltung und kompakter Ablaufmonitor](adr-034-mobile-aufgabenverwaltung-und-ablaufmonitor.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -79,6 +80,12 @@ trennt fällige Kandidaten, nutzergestartete Runs und die gemeinsame Today-Proje
 Wäsche-Sonderlogik. ADR-033 trifft die zugehörigen Domain-, Persistenz-, Aktions- und
 Migrationsentscheidungen; das getrennte
 [Ausführungsprotokoll](flow-task-sheet-execution.md) hält Phasenpläne, Nachweise und Audits fest.
+
+Die verbindliche
+[Roadmap für mobile Aufgabenverwaltung und Ablaufübersicht](all-tasks-mobile-roadmap.md)
+gestaltet den Alles-Tab und anschließend die Ablaufdetailseite in zwei getrennt geprüften
+Phasen neu. ADR-034 hält den freigegebenen visuellen und interaktiven Vertrag fest; das getrennte
+[Ausführungsprotokoll](all-tasks-mobile-execution.md) dokumentiert Plan, Nachweise und Audits.
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.

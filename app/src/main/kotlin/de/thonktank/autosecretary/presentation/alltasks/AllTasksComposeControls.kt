@@ -1,31 +1,25 @@
 package de.thonktank.autosecretary.presentation.alltasks
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import de.thonktank.autosecretary.DayPalette
@@ -34,219 +28,226 @@ import de.thonktank.autosecretary.domain.model.Recurrence
 import de.thonktank.autosecretary.domain.model.TaskSlot
 import java.util.EnumSet
 
-internal enum class AllTasksFilterMenu { STATUS, SLOTS, RHYTHMS, WEEKDAY }
-
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AllTasksComposeControls(
     state: AllTasksUiState,
     palette: DayPalette,
     callbacks: AllTasksComposeCallbacks,
-    onOpenMenu: (AllTasksFilterMenu) -> Unit,
-    onCloseMenu: () -> Unit,
+    onOpenFilters: () -> Unit,
 ) {
-    AllTasksSearch(
-        query = state.query,
-        palette = palette,
-        onQuery = callbacks.onQuery,
-        modifier = Modifier.fillMaxWidth().testTag("all-tasks:search"),
-    )
-    if (state.filtersExpanded) {
-        FlowRow(
+    if (state.mode == AllTasksUiState.Mode.LIST) {
+        Row(
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            if (state.mode == AllTasksUiState.Mode.LIST) {
-                AllTasksChip(
-                    statusLabel(state), palette,
-                    state.status != AllTasksUiState.Status.ACTIVE,
-                    { onOpenMenu(AllTasksFilterMenu.STATUS) },
-                    Modifier.testTag("all-tasks:filter:status"),
-                )
-            }
-            AllTasksChip(
-                multiLabel(stringResource(R.string.all_filter_time), slotLabels(state)),
-                palette,
-                state.slots.isNotEmpty(),
-                { onOpenMenu(AllTasksFilterMenu.SLOTS) },
-                Modifier.testTag("all-tasks:filter:slots"),
+            AllTasksControlButton(
+                label = filterButtonLabel(state),
+                palette = palette,
+                onClick = onOpenFilters,
+                modifier = Modifier.weight(1f).testTag("all-tasks:filters-button"),
             )
-            AllTasksChip(
-                multiLabel(stringResource(R.string.all_filter_rhythm), recurrenceLabels(state)),
-                palette,
-                state.recurrences.isNotEmpty(),
-                { onOpenMenu(AllTasksFilterMenu.RHYTHMS) },
-                Modifier.testTag("all-tasks:filter:rhythms"),
+            AllTasksControlButton(
+                label = stringResource(R.string.all_order_action),
+                palette = palette,
+                onClick = { callbacks.onMode(AllTasksUiState.Mode.SORT) },
+                modifier = Modifier.weight(1f).testTag("all-tasks:mode"),
+                prominent = true,
             )
-            if (state.mode == AllTasksUiState.Mode.SORT) {
-                AllTasksChip(
-                    weekdayLabel(state.weekday), palette, state.weekday != 0,
-                    { onOpenMenu(AllTasksFilterMenu.WEEKDAY) },
-                    Modifier.testTag("all-tasks:filter:weekday"),
-                )
-            }
-            if (activeFilterCount(state) > 0) {
-                AllTasksActionText(
-                    stringResource(R.string.all_filter_reset),
-                    palette,
-                    {
-                        onCloseMenu()
-                        callbacks.onResetFilters()
-                    },
-                    underline = true,
-                )
-            }
         }
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AllTasksText(
+                stringResource(R.string.all_order_action),
+                color(palette.ink),
+                24,
+                Modifier.weight(1f).semantics { heading() },
+                serif = true,
+            )
+            AllTasksActionText(
+                stringResource(R.string.all_done),
+                palette,
+                { callbacks.onMode(AllTasksUiState.Mode.LIST) },
+                Modifier.testTag("all-tasks:mode"),
+                underline = true,
+            )
+        }
         AllTasksText(
-            resultLabel(state),
-            color(palette.muted),
-            14,
-            Modifier.weight(1f).padding(start = 2.dp),
+            stringResource(R.string.all_order_help),
+            color(palette.hint),
+            15,
+            Modifier.fillMaxWidth().padding(top = 2.dp),
             maxLines = 2,
         )
-        AllTasksActionText(
-            stringResource(
-                if (state.mode == AllTasksUiState.Mode.LIST) R.string.all_sort_mode
-                else R.string.all_tasks_mode,
-            ),
-            palette,
-            {
-                onCloseMenu()
-                callbacks.onMode(
-                    if (state.mode == AllTasksUiState.Mode.LIST) AllTasksUiState.Mode.SORT
-                    else AllTasksUiState.Mode.LIST,
-                )
-            },
-            Modifier.testTag("all-tasks:mode"),
-        )
-        val filters = buildString {
-            append(stringResource(R.string.all_filter_toggle))
-            if (!state.filtersExpanded && activeFilterCount(state) > 0) {
-                append(" · ")
-                append(activeFilterCount(state))
-            }
-            append(if (state.filtersExpanded) " ⌃" else " ⌄")
-        }
-        AllTasksActionText(
-            filters,
-            palette,
-            {
-                onCloseMenu()
-                callbacks.onFiltersExpanded(!state.filtersExpanded)
-            },
-            Modifier.testTag("all-tasks:filters-toggle"),
+        AllTasksControlButton(
+            label = filterButtonLabel(state),
+            palette = palette,
+            onClick = onOpenFilters,
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
+                .testTag("all-tasks:filters-button"),
         )
     }
+
+    AllTasksText(
+        resultLabel(state),
+        color(palette.muted),
+        14,
+        Modifier.fillMaxWidth().padding(start = 2.dp, top = 10.dp),
+        maxLines = 2,
+    )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun AllTasksComposeFilterDropdown(
+internal fun AllTasksComposeFilterSheet(
     state: AllTasksUiState,
     palette: DayPalette,
-    menu: AllTasksFilterMenu,
     callbacks: AllTasksComposeCallbacks,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = 620.dp)
             .leaf(
                 palette = palette,
                 level = 1,
-                shape = leafShape(8.dp, 24.dp, 8.dp, 24.dp),
+                shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
             )
-            .padding(vertical = 6.dp)
-            .testTag("all-tasks:dropdown:${menu.name.lowercase()}"),
+            .testTag("all-tasks:filter-sheet")
+            .verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, top = 18.dp, end = 20.dp, bottom = 30.dp),
     ) {
-        when (menu) {
-            AllTasksFilterMenu.STATUS -> {
-                MenuItem(stringResource(R.string.all_status_active),
-                    state.status == AllTasksUiState.Status.ACTIVE, palette) {
-                    onClose(); callbacks.onStatus(AllTasksUiState.Status.ACTIVE)
-                }
-                MenuItem(stringResource(R.string.all_status_archived),
-                    state.status == AllTasksUiState.Status.ARCHIVED, palette) {
-                    onClose(); callbacks.onStatus(AllTasksUiState.Status.ARCHIVED)
-                }
-                MenuItem(stringResource(R.string.all_status_all),
-                    state.status == AllTasksUiState.Status.ALL, palette) {
-                    onClose(); callbacks.onStatus(AllTasksUiState.Status.ALL)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                AllTasksText(
+                    stringResource(R.string.all_filter_sheet_title),
+                    color(palette.ink),
+                    25,
+                    serif = true,
+                )
+                AllTasksText(
+                    stringResource(R.string.all_filter_sheet_hint),
+                    color(palette.hint),
+                    14,
+                    Modifier.padding(top = 2.dp),
+                )
+            }
+            AllTasksActionText(
+                stringResource(R.string.all_done),
+                palette,
+                onClose,
+                Modifier.testTag("all-tasks:filter-sheet:done"),
+                underline = true,
+            )
+        }
+
+        if (state.mode == AllTasksUiState.Mode.LIST) {
+            FilterSectionTitle(stringResource(R.string.all_filter_status), palette)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(
+                    AllTasksUiState.Status.ACTIVE to R.string.all_status_active,
+                    AllTasksUiState.Status.ARCHIVED to R.string.all_status_archived,
+                    AllTasksUiState.Status.ALL to R.string.all_status_all,
+                ).forEach { (value, label) ->
+                    AllTasksChoiceChip(
+                        stringResource(label), palette, state.status == value,
+                        { callbacks.onStatus(value) },
+                        Modifier.testTag("all-tasks:filter:status:${value.name}"),
+                    )
                 }
             }
-            AllTasksFilterMenu.SLOTS -> TaskSlot.values().forEach { slot ->
-                MenuItem(slotLabel(slot), state.slots.contains(slot), palette) {
-                    val selected = if (state.slots.isEmpty()) EnumSet.noneOf(TaskSlot::class.java)
-                    else EnumSet.copyOf(state.slots)
-                    if (!selected.add(slot)) selected.remove(slot)
-                    callbacks.onSlots(selected)
-                }
+        }
+
+        FilterSectionTitle(stringResource(R.string.all_filter_time), palette)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TaskSlot.values().forEach { slot ->
+                AllTasksChoiceChip(
+                    slotLabel(slot), palette, state.slots.contains(slot),
+                    {
+                        val selected = state.slots.mutableEnumCopy(TaskSlot::class.java)
+                        if (!selected.add(slot)) selected.remove(slot)
+                        callbacks.onSlots(selected)
+                    },
+                    Modifier.testTag("all-tasks:filter:slot:${slot.name}"),
+                )
             }
-            AllTasksFilterMenu.RHYTHMS -> listOf(
-                Recurrence.ONCE,
-                Recurrence.DAILY,
-                Recurrence.INTERVAL,
-                Recurrence.WEEKDAYS,
-            ).forEach { recurrence ->
-                MenuItem(
-                    recurrenceLabel(recurrence),
+        }
+
+        FilterSectionTitle(stringResource(R.string.all_filter_rhythm), palette)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            recurrenceValues.forEach { recurrence ->
+                AllTasksChoiceChip(
+                    recurrenceLabel(recurrence), palette,
                     state.recurrences.contains(recurrence),
-                    palette,
-                ) {
-                    val selected = if (state.recurrences.isEmpty()) {
-                        EnumSet.noneOf(Recurrence::class.java)
-                    } else EnumSet.copyOf(state.recurrences)
-                    if (!selected.add(recurrence)) selected.remove(recurrence)
-                    callbacks.onRecurrences(selected)
-                }
+                    {
+                        val selected = state.recurrences.mutableEnumCopy(Recurrence::class.java)
+                        if (!selected.add(recurrence)) selected.remove(recurrence)
+                        callbacks.onRecurrences(selected)
+                    },
+                    Modifier.testTag("all-tasks:filter:rhythm:${recurrence.name}"),
+                )
             }
-            AllTasksFilterMenu.WEEKDAY -> {
-                MenuItem(stringResource(R.string.all_every_day), state.weekday == 0, palette) {
-                    onClose(); callbacks.onWeekday(0)
-                }
+        }
+
+        if (state.mode == AllTasksUiState.Mode.SORT) {
+            FilterSectionTitle(stringResource(R.string.all_filter_day), palette)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AllTasksChoiceChip(
+                    stringResource(R.string.all_every_day), palette, state.weekday == 0,
+                    { callbacks.onWeekday(0) },
+                    Modifier.testTag("all-tasks:filter:weekday:0"),
+                )
                 weekdayResources.forEachIndexed { index, resource ->
-                    MenuItem(stringResource(resource), state.weekday == index + 1, palette) {
-                        onClose(); callbacks.onWeekday(index + 1)
-                    }
+                    AllTasksChoiceChip(
+                        stringResource(resource), palette, state.weekday == index + 1,
+                        { callbacks.onWeekday(index + 1) },
+                        Modifier.testTag("all-tasks:filter:weekday:${index + 1}"),
+                    )
                 }
             }
+        }
+
+        if (activeFilterCount(state) > 0) {
+            Spacer(Modifier.height(12.dp))
+            AllTasksActionText(
+                stringResource(R.string.all_filter_reset),
+                palette,
+                callbacks.onResetFilters,
+                Modifier.fillMaxWidth().testTag("all-tasks:filter:reset"),
+                underline = true,
+                minHeight = 48.dp,
+            )
         }
     }
 }
 
 @Composable
-private fun MenuItem(
-    label: String,
-    selected: Boolean,
-    palette: DayPalette,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
-            .background(if (selected) color(palette.accent) else Color.Transparent)
-            .semantics { this.selected = selected; role = Role.Button }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 20.dp),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        AllTasksText(
-            label,
-            color(if (selected) palette.accentText else palette.ink),
-            17,
-            bold = selected,
-        )
-    }
+private fun FilterSectionTitle(label: String, palette: DayPalette) {
+    AllTasksText(
+        label,
+        color(palette.ink2),
+        17,
+        Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp)
+            .semantics { heading() },
+        serif = true,
+        italic = true,
+    )
 }
 
 @Composable
@@ -256,26 +257,25 @@ private fun resultLabel(state: AllTasksUiState): String {
         val matched = state.schedule.size
         if (matched == 0) return ""
         return if (hasQueryOrFilters(state)) {
-            resources.getString(
-                R.string.all_schedule_result_filtered,
-                matched,
-                state.schedulePoolSize,
-            )
-        } else {
-            resources.getQuantityString(R.plurals.all_schedule_result, matched, matched)
-        }
+            resources.getString(R.string.all_schedule_result_filtered, matched, state.schedulePoolSize)
+        } else resources.getQuantityString(R.plurals.all_schedule_result, matched, matched)
     }
     val matched = state.tasks.size
     if (matched == 0) return ""
     return if (hasQueryOrFilters(state)) {
         resources.getString(R.string.all_task_result_filtered, matched, state.taskPoolSize)
-    } else {
-        resources.getString(
-            R.string.all_task_result,
-            matched,
-            state.tasks.sumOf { it.steps.size },
-        )
-    }
+    } else resources.getString(
+        R.string.all_task_result,
+        matched,
+        state.tasks.sumOf { it.steps.size },
+    )
+}
+
+@Composable
+private fun filterButtonLabel(state: AllTasksUiState): String = buildString {
+    append(stringResource(R.string.all_filter_action))
+    val count = activeFilterCount(state)
+    if (count > 0) append(" · ").append(count)
 }
 
 @Composable
@@ -298,51 +298,24 @@ internal fun recurrenceLabel(value: Recurrence): String = stringResource(
     },
 )
 
-@Composable
-private fun statusLabel(state: AllTasksUiState): String {
-    val value = stringResource(
-        when (state.status) {
-            AllTasksUiState.Status.ACTIVE -> R.string.all_status_active
-            AllTasksUiState.Status.ARCHIVED -> R.string.all_status_archived
-            AllTasksUiState.Status.ALL -> R.string.all_status_all
-        },
-    )
-    return stringResource(R.string.all_filter_value, stringResource(R.string.all_filter_status), value)
-}
-
-@Composable
-private fun weekdayLabel(weekday: Int): String {
-    if (weekday == 0) return stringResource(R.string.all_filter_day)
-    return stringResource(
-        R.string.all_filter_value,
-        stringResource(R.string.all_filter_day),
-        stringResource(weekdayResources[weekday - 1]),
-    )
-}
-
-@Composable
-private fun slotLabels(state: AllTasksUiState): List<String> =
-    TaskSlot.values().filter(state.slots::contains).map { slotLabel(it) }
-
-@Composable
-private fun recurrenceLabels(state: AllTasksUiState): List<String> =
-    listOf(Recurrence.ONCE, Recurrence.DAILY, Recurrence.INTERVAL, Recurrence.WEEKDAYS)
-        .filter(state.recurrences::contains).map { recurrenceLabel(it) }
-
-private fun multiLabel(base: String, selected: List<String>): String = when (selected.size) {
-    0 -> base
-    1 -> "$base: ${selected.first()}"
-    else -> "$base: ${selected.size} gewählt"
-}
-
 private fun activeFilterCount(state: AllTasksUiState): Int =
     state.slots.size + state.recurrences.size +
         if (state.mode == AllTasksUiState.Mode.LIST &&
-            state.status != AllTasksUiState.Status.ACTIVE) 1
-        else if (state.mode == AllTasksUiState.Mode.SORT && state.weekday != 0) 1 else 0
+            state.status != AllTasksUiState.Status.ACTIVE
+        ) 1 else if (state.mode == AllTasksUiState.Mode.SORT && state.weekday != 0) 1 else 0
 
 private fun hasQueryOrFilters(state: AllTasksUiState): Boolean =
     state.query.trim().isNotEmpty() || activeFilterCount(state) > 0
+
+private fun <E : Enum<E>> Set<E>.mutableEnumCopy(type: Class<E>): EnumSet<E> =
+    if (isEmpty()) EnumSet.noneOf(type) else EnumSet.copyOf(this)
+
+private val recurrenceValues = listOf(
+    Recurrence.ONCE,
+    Recurrence.DAILY,
+    Recurrence.INTERVAL,
+    Recurrence.WEEKDAYS,
+)
 
 private val weekdayResources = intArrayOf(
     R.string.day_mon,

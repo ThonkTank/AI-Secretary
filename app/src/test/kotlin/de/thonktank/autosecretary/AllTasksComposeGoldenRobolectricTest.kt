@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import de.thonktank.autosecretary.domain.model.TaskSlot
+import de.thonktank.autosecretary.domain.model.FlowRunSummary
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeFixture
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeHostView
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksActionSink
@@ -34,7 +35,8 @@ class AllTasksComposeGoldenRobolectricTest {
         val scenarios = listOf(
             Scenario("standard", defaults.toggleExpanded(
                 AllTasksUiState.cardKey("morning", TaskSlot.MORNING))),
-            Scenario("filters-dropdown", defaults, openFilter = "SLOTS"),
+            Scenario("running-flows", defaults, flowRuns = AllTasksComposeFixture.flowRuns()),
+            Scenario("filters-dropdown", defaults, openFilter = true),
             Scenario("search-title", defaults.withQuery("Statistik")),
             Scenario("search-step", defaults.withQuery("Aufgabenblatt")),
             Scenario("archived", defaults.withStatus(AllTasksUiState.Status.ARCHIVED)
@@ -92,10 +94,10 @@ class AllTasksComposeGoldenRobolectricTest {
             FrameLayout.LayoutParams(-1, -1))
         val host = AllTasksComposeHostView(activity)
         host.setDragSourceForTest(if (scenario.drag) "schedule:morning-MORNING" else null)
-        host.openFilterForTest(scenario.openFilter)
+        host.openFilterSheetForTest(scenario.openFilter)
         root.addView(host, FrameLayout.LayoutParams(-1, -1))
         activity.setContentView(root)
-        host.bind(scenario.state, palette, NoopActions)
+        host.bind(scenario.state, palette, NoopActions, scenario.flowRuns)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
         val width = dp(activity, scenario.widthDp)
         val height = dp(activity, 702)
@@ -121,8 +123,9 @@ class AllTasksComposeGoldenRobolectricTest {
         val state: AllTasksUiState,
         val widthDp: Int = 412,
         val fontScale: Float = 1f,
-        val openFilter: String? = null,
+        val openFilter: Boolean = false,
         val drag: Boolean = false,
+        val flowRuns: List<FlowRunSummary> = emptyList(),
         val time: LocalTime = LocalTime.of(9, 40),
         val mode: DayPalette.Mode = DayPalette.Mode.LIGHT,
     )

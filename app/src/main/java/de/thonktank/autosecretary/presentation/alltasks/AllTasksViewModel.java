@@ -135,9 +135,6 @@ public final class AllTasksViewModel extends ViewModel {
         else if (action instanceof AllTasksAction.ModeChanged)
             updatePresentation(presentation -> presentation.withMode(
                     ((AllTasksAction.ModeChanged) action).value));
-        else if (action instanceof AllTasksAction.FiltersExpandedChanged)
-            updatePresentation(presentation -> presentation.withFiltersExpanded(
-                    ((AllTasksAction.FiltersExpandedChanged) action).value));
         else if (action instanceof AllTasksAction.ResetFilters)
             updateFilter(AllTasksFilter::resetVisibleFilters);
         else if (action instanceof AllTasksAction.CardToggled)

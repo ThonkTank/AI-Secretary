@@ -121,7 +121,7 @@ internal fun AllTasksActionText(
 }
 
 @Composable
-internal fun AllTasksChip(
+internal fun AllTasksChoiceChip(
     label: String,
     palette: DayPalette,
     selected: Boolean,
@@ -129,8 +129,8 @@ internal fun AllTasksChip(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(22.dp)
-    val background = if (selected) color(palette.accent) else Color.Transparent
-    val edge = if (selected) color(palette.accent) else color(palette.dot)
+    val background = if (selected) color(palette.accent) else color(palette.leaf1)
+    val edge = if (selected) color(palette.accent) else color(palette.leaf1Edge)
     val foreground = if (selected) color(palette.accentText) else color(palette.ink2)
     Box(
         modifier = modifier
@@ -143,10 +143,40 @@ internal fun AllTasksChip(
                 indication = null,
                 onClick = onClick,
             )
-            .padding(horizontal = 14.dp),
+            .padding(horizontal = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
-        AllTasksText("$label ⌄", foreground, 14, bold = selected, maxLines = 1)
+        AllTasksText(label, foreground, 15, bold = selected, maxLines = 1)
+    }
+}
+
+@Composable
+internal fun AllTasksControlButton(
+    label: String,
+    palette: DayPalette,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    prominent: Boolean = false,
+) {
+    val shape = RoundedCornerShape(16.dp)
+    val background = if (prominent) color(palette.accent) else color(palette.leaf1)
+    val edge = if (prominent) color(palette.accent) else color(palette.leaf1Edge)
+    val foreground = if (prominent) color(palette.accentText) else color(palette.ink2)
+    Box(
+        modifier = modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .background(background, shape)
+            .border(BorderStroke(1.dp, edge), shape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                role = Role.Button,
+                onClick = onClick,
+            )
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        AllTasksText(label, foreground, 16, bold = prominent, maxLines = 1)
     }
 }
 

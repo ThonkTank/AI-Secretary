@@ -54,7 +54,13 @@ final class AllTasksRow {
     private static List<AllTasksRow> taskRows(AllTasksUiState state) {
         if (state.tasks.isEmpty()) return Collections.singletonList(empty(state));
         List<AllTasksRow> result = new ArrayList<>();
+        TaskSlot currentSlot = null;
         for (AllTasksUiState.TaskItem item : state.tasks) {
+            if (item.slot != currentSlot) {
+                currentSlot = item.slot;
+                result.add(new AllTasksRow(Kind.SLOT_HEADER, "task-slot:" + currentSlot.name(),
+                        null, null, null, null, null, null, currentSlot, false, null));
+            }
             String taskId = item.task.id.value;
             String cardKey = item.cardKey;
             result.add(new AllTasksRow(Kind.TASK_HEADER, "task:" + cardKey,

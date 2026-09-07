@@ -11,10 +11,26 @@ import de.thonktank.autosecretary.domain.model.TaskStepTemplate
 import de.thonktank.autosecretary.domain.model.StepAmount
 import de.thonktank.autosecretary.domain.model.StepPrescription
 import de.thonktank.autosecretary.domain.model.StepActivationKind
+import de.thonktank.autosecretary.domain.model.FlowRunSummary
+import de.thonktank.autosecretary.domain.model.StepFlowRunState
 import java.time.LocalDate
 
 /** Deterministic debug-only catalog shared by phase-6a comparison hosts and tests. */
 object AllTasksComposeFixture {
+    @JvmStatic
+    fun flowRuns(): List<FlowRunSummary> = listOf(
+        FlowRunSummary(
+            "flow-1", TaskId.of("wash"), "Wäsche", "wash-step-0", "Buntwäsche",
+            "wash-step-2", "Aufhängen", StepFlowRunState.OFFERED, null,
+            "flow-occurrence-1", 1_024, 2, 3, null, emptyList(), null,
+        ),
+        FlowRunSummary(
+            "flow-2", TaskId.of("wash"), "Wäsche", "wash-step-0", "Feinwäsche",
+            "wash-step-1", "Maschine anstellen", StepFlowRunState.WAITING_RESOURCE, null,
+            null, 2_048, 1, 3, null, emptyList(), null,
+        ),
+    )
+
     @JvmStatic
     fun state(includeArchived: Boolean = true): AllTasksUiState = AllTasksUiState.from(
         catalog(includeArchived),

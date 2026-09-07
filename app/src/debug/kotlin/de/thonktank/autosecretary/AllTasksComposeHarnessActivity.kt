@@ -59,8 +59,6 @@ class AllTasksComposeHarnessActivity : ComponentActivity(), AllTasksActionSink {
             is AllTasksAction.RecurrencesChanged -> update(state.withRecurrences(action.value))
             is AllTasksAction.WeekdayChanged -> update(state.withWeekday(action.value))
             is AllTasksAction.ModeChanged -> update(state.withMode(action.value))
-            is AllTasksAction.FiltersExpandedChanged ->
-                update(state.withFiltersExpanded(action.value))
             is AllTasksAction.ResetFilters -> update(state.resetVisibleFilters())
             is AllTasksAction.CardToggled -> update(state.toggleExpanded(action.cardKey))
             is AllTasksAction.EditTask -> lastMove = "edit-task:${action.taskId.value}"

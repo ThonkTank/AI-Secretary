@@ -42,10 +42,6 @@ public abstract class AllTasksAction {
         public final AllTasksUiState.Mode value;
         private ModeChanged(AllTasksUiState.Mode value) { this.value = required(value); }
     }
-    public static final class FiltersExpandedChanged extends AllTasksAction {
-        public final boolean value;
-        private FiltersExpandedChanged(boolean value) { this.value = value; }
-    }
     public static final class ResetFilters extends AllTasksAction {
         private ResetFilters() { }
     }
@@ -113,9 +109,6 @@ public abstract class AllTasksAction {
     public static AllTasksAction weekdayChanged(int value) { return new WeekdayChanged(value); }
     public static AllTasksAction modeChanged(AllTasksUiState.Mode value) {
         return new ModeChanged(value);
-    }
-    public static AllTasksAction filtersExpandedChanged(boolean value) {
-        return new FiltersExpandedChanged(value);
     }
     public static AllTasksAction resetFilters() { return new ResetFilters(); }
     public static AllTasksAction cardToggled(String cardKey) { return new CardToggled(cardKey); }

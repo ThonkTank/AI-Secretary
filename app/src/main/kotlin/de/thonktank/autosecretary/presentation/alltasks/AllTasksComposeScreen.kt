@@ -2,13 +2,14 @@ package de.thonktank.autosecretary.presentation.alltasks
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -21,16 +22,15 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
 import de.thonktank.autosecretary.DayPalette
-import de.thonktank.autosecretary.R
 import de.thonktank.autosecretary.domain.model.FlowRunSummary
 
 @Composable
@@ -40,17 +40,17 @@ internal fun AllTasksComposeScreen(
     callbacks: AllTasksComposeCallbacks,
     modifier: Modifier = Modifier,
     dragSourceKey: String? = null,
-    forcedOpenFilter: AllTasksFilterMenu? = null,
+    forcedFilterSheet: Boolean = false,
     flowRuns: List<FlowRunSummary> = emptyList(),
     onOpenFlowRuns: () -> Unit = { },
 ) {
-    var openFilter by remember { mutableStateOf<AllTasksFilterMenu?>(null) }
+    var filterSheetOpen by remember { mutableStateOf(false) }
     var openTaskMenu by remember { mutableStateOf<String?>(null) }
     var selectedSwapStep by remember { mutableStateOf<String?>(null) }
     var activeDragKey by remember { mutableStateOf<String?>(null) }
     var dragPointerY by remember { mutableFloatStateOf(Float.NaN) }
-    var listBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
-    val rowBounds = remember { mutableStateMapOf<String, androidx.compose.ui.geometry.Rect>() }
+    var listBounds by remember { mutableStateOf(Rect.Zero) }
+    val rowBounds = remember { mutableStateMapOf<String, Rect>() }
     val listState = rememberLazyListState()
     val rows = remember(state) { AllTasksRow.project(state) }
     val draggableRowKeys = remember(rows) {
@@ -62,10 +62,10 @@ internal fun AllTasksComposeScreen(
             .mapTo(mutableSetOf()) { it.key }
     }
     val dispatcher = remember(state, callbacks) { AllTasksComposeDispatcher(state, callbacks) }
-    val pageStart = dimensionResource(R.dimen.page_start)
-    val pageEnd = dimensionResource(R.dimen.page_end)
-    val visibleFilter = forcedOpenFilter ?: openFilter
     val visibleDragKey = dragSourceKey ?: activeDragKey
+    val activeDropKey = if (visibleDragKey != null && dragPointerY.isFinite()) {
+        nearestDropTarget(dragPointerY, visibleDragKey, rowBounds)
+    } else null
     val density = LocalDensity.current
     val edgeSizePx = with(density) { 64.dp.toPx() }
     val edgeSpeedPx = with(density) { 460.dp.toPx() }
@@ -77,12 +77,7 @@ internal fun AllTasksComposeScreen(
 
     LaunchedEffect(activeDragKey, dragPointerY, listBounds) {
         if (activeDragKey == null) return@LaunchedEffect
-        val velocity = edgeScrollVelocity(
-            dragPointerY,
-            listBounds,
-            edgeSizePx,
-            edgeSpeedPx,
-        )
+        val velocity = edgeScrollVelocity(dragPointerY, listBounds, edgeSizePx, edgeSpeedPx)
         if (velocity == 0f) return@LaunchedEffect
         var previous = androidx.compose.runtime.withFrameNanos { it }
         val direction = if (velocity < 0f) -1 else 1
@@ -103,17 +98,29 @@ internal fun AllTasksComposeScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .testTag("all-tasks:compose")
-            .padding(start = pageStart, top = 16.dp, end = pageEnd),
+            .background(color(palette.background).copy(alpha = .96f))
+            .testTag("all-tasks:compose"),
     ) {
-        Column(Modifier.fillMaxSize()) {
-            AllTasksRunningFlows(flowRuns, palette, onOpenFlowRuns)
+        Column(
+            Modifier.fillMaxSize().padding(start = 16.dp, top = 14.dp, end = 16.dp),
+        ) {
+            AllTasksSearch(
+                query = state.query,
+                palette = palette,
+                onQuery = callbacks.onQuery,
+                modifier = Modifier.fillMaxWidth().testTag("all-tasks:search"),
+            )
+            if (state.mode == AllTasksUiState.Mode.LIST) {
+                AllTasksRunningFlows(flowRuns, palette, onOpenFlowRuns)
+            }
             AllTasksComposeControls(
                 state = state,
                 palette = palette,
                 callbacks = callbacks,
-                onOpenMenu = { openFilter = if (openFilter == it) null else it },
-                onCloseMenu = { openFilter = null },
+                onOpenFilters = {
+                    filterSheetOpen = true
+                    openTaskMenu = null
+                },
             )
             LazyColumn(
                 state = listState,
@@ -129,20 +136,15 @@ internal fun AllTasksComposeScreen(
                             activeDragKey = key
                             dragPointerY = pointerY
                             traceAllTasksDrag("start", "source=$key")
-                            openFilter = null
+                            filterSheetOpen = false
                             openTaskMenu = null
                         },
                         onMove = { dragPointerY = it },
                         onDrop = {
                             val source = activeDragKey
                             if (source != null) {
-                                val target = nearestDropTarget(
-                                    dragPointerY,
-                                    source,
-                                    rowBounds,
-                                )
-                                val handled = target?.let { dispatcher.drop(source, it) }
-                                    ?: false
+                                val target = nearestDropTarget(dragPointerY, source, rowBounds)
+                                val handled = target?.let { dispatcher.drop(source, it) } ?: false
                                 traceAllTasksDrag(
                                     "drop",
                                     "source=$source target=$target handled=$handled",
@@ -155,10 +157,7 @@ internal fun AllTasksComposeScreen(
                             clearDrag()
                         },
                     ),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    top = 10.dp,
-                    bottom = 26.dp,
-                ),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 26.dp),
             ) {
                 items(
                     items = rows,
@@ -174,42 +173,40 @@ internal fun AllTasksComposeScreen(
                         palette = palette,
                         dispatcher = dispatcher,
                         callbacks = callbacks,
-                        dragActive = visibleDragKey?.let { key ->
-                            rows.firstOrNull { it.key == key }?.kind == AllTasksRow.Kind.STEP
-                        } == true,
+                        dropIndicator = activeDropKey == row.key,
                         selectedSwapStep = selectedSwapStep,
                         onSelectSwap = { selectedSwapStep = it },
                         onOpenTaskMenu = { openTaskMenu = it },
-                        rowModifier = Modifier
-                            .onGloballyPositioned { rowBounds[row.key] = it.boundsInRoot() },
+                        rowModifier = Modifier.onGloballyPositioned {
+                            rowBounds[row.key] = it.boundsInRoot()
+                        },
                     )
                 }
             }
         }
 
-        if (visibleFilter != null || openTaskMenu != null) {
+        if (filterSheetOpen || forcedFilterSheet || openTaskMenu != null) {
             Box(
                 Modifier
                     .fillMaxSize()
                     .testTag("all-tasks:overlay")
-                    .background(Color.Transparent)
+                    .background(color(palette.ink).copy(alpha = .18f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                     ) {
-                        openFilter = null
+                        filterSheetOpen = false
                         openTaskMenu = null
                     },
             )
         }
-        visibleFilter?.let { menu ->
-            AllTasksComposeFilterDropdown(
+        if (filterSheetOpen || forcedFilterSheet) {
+            AllTasksComposeFilterSheet(
                 state = state,
                 palette = palette,
-                menu = menu,
                 callbacks = callbacks,
-                onClose = { openFilter = null },
-                modifier = Modifier.fillMaxWidth().padding(top = 108.dp),
+                onClose = { filterSheetOpen = false },
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
         openTaskMenu?.let { taskId ->
@@ -220,7 +217,8 @@ internal fun AllTasksComposeScreen(
                     palette = palette,
                     callbacks = callbacks,
                     onClose = { openTaskMenu = null },
-                    modifier = Modifier.fillMaxWidth().padding(top = 164.dp, start = 88.dp),
+                    modifier = Modifier.align(Alignment.TopEnd)
+                        .padding(top = 168.dp, end = 16.dp),
                 )
             }
         }

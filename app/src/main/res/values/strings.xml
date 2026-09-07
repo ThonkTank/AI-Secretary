@@ -61,8 +61,6 @@
     <string name="empty_subtitle">Lege nur die eine Sache an, die dir gerade helfen würde.</string>
     <string name="all_title">alles organisieren</string>
     <string name="all_search_hint">Aufgaben und Schritte suchen</string>
-    <string name="all_tasks_mode">Aufgaben</string>
-    <string name="all_sort_mode">Sortieren</string>
     <string name="all_status_active">aktiv</string>
     <string name="all_status_archived">Archiv</string>
     <string name="all_status_all">alle</string>
@@ -75,7 +73,12 @@
     <string name="all_filter_status">Status</string>
     <string name="all_filter_day">Wochentag</string>
     <string name="all_every_day">alle Tage</string>
-    <string name="all_filter_toggle">Filter</string>
+    <string name="all_filter_action">Filtern</string>
+    <string name="all_order_action">Reihenfolge</string>
+    <string name="all_order_help">Halte eine Aufgabe gedrückt und ziehe sie an ihre neue Position.</string>
+    <string name="all_done">Fertig</string>
+    <string name="all_filter_sheet_title">Aufgaben filtern</string>
+    <string name="all_filter_sheet_hint">Änderungen sind sofort sichtbar.</string>
     <string name="all_filter_reset">zurücksetzen</string>
     <string name="all_filter_value">%1$s: %2$s</string>
     <string name="all_filter_selected_count">%1$d gewählt</string>
@@ -91,8 +94,6 @@
     <string name="all_no_steps">keine Schritte</string>
     <string name="all_steps_matching">%1$d von %2$d Schritten passen</string>
     <string name="all_add_step">Schritt hinzufügen</string>
-    <string name="all_step_insert_target">Schritt hier einfügen</string>
-    <string name="all_schedule_insert_target">Aufgabe hier einordnen</string>
     <string name="all_drag_task">Aufgabe halten und verschieben</string>
     <string name="all_drag_step">Schritt halten und verschieben</string>
     <string name="all_archived">abgeschlossen</string>
@@ -110,12 +111,11 @@
     <string name="a11y_collapse_task">Schritte ausblenden</string>
     <string name="a11y_task_row">Aufgabe %1$s. %2$s</string>
     <string name="a11y_task_menu">Menü für Aufgabe %1$s</string>
+    <string name="a11y_edit_task">Aufgabe %1$s bearbeiten</string>
     <string name="a11y_step_row">Schritt %1$s. Antippen zum Bearbeiten, lange drücken zum Verschieben.</string>
     <string name="a11y_archived_step_row">Archivierter Schritt %1$s. Nur Lesen.</string>
     <string name="a11y_add_step_target">Neuen Schritt zu dieser Aufgabe hinzufügen oder einen Schritt hier ablegen.</string>
-    <string name="a11y_step_drop_target">Schritt an dieser Position ablegen.</string>
     <string name="a11y_schedule_row">Aufgabe %1$s, Tageszeit %2$s, Rhythmus %3$s. Lange drücken zum Verschieben.</string>
-    <string name="a11y_schedule_drop_target">Aufgabe in %1$s an dieser Position ablegen.</string>
     <string name="a11y_step_up">Schritt nach oben verschieben</string>
     <string name="a11y_step_down">Schritt nach unten verschieben</string>
     <string name="a11y_step_previous_task">Schritt zur vorherigen Aufgabe verschieben</string>
