@@ -129,7 +129,7 @@ public final class TodayReducer {
     }
 
     private static String focusIdentity(FocusTaskUiModel focus) {
-        return focus.occurrenceId().isEmpty() ? focus.taskId() : focus.occurrenceId();
+        return focus.itemId();
     }
 
     static TodayUiModel applyOpenOrder(TodayUiModel today, List<String> openOrder) {
@@ -152,6 +152,7 @@ public final class TodayReducer {
                 .overdue(focus.overdue)
                 .allowDefer(focus.allowDefer)
                 .harvestReady(focus.harvestReady)
+                .allowBulkComplete(focus.allowBulkComplete)
                 .backlogCount(focus.backlogCount)
                 .reward(focus.reward, focus.vessel)
                 .grainLevel(focus.grainLevel)

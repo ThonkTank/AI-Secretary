@@ -61,7 +61,7 @@ public final class TaskEntityMapper {
         return new Occurrence(entity.id, TaskId.of(entity.taskId), LocalDate.parse(entity.scheduledOn),
                 TaskSlot.fromStorage(entity.slot), OccurrenceState.fromStorage(entity.state),
                 entity.sortOrder, date(entity.completedOn), OccurrenceKind.fromStorage(entity.kind),
-                entity.sourceKey, entity.flowRunId, entity.flowSheetSequence);
+                entity.sourceKey, entity.flowRunId, entity.flowExecutionSequence);
     }
 
     public OccurrenceEntity toEntity(Occurrence occurrence) {
@@ -69,7 +69,7 @@ public final class TaskEntityMapper {
                 occurrence.scheduledOn.toString(), occurrence.state.storageCode(),
                 occurrence.sortOrder, nullableText(occurrence.completedOn),
                 occurrence.slot.storageCode, occurrence.kind.name(), occurrence.sourceKey,
-                occurrence.flowRunId, occurrence.flowSheetSequence);
+                occurrence.flowRunId, occurrence.flowExecutionSequence);
     }
 
     public TaskStepTemplate toDomain(TaskStepEntity entity) {

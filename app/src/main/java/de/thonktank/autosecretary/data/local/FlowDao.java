@@ -26,6 +26,10 @@ public interface FlowDao {
             + "ON task_steps.id = step_transitions.sourceStepId "
             + "WHERE task_steps.taskId = :taskId ORDER BY task_steps.position")
     List<StepTransitionEntity> stepTransitions(String taskId);
+    @Query("SELECT step_transitions.* FROM step_transitions JOIN task_steps "
+            + "ON task_steps.id = step_transitions.sourceStepId "
+            + "WHERE task_steps.taskId IN (:taskIds) ORDER BY task_steps.taskId, task_steps.position")
+    List<StepTransitionEntity> stepTransitionsFor(List<String> taskIds);
     @Query("DELETE FROM step_transitions WHERE sourceStepId IN "
             + "(SELECT id FROM task_steps WHERE taskId = :taskId)")
     void deleteStepTransitions(String taskId);
@@ -33,8 +37,30 @@ public interface FlowDao {
     void putStepResourceLeases(List<StepResourceLeaseEntity> leases);
     @Query("SELECT * FROM step_resource_leases WHERE taskId = :taskId ORDER BY id")
     List<StepResourceLeaseEntity> stepResourceLeases(String taskId);
+    @Query("SELECT * FROM step_resource_leases WHERE taskId IN (:taskIds) "
+            + "ORDER BY taskId, id")
+    List<StepResourceLeaseEntity> stepResourceLeasesFor(List<String> taskIds);
     @Query("DELETE FROM step_resource_leases WHERE taskId = :taskId")
     void deleteStepResourceLeases(String taskId);
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    long insertFlowCandidate(FlowCandidateEntity candidate);
+    @Query("SELECT * FROM flow_candidates WHERE id = :id LIMIT 1")
+    FlowCandidateEntity flowCandidate(String id);
+    @Query("SELECT * FROM flow_candidates WHERE sourceKey = :sourceKey LIMIT 1")
+    FlowCandidateEntity flowCandidateBySourceKey(String sourceKey);
+    @Query("SELECT * FROM flow_candidates ORDER BY queueOrder, createdAtEpochMillis, id")
+    List<FlowCandidateEntity> flowCandidates();
+    @Query("SELECT * FROM flow_candidates WHERE taskId = :taskId "
+            + "ORDER BY queueOrder, createdAtEpochMillis, id")
+    List<FlowCandidateEntity> flowCandidates(String taskId);
+    @Query("DELETE FROM flow_candidates WHERE id = :id") void deleteFlowCandidate(String id);
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void putFlowTaskSheetPlacement(FlowTaskSheetPlacementEntity placement);
+    @Query("SELECT * FROM flow_task_sheet_placements WHERE taskId = :taskId AND slot = :slot "
+            + "LIMIT 1")
+    FlowTaskSheetPlacementEntity flowTaskSheetPlacement(String taskId, String slot);
+    @Query("SELECT * FROM flow_task_sheet_placements ORDER BY slot, displayOn, sortOrder, id")
+    List<FlowTaskSheetPlacementEntity> flowTaskSheetPlacements();
     @Insert(onConflict = OnConflictStrategy.IGNORE) long insertStepFlowRun(StepFlowRunEntity run);
     @Update void updateStepFlowRun(StepFlowRunEntity run);
     @Query("SELECT * FROM step_flow_runs WHERE id = :id LIMIT 1") StepFlowRunEntity stepFlowRun(String id);

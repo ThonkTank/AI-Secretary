@@ -5,6 +5,7 @@ import de.thonktank.autosecretary.*;
 import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
+import de.thonktank.autosecretary.presentation.today.TodayItemTarget;
 
 import android.content.Context;
 import android.view.Gravity;
@@ -81,7 +82,7 @@ public final class TaskLeafView extends LeafSurface {
         WoodGrainView.applyTextHalo(softTime, leafColor);
         int value = task.reward.resultXp;
         dot.bind(false, false, palette, value);
-        dot.setEnabled(!task.occurrenceId.isEmpty());
+        dot.setEnabled(task.actionTarget.item.kind == TodayItemTarget.Kind.OCCURRENCE);
         dot.setContentDescription(task.title + ", " + value + " XP");
         dot.setOnClickListener(view -> complete.accept(task));
         menu.setVisibility(VISIBLE); menu.setTextColor(palette.dot);

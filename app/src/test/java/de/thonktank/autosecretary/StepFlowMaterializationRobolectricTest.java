@@ -13,7 +13,6 @@ import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.Recurrence;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
-import de.thonktank.autosecretary.domain.model.StepFlowRun;
 import de.thonktank.autosecretary.domain.model.StepResourceLease;
 import de.thonktank.autosecretary.domain.model.StepTransition;
 import de.thonktank.autosecretary.domain.model.Task;
@@ -65,7 +64,7 @@ public final class StepFlowMaterializationRobolectricTest {
 
     @After public void tearDown() { database.close(); }
 
-    @Test public void fourDueSeedsBecomeIdempotentRunsWithSharedTailSnapshots() {
+    @Test public void fourDueSeedsBecomeIdempotentCandidatesWithoutRuntimeSnapshots() {
         new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(laundryTask());
         Task task = repository.catalog.allTasks().get(0);
         SaveCapacityResource resources = new SaveCapacityResource(repository.flows, repository.transactions, ids);
@@ -79,15 +78,10 @@ public final class StepFlowMaterializationRobolectricTest {
         assertTrue(materialize.execute());
         assertFalse(materialize.execute());
 
-        List<StepFlowRun> runs = repository.flows.activeFlowRuns(task.id);
-        assertEquals(4, runs.size());
+        assertEquals(4, repository.flows.flowCandidates(task.id).size());
+        assertTrue(repository.flows.activeFlowRuns(task.id).isEmpty());
         assertTrue(repository.today.openOccurrences().isEmpty());
-        for (StepFlowRun run : runs) {
-            assertEquals(4, repository.flows.flowRunSteps(run.id).size());
-            assertEquals("Aufhängen", repository.flows.flowRunSteps(run.id).get(1).text);
-            assertEquals("Abhängen", repository.flows.flowRunSteps(run.id).get(2).text);
-            assertEquals(2, repository.flows.flowRunResources(run.id).size());
-        }
+        assertTrue(repository.flows.consumingFlowResources().isEmpty());
         assertEquals(4, repository.steps.templates(task.id).stream()
                 .filter(value -> value.activationKind == StepActivationKind.SCHEDULED).count());
         assertEquals(3, repository.steps.templates(task.id).stream()
@@ -111,9 +105,8 @@ public final class StepFlowMaterializationRobolectricTest {
                 () -> 1_777_000L, ids);
 
         assertTrue(materialize.execute());
-        assertEquals(4, repository.flows.activeFlowRuns(task.id).size());
-        assertTrue(repository.flows.activeFlowRuns(task.id).stream().allMatch(
-                run -> run.state == de.thonktank.autosecretary.domain.model.StepFlowRunState.PENDING_START));
+        assertEquals(4, repository.flows.flowCandidates(task.id).size());
+        assertTrue(repository.flows.activeFlowRuns(task.id).isEmpty());
         assertTrue(repository.today.openOccurrences().isEmpty());
         assertFalse(materialize.execute());
     }

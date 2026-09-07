@@ -26,7 +26,7 @@ public final class FocusCardUiModel {
                      TimerManager.Snapshot timers) {
         if (task == null || steps == null || palette == null || reorder == null)
             throw new IllegalArgumentException("Complete focus-card state is required");
-        if (!task.occurrenceId().equals(steps.occurrenceId))
+        if (!task.itemId().equals(steps.itemId))
             throw new IllegalArgumentException("Focus task and projected rows must match");
         this.task = task;
         this.steps = steps;

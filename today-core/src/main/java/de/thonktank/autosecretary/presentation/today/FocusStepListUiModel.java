@@ -6,14 +6,14 @@ import java.util.List;
 
 /** Complete projected step list consumed by the Today focus-card renderer. */
 public final class FocusStepListUiModel {
-    public final String occurrenceId;
+    public final String itemId;
     public final List<FocusStepRowUiModel> rows;
     public final int doneCount;
 
-    FocusStepListUiModel(String occurrenceId, List<FocusStepRowUiModel> rows, int doneCount) {
-        if (occurrenceId == null || rows == null)
+    FocusStepListUiModel(String itemId, List<FocusStepRowUiModel> rows, int doneCount) {
+        if (itemId == null || rows == null)
             throw new IllegalArgumentException("Focus-step list identity is required");
-        this.occurrenceId = occurrenceId;
+        this.itemId = itemId;
         this.rows = Collections.unmodifiableList(new ArrayList<>(rows));
         this.doneCount = Math.max(0, doneCount);
     }

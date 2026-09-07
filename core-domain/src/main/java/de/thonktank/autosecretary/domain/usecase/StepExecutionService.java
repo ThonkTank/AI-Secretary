@@ -342,7 +342,7 @@ public final class StepExecutionService {
         for (RewardBooking booking : today.rewardBookings(occurrence.id))
             if (booking.target == RewardBooking.Target.VESSEL) vesselXp += booking.xpDelta;
         if (vesselXp != 0) return;
-        if (occurrence.kind == OccurrenceKind.FLOW_SHEET) return;
+        if (occurrence.kind == OccurrenceKind.FLOW_STEP) return;
         de.thonktank.autosecretary.domain.model.Task task =
                 catalog.findTask(occurrence.taskId);
         if (task == null) return;

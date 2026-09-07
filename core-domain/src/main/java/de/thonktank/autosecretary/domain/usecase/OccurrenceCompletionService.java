@@ -95,7 +95,7 @@ public final class OccurrenceCompletionService {
             Occurrence occurrence = today.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
-            if (occurrence.kind == OccurrenceKind.FLOW_SHEET) return RewardReceipt.none();
+            if (occurrence.kind == OccurrenceKind.FLOW_STEP) return RewardReceipt.none();
             for (OccurrenceStep step : steps.occurrenceSteps(occurrenceId))
                 if (!step.done) bookings.addAll(stepExecution.completeWithPlannedResults(
                         occurrence, step,
@@ -110,7 +110,7 @@ public final class OccurrenceCompletionService {
             Occurrence occurrence = today.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
-            if (occurrence.kind == OccurrenceKind.FLOW_SHEET) return RewardReceipt.none();
+            if (occurrence.kind == OccurrenceKind.FLOW_STEP) return RewardReceipt.none();
             Task task = catalog.findTask(occurrence.taskId);
             if (task == null) return RewardReceipt.none();
             String transactionId = newId();
@@ -195,7 +195,7 @@ public final class OccurrenceCompletionService {
                 ? states.harvestWithMissedSteps(occurrence, clock.today())
                 : states.completeOccurrence(occurrence, clock.today());
         today.updateOccurrence(harvested);
-        if (occurrence.kind == OccurrenceKind.FLOW_SHEET)
+        if (occurrence.kind == OccurrenceKind.FLOW_STEP)
             flows.onOccurrenceHarvested(harvested);
         else projectSchedule(task.id);
         return RewardReceipt.of(transactionId, Collections.singletonList(booking),
@@ -207,7 +207,7 @@ public final class OccurrenceCompletionService {
                 || !clock.today().equals(occurrence.completedOn)) return RewardReceipt.none();
         if (!flows.canReopenOccurrence(occurrence)) return RewardReceipt.none();
         Occurrence otherOpen = today.earliestOpenOccurrence(task.id);
-        if (occurrence.kind != OccurrenceKind.FLOW_SHEET && otherOpen != null
+        if (occurrence.kind != OccurrenceKind.FLOW_STEP && otherOpen != null
                 && !otherOpen.id.equals(occurrence.id)) return RewardReceipt.none();
         RewardBooking original = activeOriginal(occurrence.id, null, RewardBooking.Target.HEAD);
         if (original == null) return RewardReceipt.none();
@@ -222,7 +222,7 @@ public final class OccurrenceCompletionService {
         today.updateOccurrence(reopened);
         flows.onOccurrenceReopened(reopened);
         if (task.ongoing && task.conditionDone) catalog.updateTask(task.reopenCondition());
-        if (occurrence.kind != OccurrenceKind.FLOW_SHEET) projectSchedule(task.id);
+        if (occurrence.kind != OccurrenceKind.FLOW_STEP) projectSchedule(task.id);
         return RewardReceipt.of(transactionId, Collections.singletonList(reversal),
                 RewardReceipt.Target.HEAD);
     }

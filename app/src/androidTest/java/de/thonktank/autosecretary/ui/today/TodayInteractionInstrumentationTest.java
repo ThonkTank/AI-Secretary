@@ -48,6 +48,7 @@ import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayCommand;
 import de.thonktank.autosecretary.presentation.today.TodayCoordinator;
 import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
+import de.thonktank.autosecretary.presentation.today.TodayItemTarget;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 
@@ -367,7 +368,8 @@ public final class TodayInteractionInstrumentationTest {
                 FocusStepUiModel.of("c", "Dritter Schritt", false));
         XpVesselUiModel vessel = XpVesselUiModel.of(reward, 0, 3, false,
                 new RewardTextFormatter(Locale.GERMANY));
-        return FocusTaskUiModel.builder(TaskActionTarget.of("task", "occurrence", "Routine",
+        return FocusTaskUiModel.builder(TaskActionTarget.of("task",
+                        TodayItemTarget.occurrence("occurrence"), "Routine",
                         TaskSlot.MORNING, true, false))
                 .nextAction("Routine fortsetzen")
                 .steps(steps, 3)

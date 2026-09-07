@@ -5,10 +5,13 @@ import de.thonktank.autosecretary.domain.model.CapacityResource;
 import de.thonktank.autosecretary.domain.model.FlowRunResourceSnapshot;
 import de.thonktank.autosecretary.domain.model.FlowRunSnapshot;
 import de.thonktank.autosecretary.domain.model.FlowRunStepSnapshot;
+import de.thonktank.autosecretary.domain.model.FlowCandidate;
+import de.thonktank.autosecretary.domain.model.FlowTaskSheetPlacement;
 import de.thonktank.autosecretary.domain.model.StepFlowRun;
 import de.thonktank.autosecretary.domain.model.StepResourceLease;
 import de.thonktank.autosecretary.domain.model.StepTransition;
 import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.FlowRepository;
 
 import java.util.ArrayList;
@@ -43,9 +46,27 @@ public final class RoomFlowRepository implements FlowRepository {
         for (StepTransitionEntity value : dao.stepTransitions(taskId.value)) result.add(mapper.toDomain(value));
         return result;
     }
+    @Override public List<StepTransition> stepTransitionsFor(List<TaskId> taskIds) {
+        if (taskIds.isEmpty()) return new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        for (TaskId taskId : taskIds) values.add(taskId.value);
+        List<StepTransition> result = new ArrayList<>();
+        for (StepTransitionEntity value : dao.stepTransitionsFor(values))
+            result.add(mapper.toDomain(value));
+        return result;
+    }
     @Override public List<StepResourceLease> stepResourceLeases(TaskId taskId) {
         List<StepResourceLease> result = new ArrayList<>();
         for (StepResourceLeaseEntity value : dao.stepResourceLeases(taskId.value)) result.add(mapper.toDomain(value));
+        return result;
+    }
+    @Override public List<StepResourceLease> stepResourceLeasesFor(List<TaskId> taskIds) {
+        if (taskIds.isEmpty()) return new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        for (TaskId taskId : taskIds) values.add(taskId.value);
+        List<StepResourceLease> result = new ArrayList<>();
+        for (StepResourceLeaseEntity value : dao.stepResourceLeasesFor(values))
+            result.add(mapper.toDomain(value));
         return result;
     }
     @Override public void replaceStepFlow(TaskId taskId, List<StepTransition> transitions,
@@ -61,6 +82,39 @@ public final class RoomFlowRepository implements FlowRepository {
     }
     @Override public void updateStepTransition(StepTransition value) {
         dao.putStepTransition(mapper.toEntity(value));
+    }
+    @Override public boolean insertFlowCandidate(FlowCandidate value) {
+        return dao.insertFlowCandidate(mapper.toEntity(value)) != -1L;
+    }
+    @Override public FlowCandidate findFlowCandidate(String id) {
+        FlowCandidateEntity value = dao.flowCandidate(id);
+        return value == null ? null : mapper.toDomain(value);
+    }
+    @Override public FlowCandidate findFlowCandidateBySourceKey(String sourceKey) {
+        FlowCandidateEntity value = dao.flowCandidateBySourceKey(sourceKey);
+        return value == null ? null : mapper.toDomain(value);
+    }
+    @Override public List<FlowCandidate> flowCandidates() {
+        return mapCandidates(dao.flowCandidates());
+    }
+    @Override public List<FlowCandidate> flowCandidates(TaskId taskId) {
+        return mapCandidates(dao.flowCandidates(taskId.value));
+    }
+    @Override public void deleteFlowCandidate(String id) { dao.deleteFlowCandidate(id); }
+    @Override public void putFlowTaskSheetPlacement(FlowTaskSheetPlacement value) {
+        dao.putFlowTaskSheetPlacement(mapper.toEntity(value));
+    }
+    @Override public FlowTaskSheetPlacement findFlowTaskSheetPlacement(TaskId taskId,
+                                                                       TaskSlot slot) {
+        FlowTaskSheetPlacementEntity value = dao.flowTaskSheetPlacement(
+                taskId.value, slot.storageCode);
+        return value == null ? null : mapper.toDomain(value);
+    }
+    @Override public List<FlowTaskSheetPlacement> flowTaskSheetPlacements() {
+        List<FlowTaskSheetPlacement> result = new ArrayList<>();
+        for (FlowTaskSheetPlacementEntity value : dao.flowTaskSheetPlacements())
+            result.add(mapper.toDomain(value));
+        return result;
     }
     @Override public boolean insertFlowRun(FlowRunSnapshot snapshot) {
         return database.runInTransaction(() -> {
@@ -123,6 +177,11 @@ public final class RoomFlowRepository implements FlowRepository {
     private List<StepFlowRun> mapRuns(List<StepFlowRunEntity> values) {
         List<StepFlowRun> result = new ArrayList<>();
         for (StepFlowRunEntity value : values) result.add(mapper.toDomain(value));
+        return result;
+    }
+    private List<FlowCandidate> mapCandidates(List<FlowCandidateEntity> values) {
+        List<FlowCandidate> result = new ArrayList<>();
+        for (FlowCandidateEntity value : values) result.add(mapper.toDomain(value));
         return result;
     }
 }

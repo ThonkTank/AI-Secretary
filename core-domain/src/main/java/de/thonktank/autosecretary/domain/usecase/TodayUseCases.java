@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.domain.usecase;
 /** Focused application commands and queries for today's execution. */
 public final class TodayUseCases {
     public final DeferTask defer;
+    public final DeferFlowTaskSheet deferFlowTaskSheet;
     public final ToggleStep toggleStep;
     public final AdvanceTodayStep advanceTodayStep;
     public final MoveTodayStep moveTodayStep;
@@ -21,7 +22,8 @@ public final class TodayUseCases {
     public final MaterializeDueOccurrences materializeDue;
     public final LoadDashboard loadDashboard;
 
-    public TodayUseCases(DeferTask defer, ToggleStep toggleStep,
+    public TodayUseCases(DeferTask defer, DeferFlowTaskSheet deferFlowTaskSheet,
+                         ToggleStep toggleStep,
                          AdvanceTodayStep advanceTodayStep, MoveTodayStep moveTodayStep,
                          RecordRepetitionResult recordRepetitionResult,
                          CorrectRepetitionResult correctRepetitionResult,
@@ -35,6 +37,7 @@ public final class TodayUseCases {
                          MaterializeDueOccurrences materializeDue,
                          LoadDashboard loadDashboard) {
         this.defer = defer;
+        this.deferFlowTaskSheet = deferFlowTaskSheet;
         this.toggleStep = toggleStep;
         this.advanceTodayStep = advanceTodayStep;
         this.moveTodayStep = moveTodayStep;

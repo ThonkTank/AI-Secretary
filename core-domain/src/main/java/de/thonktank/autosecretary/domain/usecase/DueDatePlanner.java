@@ -34,7 +34,7 @@ final class DueDatePlanner {
             return new Plan(result, dues, null, 0, !same(task.planningCursor(), null));
         Set<String> existingDates = new HashSet<>();
         for (Occurrence occurrence : history)
-            if (occurrence.kind != OccurrenceKind.FLOW_SHEET)
+            if (occurrence.kind != OccurrenceKind.FLOW_STEP)
                 existingDates.add(key(occurrence.taskId, occurrence.scheduledOn, occurrence.slot));
         List<TaskSlot> slots = schedule.slots(task.id);
         if (slots.isEmpty())

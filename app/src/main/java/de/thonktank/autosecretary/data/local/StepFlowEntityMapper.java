@@ -5,6 +5,8 @@ import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.FlowResourceState;
 import de.thonktank.autosecretary.domain.model.FlowRunResourceSnapshot;
 import de.thonktank.autosecretary.domain.model.FlowRunStepSnapshot;
+import de.thonktank.autosecretary.domain.model.FlowCandidate;
+import de.thonktank.autosecretary.domain.model.FlowTaskSheetPlacement;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.StepAmount;
@@ -20,6 +22,29 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import java.time.LocalDate;
 
 final class StepFlowEntityMapper {
+    FlowCandidate toDomain(FlowCandidateEntity value) {
+        return new FlowCandidate(value.id, TaskId.of(value.taskId), value.seedStepId,
+                value.sourceKey, LocalDate.parse(value.scheduledOn),
+                TaskSlot.fromStorage(value.slot), value.queueOrder, value.createdAtEpochMillis);
+    }
+
+    FlowCandidateEntity toEntity(FlowCandidate value) {
+        return new FlowCandidateEntity(value.id, value.taskId.value, value.seedStepId,
+                value.sourceKey, value.scheduledOn.toString(), value.slot.storageCode,
+                value.queueOrder, value.createdAtEpochMillis);
+    }
+
+    FlowTaskSheetPlacement toDomain(FlowTaskSheetPlacementEntity value) {
+        return new FlowTaskSheetPlacement(value.id, TaskId.of(value.taskId),
+                TaskSlot.fromStorage(value.slot), LocalDate.parse(value.displayOn),
+                value.sortOrder);
+    }
+
+    FlowTaskSheetPlacementEntity toEntity(FlowTaskSheetPlacement value) {
+        return new FlowTaskSheetPlacementEntity(value.id, value.taskId.value,
+                value.slot.storageCode, value.displayOn.toString(), value.sortOrder);
+    }
+
     CapacityResource toDomain(CapacityResourceEntity value) {
         return new CapacityResource(value.id, value.name, value.capacity);
     }
@@ -55,8 +80,8 @@ final class StepFlowEntityMapper {
         return new StepFlowRun(value.id, TaskId.of(value.taskId), value.seedStepId,
                 value.sourceKey, LocalDate.parse(value.scheduledOn),
                 TaskSlot.fromStorage(value.slot), StepFlowRunState.valueOf(value.state),
-                value.currentPosition, value.readyAtEpochMillis, value.currentSheetOccurrenceId,
-                value.queueOrder, value.nextSheetSequence, value.createdAtEpochMillis,
+                value.currentPosition, value.readyAtEpochMillis, value.currentExecutionOccurrenceId,
+                value.queueOrder, value.nextExecutionSequence, value.createdAtEpochMillis,
                 value.updatedAtEpochMillis);
     }
 
@@ -64,7 +89,7 @@ final class StepFlowEntityMapper {
         return new StepFlowRunEntity(value.id, value.taskId.value, value.seedStepId,
                 value.sourceKey, value.scheduledOn.toString(), value.slot.storageCode,
                 value.state.name(), value.currentPosition, value.readyAtEpochMillis,
-                value.currentSheetOccurrenceId, value.queueOrder, value.nextSheetSequence,
+                value.currentExecutionOccurrenceId, value.queueOrder, value.nextExecutionSequence,
                 value.createdAtEpochMillis, value.updatedAtEpochMillis);
     }
 

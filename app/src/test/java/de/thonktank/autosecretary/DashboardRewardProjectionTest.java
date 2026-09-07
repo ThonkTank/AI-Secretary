@@ -67,7 +67,7 @@ public final class DashboardRewardProjectionTest {
         assertEquals(23, focus.reward.resultXp);
         assertEquals(1.5d, focus.reward.multiplier, 0d);
         assertEquals(15, focus.steps.get(1).reward.resultXp);
-        assertEquals("today", focus.occurrenceId());
+        assertEquals("today", focus.itemId());
         assertEquals(1, model.completedToday.size());
         assertEquals("completed", model.completedToday.get(0).occurrenceId);
         assertEquals(0, model.timeline.size());

@@ -97,7 +97,7 @@ public final class FocusTaskViewTest {
         FocusStepUiModel whites = FocusTaskFixtures.step("whites", "Weißwäsche")
                 .amount("2 Std.").build();
         FocusTaskUiModel task = FocusTaskFixtures.task("laundry", "Wäsche waschen")
-                .steps(Arrays.asList(colors, whites)).flowAggregate(true).build();
+                .steps(Arrays.asList(colors, whites)).flowTaskSheet(true).build();
         FocusTaskView view = new FocusTaskView(context);
 
         view.bind(FocusCardTestModels.of(task,
@@ -115,7 +115,7 @@ public final class FocusTaskViewTest {
         FocusTaskUiModel task = FocusTaskFixtures.task("laundry", "Wäsche waschen")
                 .steps(Collections.singletonList(
                         FocusTaskFixtures.step("colors", "Buntwäsche").build()))
-                .flowAggregate(true).allowDefer(true).build();
+                .flowTaskSheet(true).allowDefer(true).build();
         TodayActionRecorder events = new TodayActionRecorder();
         FocusTaskView view = new FocusTaskView(context);
 

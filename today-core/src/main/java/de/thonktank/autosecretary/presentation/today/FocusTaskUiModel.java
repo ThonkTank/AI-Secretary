@@ -21,7 +21,7 @@ public final class FocusTaskUiModel {
     public final int grainLevel;
     public final XpVesselUiModel vessel;
     public final int backlogCount;
-    public final boolean flowAggregate;
+    public final boolean allowBulkComplete;
 
     private FocusTaskUiModel(Builder builder) {
         if (builder.actionTarget == null || builder.nextAction == null || builder.steps == null
@@ -42,11 +42,14 @@ public final class FocusTaskUiModel {
                 ? builder.reward.comboStage : Math.max(0, builder.grainLevel);
         this.vessel = builder.vessel;
         this.backlogCount = Math.max(0, builder.backlogCount);
-        this.flowAggregate = builder.flowAggregate;
+        this.allowBulkComplete = builder.allowBulkComplete;
     }
 
     public String taskId() { return actionTarget.taskId; }
-    public String occurrenceId() { return actionTarget.occurrenceId; }
+    public String itemId() { return actionTarget.item.id; }
+    public boolean occurrenceTarget() {
+        return actionTarget.item.kind == TodayItemTarget.Kind.OCCURRENCE;
+    }
     public String title() { return actionTarget.title; }
     public boolean terminalCondition() { return actionTarget.terminalCondition; }
 
@@ -65,7 +68,7 @@ public final class FocusTaskUiModel {
         private XpVesselUiModel vessel;
         private Integer grainLevel;
         private int backlogCount;
-        private boolean flowAggregate;
+        private boolean allowBulkComplete = true;
 
         private Builder(TaskActionTarget target) { this.actionTarget = target; }
 
@@ -82,7 +85,7 @@ public final class FocusTaskUiModel {
         }
         public Builder grainLevel(int value) { grainLevel = value; return this; }
         public Builder backlogCount(int value) { backlogCount = value; return this; }
-        public Builder flowAggregate(boolean value) { flowAggregate = value; return this; }
+        public Builder allowBulkComplete(boolean value) { allowBulkComplete = value; return this; }
         public FocusTaskUiModel build() { return new FocusTaskUiModel(this); }
     }
 }

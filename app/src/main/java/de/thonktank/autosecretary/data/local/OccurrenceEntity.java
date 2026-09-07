@@ -25,7 +25,7 @@ public class OccurrenceEntity {
     @ColumnInfo(defaultValue = "'SCHEDULED'") @NonNull public String kind;
     @ColumnInfo(defaultValue = "''") @NonNull public String sourceKey;
     @Nullable public String flowRunId;
-    @ColumnInfo(defaultValue = "0") public int flowSheetSequence;
+    @ColumnInfo(defaultValue = "0") public int flowExecutionSequence;
 
     @Ignore public OccurrenceEntity(@NonNull String id, @NonNull String taskId,
                                     @NonNull String scheduledOn, @NonNull String state,
@@ -44,13 +44,13 @@ public class OccurrenceEntity {
                             @NonNull String scheduledOn, @NonNull String state,
                             int sortOrder, @Nullable String completedOn, @NonNull String slot,
                             @NonNull String kind, @NonNull String sourceKey,
-                            @Nullable String flowRunId, int flowSheetSequence) {
+                            @Nullable String flowRunId, int flowExecutionSequence) {
         this.id = id; this.taskId = taskId; this.scheduledOn = scheduledOn;
         this.state = state; this.sortOrder = sortOrder; this.completedOn = completedOn;
         this.slot = slot;
         this.kind = kind;
         this.sourceKey = sourceKey;
         this.flowRunId = flowRunId;
-        this.flowSheetSequence = flowSheetSequence;
+        this.flowExecutionSequence = flowExecutionSequence;
     }
 }

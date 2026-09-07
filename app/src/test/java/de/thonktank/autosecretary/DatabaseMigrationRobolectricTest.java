@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 import static org.junit.Assert.assertTrue;
 
@@ -589,6 +590,89 @@ public final class DatabaseMigrationRobolectricTest {
         assertCadenceAnchor(database, "history", "2026-08-18");
         assertCadenceAnchor(database, "cursor", "2026-08-25");
         assertCadenceAnchor(database, "archive", null);
+        migrated.close();
+    }
+
+    @Test public void migrationTwentyTwoToTwentyThreeSeparatesCandidatesAndStartedRuns() {
+        SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
+                .builder(context).name(DATABASE)
+                .callback(new SupportSQLiteOpenHelper.Callback(22) {
+                    @Override public void onCreate(SupportSQLiteDatabase database) {
+                        ExportedRoomSchemaFixture.create(database, 22);
+                    }
+                    @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                    int oldVersion, int newVersion) { }
+                }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
+                .create(configuration);
+        SupportSQLiteDatabase old = helper.getWritableDatabase();
+        old.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,weekdayMask,ongoing,"
+                + "conditionText,conditionDone,archived,nextDueOn,cadenceAnchorOn,lastScheduledOn,"
+                + "lastCompletedOn,catalogOrder,hasCompletedOccurrence,estimatedMinutes,boundKind,"
+                + "boundUntilOn,boundWeeks,remainingCount,deadlineOn,note,missedOccurrenceMode) "
+                + "VALUES ('laundry','Wäsche','DAILY',1,0,0,'',0,0,'2026-08-25',NULL,NULL,NULL,"
+                + "1,0,NULL,'FOREVER',NULL,NULL,NULL,NULL,'','SKIP')");
+        old.execSQL("INSERT INTO step_flow_runs(id,taskId,seedStepId,sourceKey,scheduledOn,slot,"
+                + "state,currentPosition,readyAtEpochMillis,currentSheetOccurrenceId,queueOrder,"
+                + "nextSheetSequence,createdAtEpochMillis,updatedAtEpochMillis) VALUES "
+                + "('clean','laundry','colors','flow:clean','2026-08-25','MORNING',"
+                + "'PENDING_START',0,NULL,'clean-sheet',1000000000,1,10,10),"
+                + "('started','laundry','whites','flow:started','2026-08-25','MORNING',"
+                + "'PENDING_START',0,NULL,'started-sheet',2000000000,1,20,20),"
+                + "('waiting','laundry','sheets','flow:waiting','2026-08-25','MORNING',"
+                + "'WAITING_TIME',1,999999,NULL,3000000000,1,30,30)");
+        old.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,sortOrder,completedOn,slot,"
+                + "kind,sourceKey,flowRunId,flowSheetSequence) VALUES "
+                + "('clean-sheet','laundry','2026-08-25','OPEN',8,NULL,'MORNING','FLOW_SHEET',"
+                + "'flow-sheet:clean:0','clean',0),"
+                + "('started-sheet','laundry','2026-08-25','OPEN',4,NULL,'MORNING','FLOW_SHEET',"
+                + "'flow-sheet:started:0','started',0)");
+        old.execSQL("INSERT INTO flow_run_resources(id,runId,sourceLeaseId,resourceId,resourceName,"
+                + "capacityAtCreation,units,acquirePosition,releasePosition,state,"
+                + "reservedAtEpochMillis,activatedAtEpochMillis,releasedAtEpochMillis) VALUES "
+                + "('active-resource','started','lease','dry','Trockenplatz',3,1,0,2,'ACTIVE',"
+                + "20,20,NULL)");
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.from(22))
+                .allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        try (Cursor cursor = database.query("SELECT id,sourceKey FROM flow_candidates")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("clean", cursor.getString(0));
+            assertEquals("flow:clean", cursor.getString(1));
+            assertFalse(cursor.moveToNext());
+        }
+        try (Cursor cursor = database.query("SELECT state,currentExecutionOccurrenceId "
+                + "FROM step_flow_runs WHERE id='started'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("OFFERED", cursor.getString(0));
+            assertEquals("started-sheet", cursor.getString(1));
+        }
+        try (Cursor cursor = database.query("SELECT state,readyAtEpochMillis FROM step_flow_runs "
+                + "WHERE id='waiting'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("WAITING_TIME", cursor.getString(0));
+            assertEquals(999999L, cursor.getLong(1));
+        }
+        try (Cursor cursor = database.query("SELECT displayOn,sortOrder FROM "
+                + "flow_task_sheet_placements WHERE taskId='laundry' AND slot='MORNING'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("2026-08-25", cursor.getString(0));
+            assertEquals(4, cursor.getInt(1));
+        }
+        try (Cursor cursor = database.query("SELECT kind,sourceKey,flowExecutionSequence FROM "
+                + "occurrences WHERE id='started-sheet'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("FLOW_STEP", cursor.getString(0));
+            assertEquals("flow-step:started:0", cursor.getString(1));
+            assertEquals(0, cursor.getInt(2));
+        }
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM step_flow_runs "
+                + "WHERE state='PENDING_START'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(0, cursor.getInt(0));
+        }
         migrated.close();
     }
 

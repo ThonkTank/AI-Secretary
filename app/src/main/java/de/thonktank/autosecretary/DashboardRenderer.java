@@ -255,8 +255,7 @@ public final class DashboardRenderer {
             TimelineItemUiModel item = items.get(i);
             String key = item.event != null
                     ? "event:" + item.event.minuteOfDay + ":" + item.event.title
-                    : "task:" + (item.task.occurrenceId.isEmpty()
-                    ? item.task.taskId : item.task.occurrenceId);
+                    : "task:" + item.task.itemId;
             desired.add(key);
             View view = timelineViews.get(key);
             if (item.event != null) {
@@ -280,12 +279,12 @@ public final class DashboardRenderer {
                         !firstOpenAfterFocus, palette,
                         task -> todayActions.emit(task.terminalCondition
                                 ? TodayAction.requestClose(task.taskId, task.title)
-                                : TodayAction.completeOccurrence(task.occurrenceId)),
+                                : TodayAction.completeOccurrence(task.itemId)),
                         task -> todayActions.emit(TodayAction.openTaskMenu(task.actionTarget)));
                 RewardAnchorKey.Kind kind = item.task.terminalCondition
                         ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE;
                 rewardAnchors.register(new RewardAnchorKey(kind, item.task.terminalCondition
-                        ? item.task.taskId : item.task.occurrenceId),
+                        ? item.task.taskId : item.task.itemId),
                         ((TaskLeafView) view).rewardAnchor());
             }
             if (view.getParent() != timeline) {

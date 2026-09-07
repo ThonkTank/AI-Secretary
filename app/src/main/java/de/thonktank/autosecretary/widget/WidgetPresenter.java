@@ -87,7 +87,7 @@ public final class WidgetPresenter {
                 : focus.requiresApp ? WidgetUiModel.PrimaryAction.OPEN_APP
                 : focus.terminalCondition ? WidgetUiModel.PrimaryAction.CONFIRM_CLOSE
                 : WidgetUiModel.PrimaryAction.COMPLETE_OCCURRENCE;
-        String actionId = focus.terminalCondition ? focus.taskId : focus.occurrenceId;
+        String actionId = focus.terminalCondition ? focus.taskId : focus.itemId;
         return new WidgetUiModel(size, data.palette,
                 context.getString(focus.overdue ? R.string.marker_overdue : R.string.marker_now),
                 focus.title, focus.overdue, false, steps, progress,

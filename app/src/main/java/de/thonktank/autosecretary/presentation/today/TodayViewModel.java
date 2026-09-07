@@ -32,6 +32,7 @@ import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
 import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
 import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
+import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
 import de.thonktank.autosecretary.domain.usecase.TrainingUseCases;
 import de.thonktank.autosecretary.domain.schedule.ScheduleMoveResult;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
@@ -67,6 +68,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private static final String SAVED_REQUEST_SEQUENCE = "today_request_sequence";
     private static final String SAVED_TIMER_PERMISSION_WARNED = "today_timer_permission_warned";
     private final TodayUseCases today;
+    @Nullable private FlowUseCases flows;
     private final CatalogUseCases catalog;
     private final TrainingAssistantActionHandler trainingAssistantActions;
     private final DashboardPresenter dashboard;
@@ -103,6 +105,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 container.uiPreferences, container.clock, container.logger, container.texts,
                 container.presentationInvalidations, container.timers, navigator,
                 savedState, worker, null);
+        this.flows = container.flows;
     }
 
     public TodayViewModel(TodayUseCases today, CatalogUseCases catalog,
@@ -126,6 +129,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                   SavedStateHandle savedState,
                   ExecutorService worker, @Nullable Executor collectionExecutor) {
         this.today = today;
+        this.flows = null;
         this.catalog = catalog;
         this.trainingAssistantActions = new TrainingAssistantActionHandler(training);
         this.dashboard = dashboard;
@@ -379,9 +383,20 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 () -> today.harvest.execute(occurrenceId));
     }
 
-    @Override public void handleDefer(String occurrenceId) {
-        run(command(UiCommand.Kind.DEFER, occurrenceId),
-                () -> today.defer.execute(occurrenceId));
+    @Override public void handleDefer(TodayItemTarget target) {
+        if (target == null) return;
+        run(command(UiCommand.Kind.DEFER, target.id), () -> {
+            if (target.kind == TodayItemTarget.Kind.FLOW_TASK_SHEET)
+                today.deferFlowTaskSheet.execute(target.id);
+            else today.defer.execute(target.id);
+        });
+    }
+
+    @Override public void handleStartFlowCandidate(String candidateId,
+                                                    Long chosenDelayMillis) {
+        if (flows == null) return;
+        run(command(UiCommand.Kind.TOGGLE_STEP, candidateId),
+                () -> flows.startFlowCandidate.execute(candidateId, chosenDelayMillis));
     }
 
     @Override public void handleToggleStep(String stepId) {

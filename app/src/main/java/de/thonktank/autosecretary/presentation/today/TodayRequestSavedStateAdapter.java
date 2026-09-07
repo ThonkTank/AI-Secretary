@@ -16,6 +16,7 @@ final class TodayRequestSavedStateAdapter {
     private static final String MESSAGE = "message";
     private static final String TASK_ID = "task_id";
     private static final String OCCURRENCE_ID = "occurrence_id";
+    private static final String TARGET_KIND = "target_kind";
     private static final String TITLE = "title";
     private static final String SLOT = "slot";
     private static final String ROUTINE = "routine";
@@ -33,7 +34,8 @@ final class TodayRequestSavedStateAdapter {
             item.putString(TITLE, request.title);
             item.putBoolean(ROUTINE, request.routine);
             if (request.target != null) {
-                item.putString(OCCURRENCE_ID, request.target.occurrenceId);
+                item.putString(OCCURRENCE_ID, request.target.item.id);
+                item.putString(TARGET_KIND, request.target.item.kind.name());
                 item.putString(SLOT, request.target.slot.name());
                 item.putBoolean(TERMINAL, request.target.terminalCondition);
             }
@@ -63,7 +65,7 @@ final class TodayRequestSavedStateAdapter {
                             item.getString(TITLE)));
                 } else {
                     TaskActionTarget target = TaskActionTarget.of(item.getString(TASK_ID),
-                            item.getString(OCCURRENCE_ID), item.getString(TITLE),
+                            target(item), item.getString(TITLE),
                             TaskSlot.valueOf(item.getString(SLOT)), item.getBoolean(ROUTINE),
                             item.getBoolean(TERMINAL));
                     result.add(TodayRequest.task(id, kind, target));
@@ -73,5 +75,16 @@ final class TodayRequestSavedStateAdapter {
             }
         }
         return result;
+    }
+
+    private static TodayItemTarget target(Bundle item) {
+        String id = item.getString(OCCURRENCE_ID);
+        String kind = item.getString(TARGET_KIND);
+        if (kind == null) return TodayItemTarget.occurrence(id);
+        TodayItemTarget.Kind value = TodayItemTarget.Kind.valueOf(kind);
+        if (value == TodayItemTarget.Kind.FLOW_TASK_SHEET)
+            return TodayItemTarget.flowTaskSheet(id);
+        if (value == TodayItemTarget.Kind.TASK) return TodayItemTarget.task(id);
+        return TodayItemTarget.occurrence(id);
     }
 }

@@ -22,6 +22,8 @@ import de.thonktank.autosecretary.data.local.ComboDecayEventEntity;
 import de.thonktank.autosecretary.data.local.CapacityResourceEntity;
 import de.thonktank.autosecretary.data.local.FlowRunResourceEntity;
 import de.thonktank.autosecretary.data.local.FlowRunStepEntity;
+import de.thonktank.autosecretary.data.local.FlowCandidateEntity;
+import de.thonktank.autosecretary.data.local.FlowTaskSheetPlacementEntity;
 import de.thonktank.autosecretary.data.local.StepFlowRunEntity;
 import de.thonktank.autosecretary.data.local.StepResourceLeaseEntity;
 import de.thonktank.autosecretary.data.local.StepTransitionEntity;
@@ -38,7 +40,8 @@ import androidx.room.RoomDatabase;
         TimerSessionEntity.class, ComboObligationEntity.class, ComboDecayEventEntity.class,
         CapacityResourceEntity.class, StepTransitionEntity.class,
         StepResourceLeaseEntity.class, StepFlowRunEntity.class,
-        FlowRunStepEntity.class, FlowRunResourceEntity.class, TrainingAdjustmentEntity.class,
+        FlowRunStepEntity.class, FlowRunResourceEntity.class, FlowCandidateEntity.class,
+        FlowTaskSheetPlacementEntity.class, TrainingAdjustmentEntity.class,
         TrainingLoadRequestEntity.class},
         version = DatabaseContract.VERSION,
         exportSchema = true)

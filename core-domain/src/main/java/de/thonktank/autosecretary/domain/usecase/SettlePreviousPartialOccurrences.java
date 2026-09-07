@@ -35,7 +35,7 @@ public final class SettlePreviousPartialOccurrences {
     public boolean execute() {
         boolean changed = false;
         for (Occurrence occurrence : today.openOccurrences()) {
-            if (occurrence.kind == OccurrenceKind.FLOW_SHEET) continue;
+            if (occurrence.kind == OccurrenceKind.FLOW_STEP) continue;
             if (!occurrence.scheduledOn.isBefore(clock.today())) continue;
             for (OccurrenceStep step : steps.occurrenceSteps(occurrence.id)) {
                 if (!step.done && positivePartial(step)) {

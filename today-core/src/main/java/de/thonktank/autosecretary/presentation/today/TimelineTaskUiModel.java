@@ -11,7 +11,7 @@ import de.thonktank.autosecretary.domain.model.RewardBreakdown;
 public final class TimelineTaskUiModel {
     public final TaskActionTarget actionTarget;
     public final String taskId;
-    public final String occurrenceId;
+    public final String itemId;
     public final String title;
     public final TaskSlot slot;
     public final String softTime;
@@ -23,17 +23,17 @@ public final class TimelineTaskUiModel {
     public final RewardBreakdown reward;
 
     private TimelineTaskUiModel(TaskActionTarget actionTarget,
-                                String taskId, String occurrenceId, String title, TaskSlot slot,
+                                String taskId, String title, TaskSlot slot,
                                 String softTime, List<TimelineStepUiModel> steps,
                                 boolean terminalCondition, boolean overdue,
                                 long displayOrder, RewardBreakdown reward) {
         if (actionTarget == null || taskId == null || taskId.isEmpty()
-                || occurrenceId == null || title == null
+                || title == null
                 || title.trim().isEmpty() || slot == null || softTime == null || steps == null)
             throw new IllegalArgumentException("Timeline task content is required");
         this.actionTarget = actionTarget;
         this.taskId = taskId;
-        this.occurrenceId = occurrenceId;
+        this.itemId = actionTarget.item.id;
         this.title = title;
         this.slot = slot;
         this.softTime = softTime;
@@ -47,12 +47,12 @@ public final class TimelineTaskUiModel {
     }
 
     public static TimelineTaskUiModel of(TaskActionTarget actionTarget,
-                                         String taskId, String occurrenceId, String title,
+                                         String taskId, String title,
                                          TaskSlot slot, String softTime,
                                          List<TimelineStepUiModel> steps,
                                          boolean terminalCondition, boolean overdue,
                                          long displayOrder, RewardBreakdown reward) {
-        return new TimelineTaskUiModel(actionTarget, taskId, occurrenceId, title, slot, softTime, steps,
+        return new TimelineTaskUiModel(actionTarget, taskId, title, slot, softTime, steps,
                 terminalCondition, overdue, displayOrder, reward);
     }
 
