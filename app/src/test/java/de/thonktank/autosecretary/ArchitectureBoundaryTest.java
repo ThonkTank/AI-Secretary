@@ -357,6 +357,12 @@ public final class ArchitectureBoundaryTest {
                     source.contains("MIGRATION_" + version + "_" + (version + 1)));
     }
 
+    @Test public void productionMigrationsAvoidRenameColumnForApiTwentySixSqlite()
+            throws Exception {
+        String source = read(main("data/local/DatabaseMigrations.java"));
+        assertFalse(source.contains("RENAME COLUMN"));
+    }
+
     @Test public void removedCompatibilityMutationFacadesStayRemoved() throws Exception {
         assertFalse(Files.exists(main("TaskService.java")));
         assertFalse(Files.exists(main("domain/usecase/MoveTask.java")));
