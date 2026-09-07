@@ -65,6 +65,17 @@ Lokaler Implementierungs- und Anforderungsaudit am 2026-09-07:
 Remote-Status: wartet auf Commit, Pull Request, grüne Matrix, Squash-Merge und exakten
 Main-Nachweis. Diese lokalen Ergebnisse allein schließen Phase 1 nicht ab.
 
+Korrekturrunde PR #340:
+
+- Der erste PR-Lauf bestand Quality sowie API 26 mit/ohne Animationen und API 35 ohne
+  Animationen. Beide API-37-Jobs scheiterten ausschließlich im API-37-UIAutomator-Canary, weil
+  dieser noch nach den ersetzten Texten „Sortieren“ und „Aufgaben“ suchte und das nicht gefundene
+  Objekt ohne Prüfung anklickte.
+- Der Canary sucht nun die freigegebenen sichtbaren Texte „Reihenfolge“ und „Fertig“ und prüft
+  das gefundene Objekt vor dem Klick ausdrücklich. Produktcode und fachlicher Vertrag wurden in
+  dieser Korrekturrunde nicht verändert. Der lokale Neubau der Instrumentierungs-APK war in
+  17 s grün; anschließend muss die vollständige PR-Matrix erneut grün laufen.
+
 ## Phase 2 – Mobile Ablaufdetailseite
 
 Status: wartet auf den vollständigen Abschluss von Phase 1

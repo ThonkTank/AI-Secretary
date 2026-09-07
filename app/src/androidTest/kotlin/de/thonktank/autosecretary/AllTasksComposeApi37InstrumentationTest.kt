@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksComposeFixture
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -27,13 +28,15 @@ class AllTasksComposeApi37InstrumentationTest {
     @Test
     fun visibleComposeControlsPublishAndRestoreTheManagementState() {
         assertTrue(device.wait(Until.hasObject(By.text("Morgenroutine")), UI_TIMEOUT_MS))
-        device.findObject(By.text("Sortieren")).click()
-        assertTrue(device.wait(Until.hasObject(By.text("Aufgaben")), UI_TIMEOUT_MS))
+        val order = device.wait(Until.findObject(By.text("Reihenfolge")), UI_TIMEOUT_MS)
+        assertNotNull(order)
+        order.click()
+        assertTrue(device.wait(Until.hasObject(By.text("Fertig")), UI_TIMEOUT_MS))
         assertActivity { it.state.mode == AllTasksUiState.Mode.SORT }
 
         activityRule.scenario.recreate()
 
-        assertTrue(device.wait(Until.hasObject(By.text("Aufgaben")), UI_TIMEOUT_MS))
+        assertTrue(device.wait(Until.hasObject(By.text("Fertig")), UI_TIMEOUT_MS))
         assertActivity { it.state.mode == AllTasksUiState.Mode.SORT }
     }
 
