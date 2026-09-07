@@ -1135,7 +1135,15 @@ public final class DatabaseMigrations {
                 + "defaultDelayMillis INTEGER, lastUsedDelayMillis INTEGER, "
                 + "chosenDelayMillis INTEGER, PRIMARY KEY(id), FOREIGN KEY(runId) REFERENCES "
                 + "step_flow_runs(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
-        database.execSQL("INSERT INTO flow_run_steps SELECT * FROM _m23_flow_run_steps");
+        database.execSQL("INSERT INTO flow_run_steps(id,runId,position,sourceTemplateId,text,"
+                + "amountKind,plannedSets,plannedReps,plannedDurationSeconds,restTimerMode,"
+                + "restTimerSeconds,plannedLoadMode,plannedLoadUnit,plannedLoadMilli,targetRir,"
+                + "note,delayMode,defaultDelayMillis,lastUsedDelayMillis,chosenDelayMillis) "
+                + "SELECT id,runId,position,sourceTemplateId,text,amountKind,plannedSets,"
+                + "plannedReps,plannedDurationSeconds,restTimerMode,restTimerSeconds,"
+                + "plannedLoadMode,plannedLoadUnit,plannedLoadMilli,targetRir,note,delayMode,"
+                + "defaultDelayMillis,lastUsedDelayMillis,chosenDelayMillis "
+                + "FROM _m23_flow_run_steps");
         database.execSQL("CREATE INDEX index_flow_run_steps_runId ON flow_run_steps(runId)");
         database.execSQL("CREATE UNIQUE INDEX index_flow_run_steps_runId_position "
                 + "ON flow_run_steps(runId,position)");
@@ -1150,7 +1158,12 @@ public final class DatabaseMigrations {
                 + "reservedAtEpochMillis INTEGER, activatedAtEpochMillis INTEGER, "
                 + "releasedAtEpochMillis INTEGER, PRIMARY KEY(id), FOREIGN KEY(runId) REFERENCES "
                 + "step_flow_runs(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
-        database.execSQL("INSERT INTO flow_run_resources SELECT * FROM _m23_flow_run_resources");
+        database.execSQL("INSERT INTO flow_run_resources(id,runId,sourceLeaseId,resourceId,"
+                + "resourceName,capacityAtCreation,units,acquirePosition,releasePosition,state,"
+                + "reservedAtEpochMillis,activatedAtEpochMillis,releasedAtEpochMillis) "
+                + "SELECT id,runId,sourceLeaseId,resourceId,resourceName,capacityAtCreation,units,"
+                + "acquirePosition,releasePosition,state,reservedAtEpochMillis,"
+                + "activatedAtEpochMillis,releasedAtEpochMillis FROM _m23_flow_run_resources");
         database.execSQL("CREATE INDEX index_flow_run_resources_runId "
                 + "ON flow_run_resources(runId)");
         database.execSQL("CREATE INDEX index_flow_run_resources_resourceId_state "
@@ -1162,6 +1175,49 @@ public final class DatabaseMigrations {
         database.execSQL("DROP TABLE _m23_flow_run_steps");
         database.execSQL("DROP TABLE _m23_step_flow_runs");
     }
+
+    /** Repairs flow snapshots whose version-23 rebuild copied appended columns by position. */
+    public static final Migration MIGRATION_23_24 = new Migration(23, 24) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TEMP TABLE _m24_corrupt_flow_run_steps AS SELECT id,"
+                    + "delayMode AS restoredPlannedLoadMode,"
+                    + "CAST(defaultDelayMillis AS TEXT) AS restoredPlannedLoadUnit,"
+                    + "lastUsedDelayMillis AS restoredPlannedLoadMilli,"
+                    + "chosenDelayMillis AS restoredTargetRir,"
+                    + "plannedLoadMode AS restoredNote,"
+                    + "plannedLoadUnit AS restoredDelayMode,"
+                    + "plannedLoadMilli AS restoredDefaultDelayMillis,"
+                    + "targetRir AS restoredLastUsedDelayMillis,"
+                    + "CAST(note AS INTEGER) AS restoredChosenDelayMillis "
+                    + "FROM flow_run_steps WHERE plannedLoadUnit IN ('FIXED','REMEMBER_LAST') "
+                    + "AND delayMode IN ('UNSPECIFIED','EXTERNAL','BODYWEIGHT','BODYWEIGHT_PLUS',"
+                    + "'ASSISTED_BODYWEIGHT') AND typeof(defaultDelayMillis)='text' "
+                    + "AND CAST(defaultDelayMillis AS TEXT) IN ('NONE','KG','LB') "
+                    + "AND typeof(note)='text' "
+                    + "AND CAST(CAST(note AS INTEGER) AS TEXT)=note");
+            database.execSQL("UPDATE flow_run_steps SET "
+                    + "plannedLoadMode=(SELECT restoredPlannedLoadMode FROM "
+                    + "_m24_corrupt_flow_run_steps WHERE id=flow_run_steps.id),"
+                    + "plannedLoadUnit=(SELECT restoredPlannedLoadUnit FROM "
+                    + "_m24_corrupt_flow_run_steps WHERE id=flow_run_steps.id),"
+                    + "plannedLoadMilli=(SELECT restoredPlannedLoadMilli FROM "
+                    + "_m24_corrupt_flow_run_steps WHERE id=flow_run_steps.id),"
+                    + "targetRir=(SELECT restoredTargetRir FROM _m24_corrupt_flow_run_steps "
+                    + "WHERE id=flow_run_steps.id),"
+                    + "note=(SELECT restoredNote FROM _m24_corrupt_flow_run_steps "
+                    + "WHERE id=flow_run_steps.id),"
+                    + "delayMode=(SELECT restoredDelayMode FROM _m24_corrupt_flow_run_steps "
+                    + "WHERE id=flow_run_steps.id),"
+                    + "defaultDelayMillis=(SELECT restoredDefaultDelayMillis FROM "
+                    + "_m24_corrupt_flow_run_steps WHERE id=flow_run_steps.id),"
+                    + "lastUsedDelayMillis=(SELECT restoredLastUsedDelayMillis FROM "
+                    + "_m24_corrupt_flow_run_steps WHERE id=flow_run_steps.id),"
+                    + "chosenDelayMillis=(SELECT restoredChosenDelayMillis FROM "
+                    + "_m24_corrupt_flow_run_steps WHERE id=flow_run_steps.id) "
+                    + "WHERE id IN (SELECT id FROM _m24_corrupt_flow_run_steps)");
+            database.execSQL("DROP TABLE _m24_corrupt_flow_run_steps");
+        }
+    };
 
     /** Complete historical graph for migration fixtures and archive tests. */
     public static Migration[] all() {
@@ -1175,7 +1231,7 @@ public final class DatabaseMigrations {
                 MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                 MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
                 MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
-                MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23};
+                MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

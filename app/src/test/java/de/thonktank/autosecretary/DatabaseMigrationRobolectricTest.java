@@ -695,6 +695,190 @@ public final class DatabaseMigrationRobolectricTest {
         migrated.close();
     }
 
+    @Test public void organicVersionTwentyFlowSnapshotsKeepTheirSemanticColumns() {
+        SupportSQLiteOpenHelper.Configuration versionTwenty =
+                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
+                        .callback(new SupportSQLiteOpenHelper.Callback(20) {
+                            @Override public void onCreate(SupportSQLiteDatabase database) {
+                                ExportedRoomSchemaFixture.create(database, 20);
+                                database.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,"
+                                        + "weekdayMask,ongoing,conditionText,conditionDone,archived,"
+                                        + "nextDueOn,catalogOrder,hasCompletedOccurrence,boundKind,"
+                                        + "note,missedOccurrenceMode) VALUES ('flow','Ablauf','DAILY',"
+                                        + "1,0,0,'',0,0,'2026-09-07',1,0,'FOREVER','', 'SKIP')");
+                                database.execSQL("INSERT INTO step_flow_runs(id,taskId,seedStepId,"
+                                        + "sourceKey,scheduledOn,slot,state,currentPosition,"
+                                        + "readyAtEpochMillis,currentSheetOccurrenceId,queueOrder,"
+                                        + "nextSheetSequence,createdAtEpochMillis,updatedAtEpochMillis) "
+                                        + "VALUES ('fixed-run','flow','fixed-template','flow:fixed',"
+                                        + "'2026-09-07','MORNING','WAITING_TIME',0,120000,NULL,1,1,10,10),"
+                                        + "('remember-run','flow','remember-template','flow:remember',"
+                                        + "'2026-09-07','MORNING','WAITING_TIME',0,180000,NULL,2,1,20,20)");
+                                database.execSQL("INSERT INTO flow_run_steps(id,runId,position,"
+                                        + "sourceTemplateId,text,amountKind,plannedSets,plannedReps,"
+                                        + "plannedDurationSeconds,restTimerMode,restTimerSeconds,note,"
+                                        + "delayMode,defaultDelayMillis,lastUsedDelayMillis,"
+                                        + "chosenDelayMillis) VALUES "
+                                        + "('fixed-step','fixed-run',0,'fixed-template','Waschen',"
+                                        + "'SETS_REPS',3,12,NULL,'CUSTOM',90,'Ohne Erinnerung',"
+                                        + "'FIXED',120000,NULL,NULL),"
+                                        + "('remember-step','remember-run',0,'remember-template',"
+                                        + "'Trocknen','DURATION',NULL,NULL,900,'OFF',NULL,'Merken',"
+                                        + "'REMEMBER_LAST',180000,150000,140000)");
+                            }
+                            @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                            int oldVersion, int newVersion) { }
+                        }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
+                .create(versionTwenty);
+        helper.getWritableDatabase();
+        helper.close();
+
+        SupportSQLiteOpenHelper.Configuration versionTwentyTwo =
+                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
+                        .callback(new SupportSQLiteOpenHelper.Callback(22) {
+                            @Override public void onCreate(SupportSQLiteDatabase database) {
+                                fail("Version 20 fixture must already exist");
+                            }
+                            @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                            int oldVersion, int newVersion) {
+                                assertEquals(20, oldVersion);
+                                assertEquals(22, newVersion);
+                                DatabaseMigrations.MIGRATION_20_21.migrate(database);
+                                database.execSQL("UPDATE flow_run_steps SET plannedLoadMode='EXTERNAL',"
+                                        + "plannedLoadUnit='KG',plannedLoadMilli=25000,targetRir=3 "
+                                        + "WHERE id='fixed-step'");
+                                database.execSQL("UPDATE flow_run_steps SET "
+                                        + "plannedLoadMode='BODYWEIGHT',plannedLoadUnit='NONE',"
+                                        + "plannedLoadMilli=NULL,targetRir=1 "
+                                        + "WHERE id='remember-step'");
+                                DatabaseMigrations.MIGRATION_21_22.migrate(database);
+                            }
+                        }).build();
+        helper = new FrameworkSQLiteOpenHelperFactory().create(versionTwentyTwo);
+        helper.getWritableDatabase();
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.from(22))
+                .allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        try (Cursor cursor = database.query("SELECT text,amountKind,plannedSets,plannedReps,"
+                + "restTimerMode,restTimerSeconds,plannedLoadMode,plannedLoadUnit,"
+                + "plannedLoadMilli,targetRir,note,delayMode,defaultDelayMillis,"
+                + "lastUsedDelayMillis,chosenDelayMillis FROM flow_run_steps "
+                + "WHERE id='fixed-step'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("Waschen", cursor.getString(0));
+            assertEquals("SETS_REPS", cursor.getString(1));
+            assertEquals(3, cursor.getInt(2));
+            assertEquals(12, cursor.getInt(3));
+            assertEquals("CUSTOM", cursor.getString(4));
+            assertEquals(90, cursor.getInt(5));
+            assertEquals("EXTERNAL", cursor.getString(6));
+            assertEquals("KG", cursor.getString(7));
+            assertEquals(25000L, cursor.getLong(8));
+            assertEquals(3, cursor.getInt(9));
+            assertEquals("Ohne Erinnerung", cursor.getString(10));
+            assertEquals("FIXED", cursor.getString(11));
+            assertEquals(120000L, cursor.getLong(12));
+            assertTrue(cursor.isNull(13));
+            assertTrue(cursor.isNull(14));
+        }
+        try (Cursor cursor = database.query("SELECT plannedDurationSeconds,plannedLoadMode,"
+                + "plannedLoadUnit,plannedLoadMilli,targetRir,note,delayMode,defaultDelayMillis,"
+                + "lastUsedDelayMillis,chosenDelayMillis FROM flow_run_steps "
+                + "WHERE id='remember-step'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals(900, cursor.getInt(0));
+            assertEquals("BODYWEIGHT", cursor.getString(1));
+            assertEquals("NONE", cursor.getString(2));
+            assertTrue(cursor.isNull(3));
+            assertEquals(1, cursor.getInt(4));
+            assertEquals("Merken", cursor.getString(5));
+            assertEquals("REMEMBER_LAST", cursor.getString(6));
+            assertEquals(180000L, cursor.getLong(7));
+            assertEquals(150000L, cursor.getLong(8));
+            assertEquals(140000L, cursor.getLong(9));
+        }
+        migrated.close();
+    }
+
+    @Test public void migrationTwentyThreeToTwentyFourRepairsOnlyPermutedFlowSnapshots() {
+        SupportSQLiteOpenHelper.Configuration configuration =
+                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
+                        .callback(new SupportSQLiteOpenHelper.Callback(23) {
+                            @Override public void onCreate(SupportSQLiteDatabase database) {
+                                ExportedRoomSchemaFixture.create(database, 23);
+                                database.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,"
+                                        + "weekdayMask,ongoing,conditionText,conditionDone,archived,"
+                                        + "nextDueOn,catalogOrder,hasCompletedOccurrence,boundKind,"
+                                        + "note,missedOccurrenceMode) VALUES ('flow','Ablauf','DAILY',"
+                                        + "1,0,0,'',0,0,'2026-09-07',1,0,'FOREVER','','SKIP')");
+                                database.execSQL("INSERT INTO step_flow_runs(id,taskId,seedStepId,"
+                                        + "sourceKey,scheduledOn,slot,state,currentPosition,"
+                                        + "readyAtEpochMillis,currentExecutionOccurrenceId,queueOrder,"
+                                        + "nextExecutionSequence,createdAtEpochMillis,"
+                                        + "updatedAtEpochMillis) VALUES ('run','flow','template',"
+                                        + "'flow:run','2026-09-07','MORNING','WAITING_TIME',0,180000,"
+                                        + "NULL,1,1,10,10)");
+                                database.execSQL("INSERT INTO flow_run_steps(id,runId,position,"
+                                        + "sourceTemplateId,text,amountKind,restTimerMode,"
+                                        + "plannedLoadMode,plannedLoadUnit,plannedLoadMilli,targetRir,"
+                                        + "note,delayMode,defaultDelayMillis,lastUsedDelayMillis,"
+                                        + "chosenDelayMillis) VALUES "
+                                        + "('permuted','run',0,'template','Alt','NONE','OFF',"
+                                        + "'Gerätehinweis','REMEMBER_LAST',180000,150000,'140000',"
+                                        + "'EXTERNAL','KG',25000,1),"
+                                        + "('correct','run',1,'template','Neu','NONE','OFF',"
+                                        + "'BODYWEIGHT','NONE',NULL,2,'Unverändert','FIXED',5000,NULL,"
+                                        + "5000)");
+                            }
+                            @Override public void onUpgrade(SupportSQLiteDatabase database,
+                                                            int oldVersion, int newVersion) { }
+                        }).build();
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
+                .create(configuration);
+        helper.getWritableDatabase();
+        helper.close();
+
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.from(23))
+                .allowMainThreadQueries().build();
+        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        try (Cursor cursor = database.query("SELECT plannedLoadMode,plannedLoadUnit,"
+                + "plannedLoadMilli,targetRir,note,delayMode,defaultDelayMillis,"
+                + "lastUsedDelayMillis,chosenDelayMillis FROM flow_run_steps "
+                + "WHERE id='permuted'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("EXTERNAL", cursor.getString(0));
+            assertEquals("KG", cursor.getString(1));
+            assertEquals(25000L, cursor.getLong(2));
+            assertEquals(1, cursor.getInt(3));
+            assertEquals("Gerätehinweis", cursor.getString(4));
+            assertEquals("REMEMBER_LAST", cursor.getString(5));
+            assertEquals(180000L, cursor.getLong(6));
+            assertEquals(150000L, cursor.getLong(7));
+            assertEquals(140000L, cursor.getLong(8));
+        }
+        try (Cursor cursor = database.query("SELECT plannedLoadMode,plannedLoadUnit,"
+                + "plannedLoadMilli,targetRir,note,delayMode,defaultDelayMillis,"
+                + "lastUsedDelayMillis,chosenDelayMillis FROM flow_run_steps "
+                + "WHERE id='correct'")) {
+            assertTrue(cursor.moveToFirst());
+            assertEquals("BODYWEIGHT", cursor.getString(0));
+            assertEquals("NONE", cursor.getString(1));
+            assertTrue(cursor.isNull(2));
+            assertEquals(2, cursor.getInt(3));
+            assertEquals("Unverändert", cursor.getString(4));
+            assertEquals("FIXED", cursor.getString(5));
+            assertEquals(5000L, cursor.getLong(6));
+            assertTrue(cursor.isNull(7));
+            assertEquals(5000L, cursor.getLong(8));
+        }
+        migrated.close();
+    }
+
     @Test public void supportedVersionEightUpgradeThroughSixteenIsLossless() {
         SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
                 .builder(context).name(DATABASE)
