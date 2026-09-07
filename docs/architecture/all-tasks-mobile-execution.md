@@ -76,6 +76,18 @@ Korrekturrunde PR #340:
   dieser Korrekturrunde nicht verändert. Der lokale Neubau der Instrumentierungs-APK war in
   17 s grün; anschließend muss die vollständige PR-Matrix erneut grün laufen.
 
+Rebase- und Gate-Runde:
+
+- Während des grünen PR-Laufs wurde `origin/main` durch PR #339 auf `94fdcbbc` weitergeführt.
+  Der vorgeschriebene Merge blockierte deshalb korrekt; es wurde weder ein Admin- noch ein
+  Auto-Merge verwendet.
+- Der Themenbranch wurde konfliktfrei auf `94fdcbbc` rebasiert. Die neue Basis betrifft nur
+  Schema-24-/Migrationspfade und überlappt nicht mit den Alles-Dateien.
+- Der vollständige lokale Gate wurde auf dem kombinierten Baum erneut ausgeführt:
+  `testInstrumentationUnitTest lintDebug assembleDebug assembleInstrumentationAndroidTest
+  assembleRelease` war grün in 18 min 38 s. Vor dem Merge ist trotzdem eine vollständig neue
+  PR-Matrix für den rebasierten Head erforderlich.
+
 ## Phase 2 – Mobile Ablaufdetailseite
 
 Status: wartet auf den vollständigen Abschluss von Phase 1
