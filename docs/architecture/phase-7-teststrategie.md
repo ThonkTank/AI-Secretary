@@ -176,7 +176,7 @@ benötigt geringfügig weniger Spitzenspeicher.
 
 Die [Ablaufkandidaten-/Today-Blatt-Roadmap](flow-task-sheet-roadmap.md) und
 [ADR-033](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md) erweitern diese Strategie
-für den geplanten Schema-23-Cutover. Der vollständige Abnahmefall kombiniert vier fällige
+für den ausgelieferten Schema-23-Cutover. Der vollständige Abnahmefall kombiniert vier fällige
 Startkandidaten, eine Waschmaschine, drei Trockenplätze, eingegebene Wasch- und Trocknungszeiten,
 einen verlängerten angebotenen Folgeschritt und mindestens eine normale Today-Aufgabe.
 
@@ -194,7 +194,7 @@ Die Schichten belegen getrennt:
 - unveränderte sichtbare Zeit-/Mengenangaben, Herkunftstitel und Accessibility bei entfallenden
   Status- und Satzfortschrittstexten.
 
-Die PR-Matrix bleibt vollständig. Der geplante Main-Nachweis darf Quality und Instrumentierung
+Die PR-Matrix bleibt vollständig. Der Main-Nachweis darf Quality und Instrumentierung
 nur bei identischem Git-Baum, identischem Workflowvertrag und nachgewiesen grünem PR-Gate
 überspringen. Packaging, Signatur, Hash, drei Produktionsupgrades und Publish bleiben immer an
 den exakten Main-Commit gebunden; jeder fehlende oder abweichende Nachweis fällt auf die
