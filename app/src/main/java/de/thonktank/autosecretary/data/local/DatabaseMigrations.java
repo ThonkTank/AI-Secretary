@@ -936,14 +936,232 @@ public final class DatabaseMigrations {
             database.execSQL("UPDATE occurrences SET kind='FLOW_STEP', "
                     + "sourceKey='flow-step:' || flowRunId || ':' || flowSheetSequence "
                     + "WHERE kind='FLOW_SHEET'");
-            database.execSQL("ALTER TABLE occurrences RENAME COLUMN flowSheetSequence "
-                    + "TO flowExecutionSequence");
-            database.execSQL("ALTER TABLE step_flow_runs RENAME COLUMN currentSheetOccurrenceId "
-                    + "TO currentExecutionOccurrenceId");
-            database.execSQL("ALTER TABLE step_flow_runs RENAME COLUMN nextSheetSequence "
-                    + "TO nextExecutionSequence");
+            rebuildOccurrenceGraphForExecutionNames(database);
+            rebuildFlowRunGraphForExecutionNames(database);
         }
     };
+
+    private static void rebuildOccurrenceGraphForExecutionNames(
+            SupportSQLiteDatabase database) {
+        database.execSQL("CREATE TEMP TABLE _m23_occurrences AS SELECT * FROM occurrences");
+        database.execSQL("CREATE TEMP TABLE _m23_occurrence_steps AS "
+                + "SELECT * FROM occurrence_steps");
+        database.execSQL("CREATE TEMP TABLE _m23_reward_bookings AS "
+                + "SELECT * FROM reward_bookings");
+        database.execSQL("CREATE TEMP TABLE _m23_reward_assignments AS "
+                + "SELECT * FROM reward_assignments");
+        database.execSQL("CREATE TEMP TABLE _m23_repetition_results AS "
+                + "SELECT * FROM repetition_results");
+        database.execSQL("CREATE TEMP TABLE _m23_timer_sessions AS SELECT * FROM timer_sessions");
+        database.execSQL("CREATE TEMP TABLE _m23_combo_obligations AS "
+                + "SELECT * FROM combo_obligations");
+
+        database.execSQL("DROP TABLE reward_assignments");
+        database.execSQL("DROP TABLE reward_bookings");
+        database.execSQL("DROP TABLE repetition_results");
+        database.execSQL("DROP TABLE timer_sessions");
+        database.execSQL("DROP TABLE combo_obligations");
+        database.execSQL("DROP TABLE occurrence_steps");
+        database.execSQL("DROP TABLE occurrences");
+
+        database.execSQL("CREATE TABLE occurrences (id TEXT NOT NULL, taskId TEXT NOT NULL, "
+                + "scheduledOn TEXT NOT NULL, state TEXT NOT NULL, sortOrder INTEGER NOT NULL, "
+                + "completedOn TEXT, slot TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'SCHEDULED', "
+                + "sourceKey TEXT NOT NULL DEFAULT '', flowRunId TEXT, "
+                + "flowExecutionSequence INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(id), "
+                + "FOREIGN KEY(taskId) REFERENCES tasks(id) ON UPDATE NO ACTION "
+                + "ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,sortOrder,"
+                + "completedOn,slot,kind,sourceKey,flowRunId,flowExecutionSequence) "
+                + "SELECT id,taskId,scheduledOn,state,sortOrder,completedOn,slot,kind,sourceKey,"
+                + "flowRunId,flowSheetSequence FROM _m23_occurrences");
+        database.execSQL("CREATE INDEX index_occurrences_taskId ON occurrences(taskId)");
+        database.execSQL("CREATE INDEX index_occurrences_state_completedOn "
+                + "ON occurrences(state,completedOn)");
+        database.execSQL("CREATE UNIQUE INDEX index_occurrences_sourceKey "
+                + "ON occurrences(sourceKey)");
+        database.execSQL("CREATE INDEX index_occurrences_flowRunId ON occurrences(flowRunId)");
+
+        database.execSQL("CREATE TABLE occurrence_steps (id TEXT NOT NULL, "
+                + "occurrenceId TEXT NOT NULL, position INTEGER NOT NULL, text TEXT NOT NULL, "
+                + "done INTEGER NOT NULL, amountKind TEXT NOT NULL, plannedSets INTEGER, "
+                + "plannedReps INTEGER, plannedDurationSeconds INTEGER, "
+                + "restTimerMode TEXT NOT NULL DEFAULT 'INHERIT', restTimerSeconds INTEGER, "
+                + "plannedLoadMode TEXT NOT NULL DEFAULT 'UNSPECIFIED', "
+                + "plannedLoadUnit TEXT NOT NULL DEFAULT 'NONE', "
+                + "plannedLoadMilli INTEGER, targetRir INTEGER NOT NULL DEFAULT 2, "
+                + "note TEXT NOT NULL, "
+                + "actualRepetitions TEXT NOT NULL, sourceTemplateId TEXT, "
+                + "comboOwnerId TEXT NOT NULL, originOccurrenceId TEXT, "
+                + "carryForwardReason TEXT NOT NULL, PRIMARY KEY(id), "
+                + "FOREIGN KEY(occurrenceId) REFERENCES occurrences(id) ON UPDATE NO ACTION "
+                + "ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO occurrence_steps(id,occurrenceId,position,text,done,"
+                + "amountKind,plannedSets,plannedReps,plannedDurationSeconds,restTimerMode,"
+                + "restTimerSeconds,plannedLoadMode,plannedLoadUnit,plannedLoadMilli,targetRir,"
+                + "note,actualRepetitions,sourceTemplateId,comboOwnerId,originOccurrenceId,"
+                + "carryForwardReason) SELECT id,occurrenceId,position,COALESCE(text,''),done,"
+                + "COALESCE(amountKind,'NONE'),plannedSets,plannedReps,plannedDurationSeconds,"
+                + "COALESCE(restTimerMode,'INHERIT'),restTimerSeconds,"
+                + "COALESCE(plannedLoadMode,'UNSPECIFIED'),"
+                + "COALESCE(plannedLoadUnit,'NONE'),plannedLoadMilli,COALESCE(targetRir,2),"
+                + "COALESCE(note,''),COALESCE(actualRepetitions,''),sourceTemplateId,"
+                + "COALESCE(comboOwnerId,'step:' || id),originOccurrenceId,"
+                + "COALESCE(carryForwardReason,'NONE') FROM _m23_occurrence_steps");
+        database.execSQL("CREATE INDEX index_occurrence_steps_occurrenceId "
+                + "ON occurrence_steps(occurrenceId)");
+
+        database.execSQL("CREATE TABLE reward_bookings (id TEXT NOT NULL, "
+                + "transactionId TEXT NOT NULL, occurrenceId TEXT NOT NULL, "
+                + "occurrenceStepId TEXT, ownerId TEXT NOT NULL, kind TEXT NOT NULL, "
+                + "target TEXT NOT NULL, xpDelta INTEGER NOT NULL, "
+                + "comboPointDelta INTEGER NOT NULL, bookedOn TEXT NOT NULL, "
+                + "reversesBookingId TEXT, plannedXp INTEGER, PRIMARY KEY(id), "
+                + "FOREIGN KEY(occurrenceId) REFERENCES occurrences(id) ON UPDATE NO ACTION "
+                + "ON DELETE CASCADE, FOREIGN KEY(occurrenceStepId) REFERENCES "
+                + "occurrence_steps(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO reward_bookings SELECT * FROM _m23_reward_bookings");
+        database.execSQL("CREATE INDEX index_reward_bookings_transactionId "
+                + "ON reward_bookings(transactionId)");
+        database.execSQL("CREATE INDEX index_reward_bookings_occurrenceId "
+                + "ON reward_bookings(occurrenceId)");
+        database.execSQL("CREATE INDEX index_reward_bookings_occurrenceStepId "
+                + "ON reward_bookings(occurrenceStepId)");
+        database.execSQL("CREATE INDEX index_reward_bookings_ownerId "
+                + "ON reward_bookings(ownerId)");
+        database.execSQL("CREATE UNIQUE INDEX index_reward_bookings_reversesBookingId "
+                + "ON reward_bookings(reversesBookingId)");
+
+        database.execSQL("CREATE TABLE reward_assignments (bookingId TEXT NOT NULL, "
+                + "occurrenceId TEXT NOT NULL, PRIMARY KEY(bookingId), "
+                + "FOREIGN KEY(bookingId) REFERENCES reward_bookings(id) ON UPDATE NO ACTION "
+                + "ON DELETE CASCADE, FOREIGN KEY(occurrenceId) REFERENCES occurrences(id) "
+                + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO reward_assignments SELECT * FROM _m23_reward_assignments");
+        database.execSQL("CREATE INDEX index_reward_assignments_occurrenceId "
+                + "ON reward_assignments(occurrenceId)");
+
+        database.execSQL("CREATE TABLE repetition_results (stepId TEXT NOT NULL, "
+                + "slotIndex INTEGER NOT NULL, actualRepetitions INTEGER NOT NULL, "
+                + "loadMode TEXT NOT NULL DEFAULT 'UNSPECIFIED', "
+                + "loadUnit TEXT NOT NULL DEFAULT 'NONE', loadMilli INTEGER, "
+                + "rir INTEGER, source TEXT NOT NULL DEFAULT 'LEGACY', "
+                + "safetyFlag TEXT NOT NULL DEFAULT 'NONE', "
+                + "PRIMARY KEY(stepId,slotIndex), FOREIGN KEY(stepId) REFERENCES "
+                + "occurrence_steps(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO repetition_results(stepId,slotIndex,actualRepetitions,"
+                + "loadMode,loadUnit,loadMilli,rir,source,safetyFlag) SELECT stepId,slotIndex,"
+                + "actualRepetitions,COALESCE(loadMode,'UNSPECIFIED'),"
+                + "COALESCE(loadUnit,'NONE'),loadMilli,rir,COALESCE(source,'LEGACY'),"
+                + "COALESCE(safetyFlag,'NONE') "
+                + "FROM _m23_repetition_results");
+        database.execSQL("CREATE INDEX index_repetition_results_stepId "
+                + "ON repetition_results(stepId)");
+
+        database.execSQL("CREATE TABLE timer_sessions (id TEXT NOT NULL, stepId TEXT NOT NULL, "
+                + "title TEXT NOT NULL, kind TEXT NOT NULL, state TEXT NOT NULL, "
+                + "totalSeconds INTEGER NOT NULL, remainingMillis INTEGER NOT NULL, "
+                + "targetElapsedRealtime INTEGER NOT NULL, targetEpochMillis INTEGER NOT NULL, "
+                + "notificationId INTEGER NOT NULL, completionObserved INTEGER NOT NULL, "
+                + "PRIMARY KEY(id), FOREIGN KEY(stepId) REFERENCES occurrence_steps(id) "
+                + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO timer_sessions SELECT * FROM _m23_timer_sessions");
+        database.execSQL("CREATE INDEX index_timer_sessions_stepId ON timer_sessions(stepId)");
+
+        database.execSQL("CREATE TABLE combo_obligations (id TEXT NOT NULL, "
+                + "ownerId TEXT NOT NULL, taskId TEXT NOT NULL, kind TEXT NOT NULL, "
+                + "slot TEXT NOT NULL, scheduledOn TEXT NOT NULL, occurrenceId TEXT NOT NULL, "
+                + "state TEXT NOT NULL, resolvedOn TEXT, PRIMARY KEY(id), "
+                + "FOREIGN KEY(taskId) REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
+                + "FOREIGN KEY(occurrenceId) REFERENCES occurrences(id) ON UPDATE NO ACTION "
+                + "ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO combo_obligations SELECT * FROM _m23_combo_obligations");
+        database.execSQL("CREATE INDEX index_combo_obligations_taskId "
+                + "ON combo_obligations(taskId)");
+        database.execSQL("CREATE INDEX index_combo_obligations_occurrenceId "
+                + "ON combo_obligations(occurrenceId)");
+        database.execSQL("CREATE INDEX index_combo_obligations_ownerId_state_scheduledOn "
+                + "ON combo_obligations(ownerId,state,scheduledOn)");
+
+        database.execSQL("DROP TABLE _m23_combo_obligations");
+        database.execSQL("DROP TABLE _m23_timer_sessions");
+        database.execSQL("DROP TABLE _m23_repetition_results");
+        database.execSQL("DROP TABLE _m23_reward_assignments");
+        database.execSQL("DROP TABLE _m23_reward_bookings");
+        database.execSQL("DROP TABLE _m23_occurrence_steps");
+        database.execSQL("DROP TABLE _m23_occurrences");
+    }
+
+    private static void rebuildFlowRunGraphForExecutionNames(SupportSQLiteDatabase database) {
+        database.execSQL("CREATE TEMP TABLE _m23_step_flow_runs AS SELECT * FROM step_flow_runs");
+        database.execSQL("CREATE TEMP TABLE _m23_flow_run_steps AS SELECT * FROM flow_run_steps");
+        database.execSQL("CREATE TEMP TABLE _m23_flow_run_resources AS "
+                + "SELECT * FROM flow_run_resources");
+        database.execSQL("DROP TABLE flow_run_steps");
+        database.execSQL("DROP TABLE flow_run_resources");
+        database.execSQL("DROP TABLE step_flow_runs");
+
+        database.execSQL("CREATE TABLE step_flow_runs (id TEXT NOT NULL, taskId TEXT NOT NULL, "
+                + "seedStepId TEXT NOT NULL, sourceKey TEXT NOT NULL, scheduledOn TEXT NOT NULL, "
+                + "slot TEXT NOT NULL, state TEXT NOT NULL, currentPosition INTEGER NOT NULL, "
+                + "readyAtEpochMillis INTEGER, currentExecutionOccurrenceId TEXT, "
+                + "queueOrder INTEGER NOT NULL, nextExecutionSequence INTEGER NOT NULL, "
+                + "createdAtEpochMillis INTEGER NOT NULL, updatedAtEpochMillis INTEGER NOT NULL, "
+                + "PRIMARY KEY(id), FOREIGN KEY(taskId) REFERENCES tasks(id) "
+                + "ON UPDATE NO ACTION ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO step_flow_runs(id,taskId,seedStepId,sourceKey,scheduledOn,"
+                + "slot,state,currentPosition,readyAtEpochMillis,currentExecutionOccurrenceId,"
+                + "queueOrder,nextExecutionSequence,createdAtEpochMillis,updatedAtEpochMillis) "
+                + "SELECT id,taskId,seedStepId,sourceKey,scheduledOn,slot,state,currentPosition,"
+                + "readyAtEpochMillis,currentSheetOccurrenceId,queueOrder,nextSheetSequence,"
+                + "createdAtEpochMillis,updatedAtEpochMillis FROM _m23_step_flow_runs");
+        database.execSQL("CREATE INDEX index_step_flow_runs_taskId ON step_flow_runs(taskId)");
+        database.execSQL("CREATE INDEX index_step_flow_runs_seedStepId "
+                + "ON step_flow_runs(seedStepId)");
+        database.execSQL("CREATE UNIQUE INDEX index_step_flow_runs_sourceKey "
+                + "ON step_flow_runs(sourceKey)");
+        database.execSQL("CREATE INDEX index_step_flow_runs_state_readyAtEpochMillis "
+                + "ON step_flow_runs(state,readyAtEpochMillis)");
+        database.execSQL("CREATE INDEX index_step_flow_runs_state_queueOrder_createdAtEpochMillis "
+                + "ON step_flow_runs(state,queueOrder,createdAtEpochMillis)");
+
+        database.execSQL("CREATE TABLE flow_run_steps (id TEXT NOT NULL, runId TEXT NOT NULL, "
+                + "position INTEGER NOT NULL, sourceTemplateId TEXT NOT NULL, text TEXT NOT NULL, "
+                + "amountKind TEXT NOT NULL, plannedSets INTEGER, plannedReps INTEGER, "
+                + "plannedDurationSeconds INTEGER, restTimerMode TEXT NOT NULL, "
+                + "restTimerSeconds INTEGER, plannedLoadMode TEXT NOT NULL, "
+                + "plannedLoadUnit TEXT NOT NULL, plannedLoadMilli INTEGER, "
+                + "targetRir INTEGER NOT NULL, note TEXT NOT NULL, delayMode TEXT, "
+                + "defaultDelayMillis INTEGER, lastUsedDelayMillis INTEGER, "
+                + "chosenDelayMillis INTEGER, PRIMARY KEY(id), FOREIGN KEY(runId) REFERENCES "
+                + "step_flow_runs(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO flow_run_steps SELECT * FROM _m23_flow_run_steps");
+        database.execSQL("CREATE INDEX index_flow_run_steps_runId ON flow_run_steps(runId)");
+        database.execSQL("CREATE UNIQUE INDEX index_flow_run_steps_runId_position "
+                + "ON flow_run_steps(runId,position)");
+        database.execSQL("CREATE INDEX index_flow_run_steps_sourceTemplateId "
+                + "ON flow_run_steps(sourceTemplateId)");
+
+        database.execSQL("CREATE TABLE flow_run_resources (id TEXT NOT NULL, "
+                + "runId TEXT NOT NULL, sourceLeaseId TEXT NOT NULL, resourceId TEXT NOT NULL, "
+                + "resourceName TEXT NOT NULL, capacityAtCreation INTEGER NOT NULL, "
+                + "units INTEGER NOT NULL, acquirePosition INTEGER NOT NULL, "
+                + "releasePosition INTEGER NOT NULL, state TEXT NOT NULL, "
+                + "reservedAtEpochMillis INTEGER, activatedAtEpochMillis INTEGER, "
+                + "releasedAtEpochMillis INTEGER, PRIMARY KEY(id), FOREIGN KEY(runId) REFERENCES "
+                + "step_flow_runs(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
+        database.execSQL("INSERT INTO flow_run_resources SELECT * FROM _m23_flow_run_resources");
+        database.execSQL("CREATE INDEX index_flow_run_resources_runId "
+                + "ON flow_run_resources(runId)");
+        database.execSQL("CREATE INDEX index_flow_run_resources_resourceId_state "
+                + "ON flow_run_resources(resourceId,state)");
+        database.execSQL("CREATE INDEX index_flow_run_resources_runId_acquirePosition "
+                + "ON flow_run_resources(runId,acquirePosition)");
+
+        database.execSQL("DROP TABLE _m23_flow_run_resources");
+        database.execSQL("DROP TABLE _m23_flow_run_steps");
+        database.execSQL("DROP TABLE _m23_step_flow_runs");
+    }
 
     /** Complete historical graph for migration fixtures and archive tests. */
     public static Migration[] all() {

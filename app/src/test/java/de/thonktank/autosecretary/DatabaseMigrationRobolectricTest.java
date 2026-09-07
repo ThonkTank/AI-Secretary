@@ -627,6 +627,13 @@ public final class DatabaseMigrationRobolectricTest {
                 + "'flow-sheet:clean:0','clean',0),"
                 + "('started-sheet','laundry','2026-08-25','OPEN',4,NULL,'MORNING','FLOW_SHEET',"
                 + "'flow-sheet:started:0','started',0)");
+        old.execSQL("INSERT INTO occurrence_steps(id,occurrenceId,position,text,done,amountKind,"
+                + "restTimerMode,plannedLoadMode,plannedLoadUnit,targetRir,note,actualRepetitions,"
+                + "comboOwnerId,carryForwardReason) VALUES ('offered-step','started-sheet',0,"
+                + "'Aufhängen',0,'NONE','OFF','NONE','KG',0,'','','step:hang','NONE')");
+        old.execSQL("INSERT INTO flow_run_steps(id,runId,position,sourceTemplateId,text,amountKind,"
+                + "restTimerMode,plannedLoadMode,plannedLoadUnit,targetRir,note) VALUES "
+                + "('run-step','started',0,'whites','Weißwäsche','NONE','OFF','NONE','KG',0,'')");
         old.execSQL("INSERT INTO flow_run_resources(id,runId,sourceLeaseId,resourceId,resourceName,"
                 + "capacityAtCreation,units,acquirePosition,releasePosition,state,"
                 + "reservedAtEpochMillis,activatedAtEpochMillis,releasedAtEpochMillis) VALUES "
@@ -672,6 +679,18 @@ public final class DatabaseMigrationRobolectricTest {
         try (Cursor cursor = database.query("SELECT COUNT(*) FROM step_flow_runs "
                 + "WHERE state='PENDING_START'")) {
             assertTrue(cursor.moveToFirst()); assertEquals(0, cursor.getInt(0));
+        }
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM occurrence_steps "
+                + "WHERE id='offered-step' AND occurrenceId='started-sheet'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(1, cursor.getInt(0));
+        }
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM flow_run_steps "
+                + "WHERE id='run-step' AND runId='started'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(1, cursor.getInt(0));
+        }
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM flow_run_resources "
+                + "WHERE id='active-resource' AND runId='started' AND state='ACTIVE'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(1, cursor.getInt(0));
         }
         migrated.close();
     }

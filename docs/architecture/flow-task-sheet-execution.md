@@ -716,3 +716,86 @@ ADR, Roadmap, Migration und deren historischen Fixturetests als ausdrücklich be
 Schema-22-Quellvertrag erhalten. Lokal besteht keine offene Diskrepanz. Pull-Request-Gate,
 Squash-Merge, exakter Main-Workflow, Produktionsupgrade und Veröffentlichung stehen noch aus;
 bis dahin bleibt Phase D `in Arbeit`.
+
+### Korrekturdurchlauf D.12 – SQLite-kompatibler Schema-Umbau auf API 26
+
+PR #335 bestand Quality, alle drei normalen Geräteprofile, alle drei Animationsprofile und beide
+PR-Sammelgates und wurde unverändert als `f6e72e51` nach `main` gesquasht. Der exakte
+Main-Workflow `34132131695` erkannte den inhaltsgleichen PR korrekt, baute und signierte das
+Produktionspaket neu und bestand die Upgradeprofile API 35 und API 37. Das API-26-Upgrade
+stoppte vor Veröffentlichung mit `SQLiteException: near "COLUMN": syntax error` bei
+`ALTER TABLE occurrences RENAME COLUMN ...`. Die ältere SQLite-Version des weiterhin
+unterstützten API 26 kennt diese Syntax nicht; `publish` wurde korrekt übersprungen.
+
+Korrekturplan: Auf dem separaten, von `f6e72e51` abgeleiteten Branch
+`codex/flow-target-p3-api26-migration` werden `occurrences` und `step_flow_runs` mit ihren
+Schema-23-Spalten neu aufgebaut und verlustfrei kopiert, wie bei älteren Migrationen im Projekt.
+Die fachliche Kandidaten-/Run-Klassifikation und alle Zeilenwerte bleiben unverändert. Ein
+Migrationstest verbietet die nicht unterstützte `RENAME COLUMN`-Syntax und prüft den vollständigen
+8→23-Pfad. Danach laufen fokussierte Migrationstests, die vollständige lokale Suite, Lint und
+alle Pakete; anschließend folgt ein eigener grüner PR, Squash-Merge und ein neuer exakter
+Main-Workflow mit allen drei Upgrades und Veröffentlichung.
+
+### Korrekturdurchlauf D.13 – historische Nullwerte beim Tabellen-Neuaufbau normalisieren
+
+Der erste fokussierte Neuaufbau-Test führte 62 Architektur-/Migrationsfälle aus. Der direkte
+22→23-Datensatz und leere Schemawege bestanden; 16 Varianten mit sehr alten, schrittweise
+migrierten Fixtures scheiterten beim Wiedereinfügen von `occurrence_steps`. Diese historischen
+Fixtures enthalten für später ergänzte Pflichtfelder noch `NULL` (`plannedLoadMode`, `note` oder
+`actualRepetitions`), was der bisherige additive Migrationspfad tolerierte, ein Neuaufbau mit
+Schema-23-Constraints aber korrekt ablehnt.
+
+Korrekturplan: `occurrence_steps` wird mit einer expliziten Spaltenliste kopiert. Nur historisch
+fehlende Pflichtwerte werden auf dieselben kanonischen Defaults normalisiert, die ihre
+Einführungsmigrationen vorsehen (`NONE`, `OFF`, `KG`, `0`, leerer Text und
+`carryForwardReason=NONE`); alle vorhandenen Werte und alle optionalen Felder bleiben
+unverändert. Danach wird derselbe 62er Lauf wiederholt.
+
+### Korrekturdurchlauf D.14 – historische Wiederholungsmetadaten normalisieren
+
+Nach D.13 bestehen 60 von 62 fokussierten Fällen. Nur die doppelt auf zwei Robolectric-SDKs
+ausgeführte 7→8-Fixture enthält noch ein historisches `NULL` in
+`repetition_results.loadMode`; der neue Tabellenvertrag verlangt dort den später eingeführten
+Pflichtwert.
+
+Korrekturplan: Auch `repetition_results` wird explizit kopiert. Fehlende Pflichtmetadaten erhalten
+die kanonischen neutralen Werte `loadMode=NONE`, `loadUnit=KG`, `source=USER` und
+`safetyFlag=NONE`; vorhandene Messwerte einschließlich optionaler Last und RIR bleiben
+unverändert. Danach läuft derselbe fokussierte Satz erneut.
+
+### Korrekturdurchlauf D.15 – Defaults aus den Einführungsmigrationen übernehmen
+
+D.14 reduziert den Lauf nicht weiter: Der verbleibende Test führt absichtlich die idempotente
+7→8-Normalisierung noch einmal auf dem Endschema aus. Der Neuaufbau hatte die später per
+`ALTER TABLE ... DEFAULT` eingeführten SQL-Defaults nicht in die neue Tabelle übernommen; daher
+erzeugt das alte dreispaltige `INSERT OR REPLACE` erneut `NULL`. Die in D.13/D.14 zunächst
+benannten neutralen Werte waren außerdem Domainannahmen statt der autoritativen historischen
+Einführungswerte.
+
+Korrekturplan: Tabellen-DDL und Nullnormalisierung übernehmen exakt die bestehenden
+Einführungsdefaults: `plannedLoadMode/loadMode=UNSPECIFIED`,
+`plannedLoadUnit/loadUnit=NONE`, `targetRir=2`, `source=LEGACY`, `safetyFlag=NONE` und für
+fehlende Resttimer `INHERIT`. Damit bleiben alte Wiederholungsmigrationen idempotent und es wird
+keine neue fachliche Bedeutung erfunden. Anschließend läuft derselbe fokussierte Satz erneut.
+
+### Ergebnis Korrekturlauf D.12–D.15
+
+- Die Schema-22→23-Migration baut die beiden betroffenen Tabellenverbünde nun mit API-26-
+  kompatiblen `CREATE`/`INSERT`/`DROP`-Operationen neu auf. Alle abhängigen Occurrence-, Reward-,
+  Wiederholungs-, Timer-, Combo-, Run-, Schritt- und Ressourcenzeilen werden dabei erhalten.
+- Die neuen Ausführungsnamen erhalten exakt die Werte der bisherigen physischen Spalten. Nur
+  historisch fehlende Pflichtwerte werden mit den autoritativen Defaults ihrer jeweiligen
+  Einführungsmigration ergänzt.
+- Der fokussierte Architektur- und Migrationslauf besteht 62 Tests. Ein Architekturtest
+  verhindert künftig `RENAME COLUMN` in Produktionsmigrationen für die unterstützte
+  API-26-SQLite-Version.
+- Die vollständige Instrumentierungs-Unit-Suite meldet 562 Tests: 561 bestanden, einer
+  übersprungen, keine Fehler. Das serielle Android-Auslieferungsgate mit Unit-Suite, Lint,
+  Debug-Paket, Geräte-Testpaket und Release-Paket ist nach 23 Minuten und 4 Sekunden grün.
+- Alle 24 Tests unter `scripts/ci` und alle 24 Tests unter `scripts/release` sind grün.
+  `git diff --check` meldet keine Whitespace-Fehler; der Produktionscode enthält keine
+  `RENAME COLUMN`-Anweisung mehr.
+
+Der lokale Korrekturlauf ist damit geschlossen. Eigener Pull Request, Squash-Merge, exakter
+Main-Workflow mit API-26-Upgrade und Veröffentlichung stehen noch aus; Phase D bleibt bis dahin
+`in Arbeit`.
