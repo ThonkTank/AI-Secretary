@@ -10,6 +10,15 @@ Auditordnung. Diese Erweiterungen
 ändern die hier beschriebenen Compiler-, Today- und Repository-Port-Grenzen nicht. Die aktuelle
 Präsentationsbaseline und ihre weitere Migration stehen in der
 [Frontend-Modernisierungsroadmap](frontend-modernization-roadmap.md).
+
+Der aktuelle Schema-22-Stand besitzt für Abläufe noch den Übergangszustand `PENDING_START` und
+pro Run ein technisch erzeugtes `FLOW_SHEET`, das erst im Dashboard zusammengefasst wird. Der
+verbindliche Nachfolger steht in der
+[Roadmap für echte Ablaufkandidaten und gemeinsame Today-Blätter](flow-task-sheet-roadmap.md)
+und in [ADR-033](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md). Bis Phase D dieser
+Roadmap gemergt ist, beschreibt diese Karte den produktiven Ausgangsstand; danach gelten
+`FlowCandidate`, ausschließlich nutzergestartete `StepFlowRun`s, `FlowTaskSheet` und typisierte
+Today-Ziele als autoritative Ablaufgrenzen.
 Phase 5b schaltet den Aufgabeneditor vollständig auf Compose um. Der produktive
 `TaskEditorComposeHostView` erhält ausschließlich den vom `TaskEditorViewModel` veröffentlichten
 `EditorUiState`; der frühere View-Renderer und seine lokale Orchestrierung sind entfernt.

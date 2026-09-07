@@ -171,3 +171,31 @@ Der abschließende serielle Lauf mit Modulkompilierung und `--rerun-tasks` benö
 bei 1.126.912 KiB maximaler RSS. Gegenüber der Today-/Fokus-Phase-0-Baseline von 1:24,00 min und
 1.133.556 KiB ist das Gate trotz 27 zusätzlicher Hosttests rund vier Prozent schneller und
 benötigt geringfügig weniger Spitzenspeicher.
+
+## Verbindlicher Ablaufkandidaten-Nachfolger
+
+Die [Ablaufkandidaten-/Today-Blatt-Roadmap](flow-task-sheet-roadmap.md) und
+[ADR-033](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md) erweitern diese Strategie
+für den geplanten Schema-23-Cutover. Der vollständige Abnahmefall kombiniert vier fällige
+Startkandidaten, eine Waschmaschine, drei Trockenplätze, eingegebene Wasch- und Trocknungszeiten,
+einen verlängerten angebotenen Folgeschritt und mindestens eine normale Today-Aufgabe.
+
+Die Schichten belegen getrennt:
+
+- reine Domainregeln für Kandidatendeduplizierung, Kapazitätsvorschau und typisierte
+  Startausgänge;
+- transaktionalen Start ohne partiellen Run, Reward oder Ressourcenclaim;
+- Room-Invarianten sowie Migration von einer realen Schema-22-Mischung aus ungestarteten,
+  wartenden und angebotenen Runs;
+- genau ein `FlowTaskSheet`, stabile Today-Platzierung, normales „Später“ und das vollständige
+  Verschwinden leerer Blätter;
+- Ausschluss von Kandidaten aus Alles-Hintergrundläufen und Ausschluss eingabepflichtiger
+  Kurzschlussaktionen im Widget;
+- unveränderte sichtbare Zeit-/Mengenangaben, Herkunftstitel und Accessibility bei entfallenden
+  Status- und Satzfortschrittstexten.
+
+Die PR-Matrix bleibt vollständig. Der geplante Main-Nachweis darf Quality und Instrumentierung
+nur bei identischem Git-Baum, identischem Workflowvertrag und nachgewiesen grünem PR-Gate
+überspringen. Packaging, Signatur, Hash, drei Produktionsupgrades und Publish bleiben immer an
+den exakten Main-Commit gebunden; jeder fehlende oder abweichende Nachweis fällt auf die
+vollständige Main-Matrix zurück.
