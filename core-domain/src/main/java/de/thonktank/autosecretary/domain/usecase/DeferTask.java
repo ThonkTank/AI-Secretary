@@ -15,28 +15,19 @@ public final class DeferTask {
     private final TodayRepository today;
     private final CatalogRepository schedules;
     private final TransactionRunner transactions;
-    private final FlowRuntimeCoordinator flows;
 
     public DeferTask(CatalogRepository schedules, TodayRepository today,
                      TransactionRunner transactions) {
-        this(schedules, today, transactions, null);
-    }
-
-    public DeferTask(CatalogRepository schedules, TodayRepository today,
-                     TransactionRunner transactions,
-                     FlowRuntimeCoordinator flows) {
         this.today = today;
         this.schedules = schedules;
         this.transactions = transactions;
-        this.flows = flows;
     }
 
     public void execute(String occurrenceOrTaskId) {
         Occurrence selected = today.findOccurrence(occurrenceOrTaskId);
         if (selected != null) {
-            if (selected.kind == OccurrenceKind.FLOW_SHEET && selected.flowRunId != null
-                    && flows != null) {
-                flows.defer(selected.flowRunId);
+            if (selected.kind == OccurrenceKind.FLOW_SHEET) {
+                deferFlowSheet(selected.id);
                 return;
             }
             transactions.inTransaction(() -> {
@@ -59,5 +50,21 @@ public final class DeferTask {
         if (placements.isEmpty()) return;
         TaskScheduleEntry primary = placements.get(0);
         service.move(ScheduleMoveRequest.toEnd(primary.id, primary.slot));
+    }
+
+    private void deferFlowSheet(String occurrenceId) {
+        transactions.inTransaction(() -> {
+            Occurrence selected = today.findOccurrence(occurrenceId);
+            if (selected == null || selected.kind != OccurrenceKind.FLOW_SHEET) return null;
+            java.util.List<Occurrence> open = today.openOccurrences(selected.slot);
+            int last = selected.sortOrder;
+            for (Occurrence occurrence : open) last = Math.max(last, occurrence.sortOrder);
+            int next = last + 1;
+            for (Occurrence occurrence : open)
+                if (occurrence.kind == OccurrenceKind.FLOW_SHEET
+                        && occurrence.taskId.equals(selected.taskId))
+                    today.updateOccurrence(occurrence.moveTo(next++));
+            return null;
+        });
     }
 }

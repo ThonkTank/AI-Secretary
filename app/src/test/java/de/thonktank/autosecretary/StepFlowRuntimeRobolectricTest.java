@@ -355,7 +355,7 @@ public final class StepFlowRuntimeRobolectricTest {
                 .delayAfter.proposedDelayMillis());
     }
 
-    @Test public void pendingCandidateCannotBeDeferredAndCanBeCancelledWithoutClaims() {
+    @Test public void pendingCandidateSheetDefersWithoutChangingCandidateOrClaims() {
         tasks.flows.activateReadyFlows.execute();
         StepFlowRun first = offeredRun();
         String firstSheet = first.currentSheetOccurrenceId;
@@ -370,6 +370,47 @@ public final class StepFlowRuntimeRobolectricTest {
         assertEquals(StepFlowRunState.CANCELLED, repository.flows.findFlowRun(first.id).state);
         assertNull(repository.today.findOccurrence(firstSheet));
         assertEquals(3, countRuns(StepFlowRunState.PENDING_START));
+    }
+
+    @Test public void aggregateSheetDefersBehindNormalWorkWithoutChangingActiveFlow() {
+        tasks.catalog.create.execute(TaskDefinition.basic("Abwasch", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0,
+                java.util.Collections.singletonList("Spülen")));
+        tasks.today.materializeDue.execute();
+        tasks.flows.activateReadyFlows.execute();
+        StepFlowRun first = offeredRun();
+        tasks.today.toggleStep.execute(openStep(first).id, TWO_HOURS);
+        moments.advance(TWO_HOURS);
+        tasks.flows.activateReadyFlows.execute();
+        first = repository.flows.findFlowRun(first.id);
+        assertEquals(StepFlowRunState.OFFERED, first.state);
+        String sheetId = first.currentSheetOccurrenceId;
+        int activeResources = countResources(FlowResourceState.ACTIVE);
+        int reservedResources = countResources(FlowResourceState.RESERVED);
+
+        Dashboard before = tasks.today.loadDashboard.execute(TODAY);
+        assertEquals("Wäsche waschen", before.tasks.get(0).task.title);
+        TodayUiModel mapped = new DashboardUiMapper(new AndroidUiTextProvider(
+                ApplicationProvider.getApplicationContext())).map(before, TODAY);
+        assertNotNull(mapped.focus);
+        assertTrue(mapped.focus.flowAggregate);
+        assertTrue(mapped.focus.allowDefer);
+
+        tasks.today.defer.execute(before.tasks.get(0).occurrence.id);
+
+        StepFlowRun unchanged = repository.flows.findFlowRun(first.id);
+        assertEquals(StepFlowRunState.OFFERED, unchanged.state);
+        assertEquals(sheetId, unchanged.currentSheetOccurrenceId);
+        assertEquals(activeResources, countResources(FlowResourceState.ACTIVE));
+        assertEquals(reservedResources, countResources(FlowResourceState.RESERVED));
+        Dashboard after = tasks.today.loadDashboard.execute(TODAY);
+        assertEquals("Abwasch", after.tasks.get(0).task.title);
+        assertTrue(after.tasks.get(1).flowAggregate);
+        int normalOrder = after.tasks.get(0).occurrence.sortOrder;
+        for (Occurrence occurrence : repository.today.openOccurrences(TaskSlot.MORNING))
+            if (occurrence.kind == de.thonktank.autosecretary.domain.model.OccurrenceKind.FLOW_SHEET
+                    && occurrence.taskId.equals(task.id))
+                assertTrue(occurrence.sortOrder > normalOrder);
     }
 
     @Test public void queueOrderAndReadyTimeCanBeAdjustedExplicitly() {

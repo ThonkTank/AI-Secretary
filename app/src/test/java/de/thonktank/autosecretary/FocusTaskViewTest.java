@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
@@ -107,6 +108,27 @@ public final class FocusTaskViewTest {
         assertFalse(texts.contains("Starten"));
         assertFalse(texts.contains("Läuft"));
         assertTrue(texts.contains("2 Std."));
+    }
+
+    @Test public void laundrySheetOffersTheSameLaterActionAsOtherSheets() {
+        Context context = ApplicationProvider.getApplicationContext();
+        FocusTaskUiModel task = FocusTaskFixtures.task("laundry", "Wäsche waschen")
+                .steps(Collections.singletonList(
+                        FocusTaskFixtures.step("colors", "Buntwäsche").build()))
+                .flowAggregate(true).allowDefer(true).build();
+        TodayActionRecorder events = new TodayActionRecorder();
+        FocusTaskView view = new FocusTaskView(context);
+
+        view.bind(FocusCardTestModels.of(task,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), false, events);
+
+        TextView later = firstText(view, "später");
+        assertNotNull(later);
+        assertEquals(View.VISIBLE, later.getVisibility());
+        assertTrue(later.performClick());
+        TodayAction action = events.lastToday(TodayAction.Kind.DEFER);
+        assertNotNull(action);
+        assertEquals("laundry-today", action.id);
     }
 
     @Test public void stepRowOwnsRenderingAnchorAndIdBasedActions() {
