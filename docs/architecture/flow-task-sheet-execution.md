@@ -884,3 +884,15 @@ Kandidaten im Hintergrundbereich, Erhalt echter Runs über Neustart und Upgrade 
 Restblatt. Die UI-Verträge schützen zusätzlich die entfernten Hinweis-/Status-/Satztexte,
 sichtbare Zeit-/Mengenangaben, Kreisaktion und Accessibility. Lokal ist Phase E abgeschlossen;
 Dokumentations-PR, Squash-Merge und exakter Main-Workflow stehen noch aus.
+
+## Remote-Abschluss Phase E
+
+PR #337 prüfte den reinen Audit- und Dokumentationscommit `6f866b40`. Scope, Quality und
+PR-Sammelgate waren grün; die sechs nicht betroffenen Gerätejobs wurden für den nachweislich
+reinen Dokumentationsumfang korrekt übersprungen. Der unveränderte geprüfte Stand wurde als
+`3db1c8cc` nach `main` gesquasht.
+
+Der exakte Main-Workflow `34140409406` bestand. Er führte für den reinen Dokumentationsstand
+weder Produktpaket, Upgrade noch Veröffentlichung aus. Release 0.2.158 blieb dadurch
+unverändert der aktuelle Produktrelease. Phase E und damit die gesamte Roadmap sind
+abgeschlossen; es besteht kein offenes Produkt-, Audit-, Dokumentations- oder Releasegate.
