@@ -36,6 +36,8 @@ Migrationen und aktualisierte Tests.
 - [ADR-026: Getrennte State-Owner für Today und App-Shell](adr-026-today-und-shell-state-owner.md)
 - [ADR-030: Minimale Trainingsarchitektur und automatisierter Abschluss](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md)
 - [ADR-031: Fokusprojektion, Zeilenidentität und Grain-Geometrie](adr-031-fokusprojektion-zeilenidentitaet-und-grain-geometrie.md)
+- [ADR-032: Satzpunkte und Editorverlauf](adr-032-satzpunkte-und-editorverlauf.md)
+- [ADR-033: Ablaufkandidaten und gemeinsame Today-Blätter](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -70,6 +72,13 @@ Die verbindliche
 Fokusprojektion, Zeilenidentität, Snapshot-Zuordnung und Grain-Geometrie in vier einzeln
 prüfbaren Phasen zusammen. Das getrennte
 [Ausführungsprotokoll](today-focus-clean-execution.md) hält Pläne, Nachweise und Audits fest.
+
+Die verbindliche
+[Roadmap für echte Ablaufkandidaten und gemeinsame Today-Blätter](flow-task-sheet-roadmap.md)
+trennt fällige Kandidaten, nutzergestartete Runs und die gemeinsame Today-Projektion ohne
+Wäsche-Sonderlogik. ADR-033 trifft die zugehörigen Domain-, Persistenz-, Aktions- und
+Migrationsentscheidungen; das getrennte
+[Ausführungsprotokoll](flow-task-sheet-execution.md) hält Phasenpläne, Nachweise und Audits fest.
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
