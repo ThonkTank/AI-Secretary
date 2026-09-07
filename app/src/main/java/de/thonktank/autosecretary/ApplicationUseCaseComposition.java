@@ -112,7 +112,7 @@ final class ApplicationUseCaseComposition {
                         transactions, clock, ids), loadTrainingContext);
 
         today = new TodayUseCases(new DeferTask(catalogRepository, todayRepository,
-                transactions, flowRuntime),
+                transactions),
                 new ToggleStep(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies, flowRuntime),
                 new AdvanceTodayStep(catalogRepository, stepRepository, todayRepository,
