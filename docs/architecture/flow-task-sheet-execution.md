@@ -799,3 +799,88 @@ keine neue fachliche Bedeutung erfunden. Anschließend läuft derselbe fokussier
 Der lokale Korrekturlauf ist damit geschlossen. Eigener Pull Request, Squash-Merge, exakter
 Main-Workflow mit API-26-Upgrade und Veröffentlichung stehen noch aus; Phase D bleibt bis dahin
 `in Arbeit`.
+
+## Remote-Abschluss Phase D
+
+PR #336 prüfte den Korrekturcommit `61d9de39` mit Quality, den normalen Geräteprofilen API 26,
+35 und 37, denselben drei Profilen mit aktivierten Animationen sowie beiden Sammelgates. Alle
+Prüfungen waren grün. Der unveränderte geprüfte Stand wurde als `a25add10` nach `main`
+gesquasht.
+
+Der exakte Main-Workflow `34138749917` erkannte den inhaltsgleichen PR-Nachweis, baute und
+signierte das Produktionspaket dennoch neu und bestand die echten Upgradeinstallationen auf API
+26, 35 und 37. Die Veröffentlichung bestand ebenfalls. Release 0.2.158 mit Tag
+`forest-android-1015801` zeigt direkt auf `a25add10` und enthält `AutoSecretary.apk` sowie
+`release-metadata.json`. Damit ist Phase D abgeschlossen.
+
+## Phase E – Abschlussaudit
+
+### Precheck
+
+- Auditbasis ist ausschließlich der veröffentlichte Main-Commit `a25add10` aus Release 0.2.158.
+- Phase E verändert keine Fachlogik, kein Schema und keine UI. Zulässig sind nur lesende
+  Prüfungen und Korrekturen der Architektur- und Ausführungsdokumentation.
+- Maßstab sind ADR-033, die unveränderte Roadmap und die zwölf End-to-End-Abnahmepunkte.
+
+### Korrekturdurchlauf E.1 – ausgelieferten Stand in Querschnittsdokumenten nachziehen
+
+Der erste Dokumentationsabgleich findet zwei veraltete Zukunftsformulierungen: Die
+Architekturkarte bezeichnet Schema 22 und das `PENDING_START`-/`FLOW_SHEET`-Modell noch als
+aktuellen Produktstand. Die Teststrategie bezeichnet den inzwischen veröffentlichten
+Schema-23-Cutover und Main-Nachweis noch als geplant. ADR-033, Roadmap, Produktcode und Tests
+beschreiben bereits das ausgelieferte Zielmodell.
+
+Korrekturplan: Die Architekturkarte wird auf Schema 23, Kandidaten, echte Runs, gemeinsame
+Blätter und typisierte Today-Ziele aktualisiert. Die Teststrategie benennt die bestehenden
+Abnahme- und Releaseverträge im Präsens. Danach werden Dokumentationsscan, Altlastenscan und
+Roadmap-Abgleich erneut ausgeführt.
+
+### Ergebnis und lokale Validierung Phase E
+
+- Der Audit läuft gegen `a25add10`, denselben Commit, auf den Release 0.2.158 und
+  `forest-android-1015801` zeigen. Die Release-Metadaten nennen diesen Commit als Ziel und führen
+  APK sowie maschinenlesbare Metadaten als Assets.
+- `LoadDashboard` bündelt Einträge über genau einen Schlüssel aus Task und Slot und erzeugt ein
+  `FlowTaskSheet` nur bei mindestens einem sichtbaren Eintrag. Nicht startbare Kandidaten und
+  verwaiste Placements erzeugen damit kein leeres Blatt.
+- `LoadFlowRuns` lädt ausschließlich `activeFlowRuns`; Kandidaten besitzen keinen Run-Snapshot
+  und gelangen nicht in den Hintergrundbereich. Der Start bleibt eine Transaktion, prüft die
+  Kapazität erneut und persistiert Run, Ressourcen und Startschritt erst in dieser Aktion.
+- Today verwendet durchgehend `TodayItemTarget` mit getrennten Varianten für Occurrence, Task
+  und gemeinsames Ablaufblatt. Dashboard-Mapper und Defer-Dispatcher reichen dieses Ziel
+  typisiert weiter; es gibt keine Präfix- oder Positionsdeutung für Ablaufblätter.
+- Der produktive Laufzeitcode außerhalb der historischen Migration enthält keinen Treffer für
+  `PENDING_START`, `FLOW_SHEET`, `currentSheetOccurrenceId`, `nextSheetSequence`,
+  `flowSheetSequence`, `flowAggregate`, `flowRunByStepId` oder `contextLabel`.
+- Produktive Domain-, Today- und App-Quellen enthalten keine Wäsche-spezifischen Titel oder
+  Verzweigungen. Solche Begriffe bleiben nur in Tests, Dokumentation, Ressourcen und
+  Debug-Vorschauen als Beispielinhalt.
+- Der Schema-Vertrag steht auf Version 23 mit Produktionsupgrade ab Version 8. Das exportierte
+  Schema besitzt 23 Entitäten einschließlich `flow_candidates` und
+  `flow_task_sheet_placements`; die Produktionsmigration enthält kein `RENAME COLUMN`.
+- Der fokussierte Abschlusslauf umfasst Kandidatenmaterialisierung, Ablauf-/Ressourcenruntime,
+  sämtliche Migrationsfixtures, Architekturgrenzen und das konkrete Today-Zeilen-Rendering. Alle
+  93 Tests bestehen ohne Fehler oder übersprungene Fälle.
+- Die Architekturkarte beschreibt nun Schema 23 als produktiven Stand. Die Teststrategie
+  bezeichnet Schema-23-Cutover und Main-Nachweis als ausgelieferte Verträge. Ein erneuter Scan
+  findet keine veraltete aktuelle Schema-22- oder Zukunftsformulierung. Die kanonische Roadmap
+  blieb unverändert.
+
+### Plan-Audit Phase E
+
+Jeder Punkt des Phasenplans ist geprüft: Blattanzahl und Leerzustand, Ausschluss von Kandidaten
+aus Hintergrundläufen, fehlende Ressourcenbelegung vor Start, typisierte Today-Identitäten,
+Entfernung alter Aggregatfelder, generische statt Wäsche-spezifischer Fachlogik sowie
+Übereinstimmung von Dokumentation und Tests. E.1 dokumentiert die einzige gefundene Abweichung
+vor ihrer Korrektur. Es besteht keine offene lokale Produkt- oder Dokumentationsdiskrepanz.
+
+### Roadmap-Audit Phase E
+
+Die zwölf End-to-End-Punkte sind durch den grünen Ablauf-Testvertrag und die eindeutigen
+Projektionsregeln abgedeckt: ein gemeinsames Blatt, Kapazitätsfilter, Dauerabfrage und atomarer
+Start, eine Waschmaschine, drei Trockenplätze, Folgeschritte mit Herkunftstitel, normales
+„Später“ ohne Runtime-Mutation, verlängerbare Wartezeit bei gehaltener Ressource, keine
+Kandidaten im Hintergrundbereich, Erhalt echter Runs über Neustart und Upgrade sowie kein leeres
+Restblatt. Die UI-Verträge schützen zusätzlich die entfernten Hinweis-/Status-/Satztexte,
+sichtbare Zeit-/Mengenangaben, Kreisaktion und Accessibility. Lokal ist Phase E abgeschlossen;
+Dokumentations-PR, Squash-Merge und exakter Main-Workflow stehen noch aus.

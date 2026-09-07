@@ -1,7 +1,7 @@
 # Architekturkarte nach der Today-/Fokus-Bereinigung
 
 Stand der beschriebenen Today-/Fokus-Bereinigung: 2026-08-21, damals Datenbankschema 14.
-Aktueller Persistenzstand: Datenbankschema 22.
+Aktueller Persistenzstand: Datenbankschema 23.
 
 Schema 15 ergänzte den Editorvertrag, Schema 16 persistente Rhythmusanker, Schema 17/18 Timer-
 und Kombozustand und Schema 19 den eingefrorenen Planwert quantitativer Rewards. Schema 20 bis 22
@@ -11,14 +11,13 @@ Auditordnung. Diese Erweiterungen
 Präsentationsbaseline und ihre weitere Migration stehen in der
 [Frontend-Modernisierungsroadmap](frontend-modernization-roadmap.md).
 
-Der aktuelle Schema-22-Stand besitzt für Abläufe noch den Übergangszustand `PENDING_START` und
-pro Run ein technisch erzeugtes `FLOW_SHEET`, das erst im Dashboard zusammengefasst wird. Der
-verbindliche Nachfolger steht in der
+Schema 23 trennt fällige `FlowCandidate`s, ausschließlich nutzergestartete `StepFlowRun`s und
+das gemeinsame Today-Read-Model `FlowTaskSheet`. Vor dem Start existieren weder Run-Snapshot
+noch Ressourcenbelegung; interne Ausführungs-Occurrences heißen `FLOW_STEP` und werden nicht
+als eigene Today-Blätter projiziert. `FlowTaskSheetPlacement` besitzt die stabile Blattposition,
+und Today-Aktionen verwenden geschlossene typisierte Ziele. Der verbindliche Vertrag steht in der
 [Roadmap für echte Ablaufkandidaten und gemeinsame Today-Blätter](flow-task-sheet-roadmap.md)
-und in [ADR-033](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md). Bis Phase D dieser
-Roadmap gemergt ist, beschreibt diese Karte den produktiven Ausgangsstand; danach gelten
-`FlowCandidate`, ausschließlich nutzergestartete `StepFlowRun`s, `FlowTaskSheet` und typisierte
-Today-Ziele als autoritative Ablaufgrenzen.
+und in [ADR-033](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md).
 Phase 5b schaltet den Aufgabeneditor vollständig auf Compose um. Der produktive
 `TaskEditorComposeHostView` erhält ausschließlich den vom `TaskEditorViewModel` veröffentlichten
 `EditorUiState`; der frühere View-Renderer und seine lokale Orchestrierung sind entfernt.
@@ -104,7 +103,7 @@ Schrittausführung liegt in `StepExecutionService`, Occurrence-Abschluss, Ernte 
 gleichnamigen Room-Adapter besessen. `ApplicationUseCaseComposition` erzeugt diese fünf Adapter
 und den `RoomTransactionRunner` direkt aus `AppDatabase` jeweils genau einmal. Reorder schreibt
 nur geänderte Positionsspalten innerhalb einer Transaktion; diese Invariante gilt auch unter
-Schema 22 unverändert.
+Schema 23 unverändert.
 
 ## Autoritative Zustände
 
