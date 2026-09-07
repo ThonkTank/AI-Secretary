@@ -138,3 +138,35 @@ imperativen `FlowRunsActivity` für die Restzeitformatierung referenziert. Die A
 bereits Compose-basiert; ein Charakterisierungstest stellt ausdrücklich sicher, dass dort kein
 `FlowRunningStripView` mehr eingebaut ist. Nach dem Host-Cutover kann die Legacy-View daher ohne
 zweiten Produktkonsumenten entfernt werden.
+
+Lokaler Implementierungs- und Anforderungsaudit am 2026-09-08:
+
+- `FlowRunsActivity` erstellt nur noch den Compose-Host, bindet den unveränderten Screen State,
+  zeigt bestehende Toasts/Dialoge und leitet die vorhandenen Actions an das unveränderte
+  `FlowRunsViewModel` weiter. Navigation, Zeitänderung und Abbruchbestätigung bleiben im Host.
+- Der Foundation-Compose-Screen zeigt mobilen Zurück-Header, die gekürzte Einleitung sowie
+  einspaltige Karten mit Seed, Aufgabenbezug, aktuellem Schritt, Fortschritt, Status,
+  Ressourcen und allen kontextabhängigen Aktionen. Während `changing` sind sämtliche Aktionen
+  sichtbar, semantisch deaktiviert und nicht klickbar.
+- Laden, Leerstand, Änderung und Fehler besitzen eigene sichtbare Zustände. Ein Fehler ohne Runs
+  wird nicht zusätzlich als leer bezeichnet; der bestehende Toast- und Acknowledge-Vertrag
+  bleibt bestehen.
+- Der erneute Verwendungsnachweis war eindeutig; `FlowRunningStripView` wurde entfernt. Die
+  kompakte Restzeitformatierung liegt als reine Präsentationsfunktion am neuen Screen und ist
+  mit Grenzwerttests abgedeckt.
+- Die geprüften Goldens umfassen Standard, Änderung, Laden, Leerstand, Fehler, 320 dp, doppelte
+  Schriftgröße und Nachtmodus. Alle wurden vor Aufnahme visuell geprüft und laufen anschließend
+  im normalen Nur-Lese-Modus grün.
+- Ein Diff-Audit bestätigt unveränderte `FlowRunsViewModel`-, `FlowRunsScreenState`-,
+  `FlowRunsAction`-, Domain-, Use-Case- und Datenbankpfade. Auch der Aufgabeneditor liegt
+  vollständig außerhalb der Änderungsmenge.
+- Vollständiger lokaler Gate mit `testInstrumentationUnitTest lintDebug assembleDebug
+  assembleInstrumentationAndroidTest assembleRelease`: grün in 20 min 42 s. Artefakte:
+  Debug-APK 5,7 MiB, Instrumentierungs-APK 1,7 MiB, unsigned Release-APK 2,8 MiB.
+- Ein Pixel 8 mit API 36 war verbunden, trägt aber die produktive App-ID. Der lokale
+  Instrumentierungs-Build nutzt dieselbe App-ID und wurde deshalb nicht über die vorhandene
+  Installation geschrieben. Die isolierten API-/Animationsläufe bleiben dem verpflichtenden
+  PR-Gate vorbehalten.
+
+Remote-Status Phase 2: wartet auf Commit, Pull Request, grüne Matrix, Squash-Merge und exakten
+Main-Nachweis. Diese lokalen Ergebnisse allein schließen Phase 2 nicht ab.

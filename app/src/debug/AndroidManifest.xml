@@ -17,5 +17,9 @@
             android:name=".AllTasksComposeHarnessActivity"
             android:exported="false"
             android:theme="@style/ComposeSmokeTheme" />
+        <activity
+            android:name=".FlowRunsComposeHarnessActivity"
+            android:exported="false"
+            android:theme="@style/ComposeSmokeTheme" />
     </application>
 </manifest>

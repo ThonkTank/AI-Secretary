@@ -542,9 +542,14 @@
     <string name="flow_run_waiting_resource">%1$s · wartet auf %2$s</string>
     <string name="flow_resource_capacity">freie Kapazität</string>
     <string name="flow_runs_title">Laufende Abläufe</string>
-    <string name="flow_runs_description">Warten ist hier nur Status, keine blockierende Aufgabe. Öffne diese Seite nur, wenn du Zeit, Reihenfolge oder Abbruch ändern willst.</string>
+    <string name="flow_runs_description">Hier änderst du Zeit, Reihenfolge oder beendest einen laufenden Ablauf.</string>
     <string name="flow_runs_empty">Kein Ablauf läuft gerade.</string>
     <string name="flow_loading">Abläufe werden geladen …</string>
+    <string name="flow_changing">Änderung wird gespeichert …</string>
+    <string name="flow_step_number">Schritt %1$d von %2$d</string>
+    <string name="flow_status_ready_short">Bereit</string>
+    <string name="flow_status_waiting_time_short">Noch %1$s</string>
+    <string name="flow_status_waiting_capacity_short">Wartet auf Platz</string>
     <string name="flow_run_task_and_progress">%1$s · jetzt: %2$s · Schritt %3$d/%4$d</string>
     <string name="flow_status_ready">Jetzt in deiner Liste bereit.</string>
     <string name="flow_status_waiting_time">Wartet noch %1$s.</string>
