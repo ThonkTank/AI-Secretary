@@ -90,6 +90,25 @@ public final class FocusTaskViewTest {
         assertTrue(visibleTexts(view).contains("12 Wdh."));
     }
 
+    @Test public void laundrySheetNeedsNoInstructionOrTrailingStatusCopy() {
+        Context context = ApplicationProvider.getApplicationContext();
+        FocusStepUiModel colors = FocusTaskFixtures.step("colors", "Buntwäsche").build();
+        FocusStepUiModel whites = FocusTaskFixtures.step("whites", "Weißwäsche")
+                .amount("2 Std.").build();
+        FocusTaskUiModel task = FocusTaskFixtures.task("laundry", "Wäsche waschen")
+                .steps(Arrays.asList(colors, whites)).flowAggregate(true).build();
+        FocusTaskView view = new FocusTaskView(context);
+
+        view.bind(FocusCardTestModels.of(task,
+                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), false, event -> { });
+
+        List<String> texts = visibleTexts(view);
+        assertFalse(texts.contains("Wähle einen Waschgang. Laufende Schritte stehen zuerst."));
+        assertFalse(texts.contains("Starten"));
+        assertFalse(texts.contains("Läuft"));
+        assertTrue(texts.contains("2 Std."));
+    }
+
     @Test public void stepRowOwnsRenderingAnchorAndIdBasedActions() {
         Context context = ApplicationProvider.getApplicationContext();
         FocusStepUiModel step = FocusTaskFixtures.step("step-1", "Beinpresse")
