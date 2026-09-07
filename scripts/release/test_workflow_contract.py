@@ -413,6 +413,7 @@ class WorkflowContractTest(unittest.TestCase):
         )[0]
         package = WORKFLOW.split("\n  package:", 1)[1].split("\n  upgrade:", 1)[0]
         upgrade = WORKFLOW.split("\n  upgrade:", 1)[1].split("\n  publish:", 1)[0]
+        publish = WORKFLOW.split("\n  publish:", 1)[1]
 
         self.assertIn("actions: read", release_scope)
         self.assertIn("pull-requests: read", release_scope)
@@ -429,6 +430,11 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("needs.instrumentation-gate.result == 'success'", package)
         self.assertIn("needs: [package]", upgrade)
         self.assertNotIn("needs: [instrumentation, package]", upgrade)
+        self.assertIn("always()", upgrade)
+        self.assertIn("needs.package.result == 'success'", upgrade)
+        self.assertIn("always()", publish)
+        self.assertIn("needs.package.result == 'success'", publish)
+        self.assertIn("needs.upgrade.result == 'success'", publish)
         self.assertIn('REQUIRED_JOBS = ("quality", "instrumentation-gate", '
                       '"pull-request-gate")', REUSE_PR_VERIFICATION)
         self.assertIn('event_name != "push"', REUSE_PR_VERIFICATION)

@@ -400,7 +400,9 @@ jobs:
           if-no-files-found: error
 
   upgrade:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.package.outputs.already_published != 'true'
+    if: >-
+      always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      needs.package.result == 'success' && needs.package.outputs.already_published != 'true'
     needs: [package]
     runs-on: ubuntu-latest
     permissions:
@@ -491,7 +493,10 @@ jobs:
           script: ./scripts/ci/run-upgrade-test.sh "$PREVIOUS_APK" "$CANDIDATE_APK" "$TEST_APK" "$PACKAGE_NAME" "$CANDIDATE_VERSION"
 
   publish:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.package.outputs.already_published != 'true'
+    if: >-
+      always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      needs.package.result == 'success' && needs.upgrade.result == 'success' &&
+      needs.package.outputs.already_published != 'true'
     needs: [package, upgrade]
     runs-on: ubuntu-latest
     permissions:
