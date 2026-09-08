@@ -420,3 +420,74 @@ Statusfortschreibung: implementiert
 Phase-3-Gate: fachlich vollständig erfüllt. Der Cross-Phase- und Geräteabschluss darf nach
 grünem dokumentationsreinem Status-PR und dessen exaktem Main-Lauf vom dann aktuellen
 `origin/main` beginnen.
+
+## Cross-Phase- und Geräteabschluss
+
+Statusfortschreibung: in Arbeit
+
+Ausgangsstand: `92e8aed853f999e3ed85db8117321bf31abe3764` (`origin/main`)
+
+### Plan – 2026-09-08
+
+1. Den aktuellen `main`-Stand anforderungsweise gegen Zielzustand, Grenzen und Abnahmen aller
+   drei Roadmapphasen prüfen; Schema-/API-Konstanz, Migrationsprojektionen, Lineage-Tests,
+   Fixture-Korpus, Workflowmatrix und aktive Dokumentation erneut belegen.
+2. Lokale Hostverträge, fokussierte Migrationstests, vollständigen Android-Gate mit JDK 21,
+   Schema- und API-Hashes sowie `git diff --check` auf dem finalen kombinierten Stand ausführen.
+3. Vor jeder nötigen Korrektur einen eigenen Fixplan hier anhängen und den regulären
+   PR-/Merge-/Main-Gate erneut durchlaufen. Ohne Abweichung den Cross-Phase-Nachweis als reinen
+   Dokumentationscommit über PR und exakten Main-Lauf schließen.
+4. Erst danach den veröffentlichten Release 0.2.163 neu herunterladen und Release-Ziel, Tag,
+   Commit, Metadaten- und APK-Hash, Paket, Versionscode, Versionsname und Produktionssignatur
+   unabhängig prüfen.
+5. Den autorisierten Pixel-8-Ausgangszustand einschließlich `firstInstallTime` und installierter
+   Signatur erfassen. Nur bei strikt höherer, identisch signierter Zielversion exakt
+   `adb install -r` verwenden.
+6. Installierten Zustand, erhaltenes Erstinstallationsdatum, App-Kaltstart, Widget und frisches
+   SQLite-/Crashprotokoll prüfen. Anschließend Aufgaben, Verlauf, mindestens einen bestehenden
+   Ablauf und das Widget gemeinsam sichtbar abnehmen.
+
+Bei jeder fehlgeschlagenen Geräteprüfung bleiben App und Daten installiert; es wird weder
+deinstalliert noch gelöscht oder zurückgestuft, sondern ausschließlich vorwärts repariert.
+
+### Cross-Phase-Audit und lokale Validierung – 2026-09-08
+
+Der anforderungsweise Abgleich des kombinierten Stands `92e8aed853f999e3ed85db8117321bf31abe3764`
+gegen die vollständige Roadmap ergab keine zu korrigierende Abweichung:
+
+- alle Produktionsmigrationen schreiben persistierte Daten über vollständige Ziel- und
+  Quellspaltenlisten; der Architekturtest verbietet `INSERT INTO ... SELECT *` dauerhaft;
+- die organische Folge 20 nach 21 nach 22 nach 24 belegt die physische Spaltenhistorie und prüft
+  Text, Notiz, Mengen, Last, `targetRir`, Verzögerungsmodus und sämtliche Verzögerungswerte;
+- die leere Crashzelle, eine vollständig belegte Vertauschungszeile sowie die Reparatur einer
+  künstlich vertauschten Schema-23-Zeile bei wertgleichem Erhalt einer korrekten Zeile sind
+  gemeinsam abgedeckt;
+- Schemaexport 24 blieb mit SHA-256
+  `200e46de5c60137ea9e09524c7cb91ffaed322033c1790d0d459ace6b4cb6bf3` unverändert;
+  `DatabaseContract.java` blieb mit SHA-256
+  `489c1114b1d5d3e15254a8eaa7a3a131540f10005b0faf77484dab993492dba4` und
+  `DatabaseContract.VERSION == 24` unverändert;
+- der manifestierte Korpus erzeugt deterministisch exakt Schema 8 auf API 26/35/37 sowie
+  Schema 20 und Schema 23 jeweils auf API 26; jede der fünf Lanes verwendet denselben einmal
+  gebauten Kandidaten und authentifiziert ihre signierte Quelle vollständig;
+- ADR-005, ADR-035, Releaseanleitung, Recovery-Runbook und Architekturindex beschreiben den
+  implementierten Vertrag im Präsens; der aktive Persistenzstand ist Schema 24;
+- öffentliche App-, Domain- und UI-APIs sind gegenüber den Phasengrenzen unverändert.
+
+Erneute lokale Validierung des kombinierten Stands mit JDK 21 und Android SDK
+`/home/aaron/Android/Sdk`:
+
+- Python-CI-Verträge: 25 von 25 grün;
+- Python-Release- und Workflowverträge: 30 von 30 grün;
+- fokussierte Migrations-, Lineage-, Architektur- und Produktionsfixture-Tests: 35 Aufgaben,
+  grün in 3:41;
+- vollständiger Android-Gate mit `testInstrumentationUnitTest`, `lintDebug`, `assembleDebug`,
+  `assembleInstrumentationAndroidTest` und `assembleRelease`: 157 Aufgaben, grün in 24:30;
+- Debug-APK 5.683.341 Bytes und unsigned Release-APK 2.837.404 Bytes, innerhalb ihrer Grenzen;
+- `git diff --check`: grün.
+
+Alle drei Implementierungsphasen einschließlich ihrer PR-, Squash- und exakten Main-Gates sind
+erfüllt; die produktiven Phase-1- und Phase-2-Läufe veröffentlichten 0.2.162 beziehungsweise
+0.2.163, während Phase 3 keinen Release auslöste. Repositoryseitiger Cross-Phase-Gate: erfüllt.
+Der Geräteabschluss bleibt bis zum grünen PR-, Squash- und exakten Main-Nachweis dieses reinen
+Auditcommits gesperrt.
