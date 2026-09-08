@@ -170,3 +170,18 @@ Lokaler Implementierungs- und Anforderungsaudit am 2026-09-08:
 
 Remote-Status Phase 2: wartet auf Commit, Pull Request, grüne Matrix, Squash-Merge und exakten
 Main-Nachweis. Diese lokalen Ergebnisse allein schließen Phase 2 nicht ab.
+
+Remote-Abschluss Phase 2 am 2026-09-08:
+
+- Der erste Versuch von PR-Lauf `34167627579` blieb eine Stunde lang ohne Abschluss im
+  Quality-Buildschritt, obwohl GitHub ihn weiterhin als aktiv meldete. Er wurde kontrolliert
+  abgebrochen und nicht als Nachweis gewertet. Der unveränderte Head `c0aeef97` wurde als
+  Attempt 2 desselben Laufs erneut geprüft.
+- Attempt 2 war vollständig grün: Quality, API 26/35/37 jeweils mit und ohne Animationen,
+  Instrumentierungs-Gate und PR-Gate. Es war keine Codekorrektur zwischen den Attempts nötig.
+- PR #341 wurde ohne Admin-Ausnahme per Squash nach `main` gemergt. Der bestätigte Remote-Commit
+  ist `8d9dbc86`.
+- Der exakte Push-Workflow `34171883549` für `8d9dbc86` war grün. Paketbau, Upgrade von API
+  26/35/37, Instrumentierungs-Gate und Veröffentlichung waren erfolgreich.
+- Phase 2 und damit die Roadmap für mobile Aufgabenverwaltung und Ablaufübersicht sind
+  vollständig abgeschlossen.
