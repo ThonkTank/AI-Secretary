@@ -53,7 +53,7 @@
           "remainingCount": null,
           "deadlineOn": null,
           "note": "Aufgabennotiz Schema 23",
-          "missedOccurrenceMode": "SKIP"
+          "missedOccurrenceMode": "COLLAPSE"
         }
       ]
     },

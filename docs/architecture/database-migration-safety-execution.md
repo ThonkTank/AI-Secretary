@@ -232,3 +232,52 @@ Der getrennte Abgleich gegen Phasenplan und Gesamtroadmap ergab keine offene lok
 
 Lokales Gate: erfüllt. Remote-Gate, Squash-Merge, exakter Main-Lauf und Veröffentlichung stehen
 noch aus; Phase 2 und damit Phase 3 bleiben bis zu deren Nachweis offen.
+
+### Fehlgeschlagener exakter Main-Lauf und Fixplan – 2026-09-08
+
+PR `#345` war mit Qualität, sechs Instrumentierungslanes und `pull-request-gate` vollständig
+grün und wurde als `2fa62299dfd4524955e6577a75b6cf303660e71b` nach `main` gemergt. Der exakte
+Main-Lauf `34207682584` baute und signierte den Kandidaten einmal erfolgreich. Vier der fünf
+neuen Upgrade-Lanes waren grün: Schema 8 auf API 26, 35 und 37 sowie Schema 23 auf API 26.
+Schema 20 auf API 26 scheiterte deshalb korrekt vor Publish; es entstand kein neuer Release.
+
+Diagnose: Die Fixture erwartete für organisch aus Schema 20 migrierte Ablaufzeilen
+`targetRir = 0`, während die echte Migration 20 nach 21 dieses neue Pflichtfeld mit dem
+historischen Default `2` anlegt. Der Gerätefehler lautete
+`AssertionError: flow_run_steps.targetRir differs`. Das frische Protokoll zeigte außerdem, dass
+die gesäte Aufgabe den heute ungültigen Domänenwert `missedOccurrenceMode = SKIP` trug; gültig
+sind `COLLAPSE` und `ACCUMULATE`.
+
+Fixplan:
+
+1. Ausschließlich die Schema-20-Zielerwartungen auf den belegten Migrationsdefault `2` stellen.
+2. Die künstlichen Schema-20- und Schema-23-Aufgaben mit dem gültigen neutralen Wert
+   `COLLAPSE` säen, damit auch der App-Start ohne Domänenfehler abläuft.
+3. Den Java-Vertrag um konkrete Assertions für den historischen `targetRir`-Default und alle
+   gesäten `missedOccurrenceMode`-Werte erweitern.
+4. Fixture-/Workflowverträge, fokussierten Androidtest, vollständigen lokalen Android-Gate und
+   `git diff --check` erneut ausführen und getrennt auditieren.
+5. Die Korrektur über einen neuen PR, Squash-Merge und einen neuen exakten Main-Lauf führen.
+   Publish bleibt bis zu fünf grünen Upgrade-Lanes gesperrt; Phase 3 bleibt geschlossen.
+
+### Lokale Validierung und Audit der Phase-2-Korrektur – 2026-09-08
+
+Der Fixplan wurde vollständig und ohne Scope-Erweiterung umgesetzt:
+
+- beide organisch aus Schema 20 migrierten Ablaufzeilen erwarten nun den durch Migration 20
+  nach 21 belegten Pflichtfelddefault `targetRir = 2`;
+- die künstlichen Aufgaben in Schema 20 und 23 verwenden `missedOccurrenceMode = COLLAPSE`;
+- der Java-Vertrag prüft beide historischen `targetRir`-Werte konkret und parst jeden in einer
+  Fixture vorhandenen Aufgabenmodus über den aktuellen Domänenenum;
+- Python-CI-Verträge: 25 von 25 grün;
+- Python-Release- und Workflowverträge: 30 von 30 grün;
+- fokussierter `ProductionUpgradeFixtureContractTest`: 35 Aufgaben, grün in 2:47;
+- vollständiger lokaler Android-Gate mit JDK 21: 157 Aufgaben, grün in 17:09;
+- Debug-APK 5.683.341 Bytes, Release-APK 2.837.404 Bytes;
+- `git diff --check`: grün.
+
+Der getrennte Soll/Ist-Abgleich zeigt ausschließlich vier geänderte Dateien: die zwei Fixtures,
+ihren Hostvertrag und dieses append-only Protokoll. Produktions-App-, Domain-, UI-, Schema- und
+öffentliche API-Dateien sind unverändert. Alle fünf Lanes, die Quellidentitäten und der
+Einmal-Kandidatenvertrag bleiben unverändert verpflichtend. Lokale Fix-Abnahme: erfüllt;
+Remote-Gate, Squash-Merge, neuer exakter Main-Lauf und Publish stehen noch aus.

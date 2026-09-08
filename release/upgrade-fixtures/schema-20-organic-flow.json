@@ -53,7 +53,7 @@
           "remainingCount": null,
           "deadlineOn": null,
           "note": "Aufgabennotiz Schema 20",
-          "missedOccurrenceMode": "SKIP"
+          "missedOccurrenceMode": "COLLAPSE"
         }
       ]
     },
@@ -180,7 +180,7 @@
         "plannedLoadMode": "UNSPECIFIED",
         "plannedLoadUnit": "NONE",
         "plannedLoadMilli": null,
-        "targetRir": 0,
+        "targetRir": 2,
         "note": "Leere letzte Verzögerung",
         "delayMode": "FIXED",
         "defaultDelayMillis": 6000,
@@ -205,7 +205,7 @@
         "plannedLoadMode": "UNSPECIFIED",
         "plannedLoadUnit": "NONE",
         "plannedLoadMilli": null,
-        "targetRir": 0,
+        "targetRir": 2,
         "note": "Vollständige Vertauschungsprobe",
         "delayMode": "REMEMBER_LAST",
         "defaultDelayMillis": 8000,
