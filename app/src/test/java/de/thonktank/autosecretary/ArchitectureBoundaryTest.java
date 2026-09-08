@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /** Executable package rules for the management and execution slices. */
@@ -361,6 +363,22 @@ public final class ArchitectureBoundaryTest {
             throws Exception {
         String source = read(main("data/local/DatabaseMigrations.java"));
         assertFalse(source.contains("RENAME COLUMN"));
+    }
+
+    @Test public void productionMigrationsCopyRowsByNamedColumns() throws Exception {
+        String source = read(main("data/local/DatabaseMigrations.java"));
+        Matcher calls = Pattern.compile("database\\.execSQL\\((.*?)\\);", Pattern.DOTALL)
+                .matcher(source);
+        Pattern literal = Pattern.compile("\"((?:\\\\.|[^\"\\\\])*)\"");
+        Pattern positionalCopy = Pattern.compile(
+                "(?is).*\\bINSERT\\s+INTO\\b.*\\bSELECT\\s+\\*\\s+FROM\\b.*");
+        while (calls.find()) {
+            StringBuilder sql = new StringBuilder();
+            Matcher fragments = literal.matcher(calls.group(1));
+            while (fragments.find()) sql.append(fragments.group(1));
+            assertFalse("Migration writes must name source and target columns: " + sql,
+                    positionalCopy.matcher(sql).matches());
+        }
     }
 
     @Test public void removedCompatibilityMutationFacadesStayRemoved() throws Exception {
