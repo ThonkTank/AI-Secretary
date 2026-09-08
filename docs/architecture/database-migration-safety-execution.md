@@ -281,3 +281,31 @@ ihren Hostvertrag und dieses append-only Protokoll. Produktions-App-, Domain-, U
 öffentliche API-Dateien sind unverändert. Alle fünf Lanes, die Quellidentitäten und der
 Einmal-Kandidatenvertrag bleiben unverändert verpflichtend. Lokale Fix-Abnahme: erfüllt;
 Remote-Gate, Squash-Merge, neuer exakter Main-Lauf und Publish stehen noch aus.
+
+### Remote-Abschluss Phase 2 – 2026-09-08
+
+Statusfortschreibung: veröffentlicht
+
+- ursprünglicher Phasencommit `dbc8ff48d78724eec62ab8696c9408756e98a738`, PR `#345`,
+  vollständiger `pull-request-gate` grün im Lauf `34205749440`;
+- erster Squash-Merge `2fa62299dfd4524955e6577a75b6cf303660e71b`;
+- erster exakter Main-Lauf `34207682584`: Packaging und vier von fünf Upgrade-Lanes grün,
+  Schema 20 rot, Publish korrekt übersprungen und kein Release erzeugt;
+- Korrekturcommit `ef597625e55b9f05b7e9b74231b95674086a5fd5`, PR `#346`, vollständiger
+  `pull-request-gate` grün im Lauf `34210524165`;
+- finaler Squash-Merge auf `main`: `0107fff4e9437f4b7d62750e393617545a41879c`;
+- exakter Main-Lauf `34212299563`: Packaging, Schema 8 auf API 26/35/37, Schema 20 auf API 26,
+  Schema 23 auf API 26 und Publish vollständig grün;
+- veröffentlichter Release: Auto Secretary 0.2.163, Tag `forest-android-1016301`; Release-Ziel
+  und Tag zeigen exakt auf den finalen Squash-Commit;
+- veröffentlichte APK SHA-256:
+  `1cf4da34d7054e7dfa325d1a461727a4f984c1a2f620197863c7101b61ed08eb`;
+- veröffentlichte Metadaten SHA-256:
+  `beca4ddeb14b9b8d9c6b996cf8c0cccf5c07d931a3bd2b60e2a108a8f75ea5c6`;
+- Paket `de.thonktank.autosecretary`, Versionscode `1016301`, Versionsname `0.2.163` und
+  Produktionssignatur
+  `de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da` wurden nach dem
+  Download erneut unabhängig geprüft.
+
+Phase-2-Gate: vollständig erfüllt. Phase 3 darf nach grünem dokumentationsreinem Status-PR und
+dessen exaktem Main-Lauf vom dann aktuellen `origin/main` beginnen.
