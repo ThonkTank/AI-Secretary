@@ -1,0 +1,17 @@
+{
+  "contractVersion": 1,
+  "fixtures": [
+    {
+      "id": "schema-8-floor",
+      "file": "schema-8-floor.json"
+    },
+    {
+      "id": "schema-20-organic-flow",
+      "file": "schema-20-organic-flow.json"
+    },
+    {
+      "id": "schema-23-repair-boundary",
+      "file": "schema-23-repair-boundary.json"
+    }
+  ]
+}

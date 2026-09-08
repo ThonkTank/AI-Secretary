@@ -55,7 +55,8 @@ class ChangeScopeTest(unittest.TestCase):
             "UpgradePersistenceProbe.java",
             "app/src/androidTest/java/de/thonktank/autosecretary/"
             "UpgradeProbeInstrumentation.java",
-            "release/upgrade-fixtures/v0.2.80.json",
+            "release/upgrade-fixtures/schema-20-organic-flow.json",
+            "scripts/release/upgrade_fixture_tool.py",
         ):
             with self.subTest(path=path):
                 self.assertEqual(
@@ -79,6 +80,7 @@ class ChangeScopeTest(unittest.TestCase):
             "scripts/ci/reuse_pr_verification.py",
             "scripts/ci/run-upgrade-test.sh",
             "scripts/release/release_tool.py",
+            "scripts/release/upgrade_fixture_tool.py",
         ):
             with self.subTest(path=path):
                 self.assertEqual(

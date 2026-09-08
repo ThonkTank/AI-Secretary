@@ -124,3 +124,111 @@ Statusfortschreibung: veröffentlicht
   `b588c5ad28581313de338c1aaa9f3f364e74fc37c9ed3f863c78d5aae50101f6`.
 
 Phase-1-Gate: vollständig erfüllt. Phase 2 darf vom aktuellen `origin/main` beginnen.
+
+## Phase 2 – Signierter Upgrade-Fixture-Korpus
+
+Statusfortschreibung: in Arbeit
+
+Ausgangsstand: `bed757392ce02a308e0b80aaf68907d7eeb290a2` (`origin/main`)
+
+### Plan – 2026-09-08
+
+Ergebnis: Der Releaseweg leitet fünf gezielte Upgrade-Lanes aus einem validierten,
+manifestierten Fixture-Korpus ab. Jede Lane installiert eine exakt festgelegte signierte
+Produktionsquelle, sät ihre schemahistorischen Daten, aktualisiert mit demselben einmal gebauten
+Kandidaten und prüft die erwarteten Zielwerte.
+
+Betroffene Komponenten:
+
+- `release/upgrade-fixtures` mit Manifest und vollständigen Schema-8-, Schema-20- und
+  Schema-23-Fixtures;
+- eine kleine Release-Hilfe samt Unit-Tests für Korpus-, Matrix- und Quellartefaktverträge;
+- `UpgradePersistenceProbe`, `UpgradeProbeInstrumentation` und der Upgrade-Runner für die
+  verpflichtende Fixture-ID und generische Seed-/Erwartungswerte;
+- `ProductionUpgradeFixtureContractTest`, Runner-, Workflow-, Scope- und Releaseverträge;
+- `.github/workflows/verify.yml` für die aus dem Korpus abgeleiteten fünf Upgrade-Lanes.
+
+Reihenfolge:
+
+1. Die unveränderlichen Metadaten der drei veröffentlichten Quellen erfassen und gegen Tag,
+   Zielcommit, APK, Metadaten und Produktionssignatur verifizieren.
+2. Einen manifestierten Korpus mit eindeutigen IDs, Risikobeschreibung, Quellidentität,
+   vollständigen Seedzeilen, Zielerwartungen und genau zugeordneten API-Lanes einführen.
+3. Die Korpus-Hilfe so implementieren, dass fehlende, doppelte und unbekannte IDs sowie
+   unvollständige oder inkonsistente Quellen hart fehlschlagen und die Workflow-Matrix
+   deterministisch erzeugt wird.
+4. Probe und Runner über `fixtureId` verbinden; Seed- und Zielzeilen generisch aus dem gewählten
+   Fixture lesen und die Auswahl zwischen Seed und Verify persistent gegen Verwechslung sichern.
+5. Den Workflow jede Quelle einschließlich Release-Metadaten, Commit, Paket, Versionscode,
+   SHA-256 und Signatur vor der Installation prüfen lassen. Der Kandidat bleibt ein einziges
+   gemeinsames signiertes Artefakt, Publish hängt vom gesamten Matrixjob ab.
+6. Werkzeug-, Fixture-, Runner- und fokussierte Androidtests früh ausführen, danach den
+   vollständigen lokalen Android-Gate mit JDK 21 und `git diff --check`.
+7. Implementierung getrennt gegen diesen Phasenplan und die Gesamtroadmap auditieren. Vor jeder
+   notwendigen Korrektur zuerst einen eigenen Fixplan hier anhängen.
+
+Abnahme: Schema-8-Upgrades sind auf API 26/35/37, Schema 20 und Schema 23 jeweils auf API 26
+verpflichtend; jede Quelle und jeder Zielwert ist vertraglich geprüft; es gibt keine fest
+verdrahtete Fixture in der Probe; Schema 24 und öffentliche App-/Domain-/UI-APIs bleiben
+unverändert. Erst nach lokalem Gate, PR-Gate, Squash-Merge, exaktem Main-Lauf und Publish darf
+Phase 3 beginnen.
+
+### Lokale Umsetzung und Validierung – 2026-09-08
+
+Die einzelne Schema-8-Datei wurde durch einen manifestierten Korpus aus Schema 8, 20 und 23
+ersetzt. Eine neue Release-Hilfe validiert Vertrag, Eindeutigkeit und Vollständigkeit des Korpus,
+erzeugt deterministisch fünf Risikolanes und prüft jede Quellveröffentlichung fail-closed gegen
+Release- und Tag-Ziel, Commit, Metadatenbytes und APK-Bytes. Probe und Runner säen und prüfen nun
+generisch über die obligatorische Fixture-ID; die gewählte ID wird zwischen Seed und Verify
+persistiert.
+
+Der Workflow löst die Matrix im immer laufenden Scope-Job auf, damit auch übersprungene
+Packaging-Jobs keinen leeren Matrixausdruck erzeugen. Der Produktionskandidat wird weiterhin
+genau einmal gebaut. Jede Lane lädt ihre eigene signierte Quelle und deren Metadaten, prüft
+zusätzlich Paket, Versionsname, Versionscode und Signatur und übergibt den Fixture-Namen bis in
+die Geräteprobe. Publish bleibt vom aggregierten Upgradejob abhängig.
+
+Validierung mit JDK 21 und Android SDK `/home/aaron/Android/Sdk`:
+
+- Python-CI-Verträge: 25 von 25 grün;
+- Python-Release- und Workflowverträge: 30 von 30 grün;
+- fokussierter Fixture-/Schemavertrag und Kompilierung der Android-Probe: 45 Aufgaben, grün in
+  4:09;
+- vollständiger lokaler Android-Gate mit `testInstrumentationUnitTest`, `lintDebug`,
+  `assembleDebug`, `assembleInstrumentationAndroidTest` und `assembleRelease`: 157 Aufgaben,
+  grün in 20:22;
+- Debug-APK 5.683.341 Bytes, Release-APK 2.837.404 Bytes; beide innerhalb ihrer Grenzen;
+- alle drei Fixture-Dateien sind in der erzeugten Upgrade-Test-APK enthalten;
+- alle drei heruntergeladenen Produktionsquellen wurden live mit der neuen Hilfe sowie mit
+  `aapt` und `apksigner` gegen Commit, Tag, Metadaten- und APK-SHA-256, Paket, Versionscode,
+  Versionsname und Produktionssignatur verifiziert;
+- `git diff --check`: grün.
+
+### Phasenaudit – 2026-09-08
+
+Der getrennte Abgleich gegen Phasenplan und Gesamtroadmap ergab keine offene lokale Abweichung:
+
+- der Korpus enthält ausschließlich `schema-8-floor`, `schema-20-organic-flow` und
+  `schema-23-repair-boundary` und erzeugt exakt die genehmigten fünf Lanes;
+- Schema 8 läuft auf API 26, 35 und 37, Schema 20 und 23 jeweils gezielt auf API 26;
+- die Probe enthält keine feste Fixture-ID oder feste fachliche Seed-/Zielzeile;
+- Manifest- und Laufzeitverträge verwerfen fehlende, doppelte, verwaiste, unbekannte oder
+  syntaktisch ungültige Fixtures beziehungsweise IDs;
+- jede Seedzeile deckt exakt jede Spalte ihres exportierten Quellschemas ab, und jede erwartete
+  Zielspalte existiert in Schema 24;
+- die Schema-20-Fixture enthält getrennt die leere Crashzelle und die vollständig belegte
+  stille Vertauschung; die Schema-23-Fixture enthält parallel die eindeutig reparierbare und
+  die byte-/wertgleich zu erhaltende korrekte Zeile;
+- Release-, Tag-, Commit-, Metadaten-, APK-, Paket-, Versions- und Signaturidentität werden vor
+  jeder Installation geprüft; Manipulationstests decken jede Herkunftsgrenze ab;
+- der Kandidat wird einmal gebaut und von allen Matrixjobs gemeinsam verwendet; Publish wartet
+  auf den vollständigen Matrixjob;
+- Schemaexport 24 blieb bytegleich mit SHA-256
+  `200e46de5c60137ea9e09524c7cb91ffaed322033c1790d0d459ace6b4cb6bf3`;
+- `DatabaseContract.java` blieb bytegleich mit SHA-256
+  `489c1114b1d5d3e15254a8eaa7a3a131540f10005b0faf77484dab993492dba4`;
+- es gibt keine Änderung an Produktions-App-, Domain- oder UI-Code und keine öffentliche
+  API-Änderung.
+
+Lokales Gate: erfüllt. Remote-Gate, Squash-Merge, exakter Main-Lauf und Veröffentlichung stehen
+noch aus; Phase 2 und damit Phase 3 bleiben bis zu deren Nachweis offen.

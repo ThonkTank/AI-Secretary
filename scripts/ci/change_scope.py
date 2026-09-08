@@ -24,6 +24,7 @@ BUILD_INPUTS = {
     "scripts/ci/reuse_pr_verification.py",
     "scripts/ci/run-upgrade-test.sh",
     "scripts/release/release_tool.py",
+    "scripts/release/upgrade_fixture_tool.py",
     "settings.gradle.kts",
     "today-core/build.gradle.kts",
 }

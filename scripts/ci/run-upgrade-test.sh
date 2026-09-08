@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -ne 5 ]; then
-  echo "Usage: $0 PREVIOUS_APK CANDIDATE_APK TEST_APK PACKAGE CANDIDATE_VERSION" >&2
+if [ "$#" -ne 6 ]; then
+  echo "Usage: $0 SOURCE_APK CANDIDATE_APK TEST_APK PACKAGE CANDIDATE_VERSION FIXTURE_ID" >&2
   exit 2
 fi
 
-previous_apk=$1
+source_apk=$1
 candidate_apk=$2
 test_apk=$3
 package_name=$4
 candidate_version=$5
+fixture_id=$6
 runner="${package_name}.test/${package_name}.UpgradeProbeInstrumentation"
+
+if [[ ! "$fixture_id" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  echo "Invalid fixture ID: $fixture_id" >&2
+  exit 2
+fi
 
 install_apk() {
   local apk=$1
@@ -60,7 +66,8 @@ run_probe() {
   local output
   local status
   set +e
-  output=$(adb shell am instrument -w -r -e upgradePhase "$phase" "$runner" 2>&1)
+  output=$(adb shell am instrument -w -r -e upgradePhase "$phase" \
+    -e upgradeFixture "$fixture_id" "$runner" 2>&1)
   status=$?
   set -e
   printf '%s\n' "$output"
@@ -72,12 +79,12 @@ run_probe() {
   return 1
 }
 
-for artifact in "$previous_apk" "$candidate_apk" "$test_apk"; do
+for artifact in "$source_apk" "$candidate_apk" "$test_apk"; do
   test -f "$artifact"
 done
 
 # First prove that the exact signed candidate installs and starts on a clean device. Remove it
-# before exercising the independent previous-production-to-candidate upgrade path below.
+# before exercising the independent signed-source-to-candidate upgrade path below.
 verify_package_absent
 install_apk "$candidate_apk"
 start_main_activity
@@ -90,7 +97,7 @@ case "$uninstall_result" in
 esac
 verify_package_absent
 
-install_apk "$previous_apk"
+install_apk "$source_apk"
 start_main_activity
 adb shell am force-stop "$package_name"
 install_apk "$test_apk"
