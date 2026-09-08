@@ -4,9 +4,10 @@ Der Workflow klassifiziert jede Änderung getrennt für Host-Qualität, Android-
 Produktveröffentlichung. Reine Änderungen unter `docs/` sowie an Repository-Markdown bestehen mit
 dem Scope- und PR-Sammelcheck, ohne einen Android-Build zu starten. Andere Nicht-Produktänderungen
 durchlaufen das passende Quality- beziehungsweise Instrumentierungs-Gate, erzeugen aber keine neue
-App-Version. Produkt- und eingebettete Vertragsänderungen werden schon im Pull Request auf API 26
-und API 35 instrumentiert. Nach dem Merge wiederholt `main` diese Prüfungen für den exakten
-Release-Commit und führt zusätzlich den echten Produktions-Upgrade-Test auf beiden APIs aus.
+App-Version. Produkt- und eingebettete Vertragsänderungen werden schon im Pull Request auf API 26,
+API 35 und API 37 instrumentiert. Nach dem Merge wiederholt `main` diese Prüfungen für den exakten
+Release-Commit und führt zusätzlich die fünf echten Produktions-Upgrades aus dem signierten
+Fixture-Korpus aus.
 
 ## Dauerhafter Signaturschlüssel
 
@@ -47,8 +48,8 @@ keinen zusätzlichen manuellen Freigabeschritt nach einer vollständig grünen V
 ## Automatischer Ablauf
 
 1. Eine Änderung wird auf einem Themenbranch committed. Der getestete Scope-Classifier entscheidet
-   unabhängig, ob Quality, API-26/35-Instrumentierung und später ein Produktrelease erforderlich
-   sind.
+   unabhängig, ob Quality, API-26/35/37-Instrumentierung und später ein Produktrelease
+   erforderlich sind.
 2. Der stabile Check `pull-request-gate` fasst alle für den Pull Request anwendbaren Prüfungen
    zusammen. Das Ruleset von `main` verlangt diesen aktuellen grünen Check und einen Squash-Merge.
    Instrumentierungsfehler laden je API Screenshot, UI-Hierarchie, Logcat und Input-/Displaydaten
@@ -62,10 +63,11 @@ keinen zusätzlichen manuellen Freigabeschritt nach einer vollständig grünen V
 5. Die Produktions-APK wird einmal signiert und auf Paketname, Version, Größe, Hash und
    Zertifikat geprüft. APK, Metadaten, Releaseplan und signiertes Test-APK werden als kurzlebiges
    internes Workflow-Artefakt weitergereicht.
-6. Die explizit unterstützte Produktions-APK 0.2.80 wird installiert und mit dem versionierten
-   Fixture `release/upgrade-fixtures/v0.2.80.json` befüllt. `adb install -r` aktualisiert sie auf
-   den Kandidaten; anschließend müssen App-Start, höherer Versionscode, Room-Schema und alle
-   erwarteten Testdaten erhalten sein.
+6. Der Korpus unter `release/upgrade-fixtures/corpus.json` erzeugt fünf verpflichtende Lanes:
+   Schema 8 aus 0.2.80 auf API 26/35/37 sowie Schema 20 aus 0.2.137 und Schema 23 aus 0.2.158
+   jeweils auf API 26. Jede exakt festgelegte Produktions-APK wird installiert und mit ihrer
+   Fixture befüllt. `adb install -r` aktualisiert sie auf den Kandidaten; anschließend müssen
+   App-Start, höherer Versionscode, Room-Schema und sämtliche erwarteten Testdaten erhalten sein.
 7. Ein neuer oder nach einem Fehler wiederaufgenommener Draft erhält genau
    `AutoSecretary.apk` und `release-metadata.json`; vorhandene Assets werden kontrolliert ersetzt.
 8. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter, vergleicht die APK byteweise mit
@@ -82,14 +84,15 @@ vorhandenen Draft, Tag und Assets desselben Commits weiter. Ein bereits veröffe
 erzeugt kein Duplikat. Das interne Artefakt trägt zusätzlich die Workflow-Versuchsnummer, damit
 auch ein GitHub-Rerun nicht mit einem unveränderlichen Artefakt des vorigen Versuchs kollidiert.
 
-Der Upgrade-Test lädt ausschließlich den in `release/release.properties` festgelegten
-0.2.80-Tag. Historische Schemaexporte und ihre Migrationen bleiben durch schnelle
-Robolectric-Tests abgedeckt, sind aber kein versprochener Rolling-Installationspfad. Der normale
-Unit-Test prüft außerdem alle Fixture-Spalten gegen das exportierte Ausgangs- und Zielschema sowie
-die zentrale `DatabaseContract.VERSION`. Das Test-APK wird mit demselben Produktionsschlüssel signiert, damit es
-den nicht-debugbaren Releaseprozess vor und nach dem Android-Upgrade prüfen kann. API 26, API 35
-und der Veröffentlichungsschritt laden dasselbe interne Produktionsartefakt herunter; der
-Veröffentlichungsschritt beweist die Bytegleichheit zusätzlich mit `cmp`.
+Der Upgrade-Test lädt ausschließlich die drei im Korpus festgeschriebenen Tags. Historische
+Schemaexporte und ihre Migrationen bleiben zusätzlich durch schnelle Robolectric- und
+Lineage-Tests abgedeckt; der signierte Korpus verspricht gezielt die drei dokumentierten
+Produktionsquellen und keinen beliebigen Rolling-Installationspfad. Der normale Unit-Test prüft
+alle Fixture-Spalten gegen das exportierte Ausgangs- und Zielschema sowie die zentrale
+`DatabaseContract.VERSION`. Das Test-APK wird mit demselben Produktionsschlüssel signiert, damit
+es den nicht-debugbaren Releaseprozess vor und nach dem Android-Upgrade prüfen kann. Alle fünf
+Upgrade-Lanes und der Veröffentlichungsschritt laden dasselbe interne Produktionsartefakt
+herunter; der Veröffentlichungsschritt beweist die Bytegleichheit zusätzlich mit `cmp`.
 
 ## Releasewerkzeug lokal prüfen
 
