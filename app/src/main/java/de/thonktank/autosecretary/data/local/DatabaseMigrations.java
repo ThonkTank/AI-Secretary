@@ -137,7 +137,15 @@ public final class DatabaseMigrations {
                     + "estimatedMinutes INTEGER, timeOfDayMask INTEGER NOT NULL, boundKind TEXT NOT NULL, "
                     + "boundUntilOn TEXT NOT NULL, boundWeeks INTEGER, remainingCount INTEGER, "
                     + "deadlineOn TEXT NOT NULL, note TEXT NOT NULL, PRIMARY KEY(id))");
-            database.execSQL("INSERT INTO tasks SELECT * FROM _m_tasks");
+            database.execSQL("INSERT INTO tasks(id,title,slot,recurrence,intervalDays,weekdayMask,"
+                    + "ongoing,conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,"
+                    + "lastCompletedOn,displayOrder,hasCompletedOccurrence,estimatedMinutes,"
+                    + "timeOfDayMask,boundKind,boundUntilOn,boundWeeks,remainingCount,deadlineOn,"
+                    + "note) SELECT id,title,slot,recurrence,intervalDays,weekdayMask,ongoing,"
+                    + "conditionText,conditionDone,archived,nextDueOn,lastScheduledOn,"
+                    + "lastCompletedOn,displayOrder,hasCompletedOccurrence,estimatedMinutes,"
+                    + "timeOfDayMask,boundKind,boundUntilOn,boundWeeks,remainingCount,deadlineOn,"
+                    + "note FROM _m_tasks");
             database.execSQL("CREATE INDEX index_tasks_archived_conditionDone_displayOrder "
                     + "ON tasks (archived,conditionDone,displayOrder)");
 
@@ -146,7 +154,10 @@ public final class DatabaseMigrations {
                     + "amountKind TEXT NOT NULL, plannedSets INTEGER, plannedReps INTEGER, "
                     + "plannedDurationSeconds INTEGER, note TEXT NOT NULL, PRIMARY KEY(id), "
                     + "FOREIGN KEY(taskId) REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
-            database.execSQL("INSERT INTO task_steps SELECT * FROM _m_task_steps");
+            database.execSQL("INSERT INTO task_steps(id,taskId,position,text,weekdayMask,"
+                    + "amountKind,plannedSets,plannedReps,plannedDurationSeconds,note) "
+                    + "SELECT id,taskId,position,text,weekdayMask,amountKind,plannedSets,"
+                    + "plannedReps,plannedDurationSeconds,note FROM _m_task_steps");
             database.execSQL("CREATE INDEX index_task_steps_taskId ON task_steps(taskId)");
 
             database.execSQL("CREATE TABLE occurrences (id TEXT NOT NULL, taskId TEXT NOT NULL, "
@@ -154,7 +165,10 @@ public final class DatabaseMigrations {
                     + "completedOn TEXT NOT NULL, slot TEXT NOT NULL, awardedXp INTEGER NOT NULL, "
                     + "comboPointDelta INTEGER NOT NULL, PRIMARY KEY(id), FOREIGN KEY(taskId) "
                     + "REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
-            database.execSQL("INSERT INTO occurrences SELECT * FROM _m_occurrences");
+            database.execSQL("INSERT INTO occurrences(id,taskId,scheduledOn,state,sortOrder,"
+                    + "completedOn,slot,awardedXp,comboPointDelta) SELECT id,taskId,scheduledOn,"
+                    + "state,sortOrder,completedOn,slot,awardedXp,comboPointDelta "
+                    + "FROM _m_occurrences");
             database.execSQL("CREATE INDEX index_occurrences_taskId ON occurrences(taskId)");
             database.execSQL("CREATE INDEX index_occurrences_state_completedOn "
                     + "ON occurrences(state,completedOn)");
@@ -183,7 +197,9 @@ public final class DatabaseMigrations {
                     + "taskId TEXT NOT NULL, kind TEXT NOT NULL, points INTEGER NOT NULL, "
                     + "settledThroughOn TEXT NOT NULL, PRIMARY KEY(ownerId), FOREIGN KEY(taskId) "
                     + "REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
-            database.execSQL("INSERT INTO combo_progress SELECT * FROM _m_combo_progress");
+            database.execSQL("INSERT INTO combo_progress(ownerId,taskId,kind,points,"
+                    + "settledThroughOn) SELECT ownerId,taskId,kind,points,settledThroughOn "
+                    + "FROM _m_combo_progress");
             database.execSQL("CREATE INDEX index_combo_progress_taskId ON combo_progress(taskId)");
 
             database.execSQL("DROP TABLE _m_occurrence_steps");
@@ -793,7 +809,10 @@ public final class DatabaseMigrations {
                     + "task_steps(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
                     + "FOREIGN KEY(targetStepId) REFERENCES task_steps(id) ON UPDATE NO ACTION "
                     + "ON DELETE CASCADE)");
-            database.execSQL("INSERT INTO step_transitions SELECT * FROM _p3_step_transitions");
+            database.execSQL("INSERT INTO step_transitions(sourceStepId,targetStepId,delayMode,"
+                    + "defaultDelayMillis,lastUsedDelayMillis) SELECT sourceStepId,targetStepId,"
+                    + "delayMode,defaultDelayMillis,lastUsedDelayMillis "
+                    + "FROM _p3_step_transitions");
             database.execSQL("CREATE INDEX index_step_transitions_targetStepId "
                     + "ON step_transitions(targetStepId)");
             database.execSQL("DROP TABLE _p3_step_transitions");
@@ -807,8 +826,9 @@ public final class DatabaseMigrations {
                     + "ON DELETE CASCADE, FOREIGN KEY(releaseStepId) REFERENCES task_steps(id) "
                     + "ON UPDATE NO ACTION ON DELETE CASCADE, FOREIGN KEY(resourceId) REFERENCES "
                     + "capacity_resources(id) ON UPDATE NO ACTION ON DELETE RESTRICT)");
-            database.execSQL("INSERT INTO step_resource_leases SELECT * "
-                    + "FROM _p3_step_resource_leases");
+            database.execSQL("INSERT INTO step_resource_leases(id,taskId,acquireStepId,"
+                    + "releaseStepId,resourceId,units) SELECT id,taskId,acquireStepId,"
+                    + "releaseStepId,resourceId,units FROM _p3_step_resource_leases");
             database.execSQL("CREATE INDEX index_step_resource_leases_taskId "
                     + "ON step_resource_leases(taskId)");
             database.execSQL("CREATE INDEX index_step_resource_leases_acquireStepId "
@@ -1020,7 +1040,11 @@ public final class DatabaseMigrations {
                 + "FOREIGN KEY(occurrenceId) REFERENCES occurrences(id) ON UPDATE NO ACTION "
                 + "ON DELETE CASCADE, FOREIGN KEY(occurrenceStepId) REFERENCES "
                 + "occurrence_steps(id) ON UPDATE NO ACTION ON DELETE CASCADE)");
-        database.execSQL("INSERT INTO reward_bookings SELECT * FROM _m23_reward_bookings");
+        database.execSQL("INSERT INTO reward_bookings(id,transactionId,occurrenceId,"
+                + "occurrenceStepId,ownerId,kind,target,xpDelta,comboPointDelta,bookedOn,"
+                + "reversesBookingId,plannedXp) SELECT id,transactionId,occurrenceId,"
+                + "occurrenceStepId,ownerId,kind,target,xpDelta,comboPointDelta,bookedOn,"
+                + "reversesBookingId,plannedXp FROM _m23_reward_bookings");
         database.execSQL("CREATE INDEX index_reward_bookings_transactionId "
                 + "ON reward_bookings(transactionId)");
         database.execSQL("CREATE INDEX index_reward_bookings_occurrenceId "
@@ -1037,7 +1061,8 @@ public final class DatabaseMigrations {
                 + "FOREIGN KEY(bookingId) REFERENCES reward_bookings(id) ON UPDATE NO ACTION "
                 + "ON DELETE CASCADE, FOREIGN KEY(occurrenceId) REFERENCES occurrences(id) "
                 + "ON UPDATE NO ACTION ON DELETE CASCADE)");
-        database.execSQL("INSERT INTO reward_assignments SELECT * FROM _m23_reward_assignments");
+        database.execSQL("INSERT INTO reward_assignments(bookingId,occurrenceId) "
+                + "SELECT bookingId,occurrenceId FROM _m23_reward_assignments");
         database.execSQL("CREATE INDEX index_reward_assignments_occurrenceId "
                 + "ON reward_assignments(occurrenceId)");
 
@@ -1065,7 +1090,11 @@ public final class DatabaseMigrations {
                 + "notificationId INTEGER NOT NULL, completionObserved INTEGER NOT NULL, "
                 + "PRIMARY KEY(id), FOREIGN KEY(stepId) REFERENCES occurrence_steps(id) "
                 + "ON UPDATE NO ACTION ON DELETE CASCADE)");
-        database.execSQL("INSERT INTO timer_sessions SELECT * FROM _m23_timer_sessions");
+        database.execSQL("INSERT INTO timer_sessions(id,stepId,title,kind,state,totalSeconds,"
+                + "remainingMillis,targetElapsedRealtime,targetEpochMillis,notificationId,"
+                + "completionObserved) SELECT id,stepId,title,kind,state,totalSeconds,"
+                + "remainingMillis,targetElapsedRealtime,targetEpochMillis,notificationId,"
+                + "completionObserved FROM _m23_timer_sessions");
         database.execSQL("CREATE INDEX index_timer_sessions_stepId ON timer_sessions(stepId)");
 
         database.execSQL("CREATE TABLE combo_obligations (id TEXT NOT NULL, "
@@ -1075,7 +1104,9 @@ public final class DatabaseMigrations {
                 + "FOREIGN KEY(taskId) REFERENCES tasks(id) ON UPDATE NO ACTION ON DELETE CASCADE, "
                 + "FOREIGN KEY(occurrenceId) REFERENCES occurrences(id) ON UPDATE NO ACTION "
                 + "ON DELETE CASCADE)");
-        database.execSQL("INSERT INTO combo_obligations SELECT * FROM _m23_combo_obligations");
+        database.execSQL("INSERT INTO combo_obligations(id,ownerId,taskId,kind,slot,scheduledOn,"
+                + "occurrenceId,state,resolvedOn) SELECT id,ownerId,taskId,kind,slot,scheduledOn,"
+                + "occurrenceId,state,resolvedOn FROM _m23_combo_obligations");
         database.execSQL("CREATE INDEX index_combo_obligations_taskId "
                 + "ON combo_obligations(taskId)");
         database.execSQL("CREATE INDEX index_combo_obligations_occurrenceId "
@@ -1176,7 +1207,17 @@ public final class DatabaseMigrations {
         database.execSQL("DROP TABLE _m23_step_flow_runs");
     }
 
-    /** Repairs flow snapshots whose version-23 rebuild copied appended columns by position. */
+    /**
+     * Repairs flow snapshots whose version-23 rebuild copied appended columns by position.
+     *
+     * <p>The organic version-22 order ended in
+     * {@code note,delayMode,defaultDelayMillis,lastUsedDelayMillis,chosenDelayMillis,
+     * plannedLoadMode,plannedLoadUnit,plannedLoadMilli,targetRir}. The broken rebuild interpreted
+     * those values as {@code plannedLoadMode,plannedLoadUnit,plannedLoadMilli,targetRir,note,
+     * delayMode,defaultDelayMillis,lastUsedDelayMillis,chosenDelayMillis}. The temporary table
+     * below names the inverse mapping explicitly. Its predicate combines mutually exclusive
+     * delay-mode and load-mode/unit domains so valid version-23 rows remain untouched.
+     */
     public static final Migration MIGRATION_23_24 = new Migration(23, 24) {
         @Override public void migrate(SupportSQLiteDatabase database) {
             database.execSQL("CREATE TEMP TABLE _m24_corrupt_flow_run_steps AS SELECT id,"

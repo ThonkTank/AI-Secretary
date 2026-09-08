@@ -28,11 +28,13 @@ import org.robolectric.annotation.Config;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Arrays;
+import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
 import de.thonktank.autosecretary.testing.ExportedRoomSchemaFixture;
+import de.thonktank.autosecretary.testing.HistoricalDatabaseFixture;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {26, 35})
@@ -696,17 +698,13 @@ public final class DatabaseMigrationRobolectricTest {
     }
 
     @Test public void organicVersionTwentyFlowSnapshotsKeepTheirSemanticColumns() {
-        SupportSQLiteOpenHelper.Configuration versionTwenty =
-                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
-                        .callback(new SupportSQLiteOpenHelper.Callback(20) {
-                            @Override public void onCreate(SupportSQLiteDatabase database) {
-                                ExportedRoomSchemaFixture.create(database, 20);
-                                database.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,"
+        HistoricalDatabaseFixture.create(context, DATABASE, 20, database -> {
+            database.execSQL("INSERT INTO tasks(id,title,recurrence,intervalDays,"
                                         + "weekdayMask,ongoing,conditionText,conditionDone,archived,"
                                         + "nextDueOn,catalogOrder,hasCompletedOccurrence,boundKind,"
                                         + "note,missedOccurrenceMode) VALUES ('flow','Ablauf','DAILY',"
                                         + "1,0,0,'',0,0,'2026-09-07',1,0,'FOREVER','', 'SKIP')");
-                                database.execSQL("INSERT INTO step_flow_runs(id,taskId,seedStepId,"
+            database.execSQL("INSERT INTO step_flow_runs(id,taskId,seedStepId,"
                                         + "sourceKey,scheduledOn,slot,state,currentPosition,"
                                         + "readyAtEpochMillis,currentSheetOccurrenceId,queueOrder,"
                                         + "nextSheetSequence,createdAtEpochMillis,updatedAtEpochMillis) "
@@ -714,7 +712,7 @@ public final class DatabaseMigrationRobolectricTest {
                                         + "'2026-09-07','MORNING','WAITING_TIME',0,120000,NULL,1,1,10,10),"
                                         + "('remember-run','flow','remember-template','flow:remember',"
                                         + "'2026-09-07','MORNING','WAITING_TIME',0,180000,NULL,2,1,20,20)");
-                                database.execSQL("INSERT INTO flow_run_steps(id,runId,position,"
+            database.execSQL("INSERT INTO flow_run_steps(id,runId,position,"
                                         + "sourceTemplateId,text,amountKind,plannedSets,plannedReps,"
                                         + "plannedDurationSeconds,restTimerMode,restTimerSeconds,note,"
                                         + "delayMode,defaultDelayMillis,lastUsedDelayMillis,"
@@ -725,39 +723,30 @@ public final class DatabaseMigrationRobolectricTest {
                                         + "('remember-step','remember-run',0,'remember-template',"
                                         + "'Trocknen','DURATION',NULL,NULL,900,'OFF',NULL,'Merken',"
                                         + "'REMEMBER_LAST',180000,150000,140000)");
-                            }
-                            @Override public void onUpgrade(SupportSQLiteDatabase database,
-                                                            int oldVersion, int newVersion) { }
-                        }).build();
-        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory()
-                .create(versionTwenty);
-        helper.getWritableDatabase();
-        helper.close();
+        });
 
-        SupportSQLiteOpenHelper.Configuration versionTwentyTwo =
-                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
-                        .callback(new SupportSQLiteOpenHelper.Callback(22) {
-                            @Override public void onCreate(SupportSQLiteDatabase database) {
-                                fail("Version 20 fixture must already exist");
-                            }
-                            @Override public void onUpgrade(SupportSQLiteDatabase database,
-                                                            int oldVersion, int newVersion) {
-                                assertEquals(20, oldVersion);
-                                assertEquals(22, newVersion);
-                                DatabaseMigrations.MIGRATION_20_21.migrate(database);
-                                database.execSQL("UPDATE flow_run_steps SET plannedLoadMode='EXTERNAL',"
+        HistoricalDatabaseFixture.migrate(context, DATABASE, 20, 22, (version, database) -> {
+            if (version == 21) {
+                database.execSQL("UPDATE flow_run_steps SET plannedLoadMode='EXTERNAL',"
                                         + "plannedLoadUnit='KG',plannedLoadMilli=25000,targetRir=3 "
                                         + "WHERE id='fixed-step'");
-                                database.execSQL("UPDATE flow_run_steps SET "
+                database.execSQL("UPDATE flow_run_steps SET "
                                         + "plannedLoadMode='BODYWEIGHT',plannedLoadUnit='NONE',"
                                         + "plannedLoadMilli=NULL,targetRir=1 "
                                         + "WHERE id='remember-step'");
-                                DatabaseMigrations.MIGRATION_21_22.migrate(database);
-                            }
-                        }).build();
-        helper = new FrameworkSQLiteOpenHelperFactory().create(versionTwentyTwo);
-        helper.getWritableDatabase();
-        helper.close();
+            }
+            if (version == 22) {
+                assertEquals(List.of("id", "runId", "position", "sourceTemplateId", "text",
+                                "amountKind", "plannedSets", "plannedReps",
+                                "plannedDurationSeconds", "restTimerMode", "restTimerSeconds",
+                                "note", "delayMode", "defaultDelayMillis",
+                                "lastUsedDelayMillis", "chosenDelayMillis", "plannedLoadMode",
+                                "plannedLoadUnit", "plannedLoadMilli", "targetRir"),
+                        HistoricalDatabaseFixture.columns(database, "flow_run_steps"));
+                assertFalse(HistoricalDatabaseFixture.columns(database, "flow_run_steps")
+                        .equals(ExportedRoomSchemaFixture.columns(22, "flow_run_steps")));
+            }
+        });
 
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.from(22))

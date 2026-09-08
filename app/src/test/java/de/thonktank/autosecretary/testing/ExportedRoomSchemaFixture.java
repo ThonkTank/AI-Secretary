@@ -8,6 +8,8 @@ import org.json.JSONObject;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Builds historical databases from Room's checked-in schema export, the migration contract. */
 public final class ExportedRoomSchemaFixture {
@@ -39,6 +41,27 @@ public final class ExportedRoomSchemaFixture {
                 database.execSQL(setup.getString(index));
         } catch (Exception failure) {
             throw new AssertionError("Cannot build exported Room schema " + version, failure);
+        }
+    }
+
+    public static List<String> columns(int version, String table) {
+        try {
+            JSONObject exported = new JSONObject(new String(Files.readAllBytes(schema(version)
+                    .toPath()), StandardCharsets.UTF_8)).getJSONObject("database");
+            JSONArray entities = exported.getJSONArray("entities");
+            for (int index = 0; index < entities.length(); index++) {
+                JSONObject entity = entities.getJSONObject(index);
+                if (!table.equals(entity.getString("tableName"))) continue;
+                List<String> result = new ArrayList<>();
+                JSONArray fields = entity.getJSONArray("fields");
+                for (int field = 0; field < fields.length(); field++) {
+                    result.add(fields.getJSONObject(field).getString("columnName"));
+                }
+                return result;
+            }
+            throw new IllegalArgumentException("Missing table " + table + " in schema " + version);
+        } catch (Exception failure) {
+            throw new AssertionError("Cannot read exported Room schema " + version, failure);
         }
     }
 
