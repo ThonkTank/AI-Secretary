@@ -11,6 +11,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
+
 import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -114,9 +116,29 @@ public final class ProductionUpgradeFixtureContractTest {
         assertTrue(empty.getJSONObject("values").isNull("lastUsedDelayMillis"));
         assertEquals("Leere letzte Verzögerung",
                 empty.getJSONObject("values").getString("note"));
+        assertEquals(2, empty.getJSONObject("values").getInt("targetRir"));
         JSONObject full = expectedById(rows, "upgrade-organic-full-delay");
         assertEquals(9000, full.getJSONObject("values").getInt("lastUsedDelayMillis"));
         assertEquals(10000, full.getJSONObject("values").getInt("chosenDelayMillis"));
+        assertEquals(2, full.getJSONObject("values").getInt("targetRir"));
+    }
+
+    @Test public void seededTaskModesAreValidCurrentDomainValues() throws Exception {
+        for (JSONObject fixture : fixtures().values()) {
+            JSONArray seed = fixture.getJSONArray("seed");
+            for (int entryIndex = 0; entryIndex < seed.length(); entryIndex++) {
+                JSONObject entry = seed.getJSONObject(entryIndex);
+                if (!"tasks".equals(entry.getString("table"))) continue;
+                JSONArray rows = entry.getJSONArray("rows");
+                for (int rowIndex = 0; rowIndex < rows.length(); rowIndex++) {
+                    JSONObject row = rows.getJSONObject(rowIndex);
+                    if (row.has("missedOccurrenceMode")) {
+                        assertNotNull(MissedOccurrenceMode.valueOf(
+                                row.getString("missedOccurrenceMode")));
+                    }
+                }
+            }
+        }
     }
 
     @Test public void schemaTwentyThreeSeparatesRepairFromByteEqualCorrectRow() throws Exception {
