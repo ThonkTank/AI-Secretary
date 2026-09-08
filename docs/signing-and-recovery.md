@@ -1,6 +1,6 @@
 # Produktionssignatur, Recovery und Repositorybetrieb
 
-Stand: 2026-08-16
+Stand: 2026-09-08
 
 Dieses Runbook gilt für die außerhalb eines App-Stores verteilte App
 `de.thonktank.autosecretary`. Die Produktionssignatur ist eine dauerhafte
@@ -31,8 +31,9 @@ Secrets oder Repositoryregeln werden nicht aus dem Repository heraus verändert.
 1. Vor dem Pull Request müssen lokales Quality-Gate, sauberer Arbeitsbaum und der beabsichtigte
    Commit feststehen. Nach grünen Pflichtchecks wird der Themenbranch gemäß `AGENTS.md` per
    Squash-Merge nach `main` übernommen; dieser `main`-Commit ist der Release-Trigger.
-2. `Verify and publish Android app` muss Quality, Instrumentierung API 26/35, Packaging,
-   signierte Upgrades API 26/35 und Publish vollständig bestehen.
+2. `Verify and publish Android app` muss Quality, normale und animationsaktive Instrumentierung
+   auf API 26/35/37, Packaging, alle fünf signierten Upgrade-Lanes und Publish vollständig
+   bestehen.
 3. Der veröffentlichte Tag muss auf denselben vollständigen Commit zeigen. Das Release muss
    stabil, `Latest` und frei von zusätzlichen Assets sein.
 4. Internes Workflow-Artefakt und öffentliches `AutoSecretary.apk` werden mit `cmp` und
@@ -44,6 +45,119 @@ Secrets oder Repositoryregeln werden nicht aus dem Repository heraus verändert.
 
 Ein Workflowfehler vor Publish erzeugt kein stabiles Release. Ein fehlgeschlagener Lauf kann
 eine Versionsnummer überspringen; Versionscodes sind absichtlich monoton, nicht lückenlos.
+
+## Datenbewahrende Gerätewiederherstellung nach einem Startabsturz
+
+Dieser Ablauf gilt, wenn eine bereits produktiv signierte Installation ihre lokalen Daten
+behalten muss und der In-App-Updater wegen eines Startabsturzes nicht erreichbar ist. Er ist ein
+Vorwärtsupdate, keine Neuinstallation. `adb uninstall`, `pm clear`, das Löschen des App-Speichers,
+ein Downgrade mit `install -d` oder ein Wechsel auf eine anders signierte APK sind in diesem Pfad
+verboten.
+
+### 1. Gerät und Ausgangszustand festhalten
+
+Das konkrete Gerät muss autorisiert und eindeutig ausgewählt sein. Vor jeder Änderung werden
+Seriennummer, installierter Paketname, Versionscode, Versionsname und `firstInstallTime`
+protokolliert. Der veröffentlichte Zielversionscode muss strikt höher sein. Bei mehreren Geräten,
+fehlender Autorisierung, anderem Paketnamen oder bereits höherer Installation wird nicht
+installiert.
+
+```bash
+adb devices -l
+adb -s DEVICE_SERIAL shell dumpsys package de.thonktank.autosecretary
+```
+
+`firstInstallTime` ist der spätere Datenerhaltsanker: Ein echtes In-place-Update erhält diesen
+Wert. Ein verändertes Erstinstallationsdatum bedeutet, dass der vorgesehene Recovery-Vertrag
+nicht belegt ist.
+
+### 2. Veröffentlichung vor der Installation vollständig authentifizieren
+
+APK und `release-metadata.json` werden aus demselben stabilen GitHub Release in ein frisches
+Verzeichnis geladen. Vor einer Geräteänderung müssen alle folgenden Identitäten übereinstimmen:
+
+- Release-Ziel und Git-Tag zeigen auf denselben vollständigen erwarteten `main`-Commit;
+- die SHA-256-Werte der heruntergeladenen APK und Metadaten entsprechen den unabhängig
+  festgehaltenen Releasewerten;
+- `release_tool.py validate` bestätigt Metadaten, APK-Größe, APK-Hash und eingebettete Werte;
+- `aapt dump badging` bestätigt `de.thonktank.autosecretary`, Versionsname und den strikt höheren
+  Versionscode;
+- `apksigner verify --verbose --print-certs` bestätigt den Fingerprint aus
+  `release/release.properties`;
+- die Signatur stimmt zusätzlich mit der aktuell installierten Produktions-App überein. Dafür
+  wird deren von `pm path` gemeldete APK nur lesend heruntergeladen und ebenfalls mit
+  `apksigner` geprüft.
+
+```bash
+gh release download RELEASE_TAG --pattern AutoSecretary.apk \
+  --pattern release-metadata.json --dir RELEASE_DIR
+gh release view RELEASE_TAG --json tagName,targetCommitish,isDraft,isPrerelease
+git rev-list -n 1 RELEASE_TAG
+sha256sum RELEASE_DIR/AutoSecretary.apk RELEASE_DIR/release-metadata.json
+python3 scripts/release/release_tool.py validate \
+  --metadata RELEASE_DIR/release-metadata.json --apk RELEASE_DIR/AutoSecretary.apk
+aapt dump badging RELEASE_DIR/AutoSecretary.apk
+apksigner verify --verbose --print-certs RELEASE_DIR/AutoSecretary.apk
+adb -s DEVICE_SERIAL shell pm path de.thonktank.autosecretary
+adb -s DEVICE_SERIAL pull INSTALLED_APK_PATH INSTALLED_BASE_APK
+apksigner verify --verbose --print-certs INSTALLED_BASE_APK
+```
+
+Die Platzhalter werden vor Ausführung durch einzeln geprüfte, absolute Werte ersetzt; breite
+Globs oder unaufgelöste Variablen sind für die Installation unzulässig.
+
+### 3. Ausschließlich vorwärts aktualisieren
+
+Erst nach sämtlichen Vorprüfungen wird exakt die authentifizierte APK mit Erhalt der bestehenden
+Installation eingespielt. Es werden keine Downgrade- oder Neuinstallationsoptionen ergänzt.
+
+```bash
+adb -s DEVICE_SERIAL install -r RELEASE_DIR/AutoSecretary.apk
+```
+
+Danach werden Paketname, Versionscode, Versionsname, installierte Signatur und
+`firstInstallTime` erneut erfasst. Die Version und Signatur müssen der geprüften APK entsprechen;
+`firstInstallTime` muss exakt dem Vorwert entsprechen.
+
+### 4. Kaltstart, Widget und frisches Fehlerprotokoll prüfen
+
+Unmittelbar vor der Laufzeitprobe wird nur der Systemprotokollpuffer geleert, niemals der
+App-Speicher. Die App wird gestoppt und über ihre Launcher-Aktivität frisch gestartet. Ein bereits
+vorhandenes Widget wird über den registrierten Provider aktualisiert und auf dem Startbildschirm
+geöffnet beziehungsweise sichtbar kontrolliert.
+
+```bash
+adb -s DEVICE_SERIAL logcat -c
+adb -s DEVICE_SERIAL shell am force-stop de.thonktank.autosecretary
+adb -s DEVICE_SERIAL shell am start -W \
+  -n de.thonktank.autosecretary/.MainActivity
+adb -s DEVICE_SERIAL shell am broadcast \
+  -a android.appwidget.action.APPWIDGET_UPDATE \
+  -n de.thonktank.autosecretary/.TaskWidgetProvider
+adb -s DEVICE_SERIAL logcat -d
+```
+
+Die Probe ist nur grün, wenn Aktivitäts- und Widgetstart erfolgreich sind und das seit
+`logcat -c` entstandene Protokoll weder `FATAL EXCEPTION`/Prozessabbruch noch SQLite-, Room- oder
+Migrationsfehler für die App enthält.
+
+### 5. Bestandsdaten sichtbar abnehmen
+
+Automatisierte Paket- und Startprüfungen beweisen nicht die fachliche Vollständigkeit der
+persönlichen Daten. Auf dem entsperrten Gerät werden deshalb gemeinsam sichtbar kontrolliert:
+
+1. mehrere bereits vorhandene Aufgaben einschließlich mindestens eines wiedererkennbaren
+   Inhalts;
+2. der vorhandene Verlauf mit einem älteren Eintrag;
+3. mindestens ein bereits vor dem Vorfall bestehender Ablauf samt Schritten beziehungsweise
+   aktuellem Ablaufzustand;
+4. das bestehende Widget mit plausibler Projektion derselben Daten.
+
+Es werden dabei keine künstlichen persönlichen Daten exportiert oder als Repository-Fixture
+gespeichert. Scheitert eine technische oder sichtbare Prüfung, bleiben App und Daten installiert.
+Es wird kein Rollback, keine Deinstallation und kein Speicherlöschen versucht; die Diagnose wird
+gesichert und ausschließlich mit einer höher versionierten, regulär geprüften Reparatur
+fortgesetzt.
 
 ## Backup anlegen und regelmäßig prüfen
 

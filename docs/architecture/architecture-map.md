@@ -1,7 +1,7 @@
 # Architekturkarte nach der Today-/Fokus-Bereinigung
 
 Stand der beschriebenen Today-/Fokus-Bereinigung: 2026-08-21, damals Datenbankschema 14.
-Aktueller Persistenzstand: Datenbankschema 23.
+Aktueller Persistenzstand: Datenbankschema 24.
 
 Schema 15 ergänzte den Editorvertrag, Schema 16 persistente Rhythmusanker, Schema 17/18 Timer-
 und Kombozustand und Schema 19 den eingefrorenen Planwert quantitativer Rewards. Schema 20 bis 22
@@ -18,6 +18,9 @@ als eigene Today-Blätter projiziert. `FlowTaskSheetPlacement` besitzt die stabi
 und Today-Aktionen verwenden geschlossene typisierte Ziele. Der verbindliche Vertrag steht in der
 [Roadmap für echte Ablaufkandidaten und gemeinsame Today-Blätter](flow-task-sheet-roadmap.md)
 und in [ADR-033](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md).
+Schema 24 repariert ausschließlich das eindeutig erkennbare 0.2.158-Wertebild in
+`flow_run_steps`; die dauerhaften Lineage- und Upgrade-Verträge stehen in
+[ADR-035](adr-035-physische-migrationshistorie-und-upgrade-fixtures.md).
 Phase 5b schaltet den Aufgabeneditor vollständig auf Compose um. Der produktive
 `TaskEditorComposeHostView` erhält ausschließlich den vom `TaskEditorViewModel` veröffentlichten
 `EditorUiState`; der frühere View-Renderer und seine lokale Orchestrierung sind entfernt.
@@ -103,7 +106,7 @@ Schrittausführung liegt in `StepExecutionService`, Occurrence-Abschluss, Ernte 
 gleichnamigen Room-Adapter besessen. `ApplicationUseCaseComposition` erzeugt diese fünf Adapter
 und den `RoomTransactionRunner` direkt aus `AppDatabase` jeweils genau einmal. Reorder schreibt
 nur geänderte Positionsspalten innerhalb einer Transaktion; diese Invariante gilt auch unter
-Schema 23 unverändert.
+Schema 24 unverändert.
 
 ## Autoritative Zustände
 

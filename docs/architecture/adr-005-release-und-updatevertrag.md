@@ -76,11 +76,12 @@ Das Metadatenformat hat `schemaVersion` 1 und enthält:
 - den kleingeschriebenen Zertifikat-Fingerprint `signerSha256`
 - den vollständigen Git-Commit `commitSha`
 
-Die Pipeline baut und signiert einen Produktionskandidaten genau einmal. API 26, API 35 und der
-Veröffentlichungsschritt verwenden dieses interne Workflow-Artefakt. Die Pipeline erstellt oder
-übernimmt anschließend einen Draft, lädt beide öffentlichen Assets hoch, lädt sie als Beweis
-erneut herunter und veröffentlicht erst nach erfolgreicher Hash-, Commit- und Byteprüfung. Der
-Release mit dem höchsten Versionscode im gültigen Tagformat wird als `Latest` markiert.
+Die Pipeline baut und signiert einen Produktionskandidaten genau einmal. Die fünf signierten
+Upgrade-Lanes auf API 26, API 35 und API 37 sowie der Veröffentlichungsschritt verwenden dieses
+interne Workflow-Artefakt. Die Pipeline erstellt oder übernimmt anschließend einen Draft, lädt
+beide öffentlichen Assets hoch, lädt sie als Beweis erneut herunter und veröffentlicht erst nach
+erfolgreicher Hash-, Commit- und Byteprüfung. Der Release mit dem höchsten Versionscode im
+gültigen Tagformat wird als `Latest` markiert.
 
 Die fachliche Releaseplanung und Metadatenprüfung liegt in
 `scripts/release/release_tool.py`. Das Werkzeug ist lokal ausführbar, verwendet dieselbe
@@ -110,25 +111,40 @@ Jeder Push auf `main` muss vor einer Veröffentlichung folgende Prüfungen beste
 - Unit- und Robolectric-Tests
 - Android Lint
 - Debug-, Android-Test- und Release-Build
-- Instrumentierungstests auf API 26 und API 35
+- normale und animationsaktive Instrumentierungstests auf API 26, API 35 und API 37
 - Größenlimit für Installationsartefakt und eingebettete Schriftarten
 - Paket-, Versions- und Signaturprüfung der Produktions-APK
-- Upgrade der vorherigen signierten Produktions-APK auf exakt den später veröffentlichten
-  Kandidaten auf API 26 und API 35
+- signierte Upgrades aus dem manifestierten Produktions-Fixture-Korpus auf exakt den später
+  veröffentlichten Kandidaten
+
+Der Produktionskorpus trennt Plattform- und Datenhistorienrisiken in fünf verpflichtende Lanes:
+
+| Fixture | Quelle und Ausgangsschema | API-Lanes |
+| --- | --- | --- |
+| `schema-8-floor` | 0.2.80 / `forest-android-1008001`, Schema 8 | 26, 35 und 37 |
+| `schema-20-organic-flow` | 0.2.137 / `forest-android-1013701`, Schema 20 | 26 |
+| `schema-23-repair-boundary` | 0.2.158 / `forest-android-1015801`, Schema 23 | 26 |
+
+Jede Quelle ist durch Release- und Tag-Ziel, Commit, Paketname, Versionscode, Versionsname,
+Metadaten- und APK-SHA-256 sowie Produktionssignatur festgelegt. Die Schema-20-Fixture bildet die
+organische SQLite-Spaltenhistorie ab; die Schema-23-Fixture beweist sowohl die gezielte Reparatur
+einer vertauschten 0.2.158-Zeile als auch den unveränderten Erhalt einer korrekten Zeile. Der
+Migrationsvertrag und die Fixture-Arten sind in
+[ADR-035](adr-035-physische-migrationshistorie-und-upgrade-fixtures.md) festgelegt.
 
 Ein getesteter Scope-Classifier unterscheidet Quality-, Instrumentierungs- und Releasebedarf.
 Reine Dokumentationsänderungen bestehen ohne Android-Build; Hosttests und Releasewerkzeuge lösen
 keine Produktveröffentlichung aus. Für Produktionscode, Android-Instrumentierung,
-Buildkonfiguration oder Instrumentierungsskripte führt bereits der Pull Request die API-26/35-
-Matrix aus. Der stabile Sammelcheck `pull-request-gate` verlangt alle für den Scope anwendbaren
-Jobs und bleibt auch bei begründet übersprungenen Jobs vorhanden.
+Buildkonfiguration oder Instrumentierungsskripte führt bereits der Pull Request die
+API-26/35/37-Matrix aus. Der stabile Sammelcheck `pull-request-gate` verlangt alle für den Scope
+anwendbaren Jobs und bleibt auch bei begründet übersprungenen Jobs vorhanden.
 
 Das Ruleset von `main` verlangt einen aktuellen Pull Request, den grünen `pull-request-gate` und
 einen Squash-Merge; Force-Push und Löschen sind gesperrt. Der resultierende `main`-Commit wiederholt
 seine anwendbaren Prüfungen. Ausschließlich eine produktionswirksame Änderung startet danach den
-vollständigen Release-Gate mit signiertem Produktionskandidaten, echtem Upgrade der
-Vorgängerversion auf beiden APIs und bytegeprüfter Veröffentlichung. Ein lokaler Release-Build
-bleibt ohne ausdrücklich bereitgestellte Produktionszugangsdaten unsigniert.
+vollständigen Release-Gate mit signiertem Produktionskandidaten, echtem Upgrade der festgelegten
+Produktionsquellen in allen fünf Lanes und bytegeprüfter Veröffentlichung. Ein lokaler
+Release-Build bleibt ohne ausdrücklich bereitgestellte Produktionszugangsdaten unsigniert.
 
 Auch Fehlerbehebungen mit unmittelbarer Nutzerwirkung folgen dem Pull-Request-Gate. Eine Änderung
 der Versionsstrategie bleibt ein separates Vorhaben; sie wird nicht mit gewöhnlichen
@@ -151,7 +167,7 @@ Refactorings gekoppelt.
 Paketname, Produktionsschlüssel, Versionscode und Metadatenschema sind öffentliche
 Kompatibilitätsgrenzen. Änderungen sind keine gewöhnlichen Refactorings. Der Releaseworkflow und
 der In-App-Updater müssen denselben Vertrag implementieren, und ein erfolgreicher Clean Install
-allein genügt nicht als Nachweis für Updatekompatibilität. Ein reproduzierbarer Test von einer
-vorherigen signierten Version auf das aktuelle Release ist deshalb Bestandteil jedes
+allein genügt nicht als Nachweis für Updatekompatibilität. Reproduzierbare Tests von den
+festgelegten signierten Schemaepochen auf das aktuelle Release sind deshalb Bestandteil jedes
 Produktionslaufs. Die interne Schichtung des In-App-Updaters ist in
 [ADR-006](adr-006-update-schichten-und-fehler.md) festgelegt.

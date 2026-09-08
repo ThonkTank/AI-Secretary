@@ -309,3 +309,98 @@ Statusfortschreibung: veröffentlicht
 
 Phase-2-Gate: vollständig erfüllt. Phase 3 darf nach grünem dokumentationsreinem Status-PR und
 dessen exaktem Main-Lauf vom dann aktuellen `origin/main` beginnen.
+
+## Phase 3 – Dokumentation und Recovery-Vertrag
+
+Statusfortschreibung: in Arbeit
+
+Ausgangsstand: `12ea80298d4d8c969dc6d2c7b7c28a8e63bccc7f` (`origin/main`)
+
+### Plan – 2026-09-08
+
+Ergebnis: Die aktive Architektur- und Betriebsdokumentation beschreibt den inzwischen
+implementierten Migrations-, Upgrade- und datenbewahrenden Geräte-Recovery-Vertrag vollständig
+im Präsens. Sie unterscheidet logisches Room-Schema und physische SQLite-Historie und macht die
+Grenze zwischen automatisiertem Releasebeweis und sichtbarer Geräteabnahme eindeutig.
+
+Betroffene Komponenten:
+
+- neue ADR-035 für Migrations-Lineage, benannte Schreibkopien, Fixture-Arten, die Schemafolge 20
+  nach 24 und das exakte Reparaturmapping;
+- ADR-005 und `docs/releasing.md` für die tatsächlich laufende API-26/35/37- und
+  Fixture-/Upgrade-Matrix;
+- `docs/signing-and-recovery.md` für den vorwärtsgerichteten, datenbewahrenden
+  Wiederherstellungsablauf;
+- Architekturindex sowie dieses append-only Ausführungsprotokoll.
+
+Reihenfolge:
+
+1. Implementierte Migrationen, Fixture-Korpus, Workflowmatrix und bestehende aktive
+   Release-/Recovery-Dokumente erneut als Ist-Vertrag lesen.
+2. ADR-035 ergänzen und das historische Neun-Spalten-Mapping einschließlich der eng begrenzten
+   Reparaturerkennung vollständig festhalten.
+3. ADR-005 und Releaseanleitung auf den manifestierten Korpus mit fünf Lanes aktualisieren;
+   alte Aussagen zur einzelnen 0.2.80-Fixture und Zweiermatrix entfernen.
+4. Das Recovery-Runbook um Artefaktprüfung, ausschließlich `adb install -r`, erhaltenes
+   `firstInstallTime`, App-/Widgetstart, frisches Fehlerprotokoll und sichtbare Bestandsprüfung
+   ergänzen. Deinstallation, Datenlöschung und Downgrade werden für diesen Pfad verboten.
+5. Architekturindex um Roadmap, Ausführungsprotokoll und ADR-035 ergänzen.
+6. Links, widersprüchliche aktive Aussagen, Dokumentations-Scope, Releaseklassifizierung,
+   relevante Hostverträge und `git diff --check` prüfen.
+7. Die Dokumentation getrennt gegen diesen Plan und die Gesamtroadmap auditieren. Vor jeder
+   nötigen Korrektur zuerst einen Fixplan hier anhängen.
+
+Abnahme: Der Diff bleibt dokumentationsrein und `release_required=false`; die aktive
+Dokumentation stimmt mit Schema 24, drei Fixtures, fünf Upgrade-Lanes und dem
+datenbewahrenden Recovery-Vertrag überein. Erst nach lokalem Gate, PR-Gate, Squash-Merge und
+grünem exaktem Main-Lauf ohne Produktrelease darf der Cross-Phase- und Geräteabschluss beginnen.
+
+### Planpräzisierung – 2026-09-08
+
+Die Baseline-Lektüre fand in der als aktuell bezeichneten `architecture-map.md` noch den
+widersprüchlichen Persistenzstand Schema 23. Die Phase umfasst deshalb zusätzlich die reine
+Aktualisierung dieser zwei aktuellen Schemaangaben auf Schema 24 und einen Verweis auf ADR-035.
+Historisch datierte Baselines und Ausführungsnachweise werden nicht umgeschrieben.
+
+### Lokale Umsetzung und Validierung – 2026-09-08
+
+ADR-035 hält nun den Unterschied zwischen logischem Room-Schema und physischer
+SQLite-Entstehungsgeschichte, das statisch gesicherte Verbot positioneller Schreibkopien, die
+drei Fixture-Arten, die Folge 20 nach 24 sowie die vollständige Neun-Spalten-Hin- und
+Rückzuordnung fest. ADR-005 und die Releaseanleitung beschreiben den manifestierten Korpus aus
+drei signierten Quellen und seine fünf Risikolanes. Das Recovery-Runbook enthält den
+ausführbaren Vorwärtsupdatepfad einschließlich Quell-, Commit-, Hash-, Paket-, Versions- und
+Signaturprüfung, Signaturvergleich mit der installierten APK, `firstInstallTime`, App-/Widgetstart,
+frischem Protokoll und sichtbarer Bestandsabnahme. Architekturindex und aktuelle Architekturkarte
+verweisen auf den neuen Vertrag und Schema 24.
+
+Lokale Validierung:
+
+- Python-CI-Verträge: 25 von 25 grün;
+- Python-Release- und Workflowverträge: 30 von 30 grün;
+- sämtliche neu oder geändert verlinkten lokalen Ziele vorhanden;
+- kein alter Verweis auf `v0.2.80.json`, eine Zweier-Upgradematrix oder Schema 23 als aktuellen
+  Persistenzstand verbleibt in den aktiv geänderten Vertragsdokumenten;
+- Scope-Klassifizierung des vollständigen Diffs:
+  `quality_required=false`, `instrumentation_required=false`, `release_required=false`;
+- `git diff --check`: grün.
+
+### Phasenaudit – 2026-09-08
+
+Der getrennte Abgleich gegen Phasenplan und Gesamtroadmap ergab keine zu korrigierende
+Abweichung:
+
+- ADR-035 benennt jede der neun vertauschten Spalten und die fachdomänenbasierte
+  Reparaturerkennung; Crashzeile, stille Vertauschung und unverändert zu erhaltende korrekte
+  Schema-23-Zeile sind voneinander abgegrenzt;
+- ADR-005 und Releaseanleitung stimmen mit den drei Korpusfixtures, fünf Lanes und dem einmal
+  gebauten Kandidaten überein;
+- der Gerätepfad verbietet Deinstallation, Speicherlöschung, Downgrade und Signaturwechsel und
+  verlangt ausschließlich das datenbewahrende `adb install -r` nach vollständiger Prüfung;
+- technische Abnahme und sichtbare Prüfung von Aufgaben, Verlauf, bestehendem Ablauf und Widget
+  sind getrennt und beide verpflichtend;
+- alle geänderten oder neuen Dateien liegen unter `docs/`; Produktionscode, Schemaexporte,
+  öffentliche APIs, Fixturedaten und Workflow bleiben unverändert.
+
+Lokales Phase-3-Gate: erfüllt. Pull Request, Squash-Merge und exakter Main-Lauf ohne
+Produktrelease stehen noch aus; der Cross-Phase- und Geräteabschluss bleibt bis dahin gesperrt.

@@ -39,6 +39,7 @@ Migrationen und aktualisierte Tests.
 - [ADR-032: Satzpunkte und Editorverlauf](adr-032-satzpunkte-und-editorverlauf.md)
 - [ADR-033: Ablaufkandidaten und gemeinsame Today-Blätter](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md)
 - [ADR-034: Mobile Aufgabenverwaltung und kompakter Ablaufmonitor](adr-034-mobile-aufgabenverwaltung-und-ablaufmonitor.md)
+- [ADR-035: Physische Migrationshistorie und signierte Upgrade-Fixtures](adr-035-physische-migrationshistorie-und-upgrade-fixtures.md)
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
@@ -86,6 +87,13 @@ Die verbindliche
 gestaltet den Alles-Tab und anschließend die Ablaufdetailseite in zwei getrennt geprüften
 Phasen neu. ADR-034 hält den freigegebenen visuellen und interaktiven Vertrag fest; das getrennte
 [Ausführungsprotokoll](all-tasks-mobile-execution.md) dokumentiert Plan, Nachweise und Audits.
+
+Die verbindliche
+[Roadmap für sichere Datenbankmigrationen und reale Upgradehistorien](database-migration-safety-roadmap.md)
+verknüpft benannte Migrationskopien, physische SQLite-Lineage-Tests und den signierten
+Produktions-Fixture-Korpus. ADR-035 hält den dauerhaften Architekturvertrag fest; das getrennte
+[Ausführungsprotokoll](database-migration-safety-execution.md) dokumentiert Phasenpläne,
+Nachweise, Korrekturen und Geräteabnahme.
 
 Die verbindlichen visuellen Ausgangsreferenzen sind unter
 [`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
