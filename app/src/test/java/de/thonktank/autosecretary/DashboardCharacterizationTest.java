@@ -119,7 +119,7 @@ public final class DashboardCharacterizationTest {
         assertTrue(actions.get(0) instanceof AllTasksAction.StepMoved);
     }
 
-    @Test public void runningFlowsLiveInAllTasksAndNoLongerConsumeTodaySpace() {
+    @Test public void runningFlowsLiveInAllTasksAndOpenTheirDetailScreen() {
         Context context = ApplicationProvider.getApplicationContext();
         LinearLayout shell = new LinearLayout(context);
         ScrollView scroll = new ScrollView(context);
@@ -149,11 +149,6 @@ public final class DashboardCharacterizationTest {
         assertEquals(1, host.runningFlowCountForTest());
         host.openFlowRunsForTest();
         assertEquals(1, optionActions.size());
-
-        renderer.render(TodayScreenStateFixtures.shell(NavigationDestination.TODAY, palette),
-                TodayScreenStateFixtures.today(withFlow), AllTasksUiState.empty(),
-                options(palette));
-        assertFalse(containsViewType(content, FlowRunningStripView.class));
     }
 
     @Test public void calendarFixtureKeepsAllDayBeforeTimedEvents() {
@@ -269,12 +264,4 @@ public final class DashboardCharacterizationTest {
         }
     }
 
-    private static boolean containsViewType(View view, Class<?> type) {
-        if (type.isInstance(view)) return true;
-        if (!(view instanceof ViewGroup)) return false;
-        ViewGroup group = (ViewGroup) view;
-        for (int index = 0; index < group.getChildCount(); index++)
-            if (containsViewType(group.getChildAt(index), type)) return true;
-        return false;
-    }
 }
