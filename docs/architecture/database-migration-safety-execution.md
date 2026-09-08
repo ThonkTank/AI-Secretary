@@ -491,3 +491,61 @@ erfüllt; die produktiven Phase-1- und Phase-2-Läufe veröffentlichten 0.2.162 
 0.2.163, während Phase 3 keinen Release auslöste. Repositoryseitiger Cross-Phase-Gate: erfüllt.
 Der Geräteabschluss bleibt bis zum grünen PR-, Squash- und exakten Main-Nachweis dieses reinen
 Auditcommits gesperrt.
+
+### Remote-Abschluss des Cross-Phase-Audits – 2026-09-08
+
+- Auditcommit: `5ce2a8b5`, Pull Request `#350`, dokumentationsreiner `pull-request-gate` grün im
+  Lauf `34217540744`;
+- Squash-Merge auf `main`: `5e20ac318ce71893460890656f2a22bd691498c7`;
+- exakter Main-Lauf `34217599238`: Scope- und Instrumentierungs-Sammelgate grün; Quality,
+  Instrumentierung, Packaging, Upgrades und Publish vertraglich übersprungen;
+- 0.2.163 / `forest-android-1016301` blieb unverändert der neueste Release.
+
+Repositoryseitiger Cross-Phase-Gate: vollständig erfüllt. Der Geräteabschluss ist freigegeben.
+
+### Geräteabweichung und sicherer Abschluss – 2026-09-08
+
+Nach erneuter USB-Autorisierung meldete das Pixel 8 `3B200DLJH000TU` bereits Versionscode
+`1016301` und Versionsname `0.2.163`; `lastUpdateTime` war `2026-09-08 12:28:12`. Damit war die
+geplante Vorbedingung „installierte Version ist älter als der verifizierte Zielrelease“ nicht
+mehr erfüllt. Ein erneutes Installieren derselben Version wäre kein Vorwärtsupdate gewesen und
+wurde deshalb gemäß Recovery-Vertrag nicht ausgeführt. Es gab keine Deinstallation, kein
+Speicherlöschen, keinen Downgrade und keinen Signaturwechsel.
+
+Der aktuelle Release wurde in ein frisches Verzeichnis heruntergeladen und vor jeder weiteren
+Geräteaktion erneut vollständig geprüft:
+
+- stabiler Release Auto Secretary 0.2.163, Tag `forest-android-1016301`;
+- Release-Ziel und Tag-Commit exakt
+  `0107fff4e9437f4b7d62750e393617545a41879c`;
+- APK-SHA-256
+  `1cf4da34d7054e7dfa325d1a461727a4f984c1a2f620197863c7101b61ed08eb`;
+- Metadaten-SHA-256
+  `beca4ddeb14b9b8d9c6b996cf8c0cccf5c07d931a3bd2b60e2a108a8f75ea5c6`;
+- Paket `de.thonktank.autosecretary`, Versionscode `1016301`, Versionsname `0.2.163`,
+  Mindest-SDK 26 und Produktionssignatur
+  `de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da`;
+- die nur lesend vom Gerät geholte installierte `base.apk` war 2.845.600 Bytes groß, hatte
+  denselben APK-SHA-256, dieselbe Produktionssignatur und war bytegleich mit der veröffentlichten
+  APK;
+- `firstInstallTime` blieb `2026-08-17 11:50:24` und belegt damit das bereits erfolgte
+  datenbewahrende In-place-Update.
+
+Laufzeit- und sichtbare Abnahme:
+
+- Kaltstart der `MainActivity`: `Status: ok`, `LaunchState: COLD`, 413 ms; Prozess blieb aktiv
+  und die Activity im Vordergrund;
+- Android aktualisierte beim Start das vorhandene Widget `id=35` über den registrierten
+  `TaskWidgetProvider`; ein zusätzlicher direkter Shell-Broadcast wurde von Android 17 als
+  geschützter Systembroadcast abgewiesen und nicht umgangen;
+- das ausschließlich nach dem Kaltstart aufgenommene Protokoll enthielt keinen
+  `FATAL EXCEPTION`-, Prozess-, SQLite-, Room- oder Migrationsfehler der App;
+- sichtbar erhalten: vier Aufgaben mit 31 Schritten, der heutige ältere Verlaufseintrag
+  „Aufstehen“, der bestehende Ablauf „Wäsche“ mit den Schritten „Buntwäsche“, „Weißwäsche“ und
+  „Bettwäsche“, den Folgeschritten und gespeicherten Zwei-Stunden-Verzögerungen;
+- das vorhandene Startbildschirm-Widget zeigte „Hygiene“, mehrere gespeicherte Schritte und die
+  Aktion „Rest erledigen“ plausibel an.
+
+Technischer und sichtbarer Geräte-Recovery-Gate: erfüllt. Dieser letzte Protokollcommit bleibt
+bis zu seinem grünen PR-, Squash- und exakten Main-Nachweis offen und darf keinen Produktrelease
+erzeugen.
