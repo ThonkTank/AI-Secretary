@@ -105,3 +105,22 @@ Die unmittelbar vor dieser Berichtigung stehenden Abschnitte „Lokale Umsetzung
 Validierung“ und „Phasenaudit“ protokollieren ausschließlich Phase 1. Sie wurden nach den
 Platzhaltern für die späteren Phasen angehängt, damit dieses Protokoll append-only bleibt; sie
 sind kein vorgezogener Cross-Phase-Abschluss.
+
+### Remote-Abschluss Phase 1 – 2026-09-08
+
+Statusfortschreibung: veröffentlicht
+
+- Phasencommit: `fd33c438b785c06bc061d9ae51a0cf26566f6da5`;
+- Pull Request: `#343`, vollständiger `pull-request-gate` grün im Lauf `34197947321`;
+- PR-Matrix: Qualität sowie reguläre und Animationsinstrumentierung auf API 26, 35 und 37
+  grün;
+- Squash-Merge auf `main`: `2b3a44e32c582808311baaa44b70abf5155f9cc3`;
+- exakter Main-Lauf `34199684954`: Packaging, API-26/35/37-Upgrades und Publish grün;
+- veröffentlichter Release: Auto Secretary 0.2.162, Tag `forest-android-1016201`, dessen Tag und
+  Release-Ziel exakt auf den Squash-Commit zeigen;
+- veröffentlichte APK: `AutoSecretary.apk`, SHA-256
+  `6e6b3b005b73a7a0881b0e6d71ba5537da948be8408efd49c0c9b7b94c39adfa`;
+- veröffentlichte Metadaten: `release-metadata.json`, SHA-256
+  `b588c5ad28581313de338c1aaa9f3f364e74fc37c9ed3f863c78d5aae50101f6`.
+
+Phase-1-Gate: vollständig erfüllt. Phase 2 darf vom aktuellen `origin/main` beginnen.
