@@ -16,7 +16,7 @@ class UpgradeRunnerTest(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         root = pathlib.Path(temporary.name)
         log = root / "adb.log"
-        for name in ("previous.apk", "candidate.apk", "test.apk"):
+        for name in ("source.apk", "candidate.apk", "test.apk"):
             (root / name).write_bytes(b"apk")
         adb = root / "adb"
         adb.write_text(
@@ -60,11 +60,12 @@ class UpgradeRunnerTest(unittest.TestCase):
         result = subprocess.run(
             [
                 str(RUNNER),
-                str(root / "previous.apk"),
+                str(root / "source.apk"),
                 str(root / "candidate.apk"),
                 str(root / "test.apk"),
                 "de.example.autosecretary",
                 "123",
+                "schema-8-floor",
             ],
             cwd=ROOT,
             env=environment,
@@ -80,12 +81,12 @@ class UpgradeRunnerTest(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         fresh_candidate = calls.index(f"install {root / 'candidate.apk'}")
         uninstall = calls.index("uninstall de.example.autosecretary")
-        previous = calls.index(f"install {root / 'previous.apk'}")
+        source = calls.index(f"install {root / 'source.apk'}")
         test_apk = calls.index(f"install {root / 'test.apk'}")
         upgraded_candidate = calls.index(f"install -r {root / 'candidate.apk'}")
         self.assertLess(fresh_candidate, uninstall)
-        self.assertLess(uninstall, previous)
-        self.assertLess(previous, test_apk)
+        self.assertLess(uninstall, source)
+        self.assertLess(source, test_apk)
         self.assertLess(test_apk, upgraded_candidate)
         self.assertEqual(
             2,
@@ -100,6 +101,9 @@ class UpgradeRunnerTest(unittest.TestCase):
             for call in probe_calls
         ))
         self.assertTrue(all(" -e class " not in call for call in probe_calls))
+        self.assertTrue(all(
+            "-e upgradeFixture schema-8-floor" in call for call in probe_calls
+        ))
         self.assertEqual(
             2,
             sum(call.startswith("shell am start ") for call in calls),
@@ -126,6 +130,32 @@ class UpgradeRunnerTest(unittest.TestCase):
         self.assertIn("Upgrade probe 'verify' failed", result.stderr)
         self.assertIn("FATAL EXCEPTION: InstrumentationThread", result.stderr)
         self.assertIn("logcat -d -v threadtime", calls)
+
+    def test_invalid_fixture_id_fails_before_adb(self):
+        root, result, calls = self.run_runner()
+        environment = os.environ.copy()
+        environment["PATH"] = f"{root}:{environment['PATH']}"
+        environment["ADB_LOG"] = str(root / "invalid-adb.log")
+        result = subprocess.run(
+            [
+                str(RUNNER),
+                str(root / "source.apk"),
+                str(root / "candidate.apk"),
+                str(root / "test.apk"),
+                "de.example.autosecretary",
+                "123",
+                "-invalid",
+            ],
+            cwd=ROOT,
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(2, result.returncode)
+        self.assertIn("Invalid fixture ID", result.stderr)
+        self.assertFalse((root / "invalid-adb.log").exists())
 
 
 if __name__ == "__main__":

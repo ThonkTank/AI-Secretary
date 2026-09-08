@@ -29,6 +29,7 @@ jobs:
       verification_pr_number: ${{ steps.reuse.outputs.verification_pr_number }}
       verification_pr_head_sha: ${{ steps.reuse.outputs.verification_pr_head_sha }}
       verification_run_id: ${{ steps.reuse.outputs.verification_run_id }}
+      upgrade_matrix: ${{ steps.upgrade-fixtures.outputs.upgrade_matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -65,6 +66,13 @@ jobs:
             --repository "${{ github.repository }}" \
             --main-sha "${{ github.sha }}" \
             --workflow verify.yml
+      - name: Resolve the signed production upgrade matrix
+        id: upgrade-fixtures
+        run: |
+          set -euo pipefail
+          UPGRADE_MATRIX=$(python3 scripts/release/upgrade_fixture_tool.py matrix \
+            --fixtures release/upgrade-fixtures)
+          printf 'upgrade_matrix=%s\n' "$UPGRADE_MATRIX" >> "$GITHUB_OUTPUT"
 
   quality:
     if: >-
@@ -403,43 +411,36 @@ jobs:
     if: >-
       always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
       needs.package.result == 'success' && needs.package.outputs.already_published != 'true'
-    needs: [package]
+    needs: [package, release_scope]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - api-level: 26
-            target: default
-            arch: x86_64
-            channel: stable
-          - api-level: 35
-            target: google_apis
-            arch: x86_64
-            channel: stable
-          - api-level: "37.0"
-            target: google_apis
-            arch: x86_64
-            channel: canary
+      matrix: ${{ fromJSON(needs.release_scope.outputs.upgrade_matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: production-release-candidate-${{ github.sha }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/release-candidate
-      - name: Validate candidate and fetch the previous production APK
+      - name: Validate candidate and fetch the signed fixture source
         env:
           GH_TOKEN: ${{ github.token }}
+          FIXTURE_ID: ${{ matrix.fixture_id }}
+          EXPECTED_SOURCE_TAG: ${{ matrix.source_tag }}
         run: |
           set -euo pipefail
           CANDIDATE="$RUNNER_TEMP/release-candidate"
           PLAN="$CANDIDATE/release-plan.json"
-          RELEASES="$RUNNER_TEMP/releases.json"
-          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -s 'add' > "$RELEASES"
-          PREVIOUS_TAG=$(python3 scripts/release/release_tool.py previous \
-            --plan "$PLAN" --releases "$RELEASES")
+          FIXTURE="$RUNNER_TEMP/upgrade-fixture.json"
+          python3 scripts/release/upgrade_fixture_tool.py fixture \
+            --fixtures release/upgrade-fixtures --fixture-id "$FIXTURE_ID" \
+            --output "$FIXTURE"
+          SOURCE_TAG=$(jq -r .source.tag "$FIXTURE")
+          test "$SOURCE_TAG" = "$EXPECTED_SOURCE_TAG"
+          SOURCE_APK_ASSET=$(jq -r .source.apkAsset "$FIXTURE")
+          SOURCE_METADATA_ASSET=$(jq -r .source.metadataAsset "$FIXTURE")
           APK_ASSET=$(jq -r .apkAsset "$PLAN")
           METADATA_ASSET=$(jq -r .metadataAsset "$PLAN")
           PACKAGE_NAME=$(jq -r .packageName "$PLAN")
@@ -448,29 +449,44 @@ jobs:
           BUILD_TOOLS=$(jq -r .androidBuildTools "$PLAN")
           python3 scripts/release/release_tool.py validate --plan "$PLAN" \
             --metadata "$CANDIDATE/$METADATA_ASSET" --apk "$CANDIDATE/$APK_ASSET"
-          PREVIOUS_DIR="$RUNNER_TEMP/previous-release"
-          mkdir -p "$PREVIOUS_DIR"
-          gh release download "$PREVIOUS_TAG" --dir "$PREVIOUS_DIR" --pattern "$APK_ASSET"
-          PREVIOUS_APK="$PREVIOUS_DIR/$APK_ASSET"
+          SOURCE_DIR="$RUNNER_TEMP/source-release-$FIXTURE_ID"
+          mkdir -p "$SOURCE_DIR"
+          RELEASE_JSON="$SOURCE_DIR/release.json"
+          TAG_REF_JSON="$SOURCE_DIR/tag-ref.json"
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$SOURCE_TAG" > "$RELEASE_JSON"
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$SOURCE_TAG" > "$TAG_REF_JSON"
+          gh release download "$SOURCE_TAG" --dir "$SOURCE_DIR" \
+            --pattern "$SOURCE_APK_ASSET" --pattern "$SOURCE_METADATA_ASSET"
+          SOURCE_APK="$SOURCE_DIR/$SOURCE_APK_ASSET"
+          SOURCE_METADATA="$SOURCE_DIR/$SOURCE_METADATA_ASSET"
+          python3 scripts/release/upgrade_fixture_tool.py verify-source \
+            --fixture "$FIXTURE" --release-json "$RELEASE_JSON" \
+            --tag-ref-json "$TAG_REF_JSON" --metadata "$SOURCE_METADATA" \
+            --apk "$SOURCE_APK"
           APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner"
           AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt"
-          for SIGNED_APK in "$PREVIOUS_APK" "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk"; do
+          for SIGNED_APK in "$SOURCE_APK" "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk"; do
             "$APKSIGNER" verify --verbose "$SIGNED_APK"
             APK_CERT=$($APKSIGNER verify --print-certs "$SIGNED_APK" \
               | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
               | tr '[:upper:]' '[:lower:]')
             test "$APK_CERT" = "$EXPECTED_SIGNER"
           done
-          PREVIOUS_BADGING=$($AAPT dump badging "$PREVIOUS_APK" | sed -n '1p')
-          case "$PREVIOUS_BADGING" in *"package: name='$PACKAGE_NAME'"*) ;; *) exit 1 ;; esac
-          PREVIOUS_VERSION=$(printf '%s\n' "$PREVIOUS_BADGING" \
+          SOURCE_VERSION_NAME=$(jq -r .source.versionName "$FIXTURE")
+          SOURCE_VERSION_CODE=$(jq -r .source.versionCode "$FIXTURE")
+          SOURCE_BADGING=$($AAPT dump badging "$SOURCE_APK" | sed -n '1p')
+          case "$SOURCE_BADGING" in
+            *"package: name='$PACKAGE_NAME'"*"versionCode='$SOURCE_VERSION_CODE'"*"versionName='$SOURCE_VERSION_NAME'"*) ;;
+            *) echo "Unexpected fixture source package/version: $SOURCE_BADGING" >&2; exit 1 ;;
+          esac
+          ACTUAL_SOURCE_VERSION=$(printf '%s\n' "$SOURCE_BADGING" \
             | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
-          test -n "$PREVIOUS_VERSION"
-          test "$PREVIOUS_VERSION" -lt "$CANDIDATE_VERSION"
-          printf 'PREVIOUS_APK=%s\nCANDIDATE_APK=%s\nTEST_APK=%s\n' \
-            "$PREVIOUS_APK" "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk" >> "$GITHUB_ENV"
-          printf 'PACKAGE_NAME=%s\nCANDIDATE_VERSION=%s\n' \
-            "$PACKAGE_NAME" "$CANDIDATE_VERSION" >> "$GITHUB_ENV"
+          test "$ACTUAL_SOURCE_VERSION" = "$SOURCE_VERSION_CODE"
+          test "$ACTUAL_SOURCE_VERSION" -lt "$CANDIDATE_VERSION"
+          printf 'SOURCE_APK=%s\nCANDIDATE_APK=%s\nTEST_APK=%s\n' \
+            "$SOURCE_APK" "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk" >> "$GITHUB_ENV"
+          printf 'PACKAGE_NAME=%s\nCANDIDATE_VERSION=%s\nFIXTURE_ID=%s\n' \
+            "$PACKAGE_NAME" "$CANDIDATE_VERSION" "$FIXTURE_ID" >> "$GITHUB_ENV"
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
@@ -490,7 +506,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           pre-emulator-launch-script: adb start-server
-          script: ./scripts/ci/run-upgrade-test.sh "$PREVIOUS_APK" "$CANDIDATE_APK" "$TEST_APK" "$PACKAGE_NAME" "$CANDIDATE_VERSION"
+          script: ./scripts/ci/run-upgrade-test.sh "$SOURCE_APK" "$CANDIDATE_APK" "$TEST_APK" "$PACKAGE_NAME" "$CANDIDATE_VERSION" "$FIXTURE_ID"
 
   publish:
     if: >-

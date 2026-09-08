@@ -16,7 +16,7 @@ public final class UpgradePersistenceTest {
         UpgradePersistenceProbe.seed(
                 InstrumentationRegistry.getInstrumentation().getTargetContext(),
                 InstrumentationRegistry.getInstrumentation().getContext(),
-                InstrumentationRegistry.getInstrumentation());
+                InstrumentationRegistry.getInstrumentation(), fixtureId());
     }
 
     @Test public void currentVersionStartsAndReadsPreviousData() throws Exception {
@@ -24,11 +24,15 @@ public final class UpgradePersistenceTest {
         UpgradePersistenceProbe.verify(
                 InstrumentationRegistry.getInstrumentation().getTargetContext(),
                 InstrumentationRegistry.getInstrumentation().getContext(),
-                InstrumentationRegistry.getInstrumentation());
+                InstrumentationRegistry.getInstrumentation(), fixtureId());
     }
 
     private static void requirePhase(String expected) {
         assumeTrue("Only the cross-installation CI probe runs this test",
                 expected.equals(InstrumentationRegistry.getArguments().getString("upgradePhase")));
+    }
+
+    private static String fixtureId() {
+        return InstrumentationRegistry.getArguments().getString("upgradeFixture", "");
     }
 }

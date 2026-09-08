@@ -1,0 +1,185 @@
+{
+  "contractVersion": 1,
+  "id": "schema-23-repair-boundary",
+  "risk": "Repair only the exact 0.2.158 permutation while preserving valid schema 23 rows",
+  "source": {
+    "tag": "forest-android-1015801",
+    "versionName": "0.2.158",
+    "versionCode": 1015801,
+    "databaseVersion": 23,
+    "commitSha": "a25add10fc833f362d01ee16781821c4b4df8d56",
+    "packageName": "de.thonktank.autosecretary",
+    "apkAsset": "AutoSecretary.apk",
+    "metadataAsset": "release-metadata.json",
+    "apkSha256": "ffed53e3b1636489342be5d960f6ebbc9796f10bba6f4602f996dc3379cff25a",
+    "metadataSha256": "d0705009ed1286495b2d085721e2f1278bf898991cc9747286c6e45e5d126ecf",
+    "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
+  },
+  "targetDatabaseVersion": 24,
+  "apiLanes": [
+    {
+      "apiLevel": 26,
+      "target": "default",
+      "arch": "x86_64",
+      "channel": "stable",
+      "risk": "Production repair predicate on the oldest SQLite runtime"
+    }
+  ],
+  "seed": [
+    {
+      "table": "tasks",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-repair-task",
+          "title": "Reparaturgrenze Schema 23",
+          "recurrence": "ONCE",
+          "intervalDays": 1,
+          "weekdayMask": 0,
+          "ongoing": 0,
+          "conditionText": "",
+          "conditionDone": 0,
+          "archived": 0,
+          "nextDueOn": "2999-12-31",
+          "cadenceAnchorOn": "2999-12-31",
+          "lastScheduledOn": null,
+          "lastCompletedOn": null,
+          "catalogOrder": 4023001,
+          "hasCompletedOccurrence": 0,
+          "estimatedMinutes": 31,
+          "boundKind": "FOREVER",
+          "boundUntilOn": null,
+          "boundWeeks": null,
+          "remainingCount": null,
+          "deadlineOn": null,
+          "note": "Aufgabennotiz Schema 23",
+          "missedOccurrenceMode": "SKIP"
+        }
+      ]
+    },
+    {
+      "table": "step_flow_runs",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-repair-run",
+          "taskId": "upgrade-repair-task",
+          "seedStepId": "upgrade-repair-template",
+          "sourceKey": "upgrade:repair:run",
+          "scheduledOn": "2999-12-31",
+          "slot": "LATER",
+          "state": "WAITING_TIME",
+          "currentPosition": 0,
+          "readyAtEpochMillis": 32503680000000,
+          "currentExecutionOccurrenceId": null,
+          "queueOrder": 423,
+          "nextExecutionSequence": 9,
+          "createdAtEpochMillis": 23001,
+          "updatedAtEpochMillis": 23002
+        }
+      ]
+    },
+    {
+      "table": "flow_run_steps",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-repair-permuted",
+          "runId": "upgrade-repair-run",
+          "position": 0,
+          "sourceTemplateId": "upgrade-repair-template",
+          "text": "Vertauschte Produktionszeile",
+          "amountKind": "SETS_REPS",
+          "plannedSets": 4,
+          "plannedReps": 9,
+          "plannedDurationSeconds": null,
+          "restTimerMode": "CUSTOM",
+          "restTimerSeconds": 45,
+          "plannedLoadMode": "Korrupte Notiz",
+          "plannedLoadUnit": "FIXED",
+          "plannedLoadMilli": 6000,
+          "targetRir": 7000,
+          "note": "8000",
+          "delayMode": "EXTERNAL",
+          "defaultDelayMillis": "KG",
+          "lastUsedDelayMillis": 12345,
+          "chosenDelayMillis": 3
+        },
+        {
+          "id": "upgrade-repair-correct",
+          "runId": "upgrade-repair-run",
+          "position": 1,
+          "sourceTemplateId": "upgrade-repair-template-2",
+          "text": "Korrekte Schema-23-Zeile",
+          "amountKind": "DURATION",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": 321,
+          "restTimerMode": "DEFAULT",
+          "restTimerSeconds": null,
+          "plannedLoadMode": "BODYWEIGHT_PLUS",
+          "plannedLoadUnit": "LB",
+          "plannedLoadMilli": 54321,
+          "targetRir": 4,
+          "note": "Korrekte Notiz",
+          "delayMode": "REMEMBER_LAST",
+          "defaultDelayMillis": 9000,
+          "lastUsedDelayMillis": 10000,
+          "chosenDelayMillis": 11000
+        }
+      ]
+    }
+  ],
+  "expectedTarget": [
+    {
+      "table": "flow_run_steps",
+      "where": {"id": "upgrade-repair-permuted"},
+      "values": {
+        "runId": "upgrade-repair-run",
+        "position": 0,
+        "sourceTemplateId": "upgrade-repair-template",
+        "text": "Vertauschte Produktionszeile",
+        "amountKind": "SETS_REPS",
+        "plannedSets": 4,
+        "plannedReps": 9,
+        "plannedDurationSeconds": null,
+        "restTimerMode": "CUSTOM",
+        "restTimerSeconds": 45,
+        "plannedLoadMode": "EXTERNAL",
+        "plannedLoadUnit": "KG",
+        "plannedLoadMilli": 12345,
+        "targetRir": 3,
+        "note": "Korrupte Notiz",
+        "delayMode": "FIXED",
+        "defaultDelayMillis": 6000,
+        "lastUsedDelayMillis": 7000,
+        "chosenDelayMillis": 8000
+      }
+    },
+    {
+      "table": "flow_run_steps",
+      "where": {"id": "upgrade-repair-correct"},
+      "values": {
+        "runId": "upgrade-repair-run",
+        "position": 1,
+        "sourceTemplateId": "upgrade-repair-template-2",
+        "text": "Korrekte Schema-23-Zeile",
+        "amountKind": "DURATION",
+        "plannedSets": null,
+        "plannedReps": null,
+        "plannedDurationSeconds": 321,
+        "restTimerMode": "DEFAULT",
+        "restTimerSeconds": null,
+        "plannedLoadMode": "BODYWEIGHT_PLUS",
+        "plannedLoadUnit": "LB",
+        "plannedLoadMilli": 54321,
+        "targetRir": 4,
+        "note": "Korrekte Notiz",
+        "delayMode": "REMEMBER_LAST",
+        "defaultDelayMillis": 9000,
+        "lastUsedDelayMillis": 10000,
+        "chosenDelayMillis": 11000
+      }
+    }
+  ]
+}

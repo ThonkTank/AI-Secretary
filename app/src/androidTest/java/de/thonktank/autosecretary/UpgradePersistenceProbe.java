@@ -11,41 +11,46 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.SystemClock;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.regex.Pattern;
 
 /** Product-upgrade assertions shared by the ordinary JUnit test and the release-safe runner. */
 final class UpgradePersistenceProbe {
     private static final String DATABASE = "auto_secretary.db";
     private static final long DATABASE_READY_TIMEOUT_MILLIS = 15_000L;
-    private static final String TASK_ID = "upgrade-e2e-task";
-    private static final String TEMPLATE_ID = "upgrade-e2e-template";
-    private static final String OCCURRENCE_ID = "upgrade-e2e-occurrence";
-    private static final String STEP_ID = "upgrade-e2e-step";
-    private static final String BOOKING_ID = "upgrade-e2e-booking";
-    private static final String TITLE = "Upgrade-Daten bleiben erhalten";
-    private static final String STEP_TEXT = "Persistierten Schritt lesen";
     private static final String PROBE_PREFERENCES = "upgrade_e2e_probe";
     private static final String PREVIOUS_VERSION = "previous_version";
     private static final String PREVIOUS_DATABASE_VERSION = "previous_database_version";
     private static final String EXPECTED_LAST_CHECK = "expected_last_check";
+    private static final String SELECTED_FIXTURE_ID = "selected_fixture_id";
     private static final long DEDICATED_UPDATE_PREFERENCES_VERSION = 1_002_301L;
     private static final long SEEDED_POSTPONED_CODE = 987_654L;
     private static final long SEEDED_POSTPONED_AT = 123_450_000L;
+    private static final Pattern FIXTURE_ID = Pattern.compile("^[a-z0-9]+(?:-[a-z0-9]+)*$");
+    private static final Pattern SQL_IDENTIFIER = Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
 
     private UpgradePersistenceProbe() {}
 
     static void seed(Context targetContext, Context testContext,
-                     Instrumentation instrumentation) throws Exception {
+                     Instrumentation instrumentation, String fixtureId) throws Exception {
         long previousVersion = installedVersion(targetContext);
         long expectedLastCheck = System.currentTimeMillis();
-        JSONObject fixture = fixture(testContext);
-        int sourceDatabaseVersion = fixture.getJSONObject("source").getInt("databaseVersion");
+        JSONObject fixture = fixture(testContext, fixtureId);
+        JSONObject source = fixture.getJSONObject("source");
+        int sourceDatabaseVersion = source.getInt("databaseVersion");
+        equal(source.getLong("versionCode"), previousVersion,
+                "Installed source version differs from fixture " + fixtureId);
+        equal(source.getString("packageName"), targetContext.getPackageName(),
+                "Installed source package differs from fixture " + fixtureId);
         if (previousVersion >= DEDICATED_UPDATE_PREFERENCES_VERSION) {
             check(targetContext.getSharedPreferences("forest_updates", Context.MODE_PRIVATE).edit()
                     .putLong("last_update_check", expectedLastCheck)
@@ -58,10 +63,10 @@ final class UpgradePersistenceProbe {
         try (SQLiteDatabase database = awaitDatabaseVersion(targetContext,
                 sourceDatabaseVersion, SQLiteDatabase.OPEN_READWRITE, "previous app")) {
             equal(sourceDatabaseVersion, database.getVersion(),
-                    "The rolling fixture must run against the supported 0.2.80 schema");
+                    "The rolling fixture must run against its declared source schema");
             database.beginTransaction();
             try {
-                seedFixture(database, testContext);
+                seedFixture(database, fixture);
                 database.setTransactionSuccessful();
             } finally {
                 database.endTransaction();
@@ -88,11 +93,12 @@ final class UpgradePersistenceProbe {
                 .putLong(PREVIOUS_VERSION, previousVersion)
                 .putInt(PREVIOUS_DATABASE_VERSION, sourceDatabaseVersion)
                 .putLong(EXPECTED_LAST_CHECK, expectedLastCheck)
+                .putString(SELECTED_FIXTURE_ID, fixtureId)
                 .commit(), "Could not seed the previous-version marker");
     }
 
     static void verify(Context context, Context testContext,
-                       Instrumentation instrumentation) throws Exception {
+                       Instrumentation instrumentation, String fixtureId) throws Exception {
         SharedPreferences probe = context.getSharedPreferences(
                 PROBE_PREFERENCES, Context.MODE_PRIVATE);
         long previousVersion = probe.getLong(PREVIOUS_VERSION, -1L);
@@ -101,7 +107,10 @@ final class UpgradePersistenceProbe {
         check(expectedLastCheck > 0L, "The update-check marker is missing");
         int previousDatabaseVersion = probe.getInt(PREVIOUS_DATABASE_VERSION, -1);
         check(previousDatabaseVersion > 0, "The previous database version is missing");
-        int targetDatabaseVersion = fixture(testContext).getInt("targetDatabaseVersion");
+        equal(fixtureId, probe.getString(SELECTED_FIXTURE_ID, ""),
+                "Seed and verify fixture IDs differ");
+        JSONObject fixture = fixture(testContext, fixtureId);
+        int targetDatabaseVersion = fixture.getInt("targetDatabaseVersion");
         check(targetDatabaseVersion > previousDatabaseVersion,
                 "The fixture target must be newer than its source schema");
         check(installedVersion(context) > previousVersion,
@@ -110,7 +119,7 @@ final class UpgradePersistenceProbe {
         try {
             try (SQLiteDatabase database = awaitDatabaseVersion(context,
                     targetDatabaseVersion, SQLiteDatabase.OPEN_READONLY, "product")) {
-                verifyRows(database);
+                verifyRows(database, fixture);
             }
             verifyPreferencesAfterActivityStart(context, expectedLastCheck);
         } finally {
@@ -165,67 +174,54 @@ final class UpgradePersistenceProbe {
         throw timeout;
     }
 
-    private static void verifyRows(SQLiteDatabase database) {
-        try (Cursor row = row(database, "tasks",
-                new String[]{"title", "catalogOrder", "boundKind", "cadenceAnchorOn"},
-                "id", TASK_ID)) {
-            equal(TITLE, text(row, "title"));
-            equal(4_001_024L, number(row, "catalogOrder"));
-            equal("FOREVER", text(row, "boundKind"));
-            equal("2999-12-31", text(row, "cadenceAnchorOn"));
+    private static void verifyRows(SQLiteDatabase database, JSONObject fixture) throws Exception {
+        JSONArray expectations = fixture.getJSONArray("expectedTarget");
+        for (int index = 0; index < expectations.length(); index++) {
+            JSONObject expectation = expectations.getJSONObject(index);
+            String table = identifier(expectation.getString("table"));
+            JSONObject where = expectation.getJSONObject("where");
+            JSONObject values = expectation.getJSONObject("values");
+            String[] columns = keys(values);
+            List<String> clauses = new ArrayList<>();
+            List<String> arguments = new ArrayList<>();
+            for (Iterator<String> names = where.keys(); names.hasNext();) {
+                String column = identifier(names.next());
+                Object value = where.get(column);
+                if (value == JSONObject.NULL) {
+                    clauses.add(column + " IS NULL");
+                } else {
+                    clauses.add(column + " = ?");
+                    arguments.add(String.valueOf(value));
+                }
+            }
+            Cursor row = database.query(table, columns, String.join(" AND ", clauses),
+                    arguments.toArray(new String[0]), null, null, null);
+            try {
+                if (row.getCount() != 1 || !row.moveToFirst()) {
+                    throw new AssertionError("Expected exactly one " + table
+                            + " row for fixture " + fixture.getString("id")
+                            + ", found " + row.getCount());
+                }
+                for (String column : columns) {
+                    Object expected = values.get(column);
+                    int position = row.getColumnIndexOrThrow(column);
+                    if (expected == JSONObject.NULL) {
+                        check(row.isNull(position), table + "." + column + " must be NULL");
+                    } else if (expected instanceof Number) {
+                        equal(((Number) expected).longValue(), row.getLong(position),
+                                table + "." + column + " differs");
+                    } else if (expected instanceof Boolean) {
+                        equal((Boolean) expected ? 1L : 0L, row.getLong(position),
+                                table + "." + column + " differs");
+                    } else {
+                        equal(expected, row.getString(position),
+                                table + "." + column + " differs");
+                    }
+                }
+            } finally {
+                row.close();
+            }
         }
-        try (Cursor row = row(database, "task_schedule_entries",
-                new String[]{"slot"}, "taskId", TASK_ID)) {
-            equal("LATER", text(row, "slot"));
-        }
-        try (Cursor row = row(database, "task_steps",
-                new String[]{"text", "amountKind"}, "id", TEMPLATE_ID)) {
-            equal(STEP_TEXT, text(row, "text"));
-            equal("NONE", text(row, "amountKind"));
-        }
-        try (Cursor row = row(database, "occurrences",
-                new String[]{"taskId", "state", "slot"}, "id", OCCURRENCE_ID)) {
-            equal(TASK_ID, text(row, "taskId"));
-            equal("OPEN", text(row, "state"));
-            equal("LATER", text(row, "slot"));
-        }
-        try (Cursor row = row(database, "occurrence_steps",
-                new String[]{"text", "done", "amountKind", "actualRepetitions",
-                        "sourceTemplateId"}, "id", STEP_ID)) {
-            equal(STEP_TEXT, text(row, "text"));
-            equal(1L, number(row, "done"));
-            equal("NONE", text(row, "amountKind"));
-            equal("", text(row, "actualRepetitions"));
-            equal(TEMPLATE_ID, text(row, "sourceTemplateId"));
-        }
-        try (Cursor row = row(database, "reward_bookings",
-                new String[]{"xpDelta"}, "occurrenceId", OCCURRENCE_ID)) {
-            equal(10L, number(row, "xpDelta"));
-        }
-        try (Cursor row = row(database, "stats", new String[]{"xp"}, "id", "1")) {
-            equal(73L, number(row, "xp"));
-        }
-    }
-
-    private static Cursor row(SQLiteDatabase database, String table, String[] columns,
-                              String keyColumn, String keyValue) {
-        Cursor row = database.query(table, columns, keyColumn + " = ?",
-                new String[]{keyValue}, null, null, null);
-        if (row.getCount() != 1 || !row.moveToFirst()) {
-            int count = row.getCount();
-            row.close();
-            throw new AssertionError("Expected exactly one " + table + " row for "
-                    + keyColumn + "=" + keyValue + ", found " + count);
-        }
-        return row;
-    }
-
-    private static String text(Cursor row, String column) {
-        return row.getString(row.getColumnIndexOrThrow(column));
-    }
-
-    private static long number(Cursor row, String column) {
-        return row.getLong(row.getColumnIndexOrThrow(column));
     }
 
     private static void verifyPreferencesAfterActivityStart(Context context,
@@ -251,26 +247,18 @@ final class UpgradePersistenceProbe {
         return info.versionCode;
     }
 
-    private static void seedFixture(SQLiteDatabase database, Context testContext) throws Exception {
-        deleteIfPresent(database, "reward_bookings", "id", BOOKING_ID);
-        deleteIfPresent(database, "occurrence_steps", "id", STEP_ID);
-        deleteIfPresent(database, "occurrences", "id", OCCURRENCE_ID);
-        deleteIfPresent(database, "task_steps", "id", TEMPLATE_ID);
-        deleteIfPresent(database, "tasks", "id", TASK_ID);
-
-        JSONObject tables = fixture(testContext).getJSONObject("tables");
-        insert(database, "tasks", values(tables.getJSONObject("tasks")),
-                SQLiteDatabase.CONFLICT_ABORT);
-        insert(database, "task_steps", values(tables.getJSONObject("task_steps")),
-                SQLiteDatabase.CONFLICT_ABORT);
-        insert(database, "occurrences", values(tables.getJSONObject("occurrences")),
-                SQLiteDatabase.CONFLICT_ABORT);
-        insert(database, "occurrence_steps", values(tables.getJSONObject("occurrence_steps")),
-                SQLiteDatabase.CONFLICT_ABORT);
-        insert(database, "stats", values(tables.getJSONObject("stats")),
-                SQLiteDatabase.CONFLICT_REPLACE);
-        insert(database, "reward_bookings", values(tables.getJSONObject("reward_bookings")),
-                SQLiteDatabase.CONFLICT_ABORT);
+    private static void seedFixture(SQLiteDatabase database, JSONObject fixture) throws Exception {
+        JSONArray seed = fixture.getJSONArray("seed");
+        for (int entryIndex = 0; entryIndex < seed.length(); entryIndex++) {
+            JSONObject entry = seed.getJSONObject(entryIndex);
+            String table = identifier(entry.getString("table"));
+            int conflict = "REPLACE".equals(entry.getString("conflict"))
+                    ? SQLiteDatabase.CONFLICT_REPLACE : SQLiteDatabase.CONFLICT_ABORT;
+            JSONArray rows = entry.getJSONArray("rows");
+            for (int rowIndex = 0; rowIndex < rows.length(); rowIndex++) {
+                insert(database, table, values(rows.getJSONObject(rowIndex)), conflict);
+            }
+        }
     }
 
     private static void insert(SQLiteDatabase database, String table,
@@ -279,25 +267,36 @@ final class UpgradePersistenceProbe {
         if (row == -1L) throw new AssertionError("Could not seed fixture table " + table);
     }
 
-    private static void deleteIfPresent(SQLiteDatabase database, String table,
-                                        String column, String value) {
-        database.delete(table, column + " = ?", new String[]{value});
-    }
-
-    private static JSONObject fixture(Context testContext) throws Exception {
-        try (InputStream stream = testContext.getAssets().open("v0.2.80.json")) {
+    private static JSONObject fixture(Context testContext, String fixtureId) throws Exception {
+        check(fixtureId != null && FIXTURE_ID.matcher(fixtureId).matches(),
+                "Missing or invalid upgrade fixture ID");
+        try (InputStream stream = testContext.getAssets().open(fixtureId + ".json")) {
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             byte[] buffer = new byte[4096];
             int count;
             while ((count = stream.read(buffer)) != -1) bytes.write(buffer, 0, count);
-            return new JSONObject(bytes.toString(StandardCharsets.UTF_8.name()));
+            JSONObject fixture = new JSONObject(bytes.toString(StandardCharsets.UTF_8.name()));
+            equal(fixtureId, fixture.getString("id"), "Loaded upgrade fixture ID differs");
+            return fixture;
         }
+    }
+
+    private static String[] keys(JSONObject object) {
+        List<String> result = new ArrayList<>();
+        object.keys().forEachRemaining(key -> result.add(identifier(key)));
+        return result.toArray(new String[0]);
+    }
+
+    private static String identifier(String value) {
+        check(value != null && SQL_IDENTIFIER.matcher(value).matches(),
+                "Invalid SQL identifier in upgrade fixture: " + value);
+        return value;
     }
 
     private static ContentValues values(JSONObject source) throws Exception {
         ContentValues result = new ContentValues();
         for (Iterator<String> keys = source.keys(); keys.hasNext();) {
-            String key = keys.next();
+            String key = identifier(keys.next());
             Object value = source.get(key);
             if (value == JSONObject.NULL) result.putNull(key);
             else if (value instanceof Integer) result.put(key, (Integer) value);

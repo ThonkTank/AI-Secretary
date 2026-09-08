@@ -72,6 +72,9 @@ PREVIEW_SDK_RUNNER = (
 UPGRADE_RUNNER = (ROOT / "scripts" / "ci" / "run-upgrade-test.sh").read_text(
     encoding="utf-8"
 )
+UPGRADE_FIXTURE_TOOL = (
+    ROOT / "scripts" / "release" / "upgrade_fixture_tool.py"
+).read_text(encoding="utf-8")
 REUSE_PR_VERIFICATION = (
     ROOT / "scripts" / "ci" / "reuse_pr_verification.py"
 ).read_text(encoding="utf-8")
@@ -340,7 +343,7 @@ class WorkflowContractTest(unittest.TestCase):
             quality,
         )
         self.assertIn("MAX_APK_BYTES = 8 * 1024 * 1024", RELEASE_TOOL)
-        for job in (instrumentation, animation, upgrade):
+        for job in (instrumentation, animation):
             with self.subTest(job=job[:40]):
                 self.assertIn('api-level: "37.0"', job)
                 self.assertIn("channel: canary", job)
@@ -348,6 +351,11 @@ class WorkflowContractTest(unittest.TestCase):
                 self.assertIn("./scripts/ci/prepare-preview-sdk-tools.sh", job)
                 self.assertIn("channel: ${{ matrix.channel }}", job)
                 self.assertIn("pre-emulator-launch-script: adb start-server", job)
+        self.assertIn("fromJSON(needs.release_scope.outputs.upgrade_matrix)", upgrade)
+        self.assertIn("if: matrix.channel != 'stable'", upgrade)
+        self.assertIn("./scripts/ci/prepare-preview-sdk-tools.sh", upgrade)
+        self.assertIn("channel: ${{ matrix.channel }}", upgrade)
+        self.assertIn("pre-emulator-launch-script: adb start-server", upgrade)
         self.assertNotIn('cmdline-tools;latest', WORKFLOW)
         self.assertIn('sdkmanager" --install "cmdline-tools;latest"', PREVIEW_SDK_RUNNER)
         self.assertIn('test -x "$new_tools/bin/avdmanager"', PREVIEW_SDK_RUNNER)
@@ -356,17 +364,40 @@ class WorkflowContractTest(unittest.TestCase):
 
         fresh_install = UPGRADE_RUNNER.index('install_apk "$candidate_apk"')
         clean_remove = UPGRADE_RUNNER.index('adb uninstall "$package_name"')
-        previous_install = UPGRADE_RUNNER.index('install_apk "$previous_apk"')
+        source_install = UPGRADE_RUNNER.index('install_apk "$source_apk"')
         upgrade_install = UPGRADE_RUNNER.index('install_apk "$candidate_apk" upgrade')
         self.assertLess(fresh_install, clean_remove)
-        self.assertLess(clean_remove, previous_install)
-        self.assertLess(previous_install, upgrade_install)
+        self.assertLess(clean_remove, source_install)
+        self.assertLess(source_install, upgrade_install)
         self.assertEqual(2, UPGRADE_RUNNER.count("\nverify_installed_version\n"))
         self.assertEqual(2, UPGRADE_RUNNER.count("\nverify_package_absent\n"))
         self.assertEqual(2, UPGRADE_RUNNER.count("\nstart_main_activity\n"))
         self.assertIn('*"Status: ok"*', UPGRADE_RUNNER)
         self.assertIn('pm list packages "$package_name"', UPGRADE_RUNNER)
         self.assertNotIn('pm path "$package_name"', UPGRADE_RUNNER)
+
+    def test_release_upgrade_matrix_is_manifest_driven_and_source_authenticated(self):
+        release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
+            "\n  quality:", 1
+        )[0]
+        package = WORKFLOW.split("\n  package:", 1)[1].split("\n  upgrade:", 1)[0]
+        upgrade = WORKFLOW.split("\n  upgrade:", 1)[1].split("\n  publish:", 1)[0]
+
+        self.assertIn("upgrade_matrix: ${{ steps.upgrade-fixtures.outputs.upgrade_matrix }}", release_scope)
+        self.assertIn("upgrade_fixture_tool.py matrix", release_scope)
+        self.assertNotIn("upgrade_matrix:", package)
+        self.assertIn("needs: [package, release_scope]", upgrade)
+        self.assertIn("fromJSON(needs.release_scope.outputs.upgrade_matrix)", upgrade)
+        self.assertIn("FIXTURE_ID: ${{ matrix.fixture_id }}", upgrade)
+        self.assertIn("EXPECTED_SOURCE_TAG: ${{ matrix.source_tag }}", upgrade)
+        self.assertIn("upgrade_fixture_tool.py verify-source", upgrade)
+        self.assertIn("releases/tags/$SOURCE_TAG", upgrade)
+        self.assertIn("git/ref/tags/$SOURCE_TAG", upgrade)
+        self.assertIn('--pattern "$SOURCE_METADATA_ASSET"', upgrade)
+        self.assertIn('"$SOURCE_APK" "$CANDIDATE/$APK_ASSET"', upgrade)
+        self.assertIn('"$CANDIDATE_VERSION" "$FIXTURE_ID"', upgrade)
+        self.assertIn('"fixture_id": fixture["id"]', UPGRADE_FIXTURE_TOOL)
+        self.assertNotIn("release_tool.py previous", upgrade)
 
     def test_change_scope_separates_quality_instrumentation_and_release(self):
         release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
@@ -428,7 +459,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("needs.quality.result == 'success'", package)
         self.assertIn("outputs.reuse_pr_verification == 'true'", package)
         self.assertIn("needs.instrumentation-gate.result == 'success'", package)
-        self.assertIn("needs: [package]", upgrade)
+        self.assertIn("needs: [package, release_scope]", upgrade)
         self.assertNotIn("needs: [instrumentation, package]", upgrade)
         self.assertIn("always()", upgrade)
         self.assertIn("needs.package.result == 'success'", upgrade)

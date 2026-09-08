@@ -1,0 +1,213 @@
+{
+  "contractVersion": 1,
+  "id": "schema-8-floor",
+  "risk": "Supported production floor and platform compatibility",
+  "source": {
+    "tag": "forest-android-1008001",
+    "versionName": "0.2.80",
+    "versionCode": 1008001,
+    "databaseVersion": 8,
+    "commitSha": "825b0433bfeb5a34462af147b060f1bcccbc3227",
+    "packageName": "de.thonktank.autosecretary",
+    "apkAsset": "AutoSecretary.apk",
+    "metadataAsset": "release-metadata.json",
+    "apkSha256": "4c34fbd691809dd773d4835aa723a80404d796db0cd7cff496b69dee7d44470e",
+    "metadataSha256": "6c08e4feddac3688f5a93131688a555cf6a58363d9936f71b7aec0d2b913778e",
+    "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
+  },
+  "targetDatabaseVersion": 24,
+  "apiLanes": [
+    {
+      "apiLevel": 26,
+      "target": "default",
+      "arch": "x86_64",
+      "channel": "stable",
+      "risk": "Oldest Android and SQLite runtime"
+    },
+    {
+      "apiLevel": 35,
+      "target": "google_apis",
+      "arch": "x86_64",
+      "channel": "stable",
+      "risk": "Current stable Android runtime"
+    },
+    {
+      "apiLevel": "37.0",
+      "target": "google_apis",
+      "arch": "x86_64",
+      "channel": "canary",
+      "risk": "Forward Android runtime compatibility"
+    }
+  ],
+  "seed": [
+    {
+      "table": "tasks",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-floor-task",
+          "title": "Upgrade-Daten bleiben erhalten",
+          "slot": "LATER",
+          "recurrence": "ONCE",
+          "intervalDays": 1,
+          "weekdayMask": 0,
+          "ongoing": 0,
+          "conditionText": "",
+          "conditionDone": 0,
+          "archived": 0,
+          "nextDueOn": "2999-12-31",
+          "lastScheduledOn": "",
+          "lastCompletedOn": "",
+          "displayOrder": 4001024,
+          "hasCompletedOccurrence": 1,
+          "estimatedMinutes": null,
+          "timeOfDayMask": 0,
+          "boundKind": "FOREVER",
+          "boundUntilOn": "",
+          "boundWeeks": null,
+          "remainingCount": null,
+          "deadlineOn": "",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "table": "task_steps",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-floor-template",
+          "taskId": "upgrade-floor-task",
+          "position": 0,
+          "text": "Persistierten Schritt lesen",
+          "weekdayMask": 0,
+          "amountKind": "NONE",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": null,
+          "note": ""
+        }
+      ]
+    },
+    {
+      "table": "occurrences",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-floor-occurrence",
+          "taskId": "upgrade-floor-task",
+          "scheduledOn": "2999-12-31",
+          "state": "OPEN",
+          "sortOrder": 42,
+          "completedOn": "",
+          "slot": "LATER"
+        }
+      ]
+    },
+    {
+      "table": "occurrence_steps",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-floor-step",
+          "occurrenceId": "upgrade-floor-occurrence",
+          "position": 0,
+          "text": "Persistierten Schritt lesen",
+          "done": 1,
+          "amountKind": "NONE",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": null,
+          "note": "",
+          "actualRepetitions": "",
+          "sourceTemplateId": "upgrade-floor-template",
+          "comboOwnerId": "step:upgrade-floor-template"
+        }
+      ]
+    },
+    {
+      "table": "stats",
+      "conflict": "REPLACE",
+      "rows": [
+        {
+          "id": 1,
+          "xp": 73
+        }
+      ]
+    },
+    {
+      "table": "reward_bookings",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-floor-booking",
+          "transactionId": "upgrade-floor-transaction",
+          "occurrenceId": "upgrade-floor-occurrence",
+          "occurrenceStepId": "upgrade-floor-step",
+          "ownerId": "step:upgrade-floor-template",
+          "kind": "LEGACY_STEP",
+          "target": "VESSEL",
+          "xpDelta": 10,
+          "comboPointDelta": 0,
+          "bookedOn": "2999-12-31",
+          "reversesBookingId": null
+        }
+      ]
+    }
+  ],
+  "expectedTarget": [
+    {
+      "table": "tasks",
+      "where": {"id": "upgrade-floor-task"},
+      "values": {
+        "title": "Upgrade-Daten bleiben erhalten",
+        "catalogOrder": 4001024,
+        "boundKind": "FOREVER",
+        "cadenceAnchorOn": "2999-12-31"
+      }
+    },
+    {
+      "table": "task_schedule_entries",
+      "where": {"taskId": "upgrade-floor-task"},
+      "values": {"slot": "LATER", "displayOrder": 4001024}
+    },
+    {
+      "table": "task_steps",
+      "where": {"id": "upgrade-floor-template"},
+      "values": {
+        "text": "Persistierten Schritt lesen",
+        "intervalDays": 0,
+        "amountKind": "NONE",
+        "restTimerMode": "OFF"
+      }
+    },
+    {
+      "table": "occurrences",
+      "where": {"id": "upgrade-floor-occurrence"},
+      "values": {"taskId": "upgrade-floor-task", "state": "OPEN", "slot": "LATER"}
+    },
+    {
+      "table": "occurrence_steps",
+      "where": {"id": "upgrade-floor-step"},
+      "values": {
+        "text": "Persistierten Schritt lesen",
+        "done": 1,
+        "amountKind": "NONE",
+        "restTimerMode": "OFF",
+        "actualRepetitions": "",
+        "sourceTemplateId": "upgrade-floor-template",
+        "carryForwardReason": "NONE"
+      }
+    },
+    {
+      "table": "reward_bookings",
+      "where": {"id": "upgrade-floor-booking"},
+      "values": {"xpDelta": 10}
+    },
+    {
+      "table": "stats",
+      "where": {"id": 1},
+      "values": {"xp": 73}
+    }
+  ]
+}

@@ -24,11 +24,12 @@ public final class UpgradeProbeInstrumentation extends Instrumentation {
     @Override public void onStart() {
         Bundle result = new Bundle();
         String phase = arguments.getString("upgradePhase", "");
+        String fixtureId = arguments.getString("upgradeFixture", "");
         try {
             if ("seed".equals(phase)) {
-                UpgradePersistenceProbe.seed(getTargetContext(), getContext(), this);
+                UpgradePersistenceProbe.seed(getTargetContext(), getContext(), this, fixtureId);
             } else if ("verify".equals(phase)) {
-                UpgradePersistenceProbe.verify(getTargetContext(), getContext(), this);
+                UpgradePersistenceProbe.verify(getTargetContext(), getContext(), this, fixtureId);
             } else {
                 throw new AssertionError("Unknown upgrade phase: " + phase);
             }
