@@ -19,18 +19,18 @@ class FlowRunsComposeInstrumentationTest {
 
     @Test
     fun everyVisibleActionReturnsExactlyOnceThroughTheTypedHostBoundary() {
-        click(FlowRunsSemantics.BACK, "back")
-        click(FlowRunsSemantics.defer("offered"), "defer:offered")
-        click(FlowRunsSemantics.postpone("offered"), "postpone:offered")
-        click(FlowRunsSemantics.moveDown("offered"), "move:offered:capacity")
-        click(FlowRunsSemantics.cancel("offered"), "cancel:offered")
-        click(FlowRunsSemantics.readyNow("timed"), "ready:timed")
-        click(FlowRunsSemantics.adjustTime("timed"), "adjust:timed")
-        click(FlowRunsSemantics.moveUp("timed"), "move:timed:offered")
-        click(FlowRunsSemantics.moveDown("timed"), "move:timed:null")
-        click(FlowRunsSemantics.cancel("timed"), "cancel:timed")
-        click(FlowRunsSemantics.moveUp("capacity"), "move:capacity:timed")
-        click(FlowRunsSemantics.cancel("capacity"), "cancel:capacity")
+        clickAction(FlowRunsSemantics.BACK, "back")
+        clickAction(FlowRunsSemantics.defer("offered"), "defer:offered")
+        clickAction(FlowRunsSemantics.postpone("offered"), "postpone:offered")
+        clickAction(FlowRunsSemantics.moveDown("offered"), "move:offered:capacity")
+        clickAction(FlowRunsSemantics.cancel("offered"), "cancel:offered")
+        clickAction(FlowRunsSemantics.readyNow("timed"), "ready:timed")
+        clickAction(FlowRunsSemantics.adjustTime("timed"), "adjust:timed")
+        clickAction(FlowRunsSemantics.moveUp("timed"), "move:timed:offered")
+        clickAction(FlowRunsSemantics.moveDown("timed"), "move:timed:null")
+        clickAction(FlowRunsSemantics.cancel("timed"), "cancel:timed")
+        clickAction(FlowRunsSemantics.moveUp("capacity"), "move:capacity:timed")
+        clickAction(FlowRunsSemantics.cancel("capacity"), "cancel:capacity")
     }
 
     @Test
@@ -52,8 +52,7 @@ class FlowRunsComposeInstrumentationTest {
         compose.onNodeWithTag(FlowRunsSemantics.defer("offered")).assertIsNotEnabled()
     }
 
-    @Test
-    private fun click(tag: String, expectedAction: String) {
+    private fun clickAction(tag: String, expectedAction: String) {
         compose.onNodeWithTag(tag).performScrollTo().performClick()
         compose.waitUntil { compose.activity.actionCount(expectedAction) == 1 }
         assertEquals(1, compose.activity.actionCount(expectedAction))

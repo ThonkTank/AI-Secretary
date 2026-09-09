@@ -119,6 +119,42 @@ Getrennter Plan-/Roadmap-Audit:
 - Keine Abweichung und damit kein Korrekturplan erforderlich. Remote-Ausführung der Android-
   Interaktionsmatrix und Remote-Abschluss stehen noch aus.
 
+## Ereignis – 2026-09-09 – Phase 2 Korrekturplan 1
+
+Remote-Befund:
+
+- PR `#353`, Workflow `34340790267`: Quality grün; der normale Instrumentierungspfad auf
+  API 26 und API 35 verwirft `FlowRunsComposeInstrumentationTest` mit
+  `InvalidTestClassError`.
+- Die Diagnoseartefakte zeigen denselben Initialisierungsfehler: Die private Hilfsmethode
+  `click(tag, expectedAction)` trägt versehentlich die vom entfernten Vorgängertest
+  übriggebliebene `@Test`-Annotation. JUnit fordert sie deshalb als öffentlichen parameterlosen
+  Test an; keine FlowRuns-Interaktion wurde in diesen beiden Jobs ausgeführt.
+- Die Produktimplementierung und alle anderen bis dahin gelaufenen Tests sind von diesem
+  Klassifizierungsfehler nicht betroffen.
+
+Korrektur:
+
+1. Ausschließlich die irrtümliche `@Test`-Annotation der Hilfsmethode entfernen und die Methode
+   zur eindeutigen Lesbarkeit in `clickAction` umbenennen.
+2. Android-Test-Kompilierung, die betroffene Host-/State-Suite, vollständigen lokalen
+   Android-Gate und `git diff --check` erneut ausführen.
+3. Korrektur committen und auf denselben PR-Branch pushen. Keine fehlgeschlagene Matrixspur
+   einzeln wiederholen; der neue Commit muss den vollständigen PR-Workflow frisch durchlaufen.
+
+## Ereignis – 2026-09-09 – Phase 2 Korrektur 1 lokal validiert
+
+- Die Hilfsmethode heißt nun `clickAction` und trägt keine Testannotation mehr; die beiden
+  eigentlichen Testmethoden bleiben unverändert.
+- Android-Test-Kompilierung und fokussierte FlowRuns-State-/Golden-Verträge: grün.
+- Vollständiger lokaler Android-Gate einschließlich neu gebauter Instrumentierungs-Test-APK:
+  grün in 6:26 Minuten; `git diff --check`: grün.
+- Der beendete erste PR-Lauf `34340790267` bestätigt unabhängig bereits den neuen API-37-
+  `By.res`-Selektor sowie alle drei Animationspfade. Seine einzigen Produktgate-Fehler sind die
+  identischen JUnit-Klasseninitialisierungsfehler auf API 26 und 35, die diese Korrektur behebt.
+- Die vollständige Matrix wird auf dem neuen Commit frisch ausgeführt; es erfolgt kein partieller
+  Rerun des alten Commits.
+
 ## Phase 2 – Klarer Ablaufmonitor und robuste UI-Verträge
 
 Status: wartet auf Phase 1
