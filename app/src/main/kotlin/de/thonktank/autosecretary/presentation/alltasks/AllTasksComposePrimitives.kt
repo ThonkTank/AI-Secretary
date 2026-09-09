@@ -1,6 +1,5 @@
 package de.thonktank.autosecretary.presentation.alltasks
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -20,39 +18,28 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.R
+import de.thonktank.autosecretary.presentation.mobile.MobileActionButton
+import de.thonktank.autosecretary.presentation.mobile.MobileActionStyle
+import de.thonktank.autosecretary.presentation.mobile.MobileSans
+import de.thonktank.autosecretary.presentation.mobile.MobileText
+import de.thonktank.autosecretary.presentation.mobile.mobileColor
+import de.thonktank.autosecretary.presentation.mobile.mobileLeaf
+import de.thonktank.autosecretary.presentation.mobile.mobileLeafShape
 
-internal val AllTasksSerif = FontFamily(
-    Font(R.font.newsreader, FontWeight.Normal),
-    Font(R.font.newsreader_italic, FontWeight.Normal, FontStyle.Italic),
-)
-internal val AllTasksSans = FontFamily(
-    Font(R.font.alegreya_sans, FontWeight.Normal),
-    Font(R.font.alegreya_sans_bold, FontWeight.Bold),
-)
-
-internal fun color(value: Int): Color = Color(value)
+internal fun color(value: Int): Color = mobileColor(value)
 
 internal fun leafShape(
     topStart: Dp = 42.dp,
     topEnd: Dp = 8.dp,
     bottomEnd: Dp = 42.dp,
     bottomStart: Dp = 8.dp,
-): Shape = RoundedCornerShape(topStart, topEnd, bottomEnd, bottomStart)
+): Shape = mobileLeafShape(topStart, topEnd, bottomEnd, bottomStart)
 
 @Composable
 internal fun AllTasksText(
@@ -66,20 +53,18 @@ internal fun AllTasksText(
     underline: Boolean = false,
     maxLines: Int = Int.MAX_VALUE,
 ) {
-    BasicText(
+    MobileText(
         text = text,
+        color = color,
+        size = size,
         modifier = modifier,
-        style = TextStyle(
-            color = color,
-            fontSize = size.sp,
-            fontFamily = if (serif) AllTasksSerif else AllTasksSans,
-            fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-            textDecoration = if (underline) TextDecoration.Underline else TextDecoration.None,
-            letterSpacing = if (serif && size >= 30) (-.6).sp else 0.sp,
-        ),
+        serif = serif,
+        italic = italic,
+        bold = bold,
+        underline = underline,
         maxLines = maxLines,
-        overflow = TextOverflow.Ellipsis,
+        serifHeadlineFrom = 30,
+        serifHeadlineLetterSpacing = -.6f,
     )
 }
 
@@ -128,26 +113,15 @@ internal fun AllTasksChoiceChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(22.dp)
-    val background = if (selected) color(palette.accent) else color(palette.leaf1)
-    val edge = if (selected) color(palette.accent) else color(palette.leaf1Edge)
-    val foreground = if (selected) color(palette.accentText) else color(palette.ink2)
-    Box(
-        modifier = modifier
-            .defaultMinSize(minHeight = 44.dp)
-            .background(background, shape)
-            .border(BorderStroke(1.dp, edge), shape)
-            .semantics { contentDescription = label; role = Role.Button }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 15.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        AllTasksText(label, foreground, 15, bold = selected, maxLines = 1)
-    }
+    MobileActionButton(
+        label = label,
+        palette = palette,
+        onClick = onClick,
+        modifier = modifier,
+        style = if (selected) MobileActionStyle.PRIMARY else MobileActionStyle.SECONDARY,
+        horizontalPadding = 15.dp,
+        bold = selected,
+    )
 }
 
 @Composable
@@ -158,26 +132,18 @@ internal fun AllTasksControlButton(
     modifier: Modifier = Modifier,
     prominent: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(16.dp)
-    val background = if (prominent) color(palette.accent) else color(palette.leaf1)
-    val edge = if (prominent) color(palette.accent) else color(palette.leaf1Edge)
-    val foreground = if (prominent) color(palette.accentText) else color(palette.ink2)
-    Box(
-        modifier = modifier
-            .defaultMinSize(minHeight = 48.dp)
-            .background(background, shape)
-            .border(BorderStroke(1.dp, edge), shape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                role = Role.Button,
-                onClick = onClick,
-            )
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        AllTasksText(label, foreground, 16, bold = prominent, maxLines = 1)
-    }
+    MobileActionButton(
+        label = label,
+        palette = palette,
+        onClick = onClick,
+        modifier = modifier,
+        style = if (prominent) MobileActionStyle.PRIMARY else MobileActionStyle.SECONDARY,
+        minHeight = 48.dp,
+        cornerRadius = 16.dp,
+        horizontalPadding = 12.dp,
+        fontSize = 16,
+        bold = prominent,
+    )
 }
 
 @Composable
@@ -200,7 +166,7 @@ internal fun AllTasksSearch(
         textStyle = TextStyle(
             color = color(palette.ink),
             fontSize = 17.sp,
-            fontFamily = AllTasksSans,
+            fontFamily = MobileSans,
         ),
         cursorBrush = SolidColor(color(palette.accent)),
         decorationBox = { field ->
@@ -223,9 +189,5 @@ internal fun Modifier.leaf(
     shape: Shape = leafShape(),
     level: Int = 2,
 ): Modifier {
-    val fill = if (level == 1) palette.leaf1 else if (level == 2) palette.leaf2 else palette.leaf3
-    val edge = if (level == 1) palette.leaf1Edge else if (level == 2) palette.leaf2Edge
-    else palette.leaf3Edge
-    return background(color(fill), shape)
-        .border(1.dp, color(edge), shape)
+    return mobileLeaf(palette, shape, level)
 }

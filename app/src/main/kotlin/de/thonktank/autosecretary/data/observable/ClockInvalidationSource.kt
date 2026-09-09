@@ -3,6 +3,8 @@ package de.thonktank.autosecretary.data.observable
 import android.os.Handler
 import android.os.Looper
 import de.thonktank.autosecretary.Clock
+import de.thonktank.autosecretary.SystemZoneIdProvider
+import de.thonktank.autosecretary.ZoneIdProvider
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.concurrent.atomic.AtomicBoolean
@@ -26,7 +28,25 @@ data class ClockSnapshot(
     val date: LocalDate,
     val time: LocalTime,
     val reason: ClockInvalidationReason,
-)
+    val epochMillis: Long,
+) {
+    companion object {
+        @JvmStatic
+        fun capture(
+            clock: Clock,
+            zones: ZoneIdProvider,
+            reason: ClockInvalidationReason,
+        ): ClockSnapshot {
+            val now = clock.now()
+            return ClockSnapshot(
+                date = now.toLocalDate(),
+                time = now.toLocalTime(),
+                reason = reason,
+                epochMillis = now.atZone(zones.zoneId()).toInstant().toEpochMilli(),
+            )
+        }
+    }
+}
 
 fun interface TimeSignalSubscription {
     fun close()
@@ -71,8 +91,15 @@ class AndroidMinuteTicker internal constructor(
 /** Cold clock snapshots for initial load, minute boundaries and explicit foreground refreshes. */
 class ClockInvalidationSource(
     private val clock: Clock,
+    private val zones: ZoneIdProvider,
     private val ticker: MinuteTicker,
 ) {
+    constructor(clock: Clock, ticker: MinuteTicker) : this(
+        clock,
+        SystemZoneIdProvider(),
+        ticker,
+    )
+
     private val foregroundSignals = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -98,12 +125,6 @@ class ClockInvalidationSource(
         foregroundSignals.tryEmit(Unit)
     }
 
-    private fun snapshot(reason: ClockInvalidationReason): ClockSnapshot {
-        val now = clock.now()
-        return ClockSnapshot(
-            date = now.toLocalDate(),
-            time = now.toLocalTime(),
-            reason = reason,
-        )
-    }
+    private fun snapshot(reason: ClockInvalidationReason): ClockSnapshot =
+        ClockSnapshot.capture(clock, zones, reason)
 }

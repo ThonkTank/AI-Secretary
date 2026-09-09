@@ -1,8 +1,6 @@
 package de.thonktank.autosecretary.presentation.flowruns
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +11,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,43 +19,29 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.FlowRunsScreenState
 import de.thonktank.autosecretary.R
 import de.thonktank.autosecretary.domain.model.FlowResourceState
 import de.thonktank.autosecretary.domain.model.FlowRunSummary
 import de.thonktank.autosecretary.domain.model.StepFlowRunState
-
-private val FlowRunsSerif = FontFamily(
-    Font(R.font.newsreader, FontWeight.Normal),
-    Font(R.font.newsreader_italic, FontWeight.Normal, FontStyle.Italic),
-)
-private val FlowRunsSans = FontFamily(
-    Font(R.font.alegreya_sans, FontWeight.Normal),
-    Font(R.font.alegreya_sans_bold, FontWeight.Bold),
-)
+import de.thonktank.autosecretary.presentation.mobile.MobileActionButton
+import de.thonktank.autosecretary.presentation.mobile.MobileActionStyle
+import de.thonktank.autosecretary.presentation.mobile.MobileText
+import de.thonktank.autosecretary.presentation.mobile.mobileColor
+import de.thonktank.autosecretary.presentation.mobile.mobileLeaf
+import de.thonktank.autosecretary.presentation.mobile.remainingDurationText
 
 @Composable
 internal fun FlowRunsComposeScreen(
@@ -69,7 +52,7 @@ internal fun FlowRunsComposeScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(flowColor(palette.background))
+            .background(mobileColor(palette.background))
             .testTag("flow-runs:screen"),
         contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -78,9 +61,9 @@ internal fun FlowRunsComposeScreen(
             FlowRunsHeader(palette, callbacks::onBack)
         }
         item(key = "intro") {
-            FlowText(
+            MobileText(
                 stringResource(R.string.flow_runs_description),
-                flowColor(palette.ink2),
+                mobileColor(palette.ink2),
                 16,
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
@@ -129,6 +112,7 @@ internal fun FlowRunsComposeScreen(
                     runs = state.runs,
                     busy = state.changing,
                     palette = palette,
+                    nowEpochMillis = state.nowEpochMillis,
                     callbacks = callbacks,
                 )
             }
@@ -147,8 +131,7 @@ private fun FlowRunsHeader(palette: DayPalette, onBack: () -> Unit) {
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .background(flowColor(palette.leaf1), RoundedCornerShape(24.dp))
-                .border(1.dp, flowColor(palette.leaf1Edge), RoundedCornerShape(24.dp))
+                .mobileLeaf(palette, RoundedCornerShape(24.dp), level = 1)
                 .semantics { contentDescription = label; role = Role.Button }
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -157,11 +140,11 @@ private fun FlowRunsHeader(palette: DayPalette, onBack: () -> Unit) {
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            FlowText("‹", flowColor(palette.ink), 32, serif = true)
+            MobileText("‹", mobileColor(palette.ink), 32, serif = true)
         }
-        FlowText(
+        MobileText(
             stringResource(R.string.flow_runs_title),
-            flowColor(palette.ink),
+            mobileColor(palette.ink),
             29,
             modifier = Modifier.weight(1f),
             serif = true,
@@ -180,12 +163,16 @@ private fun FlowStatusPanel(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(flowColor(palette.leaf3), shape)
-            .border(1.dp, flowColor(if (error) palette.bad else palette.leaf3Edge), shape)
+            .mobileLeaf(
+                palette,
+                shape,
+                level = 3,
+                edgeColor = if (error) palette.bad else null,
+            )
             .padding(horizontal = 18.dp, vertical = 18.dp)
             .testTag(tag),
     ) {
-        FlowText(text, flowColor(if (error) palette.bad else palette.hint), 17)
+        MobileText(text, mobileColor(if (error) palette.bad else palette.hint), 17)
     }
 }
 
@@ -197,44 +184,50 @@ private fun FlowRunCard(
     runs: List<FlowRunSummary>,
     busy: Boolean,
     palette: DayPalette,
+    nowEpochMillis: Long,
     callbacks: FlowRunsComposeCallbacks,
 ) {
     val shape = RoundedCornerShape(42.dp, 12.dp, 42.dp, 12.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(flowColor(palette.leaf2), shape)
-            .border(1.dp, flowColor(palette.leaf2Edge), shape)
+            .mobileLeaf(palette, shape, level = 2)
             .padding(horizontal = 18.dp, vertical = 16.dp)
             .testTag("flow-runs:card:${run.id}"),
     ) {
-        FlowText(run.seedTitle, flowColor(palette.ink), 23, serif = true, maxLines = 2)
-        FlowText(
+        MobileText(run.seedTitle, mobileColor(palette.ink), 23, serif = true, maxLines = 2)
+        MobileText(
             run.taskTitle,
-            flowColor(palette.muted),
+            mobileColor(palette.muted),
             14,
             modifier = Modifier.padding(top = 1.dp),
             maxLines = 1,
         )
         Spacer(Modifier.height(11.dp))
-        FlowText(run.currentStepTitle, flowColor(palette.ink2), 18, bold = true, maxLines = 2)
+        MobileText(
+            run.currentStepTitle,
+            mobileColor(palette.ink2),
+            18,
+            bold = true,
+            maxLines = 2,
+        )
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            FlowText(
+            MobileText(
                 stringResource(
                     R.string.flow_step_number,
                     run.currentPosition + 1,
                     run.totalSteps,
                 ),
-                flowColor(palette.hint),
+                mobileColor(palette.hint),
                 14,
             )
-            FlowText(
-                flowStatus(run),
-                flowColor(palette.status),
+            MobileText(
+                flowStatus(run, nowEpochMillis),
+                mobileColor(palette.status),
                 14,
                 bold = true,
                 maxLines = 1,
@@ -246,19 +239,19 @@ private fun FlowRunCard(
                 .fillMaxWidth()
                 .padding(top = 7.dp)
                 .height(5.dp)
-                .background(flowColor(palette.leaf1Edge), progressShape),
+                .background(mobileColor(palette.leaf1Edge), progressShape),
         ) {
             Box(
                 Modifier
                     .fillMaxWidth((run.currentPosition + 1f) / run.totalSteps.toFloat())
                     .height(5.dp)
-                    .background(flowColor(palette.accent), progressShape),
+                    .background(mobileColor(palette.accent), progressShape),
             )
         }
         if (run.resources.isNotEmpty()) {
-            FlowText(
+            MobileText(
                 flowResources(run),
-                flowColor(palette.muted),
+                mobileColor(palette.muted),
                 14,
                 modifier = Modifier.padding(top = 10.dp),
                 maxLines = 2,
@@ -320,48 +313,26 @@ private fun FlowActionButton(
     destructive: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(22.dp)
-    val fill = if (prominent) flowColor(palette.accent) else flowColor(palette.leaf1)
-    val edge = when {
-        destructive -> flowColor(palette.bad)
-        prominent -> flowColor(palette.accent)
-        else -> flowColor(palette.leaf1Edge)
-    }
-    val foreground = when {
-        destructive -> flowColor(palette.bad)
-        prominent -> flowColor(palette.accentText)
-        else -> flowColor(palette.ink2)
-    }
-    Box(
-        modifier = Modifier
-            .defaultMinSize(minHeight = 44.dp)
-            .background(fill, shape)
-            .border(BorderStroke(1.dp, edge), shape)
-            .alpha(if (busy) .5f else 1f)
-            .semantics {
-                contentDescription = label
-                role = Role.Button
-                if (busy) disabled()
-            }
-            .clickable(
-                enabled = !busy,
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 14.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        FlowText(label, foreground, 15, bold = prominent, maxLines = 1)
-    }
+    MobileActionButton(
+        label = label,
+        palette = palette,
+        onClick = onClick,
+        style = when {
+            destructive -> MobileActionStyle.DESTRUCTIVE
+            prominent -> MobileActionStyle.PRIMARY
+            else -> MobileActionStyle.SECONDARY
+        },
+        enabled = !busy,
+        bold = prominent,
+    )
 }
 
 @Composable
-private fun flowStatus(run: FlowRunSummary): String = when (run.state) {
+private fun flowStatus(run: FlowRunSummary, nowEpochMillis: Long): String = when (run.state) {
     StepFlowRunState.OFFERED -> stringResource(R.string.flow_status_ready_short)
     StepFlowRunState.WAITING_TIME -> stringResource(
         R.string.flow_status_waiting_time_short,
-        remainingFlowTime(run.readyAtEpochMillis),
+        remainingDurationText(run.readyAtEpochMillis, nowEpochMillis),
     )
     else -> stringResource(R.string.flow_status_waiting_capacity_short)
 }
@@ -379,42 +350,3 @@ private fun flowResources(run: FlowRunSummary): String {
         resources.getString(R.string.flow_resource_summary, resource.name, resource.units, state)
     }
 }
-
-internal fun remainingFlowTime(readyAtEpochMillis: Long?, now: Long = System.currentTimeMillis()): String {
-    if (readyAtEpochMillis == null) return ""
-    val minutes = (kotlin.math.max(0L, readyAtEpochMillis - now) + 59_999L) / 60_000L
-    if (minutes < 60L) return "$minutes min"
-    val hours = minutes / 60L
-    val restMinutes = minutes % 60L
-    if (hours < 24L) return if (restMinutes == 0L) "$hours h" else "$hours h $restMinutes min"
-    val days = hours / 24L
-    val restHours = hours % 24L
-    return if (restHours == 0L) "$days d" else "$days d $restHours h"
-}
-
-@Composable
-private fun FlowText(
-    text: String,
-    color: Color,
-    size: Int,
-    modifier: Modifier = Modifier,
-    serif: Boolean = false,
-    bold: Boolean = false,
-    maxLines: Int = Int.MAX_VALUE,
-) {
-    BasicText(
-        text = text,
-        modifier = modifier,
-        style = TextStyle(
-            color = color,
-            fontSize = size.sp,
-            fontFamily = if (serif) FlowRunsSerif else FlowRunsSans,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-            letterSpacing = if (serif && size >= 28) (-.5).sp else 0.sp,
-        ),
-        maxLines = maxLines,
-        overflow = TextOverflow.Ellipsis,
-    )
-}
-
-private fun flowColor(value: Int): Color = Color(value)

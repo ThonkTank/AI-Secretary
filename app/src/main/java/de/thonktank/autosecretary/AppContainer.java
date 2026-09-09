@@ -92,7 +92,8 @@ public final class AppContainer {
                 uiPreferences::calendarPolicy, logger, texts);
         this.calendarInvalidations = new CalendarInvalidationSource(calendar);
         this.preferenceInvalidations = new PreferenceInvalidationSource(uiPreferences);
-        this.clockInvalidations = new ClockInvalidationSource(clock, new AndroidMinuteTicker());
+        this.clockInvalidations = new ClockInvalidationSource(
+                clock, zones, new AndroidMinuteTicker());
         this.presentationInvalidations = new PresentationInvalidationSource(databaseInvalidations,
                 calendarInvalidations, preferenceInvalidations, clockInvalidations);
         this.flowWakeScheduler = new FlowWakeScheduler(app, flows.activateReadyFlows, logger);

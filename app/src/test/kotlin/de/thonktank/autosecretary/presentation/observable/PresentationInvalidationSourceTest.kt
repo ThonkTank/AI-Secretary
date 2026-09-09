@@ -63,8 +63,10 @@ class PresentationInvalidationSourceTest {
         try {
             val dashboard = source.dashboardChanges.produceIn(this)
             val catalog = source.catalogChanges.produceIn(this)
+            val flowRuns = source.flowRunChanges.produceIn(this)
             assertInitial(dashboard.receive(), PresentationInvalidationTarget.DASHBOARD)
             assertInitial(catalog.receive(), PresentationInvalidationTarget.CATALOG)
+            assertInitial(flowRuns.receive(), PresentationInvalidationTarget.FLOW_RUNS)
             await { inputs.allStarts(1) }
             assertEquals(
                 setOf(
@@ -77,6 +79,7 @@ class PresentationInvalidationSourceTest {
                 (1..5).map { dashboard.receive().cause }.toSet(),
             )
             assertEquals(PresentationInvalidationCause.DATABASE, catalog.receive().cause)
+            assertEquals(PresentationInvalidationCause.CLOCK, flowRuns.receive().cause)
 
             inputs.database.emit(setOf("tasks"))
             assertEquals(PresentationInvalidationCause.DATABASE, dashboard.receive().cause)
@@ -104,15 +107,18 @@ class PresentationInvalidationSourceTest {
                 LocalDate.of(2026, 8, 25),
                 LocalTime.MIDNIGHT,
                 ClockInvalidationReason.MINUTE_TICK,
+                0L,
             )
             inputs.clock.emit(clock)
             assertEquals(clock, dashboard.receive().clock)
             assertEquals(clock, widgets.receive().clock)
+            assertEquals(clock, flowRuns.receive().clock)
             assertTrue(catalog.tryReceive().isFailure)
 
             dashboard.cancel()
             catalog.cancel()
             widgets.cancel()
+            flowRuns.cancel()
         } finally {
             source.close()
             dispatcher.close()
@@ -196,6 +202,7 @@ class PresentationInvalidationSourceTest {
                 LocalDate.of(2026, 8, 24),
                 LocalTime.NOON,
                 ClockInvalidationReason.INITIAL,
+                0L,
             ),
         )
 

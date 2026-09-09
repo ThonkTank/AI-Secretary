@@ -18,11 +18,13 @@ import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.R
 import de.thonktank.autosecretary.domain.model.FlowRunSummary
 import de.thonktank.autosecretary.domain.model.StepFlowRunState
+import de.thonktank.autosecretary.presentation.mobile.remainingDurationText
 
 @Composable
 internal fun AllTasksRunningFlows(
     runs: List<FlowRunSummary>,
     palette: DayPalette,
+    nowEpochMillis: Long,
     onOpen: () -> Unit,
 ) {
     if (runs.isEmpty()) return
@@ -53,7 +55,7 @@ internal fun AllTasksRunningFlows(
         }
         runs.take(2).forEach { run ->
             AllTasksText(
-                "${run.seedTitle} · ${flowStatus(run, resources)}",
+                "${run.seedTitle} · ${flowStatus(run, resources, nowEpochMillis)}",
                 color(palette.ink2),
                 14,
                 Modifier.fillMaxWidth().padding(top = 4.dp),
@@ -75,7 +77,11 @@ internal fun AllTasksRunningFlows(
     }
 }
 
-private fun flowStatus(run: FlowRunSummary, resources: android.content.res.Resources): String =
+private fun flowStatus(
+    run: FlowRunSummary,
+    resources: android.content.res.Resources,
+    nowEpochMillis: Long,
+): String =
     when (run.state) {
         StepFlowRunState.OFFERED -> resources.getString(
             R.string.all_flow_ready,
@@ -84,19 +90,7 @@ private fun flowStatus(run: FlowRunSummary, resources: android.content.res.Resou
         StepFlowRunState.WAITING_TIME -> resources.getString(
             R.string.all_flow_waiting_time,
             run.currentStepTitle,
-            remaining(run.readyAtEpochMillis),
+            remainingDurationText(run.readyAtEpochMillis, nowEpochMillis),
         )
         else -> resources.getString(R.string.all_flow_waiting_capacity, run.currentStepTitle)
     }
-
-private fun remaining(readyAt: Long?): String {
-    if (readyAt == null) return ""
-    val minutes = ((readyAt - System.currentTimeMillis()).coerceAtLeast(0L) + 59_999L) / 60_000L
-    if (minutes < 60L) return "$minutes min"
-    val hours = minutes / 60L
-    val restMinutes = minutes % 60L
-    if (hours < 24L) return if (restMinutes == 0L) "$hours h" else "$hours h $restMinutes min"
-    val days = hours / 24L
-    val restHours = hours % 24L
-    return if (restHours == 0L) "$days d" else "$days d $restHours h"
-}

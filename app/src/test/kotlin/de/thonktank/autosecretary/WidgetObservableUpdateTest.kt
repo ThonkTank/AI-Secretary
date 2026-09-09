@@ -154,6 +154,7 @@ class WidgetObservableUpdateTest {
                 LocalDate.of(2026, 8, 26),
                 LocalTime.MIDNIGHT,
                 ClockInvalidationReason.MINUTE_TICK,
+                0L,
             )
 
             fixture.invalidations.clockChanged(snapshot)

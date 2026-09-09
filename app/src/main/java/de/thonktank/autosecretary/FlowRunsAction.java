@@ -4,7 +4,9 @@ import androidx.annotation.Nullable;
 
 /** Closed interaction boundary for the operational flow-run screen. */
 public final class FlowRunsAction {
-    public enum Kind { REFRESH, DEFER, READY_AT, POSTPONE, MOVE_BEFORE, CANCEL, ACKNOWLEDGE_ERROR }
+    public enum Kind {
+        REFRESH, PRESENT_AT, DEFER, READY_AT, POSTPONE, MOVE_BEFORE, CANCEL, ACKNOWLEDGE_ERROR
+    }
 
     public final Kind kind;
     public final String runId;
@@ -23,6 +25,11 @@ public final class FlowRunsAction {
 
     public static FlowRunsAction refresh() {
         return new FlowRunsAction(Kind.REFRESH, "", null, 0L, 0L);
+    }
+
+    public static FlowRunsAction presentAt(long epochMillis) {
+        if (epochMillis < 0L) throw new IllegalArgumentException("Presentation time is required");
+        return new FlowRunsAction(Kind.PRESENT_AT, "", null, epochMillis, 0L);
     }
 
     public static FlowRunsAction readyAt(String runId, long epochMillis) {

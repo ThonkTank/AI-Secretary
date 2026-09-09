@@ -42,6 +42,7 @@ internal fun AllTasksComposeScreen(
     dragSourceKey: String? = null,
     forcedFilterSheet: Boolean = false,
     flowRuns: List<FlowRunSummary> = emptyList(),
+    nowEpochMillis: Long = 0L,
     onOpenFlowRuns: () -> Unit = { },
 ) {
     var filterSheetOpen by remember { mutableStateOf(false) }
@@ -111,7 +112,7 @@ internal fun AllTasksComposeScreen(
                 modifier = Modifier.fillMaxWidth().testTag("all-tasks:search"),
             )
             if (state.mode == AllTasksUiState.Mode.LIST) {
-                AllTasksRunningFlows(flowRuns, palette, onOpenFlowRuns)
+                AllTasksRunningFlows(flowRuns, palette, nowEpochMillis, onOpenFlowRuns)
             }
             AllTasksComposeControls(
                 state = state,

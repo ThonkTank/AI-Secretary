@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import de.thonktank.autosecretary.Clock
+import de.thonktank.autosecretary.SystemZoneIdProvider
 import de.thonktank.autosecretary.calendar.CalendarDataSource
 import de.thonktank.autosecretary.calendar.CalendarPolicy
 import de.thonktank.autosecretary.calendar.CalendarResult
@@ -16,6 +17,7 @@ import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.runBlocking
@@ -113,7 +115,11 @@ class EnvironmentInvalidationSourcesTest {
         val emissions = source.changes.produceIn(this)
 
         assertEquals(
-            ClockSnapshot(clock.today(), clock.time(), ClockInvalidationReason.INITIAL),
+            ClockSnapshot.capture(
+                clock,
+                SystemZoneIdProvider(),
+                ClockInvalidationReason.INITIAL,
+            ),
             emissions.next(),
         )
         assertEquals(1, ticker.observerCount)
@@ -121,7 +127,11 @@ class EnvironmentInvalidationSourcesTest {
         clock.time = LocalTime.of(23, 59, 30)
         source.materializeForeground()
         assertEquals(
-            ClockSnapshot(clock.today(), clock.time(), ClockInvalidationReason.FOREGROUND),
+            ClockSnapshot.capture(
+                clock,
+                SystemZoneIdProvider(),
+                ClockInvalidationReason.FOREGROUND,
+            ),
             emissions.next(),
         )
 
@@ -129,7 +139,11 @@ class EnvironmentInvalidationSourcesTest {
         clock.time = LocalTime.MIDNIGHT
         ticker.signal()
         assertEquals(
-            ClockSnapshot(clock.today(), clock.time(), ClockInvalidationReason.MINUTE_TICK),
+            ClockSnapshot.capture(
+                clock,
+                SystemZoneIdProvider(),
+                ClockInvalidationReason.MINUTE_TICK,
+            ),
             emissions.next(),
         )
 
@@ -154,18 +168,23 @@ class EnvironmentInvalidationSourcesTest {
     @Test
     fun clockSnapshotUsesOneCoherentWallClockReading() = runBlocking {
         val expected = LocalDateTime.of(2026, 8, 25, 0, 0)
+        val zone = ZoneId.of("Europe/Berlin")
         val clock = object : Clock {
             override fun today(): LocalDate = error("split date read")
             override fun time(): LocalTime = error("split time read")
             override fun now(): LocalDateTime = expected
         }
-        val emissions = ClockInvalidationSource(clock, ManualMinuteTicker()).changes.produceIn(this)
+        val emissions = ClockInvalidationSource(
+            clock,
+            { zone },
+            ManualMinuteTicker(),
+        ).changes.produceIn(this)
 
-        assertEquals(
-            ClockSnapshot(expected.toLocalDate(), expected.toLocalTime(),
-                ClockInvalidationReason.INITIAL),
-            emissions.next(),
-        )
+        val snapshot = emissions.next()
+        assertEquals(expected.toLocalDate(), snapshot.date)
+        assertEquals(expected.toLocalTime(), snapshot.time)
+        assertEquals(ClockInvalidationReason.INITIAL, snapshot.reason)
+        assertEquals(expected.atZone(zone).toInstant().toEpochMilli(), snapshot.epochMillis)
         emissions.cancel()
     }
 
