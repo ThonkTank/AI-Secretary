@@ -66,6 +66,18 @@ SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").re
 INSTRUMENTATION_RUNNER = (ROOT / "scripts" / "ci" / "run-instrumentation.sh").read_text(
     encoding="utf-8"
 )
+FAST_QUALITY_RUNNER = (ROOT / "scripts" / "ci" / "check-fast.sh").read_text(
+    encoding="utf-8"
+)
+GOLDEN_QUALITY_RUNNER = (ROOT / "scripts" / "ci" / "check-goldens.sh").read_text(
+    encoding="utf-8"
+)
+FULL_QUALITY_RUNNER = (ROOT / "scripts" / "ci" / "check-all.sh").read_text(
+    encoding="utf-8"
+)
+INSTRUMENTATION_IDENTITY = (
+    ROOT / "scripts" / "ci" / "verify-instrumentation-identity.sh"
+).read_text(encoding="utf-8")
 PREVIEW_SDK_RUNNER = (
     ROOT / "scripts" / "ci" / "prepare-preview-sdk-tools.sh"
 ).read_text(encoding="utf-8")
@@ -269,7 +281,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("-keep class kotlin.** { *; }", RELEASE_PROGUARD)
         self.assertIn("assembleInstrumentationAndroidTest", WORKFLOW)
         self.assertNotIn("assembleDebugAndroidTest", WORKFLOW)
-        self.assertIn("testInstrumentationUnitTest", WORKFLOW)
+        self.assertIn("testInstrumentationUnitTest", FAST_QUALITY_RUNNER)
         self.assertIn(
             "app/build/outputs/apk/androidTest/instrumentation/"
             "app-instrumentation-androidTest.apk",
@@ -322,9 +334,68 @@ class WorkflowContractTest(unittest.TestCase):
             self.assertIn(f'!ui.contains("{key}")', UPGRADE_PROBE)
         self.assertIn("OK (1 probe)", UPGRADE_INSTRUMENTATION)
 
+    def test_phase_7_verification_is_split_bounded_and_test_app_isolated(self):
+        quality_contracts = WORKFLOW.split("\n  quality-contracts:", 1)[1].split(
+            "\n  quality-goldens:", 1
+        )[0]
+        quality_goldens = WORKFLOW.split("\n  quality-goldens:", 1)[1].split(
+            "\n  quality-build:", 1
+        )[0]
+        quality_build = WORKFLOW.split("\n  quality-build:", 1)[1].split(
+            "\n  quality:", 1
+        )[0]
+        instrumentation = WORKFLOW.split("\n  instrumentation:", 1)[1].split(
+            "\n  animation-instrumentation:", 1
+        )[0]
+        animation = WORKFLOW.split("\n  animation-instrumentation:", 1)[1].split(
+            "\n  instrumentation-gate:", 1
+        )[0]
+        upgrade = WORKFLOW.split("\n  upgrade:", 1)[1].split("\n  publish:", 1)[0]
+
+        self.assertIn("./scripts/ci/check-fast.sh", quality_contracts)
+        self.assertIn("./scripts/ci/check-goldens.sh", quality_goldens)
+        self.assertIn("lintDebug assembleDebug assembleInstrumentation", quality_build)
+        for lane in (quality_contracts, quality_goldens):
+            self.assertIn("timeout-minutes: 15", lane)
+            self.assertIn("timeout-minutes: 12", lane)
+            self.assertIn("if: failure()", lane)
+            self.assertNotIn("retry", lane.lower())
+        self.assertIn("timeout-minutes: 30", quality_build)
+        self.assertIn("timeout-minutes: 25", quality_build)
+        self.assertIn("if: failure()", quality_build)
+        self.assertNotIn("retry", quality_build.lower())
+        for emulator_lane in (instrumentation, animation, upgrade):
+            self.assertIn("timeout-minutes: 20", emulator_lane)
+            self.assertNotIn("retry", emulator_lane.lower())
+
+        self.assertIn('providers.gradleProperty("qualityContractsOnly")', APP_BUILD)
+        self.assertIn('exclude("**/*Golden*")', APP_BUILD)
+        self.assertIn('exclude("**/DesignSystemTest.*")', APP_BUILD)
+        self.assertIn('if (!useUpgradeProbeRunner)', APP_BUILD)
+        self.assertIn('applicationIdSuffix = ".test"', APP_BUILD)
+        self.assertIn(
+            'manifestPlaceholders["appLabel"] = "Auto Secretary Test"', APP_BUILD
+        )
+        self.assertIn(
+            'manifestPlaceholders["appLabel"] = "Auto Secretary"', APP_BUILD
+        )
+        self.assertIn('android:label="${appLabel}"', MAIN_MANIFEST)
+        self.assertIn("./scripts/ci/verify-instrumentation-identity.sh", quality_build)
+        self.assertIn("de.thonktank.autosecretary.test.test", INSTRUMENTATION_IDENTITY)
+        self.assertIn("Auto Secretary Test", INSTRUMENTATION_IDENTITY)
+        self.assertIn("androidx.test.runner.AndroidJUnitRunner", INSTRUMENTATION_IDENTITY)
+        self.assertIn("de.thonktank.autosecretary.test", INSTRUMENTATION_IDENTITY)
+        self.assertIn("Unexpected production probe package", WORKFLOW)
+        self.assertIn("Production probe uses the wrong runner", WORKFLOW)
+        self.assertIn("Production probe targets the wrong package", WORKFLOW)
+        self.assertIn("testInstrumentationUnitTest lintDebug assembleDebug", FULL_QUALITY_RUNNER)
+        self.assertIn("assembleInstrumentationAndroidTest assembleRelease", FULL_QUALITY_RUNNER)
+        self.assertIn("verify-instrumentation-identity.sh", FULL_QUALITY_RUNNER)
+        self.assertNotIn("qualityContractsOnly", FULL_QUALITY_RUNNER)
+
     def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):
-        quality = WORKFLOW.split("\n  quality:", 1)[1].split(
-            "\n  instrumentation:", 1
+        quality_build = WORKFLOW.split("\n  quality-build:", 1)[1].split(
+            "\n  quality:", 1
         )[0]
         instrumentation = WORKFLOW.split("\n  instrumentation:", 1)[1].split(
             "\n  animation-instrumentation:", 1
@@ -336,11 +407,11 @@ class WorkflowContractTest(unittest.TestCase):
 
         self.assertIn(
             'test "$(stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk)" -lt 8388608',
-            quality,
+            quality_build,
         )
         self.assertIn(
             'test "$(du -cb app/src/main/res/font/*.ttf | tail -1 | cut -f1)" -lt 1677722',
-            quality,
+            quality_build,
         )
         self.assertIn("MAX_APK_BYTES = 8 * 1024 * 1024", RELEASE_TOOL)
         for job in (instrumentation, animation):
@@ -401,6 +472,15 @@ class WorkflowContractTest(unittest.TestCase):
 
     def test_change_scope_separates_quality_instrumentation_and_release(self):
         release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
+            "\n  quality-contracts:", 1
+        )[0]
+        quality_contracts = WORKFLOW.split("\n  quality-contracts:", 1)[1].split(
+            "\n  quality-goldens:", 1
+        )[0]
+        quality_goldens = WORKFLOW.split("\n  quality-goldens:", 1)[1].split(
+            "\n  quality-build:", 1
+        )[0]
+        quality_build = WORKFLOW.split("\n  quality-build:", 1)[1].split(
             "\n  quality:", 1
         )[0]
         quality = WORKFLOW.split("\n  quality:", 1)[1].split(
@@ -418,7 +498,12 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("scripts/ci/reuse_pr_verification.py", release_scope)
         self.assertIn("python3 scripts/ci/change_scope.py", release_scope)
         self.assertNotIn("app_changed", WORKFLOW)
-        self.assertIn("outputs.quality_required == 'true'", quality)
+        for quality_lane in (quality_contracts, quality_goldens, quality_build):
+            self.assertIn("outputs.quality_required == 'true'", quality_lane)
+        self.assertIn(
+            "needs: [release_scope, quality-contracts, quality-goldens, quality-build]",
+            quality,
+        )
         self.assertIn("outputs.instrumentation_required == 'true'", instrumentation)
         self.assertIn(
             'INSTRUMENTATION_PREPARE_INTERACTION_DEVICE: "true"', instrumentation
@@ -428,6 +513,15 @@ class WorkflowContractTest(unittest.TestCase):
 
     def test_main_reuses_only_content_identical_green_product_pr_verification(self):
         release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
+            "\n  quality-contracts:", 1
+        )[0]
+        quality_contracts = WORKFLOW.split("\n  quality-contracts:", 1)[1].split(
+            "\n  quality-goldens:", 1
+        )[0]
+        quality_goldens = WORKFLOW.split("\n  quality-goldens:", 1)[1].split(
+            "\n  quality-build:", 1
+        )[0]
+        quality_build = WORKFLOW.split("\n  quality-build:", 1)[1].split(
             "\n  quality:", 1
         )[0]
         quality = WORKFLOW.split("\n  quality:", 1)[1].split(
@@ -451,10 +545,17 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("github.event_name == 'push'", release_scope)
         self.assertIn("github.ref == 'refs/heads/main'", release_scope)
         self.assertIn("--release-required", release_scope)
-        for job in (quality, instrumentation, animation):
+        for job in (
+            quality_contracts,
+            quality_goldens,
+            quality_build,
+            instrumentation,
+            animation,
+        ):
             self.assertIn(
                 "outputs.reuse_pr_verification != 'true'", job
             )
+        self.assertIn("REUSE_PR_VERIFICATION", quality)
         self.assertIn("REUSE_PR_VERIFICATION", gate)
         self.assertIn("needs.quality.result == 'success'", package)
         self.assertIn("outputs.reuse_pr_verification == 'true'", package)
@@ -581,8 +682,15 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("if: failure()", SOAK_WORKFLOW)
         self.assertIn("TodayInteractionInstrumentationTest", SOAK_RUNNER)
         self.assertIn('SOAK_REPETITIONS:-5', SOAK_RUNNER)
-        self.assertIn("adb uninstall de.thonktank.autosecretary.test", SOAK_RUNNER)
-        self.assertIn("adb uninstall de.thonktank.autosecretary", SOAK_RUNNER)
+        self.assertIn(
+            "\n  adb uninstall de.thonktank.autosecretary.test.test ", SOAK_RUNNER
+        )
+        self.assertIn(
+            "\n  adb uninstall de.thonktank.autosecretary.test ", SOAK_RUNNER
+        )
+        self.assertNotIn(
+            "\n  adb uninstall de.thonktank.autosecretary ", SOAK_RUNNER
+        )
         self.assertIn("INSTRUMENTATION_RERUN_TASKS=true", SOAK_RUNNER)
 
     def test_today_gesture_failures_are_isolated_and_owned_by_one_driver(self):

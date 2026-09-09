@@ -88,6 +88,14 @@ gestaltet den Alles-Tab und anschließend die Ablaufdetailseite in zwei getrennt
 Phasen neu. ADR-034 hält den freigegebenen visuellen und interaktiven Vertrag fest; das getrennte
 [Ausführungsprotokoll](all-tasks-mobile-execution.md) dokumentiert Plan, Nachweise und Audits.
 
+Die anschließende
+[Roadmap zur Darstellungs- und Verifikationshärtung](../mobile-ui/delivery/all-tasks-flow-runs-hardening-roadmap.md)
+bündelt Uhrkonsistenz, robuste Ablaufdarstellung und den sicheren mobilen Prüfvertrag. Das
+getrennte
+[Ausführungsprotokoll](../mobile-ui/delivery/all-tasks-flow-runs-hardening-execution.md) ist der
+append-only Nachweis der drei Implementierungsphasen; dauerhafte Fachentscheidungen bleiben in
+ADR-034 und der Teststrategie.
+
 Die verbindliche
 [Roadmap für sichere Datenbankmigrationen und reale Upgradehistorien](database-migration-safety-roadmap.md)
 verknüpft benannte Migrationskopien, physische SQLite-Lineage-Tests und den signierten

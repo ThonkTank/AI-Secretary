@@ -74,12 +74,13 @@ jobs:
             --fixtures release/upgrade-fixtures)
           printf 'upgrade_matrix=%s\n' "$UPGRADE_MATRIX" >> "$GITHUB_OUTPUT"
 
-  quality:
+  quality-contracts:
     if: >-
       needs.release_scope.outputs.quality_required == 'true' &&
       needs.release_scope.outputs.reuse_pr_verification != 'true'
     needs: [release_scope]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -87,26 +88,113 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
-      - name: Test change-scope tool
-        run: python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
-      - name: Test release contract tool
-        run: python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
-      - name: Compile, unit tests, goldens, lint and APKs
-        run: ./gradlew testInstrumentationUnitTest lintDebug assembleDebug assembleInstrumentationAndroidTest assembleRelease
+      - name: CI, release, unit and architecture contracts
+        timeout-minutes: 12
+        run: ./scripts/ci/check-fast.sh
+      - name: Upload contract failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: quality-contract-failure-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            app/build/reports/tests/
+            app/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  quality-goldens:
+    if: >-
+      needs.release_scope.outputs.quality_required == 'true' &&
+      needs.release_scope.outputs.reuse_pr_verification != 'true'
+    needs: [release_scope]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
+      - name: Visual golden contracts
+        timeout-minutes: 12
+        run: ./scripts/ci/check-goldens.sh
+      - name: Upload golden failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: quality-golden-failure-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            app/build/reports/goldens/
+            app/build/reports/tests/
+            app/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  quality-build:
+    if: >-
+      needs.release_scope.outputs.quality_required == 'true' &&
+      needs.release_scope.outputs.reuse_pr_verification != 'true'
+    needs: [release_scope]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
+      - name: Lint and installable APKs
+        timeout-minutes: 25
+        run: ./gradlew lintDebug assembleDebug assembleInstrumentation assembleInstrumentationAndroidTest assembleRelease
+      - name: Enforce isolated instrumentation identity
+        run: ./scripts/ci/verify-instrumentation-identity.sh
       - name: Enforce compact install artifacts
         run: |
           test "$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)" -lt 10485760
           test "$(stat -c%s app/build/outputs/apk/release/app-release-unsigned.apk)" -lt 8388608
           test "$(du -cb app/src/main/res/font/*.ttf | tail -1 | cut -f1)" -lt 1677722
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        if: always()
+      - name: Upload build failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: quality-reports-and-apks
+          name: quality-build-failure-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             app/build/reports/
-            app/build/test-results/
             app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/instrumentation/app-instrumentation.apk
+            app/build/outputs/apk/androidTest/instrumentation/app-instrumentation-androidTest.apk
             app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: ignore
+          retention-days: 14
+
+  quality:
+    name: quality
+    if: always() && needs.release_scope.outputs.quality_required == 'true'
+    needs: [release_scope, quality-contracts, quality-goldens, quality-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every applicable quality lane
+        env:
+          SCOPE_RESULT: ${{ needs.release_scope.result }}
+          REUSE_PR_VERIFICATION: ${{ needs.release_scope.outputs.reuse_pr_verification }}
+          CONTRACT_RESULT: ${{ needs.quality-contracts.result }}
+          GOLDEN_RESULT: ${{ needs.quality-goldens.result }}
+          BUILD_RESULT: ${{ needs.quality-build.result }}
+        run: |
+          set -euo pipefail
+          test "$SCOPE_RESULT" = success
+          if [ "$REUSE_PR_VERIFICATION" = true ]; then
+            test "$CONTRACT_RESULT" = skipped
+            test "$GOLDEN_RESULT" = skipped
+            test "$BUILD_RESULT" = skipped
+          else
+            test "$CONTRACT_RESULT" = success
+            test "$GOLDEN_RESULT" = success
+            test "$BUILD_RESULT" = success
+          fi
 
   instrumentation:
     if: >-
@@ -150,6 +238,7 @@ jobs:
         if: matrix.channel != 'stable'
         run: ./scripts/ci/prepare-preview-sdk-tools.sh
       - name: Instrumentation and migration tests on API ${{ matrix.api-level }}
+        timeout-minutes: 20
         uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
         with:
           api-level: ${{ matrix.api-level }}
@@ -215,6 +304,7 @@ jobs:
         if: matrix.channel != 'stable'
         run: ./scripts/ci/prepare-preview-sdk-tools.sh
       - name: Animation-on interaction tests on API ${{ matrix.api-level }}
+        timeout-minutes: 20
         uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
         with:
           api-level: ${{ matrix.api-level }}
@@ -257,11 +347,7 @@ jobs:
           set -euo pipefail
           test "$SCOPE_RESULT" = success
           if [ "$QUALITY_REQUIRED" = true ]; then
-            if [ "$REUSE_PR_VERIFICATION" = true ]; then
-              test "$QUALITY_RESULT" = skipped
-            else
-              test "$QUALITY_RESULT" = success
-            fi
+            test "$QUALITY_RESULT" = success
           else
             test "$QUALITY_RESULT" = skipped
           fi
@@ -393,6 +479,20 @@ jobs:
             *"package: name='$PACKAGE_NAME'"*"versionCode='$VERSION_CODE'"*"versionName='$VERSION_NAME'"*) ;;
             *) echo "Unexpected package/version: $BADGING" >&2; exit 1 ;;
           esac
+          UPGRADE_BADGING=$($AAPT dump badging "$CANDIDATE/upgrade-test.apk" | sed -n '1p')
+          case "$UPGRADE_BADGING" in
+            *"package: name='$PACKAGE_NAME.test'"*) ;;
+            *) echo "Unexpected production probe package: $UPGRADE_BADGING" >&2; exit 1 ;;
+          esac
+          UPGRADE_MANIFEST=$($AAPT dump xmltree "$CANDIDATE/upgrade-test.apk" AndroidManifest.xml)
+          case "$UPGRADE_MANIFEST" in
+            *'android:name(0x01010003)="de.thonktank.autosecretary.UpgradeProbeInstrumentation"'*) ;;
+            *) echo "Production probe uses the wrong runner" >&2; exit 1 ;;
+          esac
+          case "$UPGRADE_MANIFEST" in
+            *"android:targetPackage(0x01010021)=\"$PACKAGE_NAME\""*) ;;
+            *) echo "Production probe targets the wrong package" >&2; exit 1 ;;
+          esac
           cp "$PLAN" "$CANDIDATE/release-plan.json"
           python3 scripts/release/release_tool.py metadata --plan "$PLAN" \
             --apk "$CANDIDATE/$APK_ASSET" --output "$CANDIDATE/$METADATA_ASSET"
@@ -497,6 +597,7 @@ jobs:
         if: matrix.channel != 'stable'
         run: ./scripts/ci/prepare-preview-sdk-tools.sh
       - name: Upgrade the exact production candidate on API ${{ matrix.api-level }}
+        timeout-minutes: 20
         uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
         with:
           api-level: ${{ matrix.api-level }}

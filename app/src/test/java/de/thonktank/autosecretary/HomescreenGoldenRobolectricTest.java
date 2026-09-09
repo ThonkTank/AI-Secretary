@@ -27,7 +27,7 @@ public final class HomescreenGoldenRobolectricTest {
     public void renderPhoneReferenceStates() throws Exception {
         AssertionError mismatch = null;
         for (String state : new String[]{"full", "step", "later", "complete", "evening", "empty",
-                "empty-vessel", "partial-vessel", "harvest-ready", "harvested",
+                "empty-vessel", "partial-vessel", "harvest-ready",
                 "three-digit", "night"}) {
             try {
                 render(state, 824, 1784, true);

@@ -1,6 +1,6 @@
 # Teststrategie nach dem Today-/Fokus-Refactor
 
-Stand: 2026-08-20, Phase 8 abgeschlossen
+Stand: 2026-09-09, mobile Verifikationshärtung abgeschlossen
 
 Der Dateiname bleibt für bestehende Links erhalten. Der Inhalt beschreibt den aktuellen Stand
 nach Datenbankschema 14 und der anschließenden Today-/Fokus-Baseline.
@@ -154,18 +154,22 @@ Display- und Window-Daten. Die Testlogs ergänzen Start-, Ziel- und Listengeomet
 und Display-ID, Today-Aktionen, Commands und Scrollstrecke. GitHub lädt diese Daten getrennt je
 API als Fehlerartefakt hoch.
 
-Der manuell startbare Workflow `instrumentation-soak.yml` deinstalliert App und Test-App vor
-jedem Durchlauf und führt ausschließlich die Today-Gestensuite fünfmal auf API 26 und fünfmal auf
-API 35 aus. Er enthält keine Wiederholungslogik nach Fehlern: Ein fehlgeschlagener Versuch beendet
-den jeweiligen Matrixjob und liefert dessen Diagnoseartefakt. Jede Änderung am
+Der manuell startbare Workflow `instrumentation-soak.yml` deinstalliert vor jedem Durchlauf nur
+die reguläre Instrumentierungs-App und deren Test-APK, niemals die Produktions-App. Er führt
+ausschließlich die Today-Gestensuite fünfmal auf API 26 und fünfmal auf API 35 aus. Er enthält
+keine Wiederholungslogik nach Fehlern: Ein fehlgeschlagener Versuch beendet den jeweiligen
+Matrixjob und liefert dessen Diagnoseartefakt. Jede Änderung am
 `TouchGestureDriver` benötigt vor Abschluss der Phase beziehungsweise des Pull Requests einen
 vollständig grünen Soak-Lauf.
 
 Die Golden-Suite wurde auf Redundanz geprüft. Die Fokus-Komponentengoldens schützen
 Notiz-/Wiederholungs-/Hidden-Row-Geometrie, während die Homescreen-Goldens die gemeinsame
 Header-, Timeline-, Fokus- und History-Komposition schützen. Keine Vollbildbaseline wurde
-entfernt, weil diese Integrationssemantik nicht vollständig durch eine einzelne Komponente
-ersetzt wird; sämtliche PNGs blieben unverändert.
+ohne Nachweis entfernt. Die byteidentischen Homescreen-Baselines `complete.png` und
+`harvested.png` schützten dasselbe Bild; `harvested.png` und sein doppelter Renderdurchlauf sind
+entfallen, während die Abschlusssemantik weiterhin durch den Architekturvertrag geprüft wird.
+Jede verbliebene Baseline ist in `app/src/test/resources/golden-risks.tsv` genau einem
+eindeutigen visuellen Risiko zugeordnet.
 
 Der abschließende serielle Lauf mit Modulkompilierung und `--rerun-tasks` benötigte 1:20,70 min
 bei 1.126.912 KiB maximaler RSS. Gegenüber der Today-/Fokus-Phase-0-Baseline von 1:24,00 min und
@@ -199,3 +203,28 @@ nur bei identischem Git-Baum, identischem Workflowvertrag und nachgewiesen grün
 überspringen. Packaging, Signatur, Hash, drei Produktionsupgrades und Publish bleiben immer an
 den exakten Main-Commit gebunden; jeder fehlende oder abweichende Nachweis fällt auf die
 vollständige Main-Matrix zurück.
+
+## Aktueller Verifikationsvertrag
+
+Die lokale und die Remote-Prüfung besitzen drei getrennte Lanes:
+
+- `scripts/ci/check-fast.sh` führt Helferverträge sowie nichtvisuelle Unit-, Room- und
+  Architekturtests aus;
+- `scripts/ci/check-goldens.sh` führt ausschließlich Golden- und Design-System-Verträge aus;
+- der Build-Lane führt Lint und alle installierbaren Debug-, Instrumentierungs-, Test- und
+  Release-Pakete aus.
+
+Der lokale Abschluss verwendet `scripts/ci/check-all.sh`, damit die vollständige Host- und
+Golden-Suite nur einmal läuft; er ergänzt denselben Identitäts- und Größenvertrag wie CI.
+
+GitHub fasst alle drei Ergebnisse fail-closed als `quality` zusammen. Vertrags- und Golden-Jobs
+enden nach 15 Minuten, ihre Hauptschritte nach 12 Minuten; der gemessene kalte Build-Lane erhält
+30 beziehungsweise 25 Minuten. Geräteaktionen enden nach 20 Minuten. Fehlerpfade laden die
+anwendbaren Test-, Golden-, Lint-, Build- oder Gerätedaten hoch; automatische Wiederholung ist
+kein Bestandteil des Gates.
+
+Reguläre Instrumentierung besitzt den Paketnamen `de.thonktank.autosecretary.test`, das
+zugehörige Test-APK `de.thonktank.autosecretary.test.test` und das sichtbare Label „Auto
+Secretary Test“. Sie kann deshalb eine installierte Produktions-App nicht ersetzen. Nur
+`-PupgradeProbeRunner=true` baut bewusst gegen `de.thonktank.autosecretary`; dieser Pfad wird
+ausschließlich mit dem signierten Produktionskandidaten in der Upgrade-Matrix verwendet.
