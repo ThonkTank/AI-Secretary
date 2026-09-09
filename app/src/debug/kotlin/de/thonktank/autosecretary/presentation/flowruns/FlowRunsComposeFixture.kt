@@ -10,20 +10,23 @@ import de.thonktank.autosecretary.domain.model.TaskId
 object FlowRunsComposeFixture {
     @JvmStatic
     fun state(now: Long = System.currentTimeMillis()): FlowRunsScreenState =
-        FlowRunsScreenState.idle().withRuns(runs(now))
+        FlowRunsScreenState.idle(now).withRuns(runs(now))
 
     @JvmStatic
     fun changing(now: Long = System.currentTimeMillis()): FlowRunsScreenState =
         state(now).withChanging()
 
     @JvmStatic
-    fun loading(): FlowRunsScreenState = FlowRunsScreenState.idle().withLoading()
+    fun loading(now: Long = System.currentTimeMillis()): FlowRunsScreenState =
+        FlowRunsScreenState.idle(now).withLoading()
 
     @JvmStatic
-    fun empty(): FlowRunsScreenState = FlowRunsScreenState.idle()
+    fun empty(now: Long = System.currentTimeMillis()): FlowRunsScreenState =
+        FlowRunsScreenState.idle(now)
 
     @JvmStatic
-    fun error(): FlowRunsScreenState = FlowRunsScreenState.idle()
+    fun error(now: Long = System.currentTimeMillis()): FlowRunsScreenState =
+        FlowRunsScreenState.idle(now)
         .withError(1L, "Abläufe konnten nicht geladen werden.")
 
     @JvmStatic

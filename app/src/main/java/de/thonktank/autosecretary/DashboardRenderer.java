@@ -76,7 +76,7 @@ public final class DashboardRenderer {
             bindToday(todayState, shell.palette, todayState.focusStepLimit);
         else if (shell.navigation == NavigationDestination.ALL_TASKS)
             allTasks.bind(allTasksState, shell.palette, allTasksActions,
-                    todayState.today().flowRuns,
+                    todayState.today().flowRuns, shell.nowEpochMillis,
                     () -> optionsActions.emit(OptionsAction.openFlowRunsSelected()));
         else options.bind(optionsState, version);
     }

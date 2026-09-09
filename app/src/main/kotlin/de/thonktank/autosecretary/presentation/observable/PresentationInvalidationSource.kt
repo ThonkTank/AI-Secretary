@@ -34,6 +34,7 @@ enum class PresentationInvalidationTarget {
     DASHBOARD,
     CATALOG,
     WIDGETS,
+    FLOW_RUNS,
 }
 
 enum class PresentationInvalidationCause {
@@ -117,7 +118,7 @@ class PresentationInvalidationSource internal constructor(
         databaseChanges.map { tables ->
             PresentationInvalidation(
                 cause = PresentationInvalidationCause.DATABASE,
-                targets = ALL_TARGETS,
+                targets = DATABASE_TARGETS,
                 changedTables = tables,
             )
         },
@@ -144,7 +145,7 @@ class PresentationInvalidationSource internal constructor(
         clockChanges.map { snapshot ->
             PresentationInvalidation(
                 cause = PresentationInvalidationCause.CLOCK,
-                targets = DASHBOARD_AND_WIDGETS,
+                targets = CLOCK_TARGETS,
                 clock = snapshot,
             )
         },
@@ -166,6 +167,9 @@ class PresentationInvalidationSource internal constructor(
     )
     val widgetChanges: Flow<PresentationInvalidation> = forTarget(
         PresentationInvalidationTarget.WIDGETS,
+    )
+    val flowRunChanges: Flow<PresentationInvalidation> = forTarget(
+        PresentationInvalidationTarget.FLOW_RUNS,
     )
 
     /** Requests a fresh widget projection for provider lifecycle or size changes. */
@@ -200,10 +204,15 @@ class PresentationInvalidationSource internal constructor(
     }
 
     private companion object {
-        val ALL_TARGETS = PresentationInvalidationTarget.entries.toSet()
+        val DATABASE_TARGETS = setOf(
+            PresentationInvalidationTarget.DASHBOARD,
+            PresentationInvalidationTarget.CATALOG,
+            PresentationInvalidationTarget.WIDGETS,
+        )
         val DASHBOARD_AND_WIDGETS = setOf(
             PresentationInvalidationTarget.DASHBOARD,
             PresentationInvalidationTarget.WIDGETS,
         )
+        val CLOCK_TARGETS = DASHBOARD_AND_WIDGETS + PresentationInvalidationTarget.FLOW_RUNS
     }
 }

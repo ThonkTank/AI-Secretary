@@ -36,6 +36,7 @@ class AllTasksComposeHostView @JvmOverloads constructor(
     private var dragSourceKey by mutableStateOf<String?>(null)
     private var forcedFilterSheet by mutableStateOf(false)
     private var flowRuns by mutableStateOf<List<FlowRunSummary>>(emptyList())
+    private var nowEpochMillis by mutableStateOf(0L)
     private var openFlowRuns: Runnable? = null
 
     init {
@@ -50,12 +51,14 @@ class AllTasksComposeHostView @JvmOverloads constructor(
         palette: DayPalette,
         actions: AllTasksActionSink,
         flowRuns: List<FlowRunSummary> = emptyList(),
+        nowEpochMillis: Long = 0L,
         openFlowRuns: Runnable = Runnable { },
     ) {
         this.actions = actions
         this.screenState = state
         this.palette = palette
         this.flowRuns = flowRuns
+        this.nowEpochMillis = nowEpochMillis
         this.openFlowRuns = openFlowRuns
     }
 
@@ -96,6 +99,7 @@ class AllTasksComposeHostView @JvmOverloads constructor(
                 dragSourceKey = dragSourceKey,
                 forcedFilterSheet = forcedFilterSheet,
                 flowRuns = flowRuns,
+                nowEpochMillis = nowEpochMillis,
                 onOpenFlowRuns = { openFlowRuns?.run() },
             )
         }

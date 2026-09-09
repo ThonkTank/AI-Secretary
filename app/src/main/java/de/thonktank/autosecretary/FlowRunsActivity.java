@@ -10,7 +10,9 @@ import androidx.lifecycle.ViewModelProvider;
 import de.thonktank.autosecretary.domain.model.FlowRunSummary;
 import de.thonktank.autosecretary.presentation.flowruns.FlowRunsComposeCallbacks;
 import de.thonktank.autosecretary.presentation.flowruns.FlowRunsComposeHostView;
+import de.thonktank.autosecretary.presentation.legacy.LifecycleFlowBinder;
 import de.thonktank.autosecretary.presentation.legacy.LegacyStateFlowBinder;
+import de.thonktank.autosecretary.presentation.observable.PresentationInvalidationCause;
 
 /** Operational overview whose ViewModel owns all durable flow-run work. */
 public final class FlowRunsActivity extends ComponentActivity {
@@ -27,6 +29,14 @@ public final class FlowRunsActivity extends ComponentActivity {
                 new FlowRunsViewModel.Factory(container)).get(FlowRunsViewModel.class);
         build();
         LegacyStateFlowBinder.observe(this, viewModel.state(), this::render);
+        LifecycleFlowBinder.observe(this, container.presentationInvalidations.getFlowRunChanges(),
+                invalidation -> {
+                    if (invalidation.getCause() == PresentationInvalidationCause.CLOCK
+                            && invalidation.getClock() != null) {
+                        viewModel.dispatch(FlowRunsAction.presentAt(
+                                invalidation.getClock().getEpochMillis()));
+                    }
+                });
     }
 
     @Override protected void onResume() {

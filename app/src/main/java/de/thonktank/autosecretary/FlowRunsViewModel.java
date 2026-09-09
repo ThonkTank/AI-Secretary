@@ -25,16 +25,17 @@ public final class FlowRunsViewModel extends ViewModel {
     private final ExecutorService worker;
     private final MutableStateFlow<FlowRunsScreenState> state;
     private final Object actionLock = new Object();
-    private FlowRunsScreenState current = FlowRunsScreenState.idle();
+    private FlowRunsScreenState current;
     private long errorSequence;
     private boolean cleared;
 
     FlowRunsViewModel(FlowUseCases flows, FlowWakeScheduler wakeScheduler,
-                      AppLogger logger, ExecutorService worker) {
+                      AppLogger logger, ExecutorService worker, long initialEpochMillis) {
         this.flows = flows;
         this.wakeScheduler = wakeScheduler;
         this.logger = logger;
         this.worker = worker;
+        current = FlowRunsScreenState.idle(initialEpochMillis);
         state = StateFlowKt.MutableStateFlow(current);
         load(true);
     }
@@ -47,6 +48,9 @@ public final class FlowRunsViewModel extends ViewModel {
             switch (action.kind) {
                 case REFRESH:
                     load(true);
+                    return;
+                case PRESENT_AT:
+                    publish(current.presentAt(action.epochMillis));
                     return;
                 case DEFER:
                     change(() -> flows.deferFlowRun.execute(action.runId));
@@ -129,8 +133,10 @@ public final class FlowRunsViewModel extends ViewModel {
                                               @NonNull CreationExtras extras) {
             if (!modelClass.isAssignableFrom(FlowRunsViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
+            long nowEpochMillis = container.clock.now().atZone(container.zones.zoneId())
+                    .toInstant().toEpochMilli();
             return (T) new FlowRunsViewModel(container.flows, container.flowWakeScheduler,
-                    container.logger, Executors.newSingleThreadExecutor());
+                    container.logger, Executors.newSingleThreadExecutor(), nowEpochMillis);
         }
     }
 }

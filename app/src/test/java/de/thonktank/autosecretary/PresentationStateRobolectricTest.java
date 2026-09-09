@@ -116,6 +116,8 @@ public final class PresentationStateRobolectricTest {
     private TaskEditorViewModel editorViewModel;
     private PresentationInvalidationSource invalidationSource;
     private CalendarInvalidationSource calendarInvalidations;
+    private ClockInvalidationSource clockInvalidations;
+    private Runnable clockTick;
     private final List<String> databaseQueries = new CopyOnWriteArrayList<>();
 
     @Before public void setUp() {
@@ -241,6 +243,37 @@ public final class PresentationStateRobolectricTest {
         assertEquals(DayPalette.at(clock.time(), DayPalette.Mode.DARK).background,
                 shell.state().getValue().palette.background);
         shell.onCleared();
+    }
+
+    @Test public void shellPublishesMinuteTimeWithoutReloadingTodayContent() {
+        viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor());
+        AppShellViewModel shell = newShellViewModel(new SavedStateHandle());
+        TodayUiModel todayBefore = value().today();
+        long before = shell.state().getValue().nowEpochMillis;
+
+        clock.setTime(LocalTime.of(10, 16));
+        clockTick.run();
+
+        assertEquals(before + 60_000L, shell.state().getValue().nowEpochMillis);
+        assertSame(todayBefore, value().today());
+        shell.onCleared();
+    }
+
+    @Test public void flowRunPresentationTimeDoesNotScheduleAContentReload() {
+        ManualExecutor worker = new ManualExecutor();
+        FlowRunsViewModel flowRuns = new FlowRunsViewModel(
+                tasks.flows,
+                new FlowWakeScheduler(context, tasks.flows.activateReadyFlows, logger),
+                logger,
+                worker,
+                1_000L);
+        assertEquals(1, worker.pendingCount());
+
+        flowRuns.dispatch(FlowRunsAction.presentAt(61_000L));
+
+        assertEquals(61_000L, flowRuns.state().getValue().nowEpochMillis);
+        assertEquals(1, worker.pendingCount());
+        flowRuns.onCleared();
     }
 
     @Test public void duplicateCommandsAreIgnoredWhileTheFirstIsRunning() throws Exception {
@@ -791,10 +824,11 @@ public final class PresentationStateRobolectricTest {
         };
         if (invalidationSource != null) invalidationSource.close();
         calendarInvalidations = new CalendarInvalidationSource(calendar);
+        clockInvalidations = newClockInvalidations();
         invalidationSource = new PresentationInvalidationSource(
                 new DatabaseInvalidationSource(database), calendarInvalidations,
                 new PreferenceInvalidationSource(preferences),
-                new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
+                clockInvalidations, Runnable::run);
         return new TodayViewModel(tasks.today, tasks.catalog, tasks.training, presenter, calendar,
                 preferences, clock, logger,
                 new AndroidUiTextProvider(context), invalidationSource, handle, worker,
@@ -808,7 +842,8 @@ public final class PresentationStateRobolectricTest {
     private AppShellViewModel newShellViewModel(SavedStateHandle handle) {
         if (invalidationSource == null)
             throw new IllegalStateException("Today invalidation source must exist first");
-        return new AppShellViewModel(preferences, clock, logger, invalidationSource,
+        return new AppShellViewModel(preferences, clock, new SystemZoneIdProvider(), logger,
+                invalidationSource,
                 handle, new DirectExecutor(), Runnable::run);
     }
 
@@ -824,10 +859,11 @@ public final class PresentationStateRobolectricTest {
                 }
             };
             calendarInvalidations = new CalendarInvalidationSource(calendar);
+            clockInvalidations = newClockInvalidations();
             invalidationSource = new PresentationInvalidationSource(
                     new DatabaseInvalidationSource(database), calendarInvalidations,
                     new PreferenceInvalidationSource(preferences),
-                    new ClockInvalidationSource(clock, observer -> () -> { }), Runnable::run);
+                    clockInvalidations, Runnable::run);
         }
         return new AllTasksViewModel(tasks.catalog.loadTaskCatalog, tasks.catalog.moveScheduleEntry,
                 tasks.catalog.moveTaskStep, tasks.catalog.swapTaskSteps, tasks.catalog.delete,
@@ -840,6 +876,15 @@ public final class PresentationStateRobolectricTest {
         return new TaskEditorViewModel(tasks.catalog, tasks.flows, tasks.today, tasks.training,
                 clock, logger,
                 new AndroidUiTextProvider(context), handle, worker);
+    }
+
+    private ClockInvalidationSource newClockInvalidations() {
+        return new ClockInvalidationSource(clock, new SystemZoneIdProvider(), observer -> {
+            clockTick = observer;
+            return () -> {
+                if (clockTick == observer) clockTick = null;
+            };
+        });
     }
 
     private TaskStepTemplate trainingTemplateWithAdjustment(String adjustmentId) {
@@ -928,8 +973,12 @@ public final class PresentationStateRobolectricTest {
     }
 
     private static final class FixedClock implements Clock {
+        private LocalTime time = LocalTime.of(10, 15);
+
         @Override public LocalDate today() { return TODAY; }
-        @Override public LocalTime time() { return LocalTime.of(10, 15); }
+        @Override public LocalTime time() { return time; }
+
+        void setTime(LocalTime value) { time = value; }
     }
 
     private static final class RecordingLogger implements AppLogger {

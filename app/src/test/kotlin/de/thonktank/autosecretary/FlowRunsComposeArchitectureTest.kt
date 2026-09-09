@@ -40,6 +40,8 @@ class FlowRunsComposeArchitectureTest {
         assertTrue(activity.contains("new AlertDialog.Builder"))
         assertTrue(activity.contains("Toast.makeText"))
         assertTrue(activity.contains("viewModel.dispatch(FlowRunsAction"))
+        assertTrue(activity.contains("getFlowRunChanges"))
+        assertTrue(activity.contains("FlowRunsAction.presentAt"))
         assertFalse(activity.contains("LinearLayout"))
         assertFalse(activity.contains("runCard("))
         assertFalse(File(

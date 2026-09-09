@@ -172,6 +172,6 @@ class DashboardInvalidationRoutingTest {
     ) = PresentationInvalidation(
         cause = PresentationInvalidationCause.CLOCK,
         targets = setOf(PresentationInvalidationTarget.DASHBOARD),
-        clock = ClockSnapshot(date, LocalTime.NOON, reason),
+        clock = ClockSnapshot(date, LocalTime.NOON, reason, 0L),
     )
 }

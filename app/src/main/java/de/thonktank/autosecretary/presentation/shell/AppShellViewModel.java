@@ -12,6 +12,8 @@ import de.thonktank.autosecretary.AppContainer;
 import de.thonktank.autosecretary.Clock;
 import de.thonktank.autosecretary.DayPalette;
 import de.thonktank.autosecretary.NavigationDestination;
+import de.thonktank.autosecretary.ZoneIdProvider;
+import de.thonktank.autosecretary.data.observable.ClockInvalidationReason;
 import de.thonktank.autosecretary.data.observable.ClockSnapshot;
 import de.thonktank.autosecretary.data.preferences.DisplayPreferences;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
@@ -38,34 +40,41 @@ public final class AppShellViewModel extends ViewModel {
 
     private final UiPreferences preferences;
     private final Clock clock;
+    private final ZoneIdProvider zones;
     private final AppLogger logger;
     private final SavedStateHandle savedState;
     private final ExecutorService worker;
-    private final LatestReadPipeline<PresentationInvalidation, DayPalette> appearanceReads;
+    private final LatestReadPipeline<PresentationInvalidation, Appearance> appearanceReads;
     private final MutableStateFlow<AppShellScreenState> state;
     private final Object lock = new Object();
     private AppShellScreenState current;
 
-    public AppShellViewModel(UiPreferences preferences, Clock clock, AppLogger logger,
+    public AppShellViewModel(UiPreferences preferences, Clock clock, ZoneIdProvider zones,
+                      AppLogger logger,
                       PresentationInvalidationSource invalidations,
                       SavedStateHandle savedState, ExecutorService worker,
                       @Nullable Executor collectionExecutor) {
         this.preferences = required(preferences);
         this.clock = required(clock);
+        this.zones = required(zones);
         this.logger = required(logger);
         this.savedState = required(savedState);
         this.worker = required(worker);
         DisplayPreferences display = preferences.displayPreferences();
+        ClockSnapshot initialClock = ClockSnapshot.capture(
+                clock, zones, ClockInvalidationReason.INITIAL);
         current = new AppShellScreenState(restoredNavigation(
-                savedState.get(SAVED_NAVIGATION)), palette(display.themeMode, clock.time()));
+                savedState.get(SAVED_NAVIGATION)),
+                palette(display.themeMode, initialClock.getTime()),
+                initialClock.getEpochMillis());
         state = StateFlowKt.MutableStateFlow(current);
         AppShellInvalidationRouting routing = new AppShellInvalidationRouting(invalidations);
         if (collectionExecutor == null) {
             appearanceReads = LatestReadPipeline.reading(routing.getAppearanceChanges(), worker,
-                    this::loadPalette, this::publishPalette, this::appearanceReadFailed);
+                    this::loadAppearance, this::publishAppearance, this::appearanceReadFailed);
         } else {
             appearanceReads = LatestReadPipeline.reading(routing.getAppearanceChanges(), worker,
-                    collectionExecutor, this::loadPalette, this::publishPalette,
+                    collectionExecutor, this::loadAppearance, this::publishAppearance,
                     this::appearanceReadFailed);
         }
     }
@@ -83,16 +92,20 @@ public final class AppShellViewModel extends ViewModel {
         }
     }
 
-    private DayPalette loadPalette(PresentationInvalidation invalidation) {
+    private Appearance loadAppearance(PresentationInvalidation invalidation) {
         DisplayPreferences display = invalidation.getDisplayPreferences();
         if (display == null) display = preferences.displayPreferences();
         ClockSnapshot snapshot = invalidation.getClock();
-        LocalTime time = snapshot == null ? clock.time() : snapshot.getTime();
-        return palette(display.themeMode, time);
+        if (snapshot == null)
+            snapshot = ClockSnapshot.capture(clock, zones, ClockInvalidationReason.INITIAL);
+        return new Appearance(
+                palette(display.themeMode, snapshot.getTime()), snapshot.getEpochMillis());
     }
 
-    private void publishPalette(DayPalette value) {
-        synchronized (lock) { publish(current.withPalette(value)); }
+    private void publishAppearance(Appearance value) {
+        synchronized (lock) {
+            publish(current.withAppearance(value.palette, value.nowEpochMillis));
+        }
     }
 
     private void publish(AppShellScreenState value) {
@@ -127,6 +140,16 @@ public final class AppShellViewModel extends ViewModel {
         return value;
     }
 
+    private static final class Appearance {
+        final DayPalette palette;
+        final long nowEpochMillis;
+
+        Appearance(DayPalette palette, long nowEpochMillis) {
+            this.palette = palette;
+            this.nowEpochMillis = nowEpochMillis;
+        }
+    }
+
     public static final class Factory implements ViewModelProvider.Factory {
         private final AppContainer container;
         private final Supplier<ExecutorService> workers;
@@ -146,6 +169,7 @@ public final class AppShellViewModel extends ViewModel {
             if (!modelClass.isAssignableFrom(AppShellViewModel.class))
                 throw new IllegalArgumentException("Unsupported ViewModel " + modelClass);
             return (T) new AppShellViewModel(container.uiPreferences, container.clock,
+                    container.zones,
                     container.logger, container.presentationInvalidations,
                     SavedStateHandleSupport.createSavedStateHandle(extras), workers.get(), null);
         }
