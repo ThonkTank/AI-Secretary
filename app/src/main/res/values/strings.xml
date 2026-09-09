@@ -546,6 +546,7 @@
     <string name="flow_runs_empty">Kein Ablauf läuft gerade.</string>
     <string name="flow_loading">Abläufe werden geladen …</string>
     <string name="flow_changing">Änderung wird gespeichert …</string>
+    <string name="flow_error_dismiss">Meldung schließen</string>
     <string name="flow_step_number">Schritt %1$d von %2$d</string>
     <string name="flow_status_ready_short">Bereit</string>
     <string name="flow_status_waiting_time_short">Noch %1$s</string>

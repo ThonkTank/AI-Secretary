@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
+import de.thonktank.autosecretary.presentation.flowruns.FlowRunsSemantics
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -22,8 +23,14 @@ class FlowRunsComposeApi37InstrumentationTest {
 
     @Test
     fun visibleRunActionCrossesTheHostBoundary() {
-        assertTrue(device.wait(Until.hasObject(By.text("Sauerteigbrot")), UI_TIMEOUT_MS))
-        val ready = device.wait(Until.findObject(By.desc("Jetzt bereit")), UI_TIMEOUT_MS)
+        assertTrue(device.wait(
+            Until.hasObject(By.res(FlowRunsSemantics.card("timed"))),
+            UI_TIMEOUT_MS,
+        ))
+        val ready = device.wait(
+            Until.findObject(By.res(FlowRunsSemantics.readyNow("timed"))),
+            UI_TIMEOUT_MS,
+        )
         assertNotNull(ready)
         ready.click()
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()

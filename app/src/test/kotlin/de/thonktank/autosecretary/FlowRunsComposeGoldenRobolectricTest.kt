@@ -116,5 +116,6 @@ class FlowRunsComposeGoldenRobolectricTest {
         override fun onAdjustTime(run: FlowRunSummary) = Unit
         override fun onMoveBefore(runId: String, beforeRunId: String?) = Unit
         override fun onCancel(run: FlowRunSummary) = Unit
+        override fun onDismissError(errorId: Long) = Unit
     }
 }

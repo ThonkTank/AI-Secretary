@@ -52,6 +52,9 @@ Der Alles-Tab zeigt höchstens zwei kurze, ein- bis zweizeilige Zusammenfassunge
 laufender Runs. Ein Tippen öffnet die eigenständige Ablaufansicht. Diese wird in einer getrennten
 Phase zu einer mobilen Compose-Ansicht mit kompakten Karten umgebaut, behält aber den bestehenden
 `FlowRunsViewModel`, dessen Screen State, Use Cases, Dialoge und sämtliche Ablaufaktionen.
+Die Ablaufansicht trennt Screen-Anordnung, Karten, Aktionen und Statusdarstellung. Stabile
+Semantikkennungen bilden ihren Interaktionsvertrag; Fehler erscheinen ausschließlich inline und
+bleiben bis zu einer ausdrücklichen Schließen-Aktion im Screen State erhalten.
 
 ## Konsequenzen
 
