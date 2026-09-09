@@ -14,6 +14,8 @@ val requireReleaseSigning = providers.gradleProperty("requireReleaseSigning")
     .map(String::toBoolean).orElse(false).get()
 val useUpgradeProbeRunner = providers.gradleProperty("upgradeProbeRunner")
     .map(String::toBoolean).orElse(false).get()
+val qualityContractsOnly = providers.gradleProperty("qualityContractsOnly")
+    .map(String::toBoolean).orElse(false).get()
 val signingStoreFile = System.getenv("SIGNING_STORE_FILE")
 val signingStorePassword = System.getenv("SIGNING_STORE_PASSWORD")
 val signingKeyAlias = System.getenv("SIGNING_KEY_ALIAS")
@@ -35,6 +37,7 @@ android {
         targetSdk = 35
         versionCode = configuredVersionCode
         versionName = configuredVersionName
+        manifestPlaceholders["appLabel"] = "Auto Secretary"
         testInstrumentationRunner = if (useUpgradeProbeRunner) {
             "de.thonktank.autosecretary.UpgradeProbeInstrumentation"
         } else {
@@ -89,6 +92,10 @@ android {
             initWith(getByName("debug"))
             isMinifyEnabled = false
             matchingFallbacks += listOf("debug")
+            if (!useUpgradeProbeRunner) {
+                applicationIdSuffix = ".test"
+                manifestPlaceholders["appLabel"] = "Auto Secretary Test"
+            }
         }
         getByName("release") {
             // CI supplies this signing configuration. A local release stays unsigned for testing.
@@ -132,6 +139,10 @@ tasks.withType<Test>().configureEach {
     systemProperty("java.io.tmpdir", robolectricTempDir.get().asFile.absolutePath)
     System.getProperty("woodgrain.benchmark")?.let {
         systemProperty("woodgrain.benchmark", it)
+    }
+    if (qualityContractsOnly) {
+        exclude("**/*Golden*")
+        exclude("**/DesignSystemTest.*")
     }
 }
 

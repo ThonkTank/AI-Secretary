@@ -67,3 +67,10 @@ Teil dieser Entscheidung.
 Die Umsetzung erfolgt in zwei nacheinander gemergten Phasen nach der
 [mobilen Aufgaben-/Ablauf-Roadmap](all-tasks-mobile-roadmap.md). Jede Phase benötigt eigenen
 Themenbranch, Pull Request, grünen Squash-Merge und den anwendbaren Main-Nachweis.
+
+Die nachgelagerte Darstellungs- und Verifikationshärtung ändert keine dieser Fachgrenzen.
+Reguläre Instrumentierung verwendet eine sichtbar benannte, getrennte Test-App; nur der
+signierte Upgrade-Probe-Pfad darf die Produktionsidentität verwenden. Unit-/Architekturtests,
+visuelle Goldens und Lint/Paketierung liefern getrennte Signale und werden vor jedem Gerätepfad
+in einem gemeinsamen Quality-Gate zusammengeführt. Jede Golden-Baseline schützt genau ein
+dokumentiertes Risiko.

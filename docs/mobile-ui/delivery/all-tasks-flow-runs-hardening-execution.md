@@ -365,3 +365,269 @@ Room bleiben unverändert.
 - Lokale Tests: `app/src/androidTest/kotlin/de/thonktank/autosecretary/FlowRunsComposeInstrumentationTest.kt`
 - Lokale Tests: `app/src/androidTest/kotlin/de/thonktank/autosecretary/FlowRunsComposeApi37InstrumentationTest.kt`
 - Architekturvertrag: `docs/architecture/adr-034-mobile-aufgabenverwaltung-und-ablaufmonitor.md`
+
+## Ereignis – 2026-09-09 – Phase 2 remote abgeschlossen
+
+- Stabiler Phasencommit: `c9203c0d68374b331cf3f84ca84d80f05cfba8fc`.
+- Pull Request: `#353`; Workflow `34346692492` ist vollständig grün. Quality lief in 6:04
+  Minuten, normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie beide
+  Sammelgates sind grün. Der langsamste Gerätepfad benötigte 13:17 Minuten.
+- Squash-Merge auf `main`: `2dc4c32ed4b88ac47739b6de11491cda28611cc0`.
+- Exakter Main-Workflow: `34348505931`, grün. Der inhaltsgleiche PR-Nachweis wurde
+  wiederverwendet; Paketierung, fünf signierte Upgrade-Proben und Veröffentlichung liefen auf
+  dem Mergecommit.
+- Veröffentlichter Kandidat: `forest-android-1016501`, Auto Secretary `0.2.165`.
+- Phase 2 ist damit abgeschlossen; Phase 3 beginnt ausschließlich auf diesem bestätigten
+  `origin/main`.
+
+## Ereignis – 2026-09-09 – Phase 3 geplant
+
+Phase: Schnelle, begrenzte und sichere Verifikation
+
+Status: in Arbeit
+
+Ausgangsstand: `2dc4c32ed4b88ac47739b6de11491cda28611cc0` (`origin/main`)
+
+Ergebnis: Quality liefert drei parallel sichtbare Signale für Verträge, Goldens und
+Lint/Paketierung und wird durch ein einziges stabiles `quality`-Gate zusammengefasst. Jeder
+lange Schritt besitzt eine aus realen Laufzeiten abgeleitete Grenze und nachfolgende
+Diagnoseartefakte. Reguläre Instrumentierung ist als sichtbare Test-App von der installierten
+Produktions-App getrennt; ausschließlich der signierte Upgrade-Probe-Pfad verwendet weiterhin
+die Produktionsidentität.
+
+Betroffene Komponenten und Schnittstellen:
+
+- `app/build.gradle.kts` für getrennte Unit-/Golden-Selektion sowie die konditionale
+  Instrumentierungs-ID und App-Kennzeichnung;
+- `app/src/main/AndroidManifest.xml` für den buildtypabhängigen sichtbaren App-Namen;
+- `.github/workflows/verify.yml` für drei Quality-Jobs, gemeinsames Gate, Zeitgrenzen und
+  Diagnoseartefakte;
+- `scripts/ci/check-fast.sh`, Golden-Register-Vertrag und Soak-Bereinigung für lokal/remote
+  identische sichere Schleifen;
+- Golden-Katalog und `HomescreenGoldenRobolectricTest` für die nachgewiesene Entfernung einer
+  byteidentischen visuellen Doppelung;
+- README, Teststrategie und ADR für eindeutige Verantwortung von Vertrag, Roadmap,
+  Ausführungslog und externen GitHub-Nachweisen.
+
+Umsetzungsreihenfolge:
+
+1. Einen ausführbaren Golden-Risikokatalog einführen, der jede Baseline genau einmal einer
+   eindeutigen Risikokennung und Beschreibung zuordnet. Die byteidentischen Baselines
+   `homescreen/complete.png` und `homescreen/harvested.png` sind die einzige nachgewiesene
+   Doppelung; `harvested.png` und sein zweiter Renderdurchlauf werden entfernt, während die
+   Zustandssemantik durch bestehende Completion-Verträge erhalten bleibt.
+2. Die Host-Suite über eine explizite Gradle-Eigenschaft in Verträge ohne visuelle Goldens und
+   eine ausschließliche Golden-Suite teilen. `scripts/ci/check-fast.sh` führt CI-/Release-
+   Helferverträge und die nichtvisuelle Host-Suite ohne Wiederholung aus.
+3. Den bisherigen Quality-Job in `quality-contracts`, `quality-goldens` und `quality-build`
+   schneiden. Das bestehende stabile Check-Ergebnis `quality` wird ein fail-closed Sammelgate;
+   Instrumentierung, PR-Gate, Main-Wiederverwendung und Packaging hängen weiter daran.
+4. Die gemessenen 6:04 Minuten des kombinierten Remote-Quality-Laufs und maximal 13:17 Minuten
+   Instrumentierung als Basis verwenden: Quality-Hauptschritte erhalten 12 Minuten,
+   Quality-Jobs 15 Minuten, Geräteschritte 20 Minuten. Fehler- und Timeoutpfade laden die
+   jeweiligen Test-, Golden-, Lint-, Build- oder Geräteberichte hoch; automatische Wiederholung
+   bleibt ausgeschlossen.
+5. Dem regulären Instrumentierungs-Build den Suffix `.test` und den Namen
+   `Auto Secretary Test` geben. Bei `-PupgradeProbeRunner=true` bleiben Paketname und Label der
+   Produktion unverändert. Der manuelle Soak entfernt nur Testziel und Test-APK, nie mehr die
+   Produktions-App.
+6. Workflow-, Golden-Register-, Paketidentitäts- und Change-Scope-Verträge ergänzen; schnelle
+   Schleife, reine Golden-Suite, vollständigen lokalen Android-Gate, beide Identitätsvarianten,
+   Helfertests und `git diff --check` ausführen.
+7. Implementierung getrennt gegen Phasenplan und Gesamtroadmap auditieren. Der Ausführungslog
+   endet mit dem lokalen und Cross-Phase-Audit; unveränderliche PR-, Merge- und Main-Belege
+   bleiben in GitHub und im abschließenden Handoff, damit kein reiner Status-PR erforderlich ist.
+
+Abnahme: Die schnelle lokale Schleife bleibt unter einem Drittel der erfassten 22:58-Minuten-
+Vollprüfbasis; der vollständige lokale Gate wird gegen seine 6:27-Minuten-Warmbasis verglichen.
+Quality- und Gerätehänger enden begrenzt mit Diagnosepfad. Normale Testinstallationen besitzen
+`de.thonktank.autosecretary.test` und ein sichtbares Testlabel, signierte Upgrade-Proben weiter
+`de.thonktank.autosecretary`. Dokumentationsänderungen lösen keinen Release aus. Jede verbliebene
+Golden-Datei besitzt genau einen eindeutigen Risikoeintrag; kein nicht nachgewiesenes Bild wird
+entfernt.
+
+### Quellenbasis Phase 3
+
+- Workflow: `.github/workflows/verify.yml`
+- Buildvertrag: `app/build.gradle.kts`
+- App-Manifest: `app/src/main/AndroidManifest.xml`
+- Workflow-Verträge: `scripts/release/test_workflow_contract.py`
+- Change-Scope: `scripts/ci/change_scope.py`
+- Geräteläufer: `scripts/ci/run-instrumentation.sh`
+- Soak-Läufer: `scripts/ci/run-instrumentation-soak.sh`
+- Teststrategie: `docs/architecture/phase-7-teststrategie.md`
+- Architekturvertrag: `docs/architecture/adr-034-mobile-aufgabenverwaltung-und-ablaufmonitor.md`
+## Ereignis – 2026-09-09 – Phase 3 Schnellprüfung: Umgebungsfehler und Korrekturplan
+
+Phase: Schnelle, begrenzte und sichere Verifikation
+
+Status: Korrektur geplant
+
+Beobachtung: Die Python-Verträge waren vollständig grün, anschließend brach
+`scripts/ci/check-fast.sh` vor dem ersten Android-Test ab. Gradle konnte im isolierten Worktree
+keinen Android-SDK-Pfad auflösen (`ANDROID_HOME` beziehungsweise `sdk.dir` fehlte). Es liegt kein
+Produkt-, Test- oder Workflowfehler vor; der Lauf hat keine Android-Aufgabe ausgeführt.
+
+Korrekturplan:
+
+1. Keine Produkt- oder Testdatei ändern.
+2. Für alle lokalen Android-Nachweise die bereits für das Repository bestätigten Pfade
+   `JAVA_HOME=/home/aaron/.gradle/jdks/eclipse_adoptium-21-amd64-linux.2` und
+   `ANDROID_HOME=ANDROID_SDK_ROOT=/home/aaron/Android/Sdk` setzen.
+3. Den unveränderten Schnelllauf erneut messen und erst nach einem grünen Ergebnis mit Golden-
+   und Build-Lane fortfahren.
+## Ereignis – 2026-09-09 – Phase 3 Build-Grenze: Messbefund und Korrekturplan
+
+Phase: Schnelle, begrenzte und sichere Verifikation
+
+Status: Korrektur geplant
+
+Beobachtung: Schnellprüfung (`375,69 s`) und Golden-Lane (`141,51 s`) sind grün und passen in
+ihre geplanten 12-Minuten-Schrittgrenzen. Der kalte lokale Build-Lane aus Lint sowie Debug-,
+Instrumentierungs-, Test- und Release-APK war ebenfalls grün, benötigte mit `1042,17 s`
+beziehungsweise 17:21 Minuten aber mehr als die geplanten 12 Minuten. Der Prozess war während
+der langen Lint-/R8-Phasen CPU-aktiv; eine 12-Minuten-Grenze würde damit einen gültigen Lauf
+abschneiden.
+
+Korrekturplan:
+
+1. Nur `quality-build` auf 30 Minuten Job- und 25 Minuten Schrittgrenze erweitern. Das lässt rund
+   44 Prozent Reserve über der gemessenen kalten Lokalzeit und beendet echte Hänger weiterhin
+   deutlich früher als die bisher unbegrenzte Ausführung.
+2. Die belegten engeren Grenzen für Vertrags-, Golden- und Geräteschritte unverändert lassen.
+3. Den Workflow-Vertrag an die lane-spezifische Grenze anpassen und danach Workflow-Verträge,
+   Build-Lane und Paketidentitätsprüfung erneut ausführen.
+
+## Ereignis – 2026-09-09 – Phase 3 Identitätsvertrag: Shellfehler und Korrekturplan
+
+Phase: Schnelle, begrenzte und sichere Verifikation
+
+Status: Korrektur geplant
+
+Beobachtung: Der erneute reguläre Instrumentierungs-Build war grün. Der anschließend neue
+APK-Identitätsvertrag brach jedoch vor der inhaltlichen Prüfung mit einem Shell-Syntaxfehler ab,
+weil zwei `case`-Muster über eine Zeilenfortsetzung verkettet waren. Der gleiche Ausdruck im
+Packaging-Workflow besitzt dieselbe unnötige Komplexität.
+
+Korrekturplan:
+
+1. Runner und Zielpaket jeweils in einem eigenen `case` prüfen; keine verketteten Muster nutzen.
+2. Dieselbe Vereinfachung im signierten Produktionsprobe-Block anwenden.
+3. Shellsyntax, Workflow-YAML, Verträge und beide realen APK-Identitätsmodi erneut prüfen.
+
+## Ereignis – 2026-09-09 – Phase 3 Skriptportabilität: Korrekturplan
+
+Phase: Schnelle, begrenzte und sichere Verifikation
+
+Status: Korrektur geplant
+
+Beobachtung: Shellcheck meldet in den drei neuen CI-Skripten ausschließlich `SC1007`: Die
+repository-relative Pfadermittlung setzt `CDPATH` mit einer uneindeutigen Leerstelle statt einer
+expliziten leeren Zeichenkette.
+
+Korrekturplan: In allen drei neuen Skripten `CDPATH=''` explizit setzen, danach Shellcheck und
+die ausführbaren Verträge erneut ausführen. Keine Produkt- oder Workflowsemantik ändern.
+
+## Ereignis – 2026-09-09 – Phase 3 lokaler Vollgate: Auditbefund und Korrekturplan
+
+Phase: Schnelle, begrenzte und sichere Verifikation
+
+Status: Korrektur geplant
+
+Beobachtung: Der finale Schnellpfad ist in `278,05 s` grün. Ein lokaler Vollgate aus nacheinander
+aufgerufener Schnell- und Golden-Lane würde dieselbe Hosttest-Aufgabe wegen unterschiedlicher
+Filter zweimal ausführen. Das bildet die parallele CI korrekt ab, ist lokal aber langsamer als
+nötig und verletzt das Ziel eines nicht verlangsamten vollständigen Abschlusslaufs.
+
+Korrekturplan:
+
+1. `scripts/ci/check-all.sh` als einzelnen lokalen Abschlussvertrag ergänzen: Helferverträge,
+   einmalige vollständige Host-/Golden-Suite, Lint, alle APKs, Identitäts- und Größenbudgets.
+2. README und Teststrategie auf diesen Vollgate verweisen; die drei CI-Lanes bleiben unverändert
+   parallel und liefern weiterhin getrennte Signale.
+3. Den neuen Vollgate messen und gegen die erfasste 6:27-Minuten-Warmbasis prüfen.
+
+## Ereignis – 2026-09-09 – Phase 3 lokal validiert
+
+Phase: Schnelle, begrenzte und sichere Verifikation
+
+Status: lokaler Phasenabschluss; Remote-Gates ausstehend
+
+Ergebnis:
+
+- `scripts/ci/check-fast.sh` ist im endgültigen Stand grün in `278,05 s` (4:38 Minuten) und
+  bleibt damit deutlich unter einem Drittel der erfassten 22:58-Minuten-Vollprüfbasis.
+- `scripts/ci/check-goldens.sh` ist grün in `141,51 s`; der Risikovertrag erfasst alle 68
+  Golden-Artefakte, davon 66 PNGs und zwei numerische beziehungsweise Hash-Anker, genau einmal.
+  Nach Entfernung der byteidentischen `homescreen/harvested.png` bleibt keine Byte-Doppelung.
+- `scripts/ci/check-all.sh` ist vollständig grün. Sein vergleichbarer Gradle-Gate benötigt
+  6:26 Minuten statt der erfassten 6:27-Minuten-Warmbasis; der gesamte Wrapper einschließlich
+  58 Python-Verträgen benötigt `388,76 s`.
+- Der kalte Build-Lane ist mit Lint sowie Debug-, Instrumentierungs-, Test- und Release-APK grün
+  in `1042,17 s`. Seine daraus korrigierte 25-Minuten-Schritt- und 30-Minuten-Jobgrenze besitzt
+  Reserve, während Vertrags- und Golden-Schritte bei 12/15 Minuten und Geräteaktionen bei 20
+  Minuten begrenzt bleiben.
+- Shellcheck, Workflow-YAML, `git diff --check`, 27 CI-Helfertests und 31 Release-/Workflowtests
+  sind grün. Fehlerartefakte sind je Lane erhalten; kein Job enthält automatische Wiederholung.
+- Die real gebauten regulären APKs belegen App-ID `de.thonktank.autosecretary.test`, Label
+  `Auto Secretary Test`, Test-APK-ID `de.thonktank.autosecretary.test.test`, AndroidJUnitRunner
+  und Zielpaket der Test-App. Der neue ausführbare APK-Vertrag erzwingt diese Grenze in CI.
+- Der real gebaute Upgrade-Probe-Modus belegt App-ID `de.thonktank.autosecretary`, Label
+  `Auto Secretary`, Test-APK-ID `de.thonktank.autosecretary.test`,
+  `UpgradeProbeInstrumentation` und Produktionszielpaket. Packaging erzwingt diese Identität vor
+  den weiterhin ausstehenden signierten Remote-Upgrades.
+- Ein reiner Dokumentationspfad ergibt weiterhin `quality_required=false`,
+  `instrumentation_required=false` und `release_required=false`.
+
+## Ereignis – 2026-09-09 – Requirementweiser Cross-Phase-Audit
+
+Status: lokal bestanden; Phase-3-PR, Squash-Merge und exakter Main-Nachweis ausstehend
+
+Abgleich gegen den Zielzustand:
+
+1. **Gemeinsame mobile Darstellung:** Phase 1 lieferte eine kleine zustandslose
+   Darstellungsschicht für Typografie, Flächen und Aktionen. Paketgrenzen belegen weiterhin
+   keine Domain-, Action-, ViewModel- oder Navigationsabhängigkeit.
+2. **Lebende, deterministische Restzeit:** Phase 1 besitzt eine einzige reine Formatierung und
+   reicht den lifecycle-gebundenen Darstellungszeitpunkt durch beide State-Owner. Minutenwechsel,
+   feste Testzeit und unveränderte Datenneuladung sind abgedeckt.
+3. **Klarer Ablaufmonitor:** Phase 2 trennt Orchestrierung, Karte, Aktionen, Status und Ressourcen.
+   Die zentrale Screen-Datei enthält keine Kartenimplementierung oder eigene Zeitformatierung.
+4. **Ein Fehlerkanal und stabile Interaktion:** Phase 2 entfernt Toast und automatische
+   Quittierung, hält Inline-Fehler bis zur expliziten Aktion und belegt jede Weiterleitung genau
+   einmal. Compose und API 37 verwenden stabile Semantik statt sichtbarer deutscher Selektoren.
+5. **Schnelle, begrenzte Verifikation:** Phase 3 trennt Verträge, Goldens und Build parallel,
+   fasst sie fail-closed als `quality` zusammen und lässt Instrumentierung erst danach laufen.
+   Gemessene Grenzen, Diagnoseartefakte, fehlende Retries sowie schneller und vollständiger
+   lokaler Gate sind belegt.
+6. **Sichere Installationsidentität:** Reguläre Instrumentierung und Soak betreffen nur die
+   sichtbar getrennte Test-App. Ausschließlich der signierte Upgrade-Probe-Pfad behält die
+   Produktions-ID; deren Paket-, Runner- und Zielgrenze wird vor Geräteausführung geprüft.
+7. **Golden-Verantwortung:** Jedes verbliebene Artefakt besitzt genau eine eindeutige
+   Risikobeschreibung. Nur eine nachweislich byteidentische Baseline wurde entfernt; die
+   Abschlusssemantik bleibt anderweitig vertraglich abgedeckt.
+8. **Unveränderliche Fachgrenzen:** Keine Phase änderte Aufgabeneditor, Domainmodell, Use Cases,
+   Room-Schema, Repositories, Ablaufmaterialisierung, Navigation, Filter-/Sortierbedeutung oder
+   die Abgrenzung von Kandidaten zu gestarteten Runs.
+9. **Nachweisverantwortung:** Die Roadmap bleibt Sollvertrag, dieses Dokument append-only
+   Ereignis- und Auditlog, ADR/Teststrategie dauerhafte Architektur. PR-, Merge-, exakter Main-,
+   Signatur-, Upgrade- und Veröffentlichungsnachweis bleiben unveränderlich in GitHub und im
+   abschließenden Handoff; dadurch ist kein nachgelagerter Status-PR nötig.
+
+Offene lokale Abweichungen: keine. Die Roadmap ist dennoch erst abgeschlossen, wenn Phase 3 ein
+grünes PR-Gate, einen Squash-Merge und einen vollständig grünen exakten Main-Lauf einschließlich
+signierter Produktionsupgrades auf API 26, 35 und 37 besitzt.
+
+## Ereignis – 2026-09-09 – Phase 3 Commitstaging: Korrekturplan
+
+Status: Korrektur geplant
+
+Beobachtung: Der explizite Staging-Befehl nannte die bereits durch `git rm` vorgemerkte und im
+Arbeitsbaum nicht mehr vorhandene Golden-Datei erneut. `git add` brach deshalb ab; der
+nachfolgende Commit erfasste nur diese bereits vorgemerkte Löschung. Alle übrigen validierten
+Änderungen blieben unverändert im Arbeitsbaum erhalten.
+
+Korrekturplan: Den vollständig bekannten Phase-3-Arbeitsbaum mit `git add -A` vormerken,
+`git diff --cached --check` sowie die Dateiliste prüfen und den vorläufigen Commit amendieren.
+Damit bleibt genau ein vollständiger Phasencommit; es wird kein zusätzlicher Korrekturcommit
+erzeugt.

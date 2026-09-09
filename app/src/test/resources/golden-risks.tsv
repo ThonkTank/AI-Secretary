@@ -1,0 +1,69 @@
+risk_id	path	risk
+AT-01	all-tasks/archived.png	Archivierte Aufgaben bleiben visuell als eigener inaktiver Zustand erkennbar.
+AT-02	all-tasks/empty-filter.png	Eine Filterkombination ohne Treffer zeigt die passende leere Ergebnisfläche.
+AT-03	all-tasks/empty-search.png	Eine Suche ohne Treffer bleibt von einem insgesamt leeren Katalog unterscheidbar.
+AT-04	all-tasks/empty-status.png	Der komplett leere Aufgabenbestand behält seinen eigenständigen Status.
+AT-05	all-tasks/filters-dropdown.png	Das geöffnete Filterblatt bewahrt Hierarchie, Auswahl und Touch-Abstände.
+AT-06	all-tasks/night.png	Alles bleibt mit der Nachtpalette lesbar und kontrastreich.
+AT-07	all-tasks/running-flows.png	Die kompakte Ablaufzusammenfassung verdrängt Suche und Aufgabenliste nicht.
+AT-08	all-tasks/search-step.png	Ein Treffer über Schritttext markiert Kontext ohne den Aufgabentitel zu verlieren.
+AT-09	all-tasks/search-title.png	Ein Treffer über Aufgabentitel behält Kartenhierarchie und Aktionsziel.
+AT-10	all-tasks/sort-drag-targets.png	Manuelle Sortierung zeigt Griff und gültige Verschiebeziele eindeutig.
+AT-11	all-tasks/standard.png	Der normale Alles-Zustand schützt die vollständige mobile Informationshierarchie.
+AT-12	all-tasks/width-320-font-1_3.png	Kleine Breite mit vergrößerter Schrift bleibt ohne abgeschnittene Primäraktionen.
+AT-13	all-tasks/width-412-font-2_0.png	Sehr große Schrift auf Standardbreite bewahrt Lesereihenfolge und Bedienbarkeit.
+AT-14	all-tasks/width-600.png	Breite Telefone und kleine Tablets nutzen Raum ohne unlesbar lange Zeilen.
+DS-01	day-palette-anchors.txt	Die numerischen Tagpaletten-Anker verhindern unbemerkte Farbdrift.
+FR-01	flow-runs/changing.png	Ein laufender Umbau sperrt Aktionen und bleibt als temporärer Zustand sichtbar.
+FR-02	flow-runs/empty.png	Ein leerer Ablaufmonitor zeigt eine knappe eigenständige Leermeldung.
+FR-03	flow-runs/error.png	Der einzige Inline-Fehlerkanal samt Schließaktion bleibt sichtbar und zugänglich.
+FR-04	flow-runs/font-2_0.png	Der Ablaufmonitor bleibt bei zweifacher Schriftgröße lesbar und bedienbar.
+FR-05	flow-runs/loading.png	Laden ist klar von leerem Inhalt und Fehler getrennt.
+FR-06	flow-runs/night.png	Ablaufkarten, Ressourcen und Aktionen behalten in der Nachtpalette Kontrast.
+FR-07	flow-runs/standard.png	Angebotene, zeit- und ressourcenwartende Runs bleiben gemeinsam scanbar.
+FR-08	flow-runs/width-320.png	Der Ablaufmonitor bleibt auf 320 dp ohne verlorene Aktionen nutzbar.
+FV-01	focus-rendering/grain-text-cases.png	Texturen hinter kurzen und langen Fokuszeilen bleiben lesbar und stabil.
+FV-02	focus-rendering/vessel-fill-levels.png	Alle Gefäßüllstände bewahren Kontur, Clipping und visuelle Abstufung.
+FT-01	focus-task/active-without-amount.png	Ein aktiver Schritt ohne Menge behält klaren Status und Abschlussaktion.
+FT-02	focus-task/all-amount-kinds.png	Alle Mengenarten bleiben in einer gemeinsamen Fokuskarte unterscheidbar.
+FT-03	focus-task/gym-routine.png	Eine umfangreiche Trainingsroutine behält Hierarchie und kompakte Geometrie.
+FT-04	focus-task/repetition-rings.png	Wiederholungsringe zeigen Plan, Ist und Auswahl ohne Überlagerung.
+FT-05	focus-task/set-dots-20-412dp-20-dark.png	Zwanzig Sätze bleiben bei großer Schrift im Dunkelmodus erkennbar.
+FT-06	focus-task/set-dots-21-320dp-20-light.png	Einundzwanzig Sätze umbrechen auf Minimalbreite mit großer Schrift korrekt.
+FT-07	focus-task/set-dots-3-412dp-10-light.png	Eine kleine Satzanzahl nutzt Standardbreite ohne unnötige Verdichtung.
+FT-08	focus-task/set-dots-40-412dp-13-light.png	Die maximale Satzmatrix bleibt bei mittlerer Schrift innerhalb der Karte.
+FT-09	focus-task/set-dots-8-320dp-10-dark.png	Acht Sätze bleiben auf Minimalbreite im Dunkelmodus klar getrennt.
+FT-10	focus-task/set-dots-selected-3-412dp-10-light.png	Die ausgewählte Satzmarke unterscheidet sich eindeutig von offenen und fertigen Sätzen.
+FT-11	focus-task/training-assistant-question.png	Die Trainingsassistent-Frage bleibt im Fokusfluss hierarchisch und zugänglich.
+FO-01	forest-anchors.sha256	Die kanonischen Waldtexturen behalten ihre bytegenauen Renderanker.
+HS-01	homescreen/complete.png	Ein vollständig abgeschlossener Fokuszustand zeigt die korrekte Abschlusskomposition.
+HS-02	homescreen/empty-vessel.png	Ein leeres XP-Gefäß behält Boden, Kontur und Nullfüllung.
+HS-03	homescreen/empty.png	Ein Tag ohne offene Inhalte zeigt die ruhige globale Leerdarstellung.
+HS-04	homescreen/evening.png	Die Abendpalette und verbleibenden Tagesinhalte bleiben zusammen lesbar.
+HS-05	homescreen/full.png	Ein voller Tageszustand schützt Header, Timeline, Fokus und Verlauf im Zusammenspiel.
+HS-06	homescreen/harvest-ready.png	Ein erntereifer Zustand kommuniziert die bevorstehende Ernte ohne Layoutsprung.
+HS-07	homescreen/later.png	Verschobene Inhalte erscheinen im Später-Bereich mit korrekter Hierarchie.
+HS-08	homescreen/night.png	Die komplette Heute-Oberfläche behält nachts Kontrast und Tiefenstaffelung.
+HS-09	homescreen/partial-vessel.png	Ein teilweise gefülltes XP-Gefäß bewahrt den exakten Füllstand.
+HS-10	homescreen/step.png	Ein schrittzentrierter Tageszustand behält Fokusaktion und Kontext.
+HS-11	homescreen/three-digit.png	Dreistellige Fortschrittswerte passen ohne Kollision in das Gefäß.
+HS-12	homescreen/widget-large.png	Das große Widget bewahrt vollständige Aufgaben- und Schrittkomposition.
+HS-13	homescreen/widget-small.png	Das kleinste Widget priorisiert den nächsten Inhalt ohne abgeschnittene Aktion.
+HS-14	homescreen/widget-tall.png	Das hohe Widget nutzt Zusatzhöhe ohne falsche Reihenfolge.
+HS-15	homescreen/widget-wide.png	Das breite Widget verteilt Inhalt und Aktion ohne überlange Textzeilen.
+TE-01	task-editor/adaptive/11-nacht-uebersicht.png	Die Editorübersicht bleibt mit Nachtpalette vollständig lesbar.
+TE-02	task-editor/adaptive/12-kompakt-titel.png	Der Titelschritt bleibt auf kompakter Fläche ohne verdeckte Eingabe bedienbar.
+TE-03	task-editor/adaptive/13-kompakt-rhythmus.png	Die Rhythmusauswahl bleibt auf kompakter Fläche vollständig erreichbar.
+TE-04	task-editor/adaptive/14-kompakt-schritte.png	Die Schrittliste bewahrt auf kompakter Fläche Reihenfolge und Aktionen.
+TE-05	task-editor/adaptive/15-kompakt-uebersicht.png	Die kompakte Abschlussübersicht zeigt alle entscheidenden Angaben.
+TE-06	task-editor/flow/01-waesche-ablauf.png	Ein mehrstufiger Wäscheablauf behält Verknüpfungen und Ressourcenübersicht.
+TE-07	task-editor/wizard/01-titel-zeitraum.png	Titel und Zeitraum bilden einen klaren ersten Editorschritt.
+TE-08	task-editor/wizard/02-titel-fehler.png	Die Titelvalidierung erscheint am richtigen Feld ohne die Navigation zu verschieben.
+TE-09	task-editor/wizard/03-titel-einmalig.png	Eine einmalige Aufgabe zeigt ihre abweichende Terminstruktur korrekt.
+TE-10	task-editor/wizard/04-rhythmus-wochentage.png	Wochentage bleiben als auswählbare Rhythmusgruppe eindeutig.
+TE-11	task-editor/wizard/05-rhythmus-intervall.png	Ein Intervallrhythmus zeigt Wert und Einheit ohne Mehrdeutigkeit.
+TE-12	task-editor/wizard/06-schritte.png	Die Editor-Schrittübersicht bewahrt Reihenfolge, Hinzufügen und Weiter-Navigation.
+TE-13	task-editor/wizard/07-schritt-detail.png	Ein Schrittdetail zeigt Menge, Aktivierung und Notiz in korrekter Hierarchie.
+TE-14	task-editor/wizard/08-uebersicht.png	Die normale Abschlussübersicht fasst den gesamten Entwurf korrekt zusammen.
+TE-15	task-editor/wizard/09-abbrechen-rueckfrage.png	Die Abbrechen-Rückfrage trennt destruktive und fortsetzende Aktion klar.
+TE-16	task-editor/wizard/10-loeschen-rueckfrage.png	Die Löschen-Rückfrage kennzeichnet die irreversible Aktion eindeutig.

@@ -26,17 +26,37 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Der vollständige lokale Quality-Gate ist:
+Die schnelle lokale Prüfschleife ohne visuelle Goldens ist:
 
 ```bash
-./gradlew testInstrumentationUnitTest lintDebug assembleDebug assembleInstrumentationAndroidTest assembleRelease
+./scripts/ci/check-fast.sh
 ```
+
+Visuelle Verträge und installierbare Pakete laufen getrennt:
+
+```bash
+./scripts/ci/check-goldens.sh
+./gradlew lintDebug assembleDebug assembleInstrumentation \
+  assembleInstrumentationAndroidTest assembleRelease
+```
+
+Der vollständige lokale Quality-Gate führt alle Verträge ohne doppelte Hosttest-Aufgabe aus:
+
+```bash
+./scripts/ci/check-all.sh
+```
+
+Die CI führt die drei Lanes parallel aus und fasst sie in einem stabilen `quality`-Ergebnis
+zusammen. Reguläre
+Gerätetests installieren die sichtbar benannte App „Auto Secretary Test“ unter
+`de.thonktank.autosecretary.test`; nur der signierte Upgrade-Probe-Pfad verwendet die echte
+Produktions-ID.
 
 Deterministische Zustände für Layout Inspector und Preview-Werkzeuge liegen im Debug-Build
 unter `DebugPreviewFixtures`. Die 17 Editor-Referenzzustände werden zusätzlich als
 Robolectric-Goldens geprüft. Für den Today-Screen decken Phone-Goldens unter anderem leere,
-teilgefüllte, erntereife und geerntete Gefäße sowie Tag, Abend und Nacht ab. Die CI führt die
-Room-Migrationstests auf API 26 und API 35 aus.
+teilgefüllte, erntereife und abgeschlossene Gefäße sowie Tag, Abend und Nacht ab. Die CI führt die
+Room-Migrationstests auf API 26, API 35 und API 37 aus.
 
 Die Release-Einrichtung ist in [docs/releasing.md](docs/releasing.md) beschrieben. Die
 Produktentscheidung ist in [docs/produktziele.md](docs/produktziele.md) festgehalten. Die
