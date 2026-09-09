@@ -155,6 +155,45 @@ Korrektur:
 - Die vollständige Matrix wird auf dem neuen Commit frisch ausgeführt; es erfolgt kein partieller
   Rerun des alten Commits.
 
+## Ereignis – 2026-09-09 – Phase 2 Korrekturplan 2
+
+Remote-Befund:
+
+- PR `#353`, Workflow `34342786676`: Quality erneut grün. API 26 und API 35 führen die
+  korrigierte Klasse nun mit beiden echten Tests aus; die Klasseninitialisierung ist behoben.
+- `loadingEmptyAndChangingStatesStayExplicit` ist auf beiden APIs grün. Der umfassende
+  Aktionstest scheitert auf beiden APIs erst beim elften von zwölf nacheinander ausgeführten
+  Klicks, `moveUp("capacity")`, nach wiederholtem Wechsel zwischen virtualisierten Karten.
+- Die Fehlstelle ist der pauschale Ein-Sekunden-Poll auf den Harness-Zähler. Sie meldet keinen
+  falschen Produktzustand und keine doppelte Weiterleitung, sondern koppelt zwölf unabhängige
+  Aktionsverträge an eine einzige lange Scroll-/Kompositionssequenz.
+
+Korrektur:
+
+1. Die vollständige Aktionsmenge in unabhängige Tests für Navigation, angebotenen Run,
+   zeitwartenden Run und kapazitätswartenden Run teilen. Jeder Test erhält eine frische Activity
+   und prüft weiterhin jede sichtbare Aktion genau einmal.
+2. Den synchronen typisierten Callback unmittelbar in `runOnIdle` gegen letzte Aktion und
+   Zähler prüfen, statt auf einen zeitbasierten Poll zu warten. Produktcode und Selektoren bleiben
+   unverändert.
+3. Android-Test-Kompilierung, fokussierte Verträge, vollständigen lokalen Gate und
+   `git diff --check` erneut ausführen; anschließend einen neuen vollständigen PR-Workflow auf
+   dem Korrekturcommit starten.
+
+## Ereignis – 2026-09-09 – Phase 2 Korrektur 2 lokal validiert
+
+- Die zwölf Aktionsprüfungen sind nun auf vier unabhängige, kontextbezogene Tests verteilt;
+  jeder beginnt mit einer frischen Activity und verwendet weiterhin dieselben stabilen Tags.
+- Jeder Klick wird nach Compose-Idle unmittelbar gegen `lastAction` und den exakten Zählerwert
+  eins geprüft. Es gibt keinen zeitbasierten Poll und keine Abschwächung der Abdeckung.
+- Android-Test-Kompilierung und fokussierte FlowRuns-Verträge: grün.
+- Vollständiger lokaler Android-Gate einschließlich Instrumentierungs-Test-APK: grün in
+  6:24 Minuten; `git diff --check`: grün.
+- Der zweite Remote-Lauf bestätigt erneut Quality, API 37 samt `By.res` und alle drei
+  Animationspfade. Seine beiden normalen API-26/35-Fehler sind exakt die durch diese
+  Korrektur ersetzte lange Scroll-/Poll-Sequenz.
+- Ein neuer vollständiger PR-Workflow auf dem Korrekturcommit bleibt erforderlich.
+
 ## Phase 2 – Klarer Ablaufmonitor und robuste UI-Verträge
 
 Status: wartet auf Phase 1

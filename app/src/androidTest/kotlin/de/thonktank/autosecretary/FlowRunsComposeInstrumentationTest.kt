@@ -18,17 +18,29 @@ class FlowRunsComposeInstrumentationTest {
     val compose = createAndroidComposeRule<FlowRunsComposeHarnessActivity>()
 
     @Test
-    fun everyVisibleActionReturnsExactlyOnceThroughTheTypedHostBoundary() {
+    fun navigationReturnsExactlyOnceThroughTheTypedHostBoundary() {
         clickAction(FlowRunsSemantics.BACK, "back")
+    }
+
+    @Test
+    fun offeredRunActionsReturnExactlyOnceThroughTheTypedHostBoundary() {
         clickAction(FlowRunsSemantics.defer("offered"), "defer:offered")
         clickAction(FlowRunsSemantics.postpone("offered"), "postpone:offered")
         clickAction(FlowRunsSemantics.moveDown("offered"), "move:offered:capacity")
         clickAction(FlowRunsSemantics.cancel("offered"), "cancel:offered")
+    }
+
+    @Test
+    fun timedRunActionsReturnExactlyOnceThroughTheTypedHostBoundary() {
         clickAction(FlowRunsSemantics.readyNow("timed"), "ready:timed")
         clickAction(FlowRunsSemantics.adjustTime("timed"), "adjust:timed")
         clickAction(FlowRunsSemantics.moveUp("timed"), "move:timed:offered")
         clickAction(FlowRunsSemantics.moveDown("timed"), "move:timed:null")
         clickAction(FlowRunsSemantics.cancel("timed"), "cancel:timed")
+    }
+
+    @Test
+    fun capacityRunActionsReturnExactlyOnceThroughTheTypedHostBoundary() {
         clickAction(FlowRunsSemantics.moveUp("capacity"), "move:capacity:timed")
         clickAction(FlowRunsSemantics.cancel("capacity"), "cancel:capacity")
     }
@@ -54,7 +66,9 @@ class FlowRunsComposeInstrumentationTest {
 
     private fun clickAction(tag: String, expectedAction: String) {
         compose.onNodeWithTag(tag).performScrollTo().performClick()
-        compose.waitUntil { compose.activity.actionCount(expectedAction) == 1 }
-        assertEquals(1, compose.activity.actionCount(expectedAction))
+        compose.runOnIdle {
+            assertEquals(expectedAction, compose.activity.lastAction)
+            assertEquals(1, compose.activity.actionCount(expectedAction))
+        }
     }
 }
