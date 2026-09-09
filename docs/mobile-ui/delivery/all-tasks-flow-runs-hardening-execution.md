@@ -64,6 +64,44 @@ alle lokalen und Remote-Gates sind grün.
 - Lokaler Code: `app/src/main/kotlin/de/thonktank/autosecretary/presentation/flowruns/FlowRunsComposeScreen.kt`
 - Architekturvertrag: `docs/architecture/adr-034-mobile-aufgabenverwaltung-und-ablaufmonitor.md`
 
+## Ereignis – 2026-09-09 – Phase 2 Korrekturplan 3
+
+Remote-Befund:
+
+- PR `#353`, Workflow `34344809500`: Quality ist in 6:04 Minuten grün; der normale
+  API-26-Lauf führt alle fünf FlowRuns-Tests aus. Navigation, angebotener Run,
+  zeitwartender Run und Zustände sind grün.
+- Nur der kapazitätswartende Run scheitert vor dem ersten Klick: Sein unterhalb des sichtbaren
+  Bereichs liegender LazyColumn-Eintrag ist noch nicht komponiert, daher kann die direkte
+  Knotensuche `performScrollTo()` nicht auf ihm ansetzen. Der Fehlernachweis meldet explizit
+  keinen passenden Knoten für `flow_runs_action_move_up__capacity`.
+- Produktzustand, Callback und Semantikkennung sind nicht falsch; der Test muss die
+  virtualisierte Liste über ihren bereits vorhandenen Screen-Knoten zum Ziel scrollen.
+
+Korrektur:
+
+1. Im Aktionshelfer zuerst auf dem FlowRuns-Screen mit `performScrollToNode` zur stabilen
+   Zielkennung scrollen und den danach komponierten Aktionsknoten klicken.
+2. Aktionsmenge, frische Activity je Kontext, exakt-einmalige Callback-Prüfung und alle
+   Produktdateien unverändert lassen.
+3. Android-Test-Kompilierung, fokussierte Verträge, vollständigen lokalen Android-Gate und
+   `git diff --check` erneut ausführen; danach den vollständigen PR-Workflow auf einem neuen
+   Korrekturcommit frisch starten.
+
+## Ereignis – 2026-09-09 – Phase 2 Korrektur 3 lokal validiert
+
+- Der Aktionshelfer scrollt den vorhandenen FlowRuns-Screen per `performScrollToNode` zur
+  stabilen Aktionskennung; erst danach wird der nun komponierte Zielknoten geklickt.
+- Die fünf kontextbezogenen Tests, alle zwölf Aktionsprüfungen und ihre exakt-einmaligen
+  Callback-Assertions bleiben erhalten. Produktcode wurde nicht geändert.
+- Android-Test-Kompilierung und fokussierte FlowRuns-Verträge: grün in 49 Sekunden.
+- Vollständiger lokaler Android-Gate einschließlich neu gebauter Instrumentierungs-Test-APK:
+  grün in 6:27 Minuten.
+- CI-Helfertests: 25 grün; Release-Helfertests: 30 grün; `git diff --check`: grün.
+- Der dritte Remote-Lauf bestätigt Quality, API 37 und alle Animationspfade; seine normalen
+  API-26/35-Fehler sind derselbe durch diese Korrektur behobene LazyColumn-Zielzugriff.
+  Ein neuer vollständiger PR-Workflow bleibt erforderlich.
+
 ## Ereignis – 2026-09-09 – Phase 2 lokal validiert
 
 Umgesetzt:

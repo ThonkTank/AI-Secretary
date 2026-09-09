@@ -1,10 +1,11 @@
 package de.thonktank.autosecretary
 
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.filters.SdkSuppress
 import de.thonktank.autosecretary.presentation.flowruns.FlowRunsComposeFixture
 import de.thonktank.autosecretary.presentation.flowruns.FlowRunsSemantics
@@ -65,7 +66,8 @@ class FlowRunsComposeInstrumentationTest {
     }
 
     private fun clickAction(tag: String, expectedAction: String) {
-        compose.onNodeWithTag(tag).performScrollTo().performClick()
+        compose.onNodeWithTag(FlowRunsSemantics.SCREEN).performScrollToNode(hasTestTag(tag))
+        compose.onNodeWithTag(tag).performClick()
         compose.runOnIdle {
             assertEquals(expectedAction, compose.activity.lastAction)
             assertEquals(1, compose.activity.actionCount(expectedAction))
