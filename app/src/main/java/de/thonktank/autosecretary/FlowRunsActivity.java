@@ -2,7 +2,6 @@ package de.thonktank.autosecretary;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
-import android.widget.Toast;
 
 import androidx.activity.ComponentActivity;
 import androidx.lifecycle.ViewModelProvider;
@@ -19,7 +18,6 @@ public final class FlowRunsActivity extends ComponentActivity {
     private DayPalette palette;
     private FlowRunsComposeHostView content;
     private FlowRunsViewModel viewModel;
-    private long handledErrorId;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -52,11 +50,6 @@ public final class FlowRunsActivity extends ComponentActivity {
     private void render(FlowRunsScreenState state) {
         if (state == null) return;
         content.bind(state, palette, callbacks);
-        if (state.errorMessage != null && state.errorId != handledErrorId) {
-            handledErrorId = state.errorId;
-            Toast.makeText(this, state.errorMessage, Toast.LENGTH_LONG).show();
-            viewModel.dispatch(FlowRunsAction.acknowledgeError(state.errorId));
-        }
     }
 
     private final FlowRunsComposeCallbacks callbacks = new FlowRunsComposeCallbacks() {
@@ -73,6 +66,9 @@ public final class FlowRunsActivity extends ComponentActivity {
             viewModel.dispatch(FlowRunsAction.moveBefore(runId, beforeRunId));
         }
         @Override public void onCancel(FlowRunSummary run) { confirmCancel(run); }
+        @Override public void onDismissError(long errorId) {
+            viewModel.dispatch(FlowRunsAction.acknowledgeError(errorId));
+        }
     };
 
     private void adjustTime(FlowRunSummary run) {

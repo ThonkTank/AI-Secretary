@@ -22,6 +22,7 @@ interface FlowRunsComposeCallbacks {
     fun onAdjustTime(run: FlowRunSummary)
     fun onMoveBefore(runId: String, beforeRunId: String?)
     fun onCancel(run: FlowRunSummary)
+    fun onDismissError(errorId: Long)
 }
 
 /** Compose host that mirrors only values published by the existing FlowRunsViewModel. */
@@ -72,4 +73,5 @@ private object NoopFlowRunsCallbacks : FlowRunsComposeCallbacks {
     override fun onAdjustTime(run: FlowRunSummary) = Unit
     override fun onMoveBefore(runId: String, beforeRunId: String?) = Unit
     override fun onCancel(run: FlowRunSummary) = Unit
+    override fun onDismissError(errorId: Long) = Unit
 }

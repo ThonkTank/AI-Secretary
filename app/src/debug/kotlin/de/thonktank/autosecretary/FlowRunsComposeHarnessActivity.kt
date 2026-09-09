@@ -18,6 +18,7 @@ class FlowRunsComposeHarnessActivity : ComponentActivity(), FlowRunsComposeCallb
         private set
     var lastAction: String? = null
         private set
+    private val actionCounts = mutableMapOf<String, Int>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,15 +33,23 @@ class FlowRunsComposeHarnessActivity : ComponentActivity(), FlowRunsComposeCallb
         bind()
     }
 
-    override fun onBack() { lastAction = "back" }
-    override fun onDefer(run: FlowRunSummary) { lastAction = "defer:${run.id}" }
-    override fun onPostpone(run: FlowRunSummary) { lastAction = "postpone:${run.id}" }
-    override fun onReadyNow(run: FlowRunSummary) { lastAction = "ready:${run.id}" }
-    override fun onAdjustTime(run: FlowRunSummary) { lastAction = "adjust:${run.id}" }
+    fun actionCount(action: String): Int = actionCounts[action] ?: 0
+
+    override fun onBack() { record("back") }
+    override fun onDefer(run: FlowRunSummary) { record("defer:${run.id}") }
+    override fun onPostpone(run: FlowRunSummary) { record("postpone:${run.id}") }
+    override fun onReadyNow(run: FlowRunSummary) { record("ready:${run.id}") }
+    override fun onAdjustTime(run: FlowRunSummary) { record("adjust:${run.id}") }
     override fun onMoveBefore(runId: String, beforeRunId: String?) {
-        lastAction = "move:$runId:$beforeRunId"
+        record("move:$runId:$beforeRunId")
     }
-    override fun onCancel(run: FlowRunSummary) { lastAction = "cancel:${run.id}" }
+    override fun onCancel(run: FlowRunSummary) { record("cancel:${run.id}") }
+    override fun onDismissError(errorId: Long) { record("dismiss-error:$errorId") }
 
     private fun bind() = flowRuns.bind(state, palette, this)
+
+    private fun record(action: String) {
+        lastAction = action
+        actionCounts[action] = actionCount(action) + 1
+    }
 }
