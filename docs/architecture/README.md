@@ -40,6 +40,11 @@ Migrationen und aktualisierte Tests.
 - [ADR-033: Ablaufkandidaten und gemeinsame Today-Blätter](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md)
 - [ADR-034: Mobile Aufgabenverwaltung und kompakter Ablaufmonitor](adr-034-mobile-aufgabenverwaltung-und-ablaufmonitor.md)
 - [ADR-035: Physische Migrationshistorie und signierte Upgrade-Fixtures](adr-035-physische-migrationshistorie-und-upgrade-fixtures.md)
+- [ADR-036: Kachel-Editor und parallele Abläufe](adr-036-kachel-editor-und-parallele-ablaeufe.md)
+
+Die [Kachel-Ablauf-Roadmap](flow-tiles-roadmap.md) und ihr
+[Ausführungsprotokoll](flow-tiles-execution.md) führen den freigegebenen eigenen Editor,
+parallele Laufzeitschritte und die verlustfreie Übernahme von Schema 24 zusammen.
 
 Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
 [Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
