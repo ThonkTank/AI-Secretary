@@ -25,3 +25,56 @@ Dieses Protokoll wird append-only ergänzt. Verbindlich ist die
 - `git diff --check` bestanden. Android-Gesamtsuite ist nicht als ausgeführt behauptet:
   diese Phase ändert ausschließlich Dokumentation und Referenz, keinen Produktcode.
 - Mockup-SHA-256 steht in der Referenz. PR-/main-Nachweise folgen nach Remoteprüfung.
+
+## 2026-09-10 — C abgeschlossen, P begonnen
+
+- PR #355, Head `e29b0339d3ddb3005eb859eb701b4a82396655ff`, PR-Workflow
+  `34481441711` erfolgreich; erforderliche Gates grün, Android-Lanes wegen Docs-only
+  bestimmungsgemäß nicht ausgeführt.
+- Squash `f42d625e31f1b6af703dc61c32405fd2715e51df`; exakter main-Workflow
+  `34481533074` erfolgreich. Paket/Upgrade/Veröffentlichung für Docs-only übersprungen.
+- Produktphase auf `codex/flow-tiles-cutover`, isolierter Worktree
+  `/tmp/autosecretary-flow-tiles-cutover`. Noch kein Produkt-PR zur Freigabe oder Release.
+- Zuerst gemeinsame unveränderliche Topologie für Drag-/Accessibility-Operationen und
+  erreichbare Run-Snapshots. Runtime-/Persistenz-Cutover bleibt bis zur vollständigen
+  Integration unveröffentlicht; der bisherige App-Pfad wird nicht vorzeitig umgeschaltet.
+
+### P — geprüfter Editor-Teilstand, keine Auslieferungsfreigabe
+
+- `FlowTileGraph`: stabile Identitäten, erreichbarer Teilgraph, getrennte alternative
+  Wurzeln, Einfügen/Verschieben, explizite Zusammenführung, Zweiggrenze und Zyklenschutz.
+- `FlowEditorDraft`, `FlowEditorCapacities`, `FlowEditorViewModel`: kompletter ungespeicherter
+  Entwurf, direktes Namens-/Warteformular, Einheiten/Zeitabfrage, getrennte Kapazitätsseite,
+  Zuordnungen inklusive Freigabe am selben Schritt nach Wartezeit, Undo und Parcel-Restore.
+- `FlowTileEditorScreen`: eigene Compose-Fläche und revidierter Dialog. Wiederverwendung
+  der mobilen Typografie/Farben/Blattflächen, nicht des alten Aufgaben-Wizards.
+- 16 gezielte Struktur-/Entwurfs-/ViewModel-/Layouttests sowie ein Android-Render-Test mit
+  drei Zuständen bestanden. Review-PNGs in `app/build/reports/flow-tiles`; keine neu
+  freigegebenen Goldens behauptet. Breiten-/Formdarstellung nach Sichtprüfung nachgebessert.
+- Aufgedeckte Fehler: Ein zu früh laufender Build sah nachträglich hinzugefügte Quellen
+  nicht; vollständiger Folgelauf behoben. Alter `TaskFlowDraft.addLease` filterte neue
+  Zuordnungen anhand linearer Verbindungen weg; separate Kapazitätsoperationen beheben dies
+  im neuen Editor. Fehlender Compose-Fokus-Owner im neuen Screen wurde ergänzt und gerendert.
+- Der bestehende TaskFlowDraft sowie die installierte App bleiben unverändert.
+
+### P — ausdrücklich noch offen
+
+Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffentlicht werden.
+
+1. Eigener Ablauf-Typ, Navigation/Activity-Anbindung, Laden und atomarer Save. Es gibt noch
+   keinen produktiv erreichbaren neuen Editor; `onSave` ist nur dessen Aufrufervertrag.
+2. Touch-Zweigauswahl, ausdrückliches Join-Dropziel, Autoscroll, geometrisch ungültige
+   Vorschauen, vollständige zugängliche Bedienung und Start-/Rhythmusdarstellung.
+3. Texte in Ressourcen, vollständige Referenz-/Golden-/Accessibility-Abnahme und
+   Kapazitäts-Validierung auch nach Strukturänderungen.
+4. `StepFlowDefinition`/`CreateFlowRunSnapshot`/`FlowRuntimeCoordinator` sind weiterhin
+   linear; `step_transitions` hat weiterhin nur `sourceStepId` als Primärschlüssel.
+   Diese Annahmen gemeinsam mit per-Schritt-/Wartephasen-Zielen ersetzen, nicht einzeln aktivieren.
+5. Schema 24 ist unverändert. Schritte, Run-Verbindungen, Zustände und Ressourcenbindungen
+   auf stabile IDs migrieren; alte Cursor entfernen; Einzelschritt-Wartezeiten erhalten.
+6. `LoadFlowRuns`/`LoadDashboard`, Today-Aktionen und Tau-Abschluss pro Run integrieren.
+   `StepExecutionService` bucht derzeit pro Schritt; bestehende Ledger-Einträge nicht
+   durch neue Summenbuchungen verdoppeln.
+7. Vollständige lokale Suite, PR-Geräte-/Animationsmatrix 26/35/37, signierte Upgrades,
+   requirementweiser Abschluss, exaktes main, Paket und installierte Version getrennt prüfen.
+   Bei der bisherigen Geräteabfrage war kein ADB-Gerät verbunden.
