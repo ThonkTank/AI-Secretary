@@ -34,8 +34,11 @@ class FlowTileEditorRenderTest {
 
     private fun render(name: String, scale: Float, form: Boolean) {
         val controller = Robolectric.buildActivity(ComponentActivity::class.java).setup()
+        val activity = controller.get()
+        val originalConfig = android.content.res.Configuration(activity.resources.configuration)
+        val originalMetrics = android.util.DisplayMetrics().apply { setTo(activity.resources.displayMetrics) }
+        var composition: ComposeView? = null
         try {
-            val activity = controller.get()
             val config = android.content.res.Configuration(activity.resources.configuration)
             config.fontScale = scale
             @Suppress("DEPRECATION")
@@ -55,6 +58,7 @@ class FlowTileEditorRenderTest {
             val root = ComposeView(activity).apply {
                 setContent { FlowTileEditorScreen(vm.state.value, palette, vm, {}, {}) }
             }
+            composition = root
             activity.setContentView(root)
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
             root.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
@@ -69,6 +73,12 @@ class FlowTileEditorRenderTest {
                 file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                 assertTrue(file.length() > 1000)
             } finally { bitmap.recycle() }
-        } finally { controller.pause().stop().destroy() }
+        } finally {
+            composition?.disposeComposition()
+            @Suppress("DEPRECATION")
+            activity.resources.updateConfiguration(originalConfig, originalMetrics)
+            controller.pause().stop().destroy()
+            shadowOf(Looper.getMainLooper()).idle()
+        }
     }
 }

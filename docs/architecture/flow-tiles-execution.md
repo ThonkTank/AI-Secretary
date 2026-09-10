@@ -78,3 +78,28 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
 7. Vollständige lokale Suite, PR-Geräte-/Animationsmatrix 26/35/37, signierte Upgrades,
    requirementweiser Abschluss, exaktes main, Paket und installierte Version getrennt prüfen.
    Bei der bisherigen Geräteabfrage war kein ADB-Gerät verbunden.
+
+### P — Prüfstand und noch offener Gesamtnachweis
+
+- Teilstand `6fba98bd201e1d2a85ee21026f48266e512b0c93` als **Draft-PR #356** gesichert.
+  Kein Merge und kein Produktupdate. PR-Workflow `34483933471`: Quality-Verträge,
+  Goldens, Build sowie Gerätematrix 26/35/37 erfolgreich; Animationsmatrix beim letzten
+  Snapshot auf 26/37 erfolgreich und auf 35 noch laufend. Das ist keine Abnahme des
+  noch fehlenden Cutovers und gilt nur für den genannten Commit.
+- Erster lokaler `check-all.sh`-Lauf: 27 CI- und 31 Release-Vertragstests grün;
+  anschließend 595 Unit-/Robolectric-Tests, ein Fehler und ein übersprungener Test.
+  Fehler: `TaskEditorComposeGoldenRobolectricTest.allTenComposeWizardStatesStayWithinTheApprovedVisualContract`,
+  fehlende Bestätigungsdialoge in Review-Bildern 09/10 (Referenzen unverändert).
+- Isolierte unveränderte Baseline `f42d625e` im neuen Diagnose-Worktree
+  `/tmp/autosecretary-flow-tiles-baseline`: derselbe einzelne Test grün.
+  Neuer Render-Test zusammen mit dem betroffenen einzelnen Test ebenfalls grün.
+  Eine Regression der produktiven normalen Editorlogik ist damit nicht nachgewiesen;
+  die Ursache des Fehlers im Gesamtlauf bleibt offen.
+- Test-Isolation verbessert: neue Render-Komposition explizit freigeben, ursprüngliche
+  Schriftkonfiguration/Metriken zurücksetzen und Looper nach Activity-Ende leeren.
+  Danach neuer Render-Test plus alle drei bestehenden Compose-Editor-Goldentests grün.
+- Erneuter vollständiger Lauf nach dieser Änderung endete mit Exit 143 ohne finalen
+  Test-/Buildnachweis. Ursache des Abbruchsignals nicht festgestellt. Deshalb weiterhin
+  **kein grünes lokales Gesamtgate**, keine vollständige Lint-/APK-Auslieferung behauptet.
+- Der letzte Test-Isolationscommit benötigt eigene PR-Prüfungen. Keine bestandenen
+  Prüfungen älterer Heads als Beleg für den neuen Head verwenden.
