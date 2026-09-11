@@ -76,4 +76,43 @@ class FlowEditorViewModelTest {
         assertEquals(1, vm.state.value.draft.graph.links.size)
         vm.undo(); assertTrue(vm.state.value.draft.graph.links.isEmpty())
     }
+
+    @Test fun renamingStepDoesNotEraseItsRememberedDuration() {
+        val wait = FlowDelayPolicy.rememberLast(60_000).remember(120_000)
+        val initial = FlowEditorDraft.empty().addStep("Waschen", wait)
+        val vm = FlowEditorViewModel(initial, SavedStateHandle())
+        vm.openStep(initial.steps.single().id)
+        vm.field("name", "Buntwäsche"); vm.submitForm()
+        assertEquals(wait, vm.state.value.draft.waits.values.single())
+    }
+
+    @Test fun saveReopensBrokenCapacityBindingAfterTileWasMoved() {
+        val initial = FlowEditorDraft.empty().rename("Wäsche")
+            .addStep("Waschen", FlowDelayPolicy.fixed(0))
+            .addStep("Abhängen", FlowDelayPolicy.fixed(0))
+        val vm = FlowEditorViewModel(initial, SavedStateHandle())
+        val wash = initial.steps[0].id; val unhang = initial.steps[1].id
+        vm.place(unhang, wash, FlowTileGraph.Placement.AFTER)
+        vm.next(); vm.openResource(null); vm.field("name", "Ständer"); vm.submitForm()
+        vm.openLease(); vm.submitForm()
+        val leaseId = vm.state.value.draft.capacities.leases.single().key
+        assertTrue(vm.prepareSave())
+        vm.back(); vm.place(unhang, wash, FlowTileGraph.Placement.BESIDE)
+        vm.next()
+        assertFalse(vm.prepareSave())
+        assertEquals("lease", vm.state.value.form!!.kind)
+        assertEquals(leaseId, vm.state.value.form!!.id)
+        assertNotNull(vm.state.value.error)
+        assertEquals(1, vm.state.value.draft.capacities.leases.size)
+    }
+
+    @Test fun saveRejectsCombinedOverbookingAndDuplicateCapacityNames() {
+        val vm = FlowEditorViewModel(FlowEditorDraft.empty().rename("Wäsche")
+            .addStep("Waschen", FlowDelayPolicy.fixed(0)), SavedStateHandle())
+        vm.next(); vm.openResource(null); vm.field("name", "Maschine"); vm.submitForm()
+        vm.openLease(); vm.submitForm(); vm.openLease(); vm.submitForm()
+        assertFalse(vm.prepareSave()); assertEquals("lease", vm.state.value.form!!.kind)
+        vm.closeForm(); vm.openResource(null); vm.field("name", "  MASCHINE  "); vm.submitForm()
+        assertFalse(vm.prepareSave()); assertEquals("resource", vm.state.value.form!!.kind)
+    }
 }

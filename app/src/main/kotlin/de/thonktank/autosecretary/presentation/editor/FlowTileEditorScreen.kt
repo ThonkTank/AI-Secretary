@@ -88,7 +88,8 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
                 EditorButton("+ Zuordnung", palette, { editor.openLease() },
                     enabled = state.draft.capacities.resources.isNotEmpty())
                 EditorButton("Zurück", palette, editor::back)
-                EditorButton("Fertig", palette, onSave, primary = true, modifier = Modifier.fillMaxWidth())
+                EditorButton("Fertig", palette, { if (editor.prepareSave()) onSave() },
+                    primary = true, modifier = Modifier.fillMaxWidth())
             }
         }
     }

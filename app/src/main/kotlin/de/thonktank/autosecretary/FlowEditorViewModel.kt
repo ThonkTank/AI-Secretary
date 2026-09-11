@@ -89,8 +89,11 @@ class FlowEditorViewModel(
             "step" -> {
                 val duration = BigDecimal(fields.getValue("duration").replace(',', '.'))
                     .multiply(BigDecimal(fields.getValue("unit"))).setScale(0, RoundingMode.HALF_UP).longValueExact()
-                val wait = if (fields["ask"] == "true") FlowDelayPolicy.rememberLast(duration)
-                    else FlowDelayPolicy.fixed(duration)
+                val previous = form.id?.let { draft.waits.getValue(it) }
+                val ask = fields["ask"] == "true"
+                val wait = if (previous != null && previous.proposedDelayMillis() == duration &&
+                    (previous.mode == FlowDelayPolicy.Mode.REMEMBER_LAST) == ask) previous
+                    else if (ask) FlowDelayPolicy.rememberLast(duration) else FlowDelayPolicy.fixed(duration)
                 if (form.id == null) draft.addStep(fields.getValue("name"), wait)
                 else draft.editStep(form.id, fields.getValue("name"), wait)
             }
@@ -136,6 +139,23 @@ class FlowEditorViewModel(
     }
 
     fun back() = publish(state.value.copy(page = 1, form = null, error = null))
+
+    fun prepareSave(): Boolean {
+        if (state.value.form != null) return false
+        return try {
+            state.value.draft.validateForSave()
+            true
+        } catch (problem: FlowEditorDraft.Problem) {
+            when (problem.kind) {
+                "name" -> back()
+                "step" -> { back(); openStep(problem.elementId) }
+                "resource" -> { publish(state.value.copy(page = 2)); openResource(problem.elementId) }
+                "lease" -> { publish(state.value.copy(page = 2)); openLease(problem.elementId) }
+            }
+            publish(state.value.copy(error = problem.message))
+            false
+        }
+    }
 
     private fun open(form: FlowEditorForm) = publish(state.value.copy(form = form, error = null))
     private fun commit(draft: FlowEditorDraft) {

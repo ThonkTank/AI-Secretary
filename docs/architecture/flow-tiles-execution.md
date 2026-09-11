@@ -103,3 +103,51 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   **kein grünes lokales Gesamtgate**, keine vollständige Lint-/APK-Auslieferung behauptet.
 - Der letzte Test-Isolationscommit benötigt eigene PR-Prüfungen. Keine bestandenen
   Prüfungen älterer Heads als Beleg für den neuen Head verwenden.
+
+### P — Fortsetzung 2026-09-11: Graph-Ausführung und Editorvalidierung
+
+- Erneut geprüft: Remote-main bleibt `f42d625e`; Produktworktree sauber auf
+  `30463778`. PR #356 weiterhin Draft. Dessen exakter Workflow `34485641102` ist
+  inzwischen vollständig grün, einschließlich Geräte-/Animationsmatrix 26/35/37 und
+  `pull-request-gate`. Keine Produktveröffentlichung und kein Merge.
+- `FlowGraphDefinition` und `FlowGraphRun` bilden den nächsten Laufzeitkern ab:
+  stabile Laufzeitschritt-IDs, eingefrorene erreichbare Teilgraphen, eigene Zustände,
+  Wartephasen-IDs, Kapazitätsbindungen und einmaliger Abschluss pro Run.
+- `FlowGraphExecution` enthält reine Übergänge. `FlowGraphCommands` stellt die
+  Transaktionsgrenze für Start, Aktion, Zeitänderung, Aktivierung und Einsammeln bereit.
+  Der Speichervertrag ist noch **nicht** an Room angeschlossen. Der alte produktive
+  Coordinator bleibt bis zum zusammenhängenden Cutover unverändert; kein produktiver
+  Parallelbetrieb zweier Ausführungen wird eingeführt.
+- Tests prüfen alternative Starts, echte/ungleich lange Parallelzweige und Joins,
+  Zeitabfragen auch am letzten Schritt, separate Verlängerung, unabhängiges
+  Kapazitätswarten, Freigabe nach Aktion/Wartezeit, Verringerung von Gesamtmengen,
+  doppelte Aktionen/Einsammeln und Rollback bei Ledgerfehlern. Konkurrierende Starts
+  sind gegen einen serialisierbaren Test-Speicher geprüft, **nicht gegen Room**.
+- `MigrateLinearFlowExecution` übersetzt Positionsbezüge einmalig in Schrittzustände
+  und stabile Bindungen. Die eigentliche SQL-Migration und der Produktions-Upgrade
+  bleiben offen. Alte Header, Occurrences, Blattpositionen und Ledger müssen durch
+  den späteren Adapter unverändert bleiben. Schema 24 hatte keine Aktionszeit pro
+  Schritt; der Konverter verwendet dafür eine konservative Untergrenze, behauptet
+  keinen rekonstruierten exakten Zeitpunkt. Absolute Wartezeit und gewählte Dauer
+  werden getrennt bewahrt. Historisch abgebrochene Runs bleiben inaktiv.
+- Editor: `graphDefinition` übernimmt Kacheln, Wartezeiten und Zuordnungen in denselben
+  Graphvertrag. `Fertig` validiert erneut; nach dem Verschieben ungültige Bindungen
+  werden nicht gelöscht, sondern zur Korrektur geöffnet. Doppelte Kapazitätsnamen
+  und zusammen zu große Zuordnungen eines Schritts werden abgewiesen. Reines
+  Umbenennen erhält die zuletzt verwendete Wartezeit.
+- Gezielter Lauf: 46 Tests erfolgreich (15 Ausführung, 7 Transaktionsbefehle,
+  7 Konvertierung, 8 ViewModel, 3 Entwurf, 6 Kachelgraph). Vollständiges lokales Gate
+  gestartet; das Ergebnis wird gesondert nachgetragen.
+- Weiterhin **nicht auslieferbar**: Room-/SQL-Anschluss, eigener Ablauf-Typ und
+  Navigation, atomarer persistenter Editor-Save, Ablösung des alten Coordinators,
+  Occurrence-/Reward-Anbindung, Heute-/Alles-Projektion sowie vollständige
+  Drag-/Accessibility-/Golden-Abnahme fehlen. Ein grüner Test des neuen Kerns
+  ist kein Nachweis dieser noch fehlenden Produktwege.
+
+- Beim Abgleich mit `StepExecutionService.adjustQuantitativeReward` zusätzlich erkannt:
+  Auch unvollständige Mengen-/Satzschritte können bereits Tau enthalten. Die Konvertierung
+  muss diese Teilbeträge erhalten; Aktivierung darf sie nicht auf null zurücksetzen und
+  Schrittabschluss übernimmt den Endbetrag statt ihn ein zweites Mal zu addieren.
+  Separater Regressionstest ergänzt. Für bereits eingesammelte Beträge zählt der
+  geerntete VESSEL-Grundbetrag, nicht der durch Aufgabe/Combo multiplizierte HEAD-Betrag.
+  Der zuvor gestartete Gesamtlauf bezieht sich noch auf den Stand vor dieser Ergänzung.

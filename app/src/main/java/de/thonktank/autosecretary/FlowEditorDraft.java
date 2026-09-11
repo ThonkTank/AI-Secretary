@@ -2,6 +2,9 @@ package de.thonktank.autosecretary;
 
 import android.os.Bundle;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
+import de.thonktank.autosecretary.domain.model.CapacityResource;
+import de.thonktank.autosecretary.domain.model.FlowGraphDefinition;
+import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.FlowTileGraph;
 import de.thonktank.autosecretary.domain.model.StepFlowSetup;
 import de.thonktank.autosecretary.domain.model.StepTransition;
@@ -130,6 +133,64 @@ public final class FlowEditorDraft {
         Map<String, Boolean> release = new LinkedHashMap<>(releaseAfterWait);
         release.put(leaseId, afterWait);
         return copy(name, steps, graph, waits, capacities, release, nextIdentity);
+    }
+
+    /** Rechecked at the save boundary: moving a tile must not silently remove a capacity rule. */
+    public void validateForSave() {
+        if (name.trim().isEmpty() || name.trim().length() > 120)
+            throw new Problem("name", null, "Ablaufname muss 1 bis 120 Zeichen enthalten");
+        if (steps.isEmpty()) throw new Problem("step", null, "Mindestens einen Schritt ergänzen");
+        for (EditorStepState step : steps) {
+            try { validateName(step.text); }
+            catch (IllegalArgumentException invalid) { throw new Problem("step", step.id, invalid.getMessage()); }
+        }
+        java.util.Set<String> names = new java.util.HashSet<>();
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        for (TaskFlowDraft.Resource resource : capacities.resources) {
+            if (!keys.add(resource.key) || !names.add(CapacityResource.normalizeName(resource.name)))
+                throw new Problem("resource", resource.key, "Kapazität ist doppelt: " + resource.name);
+        }
+        Map<String, Map<String, Long>> acquired = new LinkedHashMap<>();
+        for (TaskFlowDraft.Lease lease : capacities.leases) {
+            if (!graph.stepIds.contains(lease.acquireStepId) || !graph.stepIds.contains(lease.releaseStepId)
+                    || !graph.reaches(lease.acquireStepId, lease.releaseStepId))
+                throw new Problem("lease", lease.key, "Freigabe muss am selben oder einem folgenden Schritt liegen");
+            if (!keys.contains(lease.resourceKey))
+                throw new Problem("lease", lease.key, "Die zugeordnete Kapazität fehlt");
+            Map<String, Long> byResource = acquired.computeIfAbsent(lease.acquireStepId,
+                    ignored -> new LinkedHashMap<>());
+            long total = byResource.getOrDefault(lease.resourceKey, 0L) + lease.units;
+            byResource.put(lease.resourceKey, total);
+            if (total > capacities.resource(lease.resourceKey).capacity)
+                throw new Problem("lease", lease.key, "Die Zuordnungen dieses Schritts überschreiten die Kapazität");
+        }
+    }
+
+    /** Uses the same stable editor keys until the atomic save maps them to persisted IDs. */
+    public FlowGraphDefinition graphDefinition(TaskId resolvedTaskId) {
+        validateForSave();
+        List<FlowGraphDefinition.Node> nodes = new ArrayList<>();
+        for (EditorStepState step : steps)
+            nodes.add(new FlowGraphDefinition.Node(step.id, step.text, step.prescription,
+                    step.note, waits.get(step.id)));
+        List<FlowGraphDefinition.Lease> leases = new ArrayList<>();
+        for (TaskFlowDraft.Lease lease : capacities.leases)
+            leases.add(new FlowGraphDefinition.Lease(lease.key, lease.resourceKey,
+                    lease.acquireStepId, lease.releaseStepId, lease.units,
+                    releaseAfterWait.getOrDefault(lease.key, false)));
+        return new FlowGraphDefinition(resolvedTaskId, graph, nodes, leases);
+    }
+
+    public static final class Problem extends IllegalArgumentException {
+        private static final long serialVersionUID = 1L;
+        public final String kind;
+        public final String elementId;
+
+        Problem(String kind, String elementId, String message) {
+            super(message);
+            this.kind = kind;
+            this.elementId = elementId;
+        }
     }
 
     public Bundle toBundle() {

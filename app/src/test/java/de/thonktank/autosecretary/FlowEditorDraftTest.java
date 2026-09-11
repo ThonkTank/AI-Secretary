@@ -62,4 +62,25 @@ public final class FlowEditorDraftTest {
         assertEquals(1, proposal.capacities.resources.size());
         assertThrows(IllegalArgumentException.class, () -> draft.editStep("missing", "Text", FlowDelayPolicy.fixed(0)));
     }
+
+    @Test public void executionDefinitionReceivesTheExactTileWaitAndCapacityKeys() {
+        FlowEditorDraft draft = FlowEditorDraft.empty().rename("Wäsche")
+                .addStep("Waschen", FlowDelayPolicy.rememberLast(7_200_000))
+                .addStep("Aufhängen", FlowDelayPolicy.fixed(86_400_000));
+        String wash = draft.steps.get(0).id, hang = draft.steps.get(1).id;
+        draft = draft.withGraph(draft.graph.place(hang, wash, Placement.AFTER, false));
+        FlowEditorCapacities capacities = draft.capacities.addResource("Maschine", 1);
+        String resource = capacities.resources.get(0).key;
+        capacities = capacities.addLease(resource, wash, wash, 1);
+        String lease = capacities.leases.get(0).key;
+        draft = draft.withCapacities(capacities).releaseAfter(lease, true);
+        de.thonktank.autosecretary.domain.model.FlowGraphDefinition definition = draft.graphDefinition(
+                de.thonktank.autosecretary.domain.model.TaskId.of("saved-task"));
+        assertEquals(draft.graph.links, definition.graph.links);
+        assertEquals(draft.waits.get(hang), definition.nodes.get(hang).waitAfter);
+        assertEquals(lease, definition.leases.get(0).id);
+        assertEquals(resource, definition.leases.get(0).resourceId);
+        assertEquals(wash, definition.leases.get(0).releaseStepId);
+        assertTrue(definition.leases.get(0).releaseAfterWait);
+    }
 }
