@@ -550,3 +550,34 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
 - Der vollständige lokale Lauf auf `c97403d8` ist grün (16 min 35 s), einschließlich
   746 Tests, Lint und Paketen. Die abschließende reine Testkorrektur besteht danach
   alle sieben nativen Fälle bei Animation 1.0 (1 min 38 s).
+
+### P — vollständige Auslieferung am 2026-09-11
+
+- Exakter Abschlusskopf `0c9196a9965d562ad170f920bb6426de53141617`: lokales
+  `check-all.sh` grün (24 s inkrementell, vollständiger Vorgängerlauf `c97403d8`
+  16 min 35 s / 746 Tests ohne Fehler). Die sieben nativen Bedienungsfälle bestehen
+  zusätzlich mit Animation 0.5 (2 min 34 s) und 0.0 (1 min 32 s).
+- PR #356 / Lauf `34615684499`: vollständige Quality-, Geräte-/Animationsmatrix
+  API 26/35/37 und beide Abschlussgates grün. Squash am 2026-09-11 um 15:42:33 UTC
+  nach `06cd96b8bd322945a4215d04afb1ad0ee3b059f9`. Die Merge-Anfrage lieferte
+  eine uneindeutige HTTP-502-Antwort; vor jeder weiteren Mutation wurde der tatsächlich
+  erfolgte Merge gelesen. Keine doppelte Merge-Anfrage.
+- Remote-main und PR-Kopf haben denselben Baum
+  `ecdf80794eb6cafc36025b1ca4a00efd0fa67f87`. GitHubs Commit-/PR-Zuordnung war
+  dennoch leer; der bestehende Fail-closed-Vertrag führte deshalb alle Main-Tests
+  erneut aus. Keine abgeschwächte oder manuell übersprungene Prüfung.
+- Exakter Main-Lauf `34617732999` vollständig grün: Quality, alle sechs Geräte-/
+  Animationsjobs, signiertes Paket, sämtliche fünf signierten Produktions-Upgrades
+  und Publish. Stable 0.2.167 / 1016701 ist seit 16:09:01 UTC veröffentlicht.
+- Die öffentliche APK wurde erneut heruntergeladen, validiert und bytegenau mit
+  dem Upgrade-geprüften Kandidaten verglichen. Manifest, Produktionszertifikat,
+  Größe/Hash, Release-Tag und Commit stimmen überein. Damit ist Phase P abgeschlossen.
+
+### A — technischer Abgleich, physisches Gerät noch offen
+
+- [T01–T10 und Auslieferungsbelege](flow-tiles-acceptance.md) sind einzeln zugeordnet.
+  ADR/Roadmap spiegeln die abgeschlossene Produktphase und die noch offene Geräteabnahme.
+- Weder physisches ADB-Gerät noch vorhandener drahtloser Debug-Dienst erreichbar.
+  Keine Aussage über eine tatsächlich installierte Version oder Bedienung auf dem
+  Nutzergerät; keine Produktionsdaten gelöscht oder neu installiert. Phase A bleibt
+  ausdrücklich offen, bis das Gerät verbunden und das Update dort geprüft ist.
