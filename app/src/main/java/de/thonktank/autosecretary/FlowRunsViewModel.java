@@ -56,8 +56,12 @@ public final class FlowRunsViewModel extends ViewModel {
                     change(() -> flows.deferFlowRun.execute(action.runId));
                     return;
                 case READY_AT:
-                    change(() -> flows.adjustFlowRunReadyAt.execute(
-                            action.runId, action.epochMillis));
+                    change(() -> {
+                        if (flows.runtime != null) {
+                            if (action.waitId == null) throw new IllegalArgumentException("Wartephase auswählen");
+                            return flows.runtime.adjustWait(action.runId, action.waitId, action.epochMillis);
+                        } else return flows.adjustFlowRunReadyAt.execute(action.runId, action.epochMillis);
+                    });
                     return;
                 case POSTPONE:
                     change(() -> flows.postponeFlowRun.execute(

@@ -15,6 +15,7 @@ import java.time.LocalTime
 
 /** Java-friendly interaction boundary between the stateless screen and its Activity host. */
 interface FlowRunsComposeCallbacks {
+    fun onAdjustWait(runId: String, waitId: String, readyAtEpochMillis: Long) = Unit
     fun onBack()
     fun onDefer(run: FlowRunSummary)
     fun onPostpone(run: FlowRunSummary)

@@ -13,14 +13,21 @@ public final class FlowRunsAction {
     @Nullable public final String beforeRunId;
     public final long epochMillis;
     public final long errorId;
+    @Nullable public final String waitId;
 
     private FlowRunsAction(Kind kind, String runId, @Nullable String beforeRunId,
                            long epochMillis, long errorId) {
+        this(kind, runId, beforeRunId, epochMillis, errorId, null);
+    }
+
+    private FlowRunsAction(Kind kind, String runId, @Nullable String beforeRunId,
+                            long epochMillis, long errorId, @Nullable String waitId) {
         this.kind = kind;
         this.runId = runId == null ? "" : runId;
         this.beforeRunId = beforeRunId;
         this.epochMillis = epochMillis;
         this.errorId = errorId;
+        this.waitId = waitId;
     }
 
     public static FlowRunsAction refresh() {
@@ -35,6 +42,11 @@ public final class FlowRunsAction {
     public static FlowRunsAction readyAt(String runId, long epochMillis) {
         if (epochMillis < 0L) throw new IllegalArgumentException("Ready time is required");
         return new FlowRunsAction(Kind.READY_AT, required(runId), null, epochMillis, 0L);
+    }
+
+    public static FlowRunsAction readyAt(String runId, String waitId, long epochMillis) {
+        if (epochMillis < 0L) throw new IllegalArgumentException("Ready time is required");
+        return new FlowRunsAction(Kind.READY_AT, required(runId), null, epochMillis, 0, required(waitId));
     }
 
     public static FlowRunsAction defer(String runId) {

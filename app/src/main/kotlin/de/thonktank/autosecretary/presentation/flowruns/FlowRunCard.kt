@@ -50,6 +50,28 @@ internal fun FlowRunCard(
             maxLines = 1,
         )
         Spacer(Modifier.height(11.dp))
+        if (run.steps.isNotEmpty()) {
+            run.steps.filter { it.state != de.thonktank.autosecretary.domain.model.FlowGraphRun.State.BLOCKED &&
+                it.state != de.thonktank.autosecretary.domain.model.FlowGraphRun.State.DONE }.forEach { step ->
+                val status = when (step.state) {
+                    de.thonktank.autosecretary.domain.model.FlowGraphRun.State.AVAILABLE -> "Bereit"
+                    de.thonktank.autosecretary.domain.model.FlowGraphRun.State.WAITING_TIME ->
+                        de.thonktank.autosecretary.presentation.mobile.remainingDurationText(step.readyAtEpochMillis, nowEpochMillis)
+                    else -> "Wartet auf Kapazität"
+                }
+                MobileText("${step.title} · $status", mobileColor(palette.ink2), 16,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+                step.readyAtEpochMillis?.let { readyAt ->
+                    de.thonktank.autosecretary.presentation.mobile.MobileActionButton(
+                        "Wartezeit ändern", palette, { callbacks.onAdjustWait(run.id, step.waitId, readyAt) },
+                        modifier = Modifier.testTag("flow-run:wait:${step.waitId}"), enabled = !busy)
+                }
+            }
+            if (run.collectionAvailable) MobileText("Tau im Aufgabenblatt einsammeln", mobileColor(palette.accent), 16)
+            val held = run.resources.filter { it.state.consumesCapacity() }
+            if (held.isNotEmpty()) MobileText(held.joinToString(" · ") { "${it.units} × ${it.name}" },
+                mobileColor(palette.muted), 14, modifier = Modifier.padding(top = 10.dp))
+        } else {
         MobileText(
             run.currentStepTitle,
             mobileColor(palette.ink2),
@@ -104,5 +126,6 @@ internal fun FlowRunCard(
             )
         }
         FlowRunActions(run, index, runs, busy, palette, callbacks)
+        }
     }
 }
