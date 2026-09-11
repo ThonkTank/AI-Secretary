@@ -350,3 +350,28 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   offenem Formular und ausgewählter Fixture-Generation. Zusammen mit den sechs
   Speicher-/Gateway-ViewModel-Tests: **10 Tests ohne Fehler/Skip**, 1m 1s. Dies grenzt
   den Gerätefehler ein, ersetzt aber nicht die Prüfung der realen Eingabebedienung.
+
+### Fortsetzung: transaktionale Ausführung und Geräte-Diagnose
+
+- `GraphFlowRuntime` verbindet den Graph-Reducer mit gespeicherten Aktions-Occurrences,
+  vorhandenen Schritt-Buchungen und einer idempotenten abschließenden HEAD-Buchung.
+  Start, Kapazitäten, Schrittfortschritt und Tau verwenden dieselbe SQLite-Transaktion.
+  Die Produkt-Composition wird erst im vollständigen Cutover umgestellt.
+- Echte SQLite-Integration auf API 26/35: **12 Tests ohne Fehler/Skip**, Test-APK ebenfalls
+  erfolgreich gebaut (1m 11s). Enthalten sind Wäsche 1/3, unabhängige Parallel-Wartephasen,
+  Nachfrage ohne vorzeitigen Start, einmaliger Abschluss und absichtlich fehlgeschlagene
+  Tau-Buchungen: sowohl Start als auch letzte Folgeaktion rollen vollständig zurück.
+- Beim ersten Integrationsversuch wurde ein normaler Aufgabenfilter für offene
+  Occurrences verwendet; dieser schließt FLOW_STEP absichtlich aus. Korrigiert wurde
+  der Aufrufer, nicht der Filter für normale Aufgaben. Ein Aufruf des nicht vorhandenen
+  Debug-Unit-Test-Tasks wurde anschließend auf den vertraglichen Instrumentation-Variant
+  korrigiert; kein grüner Nachweis aus dem fehlgeschlagenen Aufruf.
+- Geräte-Diagnose aus Lauf `34594147480`: Der Name-Test schrieb auf die nicht editierbare
+  Beschriftung, nicht auf `flow-editor:name` (EditText); die Eingabe fehlte bereits vor
+  der Neuerstellung. Der Test wählt jetzt das echte Eingabefeld. Der nicht-ziehende
+  Zusammenführungs-Test nutzt die angebotene Accessibility-Klickaktion der eindeutig
+  identifizierten Knöpfe; Touch und Maus werden weiterhin separat real injiziert.
+  Die Bestätigung und Unverändert-vor-Bestätigung-Prüfungen bleiben bestehen.
+- Die überarbeitete Geräte-Matrix ist noch nicht nachgewiesen. Editor-Navigation,
+  registriertes Schema 25 und gemeinsame Blattprojektion bleiben offene Cutover-Gates;
+  dieser Zwischencommit ist ausdrücklich kein veröffentlichungsfähiger Abschluss.

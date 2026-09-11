@@ -3,6 +3,7 @@ package de.thonktank.autosecretary
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.*
@@ -86,15 +87,13 @@ class FlowTileEditorInstrumentationTest {
 
     @Test fun explicitJoinIsAvailableWithoutDraggingAndIsNotAppliedBeforeConfirmation() {
         button("Trockner").longClick()
-        button("Zusammenführen").click()
+        accessibleClick("flow-editor:handle:JOIN")
         val targetId = "flow-editor:target:${ids[1]}"
         device.waitForIdle()
         if (!device.hasObject(By.res(targetId)))
             UiScrollable(UiSelector().scrollable(true)).setMaxSearchSwipes(5)
                 .scrollIntoView(UiSelector().resourceId(targetId))
-        requireNotNull(device.wait(Until.findObject(By.res(targetId)), 5_000)) {
-            "Missing non-drag join target"
-        }.click()
+        accessibleClick(targetId)
         button("Gemeinsamer Folgeschritt").click()
         assertGraph { it.predecessors(ids[1]) == listOf(ids[0]) }
         button("Übernehmen").click()
@@ -105,14 +104,32 @@ class FlowTileEditorInstrumentationTest {
 
     @Test fun openStepInputSurvivesActivityRecreationWithoutAdditionalFields() {
         button("Waschen").click()
-        val input = button("Name")
+        val input = nameInput()
         input.text = "Buntwäsche"
         awaitFormName("Buntwäsche")
         activityRule.scenario.recreate()
         awaitFormName("Buntwäsche")
-        assertEquals("Buntwäsche", button("Name").text)
+        assertEquals("Buntwäsche", nameInput().text)
         assertNotNull(button("Beim Start nachfragen"))
         activityRule.scenario.onActivity { assertEquals("Buntwäsche", it.editor.state.value.form!!.fields["name"]) }
+    }
+
+    private fun nameInput(): UiObject2 = requireNotNull(device.wait(
+        Until.findObject(By.res("flow-editor:name").clazz("android.widget.EditText")), 5_000
+    )) { "Missing editable name field" }
+
+    private fun accessibleClick(resourceId: String) {
+        assertTrue(device.wait(Until.hasObject(By.res(resourceId)), 5_000))
+        instrumentation.waitForIdleSync()
+        // Exercise the advertised non-drag accessibility action, independent of animated
+        // bring-into-view coordinates. Pointer interaction has its own touch/mouse tests.
+        val nodes = instrumentation.uiAutomation.rootInActiveWindow
+            .findAccessibilityNodeInfosByViewId(resourceId)
+        val node = requireNotNull(nodes.firstOrNull { it.isClickable }) {
+            "Missing clickable accessibility node: $resourceId"
+        }
+        assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        instrumentation.waitForIdleSync()
     }
 
     private fun button(label: String): UiObject2 {
