@@ -108,6 +108,10 @@ public final class FlowGraphCommandsTest {
     @Test public void admissionReloadsTheCurrentDefinitionAndCannotStartARemovedCandidate() {
         Memory store = new Memory(Collections.emptyMap());
         assertEquals(FlowGraphCommands.Status.NOT_FOUND, store.commands.start("missing", null, 2).status);
+        store.candidates.put("removed-start", new FlowGraphCommands.Start(
+                definition("s,n", "s:n", Collections.emptyMap()), "n"));
+        assertEquals(FlowGraphCommands.Status.NOT_FOUND,
+                store.commands.start("removed-start", null, 2).status);
         store.candidates.put("a", new FlowGraphCommands.Start(
                 definition("s", "", Collections.emptyMap()), "s"));
         store.candidates.put("a", new FlowGraphCommands.Start(

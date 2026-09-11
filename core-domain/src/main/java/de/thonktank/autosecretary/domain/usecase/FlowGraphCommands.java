@@ -44,7 +44,8 @@ public final class FlowGraphCommands {
             FlowGraphRun existing = store.findBySourceKey(sourceKey);
             if (existing != null) return new Result(Status.UNCHANGED, existing);
             Start start = store.currentStart(sourceKey);
-            if (start == null) return new Result(Status.NOT_FOUND, null);
+            if (start == null || !start.definition.graph.roots().contains(start.stepId))
+                return new Result(Status.NOT_FOUND, null);
             long now = moments.nowEpochMillis();
             FlowGraphRun run = execution.snapshot(start.definition, start.stepId);
             FlowGraphExecution.Capacity capacity = store.capacityExcluding(run.id);

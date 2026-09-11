@@ -151,3 +151,49 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Separater Regressionstest ergänzt. Für bereits eingesammelte Beträge zählt der
   geerntete VESSEL-Grundbetrag, nicht der durch Aufgabe/Combo multiplizierte HEAD-Betrag.
   Der zuvor gestartete Gesamtlauf bezieht sich noch auf den Stand vor dieser Ergänzung.
+
+### P — Datenbankübernahme und Snapshot-Speicherung vorbereitet
+
+- Der oben gestartete lokale Gesamtlauf endete nach 24 Minuten erfolgreich: 627
+  Unit-/Robolectric-Fälle, davon ein übersprungener, kein Fehler; zusätzlich 27 CI-
+  und 31 Release-Vertragstests, Lint, Paketbau, Identitäts- und Größenprüfungen grün.
+  Während dieses Laufs ergänzte Quellen waren nicht durchgehend Bestandteil des
+  Builds. Das ist deshalb kein vollständiger Nachweis des späteren Heads.
+- Exakter PR-Workflow `34581720686` für `af0e0f6a`: vollständig erfolgreich,
+  einschließlich Geräte- und Animationsmatrix API 26/35/37 sowie PR-Aggregat.
+  Danach ergänzter Schutz: ein inzwischen zum Folgeschritt verschobener Kandidat
+  darf keine neue Kette starten. Separater gezielter Lauf: 52 Tests ohne Fehler.
+- `Schema24FlowMigrationInput` liest die alten Spalten namentlich und ordnet
+  Ledger-Buchungen über Lauf und Quellschritt zu. Kopierte Ausführungen verdoppeln
+  Buchungen nicht; Gegenbuchungen und Reporting-Zuordnungen werden berücksichtigt.
+  Ein aktiver, nicht rückgängig gemachter HEAD-Abschluss markiert geernteten
+  VESSEL-Grundbetrag. Der multiplizierte HEAD-Wert wird niemals als Grundbetrag
+  übernommen. Nicht zuordenbare Belohnungen führen zu einem Abbruch der Migration.
+- `FlowGraphMigration25` ist die vorbereitete SQL-Umstellung von Schema 24: eigener
+  `taskKind`, Schrittwartezeiten, mehrfache ausgehende Verbindungen, Laufzeitkanten,
+  Schrittzustände, stabile Kapazitätsendpunkte und Ausführungszuordnung. Der alte
+  Cursor und die Ressourcenpositionen werden im Ziel entfernt. Ressourcennamen,
+  damalige Gesamtmengen und sämtliche Reservierungszeitpunkte bleiben erhalten.
+- Die Migration ist absichtlich noch **nicht in DatabaseMigrations registriert**.
+  AppDatabase und produktive Laufzeit bleiben auf Schema 24, bis Room-Modell,
+  Coordinator, Editor und Projektion gemeinsam umgestellt werden. Es gibt keine
+  Freigabe, die vorbereitete Migration allein auf einem Nutzergerät auszuführen.
+- `FlowGraphSnapshotReader`/`Writer` lesen und speichern normalisierte neue Snapshots
+  ausschließlich innerhalb der aufrufenden Transaktion. Updates dürfen nur Zustand,
+  Zeiten und Tau-Fortschritt ändern, keine eingefrorenen Definitionen oder Bindungen.
+  Vorhandene Ressourcenmetadaten bleiben auch nach einer Zeitänderung unverändert.
+  Ledger und Occurrence-/Combo-Projektion müssen beim Produktanschluss weiterhin
+  dieselbe Transaktion teilen; diese Anbindung ist noch offen.
+- SQL-Prüfung auf dem exportierten echten Schema 24, jeweils API 26 und 35:
+  13 Fälle pro API für Migration aller Laufzustände, Teilmengen/Carry-forward,
+  geänderte Wartezeiten, Buchungsgegenläufe, unveränderte Platzierung/Kandidaten,
+  parallelen Snapshot-Roundtrip, eingefrorene Nutzdaten, doppelte Startidentität
+  und vollständigen Rollback bei simuliertem Zahlungsfehler.
+- Anfangs hatte die neue Test-Fixture eine Last an einem Nicht-Satzschritt und wurde
+  vom bestehenden Prescription-Vertrag abgewiesen. Die Fixture verwendet nun einen
+  gültigen Satzschritt; kein Produktvertrag wurde gelockert. Anschließender gezielter
+  Lauf: **78 Tests erfolgreich, keiner übersprungen, kein Fehler** (52 Kern/Editor
+  plus 26 SQL-Fälle). Kein signierter Produktions-Upgrade- oder Room-Zielschema-
+  Validierungsnachweis wird daraus abgeleitet.
+- PR #356 bleibt Draft, kein Merge und keine Veröffentlichung. Alle oben benannten
+  Produktanschlüsse und die vollständige UI-/Auslieferungsabnahme bleiben erforderlich.
