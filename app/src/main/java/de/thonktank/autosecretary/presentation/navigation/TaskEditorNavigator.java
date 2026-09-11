@@ -7,12 +7,19 @@ import de.thonktank.autosecretary.TaskEditorViewModel;
 public final class TaskEditorNavigator implements AppNavigator {
     private final TaskEditorViewModel editor;
     private final Runnable prepareHeaderEntrance;
+    private final java.util.function.Consumer<Runnable> chooseCreation;
 
     public TaskEditorNavigator(TaskEditorViewModel editor, Runnable prepareHeaderEntrance) {
+        this(editor, prepareHeaderEntrance, Runnable::run);
+    }
+
+    public TaskEditorNavigator(TaskEditorViewModel editor, Runnable prepareHeaderEntrance,
+                               java.util.function.Consumer<Runnable> chooseCreation) {
         if (editor == null || prepareHeaderEntrance == null)
             throw new IllegalArgumentException("Editor and entrance hook are required");
         this.editor = editor;
         this.prepareHeaderEntrance = prepareHeaderEntrance;
+        this.chooseCreation = chooseCreation;
     }
 
     @Override public synchronized void navigate(AppDestination destination) {
@@ -20,9 +27,10 @@ public final class TaskEditorNavigator implements AppNavigator {
             throw new IllegalArgumentException("Unsupported destination " + destination);
         if (editor.state().getValue().content.open) return;
         AppDestination.TaskEditor target = (AppDestination.TaskEditor) destination;
-        if (target.entrance == AppDestination.TaskEditor.Entrance.HEADER_FLIGHT)
-            prepareHeaderEntrance.run();
-        if (target.taskId == null) editor.dispatch(TaskEditorAction.openNew());
+        if (target.taskId == null) chooseCreation.accept(() -> {
+            if (target.entrance == AppDestination.TaskEditor.Entrance.HEADER_FLIGHT) prepareHeaderEntrance.run();
+            editor.dispatch(TaskEditorAction.openNew());
+        });
         else editor.dispatch(TaskEditorAction.open(target.taskId.value,
                 target.stepId == null ? null : target.stepId.value, target.addStep));
     }

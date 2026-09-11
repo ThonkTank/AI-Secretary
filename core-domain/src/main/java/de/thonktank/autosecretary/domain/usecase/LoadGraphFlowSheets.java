@@ -80,7 +80,10 @@ public final class LoadGraphFlowSheets {
         }
         Map<TaskId, FlowGraphDefinition> definitionsByTask = new HashMap<>();
         Map<TaskId, Map<String, TaskStepTemplate>> templates = new HashMap<>();
-        FlowGraphExecution.Capacity capacity = new FlowGraphExecution.Capacity(totals, runs.consumingUnitsExcluding(""));
+        Map<String, Long> used = new HashMap<>();
+        for (FlowGraphRunRecord record : active) for (FlowGraphRun.Lease lease : record.run.leases)
+            if (lease.state.consumesCapacity()) used.merge(lease.resourceId, (long) lease.units, Math::addExact);
+        FlowGraphExecution.Capacity capacity = new FlowGraphExecution.Capacity(totals, used);
         for (FlowCandidate candidate : flows.flowCandidates()) {
             Task task = tasks.get(candidate.taskId);
             if (task == null || task.archived || task.conditionDone || candidate.scheduledOn.isAfter(date)) continue;

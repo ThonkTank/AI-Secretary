@@ -382,3 +382,23 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Alte Room-Laufzeitoperationen sind vorläufig ausdrücklich gesperrt; ihre produktiven
   Aufrufer werden im selben unveröffentlichten Cutover ersetzt. Die App-Composition
   ist damit noch kein abnahmefähiger Gesamtstand.
+
+- Produkt-Composition verwendet jetzt ausschließlich `GraphFlowRuntime`, Graph-Planung
+  und Graph-Blattprojektion. `FlowSetupActivity` ist der neue Compose-Host mit echtem
+  Saved-State-ViewModel/Gateway. Der gemeinsame Erstellen-Einstieg unterscheidet Aufgabe
+  und Ablauf; bestehende FLOW-Aufgaben werden vor dem alten Editor-Loader umgeleitet.
+- Produktionsnaher End-to-End-Test (Speichern, Tagesplanung, Start, Warten, Einsammeln)
+  bestätigt auch den Ein-Schritt-Ablauf ohne normale/leere Ersatzblätter. Parallele
+  Aktionszeilen adressieren verschiedene stabile Runtime-IDs; reine Wartephasen erzeugen
+  kein Heute-Blatt. Zusammen mit den Laufzeittests: **14 Tests grün**, 1m 1s.
+- Die erste Projektion verwendete eine leere ID beim Abfragen aller Reservierungen und
+  verletzte damit den Repository-Vertrag. Jetzt wird die Belegung aus denselben bereits
+  geladenen aktiven Snapshots summiert; keine Speicherung beim Anzeigen.
+- Der breite Migrationslauf ist noch rot (sechs historische Fälle auf API 26/35): Die
+  alten Einzelmigrations-Fixtures enthalten absichtlich unvollständige Laufzeitzustände
+  (Warten ohne Vorgänger, Freigabe außerhalb des verkürzten Snapshots, unzulässige
+  Trainingswerte bei einem Dauer-Schritt). Sie müssen ihren historischen Zielstand
+  separat prüfen; gültige vollständige Bestandsketten brauchen zusätzlich den echten
+  Room-Upgrade-Nachweis auf 25. Keine Abschwächung der neuen Laufzeit-Invarianten.
+- Heute-Aktionsdispatcher, Warteübersicht und Alles-Bedienung werden noch verbunden.
+  Daher weiterhin kein veröffentlichbarer Gesamtstand und kein Main-/Release-Gate.

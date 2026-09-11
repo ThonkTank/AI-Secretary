@@ -93,38 +93,6 @@ internal fun EditorStepsPage(
             serif = false,
         )
     }
-    if (state.stepStates.size >= 2) {
-        val flowLabel = stringResource(R.string.flow_editor_open)
-        val flowMeta = stringResource(
-            if (state.flowDraft.configured()) R.string.flow_editor_configured
-            else R.string.flow_editor_optional,
-        )
-        LeafSurface(
-            palette = palette,
-            level = 3,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 18.dp)
-                .testTag("task-editor:flow-open"),
-            rotation = .6f,
-            clickableLabel = "$flowLabel. $flowMeta",
-            onClick = {
-                dispatcher.navigate(EditorUiState.Page.FLOW, state.returnToSummary)
-            },
-            padding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
-        ) {
-            Column {
-                EditorText(flowLabel, Color.argb(palette.ink2), 18)
-                EditorText(
-                    flowMeta,
-                    Color.argb(palette.muted),
-                    14,
-                    Modifier.padding(top = 2.dp),
-                    serif = false,
-                )
-            }
-        }
-    }
 }
 
 @Composable

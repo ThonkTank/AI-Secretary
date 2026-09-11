@@ -101,9 +101,17 @@ public final class GraphFlowRuntimePersistenceTest {
         String id = runtime.start(candidate(task, "Start"), null).runId;
         assertEquals(2, run(id).availableSteps().size());
         assertEquals(2, repository.today.openOccurrences().size());
+        LoadGraphFlowSheets.Result available = projection();
+        assertEquals(1, available.sheets.size());
+        assertEquals(2, available.sheets.get(0).entries.size());
+        assertEquals(Set.of(step(id, "Kurz").id, step(id, "Lang").id), new HashSet<>(
+                available.sheets.get(0).entries.stream().map(entry -> entry.targetId).toList()));
         assertEquals(RewardReceipt.Target.NONE, runtime.complete(step(id, "Kurz").id, null).reward.target);
         assertEquals(RewardReceipt.Target.NONE, runtime.complete(step(id, "Lang").id, null).reward.target);
         assertTrue(repository.today.openOccurrences().isEmpty());
+        assertTrue(projection().sheets.isEmpty());
+        assertEquals(2, projection().runs.get(0).steps.stream()
+                .filter(step -> step.state == FlowGraphRun.State.WAITING_TIME).count());
         now += 100;
         runtime.activateReady();
         assertTrue(run(id).availableSteps().isEmpty());
@@ -200,6 +208,44 @@ public final class GraphFlowRuntimePersistenceTest {
         database.getOpenHelper().getWritableDatabase().execSQL("CREATE TRIGGER reject_graph_head "
                 + "BEFORE INSERT ON reward_bookings WHEN NEW.target = 'HEAD' "
                 + "BEGIN SELECT RAISE(ABORT, 'injected reward failure'); END");
+    }
+
+    @Test public void productionCompositionMaterializesOneStepFlowsWithoutOrdinaryOrGhostSheets() {
+        Clock clock = new Clock() {
+            @Override public LocalDate today() { return DATE; }
+            @Override public LocalTime time() { return LocalTime.NOON; }
+        };
+        ApplicationUseCaseComposition app = new ApplicationUseCaseComposition(database, clock, () -> now, ids,
+                ComboPolicySource.defaults());
+        TaskId task = app.flows.saveGraph.execute(FlowEditorDraft.empty().rename("Ein Schritt")
+                .addStep("Los", FlowDelayPolicy.fixed(100)).edit());
+        assertEquals(TaskKind.FLOW, repository.catalog.findTask(task).kind);
+        assertTrue(app.today.materializeDue.execute());
+        Dashboard before = app.today.loadDashboard.execute(DATE);
+        assertTrue(before.tasks.isEmpty());
+        assertTrue(before.flowRuns.isEmpty());
+        assertEquals(1, before.flowTaskSheets.size());
+        assertEquals(1, before.flowTaskSheets.get(0).entries.size());
+        assertFalse(app.today.materializeDue.execute());
+        String candidate = before.flowTaskSheets.get(0).entries.get(0).targetId;
+        assertEquals(StartFlowCandidateResult.Status.STARTED, app.flows.startFlowCandidate.execute(candidate, null).status);
+        Dashboard waiting = app.today.loadDashboard.execute(DATE);
+        assertTrue(waiting.tasks.isEmpty());
+        assertTrue(waiting.flowTaskSheets.isEmpty());
+        assertEquals(1, waiting.flowRuns.size());
+        assertFalse(app.today.materializeDue.execute());
+        now += 100;
+        assertTrue(app.flows.activateReadyFlows.execute());
+        FlowTaskSheet sheet = app.today.loadDashboard.execute(DATE).flowTaskSheets.get(0);
+        assertEquals(FlowTaskSheet.Entry.Kind.COLLECTION, sheet.entries.get(0).kind);
+        assertEquals(RewardReceipt.Target.HEAD, app.flows.runtime.collect(sheet.entries.get(0).targetId).reward.target);
+        assertTrue(app.today.loadDashboard.execute(DATE).flowTaskSheets.isEmpty());
+        assertFalse(app.today.materializeDue.execute());
+    }
+
+    private LoadGraphFlowSheets.Result projection() {
+        return new LoadGraphFlowSheets(repository.catalog, repository.steps, repository.today, repository.flows,
+                definitions, runs, repository.transactions).execute(DATE);
     }
 
     private String candidate(TaskId task, String title) {

@@ -125,7 +125,12 @@ public class MainActivity extends ComponentActivity {
         buildShell();
         editorViewModel = new ViewModelProvider(this,
                 new TaskEditorViewModel.Factory(container)).get(TaskEditorViewModel.class);
-        appNavigator = new TaskEditorNavigator(editorViewModel, this::prepareEditorFlight);
+        appNavigator = new TaskEditorNavigator(editorViewModel, this::prepareEditorFlight,
+                createTask -> runOnUiThread(() -> new AlertDialog.Builder(this)
+                        .setItems(new String[]{"Aufgabe", "Ablauf"}, (dialog, choice) -> {
+                            if (choice == 0) createTask.run();
+                            else startActivity(new Intent(this, FlowSetupActivity.class));
+                        }).show()));
         shellViewModel = new ViewModelProvider(this,
                 new AppShellViewModel.Factory(container)).get(AppShellViewModel.class);
         todayViewModel = new ViewModelProvider(this,
@@ -352,6 +357,11 @@ public class MainActivity extends ComponentActivity {
         }
         if (request.id.equals(handledEditorRequestId)) return;
         handledEditorRequestId = request.id;
+        if (request.flowTaskId != null) {
+            startActivity(new Intent(this, FlowSetupActivity.class).putExtra(FlowSetupActivity.TASK_ID, request.flowTaskId));
+            acknowledgeEditorRequest(request.id);
+            return;
+        }
         new AlertDialog.Builder(this).setTitle(R.string.error_title)
                 .setMessage(request.message).setPositiveButton(R.string.okay,
                         (dialog, which) -> acknowledgeEditorRequest(request.id))

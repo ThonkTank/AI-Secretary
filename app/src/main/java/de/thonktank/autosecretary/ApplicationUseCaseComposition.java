@@ -87,8 +87,19 @@ final class ApplicationUseCaseComposition {
         FlowRepository flowRepository = new RoomFlowRepository(database);
         TrainingRepository trainingRepository = new RoomTrainingRepository(database);
 
-        FlowRuntimeCoordinator flowRuntime = new FlowRuntimeCoordinator(stepRepository,
-                todayRepository, flowRepository, transactions, clock, moments, ids);
+        de.thonktank.autosecretary.domain.repository.FlowGraphDefinitionRepository definitions =
+                new de.thonktank.autosecretary.data.local.SqlFlowGraphDefinitionRepository(
+                        () -> database.getOpenHelper().getWritableDatabase(), stepRepository);
+        de.thonktank.autosecretary.domain.repository.FlowGraphRunRepository graphRuns =
+                new de.thonktank.autosecretary.data.local.SqlFlowGraphRunRepository(
+                        () -> database.getOpenHelper().getWritableDatabase());
+        de.thonktank.autosecretary.domain.usecase.GraphFlowRuntime flowRuntime =
+                new de.thonktank.autosecretary.domain.usecase.GraphFlowRuntime(catalogRepository,
+                        stepRepository, todayRepository, flowRepository, definitions, graphRuns,
+                        transactions, clock, moments, ids, policies);
+        de.thonktank.autosecretary.domain.usecase.LoadGraphFlowSheets graphSheets =
+                new de.thonktank.autosecretary.domain.usecase.LoadGraphFlowSheets(catalogRepository,
+                        stepRepository, todayRepository, flowRepository, definitions, graphRuns, transactions);
 
         CreateTask create = new CreateTask(catalogRepository, stepRepository, todayRepository,
                 transactions, clock, ids);
@@ -154,23 +165,15 @@ final class ApplicationUseCaseComposition {
                 new CloseOngoingTask(catalogRepository, stepRepository, todayRepository,
                         transactions, clock),
                 new MaterializeDueOccurrences(catalogRepository, stepRepository, todayRepository,
-                        flowRepository, transactions, clock, moments, ids),
+                        flowRepository, transactions, clock, moments, ids, definitions, graphRuns),
                 new LoadDashboard(catalogRepository, stepRepository, todayRepository,
-                        flowRepository, trainingRepository, transactions));
+                        flowRepository, trainingRepository, transactions, graphSheets));
 
-        flows = new FlowUseCases(new SaveCapacityResource(flowRepository, catalogRepository,
-                stepRepository, transactions, ids),
-                new SaveStepFlowDefinition(catalogRepository, stepRepository, flowRepository,
-                        transactions),
-                new LoadStepFlowSetup(catalogRepository, stepRepository, flowRepository),
-                new SaveStepFlowSetup(catalogRepository, stepRepository, flowRepository,
-                        transactions),
-                new LoadCapacityResources(flowRepository), new ActivateReadyFlows(flowRuntime),
-                new DeferFlowRun(flowRuntime), new CancelFlowRun(flowRuntime),
-                new AdjustFlowRunReadyAt(flowRuntime), new PostponeFlowRun(flowRuntime),
-                new ReorderFlowRun(flowRuntime),
-                new LoadFlowRuns(catalogRepository, flowRepository),
-                new StartFlowCandidate(catalogRepository, stepRepository, todayRepository,
-                        flowRepository, transactions, clock, moments, ids, toggleStep));
+        flows = new FlowUseCases(flowRuntime,
+                new de.thonktank.autosecretary.domain.usecase.LoadFlowGraph(catalogRepository,
+                        stepRepository, flowRepository, definitions, transactions),
+                new de.thonktank.autosecretary.domain.usecase.SaveFlowGraph(catalogRepository,
+                        stepRepository, flowRepository, definitions, transactions, create, ids),
+                graphSheets, new LoadCapacityResources(flowRepository), clock);
     }
 }
