@@ -10,6 +10,7 @@ public final class StepExecutionUiAction {
         TOGGLE_FLOW_RUN_STEP_WITH_DELAY,
         START_FLOW_CANDIDATE,
         START_FLOW_CANDIDATE_WITH_DELAY,
+        COLLECT_FLOW,
         SUBMIT_REPETITION,
         ADVANCE_PLANNED_REPETITIONS
     }
@@ -64,6 +65,10 @@ public final class StepExecutionUiAction {
 
     public static StepExecutionUiAction submitRepetition(String stepId) {
         return new StepExecutionUiAction(Kind.SUBMIT_REPETITION, stepId, 0L);
+    }
+
+    public static StepExecutionUiAction collectFlow(String runId) {
+        return new StepExecutionUiAction(Kind.COLLECT_FLOW, runId, 0);
     }
 
     public static StepExecutionUiAction advancePlannedRepetitions(String stepId) {

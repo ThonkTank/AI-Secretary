@@ -298,7 +298,8 @@ public final class FocusStepRowView extends LinearLayout {
                     editingIndex >= 0 ? editingIndex + 1 : progress.nextSlotNumber(), current));
         } else if (action.kind == StepExecutionUiAction.Kind.TOGGLE
                 || action.kind == StepExecutionUiAction.Kind.TOGGLE_FLOW_RUN_STEP
-                || action.kind == StepExecutionUiAction.Kind.START_FLOW_CANDIDATE) {
+                || action.kind == StepExecutionUiAction.Kind.START_FLOW_CANDIDATE
+                || action.kind == StepExecutionUiAction.Kind.COLLECT_FLOW) {
             reward.setContentDescription(getContext().getString(
                     R.string.content_complete_step, step.title, step.reward.resultXp));
         } else if (action.kind == StepExecutionUiAction.Kind.TOGGLE_WITH_DELAY
@@ -515,14 +516,20 @@ public final class FocusStepRowView extends LinearLayout {
     private void emitExecution(StepExecutionUiAction action, TodayActionSink events) {
         switch (action.kind) {
             case TOGGLE:
-            case TOGGLE_FLOW_RUN_STEP:
                 events.emit(TodayAction.toggleStep(action.stepId));
                 return;
+            case TOGGLE_FLOW_RUN_STEP:
+                events.emit(TodayAction.completeFlowStep(action.stepId)); return;
+            case COLLECT_FLOW:
+                events.emit(TodayAction.collectFlow(action.stepId)); return;
             case TOGGLE_WITH_DELAY:
-            case TOGGLE_FLOW_RUN_STEP_WITH_DELAY:
                 FlowDurationDialog.show(getContext(), getContext().getString(
                                 R.string.flow_delay_prompt_title), action.proposedDelayMillis,
                         delay -> events.emit(TodayAction.toggleStep(action.stepId, delay)));
+                return;
+            case TOGGLE_FLOW_RUN_STEP_WITH_DELAY:
+                FlowDurationDialog.show(getContext(), getContext().getString(R.string.flow_delay_prompt_title),
+                        action.proposedDelayMillis, delay -> events.emit(TodayAction.completeFlowStep(action.stepId, delay)));
                 return;
             case START_FLOW_CANDIDATE:
                 events.emit(TodayAction.startFlowCandidate(action.stepId));

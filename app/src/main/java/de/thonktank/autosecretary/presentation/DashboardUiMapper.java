@@ -140,6 +140,7 @@ public final class DashboardUiMapper {
                 .overdue(false)
                 .allowDefer(allowDefer)
                 .allowBulkComplete(false)
+                .waits(flowWaits(sheet))
                 .harvestReady(false)
                 .reward(reward, XpVesselUiModel.quantitative(reward, 0, steps.size(),
                         0, plannedXp(steps), false, rewardTexts))
@@ -208,6 +209,14 @@ public final class DashboardUiMapper {
     private List<FocusStepUiModel> flowSteps(FlowTaskSheet sheet, Dashboard dashboard) {
         List<FocusStepUiModel> result = new ArrayList<>();
         for (FlowTaskSheet.Entry entry : sheet.entries) {
+            if (entry.kind == FlowTaskSheet.Entry.Kind.COLLECTION) {
+                RewardBreakdown reward = RewardPolicy.routine(Math.toIntExact(entry.finalTau),
+                        dashboard.combos.get(ComboProgress.taskOwner(sheet.task.id)));
+                result.add(FocusStepUiModel.executable(entry.targetId, entry.title,
+                        reward.resultXp + " Tau", "", false, StepExecutionUiAction.collectFlow(entry.targetId),
+                        null, reward, 0, reward.resultXp));
+                continue;
+            }
             de.thonktank.autosecretary.domain.model.StepPrescription prescription;
             String note;
             String id;
@@ -216,32 +225,47 @@ public final class DashboardUiMapper {
                 prescription = entry.candidateTemplate.prescription;
                 note = entry.candidateTemplate.note;
                 id = entry.targetId;
-                action = prescription.amount instanceof StepAmount.Duration
+                action = entry.waitAfter != null
+                        ? entry.waitAfter.mode == FlowDelayPolicy.Mode.REMEMBER_LAST
+                            ? StepExecutionUiAction.startFlowCandidateWithDelay(entry.targetId, entry.waitAfter.proposedDelayMillis())
+                            : StepExecutionUiAction.startFlowCandidate(entry.targetId)
+                        : prescription.amount instanceof StepAmount.Duration
                         ? StepExecutionUiAction.startFlowCandidateWithDelay(entry.targetId,
                         ((StepAmount.Duration) prescription.amount).seconds * 1_000L)
                         : StepExecutionUiAction.startFlowCandidate(entry.targetId);
             } else {
                 prescription = entry.runStep.prescription;
                 note = entry.runStep.note;
-                id = entry.runStep.id;
-                action = entry.run.delayAfter != null
-                        && entry.run.delayAfter.mode == FlowDelayPolicy.Mode.REMEMBER_LAST
-                        ? StepExecutionUiAction.toggleFlowRunStepWithDelay(entry.runStep.id,
-                        entry.run.delayAfter.proposedDelayMillis())
-                        : StepExecutionUiAction.toggleFlowRunStep(entry.runStep.id);
+                id = entry.run.steps.isEmpty() ? entry.runStep.id : entry.targetId;
+                action = entry.waitAfter != null && entry.waitAfter.mode == FlowDelayPolicy.Mode.REMEMBER_LAST
+                        ? StepExecutionUiAction.toggleFlowRunStepWithDelay(id, entry.waitAfter.proposedDelayMillis())
+                        : StepExecutionUiAction.toggleFlowRunStep(id);
             }
             ComboProgress combo = dashboard.combos.get(ComboProgress.stepOwner(
                     entry.kind == FlowTaskSheet.Entry.Kind.CANDIDATE
                             ? entry.candidateTemplate.id : entry.runStep.sourceTemplateId));
-            RewardBreakdown reward = RewardPolicy.step(combo);
+            RewardBreakdown reward = entry.finalTau == null ? RewardBreakdown.fromStage(0, 0)
+                    : RewardPolicy.routine(Math.toIntExact(entry.finalTau),
+                    dashboard.combos.get(ComboProgress.taskOwner(sheet.task.id)));
+            String amount = stepTexts.compactAmount(prescription.amount);
+            if (entry.finalTau != null) amount = (amount.isEmpty() ? "" : amount + " · ") + reward.resultXp + " Tau";
             FocusStepUiModel mapped = FocusStepUiModel.executable(id, entry.title,
-                    stepTexts.compactAmount(prescription.amount), note, false, action,
+                    amount, note, false, action,
                     null, reward, 0, reward.resultXp);
-            if (prescription.amount instanceof StepAmount.Duration)
-                mapped = mapped.withDurationSeconds(
-                        ((StepAmount.Duration) prescription.amount).seconds);
             result.add(mapped);
         }
+        return result;
+    }
+
+    private List<de.thonktank.autosecretary.presentation.today.FlowWaitUiModel> flowWaits(FlowTaskSheet sheet) {
+        List<de.thonktank.autosecretary.presentation.today.FlowWaitUiModel> result = new ArrayList<>();
+        for (FlowRunSummary run : sheet.running) for (FlowRunSummary.Step step : run.steps)
+            if (step.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.WAITING_TIME
+                    || step.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.WAITING_RESOURCE) {
+                String title = run.seedTitle.equals(step.title) ? run.seedTitle : run.seedTitle + ": " + step.title;
+                result.add(new de.thonktank.autosecretary.presentation.today.FlowWaitUiModel(
+                        run.id, step.waitId, title, step.readyAtEpochMillis));
+            }
         return result;
     }
 
