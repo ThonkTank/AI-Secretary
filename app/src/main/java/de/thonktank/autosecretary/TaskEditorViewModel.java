@@ -179,8 +179,7 @@ public final class TaskEditorViewModel extends ViewModel {
                     }
                     return;
                 }
-                TaskFlowDraft flowDraft = flows.loadStepFlowSetup == null ? TaskFlowDraft.empty()
-                        : TaskFlowDraft.from(flows.loadStepFlowSetup.execute(TaskId.of(taskId)));
+                TaskFlowDraft flowDraft = TaskFlowDraft.empty();
                 EditorUiState loaded = EditorUiState.edit(details, flowDraft);
                 Map<String, TrainingHistoryUiModel> history = trainingHistory(details);
                 if (addStep) loaded = TaskEditorStateReducer.addStep(loaded);
@@ -314,8 +313,7 @@ public final class TaskEditorViewModel extends ViewModel {
                     return;
                 }
                 TaskDetails details = catalog.loadTaskDetails.execute(TaskId.of(editor.taskId));
-                TaskFlowDraft flowDraft = flows.loadStepFlowSetup == null ? TaskFlowDraft.empty()
-                        : TaskFlowDraft.from(flows.loadStepFlowSetup.execute(TaskId.of(editor.taskId)));
+                TaskFlowDraft flowDraft = TaskFlowDraft.empty();
                 EditorUiState refreshed = EditorUiState.edit(details, flowDraft)
                         .withPage(editor.page, editor.returnToSummary)
                         .withExpandedStep(editor.expandedStepId);

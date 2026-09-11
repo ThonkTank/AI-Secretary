@@ -24,12 +24,19 @@ public final class LoadGraphFlowSheets {
     }
 
     public Result execute(LocalDate date) {
-        return transactions.inTransaction(() -> read(date));
+        return transactions.inTransaction(() -> {
+            Map<TaskId, Task> tasks = new HashMap<>();
+            for (Task task : catalog.allTasks()) tasks.put(task.id, task);
+            return read(date, tasks);
+        });
     }
 
-    private Result read(LocalDate date) {
-        Map<TaskId, Task> tasks = new HashMap<>();
-        for (Task task : catalog.allTasks()) tasks.put(task.id, task);
+    /** Reuses the inventory already loaded by the surrounding dashboard transaction. */
+    public Result execute(LocalDate date, Map<TaskId, Task> tasks) {
+        return transactions.inTransaction(() -> read(date, tasks));
+    }
+
+    private Result read(LocalDate date, Map<TaskId, Task> tasks) {
         Map<String, CapacityResource> resources = new HashMap<>();
         Map<String, Integer> totals = new HashMap<>();
         for (CapacityResource resource : flows.capacityResources()) {

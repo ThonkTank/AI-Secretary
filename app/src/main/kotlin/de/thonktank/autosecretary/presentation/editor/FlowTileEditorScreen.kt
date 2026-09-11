@@ -46,7 +46,7 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
         .onGloballyPositioned { viewport = it.boundsInRoot() }
         .verticalScroll(scroll).padding(16.dp).testTag("flow-editor")) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            EditorButton("Abbrechen", palette, onCancel, enabled = !state.saving)
+            EditorButton("Abbrechen", palette, onCancel, enabled = !state.saving && !state.savePending)
             EditorText("${state.page}/2", Color.argb(palette.muted), 16, serif = false,
                 modifier = Modifier.padding(top = 14.dp))
             EditorButton("↶", palette, editor::undo,

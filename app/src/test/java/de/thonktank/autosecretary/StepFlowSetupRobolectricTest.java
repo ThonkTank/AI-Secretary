@@ -1,232 +1,70 @@
 package de.thonktank.autosecretary;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-
-import android.content.Context;
-
+import static org.junit.Assert.*;
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
-
-import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
-import de.thonktank.autosecretary.domain.model.FlowConfigurationDraft;
-import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
-import de.thonktank.autosecretary.domain.model.StepActivationKind;
-import de.thonktank.autosecretary.domain.model.StepAmount;
-import de.thonktank.autosecretary.domain.model.StepResourceLease;
-import de.thonktank.autosecretary.domain.model.StepTransition;
-import de.thonktank.autosecretary.domain.model.TaskBoundKind;
-import de.thonktank.autosecretary.domain.model.TaskDefinition;
-import de.thonktank.autosecretary.domain.model.TaskDetails;
-import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
-import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.usecase.IdGenerator;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import de.thonktank.autosecretary.domain.model.*;
+import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
+import java.time.*;
+import java.util.*;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+/** Replaces the retired embedded-flow editor contract with explicit task/flow ownership. */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 35)
+@Config(sdk = {26, 35})
 public final class StepFlowSetupRobolectricTest {
     private AppDatabase database;
     private RoomRepositoryFixture repository;
-    private ApplicationUseCaseComposition tasks;
+    private ApplicationUseCaseComposition app;
+    private int ids;
 
-    @Before public void setUp() {
-        Context context = ApplicationProvider.getApplicationContext();
-        database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
+    @Before public void setup() {
+        database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase.class)
                 .allowMainThreadQueries().build();
         repository = new RoomRepositoryFixture(database);
         Clock clock = new Clock() {
-            @Override public LocalDate today() { return LocalDate.of(2026, 8, 25); }
-            @Override public LocalTime time() { return LocalTime.NOON; }
+            public LocalDate today() { return LocalDate.of(2026, 9, 11); }
+            public LocalTime time() { return LocalTime.NOON; }
         };
-        tasks = new ApplicationUseCaseComposition(database, clock,
-                new SequenceIds(), de.thonktank.autosecretary.domain.repository.ComboPolicySource.defaults());
-        tasks.catalog.create.execute(TaskDefinition.basic("Wäsche", TaskSlot.MORNING,
-                Recurrence.DAILY, 1, 0,
-                Arrays.asList("Waschgang", "Aufhängen", "Abhängen")));
+        app = new ApplicationUseCaseComposition(database, clock, () -> "boundary-" + ++ids, ComboPolicySource.defaults());
+    }
+    @After public void close() { database.close(); }
+
+    @Test public void normalEditorCannotCreateAFlowOrWriteCapacities() {
+        TaskDefinition task = TaskDefinition.basic("Alt", TaskSlot.MORNING, Recurrence.DAILY, 1, 0, List.of("A", "B"));
+        FlowConfigurationDraft draft = new FlowConfigurationDraft(List.of("a", "b"),
+                List.of(new FlowConfigurationDraft.Link("a", "b", FlowDelayPolicy.fixed(100))),
+                List.of(new FlowConfigurationDraft.Resource("rack", null, "Ständer", 1, true)), List.of());
+        assertThrows(IllegalArgumentException.class, () -> app.catalog.saveTaskConfiguration.execute(null, task, draft));
+        assertTrue(repository.catalog.allTasks().isEmpty());
+        assertTrue(repository.flows.capacityResources().isEmpty());
     }
 
-    @After public void tearDown() { database.close(); }
-
-    @Test public void combinedEditorSaveCreatesConvergingLaundryFlowAndSharedResources() {
-        int taskCount = repository.catalog.allTasks().size();
-        TaskDefinition definition = TaskDefinition.basic("Wäsche-Test", TaskSlot.MORNING,
-                Recurrence.DAILY, 1, 0, Arrays.asList(
-                        "Buntwäsche starten", "Weißwäsche starten", "Wäsche aufhängen",
-                        "Wäsche abnehmen"));
-        List<String> keys = Arrays.asList("color", "white", "hang", "take-down");
-        List<FlowConfigurationDraft.Link> links = Arrays.asList(
-                new FlowConfigurationDraft.Link("color", "hang",
-                        FlowDelayPolicy.rememberLast(7_200_000L)),
-                new FlowConfigurationDraft.Link("white", "hang",
-                        FlowDelayPolicy.rememberLast(7_200_000L)),
-                new FlowConfigurationDraft.Link("hang", "take-down",
-                        FlowDelayPolicy.fixed(86_400_000L)));
-        List<FlowConfigurationDraft.Resource> resources = Arrays.asList(
-                new FlowConfigurationDraft.Resource("washer-key", null,
-                        "Waschmaschine", 1, true),
-                new FlowConfigurationDraft.Resource("rack-key", null,
-                        "Wäscheständer", 2, true));
-        List<FlowConfigurationDraft.Lease> leases = Arrays.asList(
-                new FlowConfigurationDraft.Lease("washer-color", null, "washer-key",
-                        "color", "hang", 1),
-                new FlowConfigurationDraft.Lease("washer-white", null, "washer-key",
-                        "white", "hang", 1),
-                new FlowConfigurationDraft.Lease("rack-color", null, "rack-key",
-                        "color", "take-down", 1),
-                new FlowConfigurationDraft.Lease("rack-white", null, "rack-key",
-                        "white", "take-down", 1));
-
-        de.thonktank.autosecretary.domain.model.TaskId saved =
-                tasks.catalog.saveTaskConfiguration.execute(null, definition,
-                        new FlowConfigurationDraft(keys, links, resources, leases));
-
-        assertEquals(taskCount + 1, repository.catalog.allTasks().size());
-        assertEquals(3, repository.flows.stepTransitions(saved).size());
-        assertEquals(4, repository.flows.stepResourceLeases(saved).size());
-        List<TaskStepTemplate> savedSteps = repository.steps.templates(saved);
-        assertEquals(StepActivationKind.SCHEDULED, savedSteps.get(0).activationKind);
-        assertEquals(StepActivationKind.SCHEDULED, savedSteps.get(1).activationKind);
-        assertEquals(StepActivationKind.FOLLOW_UP, savedSteps.get(2).activationKind);
-        assertEquals(StepActivationKind.FOLLOW_UP, savedSteps.get(3).activationKind);
-        assertEquals(1, repository.flows.capacityResources().stream()
-                .filter(value -> value.name.equals("Waschmaschine")).findFirst().get().capacity);
-        assertEquals(2, repository.flows.capacityResources().stream()
-                .filter(value -> value.name.equals("Wäscheständer")).findFirst().get().capacity);
+    @Test public void staleNormalEditorCannotOverwriteAnExplicitFlow() {
+        TaskId id = app.flows.saveGraph.execute(FlowEditorDraft.empty().rename("Ablauf")
+                .addStep("Start", FlowDelayPolicy.rememberLast(100)).edit());
+        TaskDefinition replacement = TaskDefinition.basic("Veraltet", TaskSlot.EVENING, Recurrence.DAILY,
+                1, 0, List.of("Ersatz"));
+        assertThrows(IllegalArgumentException.class, () -> app.catalog.update.execute(id, replacement));
+        assertEquals("Ablauf", app.flows.loadGraph.execute(id).task.title);
+        assertEquals("Start", repository.steps.templates(id).get(0).text);
     }
 
-    @Test public void invalidCombinedEditorSaveRollsBackTaskAndNewResource() {
-        int taskCount = repository.catalog.allTasks().size();
-        TaskDefinition definition = TaskDefinition.basic("Ungültiger Ablauf",
-                TaskSlot.MORNING, Recurrence.DAILY, 1, 0,
-                Arrays.asList("Start", "Ende"));
-        FlowConfigurationDraft draft = new FlowConfigurationDraft(
-                Arrays.asList("start", "end"),
-                java.util.Collections.singletonList(new FlowConfigurationDraft.Link(
-                        "start", "end", FlowDelayPolicy.fixed(0L))),
-                java.util.Collections.singletonList(new FlowConfigurationDraft.Resource(
-                        "only-one", null, "Nur einer", 1, true)),
-                java.util.Collections.singletonList(new FlowConfigurationDraft.Lease(
-                        "too-many", null, "only-one", "start", "end", 2)));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> tasks.catalog.saveTaskConfiguration.execute(null, definition, draft));
-
-        assertEquals(taskCount, repository.catalog.allTasks().size());
-        assertEquals(0, repository.flows.capacityResources().stream()
-                .filter(value -> value.name.equals("Nur einer")).count());
-    }
-
-    @Test public void setupDerivesRolesAtomicallyAndSurvivesNormalTaskEdits() {
-        de.thonktank.autosecretary.domain.model.Task task = repository.catalog.allTasks().get(0);
-        List<TaskStepTemplate> steps = repository.steps.templates(task.id);
-        String wash = steps.get(0).id;
-        String hang = steps.get(1).id;
-        String takeDown = steps.get(2).id;
-        tasks.flows.saveCapacityResource.execute("rack", "Wäscheständer", 2);
-        Map<String, StepActivationKind> roles = roles(steps, hang, takeDown);
-        List<StepTransition> transitions = Arrays.asList(
-                new StepTransition(wash, hang, FlowDelayPolicy.rememberLast(7_200_000L)),
-                new StepTransition(hang, takeDown, FlowDelayPolicy.fixed(86_400_000L)));
-        List<StepResourceLease> leases = java.util.Collections.singletonList(
-                new StepResourceLease("rack-rule", task.id, wash, takeDown, "rack", 2));
-
-        tasks.flows.saveStepFlowSetup.execute(task.id, roles, transitions, leases);
-
-        assertEquals(2, tasks.flows.loadStepFlowSetup.execute(task.id).transitions.size());
-        assertEquals(StepActivationKind.SCHEDULED,
-                repository.steps.templates(task.id).get(0).activationKind);
-        assertEquals(StepActivationKind.FOLLOW_UP,
-                repository.steps.templates(task.id).get(1).activationKind);
-
-        TaskDetails details = tasks.catalog.loadTaskDetails.execute(task.id);
-        List<TaskStepDefinition> definitions = new ArrayList<>();
-        for (TaskStepTemplate step : details.stepTemplates) definitions.add(step.definition());
-        tasks.catalog.update.execute(task.id, new TaskDefinition("Wäsche umbenannt",
-                details.estimatedMinutes, details.slot, details.recurrence, details.intervalDays,
-                details.weekdayMask, details.timeOfDayMask, details.boundKind,
-                details.boundUntilOn, details.boundWeeks, details.remainingCount,
-                details.deadlineOn, details.note, definitions));
-
-        assertEquals(2, repository.flows.stepTransitions(task.id).size());
-        assertEquals(1, repository.flows.stepResourceLeases(task.id).size());
-        assertEquals(StepActivationKind.FOLLOW_UP,
-                repository.steps.templates(task.id).get(1).activationKind);
-
-        Map<String, StepActivationKind> invalid = roles(steps, hang, takeDown);
-        assertThrows(IllegalArgumentException.class, () -> tasks.flows.saveStepFlowSetup.execute(
-                task.id, invalid, java.util.Collections.emptyList(), leases));
-        assertEquals(2, repository.flows.stepTransitions(task.id).size());
-    }
-
-    @Test public void shrinkingResourceBelowAnExistingRuleRollsBack() {
-        de.thonktank.autosecretary.domain.model.Task task = repository.catalog.allTasks().get(0);
-        List<TaskStepTemplate> steps = repository.steps.templates(task.id);
-        tasks.flows.saveCapacityResource.execute("rack", "Wäscheständer", 2);
-        Map<String, StepActivationKind> roles = roles(steps, steps.get(1).id, steps.get(2).id);
-        tasks.flows.saveStepFlowSetup.execute(task.id, roles, Arrays.asList(
-                        new StepTransition(steps.get(0).id, steps.get(1).id,
-                                FlowDelayPolicy.fixed(0L)),
-                        new StepTransition(steps.get(1).id, steps.get(2).id,
-                                FlowDelayPolicy.fixed(0L))),
-                java.util.Collections.singletonList(new StepResourceLease("rack-rule", task.id,
-                        steps.get(0).id, steps.get(2).id, "rack", 2)));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> tasks.flows.saveCapacityResource.execute("rack", "Wäscheständer", 1));
-
-        assertEquals(2, repository.flows.findCapacityResource("rack").capacity);
-    }
-
-    @Test public void changingFlowRolesPreservesCustomRestTimerPolicy() {
-        de.thonktank.autosecretary.domain.model.Task task = repository.catalog.allTasks().get(0);
-        List<TaskStepTemplate> steps = new ArrayList<>(repository.steps.templates(task.id));
-        TaskStepTemplate first = steps.get(0);
-        steps.set(0, de.thonktank.autosecretary.testing.StepTestFixtures.template(first.id, first.taskId, first.position, first.text,
-                first.weekdayMask, first.intervalDays, StepAmount.setsReps(3, 8),
-                RestTimerPolicy.custom(75), first.note, first.activationKind));
-        repository.steps.insertTemplates(steps);
-        steps = repository.steps.templates(task.id);
-
-        tasks.flows.saveStepFlowSetup.execute(task.id, roles(steps, steps.get(1).id),
-                java.util.Collections.singletonList(new StepTransition(steps.get(0).id,
-                        steps.get(1).id, FlowDelayPolicy.fixed(0L))),
-                java.util.Collections.emptyList());
-
-        assertEquals(RestTimerPolicy.Mode.CUSTOM,
-                repository.steps.templates(task.id).get(0).prescription.rest.mode);
-        assertEquals(Integer.valueOf(75),
-                repository.steps.templates(task.id).get(0).prescription.rest.customSeconds);
-    }
-
-    private static Map<String, StepActivationKind> roles(List<TaskStepTemplate> steps,
-                                                          String... followUps) {
-        List<String> automatic = Arrays.asList(followUps);
-        Map<String, StepActivationKind> result = new HashMap<>();
-        for (TaskStepTemplate step : steps) result.put(step.id, automatic.contains(step.id)
-                ? StepActivationKind.FOLLOW_UP : StepActivationKind.SCHEDULED);
-        return result;
-    }
-
-    private static final class SequenceIds implements IdGenerator {
-        private int next;
-        @Override public String nextId() { return "setup-" + ++next; }
+    @Test public void unrelatedNormalTaskCanBeSavedWhileAParallelFlowExists() {
+        FlowEditorDraft flow = FlowEditorDraft.empty().rename("Parallel")
+                .addStep("Start", FlowDelayPolicy.fixed(0)).addStep("Links", FlowDelayPolicy.fixed(0))
+                .addStep("Rechts", FlowDelayPolicy.fixed(0));
+        List<String> keys = flow.graph.stepIds;
+        flow = flow.withGraph(new FlowTileGraph(keys, List.of(new FlowTileGraph.Link(keys.get(0), keys.get(1)),
+                new FlowTileGraph.Link(keys.get(0), keys.get(2)))));
+        TaskId flowId = app.flows.saveGraph.execute(flow.edit());
+        TaskDefinition task = TaskDefinition.basic("Normal", TaskSlot.EVENING, Recurrence.DAILY, 1, 0, List.of("Tun"));
+        TaskId normal = app.catalog.saveTaskConfiguration.execute(null, task,
+                new FlowConfigurationDraft(List.of("one"), List.of(), List.of(), List.of()));
+        assertEquals(TaskKind.TASK, repository.catalog.findTask(normal).kind);
+        assertEquals(2, app.flows.loadGraph.execute(flowId).definition.graph.links.size());
     }
 }

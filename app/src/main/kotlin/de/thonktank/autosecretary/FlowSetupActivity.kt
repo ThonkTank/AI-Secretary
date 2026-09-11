@@ -41,7 +41,7 @@ class FlowSetupActivity : ComponentActivity() {
             }
             BackHandler {
                 when {
-                    state.saving -> Unit
+                    state.saving || state.savePending -> Unit
                     state.form != null -> editor.closeForm()
                     state.page == 2 -> editor.back()
                     else -> confirmDiscard()

@@ -331,7 +331,9 @@ public final class PresentationStateRobolectricTest {
     }
 
     @Test public void newEditorLoadsSharedCapacityCatalogWithoutBecomingDirty() {
-        tasks.flows.saveCapacityResource.execute("shared-rack", "Wäscheständer", 2);
+        new de.thonktank.autosecretary.domain.usecase.SaveCapacityResource(
+                repository.flows, repository.transactions, () -> "shared-rack")
+                .execute("shared-rack", "Wäscheständer", 2);
         editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
 
         editorViewModel.dispatch(TaskEditorAction.openNew());

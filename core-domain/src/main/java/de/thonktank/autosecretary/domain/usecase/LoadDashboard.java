@@ -84,7 +84,7 @@ public final class LoadDashboard {
     private Dashboard read(LocalDate today) {
         Map<TaskId, Task> tasks = new HashMap<>();
         for (Task task : catalog.allTasks()) tasks.put(task.id, task);
-        LoadGraphFlowSheets.Result graph = graphSheets == null ? null : graphSheets.execute(today);
+        LoadGraphFlowSheets.Result graph = graphSheets == null ? null : graphSheets.execute(today, tasks);
         List<FlowRunSummary> allFlowRuns = graph == null
                 ? LoadFlowRuns.summaries(tasks, flowRepository, flowRepository.activeFlowRuns()) : graph.runs;
         Map<String, FlowRunSummary> flowById = new HashMap<>();
@@ -113,7 +113,8 @@ public final class LoadDashboard {
         Set<String> accumulatedSlots = new HashSet<>();
         Map<String, FlowSheetBuilder> flowSheets = new LinkedHashMap<>();
         Map<String, FlowTaskSheetPlacement> placements = new HashMap<>();
-        for (FlowTaskSheetPlacement placement : flowRepository.flowTaskSheetPlacements())
+        for (FlowTaskSheetPlacement placement : graph == null ? flowRepository.flowTaskSheetPlacements()
+                : java.util.Collections.<FlowTaskSheetPlacement>emptyList())
             placements.put(sheetKey(placement.taskId, placement.slot), placement);
         for (Occurrence occurrence : graph == null ? open : java.util.Collections.<Occurrence>emptyList()) {
             if (occurrence.kind != OccurrenceKind.FLOW_STEP) continue;
