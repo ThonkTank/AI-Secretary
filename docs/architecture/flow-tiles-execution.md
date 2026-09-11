@@ -526,3 +526,27 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   stabile Darstellung, bevor er die Klickposition ermittelt. Keine Wiederholung
   des Klicks, kein entfallener Feld-/Bediennachweis, keine Produktänderung.
   Alle sieben nativen Fälle bestehen danach lokal bei Animation 1.0 (1 min 27 s).
+
+- Auf `c97403d8` bestehen die sieben nativen Fälle lokal auch ohne Animationen
+  (1 min 19 s). Das lokale Gesamtgate besteht erneut 746 Tests ohne Fehler;
+  der Paketabschluss läuft noch. In PR `34612749596` ist die normale API-26-Prüfung
+  grün. Dessen Animationslauf zeigt beim nativen Join-Test bereits beide gewünschten
+  Verbindungen, anschließend aber Fokus auf dem Ablaufnamen statt ausgeführtem Undo.
+  Die barrierefreie Reise verwendet deshalb auch für Rückgängig die echte native
+  Klickaktion des beschrifteten Buttons. Physische Touch-/Maus-/Undo-Prüfungen bleiben
+  separat unverändert; keine Wiederholung fehlgeschlagener Aktionen.
+- Eine weitere lokale Probe reproduziert das ausgebliebene Undo auch im physischen
+  Touch-Fall, obwohl der Klick die richtigen protokollierten Koordinaten hat. Damit
+  ist veraltete Geometrie nicht als alleinige Ursache belegt. Die nativen Tests
+  verwenden für physische Taps nun dieselbe synchrone Pointer-Grenze wie ihre Drags
+  (kurz halten, keine Bewegung), statt UIAutomators unter Last verzögertem 16-ms-Tap.
+  Nach Struktur-/Scrolländerungen wird stabile Darstellung abgewartet. Diagnoseausgaben
+  benennen die genaue Testphase und Verbindungen statt bloßer Objekt-Hashcodes.
+- Die erste Fassung dieses Test-Taps verwendete zwölf stationäre Bewegungsereignisse.
+  Die Ereignisprobe zeigt dadurch unter Last über 500 ms Haltedauer und korrekt
+  ausgelöstes langes Drücken statt Dialogöffnung. Taps senden jetzt nur Down/Up mit
+  50 ms Haltedauer, Drags weiterhin ihre zwölf Bewegungsschritte. Die temporäre
+  Ereignisprotokollierung im Testhost wurde wieder entfernt.
+- Der vollständige lokale Lauf auf `c97403d8` ist grün (16 min 35 s), einschließlich
+  746 Tests, Lint und Paketen. Die abschließende reine Testkorrektur besteht danach
+  alle sieben nativen Fälle bei Animation 1.0 (1 min 38 s).

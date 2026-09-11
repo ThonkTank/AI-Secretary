@@ -26,7 +26,7 @@ class FlowTileEditorInstrumentationTest {
             // Capture before ActivityScenario closes the host, not the empty launcher afterwards.
             runCatching {
                 activityRule.scenario.onActivity {
-                    Log.e("FlowTileTest", "${description.methodName}: form=${it.editor.state.value.form}, graph=${it.editor.state.value.draft.graph.links}")
+                    Log.e("FlowTileTest", "${description.methodName} ($stage): form=${it.editor.state.value.form}, graph=${it.editor.state.value.draft.graph.links.map { link -> link.source to link.target }}")
                 }
                 val hierarchy = ByteArrayOutputStream().also { device.dumpWindowHierarchy(it) }.toString("UTF-8")
                 hierarchy.chunked(3000).forEach { Log.e("FlowTileTest", it) }
@@ -36,6 +36,7 @@ class FlowTileEditorInstrumentationTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val device get() = UiDevice.getInstance(instrumentation)
     private lateinit var ids: List<String>
+    private var stage = "initial state"
 
     @Before fun awaitTiles() {
         assertTrue(device.wait(Until.hasObject(By.desc("Waschen")), 5_000))
@@ -68,7 +69,7 @@ class FlowTileEditorInstrumentationTest {
         assertFalse("Large-font layout did not settle",
             requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
                 .waitForStable(5_000, 300, 50, true).isTimeout)
-        button("Waschen").click()
+        tapButton("Waschen")
         awaitFormName("Waschen")
         assertNotNull(button("Schritt bearbeiten"))
         assertNotNull(button("Name"))
@@ -84,17 +85,20 @@ class FlowTileEditorInstrumentationTest {
     }
 
     @Test fun touchDragInsertsBeforeAndUndoRestoresTheStableGraph() {
+        stage = "first touch insertion"
         val origin = button("Trockner").visibleBounds
         val target = button("Aufhängen").visibleBounds
         pointer(origin.centerX().toFloat(), origin.centerY().toFloat(), target.centerX().toFloat(),
             target.top + 3f, cancel = false, mouse = false)
         awaitGraph { it.predecessors(ids[1]) == listOf(ids[2]) && it.predecessors(ids[2]) == listOf(ids[0]) }
-        button("Rückgängig").click()
+        stage = "physical undo after insertion"
+        tapButton("Rückgängig")
         awaitGraph { it.links == listOf(FlowTileGraph.Link(ids[0], ids[1])) && it.stepIds == ids }
         assertFalse(requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
             .waitForStable(5_000, 300, 50, true).isTimeout)
         val again = button("Trockner").visibleBounds
         val before = button("Aufhängen").visibleBounds
+        stage = "second touch insertion after undo"
         pointer(again.centerX().toFloat(), again.centerY().toFloat(), before.centerX().toFloat(),
             before.top + 3f, cancel = false, mouse = false)
         awaitGraph { it.predecessors(ids[1]) == listOf(ids[2]) && it.predecessors(ids[2]) == listOf(ids[0]) }
@@ -118,6 +122,7 @@ class FlowTileEditorInstrumentationTest {
     }
 
     @Test fun nativeAccessibilityCanJoinAndUndoWithoutDraggingATile() {
+        stage = "native join preview"
         button("Trockner").longClick()
         clickAccessibleTag("flow-editor:handle:JOIN")
         clickAccessibleTag("flow-editor:target:${ids[1]}")
@@ -125,10 +130,12 @@ class FlowTileEditorInstrumentationTest {
         awaitAccessibleTag("flow-editor:apply-move")
         assertGraph { it.predecessors(ids[1]) == listOf(ids[0]) }
         clickAccessibleTag("flow-editor:apply-move")
+        stage = "native join applied"
         awaitGraph { it.predecessors(ids[1]).toSet() == setOf(ids[0], ids[2]) }
         // Scroll through the accessibility action: a generic swipe can grab a tile.
         repeat(5) { scrollAccessible(forward = false) }
-        button("Rückgängig").click()
+        stage = "native undo after join"
+        clickAccessibleLabel("Rückgängig")
         awaitGraph { it.links == listOf(FlowTileGraph.Link(ids[0], ids[1])) && it.stepIds == ids }
     }
 
@@ -155,7 +162,7 @@ class FlowTileEditorInstrumentationTest {
     }
 
     @Test fun openStepInputSurvivesActivityRecreationWithoutAdditionalFields() {
-        button("Waschen").click()
+        tapButton("Waschen")
         val input = nameInput()
         input.text = "Buntwäsche"
         awaitFormName("Buntwäsche")
@@ -194,6 +201,24 @@ class FlowTileEditorInstrumentationTest {
         assertTrue("Missing click action for $tag", node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
     }
 
+    private fun clickAccessibleLabel(label: String) {
+        // Keep the non-drag journey semantic after scrolling as well instead of
+        // switching to UiObject2's short coordinate gesture for the final action.
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        do {
+            var node = accessibilityNode {
+                it.isVisibleToUser && (it.contentDescription?.toString() == label || it.text?.toString() == label)
+            }
+            while (node != null && !node.isClickable) node = node.parent
+            if (node != null) {
+                assertTrue("Missing click action for $label", node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                return
+            }
+            SystemClock.sleep(50)
+        } while (SystemClock.uptimeMillis() < deadline)
+        throw AssertionError("Missing accessible button: $label")
+    }
+
     private fun awaitAccessibleTag(tag: String): AccessibilityNodeInfo {
         val deadline = SystemClock.uptimeMillis() + 5_000
         do {
@@ -223,12 +248,18 @@ class FlowTileEditorInstrumentationTest {
         // A font change or bring-into-view animation can retain the old node coordinates
         // briefly. Resolve the control after layout settles, then scroll by its actual semantics.
         device.waitForIdle()
+        assertFalse("Layout must settle before locating $label",
+            requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+                .waitForStable(5_000, 300, 50, true).isTimeout)
         var result = device.wait(Until.findObject(By.desc(label)), 1_000)
             ?: device.findObject(By.text(label))
         if (result == null) {
             val scrollable = UiScrollable(UiSelector().scrollable(true)).setMaxSearchSwipes(5)
             if (!scrollable.scrollIntoView(UiSelector().description(label))) scrollable.scrollTextIntoView(label)
             device.waitForIdle()
+            assertFalse("Scrolling must settle before locating $label",
+                requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+                    .waitForStable(5_000, 300, 50, true).isTimeout)
             result = device.wait(Until.findObject(By.desc(label)), 2_000) ?: device.findObject(By.text(label))
         }
         return requireNotNull(result) { "Missing accessible control: $label" }
@@ -248,7 +279,18 @@ class FlowTileEditorInstrumentationTest {
 
     private fun assertGraph(predicate: (FlowTileGraph) -> Boolean) {
         instrumentation.waitForIdleSync()
-        activityRule.scenario.onActivity { assertTrue("Unexpected tile graph", predicate(it.editor.state.value.draft.graph)) }
+        activityRule.scenario.onActivity {
+            val graph = it.editor.state.value.draft.graph
+            assertTrue("Unexpected tile graph at $stage: ${graph.links.map { link -> link.source to link.target }}", predicate(graph))
+        }
+    }
+
+    private fun tapButton(label: String) {
+        val bounds = button(label).visibleBounds
+        // The same synchronous event boundary as the physical drags, with no
+        // movement/slop: a real held fingertip, not UiObject2's 16-ms gesture.
+        pointer(bounds.centerX().toFloat(), bounds.centerY().toFloat(),
+            bounds.centerX().toFloat(), bounds.centerY().toFloat(), cancel = false, mouse = false)
     }
 
     private fun pointer(x: Float, y: Float, targetX: Float, targetY: Float, cancel: Boolean, mouse: Boolean,
@@ -266,7 +308,13 @@ class FlowTileEditorInstrumentationTest {
         }
         send(MotionEvent.ACTION_DOWN, x, y)
         try {
-            for (i in 1..12) { SystemClock.sleep(16); send(MotionEvent.ACTION_MOVE, x + (targetX - x) * i / 12, y + (targetY - y) * i / 12) }
+            if (x == targetX && y == targetY) {
+                // Do not send stationary drag frames: synchronous dispatch under
+                // load can stretch those beyond the long-press threshold.
+                SystemClock.sleep(50)
+            } else {
+                for (i in 1..12) { SystemClock.sleep(16); send(MotionEvent.ACTION_MOVE, x + (targetX - x) * i / 12, y + (targetY - y) * i / 12) }
+            }
             whileHeld?.invoke()
         } finally {
             send(if (cancel) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP, targetX, targetY)
