@@ -1,8 +1,6 @@
 package de.thonktank.autosecretary.presentation.editor
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -10,25 +8,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.FlowEditorForm
 import de.thonktank.autosecretary.FlowEditorState
 import de.thonktank.autosecretary.FlowEditorViewModel
-import de.thonktank.autosecretary.domain.model.FlowTileGraph
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 /** Dedicated flow surface; normal task-editor pages are deliberately not reused or changed. */
 @Composable
@@ -49,8 +40,11 @@ fun FlowTileEditorScreen(
 @Composable
 private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
     editor: FlowEditorViewModel, onSave: () -> Unit, onCancel: () -> Unit, modifier: Modifier) {
+    val scroll = rememberScrollState()
+    var viewport by remember { mutableStateOf(Rect.Zero) }
     Column(modifier.fillMaxSize().background(Color.argb(palette.background))
-        .verticalScroll(rememberScrollState()).padding(16.dp).testTag("flow-editor")) {
+        .onGloballyPositioned { viewport = it.boundsInRoot() }
+        .verticalScroll(scroll).padding(16.dp).testTag("flow-editor")) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             EditorButton("Abbrechen", palette, onCancel, enabled = !state.saving)
             EditorText("${state.page}/2", Color.argb(palette.muted), 16, serif = false,
@@ -72,7 +66,7 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
                     textSize = 30, serif = true,
                     modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Ablaufname" })
                 Spacer(Modifier.height(16.dp))
-                FlowTiles(state, palette, editor)
+                FlowTileBoard(state, palette, editor, scroll, viewport)
                 EditorButton("+ Schritt", palette, { editor.openStep(null) }, modifier = Modifier.fillMaxWidth())
                 EditorButton("Weiter", palette, editor::next, primary = true,
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp))
@@ -190,98 +184,5 @@ private fun FlowEditorFormSurface(form: FlowEditorForm, state: FlowEditorState, 
         if (expanded) options.forEach { (value, text) ->
             EditorButton(text, palette, { editor.field(field, value); expanded = false }, modifier = Modifier.fillMaxWidth())
         }
-    }
-}
-
-internal data class FlowTileSpan(val row: Int, val left: Float, val right: Float)
-internal fun tileSpans(graph: FlowTileGraph): Map<String, FlowTileSpan> {
-    val result = linkedMapOf<String, FlowTileSpan>()
-    val roots = graph.roots()
-    graph.topologicalOrder().forEach { id ->
-        val parents = graph.predecessors(id)
-        result[id] = if (parents.isEmpty()) {
-            val index = roots.indexOf(id)
-            FlowTileSpan(0, index.toFloat() / roots.size, (index + 1f) / roots.size)
-        } else if (parents.size == 1) {
-            val parent = result.getValue(parents.single())
-            val siblings = graph.successors(parents.single())
-            val index = siblings.indexOf(id)
-            val width = (parent.right - parent.left) / siblings.size
-            FlowTileSpan(parent.row + 1, parent.left + index * width, parent.left + (index + 1) * width)
-        } else FlowTileSpan(parents.maxOf { result.getValue(it).row } + 1,
-            parents.minOf { result.getValue(it).left }, parents.maxOf { result.getValue(it).right })
-    }
-    return result
-}
-
-@Composable private fun FlowTiles(state: FlowEditorState, palette: DayPalette, editor: FlowEditorViewModel) {
-    val graph = state.draft.graph
-    val boxes = remember { mutableMapOf<String, Rect>() }
-    var preview by remember(graph) { mutableStateOf<FlowTileGraph?>(null) }
-    val spans = tileSpans(preview ?: graph)
-    Layout(content = {
-        state.draft.steps.forEach { step -> key(step.id) {
-            val actions = graph.stepIds.filter { it != step.id }.flatMap { target ->
-                val title = state.draft.step(target).text
-                listOf(FlowTileGraph.Placement.BEFORE to "Vor", FlowTileGraph.Placement.AFTER to "Nach",
-                    FlowTileGraph.Placement.BESIDE to "Neben").mapNotNull { (placement, label) ->
-                    runCatching { graph.place(step.id, target, placement, false) }.getOrNull()?.let {
-                        CustomAccessibilityAction("$label $title verschieben") { editor.place(step.id, target, placement); true }
-                    }
-                } + listOfNotNull(runCatching { graph.join(listOf(step.id), target) }.getOrNull()?.let {
-                    CustomAccessibilityAction("Gemeinsamer Folgeschritt: $title") { editor.join(listOf(step.id), target); true }
-                })
-            } + if (graph.roots().contains(step.id)) listOf(CustomAccessibilityAction("Startrhythmus bearbeiten") {
-                editor.openCadence(step.id); true
-            }) else emptyList()
-            Box(Modifier.onGloballyPositioned { boxes[step.id] = it.boundsInParent() }
-                .pointerInput(graph, step.id) {
-                    var point = Offset.Zero
-                    var targets = emptyMap<String, Rect>()
-                    var destination: Pair<String, FlowTileGraph.Placement>? = null
-                    detectDragGestures(onDragStart = { local ->
-                        targets = boxes.toMap(); point = (targets[step.id]?.topLeft ?: Offset.Zero) + local
-                    }, onDragCancel = { preview = null; destination = null }, onDragEnd = {
-                        destination?.let { (target, placement) -> editor.place(step.id, target, placement) }
-                        preview = null; destination = null
-                    }, onDrag = { change, delta ->
-                        change.consume(); point += delta
-                        val target = targets.filterKeys { it != step.id }.minByOrNull { (_, rect) -> (point - rect.center).getDistance() }
-                        destination = target?.let { (id, rect) ->
-                            val side = abs(point.x - rect.center.x) > rect.width * .3f
-                            val placement = if (side) FlowTileGraph.Placement.BESIDE
-                                else if (point.y < rect.center.y) FlowTileGraph.Placement.BEFORE else FlowTileGraph.Placement.AFTER
-                            val proposed = runCatching { graph.place(step.id, id, placement, false) }.getOrNull()
-                            preview = proposed
-                            if (proposed == null) null else id to placement
-                        }
-                    })
-                }.semantics { customActions = actions }.testTag("flow-editor:tile:${step.id}")) {
-                LeafSurface(palette, clickableLabel = step.text, onClick = { editor.openStep(step.id) },
-                    topEnd = 20, bottomStart = 20,
-                    padding = PaddingValues(8.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    EditorText(step.text, Color.argb(palette.ink), 16, serif = false)
-                }
-            }
-        } }
-    }, modifier = Modifier.fillMaxWidth()) { measurables, constraints ->
-        val gap = 6.dp.roundToPx()
-        val width = constraints.maxWidth
-        val placeables = measurables.mapIndexed { index, measurable ->
-            val span = spans.getValue(state.draft.steps[index].id)
-            val tileWidth = ((span.right - span.left) * width).roundToInt() - gap
-            measurable.measure(Constraints.fixedWidth(tileWidth.coerceAtLeast(1)))
-        }
-        val rowHeights = mutableMapOf<Int, Int>()
-        placeables.forEachIndexed { index, p ->
-            val row = spans.getValue(state.draft.steps[index].id).row
-            rowHeights[row] = maxOf(rowHeights[row] ?: 0, p.height)
-        }
-        val rowY = mutableMapOf<Int, Int>(); var total = 0
-        rowHeights.keys.sorted().forEach { row -> rowY[row] = total; total += rowHeights.getValue(row) + gap }
-        layout(width, total) { placeables.forEachIndexed { index, p ->
-            val span = spans.getValue(state.draft.steps[index].id)
-            p.placeRelative((span.left * width).roundToInt(), rowY.getValue(span.row))
-        } }
     }
 }

@@ -5,6 +5,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FlowTileLayoutTest {
+    @Test fun nestedCrossBranchJoinsNeverCoverOtherTilesAndKeepEveryParentAboveItsChild() {
+        val graph = FlowTileGraph(listOf("s", "a", "b", "c", "a2", "b2", "c2", "ac", "tail"),
+            listOf("s" to "a", "s" to "b", "s" to "c", "a" to "a2", "b" to "b2", "c" to "c2",
+                "a2" to "ac", "c2" to "ac", "b2" to "tail")
+                .map { FlowTileGraph.Link(it.first, it.second) })
+        val spans = tileSpans(graph)
+        graph.links.forEach { assertTrue(spans.getValue(it.source).row < spans.getValue(it.target).row) }
+        spans.entries.forEach { (id, a) -> spans.entries.filter { it.key != id }.forEach { (_, b) ->
+            assertFalse(a.row == b.row && a.left < b.right - .00001f && a.right > b.left + .00001f)
+        } }
+        assertEquals(0f, spans.getValue("ac").left, .0001f)
+        assertEquals(1f, spans.getValue("ac").right, .0001f)
+    }
+
     @Test fun sharedLaundrySuccessorsSpanAllFourAlternativeStarts() {
         val graph = FlowTileGraph(listOf("b", "w", "t", "l", "h", "a", "p"),
             listOf("b", "w", "t", "l").map { FlowTileGraph.Link(it, "h") } +

@@ -248,3 +248,38 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Occurrence/Combo/Tau und Heute/Alles noch nicht umgestellt. Touch-Zweig/Join,
   Autoscroll, zugängliche Alternativen und finale Android-Referenzen bleiben offen.
   PR #356 bleibt Draft. Kein Merge, kein veröffentlichtes Update und kein Geräte-Upgrade.
+
+### P — Kachelbedienung auf Android erweitert
+
+- Ruhezustand: nur Kacheln, keine Verbindungslinien, Ports oder dauerhaften Sortierleisten.
+  Lange Berührung bzw. Tastatur-Kontextmenü öffnet getrennte Griffe für Schritt/Zweig
+  und ausdrückliches Zusammenführen außerhalb des Schrittdialogs. Eine zugängliche
+  Zielauswahl mit Vorschau/Übernehmen verwendet dieselben Strukturvorschläge.
+- Drag-Vorschläge benutzen die Geometrie vor Gestenbeginn. Die angehobenen Kacheln
+  folgen dem Zeiger; Zielkonturen und andere Kacheln zeigen die vorgeschlagene Anordnung.
+  Loslassen übernimmt, Gestenabbruch/Escape/Zurück verwerfen. Randscrollen ist zeitbasiert.
+  Zweige enden vor einer Zusammenführung; ungültige Ziele/Zyklen werden nicht angeboten.
+- Start-Rhythmus ist im angeforderten Kontext sowie über Accessibility erreichbar.
+  Breitenlayout erhält Wäsche und ungleich lange Parallelzweige; zusätzlich verhindert
+  eine Kollisionsprüfung überdeckte Kacheln bei verschachtelten Zusammenführungen.
+- Lokaler gezielter Lauf: 146 Tests, kein Fehler/Skip (einschließlich Struktur-/Hit-Test-,
+  Layout-, Editor-, SQL- und Architekturtests sowie gerenderter Android-Ansichten).
+  Zusätzliche Schriftkorrektur nutzt deutsche Worttrennung; danach separat zu prüfen.
+  Instrumentierungs-Testpaket erfolgreich gebaut. Sechs neue Android-Eingabetests für
+  kompakten Dialog, echte Touch-/Mausgesten, Abbruch, expliziten Join und Wiederherstellung;
+  auch in die Animationsmatrix aufgenommen. Deren Ausführung ist noch kein grüner Nachweis.
+- Lokaler Geräteversuch ist **rot / ohne ausgeführten App-Test**: neu angelegter, isolierter
+  Emulator API 36.1 stürzte mit SIGSEGV ab; Android-Eigenschaften konnten nicht geladen
+  werden. Eine alternative Grafikeinstellung blieb bei Geräteauthentifizierung stehen.
+  Keine Wiederholung desselben Fehlerversuchs, keine ADB-Schlüssel oder Geräterechtregeln
+  geändert. Testemulator und separater Test-ADB-Dienst wurden anschließend beendet;
+  der bestehende ADB-Dienst und Nutzergeräte blieben unangetastet.
+- Produktnavigation, endgültiges Room-Modell/registrierte Migration, Laufzeit-/Reward-
+  und Blatt-Cutover sowie vollständige Interaktions- und Auslieferungsabnahme bleiben offen.
+  Keine Teilfreigabe aus diesen Tests ableiten; PR bleibt ausdrücklich Draft.
+- Exakter PR-Lauf `34589489369` für Speicher-Commit `164668a938f08601c2ac1d67938fc77fc8fbb329`
+  vollständig erfolgreich, einschließlich aller Geräte- und Animationsprüfungen API
+  26/35/37. Dieser Lauf enthält noch nicht die oben ergänzte Android-Kachelbedienung.
+  Deren letzter lokaler UI-/Editor-Lauf nach Schrift-/Innenabstandskorrektur:
+  34 Tests erfolgreich, keine Fehler/Skips. Neues Testpaket zuvor erfolgreich gebaut;
+  ein exakter PR-Lauf des Kachel-Commits muss die tatsächlichen Gerätegesten erst prüfen.
