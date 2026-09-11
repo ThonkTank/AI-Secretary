@@ -156,8 +156,8 @@ public final class UseCaseRobolectricTest {
         assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 12);
         assertEquals(1, queries.stream().filter(sql -> sql.contains("occurrence_steps")).count());
         assertEquals(1, queries.stream().filter(sql -> sql.contains("repetition_results")).count());
-        assertEquals(1, queries.stream().filter(sql -> sql.contains("flow_candidates")).count());
-        assertEquals(1, queries.stream().filter(sql -> sql.contains("flow_task_sheet_placements"))
+        assertEquals(0, queries.stream().filter(sql -> sql.contains("flow_candidates")).count());
+        assertEquals(0, queries.stream().filter(sql -> sql.contains("flow_task_sheet_placements"))
                 .count());
     }
 

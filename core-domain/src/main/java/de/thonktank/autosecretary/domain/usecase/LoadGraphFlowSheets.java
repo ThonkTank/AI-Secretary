@@ -37,6 +37,8 @@ public final class LoadGraphFlowSheets {
     }
 
     private Result read(LocalDate date, Map<TaskId, Task> tasks) {
+        if (tasks.values().stream().noneMatch(task -> task.kind == TaskKind.FLOW))
+            return new Result(Collections.emptyList(), Collections.emptyList());
         Map<String, CapacityResource> resources = new HashMap<>();
         Map<String, Integer> totals = new HashMap<>();
         for (CapacityResource resource : flows.capacityResources()) {
@@ -51,7 +53,7 @@ public final class LoadGraphFlowSheets {
         Map<String, OccurrenceStep> offers = new HashMap<>();
         List<String> occurrenceIds = new ArrayList<>();
         Map<String, String> occurrenceRuns = new HashMap<>();
-        for (Occurrence occurrence : today.openOccurrences())
+        for (Occurrence occurrence : active.isEmpty() ? Collections.<Occurrence>emptyList() : today.openOccurrences())
             if (occurrence.kind == OccurrenceKind.FLOW_STEP && activeById.containsKey(occurrence.flowRunId)) {
                 occurrenceIds.add(occurrence.id); occurrenceRuns.put(occurrence.id, occurrence.flowRunId);
             }
