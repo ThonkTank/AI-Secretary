@@ -52,14 +52,20 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
     Column(modifier.fillMaxSize().background(Color.argb(palette.background))
         .verticalScroll(rememberScrollState()).padding(16.dp).testTag("flow-editor")) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            EditorButton("Abbrechen", palette, onCancel)
+            EditorButton("Abbrechen", palette, onCancel, enabled = !state.saving)
             EditorText("${state.page}/2", Color.argb(palette.muted), 16, serif = false,
                 modifier = Modifier.padding(top = 14.dp))
-            EditorButton("↶", palette, editor::undo, enabled = state.canUndo, contentDescription = "Rückgängig")
+            EditorButton("↶", palette, editor::undo,
+                enabled = state.canUndo && !state.loading && !state.saving && !state.savePending && !state.loadFailed,
+                contentDescription = "Rückgängig")
         }
         state.error?.let { EditorText(it, Color.argb(palette.bad), 16, serif = false,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
         when {
+            state.loading -> EditorText("Ablauf wird geladen …", Color.argb(palette.muted), 17, serif = false)
+            state.loadFailed -> EditorButton("Erneut laden", palette, editor::retryLoad)
+            state.saving -> EditorText("Wird gespeichert …", Color.argb(palette.muted), 17, serif = false)
+            state.savePending -> EditorButton("Erneut speichern", palette, editor::retrySave)
             state.form != null -> FlowEditorFormSurface(state.form, state, palette, editor)
             state.page == 1 -> {
                 EditorInput(state.draft.name, editor::rename, palette, hint = "Ablaufname",

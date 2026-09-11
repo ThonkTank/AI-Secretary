@@ -213,3 +213,38 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
 - Gezielte Kern-, Editor-, SQL- und Architekturprüfung nach der Korrektur erfolgreich.
   Vollständiger lokaler Lauf und neuer exakter PR-Lauf müssen den korrigierten
   Commit separat prüfen. Der vorherige rote Gesamtlauf ist kein grüner Nachweis.
+
+### P — Geprüfter Zwischenstand und transaktionaler Editoranschluss
+
+- `987b8d592be1f9d1d4f4be8a3b94abb948cfac0d`: vollständiges lokales
+  `check-all.sh` erfolgreich in 18 Minuten 4 Sekunden: 661 Testfälle, davon einer
+  übersprungen, keine Fehler; zusätzlich CI-/Release-Verträge, Lint, Paketbau,
+  Identitäts- und Größenprüfungen erfolgreich. Exakter PR-Workflow `34586441385`
+  vollständig grün einschließlich Geräte-/Animationsmatrix API 26/35/37.
+- Für einen unveränderlichen Prüflauf wurde `/tmp/autosecretary-flow-tiles-cutover`
+  auf diesem Commit abgetrennt. Weitere Entwicklung auf demselben Themenbranch
+  erfolgt in `/tmp/autosecretary-flow-tiles-product`; der Haupt-Checkout und fremde
+  Worktrees wurden nicht geändert. Neue Änderungen sind nicht vom obigen Lauf gedeckt.
+- `LoadFlowGraph`/`SaveFlowGraph` sowie SQL-Definitionsadapter ergänzen konsistentes
+  Laden und einen atomaren Editor-Save. Dauerhafte Save-IDs verhindern doppelte
+  Neuanlagen nach Commit ohne UI-Bestätigung. Die Belege überleben eine explizite
+  Aufgabenlöschung, damit ein wiederhergestellter alter Save sie nicht rückgängig macht.
+- Bestehende Schritt-/Lease-IDs werden geprüft und erhalten. Nicht im kleinen Dialog
+  bearbeitete Mengen, Trainingszustände, Notizen, Aufgabenbegrenzungen und Platzierungen
+  werden nicht überschrieben. Unveränderte gemeinsame Kapazitäten behalten zwischenzeitliche
+  Anpassungen. Namenswechsel erfolgen atomar, einschließlich eines Namenstauschs.
+- Das ViewModel speichert Entwurf, offene Eingabe, Undo und einen ggf. unbestätigten
+  Save-Auftrag. Unsichere Schreibfehler erlauben nur die Wiederholung desselben Auftrags;
+  transaktionale Eingabefehler führen direkt zum betroffenen Element. Der Schrittdialog
+  behält ausschließlich Name, Wartezeit/Einheit und die direkte Nachfrage-Checkbox.
+- Entwicklungsprüfungen: Ein während Schnittstellenänderungen gestarteter Build war
+  kein konsistenter Prüflauf und scheiterte an abweichenden Methodenständen. Ein weiterer
+  Lauf deckte einen falsch benannten Enum-Wert in der neuen Test-Fixture auf. Die Fixture
+  verwendet jetzt den tatsächlich vorhandenen `ACCUMULATE`-Vertrag; kein Gate gelockert.
+  Anschließend 132 gezielte Tests erfolgreich; nach ergänztem Namenstausch-/Löschtest
+  **136 gezielte Tests erfolgreich**, keiner übersprungen, kein Fehler.
+- Noch **kein Produkt-Cutover**: neuer Editor-Gateway ist nicht in App-Navigation und
+  Composition angeschlossen, Schema 25 nicht registriert, produktiver Coordinator,
+  Occurrence/Combo/Tau und Heute/Alles noch nicht umgestellt. Touch-Zweig/Join,
+  Autoscroll, zugängliche Alternativen und finale Android-Referenzen bleiben offen.
+  PR #356 bleibt Draft. Kein Merge, kein veröffentlichtes Update und kein Geräte-Upgrade.

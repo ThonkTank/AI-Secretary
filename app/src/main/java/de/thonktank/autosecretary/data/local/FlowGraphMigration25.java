@@ -46,6 +46,9 @@ public final class FlowGraphMigration25 extends Migration {
     }
 
     private static void migrateDefinitions(SupportSQLiteDatabase db) {
+        // Save receipts deliberately survive task deletion: retrying an old process-restored
+        // request must never resurrect an explicitly deleted task.
+        db.execSQL("CREATE TABLE flow_editor_saves (requestKey TEXT NOT NULL PRIMARY KEY, taskId TEXT NOT NULL)");
         db.execSQL("ALTER TABLE tasks ADD COLUMN taskKind TEXT NOT NULL DEFAULT 'TASK'");
         db.execSQL("UPDATE tasks SET taskKind='FLOW' WHERE id IN ("
                 + "SELECT s.taskId FROM task_steps s JOIN step_transitions t ON t.sourceStepId=s.id "
