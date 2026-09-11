@@ -196,12 +196,7 @@ public final class GraphFlowRuntime implements FlowProgression {
     }
 
     private static FlowGraphRun.Step resolve(FlowGraphRun run, OccurrenceStep step) {
-        if (step.flowRunStepId != null) return run.steps.get(step.flowRunStepId);
-        // Source IDs are immutable within this run. This also reads old occurrence adapters
-        // during the atomic schema cutover; no linear position or old coordinator is used.
-        for (FlowGraphRun.Step value : run.steps.values())
-            if (value.source.id.equals(step.sourceTemplateId)) return value;
-        return null;
+        return step.flowRunStepId == null ? null : run.steps.get(step.flowRunStepId);
     }
 
     private long earnedTau(FlowGraphRun run, String sourceId) {

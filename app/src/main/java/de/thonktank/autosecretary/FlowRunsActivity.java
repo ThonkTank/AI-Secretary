@@ -33,6 +33,8 @@ public final class FlowRunsActivity extends ComponentActivity {
                             && invalidation.getClock() != null) {
                         viewModel.dispatch(FlowRunsAction.presentAt(
                                 invalidation.getClock().getEpochMillis()));
+                    } else {
+                        viewModel.dispatch(FlowRunsAction.refresh());
                     }
                 });
     }

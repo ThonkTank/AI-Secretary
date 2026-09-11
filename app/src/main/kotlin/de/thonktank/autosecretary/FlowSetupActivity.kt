@@ -35,7 +35,7 @@ class FlowSetupActivity : ComponentActivity() {
             LaunchedEffect(state.savedTaskId) {
                 state.savedTaskId?.let {
                     setResult(RESULT_OK, Intent().putExtra(TASK_ID, it))
-                    container.flowWakeScheduler.reschedule()
+                    container.executors.timerSerial.execute { container.flowWakeScheduler.reschedule() }
                     finish()
                 }
             }

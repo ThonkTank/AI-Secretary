@@ -14,11 +14,13 @@ public final class FlowRunSummary {
         public final FlowGraphRun.State state;
         public final FlowDelayPolicy waitAfter;
         public final Long readyAtEpochMillis;
+        public final boolean canAdjustWait;
 
-        public Step(FlowGraphRun.Step step) {
+        public Step(FlowGraphRun.Step step, boolean canAdjustWait) {
             id = step.id; waitId = step.waitId(); title = step.source.title;
             state = step.state; waitAfter = step.source.waitAfter;
             readyAtEpochMillis = step.readyAtEpochMillis;
+            this.canAdjustWait = canAdjustWait;
         }
     }
     public static final class Resource {
@@ -114,7 +116,8 @@ public final class FlowRunSummary {
         this.id = run.id; this.taskId = run.taskId; this.taskTitle = taskTitle;
         this.seedStepId = seed.source.id; this.seedTitle = seed.source.title;
         List<Step> states = new ArrayList<>();
-        for (String stepId : run.graph.stepIds) states.add(new Step(run.steps.get(stepId)));
+        for (String stepId : run.graph.stepIds)
+            states.add(new Step(run.steps.get(stepId), run.canAdjustWait(stepId)));
         this.steps = Collections.unmodifiableList(states);
         this.collectionAvailable = run.collectionAvailable();
         this.uncollectedTau = run.uncollectedTau();

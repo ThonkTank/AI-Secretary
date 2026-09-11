@@ -52,16 +52,18 @@ internal fun FlowRunCard(
         Spacer(Modifier.height(11.dp))
         if (run.steps.isNotEmpty()) {
             run.steps.filter { it.state != de.thonktank.autosecretary.domain.model.FlowGraphRun.State.BLOCKED &&
-                it.state != de.thonktank.autosecretary.domain.model.FlowGraphRun.State.DONE }.forEach { step ->
+                (it.state != de.thonktank.autosecretary.domain.model.FlowGraphRun.State.DONE || it.canAdjustWait) }.forEach { step ->
                 val status = when (step.state) {
                     de.thonktank.autosecretary.domain.model.FlowGraphRun.State.AVAILABLE -> "Bereit"
                     de.thonktank.autosecretary.domain.model.FlowGraphRun.State.WAITING_TIME ->
                         de.thonktank.autosecretary.presentation.mobile.remainingDurationText(step.readyAtEpochMillis, nowEpochMillis)
+                    de.thonktank.autosecretary.domain.model.FlowGraphRun.State.DONE -> "Wartezeit abgelaufen"
                     else -> "Wartet auf Kapazität"
                 }
                 MobileText("${step.title} · $status", mobileColor(palette.ink2), 16,
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
-                step.readyAtEpochMillis?.let { readyAt ->
+                if (step.canAdjustWait) {
+                    val readyAt = step.readyAtEpochMillis ?: nowEpochMillis
                     de.thonktank.autosecretary.presentation.mobile.MobileActionButton(
                         "Wartezeit ändern", palette, { callbacks.onAdjustWait(run.id, step.waitId, readyAt) },
                         modifier = Modifier.testTag("flow-run:wait:${step.waitId}"), enabled = !busy)

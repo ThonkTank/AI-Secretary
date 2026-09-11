@@ -120,16 +120,49 @@ public final class FlowGraphExecution {
     public Change adjustWait(FlowGraphRun run, String waitId, long readyAt, long now, Capacity capacity) {
         requireTime(now);
         requireTime(readyAt);
-        if (run.cancelled) return Change.unchanged(run);
+        if (run.cancelled || run.collected) return Change.unchanged(run);
         for (Step step : run.steps.values()) {
-            if (!step.waitId().equals(waitId) || step.state != State.WAITING_TIME) continue;
+            if (!step.waitId().equals(waitId) || !run.canAdjustWait(step.id)) continue;
             if (readyAt < step.actionAtEpochMillis)
                 throw new IllegalArgumentException("Wait cannot end before its action");
-            if (step.readyAtEpochMillis == readyAt) return Change.unchanged(run);
+            if (step.readyAtEpochMillis != null && step.readyAtEpochMillis == readyAt)
+                return Change.unchanged(run);
+            if (step.state == State.DONE && readyAt <= now) return Change.unchanged(run);
             Map<String, Step> steps = new LinkedHashMap<>(run.steps);
+            List<Lease> leases = new ArrayList<>(run.leases);
+            if (step.state == State.DONE) {
+                List<String> descendants = run.graph.reachableFrom(step.id).stepIds;
+                for (String id : descendants) if (!id.equals(step.id)) {
+                    Step descendant = steps.get(id);
+                    steps.put(id, new Step(id, descendant.source, State.BLOCKED,
+                            null, null, null, descendant.earnedTau));
+                }
+                Map<String, Long> required = new HashMap<>();
+                Map<String, Long> used = new HashMap<>(capacity.otherRunsUsed);
+                for (int i = 0; i < leases.size(); i++) {
+                    Lease lease = leases.get(i);
+                    if (lease.state == FlowResourceState.RESERVED
+                            && descendants.contains(lease.acquireStepId)
+                            && !lease.acquireStepId.equals(step.id)) {
+                        lease = lease.withState(FlowResourceState.PLANNED);
+                        leases.set(i, lease);
+                    }
+                    if (lease.state.consumesCapacity())
+                        used.merge(lease.resourceId, (long) lease.units, Math::addExact);
+                    if (lease.state == FlowResourceState.RELEASED && lease.releaseAfterWait
+                            && lease.releaseStepId.equals(step.id)) {
+                        required.merge(lease.resourceId, (long) lease.units, Math::addExact);
+                        leases.set(i, lease.withState(FlowResourceState.ACTIVE));
+                    }
+                }
+                for (Map.Entry<String, Long> entry : required.entrySet())
+                    if (entry.getValue() > capacity.total.getOrDefault(entry.getKey(), 0)
+                            - used.getOrDefault(entry.getKey(), 0L))
+                        throw new IllegalArgumentException("Die benötigte Kapazität ist inzwischen belegt.");
+            }
             steps.put(step.id, new Step(step.id, step.source, State.WAITING_TIME,
                     step.chosenDelayMillis, readyAt, step.actionAtEpochMillis, step.earnedTau));
-            FlowGraphRun next = settle(copy(run, steps, run.leases, run.alreadyPaidTau, run.collected), now, capacity);
+            FlowGraphRun next = settle(copy(run, steps, leases, run.alreadyPaidTau, run.collected), now, capacity);
             // Time edits and clock ticks never silently collect rewards.
             return new Change(next, true, false, 0L, null);
         }

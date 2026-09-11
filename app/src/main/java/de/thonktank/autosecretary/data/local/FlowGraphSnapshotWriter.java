@@ -96,6 +96,11 @@ public final class FlowGraphSnapshotWriter {
             FlowGraphRun.Lease old = oldLeases.get(lease.id);
             if (old.state == lease.state) continue;
             ContentValues values = new ContentValues(); values.put("state", lease.state.name());
+            if (lease.state == FlowResourceState.PLANNED) {
+                values.putNull("reservedAtEpochMillis");
+                values.putNull("activatedAtEpochMillis");
+            }
+            if (lease.state != FlowResourceState.RELEASED) values.putNull("releasedAtEpochMillis");
             if (old.state == FlowResourceState.PLANNED) values.put("reservedAtEpochMillis", now);
             if ((old.state == FlowResourceState.PLANNED || old.state == FlowResourceState.RESERVED)
                     && (lease.state == FlowResourceState.ACTIVE || lease.state == FlowResourceState.RELEASED))

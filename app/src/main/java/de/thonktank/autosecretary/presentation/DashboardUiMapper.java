@@ -261,10 +261,12 @@ public final class DashboardUiMapper {
         List<de.thonktank.autosecretary.presentation.today.FlowWaitUiModel> result = new ArrayList<>();
         for (FlowRunSummary run : sheet.running) for (FlowRunSummary.Step step : run.steps)
             if (step.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.WAITING_TIME
-                    || step.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.WAITING_RESOURCE) {
+                    || step.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.WAITING_RESOURCE
+                    || step.canAdjustWait) {
                 String title = run.seedTitle.equals(step.title) ? run.seedTitle : run.seedTitle + ": " + step.title;
                 result.add(new de.thonktank.autosecretary.presentation.today.FlowWaitUiModel(
-                        run.id, step.waitId, title, step.readyAtEpochMillis));
+                        run.id, step.waitId, title, step.readyAtEpochMillis,
+                        step.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.DONE));
             }
         return result;
     }

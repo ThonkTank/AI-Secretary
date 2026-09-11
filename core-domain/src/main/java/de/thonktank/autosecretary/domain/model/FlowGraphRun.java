@@ -117,6 +117,20 @@ public final class FlowGraphRun {
         return next;
     }
 
+    /** An elapsed wait remains editable until any dependent action has actually started. */
+    public boolean canAdjustWait(String stepId) {
+        if (collected || cancelled) return false;
+        Step step = steps.get(stepId);
+        if (step == null) return false;
+        if (step.state == State.WAITING_TIME) return true;
+        if (step.state != State.DONE || step.chosenDelayMillis == null || step.chosenDelayMillis == 0L)
+            return false;
+        for (String descendant : graph.reachableFrom(stepId).stepIds)
+            if (!descendant.equals(stepId) && steps.get(descendant).actionAtEpochMillis != null)
+                return false;
+        return true;
+    }
+
     public static final class Step {
         public final String id;
         public final FlowGraphDefinition.Node source;

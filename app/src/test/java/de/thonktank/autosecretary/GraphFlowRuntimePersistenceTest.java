@@ -186,6 +186,54 @@ public final class GraphFlowRuntimePersistenceTest {
         assertEquals(RewardReceipt.Target.HEAD, runtime.start(candidate, null).reward.target);
     }
 
+    @Test public void elapsedDryingWaitCanHideItsOfferAgainWithoutLosingTheRackOrActionIdentity() {
+        FlowEditorDraft draft = FlowEditorDraft.empty().rename("Trocknen")
+                .addStep("Aufhängen", FlowDelayPolicy.fixed(100))
+                .addStep("Abhängen", FlowDelayPolicy.fixed(0));
+        String first = draft.graph.stepIds.get(0), last = draft.graph.stepIds.get(1);
+        draft = draft.withGraph(draft.graph.join(List.of(first), last));
+        FlowEditorCapacities capacity = draft.capacities.addResource("Ständer", 1);
+        draft = draft.withCapacities(capacity.addLease(capacity.resources.get(0).key, first, last, 1));
+        TaskId task = save.execute(draft.edit());
+        String id = runtime.start(candidate(task, "Aufhängen"), null).runId;
+        now += 100; runtime.activateReady();
+        String actionId = step(id, "Abhängen").id;
+        String occurrenceId = repository.today.openOccurrences().get(0).id;
+        assertTrue(run(id).canAdjustWait(step(id, "Aufhängen").id));
+        assertTrue(runtime.adjustWait(id, step(id, "Aufhängen").waitId(), now + 500));
+        assertTrue(projection().sheets.isEmpty());
+        assertEquals(FlowResourceState.ACTIVE, run(id).leases.get(0).state);
+        assertEquals(FlowGraphCommands.Status.UNCHANGED, runtime.complete(actionId, null).status);
+        assertEquals(0, repository.today.xp());
+        now += 500; runtime.activateReady();
+        assertEquals(actionId, run(id).availableSteps().get(0).id);
+        assertEquals(occurrenceId, repository.today.openOccurrences().get(0).id);
+        runtime.complete(actionId, null);
+        assertFalse(runtime.adjustWait(id, step(id, "Aufhängen").waitId(), now + 500));
+    }
+
+    @Test public void elapsedWaitCannotReclaimCapacityAlreadyTakenByAnotherChain() {
+        FlowEditorDraft draft = FlowEditorDraft.empty().rename("Kapazität")
+                .addStep("Start", FlowDelayPolicy.fixed(100))
+                .addStep("Ende", FlowDelayPolicy.fixed(0));
+        String first = draft.graph.stepIds.get(0), last = draft.graph.stepIds.get(1);
+        draft = draft.withGraph(draft.graph.join(List.of(first), last));
+        FlowEditorCapacities capacity = draft.capacities.addResource("Platz", 1);
+        capacity = capacity.addLease(capacity.resources.get(0).key, first, first, 1);
+        draft = draft.withCapacities(capacity).releaseAfter(capacity.leases.get(0).key, true);
+        TaskId task = save.execute(draft.edit());
+        String id = runtime.start(candidate(task, "Start"), null).runId;
+        now += 100; runtime.activateReady();
+        String other = runtime.start(candidate(task, "Start"), null).runId;
+        assertNotEquals(id, other);
+        assertThrows(IllegalArgumentException.class,
+                () -> runtime.adjustWait(id, step(id, "Start").waitId(), now + 500));
+        assertEquals(FlowGraphRun.State.AVAILABLE, step(id, "Ende").state);
+        now += 100; runtime.activateReady();
+        assertTrue(runtime.adjustWait(id, step(id, "Start").waitId(), now + 500));
+        assertEquals(FlowResourceState.ACTIVE, run(id).leases.get(0).state);
+    }
+
     @Test public void failedFinalActionRetainsItsOfferAndPreviouslyEarnedTau() {
         FlowEditorDraft draft = FlowEditorDraft.empty().rename("Atomarer Abschluss")
                 .addStep("Start", FlowDelayPolicy.fixed(0)).addStep("Ende", FlowDelayPolicy.fixed(0));

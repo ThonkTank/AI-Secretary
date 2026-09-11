@@ -153,18 +153,18 @@ public final class FocusCardView extends ViewGroup {
         waiting.setVisibility(task.waits.isEmpty() ? GONE : VISIBLE);
         for (de.thonktank.autosecretary.presentation.today.FlowWaitUiModel wait : task.waits) {
             TextView row = style.sans("", 13, model.palette.hint, false);
-            String status = wait.readyAtEpochMillis == null ? "wartet auf Kapazität"
+            String status = wait.elapsed ? "Wartezeit verlängern" : wait.readyAtEpochMillis == null ? "wartet auf Kapazität"
                     : de.thonktank.autosecretary.presentation.mobile.RemainingDurationFormatterKt.remainingDurationText(
                             wait.readyAtEpochMillis, System.currentTimeMillis());
             row.setText(wait.title + " · " + status);
             row.setPadding(0, style.dp(6), 0, style.dp(6));
             row.setMinHeight(style.dp(48));
-            if (wait.readyAtEpochMillis != null) {
+            if (wait.readyAtEpochMillis != null || wait.elapsed) {
                 AccessibilityRoles.button(row);
                 row.setContentDescription(row.getText() + ", Wartezeit ändern");
                 row.setOnClickListener(view -> FlowDurationDialog.show(getContext(),
                         getContext().getString(R.string.flow_adjust_prompt_title),
-                        Math.max(0, wait.readyAtEpochMillis - System.currentTimeMillis()),
+                        wait.readyAtEpochMillis == null ? 0 : Math.max(0, wait.readyAtEpochMillis - System.currentTimeMillis()),
                         delay -> events.emit(TodayAction.adjustFlowWait(wait.runId, wait.waitId,
                                 System.currentTimeMillis() + delay))));
             }
