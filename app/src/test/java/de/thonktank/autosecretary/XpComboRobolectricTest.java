@@ -127,8 +127,7 @@ public final class XpComboRobolectricTest {
         assertEquals(25, new RoomRepositoryFixture(database).today.rewardBookings(occurrence.id).stream()
                 .filter(value -> value.target == RewardBooking.Target.VESSEL)
                 .mapToInt(value -> value.xpDelta).sum());
-        assertEquals(25, new de.thonktank.autosecretary.domain.usecase.LoadDashboard(
-                repository.catalog, repository.steps, repository.today, repository.flows)
+        assertEquals(25, repository.dashboard()
                 .execute(today).tasks.get(0).earnedXp(step.id));
     }
 
@@ -259,9 +258,7 @@ public final class XpComboRobolectricTest {
                 new de.thonktank.autosecretary.presentation.DashboardUiMapper(
                         new de.thonktank.autosecretary.presentation.AndroidUiTextProvider(
                                 ApplicationProvider.getApplicationContext()))
-                        .map(new de.thonktank.autosecretary.domain.usecase.LoadDashboard(
-                                repository.catalog, repository.steps, repository.today,
-                                repository.flows)
+                        .map(repository.dashboard()
                                 .execute(today), today).focus;
         assertEquals(12, focus.reward.resultXp);
         assertEquals(12, focus.vessel.earnedXp);

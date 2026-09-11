@@ -104,7 +104,7 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(TaskSlot.MORNING, firstRound.get(0).slot);
         assertEquals(TaskSlot.EVENING, firstRound.get(1).slot);
         assertEquals(Integer.valueOf(1), repository.catalog.allTasks().get(0).remainingCount);
-        assertEquals(2, new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows).execute(TODAY).tasks.size());
+        assertEquals(2, repository.dashboard().execute(TODAY).tasks.size());
 
         Occurrence morning = repository.today.findOccurrence(repository.catalog.allTasks().get(0).id,
                 TODAY, TaskSlot.MORNING);
@@ -116,7 +116,7 @@ public final class TaskEditorFeatureRobolectricTest {
         assertEquals(1, database.today().occurrencesByState("OPEN").size());
         assertEquals(1, repository.today.completedOccurrences(TODAY).size());
         complete.execute(firstRound.get(1).id);
-        assertEquals(2, new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows).execute(TODAY).tasks.size());
+        assertEquals(2, repository.dashboard().execute(TODAY).tasks.size());
         assertEquals(25, repository.today.xp());
         assertEquals(TODAY.plusDays(1), repository.catalog.allTasks().get(0).nextDueOn);
     }
