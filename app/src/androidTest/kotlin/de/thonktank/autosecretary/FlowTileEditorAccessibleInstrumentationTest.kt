@@ -15,13 +15,20 @@ class FlowTileEditorAccessibleInstrumentationTest {
         val ids = compose.activity.editor.state.value.draft.graph.stepIds
         compose.onNodeWithTag("flow-editor:tile:${ids[2]}")
             .performSemanticsAction(SemanticsActions.OnLongClick) { it() }
-        compose.onNodeWithTag("flow-editor:handle:JOIN").performScrollTo().performClick()
-        compose.onNodeWithTag("flow-editor:target:${ids[1]}").performScrollTo().performClick()
-        compose.onNodeWithTag("flow-editor:placement:${ids[1]}:JOIN").performScrollTo().performClick()
+        // Use the accessibility actions themselves, not Compose's API-37-incompatible
+        // touch input dispatcher. Real touch/mouse remain covered by the native host.
+        compose.onNodeWithTag("flow-editor:handle:JOIN").performScrollTo()
+            .performSemanticsAction(SemanticsActions.OnClick) { it() }
+        compose.onNodeWithTag("flow-editor:target:${ids[1]}").performScrollTo()
+            .performSemanticsAction(SemanticsActions.OnClick) { it() }
+        compose.onNodeWithTag("flow-editor:placement:${ids[1]}:JOIN").performScrollTo()
+            .performSemanticsAction(SemanticsActions.OnClick) { it() }
         compose.runOnIdle { assertEquals(listOf(ids[0]), compose.activity.editor.state.value.draft.graph.predecessors(ids[1])) }
-        compose.onNodeWithTag("flow-editor:apply-move").performScrollTo().performClick()
+        compose.onNodeWithTag("flow-editor:apply-move").performScrollTo()
+            .performSemanticsAction(SemanticsActions.OnClick) { it() }
         compose.runOnIdle { assertEquals(setOf(ids[0], ids[2]), compose.activity.editor.state.value.draft.graph.predecessors(ids[1]).toSet()) }
-        compose.onNodeWithContentDescription("Rückgängig").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Rückgängig").performScrollTo()
+            .performSemanticsAction(SemanticsActions.OnClick) { it() }
         compose.runOnIdle { assertEquals(listOf(ids[0]), compose.activity.editor.state.value.draft.graph.predecessors(ids[1])) }
     }
 }
