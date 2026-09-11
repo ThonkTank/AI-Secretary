@@ -34,7 +34,6 @@ public final class GraphFlowRuntimePersistenceTest {
         database = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), AppDatabase.class)
                 .allowMainThreadQueries().build();
         SupportSQLiteDatabase sql = database.getOpenHelper().getWritableDatabase();
-        database.runInTransaction(() -> new FlowGraphMigration25().migrate(sql));
         repository = new RoomRepositoryFixture(database);
         definitions = new SqlFlowGraphDefinitionRepository(() -> sql, repository.steps);
         runs = new SqlFlowGraphRunRepository(() -> sql);

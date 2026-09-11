@@ -24,6 +24,7 @@ public class StepResourceLeaseEntity {
     @NonNull public String releaseStepId;
     @NonNull public String resourceId;
     public int units;
+    @androidx.room.ColumnInfo(defaultValue = "0") public boolean releaseAfterWait;
 
     public StepResourceLeaseEntity(@NonNull String id, @NonNull String taskId,
                                    @NonNull String acquireStepId, @NonNull String releaseStepId,

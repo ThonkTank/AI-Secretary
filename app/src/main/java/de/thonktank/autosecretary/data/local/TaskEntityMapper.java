@@ -42,11 +42,12 @@ public final class TaskEntityMapper {
                 TaskBoundKind.fromStorage(entity.boundKind),
                 date(entity.boundUntilOn), entity.boundWeeks, entity.remainingCount,
                 date(entity.deadlineOn), entity.note,
-                MissedOccurrenceMode.valueOf(entity.missedOccurrenceMode));
+                MissedOccurrenceMode.valueOf(entity.missedOccurrenceMode))
+                .withKind(de.thonktank.autosecretary.domain.model.TaskKind.valueOf(entity.taskKind));
     }
 
     public TaskEntity toEntity(Task task) {
-        return new TaskEntity(task.id.value, task.title, task.recurrence.storageCode(),
+        TaskEntity entity = new TaskEntity(task.id.value, task.title, task.recurrence.storageCode(),
                 task.intervalDays, task.weekdayMask, task.ongoing,
                 task.conditionText, task.conditionDone, task.archived, text(task.nextDueOn),
                 nullableText(task.cadenceAnchorOn), nullableText(task.lastScheduledOn),
@@ -55,6 +56,8 @@ public final class TaskEntityMapper {
                 task.boundKind.storageCode(), nullableText(task.boundUntilOn), task.boundWeeks,
                 task.remainingCount, nullableText(task.deadlineOn), task.note,
                 task.missedOccurrenceMode.name());
+        entity.taskKind = task.kind.name();
+        return entity;
     }
 
     public Occurrence toDomain(OccurrenceEntity entity) {
@@ -141,7 +144,7 @@ public final class TaskEntityMapper {
                 results,
                 entity.sourceTemplateId, entity.comboOwnerId,
                 entity.originOccurrenceId,
-                CarryForwardReason.fromStorage(entity.carryForwardReason));
+                CarryForwardReason.fromStorage(entity.carryForwardReason), entity.flowRunStepId);
     }
 
     public OccurrenceStepEntity toEntity(OccurrenceStep step) {
@@ -157,6 +160,7 @@ public final class TaskEntityMapper {
         entity.plannedLoadUnit = load.unit.name();
         entity.plannedLoadMilli = load.milliUnits;
         entity.targetRir = step.prescription.targetRir();
+        entity.flowRunStepId = step.flowRunStepId;
         return entity;
     }
 

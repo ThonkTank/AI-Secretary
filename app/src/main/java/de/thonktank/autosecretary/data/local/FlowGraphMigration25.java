@@ -8,8 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Prepared one-way cutover. Deliberately not registered in DatabaseMigrations until Room entities,
- * the graph adapter and all production callers cut over together. Never install this in isolation.
+ * One-way schema cutover: existing identities and ledgers survive; runtime cursors do not.
  */
 public final class FlowGraphMigration25 extends Migration {
     public FlowGraphMigration25() { super(24, 25); }

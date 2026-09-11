@@ -37,7 +37,6 @@ public final class FlowGraphEditorPersistenceTest {
         Context context = ApplicationProvider.getApplicationContext();
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase.class).allowMainThreadQueries().build();
         sql = database.getOpenHelper().getWritableDatabase();
-        database.runInTransaction(() -> new FlowGraphMigration25().migrate(sql));
         repository = new RoomRepositoryFixture(database);
         graphs = new SqlFlowGraphDefinitionRepository(() -> sql, repository.steps);
         Clock clock = new Clock() {

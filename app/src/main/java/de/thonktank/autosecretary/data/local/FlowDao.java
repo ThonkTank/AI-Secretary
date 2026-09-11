@@ -18,15 +18,24 @@ public interface FlowDao {
     @Query("SELECT * FROM capacity_resources WHERE id = :id LIMIT 1")
     CapacityResourceEntity capacityResource(String id);
     @Query("DELETE FROM capacity_resources WHERE id = :id") void deleteCapacityResource(String id);
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void putStepTransitions(List<StepTransitionEntity> transitions);
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void putStepTransition(StepTransitionEntity transition);
-    @Query("SELECT step_transitions.* FROM step_transitions JOIN task_steps "
+    @Insert(onConflict = OnConflictStrategy.REPLACE) void putDefinitionEdge(FlowDefinitionEdgeEntity edge);
+    @Insert(onConflict = OnConflictStrategy.REPLACE) void putStepWait(FlowStepWaitEntity wait);
+    default void putStepTransitions(List<StepTransitionEntity> transitions) {
+        for (StepTransitionEntity transition : transitions) putStepTransition(transition);
+    }
+    default void putStepTransition(StepTransitionEntity transition) {
+        FlowDefinitionEdgeEntity edge = new FlowDefinitionEdgeEntity();
+        edge.sourceStepId = transition.sourceStepId; edge.targetStepId = transition.targetStepId;
+        FlowStepWaitEntity wait = new FlowStepWaitEntity();
+        wait.stepId = transition.sourceStepId; wait.mode = transition.delayMode;
+        wait.defaultDelayMillis = transition.defaultDelayMillis; wait.lastUsedDelayMillis = transition.lastUsedDelayMillis;
+        putDefinitionEdge(edge); putStepWait(wait);
+    }
+    @Query("SELECT step_transitions.*, w.mode AS delayMode, w.defaultDelayMillis, w.lastUsedDelayMillis FROM step_transitions JOIN flow_step_waits w ON w.stepId=step_transitions.sourceStepId JOIN task_steps "
             + "ON task_steps.id = step_transitions.sourceStepId "
             + "WHERE task_steps.taskId = :taskId ORDER BY task_steps.position")
     List<StepTransitionEntity> stepTransitions(String taskId);
-    @Query("SELECT step_transitions.* FROM step_transitions JOIN task_steps "
+    @Query("SELECT step_transitions.*, w.mode AS delayMode, w.defaultDelayMillis, w.lastUsedDelayMillis FROM step_transitions JOIN flow_step_waits w ON w.stepId=step_transitions.sourceStepId JOIN task_steps "
             + "ON task_steps.id = step_transitions.sourceStepId "
             + "WHERE task_steps.taskId IN (:taskIds) ORDER BY task_steps.taskId, task_steps.position")
     List<StepTransitionEntity> stepTransitionsFor(List<String> taskIds);
@@ -61,34 +70,20 @@ public interface FlowDao {
     FlowTaskSheetPlacementEntity flowTaskSheetPlacement(String taskId, String slot);
     @Query("SELECT * FROM flow_task_sheet_placements ORDER BY slot, displayOn, sortOrder, id")
     List<FlowTaskSheetPlacementEntity> flowTaskSheetPlacements();
-    @Insert(onConflict = OnConflictStrategy.IGNORE) long insertStepFlowRun(StepFlowRunEntity run);
-    @Update void updateStepFlowRun(StepFlowRunEntity run);
-    @Query("SELECT * FROM step_flow_runs WHERE id = :id LIMIT 1") StepFlowRunEntity stepFlowRun(String id);
-    @Query("SELECT * FROM step_flow_runs WHERE sourceKey = :sourceKey LIMIT 1")
-    StepFlowRunEntity stepFlowRunBySourceKey(String sourceKey);
-    @Query("SELECT * FROM step_flow_runs WHERE state NOT IN ('COMPLETED','CANCELLED') "
-            + "ORDER BY queueOrder, createdAtEpochMillis, id")
-    List<StepFlowRunEntity> activeStepFlowRuns();
-    @Query("SELECT * FROM step_flow_runs WHERE taskId = :taskId "
-            + "AND state NOT IN ('COMPLETED','CANCELLED') "
-            + "ORDER BY queueOrder, createdAtEpochMillis, id")
-    List<StepFlowRunEntity> activeStepFlowRuns(String taskId);
-    @Insert(onConflict = OnConflictStrategy.ABORT) void insertFlowRunSteps(List<FlowRunStepEntity> steps);
-    @Query("SELECT * FROM flow_run_steps WHERE runId = :runId ORDER BY position")
-    List<FlowRunStepEntity> flowRunSteps(String runId);
-    @Query("SELECT * FROM flow_run_steps WHERE runId IN (:runIds) ORDER BY runId, position")
-    List<FlowRunStepEntity> flowRunStepsFor(List<String> runIds);
-    @Update void updateFlowRunStep(FlowRunStepEntity step);
-    @Insert(onConflict = OnConflictStrategy.ABORT)
-    void insertFlowRunResources(List<FlowRunResourceEntity> resources);
-    @Query("SELECT * FROM flow_run_resources WHERE runId = :runId "
-            + "ORDER BY acquirePosition, releasePosition, id")
-    List<FlowRunResourceEntity> flowRunResources(String runId);
-    @Query("SELECT * FROM flow_run_resources WHERE runId IN (:runIds) "
-            + "ORDER BY runId, acquirePosition, releasePosition, id")
-    List<FlowRunResourceEntity> flowRunResourcesFor(List<String> runIds);
-    @Query("SELECT * FROM flow_run_resources WHERE state IN ('RESERVED','ACTIVE') "
-            + "ORDER BY resourceId, id")
-    List<FlowRunResourceEntity> consumingFlowResources();
-    @Update void updateFlowRunResource(FlowRunResourceEntity resource);
+    // Schema 24 operations remain explicit failures while old callers are removed in the cutover.
+    default long insertStepFlowRun(StepFlowRunEntity run) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default void updateStepFlowRun(StepFlowRunEntity run) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default StepFlowRunEntity stepFlowRun(String id) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default StepFlowRunEntity stepFlowRunBySourceKey(String sourceKey) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default List<StepFlowRunEntity> activeStepFlowRuns() { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default List<StepFlowRunEntity> activeStepFlowRuns(String taskId) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default void insertFlowRunSteps(List<FlowRunStepEntity> steps) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default List<FlowRunStepEntity> flowRunSteps(String runId) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default List<FlowRunStepEntity> flowRunStepsFor(List<String> runIds) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default void updateFlowRunStep(FlowRunStepEntity step) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default void insertFlowRunResources(List<FlowRunResourceEntity> resources) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default List<FlowRunResourceEntity> flowRunResources(String runId) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default List<FlowRunResourceEntity> flowRunResourcesFor(List<String> runIds) { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default List<FlowRunResourceEntity> consumingFlowResources() { throw new UnsupportedOperationException("Use graph runtime repository"); }
+    default void updateFlowRunResource(FlowRunResourceEntity resource) { throw new UnsupportedOperationException("Use graph runtime repository"); }
 }

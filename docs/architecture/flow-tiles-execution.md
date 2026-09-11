@@ -375,3 +375,10 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
 - Die überarbeitete Geräte-Matrix ist noch nicht nachgewiesen. Editor-Navigation,
   registriertes Schema 25 und gemeinsame Blattprojektion bleiben offene Cutover-Gates;
   dieser Zwischencommit ist ausdrücklich kein veröffentlichungsfähiger Abschluss.
+
+- Schema 25 ist im lokalen Cutover registriert und exportiert. Room bildet expliziten
+  Aufgabentyp, Runtime-Schritt-ID, Graph-Kanten, Wartephasen und Speicherquittungen ab.
+  Kompilierung sowie gezielte Laufzeit-/Editor-/SQL-Migrationstests erfolgreich (1m 24s).
+  Alte Room-Laufzeitoperationen sind vorläufig ausdrücklich gesperrt; ihre produktiven
+  Aufrufer werden im selben unveröffentlichten Cutover ersetzt. Die App-Composition
+  ist damit noch kein abnahmefähiger Gesamtstand.
