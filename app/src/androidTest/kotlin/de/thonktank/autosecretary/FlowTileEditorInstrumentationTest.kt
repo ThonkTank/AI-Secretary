@@ -3,6 +3,7 @@ package de.thonktank.autosecretary
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.*
@@ -65,6 +66,10 @@ class FlowTileEditorInstrumentationTest {
         assertGraph { it.predecessors(ids[1]) == listOf(ids[2]) && it.predecessors(ids[2]) == listOf(ids[0]) }
         button("Rückgängig").click()
         assertGraph { it.links == listOf(FlowTileGraph.Link(ids[0], ids[1])) && it.stepIds == ids }
+        val again = button("Trockner").visibleBounds
+        val before = button("Aufhängen").visibleBounds
+        assertTrue(device.swipe(again.centerX(), again.centerY(), before.centerX(), before.top + 3, 30))
+        assertGraph { it.predecessors(ids[1]) == listOf(ids[2]) && it.predecessors(ids[2]) == listOf(ids[0]) }
     }
 
     @Test fun cancelledGestureNeverWritesAPreviewIntoTheDraft() {
@@ -84,6 +89,20 @@ class FlowTileEditorInstrumentationTest {
         assertGraph { it.predecessors(ids[1]) == listOf(ids[2]) }
     }
 
+    @Test fun nativeAccessibilityCanJoinAndUndoWithoutDraggingATile() {
+        button("Trockner").longClick()
+        clickAccessibleTag("flow-editor:handle:JOIN")
+        clickAccessibleTag("flow-editor:target:${ids[1]}")
+        clickAccessibleTag("flow-editor:placement:${ids[1]}:JOIN")
+        assertGraph { it.predecessors(ids[1]) == listOf(ids[0]) }
+        clickAccessibleTag("flow-editor:apply-move")
+        assertGraph { it.predecessors(ids[1]).toSet() == setOf(ids[0], ids[2]) }
+        // Scroll through the accessibility action: a generic swipe can grab a tile.
+        repeat(5) { scrollAccessible(forward = false) }
+        button("Rückgängig").click()
+        assertGraph { it.links == listOf(FlowTileGraph.Link(ids[0], ids[1])) && it.stepIds == ids }
+    }
+
     @Test fun holdingATileAtTheViewportEdgeScrollsAndCancelKeepsTheGraph() {
         var draft = FlowEditorDraft.empty().rename("Langer Ablauf")
         repeat(18) { draft = draft.addStep("Schritt ${it + 1}", de.thonktank.autosecretary.domain.model.FlowDelayPolicy.fixed(0)) }
@@ -96,7 +115,9 @@ class FlowTileEditorInstrumentationTest {
         pointer(first.centerX().toFloat(), first.centerY().toFloat(), first.centerX().toFloat(),
             viewport.bottom - 8f, cancel = true, mouse = false, whileHeld = {
                 SystemClock.sleep(1_000)
-                assertFalse("The edge hold must scroll the title out of view", device.hasObject(By.res("flow-editor:title")))
+                val title = device.findObject(By.res("flow-editor:title"))
+                Log.i("FlowTileTest", "edge viewport=$viewport, title=${title?.visibleBounds}, first=${device.findObject(By.desc("Schritt 1"))?.visibleBounds}")
+                assertFalse("The edge hold must scroll the title out of view: ${title?.visibleBounds}", title != null && !title.visibleBounds.isEmpty)
                 assertGraph { it.links == graph.links }
             })
         assertGraph { it.links == graph.links && it.stepIds == graph.stepIds }
@@ -118,6 +139,36 @@ class FlowTileEditorInstrumentationTest {
     private fun nameInput(): UiObject2 = requireNotNull(device.wait(
         Until.findObject(By.res("flow-editor:name").clazz("android.widget.EditText")), 5_000
     )) { "Missing editable name field" }
+
+    private fun accessibilityNode(predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
+        fun walk(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+            if (predicate(node)) return node
+            repeat(node.childCount) { index -> node.getChild(index)?.let { walk(it)?.let { found -> return found } } }
+            return null
+        }
+        return instrumentation.uiAutomation.rootInActiveWindow?.let(::walk)
+    }
+
+    private fun scrollAccessible(forward: Boolean): Boolean {
+        val node = accessibilityNode { it.isScrollable } ?: return false
+        val changed = node.performAction(if (forward) AccessibilityNodeInfo.ACTION_SCROLL_FORWARD else AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)
+        device.waitForIdle()
+        return changed
+    }
+
+    private fun clickAccessibleTag(tag: String) {
+        repeat(6) {
+            device.waitForIdle()
+            val node = accessibilityNode { it.viewIdResourceName == tag && it.isVisibleToUser }
+            if (node != null) {
+                assertTrue("Missing click action for $tag", node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                device.waitForIdle()
+                return
+            }
+            scrollAccessible(forward = true)
+        }
+        fail("Missing accessible control: $tag")
+    }
 
     private fun button(label: String): UiObject2 {
         // A font change or bring-into-view animation can retain the old node coordinates

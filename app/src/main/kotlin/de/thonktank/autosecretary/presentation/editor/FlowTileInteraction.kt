@@ -68,10 +68,13 @@ internal fun Modifier.flowTileGrip(graph: FlowTileGraph, onStart: (Offset) -> Un
                                  onMove: (Offset) -> Unit, onDrop: () -> Unit,
                                  onCancel: () -> Unit): Modifier = composed {
     var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val start by rememberUpdatedState(onStart)
-    val move by rememberUpdatedState(onMove)
-    val drop by rememberUpdatedState(onDrop)
-    val cancel by rememberUpdatedState(onCancel)
+    // Local function references can compare equal even when they capture a new
+    // graph's gesture state. Structural equality retained the old move/drop/cancel
+    // closures after editing or undo, while start already wrote the new state.
+    val start by remember { mutableStateOf(onStart, referentialEqualityPolicy()) }.apply { value = onStart }
+    val move by remember { mutableStateOf(onMove, referentialEqualityPolicy()) }.apply { value = onMove }
+    val drop by remember { mutableStateOf(onDrop, referentialEqualityPolicy()) }.apply { value = onDrop }
+    val cancel by remember { mutableStateOf(onCancel, referentialEqualityPolicy()) }.apply { value = onCancel }
     onGloballyPositioned { coordinates = it }.pointerInput(graph) {
         try {
             detectDragGestures(

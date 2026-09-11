@@ -42,10 +42,12 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
     editor: FlowEditorViewModel, onSave: () -> Unit, onCancel: () -> Unit, modifier: Modifier) {
     val scroll = rememberScrollState()
     var viewport by remember { mutableStateOf(Rect.Zero) }
-    Column(modifier.fillMaxSize().background(Color.argb(palette.background))
+    // Measure a separate, non-scrolling layout. The Column's coordinates describe
+    // its tall content, not the screen edge at which a held tile must start scrolling.
+    Box(modifier.fillMaxSize().background(Color.argb(palette.background))
         .semantics { testTagsAsResourceId = true }
-        .onGloballyPositioned { viewport = it.boundsInRoot() }
-        .verticalScroll(scroll).padding(16.dp).testTag("flow-editor")) {
+        .onGloballyPositioned { viewport = it.boundsInRoot() }) {
+      Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp).testTag("flow-editor")) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             EditorButton("Abbrechen", palette, onCancel, enabled = !state.saving && !state.savePending)
             EditorText("${state.page}/2", Color.argb(palette.muted), 16, serif = false,
@@ -93,6 +95,7 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
                     primary = true, modifier = Modifier.fillMaxWidth())
             }
         }
+      }
     }
 }
 

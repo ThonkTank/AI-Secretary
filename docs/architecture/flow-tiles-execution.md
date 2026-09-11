@@ -476,3 +476,24 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Das Testpaket baut; die erneute Geräte-/Animationsmatrix ist noch erforderlich.
 - Kein physisches ADB-Gerät verbunden. Remote-main weiterhin `f42d625e`, veröffentlichte
   Version weiterhin 0.2.166. Dieser Zwischenstand ist weder Merge- noch Release-Nachweis.
+
+### P — physische Gesten nach einer Strukturänderung
+
+- Das vollständige lokale `check-all.sh` auf `81093df0` ist grün (23m 19s), einschließlich
+  Lint, aller Paketvarianten, Identitäts- und Größengrenzen. Der Folgelauf auf `964104a3`
+  besteht 746 Tests ohne Fehler; sein abschließender Paketbau läuft noch.
+- Die Matrix auf `0f4830bc`/`964104a3` isoliert Kantenscrollen und Espressos auf API 37
+  entfernte InputManager-API. Die semantische Compose-Suite bleibt auf den unterstützten
+  APIs; eine gleichwertige native Accessibility-Reise prüft Join/Bestätigung/Undo auf
+  **allen** APIs, also auch 37. Kein fachlicher Prüffall entfällt.
+- Lokaler API-26-Emulator: SwiftShader endete mit SIGSEGV im Emulator, Host-Grafik startet
+  dagegen und führt die isolierte Test-App aus. Kein physisches Gerät, keine Änderung
+  an Produktionsdaten. Join ist dort über native Accessibility-Aktionen nachgewiesen.
+- Der Kantenscroll-Test reproduziert einen echten Fehler nach Graphwechsel: Start schreibt
+  den neuen Gestenzustand, Move liest noch den vorherigen. Lokale Funktionsreferenzen können
+  trotz geänderter eingefangener Zustände gleich vergleichen; `rememberUpdatedState` behielt
+  dadurch alte Callbacks. Der Gestenadapter aktualisiert sie jetzt nach Referenzidentität.
+  Ein zusätzlicher Drag nach Undo deckt dieselbe Grenze ab. Der Viewport hat außerdem einen
+  eigenen nicht scrollenden Messcontainer; die freigegebenen Goldens bleiben unverändert.
+- Temporäre Diagnoselogs sind entfernt. Testpaketbau grün; lokale Bedienreise und erneute
+  vollständige Geräte-/Animationsmatrix stehen für diese Korrektur noch aus.
