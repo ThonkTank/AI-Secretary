@@ -315,6 +315,154 @@ public final class FlowGraphSqlMigrationTest {
         }
     }
 
+    @Test public void executionRepositoryFindsRuntimeIdentitiesButNeverProjectsAnUnstartedCandidate() {
+        run("run", StepFlowRunState.OFFERED, 1, FlowResourceState.ACTIVE, 0);
+        run("cancelled", StepFlowRunState.CANCELLED, 1, FlowResourceState.RELEASED, 0);
+        run("collected", StepFlowRunState.COMPLETED, 2, FlowResourceState.RELEASED, 0);
+        migrate();
+        inTransaction(() -> {
+            SqlFlowGraphRunRepository repository = repository();
+            assertEquals(1, repository.active().size());
+            assertEquals(1, repository.active(TaskId.of("task")).size());
+            assertTrue(repository.active(TaskId.of("normal")).isEmpty());
+            assertNull(repository.findBySourceKey("not-started"));
+            assertNull(repository.findByStepId("template1"));
+            FlowGraphRunRecord record = repository.findByStepId("run-s1");
+            assertEquals("run", record.run.id);
+            assertEquals("source-run", record.sourceKey);
+            assertEquals(DATE, record.scheduledOn);
+            assertEquals(TaskSlot.MORNING, record.slot);
+            assertEquals(1234, record.queueOrder);
+            assertEquals(7, record.nextExecutionSequence);
+            assertEquals(100, record.createdAtEpochMillis);
+            assertEquals(200, record.updatedAtEpochMillis);
+            assertEquals(record.run.id, repository.findBySourceKey(record.sourceKey).run.id);
+            assertNotNull(repository.find("cancelled"));
+            assertNotNull(repository.find("collected"));
+        });
+        assertEquals("1", scalar("SELECT COUNT(*) FROM flow_candidates"));
+    }
+
+    @Test public void executionRepositoryCountsLiveClaimsEvenWhenCapacityIsReducedOrDeleted() {
+        run("active", StepFlowRunState.OFFERED, 1, FlowResourceState.ACTIVE, 0);
+        run("reserved", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.RESERVED, 1);
+        run("planned", StepFlowRunState.WAITING_RESOURCE, 1, FlowResourceState.PLANNED, 1);
+        run("released", StepFlowRunState.COMPLETED, 2, FlowResourceState.RELEASED, 0);
+        migrate();
+        inTransaction(() -> {
+            assertEquals(Map.of("rack", 2L), repository().consumingUnitsExcluding("new-run"));
+            assertEquals(Map.of("rack", 1L), repository().consumingUnitsExcluding("active"));
+            db.execSQL("UPDATE capacity_resources SET capacity=1 WHERE id='rack'");
+            assertEquals(Map.of("rack", 2L), repository().consumingUnitsExcluding("new-run"));
+            db.execSQL("DELETE FROM step_resource_leases WHERE resourceId='rack'");
+            db.execSQL("DELETE FROM capacity_resources WHERE id='rack'");
+            assertEquals(Map.of("rack", 2L), repository().consumingUnitsExcluding("new-run"));
+            assertEquals(FlowResourceState.ACTIVE, repository().find("active").run.leases.get(0).state);
+        });
+    }
+
+    @Test public void executionRepositorySelectsTheEarliestParallelWait() {
+        migrate();
+        FlowGraphRun run = newParallelRun(); insertRun(run);
+        String first = run.availableSteps().get(0).id;
+        String second = run.availableSteps().get(1).id;
+        run = engine().complete(run, first, null, 2, 100, capacity()).run;
+        run = engine().complete(run, second, null, 3, 100, capacity()).run;
+        write(run, 100);
+        inTransaction(() -> assertEquals(Long.valueOf(200), repository().nextReadyAtEpochMillis()));
+        run = engine().adjustWait(run, "flow-wait:" + first, 900, 150, capacity()).run;
+        write(run, 150);
+        inTransaction(() -> assertEquals(Long.valueOf(300), repository().nextReadyAtEpochMillis()));
+        run = engine().settle(run, 900, capacity());
+        run = engine().complete(run, run.availableSteps().get(0).id, null, 4, 900, capacity()).run;
+        write(run, 900);
+        inTransaction(() -> {
+            assertNull(repository().nextReadyAtEpochMillis());
+            assertTrue(repository().active().isEmpty());
+        });
+    }
+
+    @Test public void executionRepositoryRetainsOnePendingCollectionAfterATerminalWait() {
+        migrate();
+        FlowGraphDefinition.Node node = new FlowGraphDefinition.Node("template0", "Start",
+                StepPrescription.forAmount(StepAmount.none()), "", FlowDelayPolicy.fixed(10));
+        FlowGraphDefinition definition = new FlowGraphDefinition(TaskId.of("task"),
+                new FlowTileGraph(List.of("template0"), List.of()), List.of(node), List.of());
+        FlowGraphRun run = engine().settle(engine().snapshot(definition, "template0"), 100, capacity());
+        run = engine().complete(run, run.startStepId, null, 4, 100, capacity()).run;
+        insertRun(run);
+        run = engine().settle(run, 110, capacity());
+        write(run, 110);
+        inTransaction(() -> {
+            assertNull(repository().nextReadyAtEpochMillis());
+            assertEquals(1, repository().active().size());
+            assertTrue(repository().active().get(0).run.collectionAvailable());
+            assertTrue(repository().active().get(0).run.availableSteps().isEmpty());
+        });
+        write(engine().collect(run).run, 110);
+        inTransaction(() -> assertTrue(repository().active().isEmpty()));
+    }
+
+    @Test public void executionRepositoryReordersMetadataWithoutChangingStepsClaimsWaitsOrSheetPlacement() {
+        run("run", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.ACTIVE, 0);
+        migrate();
+        Map<String, String> untouched = unchangedRows();
+        FlowGraphRun before = read("run");
+        inTransaction(() -> {
+            assertTrue(repository().reorder("run", 9876, 400));
+            assertFalse(repository().reorder("run", 9876, 401));
+            assertFalse(repository().reorder("missing", 9876, 401));
+            FlowGraphRunRecord after = repository().find("run");
+            assertEquals(9876, after.queueOrder);
+            assertEquals(400, after.updatedAtEpochMillis);
+            assertEquals(before.steps.get("run-s0").readyAtEpochMillis, after.run.steps.get("run-s0").readyAtEpochMillis);
+            assertEquals(before.steps.get("run-s0").chosenDelayMillis, after.run.steps.get("run-s0").chosenDelayMillis);
+            assertEquals(before.leases.get(0).state, after.run.leases.get(0).state);
+            assertEquals(before.alreadyPaidTau, after.run.alreadyPaidTau);
+        });
+        assertEquals(untouched, unchangedRows());
+        assertEquals("100", scalar("SELECT reservedAtEpochMillis FROM flow_run_resources"));
+        assertEquals("110", scalar("SELECT activatedAtEpochMillis FROM flow_run_resources"));
+    }
+
+    @Test public void executionSequenceAllocationIsAtomicAndPreservesMigratedSequence() {
+        run("run", StepFlowRunState.OFFERED, 1, FlowResourceState.ACTIVE, 0);
+        migrate();
+        assertThrows(IllegalStateException.class, () -> inTransaction(() -> {
+            assertEquals(7, repository().allocateExecutionSequence("run", 400));
+            throw new IllegalStateException("Occurrence insertion failed");
+        }));
+        inTransaction(() -> {
+            assertEquals(7, repository().allocateExecutionSequence("run", 500));
+            assertEquals(8, repository().allocateExecutionSequence("run", 500));
+            assertEquals(9, repository().find("run").nextExecutionSequence);
+            db.execSQL("UPDATE step_flow_runs SET nextExecutionSequence=? WHERE id='run'", new Object[]{Integer.MAX_VALUE});
+            assertThrows(ArithmeticException.class, () -> repository().allocateExecutionSequence("run", 600));
+            assertEquals(Integer.MAX_VALUE, repository().find("run").nextExecutionSequence);
+        });
+    }
+
+    @Test public void executionRepositoryRequiresATransactionForAllReadWriteEntryPoints() {
+        migrate();
+        SqlFlowGraphRunRepository repository = repository();
+        assertThrows(IllegalStateException.class, () -> repository.find("missing"));
+        assertThrows(IllegalStateException.class, () -> repository.findByStepId("missing"));
+        assertThrows(IllegalStateException.class, () -> repository.findBySourceKey("missing"));
+        assertThrows(IllegalStateException.class, repository::active);
+        assertThrows(IllegalStateException.class, () -> repository.active(TaskId.of("task")));
+        assertThrows(IllegalStateException.class, repository::nextReadyAtEpochMillis);
+        assertThrows(IllegalStateException.class, () -> repository.consumingUnitsExcluding("run"));
+        assertThrows(IllegalStateException.class, () -> repository.reorder("run", 1, 100));
+        assertThrows(IllegalStateException.class, () -> repository.allocateExecutionSequence("run", 100));
+    }
+
+    private SqlFlowGraphRunRepository repository() { return new SqlFlowGraphRunRepository(() -> db); }
+    private void inTransaction(Runnable operation) {
+        db.beginTransaction();
+        try { operation.run(); db.setTransactionSuccessful(); }
+        finally { db.endTransaction(); }
+    }
+
     private FlowGraphRun newParallelRun() {
         List<String> ids = Arrays.asList("template0", "template1", "template2", "join");
         List<FlowTileGraph.Link> edges = Arrays.asList(new FlowTileGraph.Link("template0", "template1"),
