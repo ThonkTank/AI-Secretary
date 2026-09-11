@@ -133,6 +133,7 @@ public final class SaveTaskConfiguration {
     private void validateOtherDefinitions(TaskId changedTask, List<CapacityResource> resources) {
         for (Task task : tasks.allTasks()) {
             if (task.id.equals(changedTask)) continue;
+            if (task.kind == de.thonktank.autosecretary.domain.model.TaskKind.FLOW) continue;
             List<StepTransition> transitions = flows.stepTransitions(task.id);
             List<StepResourceLease> leases = flows.stepResourceLeases(task.id);
             if (transitions.isEmpty() && leases.isEmpty()) continue;

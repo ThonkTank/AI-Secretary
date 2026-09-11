@@ -123,9 +123,17 @@ class FlowTileEditorInstrumentationTest {
         instrumentation.waitForIdleSync()
         // Exercise the advertised non-drag accessibility action, independent of animated
         // bring-into-view coordinates. Pointer interaction has its own touch/mouse tests.
-        val nodes = instrumentation.uiAutomation.rootInActiveWindow
-            .findAccessibilityNodeInfosByViewId(resourceId)
-        val node = requireNotNull(nodes.firstOrNull { it.isClickable }) {
+        // Compose exports virtual-node resource IDs for traversal; Android's platform
+        // findAccessibilityNodeInfosByViewId does not search these virtual descendants.
+        fun find(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+            if (node.viewIdResourceName == resourceId && node.isClickable) return node
+            for (index in 0 until node.childCount) {
+                val child = node.getChild(index) ?: continue
+                find(child)?.let { return it }
+            }
+            return null
+        }
+        val node = requireNotNull(find(instrumentation.uiAutomation.rootInActiveWindow)) {
             "Missing clickable accessibility node: $resourceId"
         }
         assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK))

@@ -68,6 +68,21 @@ public final class HistoricalDatabaseFixture {
         return result;
     }
 
+    /** Isolates historical migration regressions whose intentionally partial rows predate a later contract. */
+    public static SupportSQLiteOpenHelper openMigrated(Context context, String name, int source, int target) {
+        return new FrameworkSQLiteOpenHelperFactory().create(SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(name).callback(new SupportSQLiteOpenHelper.Callback(target) {
+                    @Override public void onCreate(SupportSQLiteDatabase db) { throw new AssertionError("Historical database is missing"); }
+                    @Override public void onUpgrade(SupportSQLiteDatabase db, int oldVersion, int newVersion) {
+                        if (oldVersion != source || newVersion != target) throw new AssertionError("Unexpected migration range");
+                        for (Migration migration : DatabaseMigrations.from(source)) {
+                            if (migration.endVersion > target) break;
+                            migration.migrate(db);
+                        }
+                    }
+                }).build());
+    }
+
     @FunctionalInterface public interface DatabaseAction {
         void run(SupportSQLiteDatabase database);
     }

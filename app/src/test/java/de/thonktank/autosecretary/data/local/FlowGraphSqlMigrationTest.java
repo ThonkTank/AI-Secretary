@@ -26,12 +26,15 @@ import org.robolectric.annotation.Config;
 public final class FlowGraphSqlMigrationTest {
     private SupportSQLiteOpenHelper helper;
     private SupportSQLiteDatabase db;
+    private String databaseName;
     private final StepFlowEntityMapper mapper = new StepFlowEntityMapper();
     private static final LocalDate DATE = LocalDate.of(2026, 9, 11);
 
     @Before public void setUp() {
         Context context = ApplicationProvider.getApplicationContext();
+        databaseName = "flow-graph-migration-" + UUID.randomUUID();
         helper = new FrameworkSQLiteOpenHelperFactory().create(SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(databaseName)
                 .callback(new SupportSQLiteOpenHelper.Callback(24) {
                     @Override public void onConfigure(SupportSQLiteDatabase database) { database.setForeignKeyConstraintsEnabled(true); }
                     @Override public void onCreate(SupportSQLiteDatabase database) { ExportedRoomSchemaFixture.create(database, 24); }
@@ -53,7 +56,32 @@ public final class FlowGraphSqlMigrationTest {
         insert("flow_task_sheet_placements", new FlowTaskSheetPlacementEntity("placement", "task", "MORNING", DATE.plusDays(1).toString(), 987));
     }
 
-    @After public void tearDown() { helper.close(); }
+    @After public void tearDown() {
+        helper.close();
+        ApplicationProvider.<Context>getApplicationContext().deleteDatabase(databaseName);
+    }
+
+    @Test public void registeredRoomUpgradeValidatesTheActualGraphSchemaAndKeepsPaidTau() {
+        run("run", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.ACTIVE, 0);
+        occurrence("paid", "run", "COMPLETED", "template0", true);
+        booking("earned", "paid", "paid-step", "VESSEL", 4, null);
+        booking("harvest", "paid", null, "HEAD", 40, null);
+        Map<String, String> unchanged = unchangedRows();
+        helper.close();
+        de.thonktank.autosecretary.AppDatabase room = androidx.room.Room.databaseBuilder(
+                ApplicationProvider.getApplicationContext(), de.thonktank.autosecretary.AppDatabase.class, databaseName)
+                .addMigrations(DatabaseMigrations.from(24)).allowMainThreadQueries().build();
+        try {
+            db = room.getOpenHelper().getWritableDatabase(); // Room validates the complete exported target, not just our SQL reads.
+            room.runInTransaction(() -> {
+                FlowGraphRun restored = read("run");
+                assertEquals(4, restored.alreadyPaidTau);
+                assertEquals(FlowGraphRun.State.WAITING_TIME, restored.steps.get("run-s0").state);
+                assertEquals(unchanged, unchangedRows());
+                assertEquals("1", scalar("SELECT COUNT(*) FROM flow_candidates"));
+            });
+        } finally { room.close(); }
+    }
 
     @Test public void timedWaitPreservesEveryPayloadAndConvertsOnlyCursorAndLeaseEndpoints() {
         run("run", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.ACTIVE, 0);
