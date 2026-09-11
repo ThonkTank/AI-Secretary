@@ -284,6 +284,37 @@ public final class FlowGraphSqlMigrationTest {
         assertEquals("110", scalar("SELECT activatedAtEpochMillis FROM flow_run_resources"));
     }
 
+    @Test public void newSnapshotsPreserveAllAmountKindsTrainingAndRememberedWaits() {
+        migrate();
+        int index = 0;
+        for (StepAmount amount : Arrays.asList(StepAmount.none(), StepAmount.repetitions(12),
+                StepAmount.duration(120), StepAmount.setsReps(3, 8))) {
+            StepPrescription prescription = amount instanceof StepAmount.SetsReps
+                    ? StepPrescription.restore(amount, RestTimerPolicy.fromStorage("CUSTOM", 75),
+                            ResistanceLoad.restore("EXTERNAL", "LB", 12345L), 4)
+                    : StepPrescription.forAmount(amount);
+            FlowGraphDefinition.Node node = new FlowGraphDefinition.Node("template0", "Payload " + index,
+                    prescription, "Preserved note", new FlowDelayPolicy(FlowDelayPolicy.Mode.REMEMBER_LAST, 300, 600L));
+            FlowGraphDefinition definition = new FlowGraphDefinition(TaskId.of("task"),
+                    new FlowTileGraph(Collections.singletonList("template0"), Collections.emptyList()),
+                    Collections.singletonList(node), Collections.emptyList());
+            FlowGraphRun run = engine().settle(engine().snapshot(definition, "template0"), 100, capacity());
+            run = engine().complete(run, run.startStepId, 900L, 1, 100, capacity()).run;
+            db.beginTransaction();
+            try {
+                new FlowGraphSnapshotWriter(db).insert(new FlowCandidate("candidate-" + index, TaskId.of("task"),
+                        "template0", "source-" + index++, DATE, TaskSlot.MORNING, 123, 100), run, 100);
+                db.setTransactionSuccessful();
+            } finally { db.endTransaction(); }
+            FlowGraphRun.Step restored = read(run.id).steps.get(run.startStepId);
+            assertEquals(prescription, restored.source.prescription);
+            assertEquals("Preserved note", restored.source.note);
+            assertEquals(300, restored.source.waitAfter.defaultDelayMillis);
+            assertEquals(Long.valueOf(600), restored.source.waitAfter.lastUsedDelayMillis);
+            assertEquals(Long.valueOf(900), restored.chosenDelayMillis);
+        }
+    }
+
     private FlowGraphRun newParallelRun() {
         List<String> ids = Arrays.asList("template0", "template1", "template2", "join");
         List<FlowTileGraph.Link> edges = Arrays.asList(new FlowTileGraph.Link("template0", "template1"),

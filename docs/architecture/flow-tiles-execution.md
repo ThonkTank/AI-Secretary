@@ -197,3 +197,19 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Validierungsnachweis wird daraus abgeleitet.
 - PR #356 bleibt Draft, kein Merge und keine Veröffentlichung. Alle oben benannten
   Produktanschlüsse und die vollständige UI-/Auslieferungsabnahme bleiben erforderlich.
+
+### P — Architekturgrenze des Schreibadapters korrigiert
+
+- Lokaler Gesamtlauf für `5128f32d`: 659 Fälle, ein Fehler und ein übersprungener
+  Test. Derselbe Fehler im exakten PR-Lauf `34585651638`: Der neue Writer verwendete
+  `FlowRunStepSnapshot.rehydrate` außerhalb der bestehenden zulässigen Mappergrenze.
+  PR-Build und bisherige Goldens waren grün; Vertrags- und Aggregatprüfungen rot,
+  Geräte-/Animationsmatrix deshalb nicht gestartet. Kein Gate wurde umgangen.
+- Writer serialisiert jetzt direkt den eingefrorenen Graph-Payload in benannte
+  Spalten, ohne einen alten linearen Snapshot zu erzeugen. Architekturprüfung und
+  zulässige Grenzen bleiben unverändert. Zusätzlicher Roundtrip-Test umfasst alle
+  vier Mengenarten, Last, RIR, Satzpause sowie vorgegebene/zuletzt verwendete/gewählte
+  Wartezeit. SQL-Prüfung jetzt 14 Fälle pro API, zusammen 28.
+- Gezielte Kern-, Editor-, SQL- und Architekturprüfung nach der Korrektur erfolgreich.
+  Vollständiger lokaler Lauf und neuer exakter PR-Lauf müssen den korrigierten
+  Commit separat prüfen. Der vorherige rote Gesamtlauf ist kein grüner Nachweis.

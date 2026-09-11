@@ -31,21 +31,13 @@ public final class FlowGraphSnapshotWriter {
         int position = 0;
         for (String id : run.graph.stepIds) {
             FlowGraphRun.Step step = run.steps.get(id);
-            // Reuse the canonical prescription storage mapper; overwrite only the graph-owned
-            // state. In the final cutover this mapper remains a named-column migration DTO.
-            FlowRunStepEntity payload = new StepFlowEntityMapper().toEntity(FlowRunStepSnapshot.rehydrate(
-                    id, run.id, position++, step.source.id, step.source.title, step.source.prescription,
-                    step.source.note, step.source.waitAfter, step.chosenDelayMillis));
             ContentValues values = stepState(step);
-            values.put("id", id); values.put("runId", run.id); values.put("position", payload.position);
-            values.put("sourceTemplateId", payload.sourceTemplateId); values.put("text", payload.text);
-            values.put("amountKind", payload.amountKind); values.put("plannedSets", payload.plannedSets);
-            values.put("plannedReps", payload.plannedReps); values.put("plannedDurationSeconds", payload.plannedDurationSeconds);
-            values.put("restTimerMode", payload.restTimerMode); values.put("restTimerSeconds", payload.restTimerSeconds);
-            values.put("plannedLoadMode", payload.plannedLoadMode); values.put("plannedLoadUnit", payload.plannedLoadUnit);
-            values.put("plannedLoadMilli", payload.plannedLoadMilli); values.put("targetRir", payload.targetRir);
-            values.put("note", payload.note); values.put("delayMode", payload.delayMode);
-            values.put("defaultDelayMillis", payload.defaultDelayMillis); values.put("lastUsedDelayMillis", payload.lastUsedDelayMillis);
+            values.put("id", id); values.put("runId", run.id); values.put("position", position++);
+            values.put("sourceTemplateId", step.source.id); values.put("text", step.source.title);
+            putPrescription(values, step.source.prescription);
+            values.put("note", step.source.note); values.put("delayMode", step.source.waitAfter.mode.name());
+            values.put("defaultDelayMillis", step.source.waitAfter.defaultDelayMillis);
+            values.put("lastUsedDelayMillis", step.source.waitAfter.lastUsedDelayMillis);
             database.insert("flow_run_steps", SQLiteDatabase.CONFLICT_ABORT, values);
         }
         for (FlowTileGraph.Link link : run.graph.links)
@@ -123,6 +115,26 @@ public final class FlowGraphSnapshotWriter {
         values.put("readyAtEpochMillis", step.readyAtEpochMillis); values.put("actionAtEpochMillis", step.actionAtEpochMillis);
         values.put("earnedTau", step.earnedTau);
         return values;
+    }
+
+    /** Serialize the frozen graph payload directly; never create an old linear snapshot to write it. */
+    private static void putPrescription(ContentValues values, StepPrescription prescription) {
+        StepAmount amount = prescription.amount;
+        values.put("amountKind", amount.kind().storageCode());
+        values.putNull("plannedSets"); values.putNull("plannedReps"); values.putNull("plannedDurationSeconds");
+        if (amount instanceof StepAmount.SetsReps) {
+            values.put("plannedSets", ((StepAmount.SetsReps) amount).sets);
+            values.put("plannedReps", ((StepAmount.SetsReps) amount).repetitions);
+        } else if (amount instanceof StepAmount.Repetitions) {
+            values.put("plannedReps", ((StepAmount.Repetitions) amount).repetitions);
+        } else if (amount instanceof StepAmount.Duration) {
+            values.put("plannedDurationSeconds", ((StepAmount.Duration) amount).seconds);
+        }
+        values.put("restTimerMode", prescription.rest.mode.name());
+        values.put("restTimerSeconds", prescription.rest.customSeconds);
+        ResistanceLoad load = prescription.plannedLoad();
+        values.put("plannedLoadMode", load.mode.name()); values.put("plannedLoadUnit", load.unit.name());
+        values.put("plannedLoadMilli", load.milliUnits); values.put("targetRir", prescription.targetRir());
     }
 
     private void requireTransaction(long now) {
