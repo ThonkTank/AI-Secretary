@@ -1,15 +1,18 @@
 # Roadmap: Kachel-Editor und parallele Abläufe
 
-Status: verbindlich, Produktphase begonnen und noch nicht abgeschlossen
+Status: Produktphase abgeschlossen und als 0.2.167 veröffentlicht; Geräteabnahme offen
 
 ## Phasen und Gates
 
 | Phase | Liefergegenstand | Abschluss |
 |---|---|---|
 | D | Neues klickbares Mockup, letzte Dialogbereinigung | Nutzerfreigabe vom 2026-09-10 liegt vor |
-| C | ADR-036, visuelle Referenz, Übergangs-/Migrationsvertrag | eigener PR, grüne Pflichtprüfungen, Squash, exakter Remote-main-Workflow |
-| P | Editor, Graph-Laufzeit, Schema, Tau und Blattprojektion als ein Cutover | eigene Branch/PR, vollständige Prüfungen, Squash, exaktes main und veröffentlichtes Paket |
-| A | Anforderungsabgleich und tatsächlich installiertes Update | konkrete Paket-/Geräteversion und Laufzeitprüfung getrennt nachgewiesen |
+| C | ADR-036, visuelle Referenz, Übergangs-/Migrationsvertrag | abgeschlossen: PR #355, grüne Prüfungen, Squash, Remote-main `f42d625e` |
+| P | Editor, Graph-Laufzeit, Schema, Tau und Blattprojektion als ein Cutover | abgeschlossen: PR #356, alle lokalen/PR/Main-/Upgrade-Gates grün, Main `06cd96b8`, Stable 0.2.167 |
+| A | Anforderungsabgleich und tatsächlich installiertes Update | technischer Abgleich dokumentiert; installierte Version und Laufzeitprüfung mangels verbundenem Gerät offen |
+
+Die [Abnahme](flow-tiles-acceptance.md) ordnet T01–T10 konkreten Prüfungen zu und
+trennt lokale Tests, PR, Main, Produktions-Upgrades, veröffentlichtes Paket und Gerät.
 
 Die Produktphase beginnt erst nach Gate C. Es gibt keinen veröffentlichbaren Teil-Cutover.
 PRs laufen gegen main; keine direkten main-Pushes. Bestehende Checkouts und parallele

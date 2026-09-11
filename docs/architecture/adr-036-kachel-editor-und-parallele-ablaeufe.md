@@ -1,8 +1,10 @@
 # ADR-036: Kachel-Editor und parallele Abläufe
 
-Status: beschlossen; Produktumsetzung ausstehend
+Status: umgesetzt und mit 0.2.167 veröffentlicht; physische Geräteabnahme offen
 
 Datum: 2026-09-10
+
+Auslieferungsnachweis vom 2026-09-11: [Anforderungsabgleich und getrennte Gates](flow-tiles-acceptance.md).
 
 ## Grundlage und Freigabe
 
