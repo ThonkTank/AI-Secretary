@@ -517,3 +517,12 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Struktur. Kein Ausschalten von Animationen und keine Wiederholung fehlgeschlagener Gesten.
   Alle sieben Fälle mit Animation 1.0 sind danach lokal grün (3m 5s). Diese letzte Änderung
   betrifft ausschließlich Teststeuerung; der produktive Stand bleibt `5780d8e7`.
+
+- `22d0dc5c` besteht das lokale Gesamtgate erneut. In PR `34611073321` sind die
+  normalen Geräteprüfungen 35/37 und Animation 26 grün. API 26 findet beim Wechsel
+  auf große Schrift dagegen keinen geöffneten Dialog: der Testhost hat die neue
+  Dichte noch nicht gezeichnet, während Androids Queue bereits idle ist. Der Test
+  wartet jetzt auf die tatsächlich komponierte Schriftgröße und anschließend die
+  stabile Darstellung, bevor er die Klickposition ermittelt. Keine Wiederholung
+  des Klicks, kein entfallener Feld-/Bediennachweis, keine Produktänderung.
+  Alle sieben nativen Fälle bestehen danach lokal bei Animation 1.0 (1 min 27 s).

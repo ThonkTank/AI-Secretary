@@ -55,6 +55,19 @@ class FlowTileEditorInstrumentationTest {
 
     @Test fun stepDialogHasOnlyNameWaitAndTheDirectCheckboxAtLargeFont() {
         activityRule.scenario.onActivity { it.fontScale = 1.6f }
+        // Changing density posts a Compose frame after Android's main queue can
+        // already be idle. Do not resolve click coordinates from the old layout.
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        var renderedScale = 0f
+        do {
+            activityRule.scenario.onActivity { renderedScale = it.renderedFontScale }
+            if (renderedScale == 1.6f) break
+            SystemClock.sleep(20)
+        } while (SystemClock.uptimeMillis() < deadline)
+        assertEquals("Large font must be composed before locating the tile", 1.6f, renderedScale, 0f)
+        assertFalse("Large-font layout did not settle",
+            requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+                .waitForStable(5_000, 300, 50, true).isTimeout)
         button("Waschen").click()
         awaitFormName("Waschen")
         assertNotNull(button("Schritt bearbeiten"))

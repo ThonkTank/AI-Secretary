@@ -32,6 +32,8 @@ class FlowTileEditorHarnessActivity : ComponentActivity() {
     var saves = 0
         private set
     var fontScale by mutableFloatStateOf(1f)
+    var renderedFontScale = 0f
+        private set
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +46,8 @@ class FlowTileEditorHarnessActivity : ComponentActivity() {
             val state by editor.state.collectAsState()
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                val appliedFontScale = LocalDensity.current.fontScale
+                SideEffect { renderedFontScale = appliedFontScale }
                 Box(Modifier.width(320.dp).fillMaxHeight().semantics { testTagsAsResourceId = true }) {
                     FlowTileEditorScreen(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT),
                         editor, { saves++ }, { finish() })
