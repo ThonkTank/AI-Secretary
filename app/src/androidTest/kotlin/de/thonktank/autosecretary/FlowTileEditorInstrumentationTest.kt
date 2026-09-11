@@ -94,13 +94,14 @@ class FlowTileEditorInstrumentationTest {
         clickAccessibleTag("flow-editor:handle:JOIN")
         clickAccessibleTag("flow-editor:target:${ids[1]}")
         clickAccessibleTag("flow-editor:placement:${ids[1]}:JOIN")
+        awaitAccessibleTag("flow-editor:apply-move")
         assertGraph { it.predecessors(ids[1]) == listOf(ids[0]) }
         clickAccessibleTag("flow-editor:apply-move")
-        assertGraph { it.predecessors(ids[1]).toSet() == setOf(ids[0], ids[2]) }
+        awaitGraph { it.predecessors(ids[1]).toSet() == setOf(ids[0], ids[2]) }
         // Scroll through the accessibility action: a generic swipe can grab a tile.
         repeat(5) { scrollAccessible(forward = false) }
         button("Rückgängig").click()
-        assertGraph { it.links == listOf(FlowTileGraph.Link(ids[0], ids[1])) && it.stepIds == ids }
+        awaitGraph { it.links == listOf(FlowTileGraph.Link(ids[0], ids[1])) && it.stepIds == ids }
     }
 
     @Test fun holdingATileAtTheViewportEdgeScrollsAndCancelKeepsTheGraph() {
@@ -115,9 +116,10 @@ class FlowTileEditorInstrumentationTest {
         pointer(first.centerX().toFloat(), first.centerY().toFloat(), first.centerX().toFloat(),
             viewport.bottom - 8f, cancel = true, mouse = false, whileHeld = {
                 SystemClock.sleep(1_000)
-                val title = device.findObject(By.res("flow-editor:title"))
-                Log.i("FlowTileTest", "edge viewport=$viewport, title=${title?.visibleBounds}, first=${device.findObject(By.desc("Schritt 1"))?.visibleBounds}")
-                assertFalse("The edge hold must scroll the title out of view: ${title?.visibleBounds}", title != null && !title.visibleBounds.isEmpty)
+                // Re-query while the viewport is moving; retaining a UiObject2 across
+                // frames can throw StaleObjectException exactly when it scrolls away.
+                assertTrue("The edge hold must scroll the title out of view",
+                    device.wait(Until.gone(By.res("flow-editor:title")), 2_000))
                 assertGraph { it.links == graph.links }
             })
         assertGraph { it.links == graph.links && it.stepIds == graph.stepIds }
@@ -142,6 +144,9 @@ class FlowTileEditorInstrumentationTest {
 
     private fun accessibilityNode(predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
         fun walk(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+            // Compose replaces virtual descendants during layout. Do not traverse
+            // cached child lists from the preceding frame/arrangement page.
+            if (!node.refresh()) return null
             if (predicate(node)) return node
             repeat(node.childCount) { index -> node.getChild(index)?.let { walk(it)?.let { found -> return found } } }
             return null
@@ -157,17 +162,33 @@ class FlowTileEditorInstrumentationTest {
     }
 
     private fun clickAccessibleTag(tag: String) {
-        repeat(6) {
+        val node = awaitAccessibleTag(tag)
+        assertTrue("Missing click action for $tag", node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+    }
+
+    private fun awaitAccessibleTag(tag: String): AccessibilityNodeInfo {
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        do {
             device.waitForIdle()
             val node = accessibilityNode { it.viewIdResourceName == tag && it.isVisibleToUser }
-            if (node != null) {
-                assertTrue("Missing click action for $tag", node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
-                device.waitForIdle()
-                return
-            }
+            if (node != null) return node
+            // Six immediate tree reads used to finish before the posted Compose
+            // frame could add the requested target. Wait for the actual control.
+            SystemClock.sleep(50)
             scrollAccessible(forward = true)
-        }
-        fail("Missing accessible control: $tag")
+        } while (SystemClock.uptimeMillis() < deadline)
+        throw AssertionError("Missing accessible control: $tag")
+    }
+
+    private fun awaitGraph(predicate: (FlowTileGraph) -> Boolean) {
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        do {
+            var matched = false
+            activityRule.scenario.onActivity { matched = predicate(it.editor.state.value.draft.graph) }
+            if (matched) return
+            SystemClock.sleep(20)
+        } while (SystemClock.uptimeMillis() < deadline)
+        assertGraph(predicate)
     }
 
     private fun button(label: String): UiObject2 {

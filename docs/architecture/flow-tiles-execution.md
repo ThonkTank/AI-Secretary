@@ -497,3 +497,14 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   eigenen nicht scrollenden Messcontainer; die freigegebenen Goldens bleiben unverändert.
 - Temporäre Diagnoselogs sind entfernt. Testpaketbau grün; lokale Bedienreise und erneute
   vollständige Geräte-/Animationsmatrix stehen für diese Korrektur noch aus.
+
+- Auf `5780d8e7` sind alle neun lokalen Editor-Gerätefälle mit Animation 1.0 grün
+  (4m 47s), zusätzlich alle sieben nativen Fälle mit reduzierter Animation 0.5 (2m 45s).
+  Die vollständigen PR-Gerätejobs auf API 26 und 35 sind ebenfalls grün.
+- API 37 trifft beim erfolgreichen Wegscrollen ein inzwischen ungültiges UiObject2;
+  der Test fragt die Abwesenheit jetzt erneut ab. Die native Join-Reise las außerdem
+  sechsmal unmittelbar denselben alten Accessibility-Baum, bevor Compose das neue Ziel
+  einfügte (im Fehler-Hierarchiedump bereits sichtbar). Sie wartet nun begrenzt auf den
+  aktuellen, aufgefrischten Baum sowie auf den angewendeten Graphzustand. Vor Übernehmen
+  wird weiterhin nachgewiesen, dass die sichtbare Vorschau noch nichts gespeichert hat.
+  Nur die Tests ändern sich; erneute Matrix erforderlich, kein vorgezogenes Merge-Gate.
