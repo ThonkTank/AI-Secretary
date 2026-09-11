@@ -300,3 +300,53 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Die 53 gezielten JUnit-Ergebnisse (Typ, Editor-Speicherung und Architekturgrenzen)
   enthalten keine Fehler oder Skips. Room-Abbildung und produktive Navigation sind
   damit noch nicht umgestellt; sie bleiben Teil des zusammenhängenden Cutovers.
+
+### P — Laufzeit-Identitäten und persistente Abfragen
+
+- Lokaler Android-Lauf nach Prüfhost-Korrektur: `lintDebug` und
+  `assembleInstrumentationAndroidTest` erfolgreich (6m 14s). Exakter PR-Lauf
+  `34592645677` für `4b1667b7cc1fa7da2a33bdb93b61f816a1905332` hat die drei
+  Quality-Lanes passiert; Geräte-/Animationsmatrix zu diesem Zeitpunkt noch offen.
+- `FlowGraphRunRepository` und SQL-Adapter lesen eingefrorene Ketten samt
+  Termin-/Platzierungsmetadaten sowie nach stabiler Laufzeitschritt-ID. Die nächste
+  Aufweckzeit ist das Minimum aller aktiven Wartephasen; eine ausstehende Abschlussaktion
+  bleibt aktiv, Kandidaten werden dabei nie zu Ketten.
+- Kapazitätsabfragen zählen reservierte und aktive Einheiten unabhängig von späteren
+  Definitions-/Kapazitätsänderungen. Reihungsänderungen betreffen nur Metadaten;
+  Schrittzustände, Wartezeiten, Belegung, Blattposition und Rewards bleiben unverändert.
+  Die bestehende Ausführungsnummer wird ohne aktuellen Positions-/Occurrence-Zeiger
+  transaktional fortgeführt. Alle Repository-Einstiege verlangen dieselbe Transaktion.
+- Commit `62fa7ae8`: 73 gezielte Tests erfolgreich (42 SQL-/Migrationstests auf API 26/35,
+  3 Typ- und 28 Architekturtests), keine Fehler/Skips. Dazu zählen Rollback der
+  Ausführungsnummer, übernommene Metadaten, unabhängige Wartezeiten und nachträglich
+  verringerte/entfernte Kapazitäten. Dies ist noch keine finale Room-Upgrade-Abnahme.
+- `OccurrenceStep` kann jetzt eine separate Laufzeitschritt-ID tragen. Die zentrale
+  Snapshot-Factory übernimmt nur verfügbare Graph-Aktionen; Mengenfortschritt,
+  Korrektur, Übertrag und Verschiebung behalten die Identität. Normale Schritte bleiben
+  unverändert ohne Graph-ID. Room-Abbildung und produktive Aufrufwege bleiben offen.
+- Arbeitsstand ist weiterhin **nicht vollständig implementiert und nicht auslieferbar**:
+  App-Navigation/Composition, registriertes Room-Schema, Ersatz des alten Coordinators,
+  Occurrence-/Combo-/Tau-Verknüpfung und Heute-/Alles-Projektion sind nicht umgestellt.
+  Kein zweiter produktiver Laufzeitmechanismus wurde aktiviert. PR #356 bleibt Draft;
+  kein Merge, Main-Nachweis, Release oder installiertes Update für diese Produktphase.
+- Vollständiger lokaler Unit-Testlauf auf `58ac7e6c`: **717 Tests, 1 vorgesehener Skip,
+  keine Fehler**, erfolgreich in 7m 22s. Dieser Nachweis ist nicht der vollständige
+  Check-all-/Release-Gate und liegt vor den anschließenden Instrumentierungs-Driver-Anpassungen.
+- Der erste tatsächliche Kachel-Gerätelauf `34592645677` ist rot: API 26 meldet drei
+  Fehler (großer Schrittdialog, Eingabe nach Activity-Neuerstellung, Ziel der expliziten
+  Zusammenführung). Touch, Maus und Gestenabbruch bestehen. API 35 meldet einen Fehler
+  bei der Textabfrage nach Neuerstellung. Weitere Matrix-Lanes sind ebenfalls rot;
+  keine Gerätefreigabe aus einzelnen bestandenen Fällen ableiten.
+- Der Driver wartet jetzt auf ruhiges Layout, scrollt über Text **oder** Beschreibung
+  und wählt den Kontext-Zielknopf über dessen eindeutige Test-ID. Große Schrift darf
+  regulär scrollen; die Form enthält nach wie vor exakt vier Werte (Name, Dauer, Einheit,
+  Nachfrage). Vor und nach Neuerstellung wird außerdem der echte ViewModel-Eingabewert
+  geprüft. Eine Fehlerdiagnose protokolliert Formularzustand und Accessibility-Baum
+  vor dem Schließen der Test-Activity. Das neue Testpaket baut lokal erfolgreich;
+  ob die Anpassungen die Gerätefehler beheben, ist noch offen.
+- Zusätzliche isolierte Wiederherstellungsprüfung des echten Activity-/Provider-Hosts
+  auf API 26/35 erfolgreich: derselbe ViewModel-Zustand bei Activity-Neuerstellung,
+  neuer ViewModel-Zustand aus parceliertem Saved State nach Zerstörung, einschließlich
+  offenem Formular und ausgewählter Fixture-Generation. Zusammen mit den sechs
+  Speicher-/Gateway-ViewModel-Tests: **10 Tests ohne Fehler/Skip**, 1m 1s. Dies grenzt
+  den Gerätefehler ein, ersetzt aber nicht die Prüfung der realen Eingabebedienung.
