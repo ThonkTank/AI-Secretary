@@ -54,6 +54,7 @@ public final class GraphFlowRuntimePersistenceTest {
     @Test public void oneStepCollectsThroughTheRealLedgerOnceAndLeavesNoOpenExecution() {
         TaskId task = save.execute(FlowEditorDraft.empty().rename("Ein Ablauf").addStep("Beginnen", FlowDelayPolicy.fixed(0)).edit());
         String candidate = candidate(task, "Beginnen");
+        assertEquals(Long.valueOf(10), projection().sheets.get(0).entries.get(0).finalTau);
         GraphFlowRuntime.Result first = runtime.start(candidate, null);
         assertEquals(FlowGraphCommands.Status.CHANGED, first.status);
         assertEquals(RewardReceipt.Target.HEAD, first.reward.target);

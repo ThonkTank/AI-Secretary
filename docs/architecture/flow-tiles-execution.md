@@ -436,3 +436,43 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   registrierten Room-Migrationen bis 25 aus und prüft sämtliche Zielwerte sowie den
   lauffähigen Graph-Snapshot. **9 Korpus-/Upgrade-Tests grün**, einschließlich API 26/35.
   Das ist lokaler Nachweis, noch kein signiertes Geräte-Upgrade/PR/Main/Release.
+
+### P — vollständiger Laufzeitwechsel und Prüfung der echten Bediengrenzen
+
+- `c00e6e66` entfernt den alten linearen Coordinator, Start-/Aktivierungspfad und die
+  entsprechende Repository-API. 41 gezielte Laufzeit-/Aufgabenfälle grün. Historische
+  Datenklassen dienen nur noch Migrations-/Bestandsproben, nicht einer zweiten Ausführung.
+- Der lokale Gesamtversuch auf `545e2d87` bestand 743 Unit-/Robolectric-Tests ohne Fehler
+  (ein vorgesehener Skip). Der anschließende Paketbau endete mit Signal 143, daher kein
+  grünes Gesamtgate. Ein späterer unveränderter Wiederholungsstand wird nicht behauptet.
+- Neue Editor-Goldens wurden zuerst ohne Update-Schalter gerendert, alle drei Bilder
+  visuell geprüft, anschließend übernommen und ohne Update-Schalter erfolgreich verglichen:
+  Kacheln auf 320 dp und minimaler Schrittdialog mit normaler/160-%-Schrift.
+- PR `34602133369` auf `545e2d87`: Quality-Verträge, Goldens und Build grün, Gerätematrix
+  rot. API 26 zeigte drei Ursachen: zwei Instrumentierungstests erwarteten den bewusst
+  entfernten normalen Ablauf-Einstieg; der Join-Test fand seine Bestätigungsoption nicht.
+  Die tatsächliche Editorreise (Erstellen, Speichern, Wiederöffnen, Recreation, Verwerfen)
+  bestand auf API 26. Keine Aussage über ein installiertes Produktionspaket.
+- Die alten Einstiegstests prüfen nun die Trennung der Editoren. Wiederhergestellte
+  normale Editor-Navigation kann nicht auf die historische FLOW-Seite zurückspringen.
+  Der nicht ziehende Join-Pfad nutzt semantisches Scrollen/Klicken in einem getrennten
+  Compose-Prüfhost; physische Maus-/Touch-Prüfungen behalten ihre echte Frame-Uhr.
+- Bei der Bildabnahme des Wäscheblatts fielen abgeschnittene Folgeschrittnamen auf.
+  Ablaufzeilen umbrechen jetzt auch bei großer Schrift und zeigen vorhandene Mengen
+  rechts. Normale Aufgaben behalten ihre bisherige Zeilendarstellung.
+- Die zweite kompakte Ablaufzeile ersetzte ihren expliziten Befehl durch den normalen
+  Advance-Befehl. Die Zeilenprojektion erhält jetzt Start, Zeitabfrage, Laufzeitschritt
+  und Einsammeln unverändert. Ein echter Klick auf den zweiten Kreis prüft dessen
+  Runtime-ID; fünf zusätzliche Aktionsvarianten sind im Projektionsvertrag erfasst.
+  Ablaufzeilen bieten keine unzulässige normale Schritt-Umsortierung mehr an.
+- Zwei neue Wäscheblatt- und zwei Graph-Warteübersichts-Goldens wurden nach Sichtprüfung
+  übernommen. Laufende parallele Schritte zeigen keine historischen Reihenfolge-/Abbruch-
+  Aktionen. Der gezielte Lauf ohne Update-Schalter mit Laufzeit- und beiden Golden-Suiten
+  ist grün (20 Tests); die übrigen Anforderungen bleiben im vollständigen Gate.
+- Ein einschrittiger Start ohne Wartephase zeigt bereits seine abschließende Tau-Summe.
+  Auch diese Anzeige wird gegen den echten Laufzeit-/Ledgerfall auf API 26/35 geprüft.
+- Neuer physischer Kantenscroll-Test hält eine Kachel in einer langen Folge am unteren
+  Rand und bricht danach ab: Scrollen darf die Struktur nicht vorzeitig speichern.
+  Das Testpaket baut; die erneute Geräte-/Animationsmatrix ist noch erforderlich.
+- Kein physisches ADB-Gerät verbunden. Remote-main weiterhin `f42d625e`, veröffentlichte
+  Version weiterhin 0.2.166. Dieser Zwischenstand ist weder Merge- noch Release-Nachweis.

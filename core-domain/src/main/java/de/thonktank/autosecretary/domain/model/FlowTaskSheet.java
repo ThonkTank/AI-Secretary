@@ -51,8 +51,12 @@ public final class FlowTaskSheet {
         }
 
         public static Entry candidate(FlowCandidate candidate, TaskStepTemplate template, FlowDelayPolicy wait) {
+            return candidate(candidate, template, wait, null);
+        }
+
+        public static Entry candidate(FlowCandidate candidate, TaskStepTemplate template, FlowDelayPolicy wait, Long finalTau) {
             return new Entry(Kind.CANDIDATE, candidate.id, template.text, candidate.queueOrder,
-                    template, null, null, wait, null);
+                    template, null, null, wait, finalTau);
         }
 
         public static Entry action(FlowRunSummary summary, FlowGraphRun.Step step,

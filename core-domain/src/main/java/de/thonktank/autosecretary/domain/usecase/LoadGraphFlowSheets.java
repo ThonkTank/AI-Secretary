@@ -112,7 +112,8 @@ public final class LoadGraphFlowSheets {
             });
             TaskStepTemplate template = taskSteps.get(candidate.seedStepId);
             if (template != null) builder(sheets, placements, task, candidate.slot, date).entries.add(
-                    FlowTaskSheet.Entry.candidate(candidate, template, definition.nodes.get(candidate.seedStepId).waitAfter));
+                    FlowTaskSheet.Entry.candidate(candidate, template, definition.nodes.get(candidate.seedStepId).waitAfter,
+                            finalTau(preview, preview.steps.get(preview.startStepId))));
         }
         List<FlowTaskSheet> visible = new ArrayList<>();
         for (Builder sheet : sheets.values()) if (!sheet.entries.isEmpty()) {

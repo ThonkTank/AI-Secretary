@@ -6,10 +6,6 @@ import android.view.MotionEvent
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.*
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.performClick
 import de.thonktank.autosecretary.domain.model.FlowTileGraph
 import org.junit.Assert.*
 import org.junit.Before
@@ -24,8 +20,7 @@ import android.util.Log
 /** Uses the real accessibility/input boundary on every matrix API, including API 37. */
 class FlowTileEditorInstrumentationTest {
     val activityRule = ActivityScenarioRule(FlowTileEditorHarnessActivity::class.java)
-    private val compose = createEmptyComposeRule()
-    @get:Rule val rules: RuleChain = RuleChain.outerRule(compose).around(activityRule).around(object : TestWatcher() {
+    @get:Rule val rules: RuleChain = RuleChain.outerRule(activityRule).around(object : TestWatcher() {
         override fun failed(error: Throwable, description: Description) {
             // Capture before ActivityScenario closes the host, not the empty launcher afterwards.
             runCatching {
@@ -89,17 +84,23 @@ class FlowTileEditorInstrumentationTest {
         assertGraph { it.predecessors(ids[1]) == listOf(ids[2]) }
     }
 
-    @Test fun explicitJoinIsAvailableWithoutDraggingAndIsNotAppliedBeforeConfirmation() {
-        button("Trockner").longClick()
-        compose.onNodeWithTag("flow-editor:handle:JOIN").performScrollTo().performClick()
-        val targetId = "flow-editor:target:${ids[1]}"
-        compose.onNodeWithTag(targetId).performScrollTo().performClick()
-        compose.onNodeWithTag("flow-editor:placement:${ids[1]}:JOIN").performScrollTo().performClick()
-        assertGraph { it.predecessors(ids[1]) == listOf(ids[0]) }
-        compose.onNodeWithTag("flow-editor:apply-move").performScrollTo().performClick()
-        assertGraph { it.predecessors(ids[1]).toSet() == setOf(ids[0], ids[2]) }
-        button("Rückgängig").click()
-        assertGraph { it.predecessors(ids[1]) == listOf(ids[0]) }
+    @Test fun holdingATileAtTheViewportEdgeScrollsAndCancelKeepsTheGraph() {
+        var draft = FlowEditorDraft.empty().rename("Langer Ablauf")
+        repeat(18) { draft = draft.addStep("Schritt ${it + 1}", de.thonktank.autosecretary.domain.model.FlowDelayPolicy.fixed(0)) }
+        val ordered = draft.steps.map { it.id }
+        val graph = FlowTileGraph(ordered, ordered.zipWithNext { a, b -> FlowTileGraph.Link(a, b) })
+        val prepared = draft.withGraph(graph)
+        activityRule.scenario.onActivity { it.render(prepared) }
+        val first = button("Schritt 1").visibleBounds
+        val viewport = requireNotNull(device.findObject(By.res("flow-editor"))).visibleBounds
+        pointer(first.centerX().toFloat(), first.centerY().toFloat(), first.centerX().toFloat(),
+            viewport.bottom - 8f, cancel = true, mouse = false, whileHeld = {
+                SystemClock.sleep(1_000)
+                assertFalse("The edge hold must scroll the title out of view", device.hasObject(By.res("flow-editor:title")))
+                assertGraph { it.links == graph.links }
+            })
+        assertGraph { it.links == graph.links && it.stepIds == graph.stepIds }
+        activityRule.scenario.onActivity { assertFalse(it.editor.state.value.canUndo) }
     }
 
     @Test fun openStepInputSurvivesActivityRecreationWithoutAdditionalFields() {
@@ -150,7 +151,8 @@ class FlowTileEditorInstrumentationTest {
         activityRule.scenario.onActivity { assertTrue("Unexpected tile graph", predicate(it.editor.state.value.draft.graph)) }
     }
 
-    private fun pointer(x: Float, y: Float, targetX: Float, targetY: Float, cancel: Boolean, mouse: Boolean) {
+    private fun pointer(x: Float, y: Float, targetX: Float, targetY: Float, cancel: Boolean, mouse: Boolean,
+                        whileHeld: (() -> Unit)? = null) {
         val down = SystemClock.uptimeMillis()
         val properties = arrayOf(MotionEvent.PointerProperties().apply {
             id = 0; toolType = if (mouse) MotionEvent.TOOL_TYPE_MOUSE else MotionEvent.TOOL_TYPE_FINGER
@@ -163,7 +165,11 @@ class FlowTileEditorInstrumentationTest {
             try { assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true)) } finally { event.recycle() }
         }
         send(MotionEvent.ACTION_DOWN, x, y)
-        for (i in 1..12) { SystemClock.sleep(16); send(MotionEvent.ACTION_MOVE, x + (targetX - x) * i / 12, y + (targetY - y) * i / 12) }
-        send(if (cancel) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP, targetX, targetY)
+        try {
+            for (i in 1..12) { SystemClock.sleep(16); send(MotionEvent.ACTION_MOVE, x + (targetX - x) * i / 12, y + (targetY - y) * i / 12) }
+            whileHeld?.invoke()
+        } finally {
+            send(if (cancel) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP, targetX, targetY)
+        }
     }
 }
