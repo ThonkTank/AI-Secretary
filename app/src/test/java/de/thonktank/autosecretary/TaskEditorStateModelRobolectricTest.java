@@ -37,6 +37,15 @@ import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class TaskEditorStateModelRobolectricTest {
+    @Test public void retiredCombinedFlowRouteRestoresToNormalStepsWithoutLosingDraft() {
+        EditorUiState state = EditorUiState.create().withPage(EditorUiState.Page.FLOW, false);
+        EditorUiState restored = EditorUiState.fromBundle(state.toBundle());
+        assertEquals(EditorUiState.Page.STEPS, restored.page);
+        assertEquals(state.draft.snapshot(), restored.draft.snapshot());
+        assertEquals(EditorUiState.Page.STEPS,
+                de.thonktank.autosecretary.editor.TaskEditorStateReducer.navigate(
+                        state, EditorUiState.Page.FLOW, false).page);
+    }
     @Test public void editorRoundTripPreservesVisibleAssistantLearningState() {
         TaskStepTemplate template = new TaskStepTemplate("press", TaskId.of("gym"), 0,
                 "Beinpresse", 0, 0,
@@ -131,7 +140,7 @@ public final class TaskEditorStateModelRobolectricTest {
         EditorUiState restored = EditorUiState.fromBundle(state.toBundle());
 
         assertEquals(flow, restored.flowDraft);
-        assertEquals(EditorUiState.Page.FLOW, restored.page);
+        assertEquals(EditorUiState.Page.STEPS, restored.page);
         assertEquals(StepActivationKind.SCHEDULED,
                 restored.definition().steps.get(0).activationKind);
         assertEquals(StepActivationKind.FOLLOW_UP,

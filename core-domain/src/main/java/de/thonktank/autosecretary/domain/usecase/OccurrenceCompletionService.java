@@ -62,7 +62,7 @@ public final class OccurrenceCompletionService {
                                 TodayRepository today,
                                 TransactionRunner transactions, Clock clock,
                                 ComboPolicySource policies,
-                                FlowRuntimeCoordinator flows) {
+                                FlowProgression flows) {
         this(catalog, steps, today, transactions, clock,
                 new RewardCalculator(policies),
                 new CompletionStateMachine(), new ScheduleProjector(), flows);
@@ -169,6 +169,7 @@ public final class OccurrenceCompletionService {
         if (occurrence == null || task == null || occurrence.state != OccurrenceState.OPEN
                 || activeOriginal(occurrence.id, null, RewardBooking.Target.HEAD) != null)
             return RewardReceipt.none();
+        if (!flows.canHarvestOccurrence(occurrence)) return RewardReceipt.none();
         List<OccurrenceStep> occurrenceSteps = steps.occurrenceSteps(occurrence.id);
         int collected = netXp(today.rewardBookings(occurrence.id), RewardBooking.Target.VESSEL);
         boolean routine = !occurrenceSteps.isEmpty();

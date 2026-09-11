@@ -96,7 +96,7 @@ public final class UseCaseRobolectricTest {
     @Test public void createMaterializeAndLoadAreSeparateAndIdempotent() {
         CreateTask create = new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids);
         MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids);
-        LoadDashboard load = new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows);
+        LoadDashboard load = repository.dashboard();
         create.execute(TaskDefinition.basic("Morgenroutine", TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, Arrays.asList("Duschen", "Anziehen")));
 
@@ -132,7 +132,7 @@ public final class UseCaseRobolectricTest {
 
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
         assertEquals(Arrays.asList(TaskSlot.MORNING, TaskSlot.EVENING),
-                new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows).execute(TODAY).tasks.stream()
+                repository.dashboard().execute(TODAY).tasks.stream()
                         .map(value -> value.displaySlot)
                         .collect(java.util.stream.Collectors.toList()));
     }
@@ -147,7 +147,7 @@ public final class UseCaseRobolectricTest {
             create.execute(TaskDefinition.basic("Aufgabe " + i, TaskSlot.MORNING,
                     Recurrence.DAILY, 1, 0, Arrays.asList("Schritt A", "Schritt B")));
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
-        LoadDashboard load = new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows);
+        LoadDashboard load = repository.dashboard();
 
         queries.clear();
         Dashboard dashboard = load.execute(TODAY);
@@ -156,8 +156,8 @@ public final class UseCaseRobolectricTest {
         assertTrue("Dashboard query count was " + queries.size(), queries.size() <= 12);
         assertEquals(1, queries.stream().filter(sql -> sql.contains("occurrence_steps")).count());
         assertEquals(1, queries.stream().filter(sql -> sql.contains("repetition_results")).count());
-        assertEquals(1, queries.stream().filter(sql -> sql.contains("flow_candidates")).count());
-        assertEquals(1, queries.stream().filter(sql -> sql.contains("flow_task_sheet_placements"))
+        assertEquals(0, queries.stream().filter(sql -> sql.contains("flow_candidates")).count());
+        assertEquals(0, queries.stream().filter(sql -> sql.contains("flow_task_sheet_placements"))
                 .count());
     }
 
@@ -278,7 +278,7 @@ public final class UseCaseRobolectricTest {
         create.execute(TaskDefinition.basic("Zweite", TaskSlot.MORNING,
                 Recurrence.ONCE, 1, 0, Collections.emptyList()));
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
-        LoadDashboard load = new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows);
+        LoadDashboard load = repository.dashboard();
         Dashboard before = load.execute(TODAY);
         TaskId first = before.tasks.get(0).task.id;
         String occurrenceId = before.tasks.get(0).occurrence.id;

@@ -108,10 +108,74 @@ public final class ProductionUpgradeFixtureContractTest {
         }
     }
 
+    @Test @org.robolectric.annotation.Config(sdk = {26, 35})
+    public void everyProductionFixtureActuallyUpgradesThroughRegisteredRoomMigrations() throws Exception {
+        android.content.Context context = androidx.test.core.app.ApplicationProvider.getApplicationContext();
+        for (JSONObject fixture : fixtures().values()) {
+            String name = "upgrade-corpus-" + java.util.UUID.randomUUID();
+            int source = fixture.getJSONObject("source").getInt("databaseVersion");
+            androidx.sqlite.db.SupportSQLiteOpenHelper original = new androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory()
+                    .create(androidx.sqlite.db.SupportSQLiteOpenHelper.Configuration.builder(context).name(name)
+                            .callback(new androidx.sqlite.db.SupportSQLiteOpenHelper.Callback(source) {
+                                public void onCreate(androidx.sqlite.db.SupportSQLiteDatabase db) {
+                                    de.thonktank.autosecretary.testing.ExportedRoomSchemaFixture.create(db, source);
+                                }
+                                public void onUpgrade(androidx.sqlite.db.SupportSQLiteDatabase db, int old, int next) { }
+                            }).build());
+            try {
+                androidx.sqlite.db.SupportSQLiteDatabase old = original.getWritableDatabase();
+                JSONArray seed = fixture.getJSONArray("seed");
+                for (int i = 0; i < seed.length(); i++) {
+                    JSONObject entry = seed.getJSONObject(i);
+                    JSONArray rows = entry.getJSONArray("rows");
+                    for (int r = 0; r < rows.length(); r++) {
+                        JSONObject row = rows.getJSONObject(r);
+                        List<String> fields = new ArrayList<>(keys(row));
+                        List<Object> values = new ArrayList<>();
+                        for (String field : fields) values.add(row.isNull(field) ? null : row.get(field));
+                        old.execSQL("INSERT OR " + entry.getString("conflict") + " INTO " + entry.getString("table")
+                                + "(" + String.join(",", fields) + ") VALUES ("
+                                + String.join(",", java.util.Collections.nCopies(fields.size(), "?")) + ")", values.toArray());
+                    }
+                }
+                original.close();
+                AppDatabase upgraded = androidx.room.Room.databaseBuilder(context, AppDatabase.class, name)
+                        .addMigrations(de.thonktank.autosecretary.data.local.DatabaseMigrations.from(source))
+                        .allowMainThreadQueries().build();
+                try {
+                    androidx.sqlite.db.SupportSQLiteDatabase db = upgraded.getOpenHelper().getWritableDatabase();
+                    JSONArray expected = fixture.getJSONArray("expectedTarget");
+                    for (int i = 0; i < expected.length(); i++) {
+                        JSONObject entry = expected.getJSONObject(i), where = entry.getJSONObject("where"), values = entry.getJSONObject("values");
+                        List<String> selectors = new ArrayList<>(keys(where));
+                        List<Object> arguments = new ArrayList<>();
+                        for (String selector : selectors) arguments.add(where.get(selector));
+                        try (android.database.Cursor row = db.query("SELECT * FROM " + entry.getString("table")
+                                + " WHERE " + String.join(" AND ", selectors.stream().map(key -> key + "=?").toList()), arguments.toArray())) {
+                            assertTrue(fixture.getString("id") + ": " + entry, row.moveToFirst());
+                            for (String key : keys(values)) assertEquals(fixture.getString("id") + ": " + key,
+                                    values.isNull(key) ? null : values.get(key).toString(), row.getString(row.getColumnIndexOrThrow(key)));
+                            assertFalse(row.moveToNext());
+                        }
+                    }
+                    upgraded.runInTransaction(() -> {
+                        var runs = new de.thonktank.autosecretary.data.local.SqlFlowGraphRunRepository(() -> db).active();
+                        if (source == 8) assertTrue(runs.isEmpty());
+                        else {
+                            assertEquals(1, runs.size());
+                            assertEquals(Long.valueOf(32503680000000L), runs.get(0).run.nextReadyAt());
+                            assertEquals(3, runs.get(0).run.steps.size());
+                        }
+                    });
+                } finally { upgraded.close(); }
+            } finally { original.close(); context.deleteDatabase(name); }
+        }
+    }
+
     @Test public void schemaTwentyCoversCrashAndSilentPermutationValues() throws Exception {
         JSONObject fixture = fixtures().get("schema-20-organic-flow");
         List<JSONObject> rows = expectedRows(fixture, "flow_run_steps");
-        assertEquals(2, rows.size());
+        assertEquals(3, rows.size());
         JSONObject empty = expectedById(rows, "upgrade-organic-empty-delay");
         assertTrue(empty.getJSONObject("values").isNull("lastUsedDelayMillis"));
         assertEquals("Leere letzte Verzögerung",

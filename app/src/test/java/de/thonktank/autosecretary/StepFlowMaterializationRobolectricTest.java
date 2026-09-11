@@ -72,16 +72,17 @@ public final class StepFlowMaterializationRobolectricTest {
         resources.execute("dry", "Trockenplatz", 2);
         new SaveStepFlowDefinition(repository.catalog, repository.steps, repository.flows, repository.transactions).execute(task.id,
                 transitions(), leases(task));
+        repository.graphFromLinear(task.id);
         MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock,
-                () -> 1_777_000L, ids);
+                () -> 1_777_000L, ids, repository.graphDefinitions, repository.graphRuns);
 
         assertTrue(materialize.execute());
         assertFalse(materialize.execute());
 
         assertEquals(4, repository.flows.flowCandidates(task.id).size());
-        assertTrue(repository.flows.activeFlowRuns(task.id).isEmpty());
+        assertTrue(repository.transactions.inTransaction(repository.graphRuns::active).isEmpty());
         assertTrue(repository.today.openOccurrences().isEmpty());
-        assertTrue(repository.flows.consumingFlowResources().isEmpty());
+        assertTrue(repository.transactions.inTransaction(repository.graphRuns::active).isEmpty());
         assertEquals(4, repository.steps.templates(task.id).stream()
                 .filter(value -> value.activationKind == StepActivationKind.SCHEDULED).count());
         assertEquals(3, repository.steps.templates(task.id).stream()
@@ -100,13 +101,14 @@ public final class StepFlowMaterializationRobolectricTest {
         resources.execute("dry", "Trockenplatz", 2);
         new SaveStepFlowDefinition(repository.catalog, repository.steps, repository.flows, repository.transactions).execute(task.id,
                 transitions(), leases(task));
+        repository.graphFromLinear(task.id);
 
         MaterializeDueOccurrences materialize = new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock,
-                () -> 1_777_000L, ids);
+                () -> 1_777_000L, ids, repository.graphDefinitions, repository.graphRuns);
 
         assertTrue(materialize.execute());
         assertEquals(4, repository.flows.flowCandidates(task.id).size());
-        assertTrue(repository.flows.activeFlowRuns(task.id).isEmpty());
+        assertTrue(repository.transactions.inTransaction(repository.graphRuns::active).isEmpty());
         assertTrue(repository.today.openOccurrences().isEmpty());
         assertFalse(materialize.execute());
     }

@@ -36,17 +36,4 @@ public interface FlowRepository {
     FlowTaskSheetPlacement findFlowTaskSheetPlacement(TaskId taskId,
                                                       de.thonktank.autosecretary.domain.model.TaskSlot slot);
     List<FlowTaskSheetPlacement> flowTaskSheetPlacements();
-    boolean insertFlowRun(FlowRunSnapshot snapshot);
-    void updateFlowRun(StepFlowRun run);
-    StepFlowRun findFlowRun(String id);
-    StepFlowRun findFlowRunBySourceKey(String sourceKey);
-    List<StepFlowRun> activeFlowRuns();
-    List<StepFlowRun> activeFlowRuns(TaskId taskId);
-    List<FlowRunStepSnapshot> flowRunSteps(String runId);
-    List<FlowRunStepSnapshot> flowRunStepsFor(List<String> runIds);
-    void updateFlowRunStep(FlowRunStepSnapshot step);
-    List<FlowRunResourceSnapshot> flowRunResources(String runId);
-    List<FlowRunResourceSnapshot> flowRunResourcesFor(List<String> runIds);
-    List<FlowRunResourceSnapshot> consumingFlowResources();
-    void updateFlowRunResource(FlowRunResourceSnapshot resource);
 }

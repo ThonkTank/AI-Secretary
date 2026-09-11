@@ -53,22 +53,15 @@ public final class FlowRunsViewModel extends ViewModel {
                     publish(current.presentAt(action.epochMillis));
                     return;
                 case DEFER:
-                    change(() -> flows.deferFlowRun.execute(action.runId));
-                    return;
-                case READY_AT:
-                    change(() -> flows.adjustFlowRunReadyAt.execute(
-                            action.runId, action.epochMillis));
-                    return;
                 case POSTPONE:
-                    change(() -> flows.postponeFlowRun.execute(
-                            action.runId, action.epochMillis));
-                    return;
                 case MOVE_BEFORE:
-                    change(() -> flows.reorderFlowRun.execute(
-                            action.runId, action.beforeRunId));
-                    return;
                 case CANCEL:
-                    change(() -> flows.cancelFlowRun.execute(action.runId));
+                    throw new IllegalArgumentException("Diese Kettenaktion wird nicht unterstützt.");
+                case READY_AT:
+                    change(() -> {
+                        if (action.waitId == null) throw new IllegalArgumentException("Wartephase auswählen");
+                        return flows.runtime.adjustWait(action.runId, action.waitId, action.epochMillis);
+                    });
                     return;
                 case ACKNOWLEDGE_ERROR:
                     publish(current.acknowledgeError(action.errorId));

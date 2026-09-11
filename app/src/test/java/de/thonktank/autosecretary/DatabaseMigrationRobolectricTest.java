@@ -643,10 +643,8 @@ public final class DatabaseMigrationRobolectricTest {
                 + "20,20,NULL)");
         helper.close();
 
-        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.from(22))
-                .allowMainThreadQueries().build();
-        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        SupportSQLiteOpenHelper migrated = HistoricalDatabaseFixture.openMigrated(context, DATABASE, 22, 24);
+        SupportSQLiteDatabase database = migrated.getWritableDatabase();
         try (Cursor cursor = database.query("SELECT id,sourceKey FROM flow_candidates")) {
             assertTrue(cursor.moveToFirst());
             assertEquals("clean", cursor.getString(0));
@@ -748,10 +746,8 @@ public final class DatabaseMigrationRobolectricTest {
             }
         });
 
-        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.from(22))
-                .allowMainThreadQueries().build();
-        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        SupportSQLiteOpenHelper migrated = HistoricalDatabaseFixture.openMigrated(context, DATABASE, 22, 24);
+        SupportSQLiteDatabase database = migrated.getWritableDatabase();
         try (Cursor cursor = database.query("SELECT text,amountKind,plannedSets,plannedReps,"
                 + "restTimerMode,restTimerSeconds,plannedLoadMode,plannedLoadUnit,"
                 + "plannedLoadMilli,targetRir,note,delayMode,defaultDelayMillis,"
@@ -831,10 +827,8 @@ public final class DatabaseMigrationRobolectricTest {
         helper.getWritableDatabase();
         helper.close();
 
-        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.from(23))
-                .allowMainThreadQueries().build();
-        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        SupportSQLiteOpenHelper migrated = HistoricalDatabaseFixture.openMigrated(context, DATABASE, 23, 24);
+        SupportSQLiteDatabase database = migrated.getWritableDatabase();
         try (Cursor cursor = database.query("SELECT plannedLoadMode,plannedLoadUnit,"
                 + "plannedLoadMilli,targetRir,note,delayMode,defaultDelayMillis,"
                 + "lastUsedDelayMillis,chosenDelayMillis FROM flow_run_steps "

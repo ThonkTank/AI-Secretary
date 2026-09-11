@@ -33,6 +33,8 @@ public final class FlowRunsActivity extends ComponentActivity {
                             && invalidation.getClock() != null) {
                         viewModel.dispatch(FlowRunsAction.presentAt(
                                 invalidation.getClock().getEpochMillis()));
+                    } else {
+                        viewModel.dispatch(FlowRunsAction.refresh());
                     }
                 });
     }
@@ -53,6 +55,11 @@ public final class FlowRunsActivity extends ComponentActivity {
     }
 
     private final FlowRunsComposeCallbacks callbacks = new FlowRunsComposeCallbacks() {
+        @Override public void onAdjustWait(String runId, String waitId, long readyAtEpochMillis) {
+            FlowDurationDialog.show(FlowRunsActivity.this, getString(R.string.flow_adjust_prompt_title),
+                    Math.max(0, readyAtEpochMillis - System.currentTimeMillis()),
+                    delay -> viewModel.dispatch(FlowRunsAction.readyAt(runId, waitId, System.currentTimeMillis() + delay)));
+        }
         @Override public void onBack() { finish(); }
         @Override public void onDefer(FlowRunSummary run) {
             viewModel.dispatch(FlowRunsAction.defer(run.id));

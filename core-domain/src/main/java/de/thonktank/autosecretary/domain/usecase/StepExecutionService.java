@@ -63,7 +63,7 @@ public final class StepExecutionService {
                          TodayRepository today,
                          TransactionRunner transactions, Clock clock,
                          ComboPolicySource policies,
-                         FlowRuntimeCoordinator flows) {
+                         FlowProgression flows) {
         this(catalog, steps, today, transactions, clock,
                 new RewardCalculator(policies),
                 new CompletionStateMachine(), flows);

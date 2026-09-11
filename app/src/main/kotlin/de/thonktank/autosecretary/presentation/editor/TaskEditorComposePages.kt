@@ -390,29 +390,6 @@ private fun EditorSummaryPage(
         ),
         SummaryItem(R.string.field_steps_label, formatter.steps(state), EditorUiState.Page.STEPS),
     )
-    if (state.stepStates.size >= 2) {
-        rows += SummaryItem(
-            R.string.flow_editor_summary_label,
-            if (state.flowDraft.configured()) {
-                stringResource(
-                    R.string.flow_editor_summary_value,
-                    pluralStringResource(
-                        R.plurals.flow_editor_links,
-                        state.flowDraft.transitions.size,
-                        state.flowDraft.transitions.size,
-                    ),
-                    pluralStringResource(
-                        R.plurals.flow_editor_capacity_rules,
-                        state.flowDraft.leases.size,
-                        state.flowDraft.leases.size,
-                    ),
-                )
-            } else {
-                stringResource(R.string.flow_editor_summary_empty)
-            },
-            EditorUiState.Page.FLOW,
-        )
-    }
     rows += SummaryItem(
         R.string.field_note_label,
         state.note.ifEmpty { formatter.empty() },

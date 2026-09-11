@@ -22,6 +22,7 @@ public final class FocusTaskUiModel {
     public final XpVesselUiModel vessel;
     public final int backlogCount;
     public final boolean allowBulkComplete;
+    public final List<FlowWaitUiModel> waits;
 
     private FocusTaskUiModel(Builder builder) {
         if (builder.actionTarget == null || builder.nextAction == null || builder.steps == null
@@ -43,6 +44,7 @@ public final class FocusTaskUiModel {
         this.vessel = builder.vessel;
         this.backlogCount = Math.max(0, builder.backlogCount);
         this.allowBulkComplete = builder.allowBulkComplete;
+        this.waits = Collections.unmodifiableList(new ArrayList<>(builder.waits));
     }
 
     public String taskId() { return actionTarget.taskId; }
@@ -69,6 +71,7 @@ public final class FocusTaskUiModel {
         private Integer grainLevel;
         private int backlogCount;
         private boolean allowBulkComplete = true;
+        private List<FlowWaitUiModel> waits = Collections.emptyList();
 
         private Builder(TaskActionTarget target) { this.actionTarget = target; }
 
@@ -86,6 +89,7 @@ public final class FocusTaskUiModel {
         public Builder grainLevel(int value) { grainLevel = value; return this; }
         public Builder backlogCount(int value) { backlogCount = value; return this; }
         public Builder allowBulkComplete(boolean value) { allowBulkComplete = value; return this; }
+        public Builder waits(List<FlowWaitUiModel> value) { waits = value; return this; }
         public FocusTaskUiModel build() { return new FocusTaskUiModel(this); }
     }
 }

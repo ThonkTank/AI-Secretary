@@ -82,7 +82,16 @@ private fun flowStatus(
     resources: android.content.res.Resources,
     nowEpochMillis: Long,
 ): String =
-    when (run.state) {
+    if (run.steps.isNotEmpty()) {
+        when {
+            run.collectionAvailable -> "Tau einsammeln"
+            run.steps.any { it.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.AVAILABLE } ->
+                run.steps.filter { it.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.AVAILABLE }
+                    .joinToString(", ") { it.title }
+            run.readyAtEpochMillis != null -> "wartet · ${remainingDurationText(run.readyAtEpochMillis, nowEpochMillis)}"
+            else -> "wartet auf Kapazität"
+        }
+    } else when (run.state) {
         StepFlowRunState.OFFERED -> resources.getString(
             R.string.all_flow_ready,
             run.currentStepTitle,

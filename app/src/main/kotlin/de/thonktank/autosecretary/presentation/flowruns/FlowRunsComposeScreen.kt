@@ -53,7 +53,7 @@ internal fun FlowRunsComposeScreen(
         item(key = "header") {
             FlowRunsHeader(palette, callbacks::onBack)
         }
-        item(key = "intro") {
+        if (state.runs.none { it.steps.isNotEmpty() }) item(key = "intro") {
             MobileText(
                 stringResource(R.string.flow_runs_description),
                 mobileColor(palette.ink2),

@@ -55,10 +55,9 @@ public final class DatabaseMigrationSemanticCopyTest {
         seedEveryRebuiltTable(old);
         helper.close();
 
-        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
-                .addMigrations(DatabaseMigrations.from(22))
-                .allowMainThreadQueries().build();
-        SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
+        SupportSQLiteOpenHelper migrated = de.thonktank.autosecretary.testing.HistoricalDatabaseFixture
+                .openMigrated(context, DATABASE, 22, 24);
+        SupportSQLiteDatabase database = migrated.getWritableDatabase();
         assertEveryRebuiltTable(database);
         migrated.close();
     }

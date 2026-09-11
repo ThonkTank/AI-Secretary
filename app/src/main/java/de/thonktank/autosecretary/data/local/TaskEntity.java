@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey;
 
 @Entity(tableName = "tasks", indices = @Index(value = {"archived", "conditionDone", "catalogOrder"}))
 public class TaskEntity {
+    @NonNull @androidx.room.ColumnInfo(defaultValue = "'TASK'") public String taskKind = "TASK";
     @PrimaryKey @NonNull public String id;
     @NonNull public String title;
     @NonNull public String recurrence;

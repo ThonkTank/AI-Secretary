@@ -5,6 +5,7 @@ import java.time.LocalDate;
 /** A task definition. Time-of-day placement lives exclusively in {@link TaskSchedule}. */
 public final class Task {
     public final TaskId id;
+    public final TaskKind kind;
     public final String title;
     public final Recurrence recurrence;
     public final int intervalDays;
@@ -52,7 +53,22 @@ public final class Task {
                  TaskBoundKind boundKind, LocalDate boundUntilOn, Integer boundWeeks,
                  Integer remainingCount, LocalDate deadlineOn, String note,
                  MissedOccurrenceMode missedOccurrenceMode) {
-        if (id == null || recurrence == null || boundKind == null || missedOccurrenceMode == null)
+        this(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
+                conditionDone, archived, nextDueOn, cadenceAnchorOn, lastScheduledOn,
+                lastCompletedOn, catalogOrder, hasCompletedOccurrence, estimatedMinutes,
+                boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note,
+                missedOccurrenceMode, TaskKind.TASK);
+    }
+
+    private Task(TaskId id, String title, Recurrence recurrence, int intervalDays,
+                 int weekdayMask, boolean ongoing, String conditionText, boolean conditionDone,
+                 boolean archived, LocalDate nextDueOn, LocalDate cadenceAnchorOn,
+                 LocalDate lastScheduledOn, LocalDate lastCompletedOn, long catalogOrder,
+                 boolean hasCompletedOccurrence, Integer estimatedMinutes,
+                 TaskBoundKind boundKind, LocalDate boundUntilOn, Integer boundWeeks,
+                 Integer remainingCount, LocalDate deadlineOn, String note,
+                 MissedOccurrenceMode missedOccurrenceMode, TaskKind kind) {
+        if (id == null || kind == null || recurrence == null || boundKind == null || missedOccurrenceMode == null)
             throw new IllegalArgumentException("Task identity, recurrence and bound are required");
         if (title == null || title.trim().isEmpty() || title.trim().length() > 120)
             throw new IllegalArgumentException("Task title must contain 1 to 120 characters");
@@ -63,6 +79,7 @@ public final class Task {
         if (estimatedMinutes != null && estimatedMinutes < 1)
             throw new IllegalArgumentException("Estimated duration must be positive");
         this.id = id;
+        this.kind = kind;
         this.title = title.trim();
         this.recurrence = recurrence;
         this.intervalDays = Math.max(1, intervalDays);
@@ -150,6 +167,15 @@ public final class Task {
 
     public Task withCatalogOrder(long newCatalogOrder) { return edit(title, newCatalogOrder); }
 
+    public Task withKind(TaskKind value) {
+        if (kind == value) return this;
+        return new Task(id, title, recurrence, intervalDays, weekdayMask, ongoing, conditionText,
+                conditionDone, archived, nextDueOn, cadenceAnchorOn, lastScheduledOn,
+                lastCompletedOn, catalogOrder, hasCompletedOccurrence, estimatedMinutes,
+                boundKind, boundUntilOn, boundWeeks, remainingCount, deadlineOn, note,
+                missedOccurrenceMode, value);
+    }
+
     public Task afterPlanning(LocalDate newNextDueOn, int count) {
         Integer remaining = remainingCount;
         if (boundKind == TaskBoundKind.N_TIMES)
@@ -216,6 +242,6 @@ public final class Task {
                 newLastScheduledOn, newLastCompletedOn, cadenceAnchorOn, newCatalogOrder,
                 newHasCompletedOccurrence, newEstimatedMinutes, newBoundKind,
                 newBoundUntilOn, newBoundWeeks, newRemainingCount, newDeadlineOn, newNote,
-                newMissedOccurrenceMode);
+                newMissedOccurrenceMode).withKind(kind);
     }
 }

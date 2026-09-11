@@ -1,6 +1,6 @@
 # Roadmap: Kachel-Editor und parallele Abläufe
 
-Status: verbindlich, Produktphase noch nicht begonnen
+Status: verbindlich, Produktphase begonnen und noch nicht abgeschlossen
 
 ## Phasen und Gates
 

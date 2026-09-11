@@ -74,7 +74,6 @@ class TaskEditorComposeInstrumentationTest {
             "geschätzte Dauer" to EditorUiState.Page.SCHEDULE,
             "Zeitraum" to EditorUiState.Page.TITLE,
             "Schritte" to EditorUiState.Page.STEPS,
-            "Ablauf" to EditorUiState.Page.FLOW,
             "Notiz" to EditorUiState.Page.TITLE,
         )
 
@@ -119,7 +118,7 @@ class TaskEditorComposeInstrumentationTest {
     }
 
     @Test
-    fun optionalFlowEntryIsVisibleFromStepsAndDoesNotBecomeAWizardPage() {
+    fun normalStepsHaveNoCompetingFlowEditorEntry() {
         compose.runOnUiThread {
             compose.activity.render(
                 taskEditorComposeReferenceState().withPage(EditorUiState.Page.STEPS, false),
@@ -127,16 +126,11 @@ class TaskEditorComposeInstrumentationTest {
         }
         compose.waitForIdle()
 
-        compose.onNodeWithTag("task-editor:flow-open").performScrollTo().performClick()
-        compose.waitUntil { compose.activity.state.page == EditorUiState.Page.FLOW }
-        compose.onNodeWithText("Was kommt wann danach?").assertExists()
-        compose.onNodeWithTag("task-editor:flow-step:step-1").assertExists()
-
+        compose.onNodeWithTag("task-editor:flow-open").assertDoesNotExist()
         compose.activityRule.scenario.recreate()
         compose.waitForIdle()
-        assertEquals(EditorUiState.Page.FLOW, compose.activity.state.page)
-        compose.onNodeWithText("fertig").performClick()
-        compose.waitUntil { compose.activity.state.page == EditorUiState.Page.STEPS }
+        assertEquals(EditorUiState.Page.STEPS, compose.activity.state.page)
+        compose.onNodeWithTag("task-editor:flow-open").assertDoesNotExist()
     }
 
     @Test

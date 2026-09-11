@@ -155,6 +155,8 @@ public final class TaskEditorStateReducer {
 
     public static EditorUiState navigate(EditorUiState state, EditorUiState.Page page,
                                          boolean returnToSummary) {
+        // Historical restored requests cannot re-enter the retired combined flow editor.
+        if (page == EditorUiState.Page.FLOW) page = EditorUiState.Page.STEPS;
         return state.withPage(page, returnToSummary).withExpandedStep(null);
     }
 

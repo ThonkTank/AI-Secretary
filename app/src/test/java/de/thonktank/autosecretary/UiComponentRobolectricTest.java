@@ -90,6 +90,9 @@ public final class UiComponentRobolectricTest {
 
             ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
+            org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog().getListView()
+                    .performItemClick(null, 0, 0);
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
             assertTrue(editor.state().getValue().content.open);
             assertTrue(activity.findViewById(R.id.task_editor_compose_host)
                     instanceof TaskEditorComposeHostView);

@@ -4,6 +4,7 @@ import de.thonktank.autosecretary.domain.model.CarryForwardReason;
 import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.FlowRunStepSnapshot;
+import de.thonktank.autosecretary.domain.model.FlowGraphRun;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 
@@ -31,7 +32,7 @@ final class StepSnapshotFactory {
                 source.repetitionProgress == null ? Collections.emptyList()
                         : source.repetitionProgress.results,
                 source.sourceTemplateId, source.comboOwnerId, originOccurrenceId,
-                CarryForwardReason.UNFINISHED_STEP);
+                CarryForwardReason.UNFINISHED_STEP, source.flowRunStepId);
     }
 
     OccurrenceStep fromFlow(FlowRunStepSnapshot source, String occurrenceId, int position) {
@@ -39,6 +40,15 @@ final class StepSnapshotFactory {
                 false, source.prescription, source.note, Collections.emptyList(),
                 source.sourceTemplateId, ComboProgress.stepOwner(source.sourceTemplateId), null,
                 CarryForwardReason.NONE);
+    }
+
+    OccurrenceStep fromFlow(FlowGraphRun.Step source, String occurrenceId, int position) {
+        if (source.state != FlowGraphRun.State.AVAILABLE)
+            throw new IllegalArgumentException("Only an available runtime action gets an occurrence step");
+        return OccurrenceStep.rehydrate(ids.nextId(), occurrenceId, position, source.source.title,
+                false, source.source.prescription, source.source.note, Collections.emptyList(),
+                source.source.id, ComboProgress.stepOwner(source.source.id), null,
+                CarryForwardReason.NONE, source.id);
     }
 
     FlowRunStepSnapshot flowRun(TaskStepTemplate template, String runId, int position,

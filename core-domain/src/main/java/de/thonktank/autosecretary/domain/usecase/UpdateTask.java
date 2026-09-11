@@ -59,6 +59,8 @@ public final class UpdateTask {
                                   boolean validateFlow) {
         Task current = catalog.findTask(id);
         if (current == null) return;
+        if (current.kind == de.thonktank.autosecretary.domain.model.TaskKind.FLOW)
+            throw new IllegalArgumentException("Abläufe werden im Ablaufeditor bearbeitet.");
         LocalDate nextDue = current.nextDueOn;
         if (current.recurrence != definition.recurrence
                 || current.weekdayMask != definition.weekdayMask

@@ -33,7 +33,8 @@ public final class FocusStepRowUiModel {
 
     public static FocusStepRowUiModel compact(FocusStepUiModel step) {
         return new FocusStepRowUiModel(step, FocusStepRowMode.COMPACT,
-                StepExecutionUiAction.advancePlannedRepetitions(step.id));
+                step.activeAction.isFlowExecution() ? step.activeAction
+                        : StepExecutionUiAction.advancePlannedRepetitions(step.id));
     }
 
     public static FocusStepRowUiModel assistant(FocusStepUiModel step) {

@@ -33,7 +33,7 @@ public final class CorrectSetResult {
     public CorrectSetResult(CatalogRepository catalog, StepRepository steps, TodayRepository today,
                             TrainingRepository training,
                             TransactionRunner transactions, Clock clock,
-                            ComboPolicySource policies, FlowRuntimeCoordinator flows) {
+                            ComboPolicySource policies, FlowProgression flows) {
         this.steps = steps;
         this.training = training;
         this.transactions = transactions;

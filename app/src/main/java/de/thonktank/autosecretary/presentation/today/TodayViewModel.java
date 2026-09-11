@@ -395,8 +395,24 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     @Override public void handleStartFlowCandidate(String candidateId,
                                                     Long chosenDelayMillis) {
         if (flows == null) return;
-        run(command(UiCommand.Kind.TOGGLE_STEP, candidateId),
-                () -> flows.startFlowCandidate.execute(candidateId, chosenDelayMillis));
+        runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, candidateId),
+                () -> flows.startFlowCandidate.execute(candidateId, chosenDelayMillis).reward);
+    }
+
+    @Override public void handleCompleteFlowStep(String runtimeStepId, Long chosenDelayMillis) {
+        if (flows == null || flows.runtime == null) return;
+        runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, runtimeStepId),
+                () -> flows.runtime.complete(runtimeStepId, chosenDelayMillis).reward);
+    }
+
+    @Override public void handleCollectFlow(String runId) {
+        if (flows == null || flows.runtime == null) return;
+        runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, runId), () -> flows.runtime.collect(runId).reward);
+    }
+
+    @Override public void handleAdjustFlowWait(String runId, String waitId, long readyAt) {
+        if (flows == null || flows.runtime == null) return;
+        run(command(UiCommand.Kind.TOGGLE_STEP, waitId), () -> flows.runtime.adjustWait(runId, waitId, readyAt));
     }
 
     @Override public void handleToggleStep(String stepId) {

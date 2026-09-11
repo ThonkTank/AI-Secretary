@@ -6,6 +6,7 @@ import java.util.List;
 
 public final class TaskDetails {
     public final TaskId id;
+    public final TaskKind kind;
     public final String title;
     public final TaskSlot slot;
     public final Recurrence recurrence;
@@ -27,6 +28,7 @@ public final class TaskDetails {
 
     public TaskDetails(Task task, List<TaskStepTemplate> templates, TaskSchedule schedule) {
         id = task.id;
+        kind = task.kind;
         title = task.title;
         slot = schedule.primary(task.id).slot;
         recurrence = task.recurrence;

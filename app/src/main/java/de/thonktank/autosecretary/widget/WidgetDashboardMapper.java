@@ -65,6 +65,10 @@ public final class WidgetDashboardMapper {
     private WidgetTaskUiModel task(FlowTaskSheet sheet) {
         List<WidgetStepUiModel> steps = new ArrayList<>();
         for (FlowTaskSheet.Entry entry : sheet.entries) {
+            if (entry.kind == FlowTaskSheet.Entry.Kind.COLLECTION) {
+                steps.add(WidgetStepUiModel.requiringApp(entry.targetId, entry.title, "", false));
+                continue;
+            }
             de.thonktank.autosecretary.domain.model.StepPrescription prescription =
                     entry.kind == FlowTaskSheet.Entry.Kind.CANDIDATE
                             ? entry.candidateTemplate.prescription : entry.runStep.prescription;

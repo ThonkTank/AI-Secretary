@@ -28,7 +28,7 @@ public final class ToggleStep {
     public ToggleStep(CatalogRepository catalog, StepRepository steps, TodayRepository today,
                TransactionRunner transactions, Clock clock,
                ComboPolicySource policies,
-               FlowRuntimeCoordinator flows) {
+               FlowProgression flows) {
         completion = new StepExecutionService(catalog, steps, today, transactions, clock, policies,
                 flows);
     }

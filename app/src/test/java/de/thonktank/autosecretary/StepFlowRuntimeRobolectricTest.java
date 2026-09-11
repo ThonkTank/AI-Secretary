@@ -54,9 +54,19 @@ public final class StepFlowRuntimeRobolectricTest {
                 de.thonktank.autosecretary.domain.repository.ComboPolicySource.defaults());
         useCases.catalog.create.execute(laundryTask());
         task = repository.catalog.allTasks().get(0);
-        useCases.flows.saveCapacityResource.execute("washer", "Waschmaschine", 1);
-        useCases.flows.saveCapacityResource.execute("dry", "Trockenplatz", 3);
-        useCases.flows.saveStepFlowDefinition.execute(task.id, transitions(), leases(task));
+        List<String> keys = laundryTask().steps.stream().map(step -> step.id).toList();
+        List<FlowTileGraph.Link> links = transitions().stream()
+                .map(link -> new FlowTileGraph.Link(link.sourceStepId, link.targetStepId)).toList();
+        Map<String, FlowDelayPolicy> waits = new LinkedHashMap<>();
+        for (String key : keys) waits.put(key, FlowDelayPolicy.fixed(0));
+        for (StepTransition transition : transitions()) waits.put(transition.sourceStepId, transition.delay);
+        List<FlowGraphEdit.Binding> bindings = leases(task).stream().map(lease ->
+                new FlowGraphEdit.Binding(new FlowConfigurationDraft.Lease(lease.id, null,
+                        lease.resourceId, lease.acquireStepId, lease.releaseStepId, lease.units), false)).toList();
+        useCases.flows.saveGraph.execute(new FlowGraphEdit(task.id, task.title, new FlowTileGraph(keys, links),
+                laundryTask().steps, waits, List.of(
+                new FlowConfigurationDraft.Resource("washer", null, "Waschmaschine", 1, true),
+                new FlowConfigurationDraft.Resource("dry", null, "Trockenplatz", 3, true)), bindings));
         assertTrue(useCases.today.materializeDue.execute());
     }
 
@@ -64,8 +74,8 @@ public final class StepFlowRuntimeRobolectricTest {
 
     @Test public void dueLaundryCreatesOnlyCandidatesAndOneNonEmptySheet() {
         assertEquals(4, repository.flows.flowCandidates(task.id).size());
-        assertTrue(repository.flows.activeFlowRuns(task.id).isEmpty());
-        assertTrue(repository.flows.consumingFlowResources().isEmpty());
+        assertTrue(activeRuns().isEmpty());
+        assertTrue(consumingResources().isEmpty());
         assertTrue(repository.today.openOccurrences().isEmpty());
         Dashboard dashboard = useCases.today.loadDashboard.execute(TODAY);
         assertEquals(1, dashboard.flowTaskSheets.size());
@@ -94,12 +104,11 @@ public final class StepFlowRuntimeRobolectricTest {
                 colors.id, TWO_HOURS);
         assertEquals(StartFlowCandidateResult.Status.STARTED, result.status);
         assertNull(repository.flows.findFlowCandidate(colors.id));
-        StepFlowRun run = repository.flows.findFlowRun(result.runId);
-        assertEquals(StepFlowRunState.WAITING_TIME, run.state);
-        assertEquals(1, run.currentPosition);
-        assertEquals(Long.valueOf(moments.nowEpochMillis() + TWO_HOURS), run.readyAtEpochMillis);
-        assertEquals(Long.valueOf(TWO_HOURS), repository.flows.flowRunSteps(run.id).get(0)
-                .chosenDelayMillis);
+        FlowGraphRun run = run(result.runId);
+        assertEquals(FlowGraphRun.State.WAITING_TIME, run.steps.get(run.startStepId).state);
+        assertEquals(1, run.steps.values().stream().filter(step -> step.actionAtEpochMillis != null).count());
+        assertEquals(Long.valueOf(moments.nowEpochMillis() + TWO_HOURS), run.nextReadyAt());
+        assertEquals(Long.valueOf(TWO_HOURS), run.steps.get(run.startStepId).chosenDelayMillis);
         assertEquals(1, consumingUnits("washer"));
         assertEquals(1, consumingUnits("dry"));
     }
@@ -114,7 +123,7 @@ public final class StepFlowRuntimeRobolectricTest {
 
         assertEquals(StartFlowCandidateResult.Status.CAPACITY_CHANGED, rejected.status);
         assertNotNull(repository.flows.findFlowCandidate(whites.id));
-        assertEquals(1, repository.flows.activeFlowRuns().size());
+        assertEquals(1, activeRuns().size());
         assertEquals(1, consumingUnits("washer"));
     }
 
@@ -129,48 +138,49 @@ public final class StepFlowRuntimeRobolectricTest {
                 towels.id, TWO_HOURS);
         assertEquals(StartFlowCandidateResult.Status.CAPACITY_CHANGED, rejected.status);
         assertNotNull(repository.flows.findFlowCandidate(towels.id));
-        assertEquals(3, repository.flows.activeFlowRuns().size());
+        assertEquals(3, activeRuns().size());
     }
 
     @Test public void followUpsShareSheetAndKeepOriginTitle() {
-        StepFlowRun run = start("colors", TWO_HOURS);
+        FlowGraphRun run = start("colors", TWO_HOURS);
         moments.advance(TWO_HOURS);
         useCases.flows.activateReadyFlows.execute();
         TodayUiModel hanging = mapper().map(useCases.today.loadDashboard.execute(TODAY), TODAY);
         assertEquals("Buntwäsche: Aufhängen", hanging.focus.steps.get(0).title);
         assertEquals(1, hanging.focus.steps.size());
-        useCases.today.toggleStep.execute(openStep(run).id, ONE_DAY);
+        useCases.flows.runtime.complete(openStep(run).id, ONE_DAY);
         assertEquals(3, useCases.today.loadDashboard.execute(TODAY)
                 .flowTaskSheets.get(0).entries.size());
         moments.advance(ONE_DAY);
         useCases.flows.activateReadyFlows.execute();
-        run = repository.flows.findFlowRun(run.id);
+        run = run(run.id);
         assertEquals("Buntwäsche: Abhängen", mapper().map(
                 useCases.today.loadDashboard.execute(TODAY), TODAY).focus.steps.get(0).title);
-        useCases.today.toggleStep.execute(openStep(run).id);
-        run = repository.flows.findFlowRun(run.id);
+        useCases.flows.runtime.complete(openStep(run).id, null);
+        run = run(run.id);
         assertEquals("Buntwäsche: Wegräumen", mapper().map(
                 useCases.today.loadDashboard.execute(TODAY), TODAY).focus.steps.get(0).title);
-        useCases.today.toggleStep.execute(openStep(run).id);
-        assertEquals(StepFlowRunState.COMPLETED, repository.flows.findFlowRun(run.id).state);
+        useCases.flows.runtime.complete(openStep(run).id, null);
+        assertTrue(run(run.id).collected);
         assertEquals(3, useCases.today.loadDashboard.execute(TODAY)
                 .flowTaskSheets.get(0).entries.size());
     }
 
     @Test public void notReadyKeepsDryingPlaceAndHidesRunStep() {
-        StepFlowRun run = startAndHang("colors");
+        FlowGraphRun run = startAndHang("colors");
         moments.advance(ONE_DAY);
         useCases.flows.activateReadyFlows.execute();
-        run = repository.flows.findFlowRun(run.id);
+        run = run(run.id);
         String stepId = openStep(run).id;
-        assertTrue(useCases.flows.postponeFlowRun.execute(run.id, ONE_DAY));
+        String waitId = run.steps.values().stream().filter(step -> step.source.id.equals("hang"))
+                .findFirst().orElseThrow().waitId();
+        assertTrue(useCases.flows.runtime.adjustWait(run.id, waitId, moments.nowEpochMillis() + ONE_DAY));
         assertEquals(1, consumingUnits("dry"));
-        String runId = run.id;
         assertTrue(useCases.today.loadDashboard.execute(TODAY).flowTaskSheets.get(0).entries
-                .stream().noneMatch(value -> value.targetId.equals(runId)));
+                .stream().noneMatch(value -> value.targetId.equals(stepId)));
         moments.advance(ONE_DAY);
         useCases.flows.activateReadyFlows.execute();
-        assertEquals(stepId, openStep(repository.flows.findFlowRun(run.id)).id);
+        assertEquals(stepId, openStep(run(run.id)).id);
     }
 
     @Test public void deferMovesOnlySheetBehindNormalWork() {
@@ -183,36 +193,36 @@ public final class StepFlowRuntimeRobolectricTest {
         TodayUiModel mapped = mapper().map(useCases.today.loadDashboard.execute(TODAY), TODAY);
         assertEquals("Abwasch", mapped.focus.title());
         assertEquals(4, repository.flows.flowCandidates(task.id).size());
-        assertTrue(repository.flows.activeFlowRuns().isEmpty());
-        assertTrue(repository.flows.consumingFlowResources().isEmpty());
+        assertTrue(activeRuns().isEmpty());
+        assertTrue(consumingResources().isEmpty());
     }
 
     @Test public void recompositionPreservesCandidatesAndStartedRuns() {
-        StepFlowRun run = start("colors", TWO_HOURS);
+        FlowGraphRun run = start("colors", TWO_HOURS);
         ApplicationUseCaseComposition reloaded = new ApplicationUseCaseComposition(database,
                 clock, moments, ids,
                 de.thonktank.autosecretary.domain.repository.ComboPolicySource.defaults());
-        assertNotNull(repository.flows.findFlowRun(run.id));
+        assertNotNull(run(run.id));
         assertEquals(3, repository.flows.flowCandidates(task.id).size());
         Dashboard dashboard = reloaded.today.loadDashboard.execute(TODAY);
         assertEquals(1, dashboard.flowRuns.size());
         assertTrue(dashboard.flowTaskSheets.isEmpty());
     }
 
-    private StepFlowRun startAndHang(String seed) {
-        StepFlowRun run = start(seed, TWO_HOURS);
+    private FlowGraphRun startAndHang(String seed) {
+        FlowGraphRun run = start(seed, TWO_HOURS);
         moments.advance(TWO_HOURS);
         useCases.flows.activateReadyFlows.execute();
-        run = repository.flows.findFlowRun(run.id);
-        useCases.today.toggleStep.execute(openStep(run).id, ONE_DAY);
-        return repository.flows.findFlowRun(run.id);
+        run = run(run.id);
+        useCases.flows.runtime.complete(openStep(run).id, ONE_DAY);
+        return run(run.id);
     }
 
-    private StepFlowRun start(String seed, long delay) {
+    private FlowGraphRun start(String seed, long delay) {
         StartFlowCandidateResult result = useCases.flows.startFlowCandidate.execute(
                 candidate(seed).id, delay);
         assertEquals(StartFlowCandidateResult.Status.STARTED, result.status);
-        return repository.flows.findFlowRun(result.runId);
+        return run(result.runId);
     }
 
     private FlowCandidate candidate(String seed) {
@@ -221,19 +231,33 @@ public final class StepFlowRuntimeRobolectricTest {
                 .orElseThrow(AssertionError::new);
     }
 
-    private OccurrenceStep openStep(StepFlowRun run) {
-        List<OccurrenceStep> open = new ArrayList<>();
-        for (OccurrenceStep step : repository.steps.occurrenceSteps(
-                run.currentExecutionOccurrenceId)) if (!step.done) open.add(step);
+    private FlowGraphRun.Step openStep(FlowGraphRun run) {
+        List<FlowGraphRun.Step> open = run(run.id).availableSteps();
         assertEquals(1, open.size());
         return open.get(0);
     }
 
     private int consumingUnits(String resourceId) {
         int result = 0;
-        for (FlowRunResourceSnapshot value : repository.flows.consumingFlowResources())
-            if (resourceId.equals(value.resourceId)) result += value.units;
+        String name = resourceId.equals("washer") ? "Waschmaschine" : "Trockenplatz";
+        String id = repository.flows.capacityResources().stream().filter(value -> value.name.equals(name))
+                .findFirst().orElseThrow().id;
+        for (FlowGraphRun.Lease value : consumingResources())
+            if (id.equals(value.resourceId)) result += value.units;
         return result;
+    }
+
+    private FlowGraphRun run(String id) {
+        return repository.transactions.inTransaction(() -> repository.graphRuns.find(id).run);
+    }
+
+    private List<FlowGraphRunRecord> activeRuns() {
+        return repository.transactions.inTransaction(repository.graphRuns::active);
+    }
+
+    private List<FlowGraphRun.Lease> consumingResources() {
+        return activeRuns().stream().flatMap(record -> record.run.leases.stream())
+                .filter(lease -> lease.state.consumesCapacity()).toList();
     }
 
     private DashboardUiMapper mapper() { return new DashboardUiMapper(texts()); }

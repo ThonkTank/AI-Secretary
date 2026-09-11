@@ -28,7 +28,7 @@ public final class RecordSetResult {
     public RecordSetResult(CatalogRepository catalog, StepRepository steps, TodayRepository today,
                            TrainingRepository training,
                            TransactionRunner transactions, Clock clock, IdGenerator ids,
-                           ComboPolicySource policies, FlowRuntimeCoordinator flows) {
+                           ComboPolicySource policies, FlowProgression flows) {
         this.training = training;
         this.transactions = transactions;
         execution = new StepExecutionService(catalog, steps, today, transactions, clock,

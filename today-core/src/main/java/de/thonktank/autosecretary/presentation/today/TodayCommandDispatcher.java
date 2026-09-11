@@ -10,6 +10,13 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
         void handleHarvest(String occurrenceId);
         void handleDefer(TodayItemTarget target);
         void handleStartFlowCandidate(String candidateId, Long chosenDelayMillis);
+        default void handleCompleteFlowStep(String runtimeStepId, Long chosenDelayMillis) {
+            throw new UnsupportedOperationException("Graph action handler is required");
+        }
+        default void handleCollectFlow(String runId) { throw new UnsupportedOperationException("Graph collection handler is required"); }
+        default void handleAdjustFlowWait(String runId, String waitId, long readyAt) {
+            throw new UnsupportedOperationException("Graph wait handler is required");
+        }
         void handleToggleStep(String stepId);
         default void handleToggleStepWithDelay(String stepId, long chosenDelayMillis) {
             handleToggleStep(stepId);
@@ -67,6 +74,14 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
             case TOGGLE_STEP:
                 handlers.handleToggleStep(command.id);
                 return;
+            case COMPLETE_FLOW_STEP:
+                handlers.handleCompleteFlowStep(command.id, null); return;
+            case COMPLETE_FLOW_STEP_WITH_DELAY:
+                handlers.handleCompleteFlowStep(command.id, command.longValue); return;
+            case COLLECT_FLOW:
+                handlers.handleCollectFlow(command.id); return;
+            case ADJUST_FLOW_WAIT:
+                handlers.handleAdjustFlowWait(command.id, command.relatedId, command.longValue); return;
             case TOGGLE_STEP_WITH_DELAY:
                 handlers.handleToggleStepWithDelay(command.id, command.longValue);
                 return;

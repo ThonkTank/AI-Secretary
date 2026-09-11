@@ -17,6 +17,7 @@ public final class TodayAction {
         DEFER,
         START_FLOW_CANDIDATE,
         START_FLOW_CANDIDATE_WITH_DELAY,
+        COMPLETE_FLOW_STEP, COMPLETE_FLOW_STEP_WITH_DELAY, COLLECT_FLOW, ADJUST_FLOW_WAIT,
         TOGGLE_STEP,
         TOGGLE_STEP_WITH_DELAY,
         FINISH_STEP,
@@ -127,6 +128,24 @@ public final class TodayAction {
 
     public static TodayAction toggleStep(String stepId) {
         return identified(Kind.TOGGLE_STEP, stepId);
+    }
+
+    public static TodayAction completeFlowStep(String runtimeStepId) {
+        return identified(Kind.COMPLETE_FLOW_STEP, runtimeStepId);
+    }
+
+    public static TodayAction completeFlowStep(String runtimeStepId, long delayMillis) {
+        if (delayMillis < 0) throw new IllegalArgumentException("Delay must not be negative");
+        return new TodayAction(Kind.COMPLETE_FLOW_STEP_WITH_DELAY, requiredId(runtimeStepId), null,
+                null, 0, delayMillis, Collections.emptyList(), null, null);
+    }
+
+    public static TodayAction collectFlow(String runId) { return identified(Kind.COLLECT_FLOW, runId); }
+
+    public static TodayAction adjustFlowWait(String runId, String waitId, long readyAt) {
+        if (readyAt < 0) throw new IllegalArgumentException("Ready time must not be negative");
+        return new TodayAction(Kind.ADJUST_FLOW_WAIT, requiredId(runId), requiredId(waitId),
+                null, 0, readyAt, Collections.emptyList(), null, null);
     }
 
     public static TodayAction toggleStep(String stepId, long chosenDelayMillis) {

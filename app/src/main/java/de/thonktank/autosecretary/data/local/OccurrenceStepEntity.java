@@ -12,7 +12,7 @@ import androidx.room.ColumnInfo;
 @Entity(tableName = "occurrence_steps",
         foreignKeys = @ForeignKey(entity = OccurrenceEntity.class, parentColumns = "id",
                 childColumns = "occurrenceId", onDelete = ForeignKey.CASCADE),
-        indices = @Index("occurrenceId"))
+        indices = {@Index("occurrenceId"), @Index("flowRunStepId")})
 public class OccurrenceStepEntity {
     @PrimaryKey @NonNull public String id;
     @NonNull public String occurrenceId;
@@ -34,6 +34,7 @@ public class OccurrenceStepEntity {
     @ColumnInfo(name = "actualRepetitions") @NonNull
     public String legacyActualRepetitions;
     @Nullable public String sourceTemplateId;
+    @Nullable public String flowRunStepId;
     @NonNull public String comboOwnerId;
     @Nullable public String originOccurrenceId;
     @NonNull public String carryForwardReason;

@@ -19,12 +19,10 @@ import java.util.List;
 
 /** Room adapter for flow definitions, runs, transitions and resources. */
 public final class RoomFlowRepository implements FlowRepository {
-    private final AppDatabase database;
     private final FlowDao dao;
     private final StepFlowEntityMapper mapper = new StepFlowEntityMapper();
 
     public RoomFlowRepository(AppDatabase database) {
-        this.database = database;
         this.dao = database.flows();
     }
     @Override public List<CapacityResource> capacityResources() {
@@ -114,69 +112,6 @@ public final class RoomFlowRepository implements FlowRepository {
         List<FlowTaskSheetPlacement> result = new ArrayList<>();
         for (FlowTaskSheetPlacementEntity value : dao.flowTaskSheetPlacements())
             result.add(mapper.toDomain(value));
-        return result;
-    }
-    @Override public boolean insertFlowRun(FlowRunSnapshot snapshot) {
-        return database.runInTransaction(() -> {
-            if (dao.insertStepFlowRun(mapper.toEntity(snapshot.run)) == -1L) return false;
-            List<FlowRunStepEntity> steps = new ArrayList<>();
-            for (FlowRunStepSnapshot value : snapshot.steps) steps.add(mapper.toEntity(value));
-            dao.insertFlowRunSteps(steps);
-            List<FlowRunResourceEntity> resources = new ArrayList<>();
-            for (FlowRunResourceSnapshot value : snapshot.resources) resources.add(mapper.toEntity(value));
-            if (!resources.isEmpty()) dao.insertFlowRunResources(resources);
-            return true;
-        });
-    }
-    @Override public void updateFlowRun(StepFlowRun value) { dao.updateStepFlowRun(mapper.toEntity(value)); }
-    @Override public StepFlowRun findFlowRun(String id) {
-        StepFlowRunEntity value = dao.stepFlowRun(id);
-        return value == null ? null : mapper.toDomain(value);
-    }
-    @Override public StepFlowRun findFlowRunBySourceKey(String sourceKey) {
-        StepFlowRunEntity value = dao.stepFlowRunBySourceKey(sourceKey);
-        return value == null ? null : mapper.toDomain(value);
-    }
-    @Override public List<StepFlowRun> activeFlowRuns() { return mapRuns(dao.activeStepFlowRuns()); }
-    @Override public List<StepFlowRun> activeFlowRuns(TaskId taskId) {
-        return mapRuns(dao.activeStepFlowRuns(taskId.value));
-    }
-    @Override public List<FlowRunStepSnapshot> flowRunSteps(String runId) {
-        List<FlowRunStepSnapshot> result = new ArrayList<>();
-        for (FlowRunStepEntity value : dao.flowRunSteps(runId)) result.add(mapper.toDomain(value));
-        return result;
-    }
-    @Override public List<FlowRunStepSnapshot> flowRunStepsFor(List<String> runIds) {
-        if (runIds.isEmpty()) return new ArrayList<>();
-        List<FlowRunStepSnapshot> result = new ArrayList<>();
-        for (FlowRunStepEntity value : dao.flowRunStepsFor(runIds)) result.add(mapper.toDomain(value));
-        return result;
-    }
-    @Override public void updateFlowRunStep(FlowRunStepSnapshot value) {
-        dao.updateFlowRunStep(mapper.toEntity(value));
-    }
-    @Override public List<FlowRunResourceSnapshot> flowRunResources(String runId) {
-        List<FlowRunResourceSnapshot> result = new ArrayList<>();
-        for (FlowRunResourceEntity value : dao.flowRunResources(runId)) result.add(mapper.toDomain(value));
-        return result;
-    }
-    @Override public List<FlowRunResourceSnapshot> flowRunResourcesFor(List<String> runIds) {
-        if (runIds.isEmpty()) return new ArrayList<>();
-        List<FlowRunResourceSnapshot> result = new ArrayList<>();
-        for (FlowRunResourceEntity value : dao.flowRunResourcesFor(runIds)) result.add(mapper.toDomain(value));
-        return result;
-    }
-    @Override public List<FlowRunResourceSnapshot> consumingFlowResources() {
-        List<FlowRunResourceSnapshot> result = new ArrayList<>();
-        for (FlowRunResourceEntity value : dao.consumingFlowResources()) result.add(mapper.toDomain(value));
-        return result;
-    }
-    @Override public void updateFlowRunResource(FlowRunResourceSnapshot value) {
-        dao.updateFlowRunResource(mapper.toEntity(value));
-    }
-    private List<StepFlowRun> mapRuns(List<StepFlowRunEntity> values) {
-        List<StepFlowRun> result = new ArrayList<>();
-        for (StepFlowRunEntity value : values) result.add(mapper.toDomain(value));
         return result;
     }
     private List<FlowCandidate> mapCandidates(List<FlowCandidateEntity> values) {

@@ -169,8 +169,18 @@ public final class TaskEditorViewModel extends ViewModel {
                             new IllegalArgumentException("Missing task " + taskId));
                     return;
                 }
-                StepFlowSetup setup = flows.loadStepFlowSetup.execute(TaskId.of(taskId));
-                EditorUiState loaded = EditorUiState.edit(details, TaskFlowDraft.from(setup));
+                if (details.kind == de.thonktank.autosecretary.domain.model.TaskKind.FLOW) {
+                    finish(key);
+                    synchronized (lock) {
+                        if (generation != openGeneration) return;
+                        current = current.withContent(EditorUiState.closed());
+                        persistContent();
+                        enqueueLocked(new TaskEditorRequest(nextRequestIdLocked(), "Ablauf bearbeiten", taskId));
+                    }
+                    return;
+                }
+                TaskFlowDraft flowDraft = TaskFlowDraft.empty();
+                EditorUiState loaded = EditorUiState.edit(details, flowDraft);
                 Map<String, TrainingHistoryUiModel> history = trainingHistory(details);
                 if (addStep) loaded = TaskEditorStateReducer.addStep(loaded);
                 else if (stepId != null) loaded = TaskEditorStateReducer.expandStep(loaded, stepId);
@@ -303,8 +313,8 @@ public final class TaskEditorViewModel extends ViewModel {
                     return;
                 }
                 TaskDetails details = catalog.loadTaskDetails.execute(TaskId.of(editor.taskId));
-                StepFlowSetup setup = flows.loadStepFlowSetup.execute(TaskId.of(editor.taskId));
-                EditorUiState refreshed = EditorUiState.edit(details, TaskFlowDraft.from(setup))
+                TaskFlowDraft flowDraft = TaskFlowDraft.empty();
+                EditorUiState refreshed = EditorUiState.edit(details, flowDraft)
                         .withPage(editor.page, editor.returnToSummary)
                         .withExpandedStep(editor.expandedStepId);
                 Map<String, TrainingHistoryUiModel> histories = trainingHistory(details);
