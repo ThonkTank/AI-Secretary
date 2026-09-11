@@ -3,10 +3,13 @@ package de.thonktank.autosecretary
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
-import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.*
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performClick
 import de.thonktank.autosecretary.domain.model.FlowTileGraph
 import org.junit.Assert.*
 import org.junit.Before
@@ -21,7 +24,8 @@ import android.util.Log
 /** Uses the real accessibility/input boundary on every matrix API, including API 37. */
 class FlowTileEditorInstrumentationTest {
     val activityRule = ActivityScenarioRule(FlowTileEditorHarnessActivity::class.java)
-    @get:Rule val rules: RuleChain = RuleChain.outerRule(activityRule).around(object : TestWatcher() {
+    private val compose = createEmptyComposeRule()
+    @get:Rule val rules: RuleChain = RuleChain.outerRule(compose).around(activityRule).around(object : TestWatcher() {
         override fun failed(error: Throwable, description: Description) {
             // Capture before ActivityScenario closes the host, not the empty launcher afterwards.
             runCatching {
@@ -87,16 +91,12 @@ class FlowTileEditorInstrumentationTest {
 
     @Test fun explicitJoinIsAvailableWithoutDraggingAndIsNotAppliedBeforeConfirmation() {
         button("Trockner").longClick()
-        accessibleClick("flow-editor:handle:JOIN")
+        compose.onNodeWithTag("flow-editor:handle:JOIN").performScrollTo().performClick()
         val targetId = "flow-editor:target:${ids[1]}"
-        device.waitForIdle()
-        if (!device.hasObject(By.res(targetId)))
-            UiScrollable(UiSelector().scrollable(true)).setMaxSearchSwipes(5)
-                .scrollIntoView(UiSelector().resourceId(targetId))
-        accessibleClick(targetId)
-        button("Gemeinsamer Folgeschritt").click()
+        compose.onNodeWithTag(targetId).performScrollTo().performClick()
+        compose.onNodeWithTag("flow-editor:placement:${ids[1]}:JOIN").performScrollTo().performClick()
         assertGraph { it.predecessors(ids[1]) == listOf(ids[0]) }
-        button("Übernehmen").click()
+        compose.onNodeWithTag("flow-editor:apply-move").performScrollTo().performClick()
         assertGraph { it.predecessors(ids[1]).toSet() == setOf(ids[0], ids[2]) }
         button("Rückgängig").click()
         assertGraph { it.predecessors(ids[1]) == listOf(ids[0]) }
@@ -117,28 +117,6 @@ class FlowTileEditorInstrumentationTest {
     private fun nameInput(): UiObject2 = requireNotNull(device.wait(
         Until.findObject(By.res("flow-editor:name").clazz("android.widget.EditText")), 5_000
     )) { "Missing editable name field" }
-
-    private fun accessibleClick(resourceId: String) {
-        assertTrue(device.wait(Until.hasObject(By.res(resourceId)), 5_000))
-        instrumentation.waitForIdleSync()
-        // Exercise the advertised non-drag accessibility action, independent of animated
-        // bring-into-view coordinates. Pointer interaction has its own touch/mouse tests.
-        // Compose exports virtual-node resource IDs for traversal; Android's platform
-        // findAccessibilityNodeInfosByViewId does not search these virtual descendants.
-        fun find(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-            if (node.viewIdResourceName == resourceId && node.isClickable) return node
-            for (index in 0 until node.childCount) {
-                val child = node.getChild(index) ?: continue
-                find(child)?.let { return it }
-            }
-            return null
-        }
-        val node = requireNotNull(find(instrumentation.uiAutomation.rootInActiveWindow)) {
-            "Missing clickable accessibility node: $resourceId"
-        }
-        assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
-        instrumentation.waitForIdleSync()
-    }
 
     private fun button(label: String): UiObject2 {
         // A font change or bring-into-view animation can retain the old node coordinates

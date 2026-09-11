@@ -21,6 +21,18 @@ import de.thonktank.autosecretary.presentation.today.TodayReducer;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 
 public final class TodayFocusProjectorTest {
+    @Test public void compactFlowRowsRetainTheirExactRuntimeActionAndTimeQuestion() {
+        for (StepExecutionUiAction action : Arrays.asList(
+                StepExecutionUiAction.startFlowCandidate("row"),
+                StepExecutionUiAction.startFlowCandidateWithDelay("row", 7_200_000L),
+                StepExecutionUiAction.toggleFlowRunStep("row"),
+                StepExecutionUiAction.toggleFlowRunStepWithDelay("row", 86_400_000L),
+                StepExecutionUiAction.collectFlow("row"))) {
+            FocusStepUiModel step = FocusStepUiModel.executable("row", "Wäsche: Aufhängen", "", "", false,
+                    action, null, RewardBreakdown.fromStage(0, 0), 0);
+            assertSame(action, de.thonktank.autosecretary.presentation.today.FocusStepRowUiModel.compact(step).action);
+        }
+    }
     @Test public void selectedRepetitionStepOwnsOrderModeAndFinalAction() {
         FocusStepUiModel normal = FocusTaskFixtures.simpleStep("a", "A", false);
         FocusStepUiModel repetitions = FocusTaskFixtures.step("b", "B")

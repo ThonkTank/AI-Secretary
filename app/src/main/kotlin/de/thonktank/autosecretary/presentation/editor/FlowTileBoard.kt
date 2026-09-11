@@ -255,11 +255,13 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
                                         FlowTileGraph.Placement.AFTER -> "Dahinter"
                                         else -> "Daneben"
                                     }
-                                EditorButton(label, palette, { proposal = option }, modifier = Modifier.fillMaxWidth())
+                                EditorButton(label, palette, { proposal = option }, modifier = Modifier.fillMaxWidth()
+                                    .testTag("flow-editor:placement:$id:${option.placement?.name ?: "JOIN"}"))
                             }
                         }
                     }
-                    if (proposal != null && drag == null) EditorButton("Übernehmen", palette, ::apply, primary = true)
+                    if (proposal != null && drag == null) EditorButton("Übernehmen", palette, ::apply, primary = true,
+                        modifier = Modifier.testTag("flow-editor:apply-move"))
                 }
                 EditorButton("Abbrechen", palette, ::closeTools, modifier = Modifier.testTag("flow-editor:cancel-move"))
             }

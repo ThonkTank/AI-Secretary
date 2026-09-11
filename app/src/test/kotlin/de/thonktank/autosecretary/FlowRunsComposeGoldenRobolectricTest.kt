@@ -7,6 +7,7 @@ import android.os.Looper
 import android.view.View
 import androidx.activity.ComponentActivity
 import de.thonktank.autosecretary.domain.model.FlowRunSummary
+import de.thonktank.autosecretary.domain.model.*
 import de.thonktank.autosecretary.presentation.flowruns.FlowRunsComposeCallbacks
 import de.thonktank.autosecretary.presentation.flowruns.FlowRunsComposeFixture
 import de.thonktank.autosecretary.presentation.flowruns.FlowRunsComposeHostView
@@ -35,6 +36,8 @@ class FlowRunsComposeGoldenRobolectricTest {
             Scenario("loading", FlowRunsComposeFixture.loading()),
             Scenario("empty", FlowRunsComposeFixture.empty()),
             Scenario("width-320", FlowRunsComposeFixture.state(now), widthDp = 320),
+            Scenario("graph-parallel-320", graphState(now), widthDp = 320),
+            Scenario("graph-parallel-large", graphState(now), widthDp = 320, fontScale = 1.6f),
             Scenario("font-2_0", FlowRunsComposeFixture.state(now), fontScale = 2f),
             Scenario(
                 "night",
@@ -98,6 +101,23 @@ class FlowRunsComposeGoldenRobolectricTest {
 
     private fun dp(activity: ComponentActivity, value: Int): Int =
         (value * activity.resources.displayMetrics.density).toInt()
+
+    private fun graphState(now: Long): FlowRunsScreenState {
+        val graph = FlowTileGraph(listOf("start", "dry", "store"), listOf(
+            FlowTileGraph.Link("start", "dry"), FlowTileGraph.Link("start", "store")))
+        fun node(id: String, title: String, wait: Long = 0) = FlowGraphDefinition.Node(
+            id, title, StepPrescription.forAmount(StepAmount.none()), "", FlowDelayPolicy.fixed(wait))
+        val run = FlowGraphRun("parallel", TaskId.of("laundry"), "start", graph, listOf(
+            FlowGraphRun.Step("start", node("start", "Wäsche versorgen"), FlowGraphRun.State.DONE,
+                0L, null, now - 1_000, 10),
+            FlowGraphRun.Step("dry", node("dry", "Aufhängen", 7_200_000), FlowGraphRun.State.WAITING_TIME,
+                7_200_000L, now + 7_200_000, now, 10),
+            FlowGraphRun.Step("store", node("store", "Wegräumen"), FlowGraphRun.State.AVAILABLE,
+                null, null, null, 0)), emptyList(), 0, false)
+        val record = FlowGraphRunRecord(run, "fixture", java.time.LocalDate.of(2026, 9, 11),
+            TaskSlot.MORNING, 0, 0, now, now)
+        return FlowRunsScreenState.idle(now).withRuns(listOf(FlowRunSummary(record, "Wäsche", emptyList())))
+    }
 
     private data class Scenario(
         val name: String,

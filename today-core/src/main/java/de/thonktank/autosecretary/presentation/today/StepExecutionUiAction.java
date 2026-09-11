@@ -33,6 +33,14 @@ public final class StepExecutionUiAction {
         return new StepExecutionUiAction(Kind.NONE, null, 0L);
     }
 
+    public boolean isFlowExecution() {
+        return switch (kind) {
+            case TOGGLE_FLOW_RUN_STEP, TOGGLE_FLOW_RUN_STEP_WITH_DELAY,
+                    START_FLOW_CANDIDATE, START_FLOW_CANDIDATE_WITH_DELAY, COLLECT_FLOW -> true;
+            default -> false;
+        };
+    }
+
     public static StepExecutionUiAction toggle(String stepId) {
         return new StepExecutionUiAction(Kind.TOGGLE, stepId, 0L);
     }

@@ -1,4 +1,8 @@
 risk_id	path	risk
+FG-01	flow-runs/graph-parallel-320.png	Ein paralleler Ablauf zeigt verfügbare und wartende Schritte getrennt ohne alte Reihenfolge- oder Abbruchaktionen.
+FG-02	flow-runs/graph-parallel-large.png	Die schmale Warteübersicht bleibt bei großer Schrift vollständig bedienbar.
+GF-01	graph-flow-sheet/laundry-320.png	Verfügbare Aktionen und Wartezeiten teilen ein Blatt ohne oberen Tau-Behälter.
+GF-02	graph-flow-sheet/laundry-320-large.png	Große Schrift erhält vollständige Folgeschrittnamen und die Später-Aktion.
 FL-01	flow-tiles/tiles-320.png	Alternative Starts und gemeinsame Folgeschritte bleiben auf 320 dp als kompakte Kacheln lesbar.
 FL-02	flow-tiles/step-320.png	Der Schrittdialog zeigt nur Name, Wartezeit und direkte Zeitabfrage.
 FL-03	flow-tiles/step-320-large.png	Große Schrift trennt Zeiteingabe und Einheit ohne abgeschnittene Aktionen.

@@ -104,7 +104,8 @@ public final class FocusStepListLayout extends ViewGroup {
                 addView(row, getChildCount() - 1, new MarginLayoutParams(-1, -2));
             row.bind(projected, model.palette,
                     model.repetitionInput, model.timers, actions);
-            boolean reorderable = projected.mode != FocusStepRowMode.ASSISTANT;
+            boolean reorderable = projected.mode != FocusStepRowMode.ASSISTANT
+                    && !projected.step.activeAction.isFlowExecution();
             final int renderedIndex = index;
             row.bindInteractions(projected.id(), projected.step.title,
                     projected.mode == FocusStepRowMode.COMPACT
