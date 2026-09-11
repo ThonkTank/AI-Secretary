@@ -11,7 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.CreationExtras
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy
 import de.thonktank.autosecretary.domain.model.FlowTileGraph
 import de.thonktank.autosecretary.presentation.editor.FlowTileEditorScreen
@@ -21,7 +24,8 @@ import java.time.LocalTime
 class FlowTileEditorHarnessActivity : ComponentActivity() {
     lateinit var editor: FlowEditorViewModel
         private set
-    private lateinit var handle: SavedStateHandle
+    private lateinit var initialDraft: FlowEditorDraft
+    private var generation = 0
     private var revision by mutableIntStateOf(0)
     var saves = 0
         private set
@@ -29,9 +33,10 @@ class FlowTileEditorHarnessActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handle = SavedStateHandle(savedInstanceState?.getBundle("editor")?.let { mapOf("flow_tile_editor" to it) }.orEmpty())
-        editor = FlowEditorViewModel(reference(), handle)
-        viewModelStore.put("flow-test-editor", editor)
+        generation = savedInstanceState?.getInt("generation") ?: 0
+        initialDraft = savedInstanceState?.getBundle("initialDraft")?.let(FlowEditorDraft::fromBundle)
+            ?: reference()
+        editor = obtainEditor()
         setContent {
             @Suppress("UNUSED_EXPRESSION") revision
             val state by editor.state.collectAsState()
@@ -46,16 +51,26 @@ class FlowTileEditorHarnessActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putBundle("editor", handle.get<Bundle>("flow_tile_editor"))
+        outState.putInt("generation", generation)
+        outState.putBundle("initialDraft", initialDraft.toBundle())
         super.onSaveInstanceState(outState)
     }
 
     fun render(draft: FlowEditorDraft) {
-        handle = SavedStateHandle()
-        editor = FlowEditorViewModel(draft, handle)
-        viewModelStore.put("flow-test-editor", editor)
+        initialDraft = draft
+        generation++
+        editor = obtainEditor()
         revision++
     }
+
+    private fun obtainEditor(): FlowEditorViewModel = ViewModelProvider(this,
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                require(modelClass.isAssignableFrom(FlowEditorViewModel::class.java))
+                return FlowEditorViewModel(initialDraft, extras.createSavedStateHandle()) as T
+            }
+        })["flow-test-editor-$generation", FlowEditorViewModel::class.java]
 
     private fun reference(): FlowEditorDraft {
         var draft = FlowEditorDraft.empty().rename("Wäsche")

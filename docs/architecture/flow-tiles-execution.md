@@ -283,3 +283,20 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Deren letzter lokaler UI-/Editor-Lauf nach Schrift-/Innenabstandskorrektur:
   34 Tests erfolgreich, keine Fehler/Skips. Neues Testpaket zuvor erfolgreich gebaut;
   ein exakter PR-Lauf des Kachel-Commits muss die tatsächlichen Gerätegesten erst prüfen.
+
+### P — Prüfhost und expliziter Aufgabentyp
+
+- PR-Lauf `34591411896` für `c77e62ab8320a2b00f236e566539631a4974676c`
+  scheiterte in `quality-build` an Lint `RestrictedApi`: der neue Debug-Prüfhost
+  verwendete direkt `ViewModelStore.put`. Contracts und Goldens waren grün;
+  Geräte-/Animationsmatrix wurde korrekt nicht gestartet. Kein Gestennachweis daraus.
+- Der Prüfhost verwendet jetzt `ViewModelProvider.Factory` und
+  `CreationExtras.createSavedStateHandle`. Fixture-Schlüssel und Anfangsentwurf werden
+  über den Activity-Zustand erhalten; der Lebenszyklus verwaltet ViewModel und Eingaben.
+  Keine Lint-Unterdrückung und keine Abschwächung der Pflichtprüfung.
+- Das Domänenmodell erhält den ausdrücklichen Typ `TASK`/`FLOW`. Bestehende normale
+  Aufgaben bleiben standardmäßig `TASK`; alle Kopier-/Bearbeitungswege erhalten den Typ.
+  Der Graph-Ladevorgang liefert auch einen einzelnen Schritt als `FLOW` zurück.
+  Die 53 gezielten JUnit-Ergebnisse (Typ, Editor-Speicherung und Architekturgrenzen)
+  enthalten keine Fehler oder Skips. Room-Abbildung und produktive Navigation sind
+  damit noch nicht umgestellt; sie bleiben Teil des zusammenhängenden Cutovers.

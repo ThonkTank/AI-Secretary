@@ -25,7 +25,7 @@ public final class LoadFlowGraph {
             Task task = tasks.findTask(id);
             FlowGraphDefinition definition = task == null ? null : graphs.find(id);
             if (task == null || definition == null) throw new IllegalArgumentException("Ablauf existiert nicht mehr");
-            return new Setup(task, steps.templates(id), definition, resources.capacityResources());
+            return new Setup(task.withKind(TaskKind.FLOW), steps.templates(id), definition, resources.capacityResources());
         });
     }
 

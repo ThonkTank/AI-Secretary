@@ -60,6 +60,7 @@ public final class FlowGraphEditorPersistenceTest {
         draft = draft.withCapacities(capacities).releaseAfter(capacities.leases.get(0).key, true);
         TaskId id = save.execute(draft.edit());
         assertTrue(repository.transactions.inTransaction(() -> graphs.isFlowTask(id)));
+        assertEquals(TaskKind.FLOW, load.execute(id).task.kind);
         FlowEditorDraft restored = FlowEditorDraft.from(load.execute(id));
         assertEquals("Ein Ablauf", restored.name);
         assertEquals(1, restored.steps.size());
