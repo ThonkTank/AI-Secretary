@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -42,7 +44,7 @@ class FlowTileEditorHarnessActivity : ComponentActivity() {
             val state by editor.state.collectAsState()
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
-                Box(Modifier.width(320.dp).fillMaxHeight()) {
+                Box(Modifier.width(320.dp).fillMaxHeight().semantics { testTagsAsResourceId = true }) {
                     FlowTileEditorScreen(state, DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT),
                         editor, { saves++ }, { finish() })
                 }

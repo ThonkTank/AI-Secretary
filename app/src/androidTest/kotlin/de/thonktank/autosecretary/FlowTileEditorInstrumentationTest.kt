@@ -11,10 +11,27 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
+import java.io.ByteArrayOutputStream
+import android.util.Log
 
 /** Uses the real accessibility/input boundary on every matrix API, including API 37. */
 class FlowTileEditorInstrumentationTest {
-    @get:Rule val activityRule = ActivityScenarioRule(FlowTileEditorHarnessActivity::class.java)
+    val activityRule = ActivityScenarioRule(FlowTileEditorHarnessActivity::class.java)
+    @get:Rule val rules: RuleChain = RuleChain.outerRule(activityRule).around(object : TestWatcher() {
+        override fun failed(error: Throwable, description: Description) {
+            // Capture before ActivityScenario closes the host, not the empty launcher afterwards.
+            runCatching {
+                activityRule.scenario.onActivity {
+                    Log.e("FlowTileTest", "${description.methodName}: form=${it.editor.state.value.form}, graph=${it.editor.state.value.draft.graph.links}")
+                }
+                val hierarchy = ByteArrayOutputStream().also { device.dumpWindowHierarchy(it) }.toString("UTF-8")
+                hierarchy.chunked(3000).forEach { Log.e("FlowTileTest", it) }
+            }.onFailure { Log.e("FlowTileTest", "Could not capture failure hierarchy", it) }
+        }
+    })
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val device get() = UiDevice.getInstance(instrumentation)
     private lateinit var ids: List<String>
@@ -27,10 +44,14 @@ class FlowTileEditorInstrumentationTest {
     @Test fun stepDialogHasOnlyNameWaitAndTheDirectCheckboxAtLargeFont() {
         activityRule.scenario.onActivity { it.fontScale = 1.6f }
         button("Waschen").click()
-        assertTrue(device.wait(Until.hasObject(By.text("Schritt bearbeiten")), 5_000))
-        assertNotNull(device.findObject(By.desc("Name")))
-        assertNotNull(device.findObject(By.desc("Wartezeit danach")))
-        assertTrue(device.hasObject(By.text("Beim Start nachfragen")))
+        awaitFormName("Waschen")
+        assertNotNull(button("Schritt bearbeiten"))
+        assertNotNull(button("Name"))
+        assertNotNull(button("Wartezeit danach"))
+        assertNotNull(button("Beim Start nachfragen"))
+        activityRule.scenario.onActivity {
+            assertEquals(setOf("name", "duration", "unit", "ask"), it.editor.state.value.form!!.fields.keys)
+        }
         assertFalse(device.hasObject(By.textContains("Zeitoptionen")))
         assertFalse(device.hasObject(By.textContains("Nach Ablauf bestätigen")))
         assertFalse(device.hasObject(By.text("Reihenfolge")))
@@ -66,7 +87,14 @@ class FlowTileEditorInstrumentationTest {
     @Test fun explicitJoinIsAvailableWithoutDraggingAndIsNotAppliedBeforeConfirmation() {
         button("Trockner").longClick()
         button("Zusammenführen").click()
-        button("Aufhängen").click()
+        val targetId = "flow-editor:target:${ids[1]}"
+        device.waitForIdle()
+        if (!device.hasObject(By.res(targetId)))
+            UiScrollable(UiSelector().scrollable(true)).setMaxSearchSwipes(5)
+                .scrollIntoView(UiSelector().resourceId(targetId))
+        requireNotNull(device.wait(Until.findObject(By.res(targetId)), 5_000)) {
+            "Missing non-drag join target"
+        }.click()
         button("Gemeinsamer Folgeschritt").click()
         assertGraph { it.predecessors(ids[1]) == listOf(ids[0]) }
         button("Übernehmen").click()
@@ -79,20 +107,39 @@ class FlowTileEditorInstrumentationTest {
         button("Waschen").click()
         val input = button("Name")
         input.text = "Buntwäsche"
+        awaitFormName("Buntwäsche")
         activityRule.scenario.recreate()
-        assertTrue(device.wait(Until.hasObject(By.text("Buntwäsche")), 5_000))
-        assertTrue(device.hasObject(By.text("Beim Start nachfragen")))
+        awaitFormName("Buntwäsche")
+        assertEquals("Buntwäsche", button("Name").text)
+        assertNotNull(button("Beim Start nachfragen"))
         activityRule.scenario.onActivity { assertEquals("Buntwäsche", it.editor.state.value.form!!.fields["name"]) }
     }
 
     private fun button(label: String): UiObject2 {
+        // A font change or bring-into-view animation can retain the old node coordinates
+        // briefly. Resolve the control after layout settles, then scroll by its actual semantics.
+        device.waitForIdle()
         var result = device.wait(Until.findObject(By.desc(label)), 1_000)
             ?: device.findObject(By.text(label))
         if (result == null) {
-            UiScrollable(UiSelector().scrollable(true)).setMaxSearchSwipes(5).scrollTextIntoView(label)
+            val scrollable = UiScrollable(UiSelector().scrollable(true)).setMaxSearchSwipes(5)
+            if (!scrollable.scrollIntoView(UiSelector().description(label))) scrollable.scrollTextIntoView(label)
+            device.waitForIdle()
             result = device.wait(Until.findObject(By.desc(label)), 2_000) ?: device.findObject(By.text(label))
         }
         return requireNotNull(result) { "Missing accessible control: $label" }
+    }
+
+    private fun awaitFormName(expected: String) {
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        var actual: String? = null
+        do {
+            instrumentation.waitForIdleSync()
+            activityRule.scenario.onActivity { actual = it.editor.state.value.form?.fields?.get("name") }
+            if (actual == expected) return
+            SystemClock.sleep(20)
+        } while (SystemClock.uptimeMillis() < deadline)
+        assertEquals("Step input did not reach the editor state", expected, actual)
     }
 
     private fun assertGraph(predicate: (FlowTileGraph) -> Boolean) {
