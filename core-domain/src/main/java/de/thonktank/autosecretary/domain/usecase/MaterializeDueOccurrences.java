@@ -51,6 +51,8 @@ public final class MaterializeDueOccurrences {
     private final IdGenerator ids;
     private final MomentSource moments;
     private final FlowRepository flows;
+    private final de.thonktank.autosecretary.domain.repository.FlowGraphDefinitionRepository graphs;
+    private final de.thonktank.autosecretary.domain.repository.FlowGraphRunRepository graphRuns;
     private final DueDatePlanner planner = new DueDatePlanner();
 
     public MaterializeDueOccurrences(CatalogRepository catalog, StepRepository steps,
@@ -64,6 +66,15 @@ public final class MaterializeDueOccurrences {
                               TodayRepository today, FlowRepository flows,
                               TransactionRunner transactions, Clock clock,
                               MomentSource moments, IdGenerator ids) {
+        this(catalog, steps, today, flows, transactions, clock, moments, ids, null, null);
+    }
+
+    public MaterializeDueOccurrences(CatalogRepository catalog, StepRepository steps,
+                              TodayRepository today, FlowRepository flows,
+                              TransactionRunner transactions, Clock clock,
+                              MomentSource moments, IdGenerator ids,
+                              de.thonktank.autosecretary.domain.repository.FlowGraphDefinitionRepository graphs,
+                              de.thonktank.autosecretary.domain.repository.FlowGraphRunRepository graphRuns) {
         this.catalog = catalog;
         this.steps = steps;
         this.today = today;
@@ -72,6 +83,8 @@ public final class MaterializeDueOccurrences {
         this.moments = moments;
         this.ids = ids;
         this.flows = flows;
+        this.graphs = graphs;
+        this.graphRuns = graphRuns;
     }
 
     public boolean execute() {
@@ -109,6 +122,16 @@ public final class MaterializeDueOccurrences {
                                 Map<String, Integer> scheduleRanks) {
         DueDatePlanner.Plan planned = planner.throughToday(
                 task, schedule, today, history, templates);
+        if (graphs != null && task.kind == de.thonktank.autosecretary.domain.model.TaskKind.FLOW) {
+            boolean changed = materializeGraphCandidates(task, planned, scheduleRanks);
+            if (planned.nextDueChanged || planned.materializedCount > 0) {
+                catalog.updateTask(task.afterPlanning(planned.nextDue, planned.materializedCount));
+                changed = true;
+            }
+            // Graph runs own progress, waits and completion. No ordinary occurrence or rollover
+            // is created, including single-step flows and days with no due start.
+            return changed;
+        }
         FlowMaterialization flowMaterialization = materializeFlowCandidates(task, templates, planned,
                 scheduleRanks);
         planned = flowMaterialization.ordinaryPlan;
@@ -147,6 +170,7 @@ public final class MaterializeDueOccurrences {
                                                     List<TaskStepTemplate> templates,
                                                     DueDatePlanner.Plan planned,
                                                     Map<String, Integer> scheduleRanks) {
+        if (graphs != null) return new FlowMaterialization(planned, false);
         boolean hasFollowUp = false;
         for (TaskStepTemplate template : templates)
             if (template.activationKind == StepActivationKind.FOLLOW_UP) {
@@ -202,6 +226,30 @@ public final class MaterializeDueOccurrences {
         DueDatePlanner.Plan ordinaryPlan = new DueDatePlanner.Plan(ordinaryBySlot, ordinaryDues,
                 planned.nextDue, planned.materializedCount, planned.nextDueChanged);
         return new FlowMaterialization(ordinaryPlan, changed);
+    }
+
+    private boolean materializeGraphCandidates(Task task, DueDatePlanner.Plan planned,
+                                                Map<String, Integer> scheduleRanks) {
+        de.thonktank.autosecretary.domain.model.FlowGraphDefinition definition = graphs.find(task.id);
+        if (definition == null) throw new IllegalStateException("Explicit flow has no definition");
+        boolean changed = false;
+        for (DueDatePlanner.PlannedDue due : planned.dues) for (TaskStepTemplate template : due.templates) {
+            if (!definition.graph.roots().contains(template.id)) continue;
+            String sourceKey = "flow:" + task.id.value + ':' + template.id + ':'
+                    + due.scheduledOn + ':' + due.slot.storageCode;
+            if (flows.findFlowCandidateBySourceKey(sourceKey) != null || graphRuns.findBySourceKey(sourceKey) != null) continue;
+            long rank = scheduleRanks.getOrDefault(task.id.value + '|' + due.slot.name(), 0);
+            long queueOrder = rank * 1_000_000_000L + due.scheduledOn.toEpochDay() * 1_000L + template.position;
+            if (flows.insertFlowCandidate(new FlowCandidate(ids.nextId(), task.id, template.id, sourceKey,
+                    due.scheduledOn, due.slot, queueOrder, moments.nowEpochMillis()))) {
+                changed = true;
+                if (flows.findFlowTaskSheetPlacement(task.id, due.slot) == null)
+                    flows.putFlowTaskSheetPlacement(new FlowTaskSheetPlacement(
+                            FlowTaskSheetPlacement.stableId(task.id, due.slot), task.id, due.slot,
+                            clock.today(), (int) Math.max(0, Math.min(Integer.MAX_VALUE, rank))));
+            }
+        }
+        return changed;
     }
 
     private static void addPlannedTemplates(Map<TaskSlot, List<TaskStepTemplate>> bySlot,

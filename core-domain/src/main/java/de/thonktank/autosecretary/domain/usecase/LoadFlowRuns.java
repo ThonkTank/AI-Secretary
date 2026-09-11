@@ -17,13 +17,21 @@ import java.util.Map;
 public final class LoadFlowRuns {
     private final CatalogRepository tasks;
     private final FlowRepository runs;
+    private final LoadGraphFlowSheets graph;
+    private final de.thonktank.autosecretary.Clock clock;
 
     public LoadFlowRuns(CatalogRepository tasks, FlowRepository runs) {
         this.tasks = tasks;
         this.runs = runs;
+        this.graph = null; this.clock = null;
+    }
+
+    public LoadFlowRuns(LoadGraphFlowSheets graph, de.thonktank.autosecretary.Clock clock) {
+        this.tasks = null; this.runs = null; this.graph = graph; this.clock = clock;
     }
 
     public List<FlowRunSummary> execute() {
+        if (graph != null) return graph.execute(clock.today()).runs;
         Map<TaskId, Task> taskById = new HashMap<>();
         for (Task task : tasks.allTasks()) taskById.put(task.id, task);
         return summaries(taskById, runs);

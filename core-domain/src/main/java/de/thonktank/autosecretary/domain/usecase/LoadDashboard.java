@@ -48,6 +48,8 @@ public final class LoadDashboard {
     private final TodayRepository today;
     private final FlowRepository flowRepository;
     private final LoadTrainingContext loadTrainingContext;
+    private final LoadGraphFlowSheets graphSheets;
+    private final TransactionRunner transactions;
 
     public LoadDashboard(CatalogRepository catalog, StepRepository steps,
                          TodayRepository today, FlowRepository flowRepository) {
@@ -58,20 +60,33 @@ public final class LoadDashboard {
                          TodayRepository today, FlowRepository flowRepository,
                          TrainingRepository trainingRepository,
                          TransactionRunner transactions) {
+        this(catalog, steps, today, flowRepository, trainingRepository, transactions, null);
+    }
+
+    public LoadDashboard(CatalogRepository catalog, StepRepository steps,
+                         TodayRepository today, FlowRepository flowRepository,
+                         TrainingRepository trainingRepository, TransactionRunner transactions,
+                         LoadGraphFlowSheets graphSheets) {
         this.catalog = catalog;
         this.steps = steps;
         this.today = today;
         this.flowRepository = flowRepository;
+        this.graphSheets = graphSheets;
+        this.transactions = transactions;
         this.loadTrainingContext = trainingRepository == null ? null
                 : new LoadTrainingContext(steps, trainingRepository, transactions);
     }
 
     public Dashboard execute(LocalDate today) {
+        return transactions == null ? read(today) : transactions.inTransaction(() -> read(today));
+    }
+
+    private Dashboard read(LocalDate today) {
         Map<TaskId, Task> tasks = new HashMap<>();
         for (Task task : catalog.allTasks()) tasks.put(task.id, task);
-        List<StepFlowRun> activeFlowRuns = flowRepository.activeFlowRuns();
-        List<FlowRunSummary> allFlowRuns = LoadFlowRuns.summaries(tasks, flowRepository,
-                activeFlowRuns);
+        LoadGraphFlowSheets.Result graph = graphSheets == null ? null : graphSheets.execute(today);
+        List<FlowRunSummary> allFlowRuns = graph == null
+                ? LoadFlowRuns.summaries(tasks, flowRepository, flowRepository.activeFlowRuns()) : graph.runs;
         Map<String, FlowRunSummary> flowById = new HashMap<>();
         for (FlowRunSummary run : allFlowRuns) flowById.put(run.id, run);
         TaskSchedule schedule = new TaskSchedule(catalog.scheduleEntries());
@@ -100,7 +115,7 @@ public final class LoadDashboard {
         Map<String, FlowTaskSheetPlacement> placements = new HashMap<>();
         for (FlowTaskSheetPlacement placement : flowRepository.flowTaskSheetPlacements())
             placements.put(sheetKey(placement.taskId, placement.slot), placement);
-        for (Occurrence occurrence : open) {
+        for (Occurrence occurrence : graph == null ? open : java.util.Collections.<Occurrence>emptyList()) {
             if (occurrence.kind != OccurrenceKind.FLOW_STEP) continue;
             Task task = tasks.get(occurrence.taskId);
             FlowRunSummary run = flowById.get(occurrence.flowRunId);
@@ -127,7 +142,7 @@ public final class LoadDashboard {
                     ignored -> new FlowSheetBuilder(resolvedPlacement, task)).entries.add(
                     FlowTaskSheet.Entry.runStep(run, current));
         }
-        List<FlowCandidate> candidates = flowRepository.flowCandidates();
+        List<FlowCandidate> candidates = graph == null ? flowRepository.flowCandidates() : java.util.Collections.emptyList();
         CandidateProjection candidateProjection = candidateProjection(candidates);
         for (FlowCandidate candidate : candidates) {
             Task task = tasks.get(candidate.taskId);
@@ -143,7 +158,8 @@ public final class LoadDashboard {
                     ignored -> new FlowSheetBuilder(placement, task)).entries.add(
                     FlowTaskSheet.Entry.candidate(candidate, template));
         }
-        List<FlowTaskSheet> visibleFlowSheets = new ArrayList<>();
+        List<FlowTaskSheet> visibleFlowSheets = new ArrayList<>(graph == null ? java.util.Collections.emptyList() : graph.sheets);
+        for (FlowTaskSheet sheet : visibleFlowSheets) included.add(sheet.task.id);
         for (FlowSheetBuilder builder : flowSheets.values()) {
             builder.entries.sort(Comparator
                     .comparingInt((FlowTaskSheet.Entry value) ->
@@ -159,6 +175,7 @@ public final class LoadDashboard {
             Task task = tasks.get(occurrence.taskId);
             if (task == null || task.archived || task.conditionDone) continue;
             if (occurrence.kind == OccurrenceKind.FLOW_STEP) continue;
+            if (graph != null && task.kind == de.thonktank.autosecretary.domain.model.TaskKind.FLOW) continue;
             String key = occurrence.taskId.value + '|' + occurrence.slot.name();
             if (occurrence.kind != OccurrenceKind.FLOW_STEP
                     && task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE

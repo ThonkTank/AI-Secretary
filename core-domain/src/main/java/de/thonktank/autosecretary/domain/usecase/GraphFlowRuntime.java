@@ -9,6 +9,9 @@ import java.util.*;
 
 /** Graph execution and the existing occurrence/reward ledger share one transaction owner. */
 public final class GraphFlowRuntime implements FlowProgression {
+    @Override public boolean canHarvestOccurrence(Occurrence occurrence) {
+        return occurrence.kind != OccurrenceKind.FLOW_STEP;
+    }
     private final CatalogRepository catalog;
     private final StepRepository steps;
     private final TodayRepository today;

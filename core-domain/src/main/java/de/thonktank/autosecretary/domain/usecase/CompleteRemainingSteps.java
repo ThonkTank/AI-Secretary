@@ -23,7 +23,7 @@ public final class CompleteRemainingSteps {
     public CompleteRemainingSteps(CatalogRepository catalog, StepRepository steps, TodayRepository today, TransactionRunner transactions,
                            Clock clock,
                            ComboPolicySource policies,
-                           FlowRuntimeCoordinator flows) {
+                           FlowProgression flows) {
         completion = new OccurrenceCompletionService(catalog, steps, today, transactions, clock,
                 policies, flows);
     }

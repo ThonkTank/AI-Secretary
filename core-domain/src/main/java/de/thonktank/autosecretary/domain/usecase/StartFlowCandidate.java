@@ -37,6 +37,7 @@ public final class StartFlowCandidate {
     private final MomentSource moments;
     private final IdGenerator ids;
     private final ToggleStep toggle;
+    private final GraphFlowRuntime graph;
 
     public StartFlowCandidate(CatalogRepository catalog, StepRepository steps,
                               TodayRepository today, FlowRepository flows,
@@ -51,9 +52,26 @@ public final class StartFlowCandidate {
         this.moments = moments;
         this.ids = ids;
         this.toggle = toggle;
+        this.graph = null;
+    }
+
+    public StartFlowCandidate(GraphFlowRuntime graph) {
+        this.catalog = null; this.steps = null; this.today = null; this.flows = null;
+        this.transactions = null; this.clock = null; this.moments = null; this.ids = null;
+        this.toggle = null; this.graph = graph;
     }
 
     public StartFlowCandidateResult execute(String candidateId, Long chosenDelayMillis) {
+        if (graph != null) {
+            GraphFlowRuntime.Result result = graph.start(candidateId, chosenDelayMillis);
+            switch (result.status) {
+                case CHANGED: return StartFlowCandidateResult.started(result.runId, result.reward);
+                case DURATION_REQUIRED: return StartFlowCandidateResult.of(StartFlowCandidateResult.Status.DURATION_REQUIRED);
+                case CAPACITY_UNAVAILABLE: return StartFlowCandidateResult.of(StartFlowCandidateResult.Status.CAPACITY_CHANGED);
+                case NOT_FOUND: return StartFlowCandidateResult.of(StartFlowCandidateResult.Status.NOT_FOUND);
+                default: return StartFlowCandidateResult.of(StartFlowCandidateResult.Status.STALE_CANDIDATE);
+            }
+        }
         return transactions.inTransaction(() -> start(candidateId, chosenDelayMillis));
     }
 
