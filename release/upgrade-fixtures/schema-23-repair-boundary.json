@@ -15,7 +15,7 @@
     "metadataSha256": "d0705009ed1286495b2d085721e2f1278bf898991cc9747286c6e45e5d126ecf",
     "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
   },
-  "targetDatabaseVersion": 24,
+  "targetDatabaseVersion": 25,
   "apiLanes": [
     {
       "apiLevel": 26,
@@ -69,7 +69,7 @@
           "scheduledOn": "2999-12-31",
           "slot": "LATER",
           "state": "WAITING_TIME",
-          "currentPosition": 0,
+          "currentPosition": 2,
           "readyAtEpochMillis": 32503680000000,
           "currentExecutionOccurrenceId": null,
           "queueOrder": 423,
@@ -111,10 +111,10 @@
           "position": 1,
           "sourceTemplateId": "upgrade-repair-template-2",
           "text": "Korrekte Schema-23-Zeile",
-          "amountKind": "DURATION",
-          "plannedSets": null,
-          "plannedReps": null,
-          "plannedDurationSeconds": 321,
+          "amountKind": "SETS_REPS",
+          "plannedSets": 3,
+          "plannedReps": 21,
+          "plannedDurationSeconds": null,
           "restTimerMode": "DEFAULT",
           "restTimerSeconds": null,
           "plannedLoadMode": "BODYWEIGHT_PLUS",
@@ -126,11 +126,46 @@
           "defaultDelayMillis": 9000,
           "lastUsedDelayMillis": 10000,
           "chosenDelayMillis": 11000
+        },
+        {
+          "id": "upgrade-repair-finish",
+          "runId": "upgrade-repair-run",
+          "position": 2,
+          "sourceTemplateId": "upgrade-repair-template-3",
+          "text": "Ausklang",
+          "amountKind": "DURATION",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": 321,
+          "restTimerMode": "OFF",
+          "restTimerSeconds": null,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2,
+          "note": "Noch nicht begonnen",
+          "delayMode": null,
+          "defaultDelayMillis": null,
+          "lastUsedDelayMillis": null,
+          "chosenDelayMillis": null
         }
       ]
     }
   ],
   "expectedTarget": [
+    {
+      "table": "flow_run_steps",
+      "where": {"id": "upgrade-repair-finish"},
+      "values": {
+        "sourceTemplateId": "upgrade-repair-template-3",
+        "amountKind": "DURATION",
+        "plannedDurationSeconds": 321,
+        "restTimerMode": "OFF",
+        "state": "BLOCKED",
+        "chosenDelayMillis": null,
+        "actionAtEpochMillis": null
+      }
+    },
     {
       "table": "flow_run_steps",
       "where": {"id": "upgrade-repair-permuted"},
@@ -164,10 +199,10 @@
         "position": 1,
         "sourceTemplateId": "upgrade-repair-template-2",
         "text": "Korrekte Schema-23-Zeile",
-        "amountKind": "DURATION",
-        "plannedSets": null,
-        "plannedReps": null,
-        "plannedDurationSeconds": 321,
+        "amountKind": "SETS_REPS",
+        "plannedSets": 3,
+        "plannedReps": 21,
+        "plannedDurationSeconds": null,
         "restTimerMode": "DEFAULT",
         "restTimerSeconds": null,
         "plannedLoadMode": "BODYWEIGHT_PLUS",

@@ -402,3 +402,37 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Room-Upgrade-Nachweis auf 25. Keine Abschwächung der neuen Laufzeit-Invarianten.
 - Heute-Aktionsdispatcher, Warteübersicht und Alles-Bedienung werden noch verbunden.
   Daher weiterhin kein veröffentlichbarer Gesamtstand und kein Main-/Release-Gate.
+
+### P — UI-Anschluss, Ablaufgrenzen und vollständige Upgrade-Fixtures
+
+- Heute startet/erledigt über Runtime-Schritt-IDs, sammelt separat nach einem letzten
+  Warten ein und zeigt kleine, einzeln veränderbare Wartephasen. Der obere Tau-Behälter
+  entfällt für Abläufe. Alles adressiert dieselben Warte-IDs; Datenänderungen laden nach.
+- Abgelaufene Wartephasen sind verlängerbar, solange kein davon abhängiger Schritt
+  ausgeführt wurde. Angebote verschwinden und erscheinen mit derselben Identität;
+  unabhängige Zweige bleiben unberührt. Erneute Reservierungen prüfen freie Kapazität
+  transaktional, bestehende Belegungen werden nicht entzogen. Neue SQL-Regressionen
+  einschließlich abgelaufener Trockenzeit und inzwischen belegter Kapazität sind grün.
+- Die neun bisherigen Wäsche-Laufzeitfälle prüfen jetzt die produktive Graph-Composition.
+  48 von 49 gezielten Aufgaben-/Wäschetests waren grün; der verbleibende Query-Budget-Test
+  deckte doppelte Bestandsabfragen auf. Inventar wird nun wiederverwendet, normale Aufgaben
+  ohne Abläufe benötigen keine Graph-Abfragen. Eine vollständige Prüfung folgt separat.
+- Der unbenutzte alte FlowSetup-ViewModel samt eigener Entwurfsverwaltung ist entfernt.
+  Seine Wiederherstellungsabdeckung übernimmt der neue lifecycle-/parcel-geprüfte Editor.
+  Normale Speichervorgänge dürfen keine Abläufe oder Kapazitäten erzeugen/überschreiben;
+  die alten kombinierten Editor-Tests sind durch explizite Eigentümergrenzen ersetzt.
+- Historische Einzelmigrations-Regressionen bleiben bis Schema 24 erhalten (44 Fälle
+  grün). Zusätzlich validiert Room selbst das registrierte 24→25-Upgrade: 44 SQL-Fälle
+  grün, einschließlich unveränderter bereits gebuchter Tau-Beträge.
+- Der signierte Upgrade-Korpus zielt auf 25. Die alten synthetischen Spalten-Sentinels
+  kombinierten DURATION mit Satz-Pausen/Trainingslast und Wartezustand an Position null,
+  obwohl beide Schritte schon gewählte Zeiten hatten. Für vollständige Laufzeitproben
+  sind das jetzt gültige Satzschritte plus unbegonnener Dauer-Folgeschritt: Position zwei
+  wartet nach der zweiten Aktion. Alle Notiz-/Delay-/Load-Sentinels, Nullfälle und
+  korrekten Schema-23-Spalten bleiben explizit geprüft; Ressourcen-IDs und Zeitstempel
+  werden ebenfalls kontrolliert. Die ursprünglichen künstlichen Einzelspaltenfälle
+  bleiben in den historischen Regressionen erhalten, nicht als produktive Laufzeit.
+- Neuer Korpus-Test erzeugt jede deklarierte Quellversion, säht jede Spalte, führt die
+  registrierten Room-Migrationen bis 25 aus und prüft sämtliche Zielwerte sowie den
+  lauffähigen Graph-Snapshot. **9 Korpus-/Upgrade-Tests grün**, einschließlich API 26/35.
+  Das ist lokaler Nachweis, noch kein signiertes Geräte-Upgrade/PR/Main/Release.
