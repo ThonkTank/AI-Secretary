@@ -40,6 +40,17 @@ class FlowTileEditorInstrumentationTest {
     @Before fun awaitTiles() {
         assertTrue(device.wait(Until.hasObject(By.desc("Waschen")), 5_000))
         activityRule.scenario.onActivity { ids = it.editor.state.value.draft.graph.stepIds }
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        var focused = false
+        do {
+            activityRule.scenario.onActivity { focused = it.hasWindowFocus() }
+            if (focused) break
+            SystemClock.sleep(20)
+        } while (SystemClock.uptimeMillis() < deadline)
+        assertTrue("The editor must receive input before a gesture starts", focused)
+        assertFalse("The editor window did not finish its transition",
+            requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+                .waitForStable(5_000, 300, 50, true).isTimeout)
     }
 
     @Test fun stepDialogHasOnlyNameWaitAndTheDirectCheckboxAtLargeFont() {
@@ -62,14 +73,18 @@ class FlowTileEditorInstrumentationTest {
     @Test fun touchDragInsertsBeforeAndUndoRestoresTheStableGraph() {
         val origin = button("Trockner").visibleBounds
         val target = button("Aufhängen").visibleBounds
-        assertTrue(device.swipe(origin.centerX(), origin.centerY(), target.centerX(), target.top + 3, 30))
-        assertGraph { it.predecessors(ids[1]) == listOf(ids[2]) && it.predecessors(ids[2]) == listOf(ids[0]) }
+        pointer(origin.centerX().toFloat(), origin.centerY().toFloat(), target.centerX().toFloat(),
+            target.top + 3f, cancel = false, mouse = false)
+        awaitGraph { it.predecessors(ids[1]) == listOf(ids[2]) && it.predecessors(ids[2]) == listOf(ids[0]) }
         button("Rückgängig").click()
-        assertGraph { it.links == listOf(FlowTileGraph.Link(ids[0], ids[1])) && it.stepIds == ids }
+        awaitGraph { it.links == listOf(FlowTileGraph.Link(ids[0], ids[1])) && it.stepIds == ids }
+        assertFalse(requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+            .waitForStable(5_000, 300, 50, true).isTimeout)
         val again = button("Trockner").visibleBounds
         val before = button("Aufhängen").visibleBounds
-        assertTrue(device.swipe(again.centerX(), again.centerY(), before.centerX(), before.top + 3, 30))
-        assertGraph { it.predecessors(ids[1]) == listOf(ids[2]) && it.predecessors(ids[2]) == listOf(ids[0]) }
+        pointer(again.centerX().toFloat(), again.centerY().toFloat(), before.centerX().toFloat(),
+            before.top + 3f, cancel = false, mouse = false)
+        awaitGraph { it.predecessors(ids[1]) == listOf(ids[2]) && it.predecessors(ids[2]) == listOf(ids[0]) }
     }
 
     @Test fun cancelledGestureNeverWritesAPreviewIntoTheDraft() {
@@ -86,7 +101,7 @@ class FlowTileEditorInstrumentationTest {
         val end = button("Aufhängen").visibleBounds
         pointer(start.centerX().toFloat(), start.centerY().toFloat(), end.centerX().toFloat(),
             end.top + 3f, cancel = false, mouse = true)
-        assertGraph { it.predecessors(ids[1]) == listOf(ids[2]) }
+        awaitGraph { it.predecessors(ids[1]) == listOf(ids[2]) }
     }
 
     @Test fun nativeAccessibilityCanJoinAndUndoWithoutDraggingATile() {

@@ -508,3 +508,12 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   aktuellen, aufgefrischten Baum sowie auf den angewendeten Graphzustand. Vor Übernehmen
   wird weiterhin nachgewiesen, dass die sichtbare Vorschau noch nichts gespeichert hat.
   Nur die Tests ändern sich; erneute Matrix erforderlich, kein vorgezogenes Merge-Gate.
+
+- Auf `fa7e92b0` bestehen PR-Geräteprüfungen API 26/35/37 sowie Animation 26/37;
+  Animation 35 läuft zu diesem Zeitpunkt noch. Ein zusätzlicher lokaler Durchlauf unter
+  hoher Hostlast erwischt die erste Touch-Geste zu früh. Die native Suite wartet nun
+  ausdrücklich auf Fensterfokus und einen stabilen gezeichneten Zustand, sendet Touch
+  mit demselben synchronen Pointer-Helfer wie Maus/Abbruch und wartet auf die angewendete
+  Struktur. Kein Ausschalten von Animationen und keine Wiederholung fehlgeschlagener Gesten.
+  Alle sieben Fälle mit Animation 1.0 sind danach lokal grün (3m 5s). Diese letzte Änderung
+  betrifft ausschließlich Teststeuerung; der produktive Stand bleibt `5780d8e7`.
