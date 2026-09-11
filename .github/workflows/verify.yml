@@ -270,7 +270,7 @@ jobs:
       INSTRUMENTATION_API_LEVEL: ${{ matrix.api-level }}
       INSTRUMENTATION_ANIMATION_SCALE: "1.0"
       INSTRUMENTATION_PREPARE_INTERACTION_DEVICE: "true"
-      INSTRUMENTATION_TEST_CLASS: de.thonktank.autosecretary.TaskEditorComposeInstrumentationTest,de.thonktank.autosecretary.TaskEditorComposeApi37InstrumentationTest,de.thonktank.autosecretary.AllTasksComposeInstrumentationTest,de.thonktank.autosecretary.AllTasksComposeApi37InstrumentationTest,de.thonktank.autosecretary.FlowTileEditorInstrumentationTest,de.thonktank.autosecretary.ui.today.TodayInteractionInstrumentationTest
+      INSTRUMENTATION_TEST_CLASS: de.thonktank.autosecretary.TaskEditorComposeInstrumentationTest,de.thonktank.autosecretary.TaskEditorComposeApi37InstrumentationTest,de.thonktank.autosecretary.AllTasksComposeInstrumentationTest,de.thonktank.autosecretary.AllTasksComposeApi37InstrumentationTest,de.thonktank.autosecretary.FlowTileEditorInstrumentationTest,de.thonktank.autosecretary.FlowProductEditorInstrumentationTest,de.thonktank.autosecretary.ui.today.TodayInteractionInstrumentationTest
     strategy:
       fail-fast: false
       matrix:

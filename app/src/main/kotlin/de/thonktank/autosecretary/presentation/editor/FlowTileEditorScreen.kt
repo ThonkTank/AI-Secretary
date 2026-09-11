@@ -43,6 +43,7 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
     val scroll = rememberScrollState()
     var viewport by remember { mutableStateOf(Rect.Zero) }
     Column(modifier.fillMaxSize().background(Color.argb(palette.background))
+        .semantics { testTagsAsResourceId = true }
         .onGloballyPositioned { viewport = it.boundsInRoot() }
         .verticalScroll(scroll).padding(16.dp).testTag("flow-editor")) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -63,7 +64,7 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
             state.form != null -> FlowEditorFormSurface(state.form, state, palette, editor)
             state.page == 1 -> {
                 EditorInput(state.draft.name, editor::rename, palette, hint = "Ablaufname",
-                    textSize = 30, serif = true,
+                    textSize = 30, serif = true, tag = "flow-editor:title",
                     modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Ablaufname" })
                 Spacer(Modifier.height(16.dp))
                 FlowTileBoard(state, palette, editor, scroll, viewport)

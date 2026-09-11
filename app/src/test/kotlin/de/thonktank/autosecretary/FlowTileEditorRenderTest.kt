@@ -21,15 +21,18 @@ import java.io.File
 import java.time.Duration
 import java.time.LocalTime
 
-/** Review renders, not self-updating goldens. Approved Android references remain a separate gate. */
+/** Reviewed compact Android references derived from the approved tile-only interaction contract. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w320dp-h1000dp-mdpi")
-class FlowTileEditorRenderTest {
+class FlowTileEditorGoldenRobolectricTest {
     @Test fun compactAndLargeStepDialogsRenderWithTheDirectCheckbox() {
-        render("step-320", 1f, true)
-        render("step-320-large", 1.6f, true)
-        render("tiles-320", 1f, false)
+        var failure: AssertionError? = null
+        listOf(Triple("step-320", 1f, true), Triple("step-320-large", 1.6f, true),
+            Triple("tiles-320", 1f, false)).forEach { (name, scale, form) ->
+            try { render(name, scale, form) } catch (error: AssertionError) { if (failure == null) failure = error }
+        }
+        failure?.let { throw it }
     }
 
     private fun render(name: String, scale: Float, form: Boolean) {
@@ -72,6 +75,9 @@ class FlowTileEditorRenderTest {
                 requireNotNull(file.parentFile).mkdirs()
                 file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                 assertTrue(file.length() > 1000)
+                GoldenAssertions.compare(FlowTileEditorGoldenRobolectricTest::class.java,
+                    "/golden/flow-tiles/$name.png", File("src/test/resources/golden/flow-tiles", "$name.png"),
+                    File("build/reports/goldens/flow-tiles", name), bitmap, 0, 0.0, "UPDATE_FLOW_TILE_GOLDENS")
             } finally { bitmap.recycle() }
         } finally {
             composition?.disposeComposition()
