@@ -4,11 +4,6 @@ public final class ActivateReadyFlows {
     private final java.util.function.BooleanSupplier activate;
     private final java.util.function.Supplier<Long> next;
 
-    public ActivateReadyFlows(FlowRuntimeCoordinator coordinator) {
-        this.activate = coordinator::activateReady;
-        this.next = coordinator::nextReadyAtEpochMillis;
-    }
-
     public ActivateReadyFlows(GraphFlowRuntime runtime) {
         this.activate = runtime::activateReady; this.next = runtime::nextReadyAtEpochMillis;
     }

@@ -70,20 +70,4 @@ public interface FlowDao {
     FlowTaskSheetPlacementEntity flowTaskSheetPlacement(String taskId, String slot);
     @Query("SELECT * FROM flow_task_sheet_placements ORDER BY slot, displayOn, sortOrder, id")
     List<FlowTaskSheetPlacementEntity> flowTaskSheetPlacements();
-    // Schema 24 operations remain explicit failures while old callers are removed in the cutover.
-    default long insertStepFlowRun(StepFlowRunEntity run) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default void updateStepFlowRun(StepFlowRunEntity run) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default StepFlowRunEntity stepFlowRun(String id) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default StepFlowRunEntity stepFlowRunBySourceKey(String sourceKey) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default List<StepFlowRunEntity> activeStepFlowRuns() { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default List<StepFlowRunEntity> activeStepFlowRuns(String taskId) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default void insertFlowRunSteps(List<FlowRunStepEntity> steps) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default List<FlowRunStepEntity> flowRunSteps(String runId) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default List<FlowRunStepEntity> flowRunStepsFor(List<String> runIds) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default void updateFlowRunStep(FlowRunStepEntity step) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default void insertFlowRunResources(List<FlowRunResourceEntity> resources) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default List<FlowRunResourceEntity> flowRunResources(String runId) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default List<FlowRunResourceEntity> flowRunResourcesFor(List<String> runIds) { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default List<FlowRunResourceEntity> consumingFlowResources() { throw new UnsupportedOperationException("Use graph runtime repository"); }
-    default void updateFlowRunResource(FlowRunResourceEntity resource) { throw new UnsupportedOperationException("Use graph runtime repository"); }
 }

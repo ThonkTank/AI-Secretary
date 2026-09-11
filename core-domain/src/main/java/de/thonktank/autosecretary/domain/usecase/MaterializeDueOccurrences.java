@@ -122,7 +122,8 @@ public final class MaterializeDueOccurrences {
                                 Map<String, Integer> scheduleRanks) {
         DueDatePlanner.Plan planned = planner.throughToday(
                 task, schedule, today, history, templates);
-        if (graphs != null && task.kind == de.thonktank.autosecretary.domain.model.TaskKind.FLOW) {
+        if (task.kind == de.thonktank.autosecretary.domain.model.TaskKind.FLOW) {
+            if (graphs == null || graphRuns == null) throw new IllegalStateException("Graph repositories are required for flows");
             boolean changed = materializeGraphCandidates(task, planned, scheduleRanks);
             if (planned.nextDueChanged || planned.materializedCount > 0) {
                 catalog.updateTask(task.afterPlanning(planned.nextDue, planned.materializedCount));
@@ -132,10 +133,7 @@ public final class MaterializeDueOccurrences {
             // is created, including single-step flows and days with no due start.
             return changed;
         }
-        FlowMaterialization flowMaterialization = materializeFlowCandidates(task, templates, planned,
-                scheduleRanks);
-        planned = flowMaterialization.ordinaryPlan;
-        boolean changed = flowMaterialization.changed;
+        boolean changed = false;
         boolean hasOpen;
         if (task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE) {
             AccumulatingOccurrenceAssembler.Result assembled =
@@ -164,68 +162,6 @@ public final class MaterializeDueOccurrences {
             changed = true;
         }
         return changed;
-    }
-
-    private FlowMaterialization materializeFlowCandidates(Task task,
-                                                    List<TaskStepTemplate> templates,
-                                                    DueDatePlanner.Plan planned,
-                                                    Map<String, Integer> scheduleRanks) {
-        if (graphs != null) return new FlowMaterialization(planned, false);
-        boolean hasFollowUp = false;
-        for (TaskStepTemplate template : templates)
-            if (template.activationKind == StepActivationKind.FOLLOW_UP) {
-                hasFollowUp = true;
-                break;
-            }
-        if (!hasFollowUp) return new FlowMaterialization(planned, false);
-        List<StepTransition> transitions = flows.stepTransitions(task.id);
-        List<StepResourceLease> leases = flows.stepResourceLeases(task.id);
-        if (transitions.isEmpty() && leases.isEmpty())
-            return new FlowMaterialization(planned, false);
-
-        StepFlowDefinition definition = new StepFlowDefinition(task.id, templates, transitions,
-                leases, flows.capacityResources());
-        Map<TaskSlot, List<TaskStepTemplate>> ordinaryBySlot = new LinkedHashMap<>();
-        List<DueDatePlanner.PlannedDue> ordinaryDues = new ArrayList<>();
-        boolean changed = false;
-        for (DueDatePlanner.PlannedDue due : planned.dues) {
-            List<TaskStepTemplate> ordinary = new ArrayList<>();
-            boolean containedFlow = false;
-            for (TaskStepTemplate template : due.templates) {
-                if (!definition.participates(template.id)) {
-                    ordinary.add(template);
-                    continue;
-                }
-                containedFlow = true;
-                String sourceKey = "flow:" + task.id.value + ':' + template.id + ':'
-                        + due.scheduledOn + ':' + due.slot.storageCode;
-                if (flows.findFlowCandidateBySourceKey(sourceKey) != null
-                        || flows.findFlowRunBySourceKey(sourceKey) != null) continue;
-                long rank = scheduleRanks.getOrDefault(
-                        task.id.value + '|' + due.slot.name(), 0);
-                long queueOrder = rank * 1_000_000_000L
-                        + due.scheduledOn.toEpochDay() * 1_000L + template.position;
-                FlowCandidate candidate = new FlowCandidate(ids.nextId(), task.id, template.id,
-                        sourceKey, due.scheduledOn, due.slot, queueOrder,
-                        moments.nowEpochMillis());
-                if (flows.insertFlowCandidate(candidate)) {
-                    changed = true;
-                    if (flows.findFlowTaskSheetPlacement(task.id, due.slot) == null)
-                        flows.putFlowTaskSheetPlacement(new FlowTaskSheetPlacement(
-                                FlowTaskSheetPlacement.stableId(task.id, due.slot), task.id,
-                                due.slot, clock.today(), (int) Math.max(0L,
-                                Math.min(Integer.MAX_VALUE, rank))));
-                }
-            }
-            if (!containedFlow || !ordinary.isEmpty()) {
-                ordinaryDues.add(new DueDatePlanner.PlannedDue(
-                        due.scheduledOn, due.slot, ordinary));
-                addPlannedTemplates(ordinaryBySlot, due.slot, ordinary);
-            }
-        }
-        DueDatePlanner.Plan ordinaryPlan = new DueDatePlanner.Plan(ordinaryBySlot, ordinaryDues,
-                planned.nextDue, planned.materializedCount, planned.nextDueChanged);
-        return new FlowMaterialization(ordinaryPlan, changed);
     }
 
     private boolean materializeGraphCandidates(Task task, DueDatePlanner.Plan planned,
@@ -272,16 +208,6 @@ public final class MaterializeDueOccurrences {
                     break;
                 }
             if (!present) selected.add(template);
-        }
-    }
-
-    private static final class FlowMaterialization {
-        final DueDatePlanner.Plan ordinaryPlan;
-        final boolean changed;
-
-        FlowMaterialization(DueDatePlanner.Plan ordinaryPlan, boolean changed) {
-            this.ordinaryPlan = ordinaryPlan;
-            this.changed = changed;
         }
     }
 
