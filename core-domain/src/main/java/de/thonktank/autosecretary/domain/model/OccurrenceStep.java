@@ -13,6 +13,8 @@ public final class OccurrenceStep {
     public final String note;
     public final RepetitionProgress repetitionProgress;
     public final String sourceTemplateId;
+    /** Frozen runtime identity, distinct from the editable template and the whole chain. */
+    public final String flowRunStepId;
     public final String comboOwnerId;
     public final String originOccurrenceId;
     public final CarryForwardReason carryForwardReason;
@@ -22,6 +24,14 @@ public final class OccurrenceStep {
                            List<SetResult> setResults, String sourceTemplateId,
                            String comboOwnerId, String originOccurrenceId,
                            CarryForwardReason carryForwardReason) {
+        this(id, occurrenceId, position, text, done, prescription, note, setResults,
+                sourceTemplateId, comboOwnerId, originOccurrenceId, carryForwardReason, null);
+    }
+
+    private OccurrenceStep(String id, String occurrenceId, int position, String text, boolean done,
+                           StepPrescription prescription, String note, List<SetResult> setResults,
+                           String sourceTemplateId, String comboOwnerId, String originOccurrenceId,
+                           CarryForwardReason carryForwardReason, String flowRunStepId) {
         if (id == null || id.isEmpty() || occurrenceId == null || occurrenceId.isEmpty()
                 || setResults == null || comboOwnerId == null)
             throw new IllegalArgumentException(
@@ -40,6 +50,9 @@ public final class OccurrenceStep {
         this.done = progress == null ? done : progress.completed();
         this.sourceTemplateId = sourceTemplateId == null || sourceTemplateId.isEmpty()
                 ? null : sourceTemplateId;
+        if (flowRunStepId != null && (flowRunStepId.trim().isEmpty() || this.sourceTemplateId == null))
+            throw new IllegalArgumentException("Runtime step identity needs its frozen source identity");
+        this.flowRunStepId = flowRunStepId;
         this.comboOwnerId = comboOwnerId.isEmpty() ? "step:" + id : comboOwnerId;
         this.originOccurrenceId = originOccurrenceId == null || originOccurrenceId.isEmpty()
                 ? null : originOccurrenceId;
@@ -56,6 +69,17 @@ public final class OccurrenceStep {
         return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
                 setResults, sourceTemplateId, comboOwnerId, originOccurrenceId,
                 carryForwardReason);
+    }
+
+    /** Graph persistence boundary; ordinary occurrences use the overload without a runtime ID. */
+    public static OccurrenceStep rehydrate(
+            String id, String occurrenceId, int position, String text, boolean done,
+            StepPrescription prescription, String note, List<SetResult> setResults,
+            String sourceTemplateId, String comboOwnerId, String originOccurrenceId,
+            CarryForwardReason carryForwardReason, String flowRunStepId) {
+        return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
+                setResults, sourceTemplateId, comboOwnerId, originOccurrenceId,
+                carryForwardReason, flowRunStepId);
     }
 
     public OccurrenceStep complete() {
@@ -97,7 +121,7 @@ public final class OccurrenceStep {
     private OccurrenceStep copy(boolean completed, List<SetResult> results) {
         return new OccurrenceStep(id, occurrenceId, position, text, completed, prescription,
                 note, results, sourceTemplateId, comboOwnerId, originOccurrenceId,
-                carryForwardReason);
+                carryForwardReason, flowRunStepId);
     }
 
     private OccurrenceStep withProgress(RepetitionProgress progress) {
@@ -106,13 +130,13 @@ public final class OccurrenceStep {
 
     public OccurrenceStep withCarryOrigin(String originId, CarryForwardReason reason) {
         return new OccurrenceStep(id, occurrenceId, position, text, done, prescription, note,
-                results(), sourceTemplateId, comboOwnerId, originId, reason);
+                results(), sourceTemplateId, comboOwnerId, originId, reason, flowRunStepId);
     }
 
     public OccurrenceStep relocate(String targetOccurrenceId, int targetPosition) {
         return new OccurrenceStep(id, targetOccurrenceId, targetPosition, text, done,
                 prescription, note, results(), sourceTemplateId, comboOwnerId,
-                originOccurrenceId, carryForwardReason);
+                originOccurrenceId, carryForwardReason, flowRunStepId);
     }
 
     private List<SetResult> results() {
