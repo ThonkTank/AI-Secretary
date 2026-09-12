@@ -1077,3 +1077,20 @@ Build-/Identitätsnachweis ohne Produktionssignatur. Der vollständige lokale ch
 anschließend mit regulärer Instrumentierungsvariante; Logs `/tmp/p4b-full-local-check.log`.
 Aktuell veröffentlichte Version frisch über GitHub geprüft:0.2.174/tag1017401. P4b-PR noch nicht
 angelegt; regulär signierter höher versionierter Release wird erst nach dessen geprüftem Merge gebaut.
+
+### P4b – Präzisierung der Prüfungsreihenfolge vor PR-Eröffnung
+
+Der vollständige lokale Check läuft nach den grünen gezielten Nachweisen weiterhin nachweislich
+in seiner ursprünglichen Sitzung. Statt bis zu dessen Ende auch mit dem Start unabhängiger
+PR-Prüfungen zu warten, wird ein Draft-PR parallel eröffnet. Das ändert ausschließlich die
+zeitliche Überlappung: lokaler Vollcheck und vollständiger PR-Gate bleiben beide vor Ready/Merge
+erforderlich, kein grünes Ergebnis wird vorweggenommen. Bei einem lokalen Fehler wird zuerst
+dessen Ursache geklärt; ein überholter CI-Stand wird nicht als Nachweis übernommen. Keine
+Wiederholung des laufenden lokalen Checks. Produkt-/Testdateien sind seit Commit01f1dd64 unverändert;
+der folgende Commit ergänzt nur diesen Ausführungsvermerk. Das vorgeschaltete Warten bis vor
+PR-Eröffnung wird damit ausdrücklich ersetzt, der Freigabevertrag bleibt unverändert.
+
+Frischer lesender Vorabgleich: PR364/366/367/368 sind gemergt, ihre Main-Läufe34699171018/
+34708748445/34714576280/34717366394 erfolgreich und alle vier Merge-Commits Vorfahren des
+aktuellen Branches. Remote-Main unverändertd779ed38; Pixel weiterhin nicht verbunden.
+Beleg `/tmp/p4b-crossphase-remote-proof.json`. Keine neue Ausführung früherer Phasenprüfungen.
