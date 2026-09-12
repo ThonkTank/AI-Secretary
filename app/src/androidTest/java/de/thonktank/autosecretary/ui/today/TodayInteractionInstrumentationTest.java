@@ -83,6 +83,10 @@ public final class TodayInteractionInstrumentationTest {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
     }
 
+    @Test public void titleTouchAndAccessibleLaterChangeActualFocusAndPersistOnRecreation() {
+        new TodayProductInteractionScenario().execute();
+    }
+
     @Test public void longPressStartsReorder() {
         GestureScenario scenario = gestureScenario();
 

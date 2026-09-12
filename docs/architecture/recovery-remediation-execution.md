@@ -67,3 +67,67 @@ separaten Abnahmenachweis offen halten. Diese Dokumentationsphase erfordert kein
   `/tmp/recovery-device-proof/`; keine persönlichen Daten werden ins Repository kopiert.
 - Dokumentverweise, Phasen P0–P5 und Format wurden geprüft. Abgleich: P0-Belegbestand erfüllt;
   Pixel-Abnahme ausdrücklich offen. Integration per PR steht noch aus.
+
+### P0 – Integration
+
+PR 363 (`6f54d0cc`) bestand den Dokumentations-Gate im Lauf 34697046556 und wurde per
+Squash als `da6e9a41f844878762870e8a3c2d8cd265faec89` integriert. Exakter Main-Lauf
+34697081276 erfolgreich; kein Produktrelease. P0-Belegbestand abgeschlossen, sichtbare
+Pixel-Abnahme weiterhin separat offen.
+
+## P1 – Phasenplan vor Implementierung
+
+Ausgangsstand: `da6e9a41f844878762870e8a3c2d8cd265faec89`.
+Branch: `codex/today-action-integration`.
+
+- Eine eigene Integrationstestklasse verwendet bestehenden Room-/UseCase-/ViewModel-Aufbau,
+  den echten DashboardRenderer und seine produktiven Klickbindungen. Datenbankdatei nach dem
+  Titel-Klick schließen/neu öffnen; kein Befehlsrecorder hinter dem Klick.
+- Fokus-/Abschnittsübergänge von „Später“ einschließlich Einzelaufgabe und einen normalen/Flow-
+  Mischfall prüfen. Historie, XP, Ablaufkandidaten und Ressourcen vor/nach den Aktionen vergleichen.
+- Nativer repräsentativer Test in der isolierten Instrumentierungs-App durch den tatsächlichen
+  MainActivity-Bedienweg; kein Säen auf dem Pixel-Produktionspaket.
+- Coordinator-Befehlsaktionen mit gültigen Factory-Eingaben ausführen und genau einen typisierten
+  Befehl sowie normale Rückkehr prüfen. Die vorhandene Quelltextprüfung bleibt höchstens als
+  Architekturgrenze, nicht als Ersatz für diese Verhaltensprüfung.
+- Gezielte Gegenproben für historischen break, falsches Ziel und unterbundene Speicherung
+  lokal/isoliert durchführen; Änderungen danach zurücknehmen und Ergebnisse protokollieren.
+- Zuerst gezielte Tests, dann vollständiger bisheriger lokaler Check und PR-Matrix. Test-/Harness-
+  Änderungen erfordern Instrumentierung, aber bei unverändertem Produkt-/Upgrade-Probe-Code
+  keinen Produktrelease. Ein abweichender Scope wird vor Auslieferung ausdrücklich geprüft.
+
+### P1 – Korrekturrunde 1: Testaufbau
+
+Der erste gezielte Lauf bestand die normalen Titel-/Später-Fälle und alle Coordinator-Fälle.
+Der Mischfall scheiterte vor dem Bedienweg: `FlowGraphEdit` prüft `containsValue(null)`, was die
+verwendete Java-`Map.of` bereits mit einer NPE abweist. Plan: wie der bestehende Flow-Testaufbau
+`LinkedHashMap` verwenden; den zusätzlichen Abschnittsgrenzfall anschließend mitprüfen.
+Kein Produktfix oder abgeschwächter Assertion-Umfang ist dafür erforderlich.
+
+Die korrigierten Hosttests sind grün (zehn Integrationsfälle auf API 26/35 und fünf
+Coordinator-Tests). Der parallel angeforderte native Build sah beim laufenden Umbenennen der
+neuen Hilfsklasse einen inkonsistenten Quellstand und scheiterte an deren Auflösung. Korrekturplan:
+Quellstand einfrieren und den nativen Build erneut ausführen. Das neue Szenario wird vom bereits
+in allen normalen und Animations-Lanes ausgewählten `TodayInteractionInstrumentationTest`
+aufgerufen; die CI-Auswahl muss dafür nicht verändert werden.
+
+### P1 – Gezielte Validierung und Abgleich vor PR
+
+- Hosttestlauf: zehn Integrationsfälle (fünf Szenarien jeweils API 26/35) und fünf Coordinator-
+  Tests bestanden. Nativer APK-Build nach eingefrorenem Quellstand ebenfalls erfolgreich.
+- Gegenproben, jeweils tatsächlich ausgeführt auf API 26 und 35: historischer `break` erzeugt
+  `Unhandled Today action BRING_FIRST` über `DashboardRenderer` → ViewModel → Coordinator;
+  falsches Dispatcher-Ziel und unterbundene Room-Speicherung ergeben jeweils unveränderte
+  Reihenfolge `[A,B,C]` statt `[C,A,B]`. Alle sechs Negativfälle scheitern am erwarteten Verhalten.
+  Die drei XML-Ergebnisse haben getrennte aktuelle Laufzeitstempel; keine Compilerfehler als
+  Testversagen gezählt. Lokale Rohbelege: `/tmp/p1-mutation-*/result.xml` und `gradle.log`.
+- Alle Gegenproben vollständig zurückgenommen; Produktdateien entsprechen unverändert dem
+  Ausgangsstand. Der anschließende vollständige lokale Check prüft den wiederhergestellten Stand.
+- Abgleich gegen Phasenplan: produktiver Renderer-/ViewModel-/Room-Bedienweg, dateibasierte
+  Neuöffnung, Abschnittsende/-wechsel/Einzelfall, Mischfall mit nichtleerem Verlauf, Ressourcen,
+  Kandidaten und Belohnungen abgedeckt. Coordinator prüft alle Befehlsarten; stateful Reorder
+  behält seinen eigenen Idempotenztest. Keine zweite Produktverdrahtung eingeführt.
+- Abgleich gegen Roadmap: natives Touch-/Accessibility-Szenario ist in allen bestehenden Today-
+  Lanes ausgewählt und prüft produktiven Fokus plus Activity-Neuerstellung. Der tatsächliche
+  native Lauf, vollständiger lokaler Gate, PR- und Main-Abschluss bleiben bis zu ihren Ergebnissen
+  offen. Kein Release erforderlich: ausschließlich Tests und Ausführungsprotokoll geändert.
