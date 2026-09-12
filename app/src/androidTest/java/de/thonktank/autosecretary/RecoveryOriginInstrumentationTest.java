@@ -12,11 +12,11 @@ import androidx.room.Room;
 import androidx.room.migration.Migration;
 import androidx.room.testing.MigrationTestHelper;
 import androidx.sqlite.db.SupportSQLiteDatabase;
+import androidx.sqlite.db.SupportSQLiteOpenHelper;
+import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import de.thonktank.autosecretary.data.local.DatabaseMigrations;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Rule;
 import org.junit.Test;
@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-/** Characterizes the historical orphan generator through the production Room opening path. */
+/** Regression for candidate cleanup through the production Room opening path. */
 @RunWith(AndroidJUnit4.class)
 public final class RecoveryOriginInstrumentationTest {
     private static final String DATABASE = "recovery-origin";
@@ -38,15 +38,60 @@ public final class RecoveryOriginInstrumentationTest {
 
     @After public void deleteFixture() { context.deleteDatabase(DATABASE); }
 
-    @Test public void exported22CreatesOrphansDuringActualRoomUpgrade() throws Exception {
-        characterize(22);
+    @Test public void exported22RemovesOnlyUnusedChildrenWithoutRecovery() throws Exception {
+        verifyUpgrade(22, "none");
     }
 
-    @Test public void organic20CreatesSameOrphansWithoutColumnPermutation() throws Exception {
-        characterize(20);
+    @Test public void organic20PreservesHistoryWithoutCreatingOrphans() throws Exception {
+        verifyUpgrade(20, "none");
     }
 
-    private void characterize(int source) throws Exception {
+    @Test public void partialResultsKeepPendingRunAndItsSnapshots() throws Exception { verifyUpgrade(22, "partial"); }
+    @Test public void timerKeepsPendingRunAndItsSnapshots() throws Exception { verifyUpgrade(22, "timer"); }
+    @Test public void assignedRewardKeepsPendingRunAndItsSnapshots() throws Exception { verifyUpgrade(22, "assigned"); }
+    @Test public void bookingLinkedToPendingStepKeepsItsRun() throws Exception { verifyUpgrade(22, "linked-booking"); }
+    @Test public void completedOccurrenceKeepsPendingRunAndItsSnapshots() throws Exception { verifyUpgrade(22, "completed"); }
+    @Test public void resolvedObligationKeepsPendingRunAndItsSnapshots() throws Exception { verifyUpgrade(22, "resolved"); }
+
+    @Test public void failureAfterCleanupRollsBackEveryOriginalRow() throws Exception {
+        DiagnosticFixtures.requireIsolated(context);
+        SupportSQLiteDatabase old = helper.createDatabase(DATABASE, 22);
+        old.setForeignKeyConstraintsEnabled(true);
+        seed(old, 22); seedUntouchedOffer(old);
+        old.execSQL("CREATE TRIGGER reject_clean_parent BEFORE DELETE ON step_flow_runs WHEN OLD.id='clean' BEGIN "
+                + "SELECT CASE WHEN EXISTS(SELECT 1 FROM flow_run_steps WHERE runId=OLD.id) "
+                + "OR EXISTS(SELECT 1 FROM flow_run_resources WHERE runId=OLD.id) "
+                + "OR EXISTS(SELECT 1 FROM occurrence_steps WHERE occurrenceId='clean-sheet') "
+                + "OR EXISTS(SELECT 1 FROM combo_obligations WHERE occurrenceId='clean-sheet') "
+                + "THEN RAISE(ABORT,'children-not-cleaned') ELSE RAISE(ABORT,'injected-after-cleanup') END; END");
+        Map<String, List<Map<String, String>>> before = databaseSnapshot(old);
+        old.close();
+        AppDatabase room = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.from(22)).build();
+        RuntimeException failure = null;
+        try { room.getOpenHelper().getWritableDatabase(); }
+        catch (RuntimeException expected) { failure = expected; }
+        finally { room.close(); }
+        assertTrue("Injected upgrade failure must occur", failure != null);
+        assertTrue("Failure must follow actual child cleanup: " + failure,
+                Log.getStackTraceString(failure).contains("injected-after-cleanup"));
+        SupportSQLiteOpenHelper reopened = new FrameworkSQLiteOpenHelperFactory().create(
+                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
+                        .callback(new SupportSQLiteOpenHelper.Callback(22) {
+                            @Override public void onCreate(SupportSQLiteDatabase db) { throw new AssertionError("Source missing"); }
+                            @Override public void onUpgrade(SupportSQLiteDatabase db, int from, int to) { throw new AssertionError("Source version changed"); }
+                        }).build());
+        try {
+            SupportSQLiteDatabase db = reopened.getWritableDatabase();
+            assertEquals(22, db.getVersion());
+            assertEquals(before, databaseSnapshot(db));
+            assertEquals(new TreeMap<>(), violations(db));
+        } finally { reopened.close(); }
+    }
+
+    private void verifyUpgrade(int source, String evidence) throws Exception {
+        boolean keepPending = !evidence.equals("none");
+        int retainedPending = keepPending ? 1 : 0;
         DiagnosticFixtures.requireIsolated(context);
         SupportSQLiteDatabase old = helper.createDatabase(DATABASE, source);
         // Seed a demonstrably healthy database. This connection is closed before Room opens it.
@@ -64,6 +109,14 @@ public final class RecoveryOriginInstrumentationTest {
             old.setForeignKeyConstraintsEnabled(true);
         }
         seedUntouchedOffer(old);
+        Map<String, String> evidenceQueries = seedEvidence(old, evidence);
+        Map<String, String> pendingOccurrence = row(old, "occurrences", "id='clean-sheet'");
+        pendingOccurrence.put("flowExecutionSequence", pendingOccurrence.remove("flowSheetSequence"));
+        pendingOccurrence.put("kind", Cursor.FIELD_TYPE_STRING + ":FLOW_STEP");
+        pendingOccurrence.put("sourceKey", Cursor.FIELD_TYPE_STRING + ":flow-step:clean:0");
+        Map<String, Map<String, String>> evidenceRows = new LinkedHashMap<>();
+        for (Map.Entry<String, String> query : evidenceQueries.entrySet())
+            evidenceRows.put(query.getKey(), row(old, query.getKey(), query.getValue()));
         assertEquals(1, scalar(old, "PRAGMA foreign_keys"));
         assertEquals(new TreeMap<>(), violations(old));
         assertEquals(bookings, row(old, "reward_bookings", "id='history-booking'"));
@@ -71,6 +124,10 @@ public final class RecoveryOriginInstrumentationTest {
         Map<String, Map<String, String>> retainedSteps = new LinkedHashMap<>();
         for (String id : new String[]{"started-prep", "started-run-step", "waiting-run-step", "waiting-next-step"})
             retainedSteps.put(id, row(old, "flow_run_steps", "id='" + id + "'"));
+        if (keepPending) {
+            retainedSteps.put("clean-run-step", row(old, "flow_run_steps", "id='clean-run-step'"));
+            retainedSteps.put("clean-next-step", row(old, "flow_run_steps", "id='clean-next-step'"));
+        }
         old.close();
 
         Map<String, Map<String, String>> originals = new LinkedHashMap<>();
@@ -95,17 +152,14 @@ public final class RecoveryOriginInstrumentationTest {
                     originals.put("occurrence_steps", row(db, "occurrence_steps", "id='clean-offered-step'"));
                     migration.migrate(db);
                     observed.putAll(violations(db));
-                    Map<String, Integer> expected = new TreeMap<>();
-                    expected.put("flow_run_steps", 1);
-                    expected.put("flow_run_resources", 1);
-                    expected.put("occurrence_steps", 1);
-                    assertEquals("Generator before the later recovery", expected, observed);
-                    assertEquals(0, scalar(db, "SELECT COUNT(*) FROM step_flow_runs WHERE id='clean'"));
-                    assertEquals(1, scalar(db, "SELECT COUNT(*) FROM flow_candidates WHERE id='clean'"));
+                    assertEquals("Cleanup must not rely on later recovery", new TreeMap<>(), observed);
+                    assertEquals(retainedPending, scalar(db, "SELECT COUNT(*) FROM step_flow_runs WHERE id='clean'"));
+                    assertEquals(1 - retainedPending, scalar(db, "SELECT COUNT(*) FROM flow_candidates WHERE id='clean'"));
                     for (Map.Entry<String, Map<String, String>> entry : originals.entrySet()) {
                         String id = entry.getValue().get("id").substring(2);
-                        assertEquals("Original semantic columns survive 22->23", entry.getValue(),
+                        if (keepPending) assertEquals("Original semantic columns survive 22->23", entry.getValue(),
                                 row(db, entry.getKey(), "id='" + id + "'"));
+                        else assertEquals(0, scalar(db, "SELECT COUNT(*) FROM " + entry.getKey() + " WHERE id='" + id + "'"));
                     }
                     assertEquals(bookings, row(db, "reward_bookings", "id='history-booking'"));
                     assertEquals(assignments, row(db, "reward_assignments", "bookingId='history-booking'"));
@@ -121,16 +175,23 @@ public final class RecoveryOriginInstrumentationTest {
             assertEquals(DatabaseContract.VERSION, db.getVersion());
             assertEquals(1, scalar(db, "PRAGMA foreign_keys"));
             assertEquals(new TreeMap<>(), violations(db));
-            assertEquals(3, scalar(db, "SELECT COUNT(*) FROM migration_recovery"));
-            try (Cursor archive = db.query("SELECT sourceSchema,sourceTable,sourceId,payload FROM migration_recovery")) {
-                while (archive.moveToNext()) {
-                    assertEquals(24, archive.getInt(0));
-                    Map<String, String> original = originals.get(archive.getString(1));
-                    assertEquals(original.get("id"), Cursor.FIELD_TYPE_STRING + ":" + archive.getString(2));
-                    assertEquals("Every original column and SQLite type archived", original,
-                            archivedRow(archive.getString(3)));
-                }
+            assertEquals(0, scalar(db, "SELECT COUNT(*) FROM migration_recovery"));
+            if (keepPending) {
+                assertEquals(pendingOccurrence, row(db, "occurrences", "id='clean-sheet'"));
+                Map<String, String> offeredStep = new TreeMap<>(originals.get("occurrence_steps"));
+                offeredStep.put("flowRunStepId", Cursor.FIELD_TYPE_STRING + ":clean-run-step");
+                assertEquals(offeredStep, row(db, "occurrence_steps", "id='clean-offered-step'"));
+                Map<String, String> resource = new TreeMap<>(originals.get("flow_run_resources"));
+                resource.remove("acquirePosition"); resource.remove("releasePosition");
+                resource.put("acquireStepId", Cursor.FIELD_TYPE_STRING + ":clean-run-step");
+                resource.put("releaseStepId", Cursor.FIELD_TYPE_STRING + ":clean-next-step");
+                resource.put("releaseAfterWait", Cursor.FIELD_TYPE_INTEGER + ":0");
+                assertEquals(resource, row(db, "flow_run_resources", "id='clean-resource'"));
             }
+            for (Map.Entry<String, String> query : evidenceQueries.entrySet())
+                assertEquals("Retained " + evidence + " evidence", evidenceRows.get(query.getKey()),
+                        row(db, query.getKey(), query.getValue()));
+            assertEquals(retainedPending, scalar(db, "SELECT COUNT(*) FROM combo_obligations WHERE id='clean-obligation'"));
             assertEquals(bookings, row(db, "reward_bookings", "id='history-booking'"));
             assertEquals(assignments, row(db, "reward_assignments", "bookingId='history-booking'"));
             for (Map.Entry<String, Map<String, String>> step : retainedSteps.entrySet()) {
@@ -139,24 +200,24 @@ public final class RecoveryOriginInstrumentationTest {
                     assertEquals(step.getKey() + "." + column.getKey(), column.getValue(), actual.get(column.getKey()));
             }
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM tasks WHERE id='laundry' AND title='Laundry'"));
-            assertEquals(1, scalar(db, "SELECT COUNT(*) FROM flow_candidates WHERE id='clean' AND seedStepId='colors'"));
-            assertEquals(2, scalar(db, "SELECT COUNT(*) FROM step_flow_runs"));
+            assertEquals(1 - retainedPending, scalar(db, "SELECT COUNT(*) FROM flow_candidates WHERE id='clean' AND seedStepId='colors'"));
+            assertEquals(2 + retainedPending, scalar(db, "SELECT COUNT(*) FROM step_flow_runs"));
             assertEquals(2, scalar(db, "SELECT nextExecutionSequence FROM step_flow_runs WHERE id='started'"));
             assertEquals(1, scalar(db, "SELECT nextExecutionSequence FROM step_flow_runs WHERE id='waiting'"));
-            assertEquals(4, scalar(db, "SELECT COUNT(*) FROM flow_run_steps"));
+            assertEquals(4 + 2 * retainedPending, scalar(db, "SELECT COUNT(*) FROM flow_run_steps"));
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM flow_run_steps WHERE id='started-prep' AND state='DONE'"));
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM flow_run_steps WHERE id='waiting-run-step' AND readyAtEpochMillis=" + READY_AT));
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM flow_run_resources WHERE id='started-resource' AND state='ACTIVE' "
                     + "AND acquireStepId='started-prep' AND releaseStepId='started-run-step'"));
-            assertEquals(2, scalar(db, "SELECT COUNT(*) FROM occurrences"));
+            assertEquals(2 + retainedPending, scalar(db, "SELECT COUNT(*) FROM occurrences"));
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM occurrences WHERE id='started-history' AND state='COMPLETED' "
                     + "AND completedOn='2026-08-24' AND flowExecutionSequence=0"));
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM occurrences WHERE id='started-sheet' AND state='OPEN' AND flowExecutionSequence=1"));
-            assertEquals(2, scalar(db, "SELECT COUNT(*) FROM occurrence_steps"));
+            assertEquals(2 + retainedPending, scalar(db, "SELECT COUNT(*) FROM occurrence_steps"));
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM occurrence_steps WHERE id='history-step' AND done=1 AND note='history-step note'"));
             Log.i("RecoveryOrigin", "source=" + source + "; target=" + db.getVersion()
                     + "; roomMigrationForeignKeys=0; intermediate=" + observed
-                    + "; archivedOriginalRows=3; retainedHistory=true");
+                    + "; newRecoveryRows=0; retainedHistory=true; pendingEvidence=" + evidence);
         } finally { room.close(); }
     }
 
@@ -187,9 +248,53 @@ public final class RecoveryOriginInstrumentationTest {
         assertEquals(22, db.getVersion());
         run(db, "clean", "colors", "PENDING_START", 0, null, "clean-sheet", 1);
         step(db, 22, "clean-run-step", "clean", 0, "colors");
-        resource(db, "clean", "PLANNED", 0);
+        step(db, 22, "clean-next-step", "clean", 1, "colors-finish");
+        resource(db, "clean", "PLANNED", 1);
         occurrence(db, "clean-sheet", "clean", 0, false);
         offeredStep(db, 22, "clean-offered-step", "clean-sheet", "colors", false);
+        insert(db, "combo_obligations", "id", "clean-obligation", "ownerId", "task:laundry", "taskId", "laundry",
+                "kind", "TASK", "slot", "MORNING", "scheduledOn", "2026-08-25", "occurrenceId", "clean-sheet", "state", "OPEN");
+    }
+
+    private static Map<String, String> seedEvidence(SupportSQLiteDatabase db, String evidence) {
+        Map<String, String> queries = new LinkedHashMap<>();
+        switch (evidence) {
+            case "none": return queries;
+            case "partial":
+                db.execSQL("UPDATE flow_run_steps SET amountKind='SETS_REPS',plannedSets=3,plannedReps=5 WHERE id='clean-run-step'");
+                db.execSQL("UPDATE occurrence_steps SET amountKind='SETS_REPS',plannedSets=3,plannedReps=5,actualRepetitions='5' WHERE id='clean-offered-step'");
+                insert(db, "repetition_results", "stepId", "clean-offered-step", "slotIndex", 0, "actualRepetitions", 5,
+                        "loadMode", "UNSPECIFIED", "loadUnit", "NONE", "source", "ACTUAL", "safetyFlag", "NONE");
+                queries.put("repetition_results", "stepId='clean-offered-step'");
+                break;
+            case "timer":
+                insert(db, "timer_sessions", "id", "evidence-timer", "stepId", "clean-offered-step", "title", "Started timer",
+                        "kind", "REST", "state", "PAUSED", "totalSeconds", 60, "remainingMillis", 12345,
+                        "targetElapsedRealtime", 0, "targetEpochMillis", 0, "notificationId", 812302, "completionObserved", 0);
+                queries.put("timer_sessions", "id='evidence-timer'");
+                break;
+            case "assigned":
+            case "linked-booking":
+                insert(db, "reward_bookings", "id", "evidence-booking", "transactionId", "evidence-transaction",
+                        "occurrenceId", "started-history", "occurrenceStepId", evidence.equals("assigned") ? "history-step" : "clean-offered-step", "ownerId", "head",
+                        "kind", "LEGACY_COMPLETION", "target", "HEAD", "xpDelta", 3, "comboPointDelta", 0,
+                        "bookedOn", "2026-08-24", "plannedXp", 3);
+                if (evidence.equals("assigned")) {
+                    insert(db, "reward_assignments", "bookingId", "evidence-booking", "occurrenceId", "clean-sheet");
+                    queries.put("reward_assignments", "bookingId='evidence-booking'");
+                }
+                queries.put("reward_bookings", "id='evidence-booking'");
+                break;
+            case "completed":
+                db.execSQL("UPDATE occurrences SET state='COMPLETED',completedOn='2026-08-25' WHERE id='clean-sheet'");
+                break;
+            case "resolved":
+                db.execSQL("UPDATE combo_obligations SET state='RESOLVED',resolvedOn='2026-08-25' WHERE id='clean-obligation'");
+                break;
+            default: throw new AssertionError("Unknown evidence " + evidence);
+        }
+        queries.put("combo_obligations", "id='clean-obligation'");
+        return queries;
     }
 
     private static void run(SupportSQLiteDatabase db, String id, String seed, String state, int position,
@@ -211,6 +316,9 @@ public final class RecoveryOriginInstrumentationTest {
     }
 
     private static void resource(SupportSQLiteDatabase db, String run, String state, int release) {
+        assertTrue("Legacy lease must release after acquisition", release > 0);
+        assertEquals("Release step must exist", 1, scalar(db,
+                "SELECT COUNT(*) FROM flow_run_steps WHERE runId='" + run + "' AND position=" + release));
         insert(db, "flow_run_resources", "id", run + "-resource", "runId", run, "sourceLeaseId", run + "-lease",
                 "resourceId", "dry", "resourceName", "Drying space", "capacityAtCreation", 3, "units", 1,
                 "acquirePosition", 0, "releasePosition", release, "state", state,
@@ -237,7 +345,7 @@ public final class RecoveryOriginInstrumentationTest {
 
     private static void addLoadFields(ContentValues values, int version) {
         if (version < 21) return; // Real 20->21 ALTER TABLE supplies these fields for the organic case.
-        values.put("plannedLoadMode", "NONE"); values.put("plannedLoadUnit", "KG"); values.put("targetRir", 0);
+        values.put("plannedLoadMode", "UNSPECIFIED"); values.put("plannedLoadUnit", "NONE"); values.put("targetRir", 2);
     }
 
     private static void insert(SupportSQLiteDatabase db, String table, Object... pairs) {
@@ -276,27 +384,37 @@ public final class RecoveryOriginInstrumentationTest {
     }
 
     private static Map<String, String> row(SupportSQLiteDatabase db, String table, String predicate) {
-        Map<String, String> result = new TreeMap<>();
         try (Cursor cursor = db.query("SELECT * FROM " + table + " WHERE " + predicate)) {
             assertEquals(1, cursor.getCount()); assertTrue(cursor.moveToFirst());
-            for (int i = 0; i < cursor.getColumnCount(); i++) {
-                int type = cursor.getType(i);
-                assertTrue("Fixture has only null/integer/text", type == 0 || type == 1 || type == 3);
-                result.put(cursor.getColumnName(i), type + ":" + (cursor.isNull(i) ? "null" : cursor.getString(i)));
-            }
+            return cursorRow(cursor);
+        }
+    }
+
+    private static Map<String, String> cursorRow(Cursor cursor) {
+        Map<String, String> result = new TreeMap<>();
+        for (int i = 0; i < cursor.getColumnCount(); i++) {
+            int type = cursor.getType(i);
+            assertTrue("Fixture has only null/integer/text", type == 0 || type == 1 || type == 3);
+            result.put(cursor.getColumnName(i), type + ":" + (cursor.isNull(i) ? "null" : cursor.getString(i)));
         }
         return result;
     }
 
-    private static Map<String, String> archivedRow(String payload) throws Exception {
-        JSONObject object = new JSONObject(payload);
-        assertEquals(1, object.getInt("formatVersion"));
-        JSONArray columns = object.getJSONArray("columns");
-        Map<String, String> result = new TreeMap<>();
-        for (int i = 0; i < columns.length(); i++) {
-            JSONArray column = columns.getJSONArray(i);
-            result.put(column.getString(0), column.getInt(1) + ":" + column.get(2));
+    private static Map<String, List<Map<String, String>>> databaseSnapshot(SupportSQLiteDatabase db) {
+        Map<String, List<Map<String, String>>> result = new TreeMap<>();
+        List<String> tables = new ArrayList<>();
+        tables.add("sqlite_master");
+        try (Cursor cursor = db.query("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")) {
+            while (cursor.moveToNext()) tables.add(cursor.getString(0));
+        }
+        for (String table : tables) {
+            List<Map<String, String>> rows = new ArrayList<>();
+            try (Cursor cursor = db.query("SELECT * FROM \"" + table.replace("\"", "\"\"") + "\" ORDER BY rowid")) {
+                while (cursor.moveToNext()) rows.add(cursorRow(cursor));
+            }
+            result.put(table, rows);
         }
         return result;
     }
+
 }

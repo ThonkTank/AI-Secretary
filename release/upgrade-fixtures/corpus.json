@@ -10,6 +10,10 @@
       "file": "schema-20-organic-flow.json"
     },
     {
+      "id": "schema-22-clean-candidate",
+      "file": "schema-22-clean-candidate.json"
+    },
+    {
       "id": "schema-23-repair-boundary",
       "file": "schema-23-repair-boundary.json"
     }

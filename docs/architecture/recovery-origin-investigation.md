@@ -136,3 +136,15 @@ gesunden Mischfällen, Erhaltungs-/Rollbacknachweis und vollständigem Migration
 festgehalten. Neue Produkt-/Datenentscheidungen sind damit nicht stillschweigend getroffen.
 P4 selbst ändert ausschließlich Tests und Dokumentation; Produktreparatur und Pixel-Abnahme
 bleiben getrennte Abschlüsse.
+
+## P4b – Folgestand und Grenze der ursprünglichen Fixture
+
+Die obigen P4-Beweise bleiben dem untersuchten Stand zugeordnet. P4b ersetzt den reproduzierten
+Erzeuger durch explizite Kindbehandlung und präzisiert die Auswahl tatsächlich unbenutzter Runs.
+Die ursprüngliche Clean-Fixture verwendete ein Ressourcenintervall0→0. Das genügte zur FK-
+Reproduktion, verletzte aber die Domain-Regel releasePosition > acquirePosition. P4b korrigiert
+sie auf zwei Schritte und0→1. Mit gültigem Bestand wurde der alte Code erneut ausgeführt:
+alle neun neuen Erwartungen scheiterten am erwarteten Verhalten; mit Fix bestehen sie einschließlich
+Erhaltungs- und Rollbackprüfung. Rohbelege und offene Freigaben stehen im Ausführungsprotokoll.
+Dies korrigiert die damalige Aussage über einen vollständig gesunden Ausgangsbestand, ohne
+Originalprotokolle oder die nachgewiesene FK-Ursache nachträglich umzuschreiben.

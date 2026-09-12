@@ -179,14 +179,20 @@ final class UpgradePersistenceProbe {
         throw timeout;
     }
 
-    private static void verifyRows(SQLiteDatabase database, JSONObject fixture) throws Exception {
+    static void verifyRows(SQLiteDatabase database, JSONObject fixture) throws Exception {
         JSONArray expectations = fixture.getJSONArray("expectedTarget");
         for (int index = 0; index < expectations.length(); index++) {
             JSONObject expectation = expectations.getJSONObject(index);
+            boolean absent = expectation.has("absent");
+            check(expectation.length() == 3 && expectation.has("table") && expectation.has("where")
+                    && (absent ? !expectation.has("values") && Boolean.TRUE.equals(expectation.get("absent"))
+                    : expectation.has("values")), "Invalid target expectation: " + expectation);
             String table = identifier(expectation.getString("table"));
             JSONObject where = expectation.getJSONObject("where");
-            JSONObject values = expectation.getJSONObject("values");
-            String[] columns = keys(values);
+            check(where.length() > 0, "Target selector is empty");
+            JSONObject values = absent ? null : expectation.getJSONObject("values");
+            check(absent || values.length() > 0, "Target values are empty");
+            String[] columns = absent ? null : keys(values);
             List<String> clauses = new ArrayList<>();
             List<String> arguments = new ArrayList<>();
             for (Iterator<String> names = where.keys(); names.hasNext();) {
@@ -202,6 +208,10 @@ final class UpgradePersistenceProbe {
             Cursor row = database.query(table, columns, String.join(" AND ", clauses),
                     arguments.toArray(new String[0]), null, null, null);
             try {
+                if (absent) {
+                    equal(0L, (long) row.getCount(), "Expected no " + table + " row for " + where);
+                    continue;
+                }
                 if (row.getCount() != 1 || !row.moveToFirst()) {
                     throw new AssertionError("Expected exactly one " + table
                             + " row for fixture " + fixture.getString("id")

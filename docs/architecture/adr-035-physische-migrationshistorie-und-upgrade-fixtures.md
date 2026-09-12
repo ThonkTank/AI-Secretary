@@ -82,15 +82,26 @@ Der Produktionskorpus enthält aktuell:
 | --- | --- | --- | --- |
 | `schema-8-floor` | `forest-android-1008001` / 0.2.80 | API 26, 35 und 37 | unterstützte Untergrenze und Plattformkompatibilität |
 | `schema-20-organic-flow` | `forest-android-1013701` / 0.2.137 | API 26 | organische Spaltenhistorie, leere Crashzelle und vollständig belegte Vertauschungszeile |
+| `schema-22-clean-candidate` | `forest-android-1015701` / 0.2.157 | API 26 | unbenutzte Angebote ohne FK-Kaskaden entfernen; kein verdeckender Recovery-Eintrag, aktive Ressourcen und Historie erhalten |
 | `schema-23-repair-boundary` | `forest-android-1015801` / 0.2.158 | API 26 | exakte Reparatur einer vertauschten Zeile bei wertgleichem Erhalt einer korrekten Zeile |
 
 Jede Quelle wird vor der Installation gegen Release- und Tag-Ziel, Commit, Paketname,
 Versionscode, Versionsname, Metadaten- und APK-SHA-256 sowie Produktionssignatur geprüft. Alle
-fünf Lanes verwenden denselben signierten Kandidaten. Nach [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md) bleiben sie
+sechs historischen Lanes verwenden denselben signierten Kandidaten. Nach [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md) bleiben sie
 bei vollständigen Änderungen verpflichtend; Publish hängt dann von ihrem gemeinsamen Erfolg ab.
 Jeder Produktrelease ergänzt den separat gebundenen aktuellen Smoke. Dessen expliziter Vertrag 2
 erlaubt gleiche Schemata bei höherer App-Version; historische Fixtures behalten Vertrag 1 mit
 strikt höherem Zielschema und bleiben vollständig manifestiert.
+
+Zielerwartungen bestehen aus `table`, einem nichtleeren `where` und genau einem Modus:
+`values` mit nichtleeren Spaltenwerten verlangt genau eine passende Zeile; `absent: true`
+verlangt keine passende Zeile. Beide Modi zusammen, `absent: false`, unbekannte Felder und
+leere Selektoren sind ungültig. Namen sind SQL-Bezeichner, Werte werden gebunden; freie SQL-
+Ausdrücke sind nicht Teil dieses Vertrags. Bestehende Anwesenheitsprüfungen behalten ihre
+Bedeutung. Die Ergänzung vom 2026-09-12 schließt gezielt die Nachweislücke, dass spätere Recovery
+eine frühere Waisenerzeugung trotz korrekter Kandidaten und erhaltener gültiger Zeilen verdeckt.
+Python validiert das Format, Room prüft die Migration, und der tatsächliche Release-Runner
+prüft beide Modi nativ einschließlich vorhandener verbotener Zeilen und ungültiger Erwartungen.
 
 ## Konsequenzen
 

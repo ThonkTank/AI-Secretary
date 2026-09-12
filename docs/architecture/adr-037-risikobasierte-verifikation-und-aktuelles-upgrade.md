@@ -56,7 +56,7 @@ Signierung und Freigabelogik sind releasewirksam; unbekannte Eingaben bleiben ko
 Für jeden Produktrelease wird genau ein Kandidat gebaut und regulär signiert:
 
 - Ein aktueller signierter In-place-Smoke auf API 35 ist immer erforderlich.
-- Bei `full` kommen die fünf historischen Lanes aus ADR-035 hinzu.
+- Bei `full` kommen die in ADR-035 festgelegten historischen Lanes (aktuell sechs) hinzu.
 - Quelle und Kandidat benötigen gleichen Paketnamen und Produktionssignatur; der Kandidat hat
   einen höheren App-Versionscode. Alle anwendbaren Upgrades und Publish verwenden dieselben Bytes.
 - Publish verlangt den erfolgreichen aktuellen Smoke und bei `full` erfolgreiche historische

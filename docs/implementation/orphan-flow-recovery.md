@@ -88,3 +88,24 @@ directly, while an explicit prior force-stop could expose a pending boot broadca
 against the suppressed application initialization. Component state changes were
 denied by Android and no override was made. That observation did not prove provider
 or receiver safety; the new early contract and native event tests address that gap.
+
+## Preventing orphan generation during 22→23
+
+The bounded [origin investigation](../architecture/recovery-origin-investigation.md)
+reproduced one generator: Room runs migration22→23 with foreign keys disabled, so deleting
+unused pending run headers did not cascade to their snapshots. This is separate from the
+previously repaired column permutation and does not establish the Pixel's personal history.
+
+The migration now freezes only genuinely unused candidates, excluding occurrence completion,
+partial repetitions/results, timers, both reward-booking references, reward assignments and
+resolved obligations as well as active resource evidence. It explicitly removes open obligations,
+offered steps and run resources/steps before their parents. Existing execution evidence excludes
+the entire run from cleanup; none of its result, timer or reward rows is deleted.
+
+Native regressions observe the real Room upgrade connection, check relationships immediately
+after22→23 and require no new recovery rows at27. They preserve every original evidence column,
+check the new step bindings and inject a failure after child cleanup to compare the entire
+rolled-back schema and data. The signed schema22 fixture separately detects recovery masking
+through explicit absence assertions. The schema24 recovery closure, archive and unrelated-error
+behavior stay intact; schema27 is unchanged. This prevents new damage along older upgrade paths;
+it neither reconstructs previously archived data nor claims to identify the old counter's origin.

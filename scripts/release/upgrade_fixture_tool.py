@@ -144,14 +144,22 @@ def _validate_fixture(fixture: dict, expected_id: str | None, *, current_smoke: 
     if not isinstance(expected, list) or not expected:
         raise UpgradeFixtureError(f"Fixture {fixture_id} has no target expectations")
     for entry in expected:
-        if not isinstance(entry, dict) or set(entry) != {"table", "where", "values"}:
+        if not isinstance(entry, dict) or set(entry) not in (
+                {"table", "where", "values"}, {"table", "where", "absent"}):
             raise UpgradeFixtureError(f"Fixture {fixture_id} has an invalid target expectation")
         if not isinstance(entry["table"], str) or not entry["table"]:
             raise UpgradeFixtureError(f"Fixture {fixture_id} target table is invalid")
         if not isinstance(entry["where"], dict) or not entry["where"]:
             raise UpgradeFixtureError(f"Fixture {fixture_id} target selector is empty")
-        if not isinstance(entry["values"], dict) or not entry["values"]:
+        if "absent" in entry:
+            if entry["absent"] is not True:
+                raise UpgradeFixtureError(f"Fixture {fixture_id} target absent must be true")
+        elif not isinstance(entry["values"], dict) or not entry["values"]:
             raise UpgradeFixtureError(f"Fixture {fixture_id} target values are empty")
+        identifiers = [entry["table"], *entry["where"], *entry.get("values", {})]
+        if any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name)
+               for name in identifiers):
+            raise UpgradeFixtureError(f"Fixture {fixture_id} target identifier is invalid")
     return fixture
 
 

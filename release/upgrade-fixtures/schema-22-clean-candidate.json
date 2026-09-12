@@ -1,0 +1,739 @@
+{
+  "contractVersion": 1,
+  "id": "schema-22-clean-candidate",
+  "risk": "Schema 22 unused pending offer cleanup without FK cascades, preserving active resources and reward history without recovery masking",
+  "source": {
+    "tag": "forest-android-1015701",
+    "versionName": "0.2.157",
+    "versionCode": 1015701,
+    "databaseVersion": 22,
+    "commitSha": "324205e914a73aea0a406b718509e1508afb6165",
+    "packageName": "de.thonktank.autosecretary",
+    "apkAsset": "AutoSecretary.apk",
+    "metadataAsset": "release-metadata.json",
+    "apkSha256": "865db75b1f9305e84d4b9239bf17a112fac2e947f52ab5d98feb3d797bb63ed1",
+    "metadataSha256": "e798d44361d197e91b74f1a6fa05e6df8a83abde488fc07085ebb30eff602138",
+    "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
+  },
+  "targetDatabaseVersion": 27,
+  "apiLanes": [
+    {
+      "apiLevel": 26,
+      "target": "default",
+      "arch": "x86_64",
+      "channel": "stable",
+      "risk": "Actual signed schema 22 to 27 cleanup on minimum SQLite platform"
+    }
+  ],
+  "seed": [
+    {
+      "table": "tasks",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-candidate-valid-task",
+          "title": "Kandidatenmigration mit Verlauf",
+          "recurrence": "ONCE",
+          "intervalDays": 1,
+          "weekdayMask": 0,
+          "ongoing": 0,
+          "conditionText": "",
+          "conditionDone": 0,
+          "archived": 0,
+          "nextDueOn": "2999-12-31",
+          "cadenceAnchorOn": "2999-12-31",
+          "lastScheduledOn": null,
+          "lastCompletedOn": "2026-08-24",
+          "catalogOrder": 4020001,
+          "hasCompletedOccurrence": 1,
+          "estimatedMinutes": 23,
+          "boundKind": "FOREVER",
+          "boundUntilOn": null,
+          "boundWeeks": null,
+          "remainingCount": null,
+          "deadlineOn": null,
+          "note": "Schema 22: unbenutztes Angebot und erhaltener Verlauf",
+          "missedOccurrenceMode": "COLLAPSE"
+        }
+      ]
+    },
+    {
+      "table": "step_flow_runs",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-candidate-valid-run",
+          "taskId": "upgrade-candidate-valid-task",
+          "seedStepId": "upgrade-candidate-valid-template",
+          "sourceKey": "upgrade:organic:run",
+          "scheduledOn": "2999-12-31",
+          "slot": "LATER",
+          "state": "WAITING_TIME",
+          "currentPosition": 2,
+          "readyAtEpochMillis": 32503680000000,
+          "currentSheetOccurrenceId": null,
+          "queueOrder": 420,
+          "nextSheetSequence": 7,
+          "createdAtEpochMillis": 20001,
+          "updatedAtEpochMillis": 20002
+        },
+        {
+          "id": "upgrade-clean-run",
+          "taskId": "upgrade-candidate-valid-task",
+          "seedStepId": "upgrade-clean-template",
+          "sourceKey": "upgrade:clean:run",
+          "scheduledOn": "2999-12-31",
+          "slot": "LATER",
+          "state": "PENDING_START",
+          "currentPosition": 0,
+          "readyAtEpochMillis": null,
+          "currentSheetOccurrenceId": "upgrade-clean-sheet",
+          "queueOrder": 421,
+          "nextSheetSequence": 1,
+          "createdAtEpochMillis": 20001,
+          "updatedAtEpochMillis": 20002
+        }
+      ]
+    },
+    {
+      "table": "flow_run_steps",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-candidate-valid-empty-delay",
+          "runId": "upgrade-candidate-valid-run",
+          "position": 0,
+          "sourceTemplateId": "upgrade-candidate-valid-template",
+          "text": "Crashprobe mit leerer letzter Verzögerung",
+          "amountKind": "SETS_REPS",
+          "plannedSets": 3,
+          "plannedReps": 21,
+          "plannedDurationSeconds": null,
+          "restTimerMode": "CUSTOM",
+          "restTimerSeconds": 45,
+          "note": "Leere letzte Verzögerung",
+          "delayMode": "FIXED",
+          "defaultDelayMillis": 6000,
+          "lastUsedDelayMillis": null,
+          "chosenDelayMillis": 7000,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2
+        },
+        {
+          "id": "upgrade-candidate-valid-full-delay",
+          "runId": "upgrade-candidate-valid-run",
+          "position": 1,
+          "sourceTemplateId": "upgrade-candidate-valid-template-2",
+          "text": "Vollständig belegte Vertauschungsprobe",
+          "amountKind": "SETS_REPS",
+          "plannedSets": 4,
+          "plannedReps": 9,
+          "plannedDurationSeconds": null,
+          "restTimerMode": "DEFAULT",
+          "restTimerSeconds": null,
+          "note": "Vollständige Vertauschungsprobe",
+          "delayMode": "REMEMBER_LAST",
+          "defaultDelayMillis": 8000,
+          "lastUsedDelayMillis": 9000,
+          "chosenDelayMillis": 10000,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2
+        },
+        {
+          "id": "upgrade-candidate-valid-finish",
+          "runId": "upgrade-candidate-valid-run",
+          "position": 2,
+          "sourceTemplateId": "upgrade-candidate-valid-template-3",
+          "text": "Ausklang",
+          "amountKind": "DURATION",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": 321,
+          "restTimerMode": "OFF",
+          "restTimerSeconds": null,
+          "note": "Noch nicht begonnen",
+          "delayMode": null,
+          "defaultDelayMillis": null,
+          "lastUsedDelayMillis": null,
+          "chosenDelayMillis": null,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2
+        },
+        {
+          "id": "upgrade-clean-step-0",
+          "runId": "upgrade-clean-run",
+          "position": 0,
+          "sourceTemplateId": "upgrade-clean-template",
+          "text": "Unbenutzter Schritt 0",
+          "amountKind": "NONE",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": null,
+          "restTimerMode": "OFF",
+          "restTimerSeconds": null,
+          "note": "Unbenutzter Snapshot 0",
+          "delayMode": "FIXED",
+          "defaultDelayMillis": 6000,
+          "lastUsedDelayMillis": null,
+          "chosenDelayMillis": null,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2
+        },
+        {
+          "id": "upgrade-clean-step-1",
+          "runId": "upgrade-clean-run",
+          "position": 1,
+          "sourceTemplateId": "upgrade-clean-template-finish",
+          "text": "Unbenutzter Schritt 1",
+          "amountKind": "NONE",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": null,
+          "restTimerMode": "OFF",
+          "restTimerSeconds": null,
+          "note": "Unbenutzter Snapshot 1",
+          "delayMode": "FIXED",
+          "defaultDelayMillis": 6000,
+          "lastUsedDelayMillis": null,
+          "chosenDelayMillis": null,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2
+        }
+      ]
+    },
+    {
+      "table": "flow_run_resources",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-candidate-valid-resource",
+          "runId": "upgrade-candidate-valid-run",
+          "sourceLeaseId": "upgrade-candidate-valid-lease",
+          "resourceId": "upgrade-candidate-valid-rack",
+          "resourceName": "Rack Schema 20",
+          "capacityAtCreation": 7,
+          "units": 2,
+          "acquirePosition": 0,
+          "releasePosition": 2,
+          "state": "ACTIVE",
+          "reservedAtEpochMillis": 21001,
+          "activatedAtEpochMillis": 21002,
+          "releasedAtEpochMillis": null
+        },
+        {
+          "id": "upgrade-clean-resource",
+          "runId": "upgrade-clean-run",
+          "sourceLeaseId": "upgrade-clean-lease",
+          "resourceId": "upgrade-candidate-valid-rack",
+          "resourceName": "Rack Schema 20",
+          "capacityAtCreation": 7,
+          "units": 2,
+          "acquirePosition": 0,
+          "releasePosition": 1,
+          "state": "PLANNED",
+          "reservedAtEpochMillis": null,
+          "activatedAtEpochMillis": null,
+          "releasedAtEpochMillis": null
+        }
+      ]
+    },
+    {
+      "table": "occurrences",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-candidate-history",
+          "taskId": "upgrade-candidate-valid-task",
+          "scheduledOn": "2026-08-24",
+          "state": "COMPLETED",
+          "sortOrder": 400,
+          "completedOn": "2026-08-24",
+          "slot": "LATER",
+          "kind": "FLOW_SHEET",
+          "sourceKey": "flow-sheet:upgrade-candidate-valid-run:0",
+          "flowRunId": "upgrade-candidate-valid-run",
+          "flowSheetSequence": 0
+        },
+        {
+          "id": "upgrade-clean-sheet",
+          "taskId": "upgrade-candidate-valid-task",
+          "scheduledOn": "2999-12-31",
+          "state": "OPEN",
+          "sortOrder": 400,
+          "completedOn": null,
+          "slot": "LATER",
+          "kind": "FLOW_SHEET",
+          "sourceKey": "flow-sheet:upgrade-clean-run:0",
+          "flowRunId": "upgrade-clean-run",
+          "flowSheetSequence": 0
+        }
+      ]
+    },
+    {
+      "table": "occurrence_steps",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-candidate-history-step",
+          "occurrenceId": "upgrade-candidate-history",
+          "position": 0,
+          "text": "Angebot upgrade-candidate-history-step",
+          "done": 1,
+          "amountKind": "NONE",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": null,
+          "restTimerMode": "OFF",
+          "restTimerSeconds": null,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2,
+          "note": "Erhaltung upgrade-candidate-history-step",
+          "actualRepetitions": "",
+          "sourceTemplateId": "upgrade-candidate-valid-template",
+          "comboOwnerId": "step:upgrade-candidate-valid-template",
+          "originOccurrenceId": null,
+          "carryForwardReason": "NONE"
+        },
+        {
+          "id": "upgrade-clean-offered-step",
+          "occurrenceId": "upgrade-clean-sheet",
+          "position": 0,
+          "text": "Angebot upgrade-clean-offered-step",
+          "done": 0,
+          "amountKind": "NONE",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": null,
+          "restTimerMode": "OFF",
+          "restTimerSeconds": null,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2,
+          "note": "Erhaltung upgrade-clean-offered-step",
+          "actualRepetitions": "",
+          "sourceTemplateId": "upgrade-clean-template",
+          "comboOwnerId": "step:upgrade-clean-template",
+          "originOccurrenceId": null,
+          "carryForwardReason": "NONE"
+        }
+      ]
+    },
+    {
+      "table": "reward_bookings",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "upgrade-candidate-booking-head",
+          "transactionId": "upgrade-candidate-transaction",
+          "occurrenceId": "upgrade-candidate-history",
+          "occurrenceStepId": "upgrade-candidate-history-step",
+          "ownerId": "head",
+          "kind": "LEGACY_COMPLETION",
+          "target": "HEAD",
+          "xpDelta": 7,
+          "comboPointDelta": 0,
+          "bookedOn": "2026-08-24",
+          "reversesBookingId": null,
+          "plannedXp": 7
+        },
+        {
+          "id": "upgrade-candidate-booking-vessel",
+          "transactionId": "upgrade-candidate-transaction",
+          "occurrenceId": "upgrade-candidate-history",
+          "occurrenceStepId": "upgrade-candidate-history-step",
+          "ownerId": "task:upgrade-candidate-valid-task",
+          "kind": "LEGACY_COMPLETION",
+          "target": "VESSEL",
+          "xpDelta": 4,
+          "comboPointDelta": 0,
+          "bookedOn": "2026-08-24",
+          "reversesBookingId": null,
+          "plannedXp": 4
+        }
+      ]
+    },
+    {
+      "table": "reward_assignments",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "bookingId": "upgrade-candidate-booking-head",
+          "occurrenceId": "upgrade-candidate-history"
+        },
+        {
+          "bookingId": "upgrade-candidate-booking-vessel",
+          "occurrenceId": "upgrade-candidate-history"
+        }
+      ]
+    }
+  ],
+  "expectedTarget": [
+    {
+      "table": "step_flow_runs",
+      "where": {
+        "id": "upgrade-candidate-valid-run"
+      },
+      "values": {
+        "taskId": "upgrade-candidate-valid-task",
+        "seedStepId": "upgrade-candidate-valid-template",
+        "sourceKey": "upgrade:organic:run",
+        "scheduledOn": "2999-12-31",
+        "slot": "LATER",
+        "startStepId": "upgrade-candidate-valid-empty-delay",
+        "alreadyPaidTau": 4,
+        "collected": 0,
+        "cancelled": 0,
+        "queueOrder": 420,
+        "nextExecutionSequence": 7,
+        "createdAtEpochMillis": 20001,
+        "updatedAtEpochMillis": 20002
+      }
+    },
+    {
+      "table": "flow_run_steps",
+      "where": {
+        "id": "upgrade-candidate-valid-empty-delay"
+      },
+      "values": {
+        "runId": "upgrade-candidate-valid-run",
+        "position": 0,
+        "sourceTemplateId": "upgrade-candidate-valid-template",
+        "text": "Crashprobe mit leerer letzter Verzögerung",
+        "amountKind": "SETS_REPS",
+        "plannedSets": 3,
+        "plannedReps": 21,
+        "plannedDurationSeconds": null,
+        "restTimerMode": "CUSTOM",
+        "restTimerSeconds": 45,
+        "note": "Leere letzte Verzögerung",
+        "delayMode": "FIXED",
+        "defaultDelayMillis": 6000,
+        "lastUsedDelayMillis": null,
+        "chosenDelayMillis": 7000,
+        "plannedLoadMode": "UNSPECIFIED",
+        "plannedLoadUnit": "NONE",
+        "plannedLoadMilli": null,
+        "targetRir": 2,
+        "state": "DONE",
+        "readyAtEpochMillis": null,
+        "earnedTau": 4
+      }
+    },
+    {
+      "table": "flow_run_steps",
+      "where": {
+        "id": "upgrade-candidate-valid-full-delay"
+      },
+      "values": {
+        "runId": "upgrade-candidate-valid-run",
+        "position": 1,
+        "sourceTemplateId": "upgrade-candidate-valid-template-2",
+        "text": "Vollständig belegte Vertauschungsprobe",
+        "amountKind": "SETS_REPS",
+        "plannedSets": 4,
+        "plannedReps": 9,
+        "plannedDurationSeconds": null,
+        "restTimerMode": "DEFAULT",
+        "restTimerSeconds": null,
+        "note": "Vollständige Vertauschungsprobe",
+        "delayMode": "REMEMBER_LAST",
+        "defaultDelayMillis": 8000,
+        "lastUsedDelayMillis": 9000,
+        "chosenDelayMillis": 10000,
+        "plannedLoadMode": "UNSPECIFIED",
+        "plannedLoadUnit": "NONE",
+        "plannedLoadMilli": null,
+        "targetRir": 2,
+        "state": "WAITING_TIME",
+        "readyAtEpochMillis": 32503680000000,
+        "earnedTau": 0
+      }
+    },
+    {
+      "table": "flow_run_steps",
+      "where": {
+        "id": "upgrade-candidate-valid-finish"
+      },
+      "values": {
+        "runId": "upgrade-candidate-valid-run",
+        "position": 2,
+        "sourceTemplateId": "upgrade-candidate-valid-template-3",
+        "text": "Ausklang",
+        "amountKind": "DURATION",
+        "plannedSets": null,
+        "plannedReps": null,
+        "plannedDurationSeconds": 321,
+        "restTimerMode": "OFF",
+        "restTimerSeconds": null,
+        "note": "Noch nicht begonnen",
+        "delayMode": "FIXED",
+        "defaultDelayMillis": 0,
+        "lastUsedDelayMillis": null,
+        "chosenDelayMillis": null,
+        "plannedLoadMode": "UNSPECIFIED",
+        "plannedLoadUnit": "NONE",
+        "plannedLoadMilli": null,
+        "targetRir": 2,
+        "state": "BLOCKED",
+        "actionAtEpochMillis": null,
+        "earnedTau": 0
+      }
+    },
+    {
+      "table": "flow_run_resources",
+      "where": {
+        "id": "upgrade-candidate-valid-resource"
+      },
+      "values": {
+        "runId": "upgrade-candidate-valid-run",
+        "sourceLeaseId": "upgrade-candidate-valid-lease",
+        "resourceId": "upgrade-candidate-valid-rack",
+        "resourceName": "Rack Schema 20",
+        "capacityAtCreation": 7,
+        "units": 2,
+        "acquireStepId": "upgrade-candidate-valid-empty-delay",
+        "releaseStepId": "upgrade-candidate-valid-finish",
+        "releaseAfterWait": 0,
+        "state": "ACTIVE",
+        "reservedAtEpochMillis": 21001,
+        "activatedAtEpochMillis": 21002,
+        "releasedAtEpochMillis": null
+      }
+    },
+    {
+      "table": "tasks",
+      "where": {
+        "id": "upgrade-candidate-valid-task"
+      },
+      "values": {
+        "title": "Kandidatenmigration mit Verlauf",
+        "recurrence": "ONCE",
+        "intervalDays": 1,
+        "weekdayMask": 0,
+        "ongoing": 0,
+        "conditionText": "",
+        "conditionDone": 0,
+        "archived": 0,
+        "nextDueOn": "2999-12-31",
+        "cadenceAnchorOn": "2999-12-31",
+        "lastScheduledOn": null,
+        "lastCompletedOn": "2026-08-24",
+        "catalogOrder": 4020001,
+        "hasCompletedOccurrence": 1,
+        "estimatedMinutes": 23,
+        "boundKind": "FOREVER",
+        "boundUntilOn": null,
+        "boundWeeks": null,
+        "remainingCount": null,
+        "deadlineOn": null,
+        "note": "Schema 22: unbenutztes Angebot und erhaltener Verlauf",
+        "missedOccurrenceMode": "COLLAPSE"
+      }
+    },
+    {
+      "table": "occurrences",
+      "where": {
+        "id": "upgrade-candidate-history"
+      },
+      "values": {
+        "taskId": "upgrade-candidate-valid-task",
+        "scheduledOn": "2026-08-24",
+        "state": "COMPLETED",
+        "sortOrder": 400,
+        "completedOn": "2026-08-24",
+        "slot": "LATER",
+        "kind": "FLOW_STEP",
+        "sourceKey": "flow-step:upgrade-candidate-valid-run:0",
+        "flowRunId": "upgrade-candidate-valid-run",
+        "flowExecutionSequence": 0
+      }
+    },
+    {
+      "table": "occurrence_steps",
+      "where": {
+        "id": "upgrade-candidate-history-step"
+      },
+      "values": {
+        "occurrenceId": "upgrade-candidate-history",
+        "position": 0,
+        "text": "Angebot upgrade-candidate-history-step",
+        "done": 1,
+        "amountKind": "NONE",
+        "plannedSets": null,
+        "plannedReps": null,
+        "plannedDurationSeconds": null,
+        "restTimerMode": "OFF",
+        "restTimerSeconds": null,
+        "plannedLoadMode": "UNSPECIFIED",
+        "plannedLoadUnit": "NONE",
+        "plannedLoadMilli": null,
+        "targetRir": 2,
+        "note": "Erhaltung upgrade-candidate-history-step",
+        "actualRepetitions": "",
+        "sourceTemplateId": "upgrade-candidate-valid-template",
+        "comboOwnerId": "step:upgrade-candidate-valid-template",
+        "originOccurrenceId": null,
+        "carryForwardReason": "NONE",
+        "flowRunStepId": "upgrade-candidate-valid-empty-delay"
+      }
+    },
+    {
+      "table": "reward_bookings",
+      "where": {
+        "id": "upgrade-candidate-booking-head"
+      },
+      "values": {
+        "transactionId": "upgrade-candidate-transaction",
+        "occurrenceId": "upgrade-candidate-history",
+        "occurrenceStepId": "upgrade-candidate-history-step",
+        "ownerId": "head",
+        "kind": "LEGACY_COMPLETION",
+        "target": "HEAD",
+        "xpDelta": 7,
+        "comboPointDelta": 0,
+        "bookedOn": "2026-08-24",
+        "reversesBookingId": null,
+        "plannedXp": 7
+      }
+    },
+    {
+      "table": "reward_bookings",
+      "where": {
+        "id": "upgrade-candidate-booking-vessel"
+      },
+      "values": {
+        "transactionId": "upgrade-candidate-transaction",
+        "occurrenceId": "upgrade-candidate-history",
+        "occurrenceStepId": "upgrade-candidate-history-step",
+        "ownerId": "task:upgrade-candidate-valid-task",
+        "kind": "LEGACY_COMPLETION",
+        "target": "VESSEL",
+        "xpDelta": 4,
+        "comboPointDelta": 0,
+        "bookedOn": "2026-08-24",
+        "reversesBookingId": null,
+        "plannedXp": 4
+      }
+    },
+    {
+      "table": "reward_assignments",
+      "where": {
+        "bookingId": "upgrade-candidate-booking-head"
+      },
+      "values": {
+        "occurrenceId": "upgrade-candidate-history"
+      }
+    },
+    {
+      "table": "reward_assignments",
+      "where": {
+        "bookingId": "upgrade-candidate-booking-vessel"
+      },
+      "values": {
+        "occurrenceId": "upgrade-candidate-history"
+      }
+    },
+    {
+      "table": "flow_candidates",
+      "where": {
+        "id": "upgrade-clean-run"
+      },
+      "values": {
+        "taskId": "upgrade-candidate-valid-task",
+        "seedStepId": "upgrade-clean-template",
+        "sourceKey": "upgrade:clean:run",
+        "scheduledOn": "2999-12-31",
+        "slot": "LATER",
+        "queueOrder": 421,
+        "createdAtEpochMillis": 20001
+      }
+    },
+    {
+      "table": "step_flow_runs",
+      "where": {
+        "id": "upgrade-clean-run"
+      },
+      "absent": true
+    },
+    {
+      "table": "flow_run_steps",
+      "where": {
+        "id": "upgrade-clean-step-0"
+      },
+      "absent": true
+    },
+    {
+      "table": "migration_recovery",
+      "where": {
+        "sourceTable": "flow_run_steps",
+        "sourceId": "upgrade-clean-step-0"
+      },
+      "absent": true
+    },
+    {
+      "table": "flow_run_steps",
+      "where": {
+        "id": "upgrade-clean-step-1"
+      },
+      "absent": true
+    },
+    {
+      "table": "migration_recovery",
+      "where": {
+        "sourceTable": "flow_run_steps",
+        "sourceId": "upgrade-clean-step-1"
+      },
+      "absent": true
+    },
+    {
+      "table": "flow_run_resources",
+      "where": {
+        "id": "upgrade-clean-resource"
+      },
+      "absent": true
+    },
+    {
+      "table": "migration_recovery",
+      "where": {
+        "sourceTable": "flow_run_resources",
+        "sourceId": "upgrade-clean-resource"
+      },
+      "absent": true
+    },
+    {
+      "table": "occurrences",
+      "where": {
+        "id": "upgrade-clean-sheet"
+      },
+      "absent": true
+    },
+    {
+      "table": "occurrence_steps",
+      "where": {
+        "id": "upgrade-clean-offered-step"
+      },
+      "absent": true
+    },
+    {
+      "table": "migration_recovery",
+      "where": {
+        "sourceTable": "occurrence_steps",
+        "sourceId": "upgrade-clean-offered-step"
+      },
+      "absent": true
+    }
+  ]
+}

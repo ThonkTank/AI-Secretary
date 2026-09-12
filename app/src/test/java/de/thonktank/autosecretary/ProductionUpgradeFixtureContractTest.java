@@ -31,16 +31,19 @@ import java.util.Set;
 public final class ProductionUpgradeFixtureContractTest {
     private static final String MANIFEST = "release/upgrade-fixtures/corpus.json";
 
-    @Test public void corpusContainsOnlyTheThreeApprovedSourceHistories() throws Exception {
+    @Test public void corpusContainsOnlyTheFourApprovedSourceHistories() throws Exception {
         Map<String, JSONObject> fixtures = fixtures();
         assertEquals(Set.of("schema-8-floor", "schema-20-organic-flow",
-                "schema-23-repair-boundary"), fixtures.keySet());
+                "schema-22-clean-candidate", "schema-23-repair-boundary"), fixtures.keySet());
         assertSource(fixtures.get("schema-8-floor"), "forest-android-1008001",
                 "0.2.80", 1_008_001, 8,
                 "825b0433bfeb5a34462af147b060f1bcccbc3227");
         assertSource(fixtures.get("schema-20-organic-flow"), "forest-android-1013701",
                 "0.2.137", 1_013_701, 20,
                 "e566a078d4edf8bda053c0257c6d9861db647ea8");
+        assertSource(fixtures.get("schema-22-clean-candidate"), "forest-android-1015701",
+                "0.2.157", 1_015_701, 22,
+                "324205e914a73aea0a406b718509e1508afb6165");
         assertSource(fixtures.get("schema-23-repair-boundary"), "forest-android-1015801",
                 "0.2.158", 1_015_801, 23,
                 "a25add10fc833f362d01ee16781821c4b4df8d56");
@@ -57,7 +60,7 @@ public final class ProductionUpgradeFixtureContractTest {
                         .getInt("databaseVersion"));
     }
 
-    @Test public void riskMatrixHasThreeFloorLanesAndTwoTargetedApiTwentySixLanes()
+    @Test public void riskMatrixHasThreeFloorLanesAndThreeTargetedApiTwentySixLanes()
             throws Exception {
         Map<String, JSONObject> fixtures = fixtures();
         assertEquals(Set.of("26:default:stable", "35:google_apis:stable",
@@ -65,6 +68,8 @@ public final class ProductionUpgradeFixtureContractTest {
                 lanes(fixtures.get("schema-8-floor")));
         assertEquals(Set.of("26:default:stable"),
                 lanes(fixtures.get("schema-20-organic-flow")));
+        assertEquals(Set.of("26:default:stable"),
+                lanes(fixtures.get("schema-22-clean-candidate")));
         assertEquals(Set.of("26:default:stable"),
                 lanes(fixtures.get("schema-23-repair-boundary")));
     }
@@ -101,7 +106,14 @@ public final class ProductionUpgradeFixtureContractTest {
                 String table = row.getString("table");
                 assertNotNull("Expected target table is absent", schema.get(table));
                 Set<String> declared = keys(row.getJSONObject("where"));
-                declared.addAll(keys(row.getJSONObject("values")));
+                boolean absent = row.has("absent");
+                assertEquals(absent ? Set.of("table", "where", "absent") : Set.of("table", "where", "values"), keys(row));
+                assertFalse("Selector must be bounded", declared.isEmpty());
+                if (absent) assertEquals(Boolean.TRUE, row.get("absent"));
+                else {
+                    assertTrue(row.getJSONObject("values").length() > 0);
+                    declared.addAll(keys(row.getJSONObject("values")));
+                }
                 assertTrue("Expected target columns are absent from " + table,
                         schema.get(table).containsAll(declared));
             }
@@ -146,12 +158,22 @@ public final class ProductionUpgradeFixtureContractTest {
                     androidx.sqlite.db.SupportSQLiteDatabase db = upgraded.getOpenHelper().getWritableDatabase();
                     JSONArray expected = fixture.getJSONArray("expectedTarget");
                     for (int i = 0; i < expected.length(); i++) {
-                        JSONObject entry = expected.getJSONObject(i), where = entry.getJSONObject("where"), values = entry.getJSONObject("values");
+                        JSONObject entry = expected.getJSONObject(i), where = entry.getJSONObject("where");
                         List<String> selectors = new ArrayList<>(keys(where));
                         List<Object> arguments = new ArrayList<>();
-                        for (String selector : selectors) arguments.add(where.get(selector));
+                        List<String> clauses = new ArrayList<>();
+                        for (String selector : selectors) {
+                            if (where.isNull(selector)) clauses.add(selector + " IS NULL");
+                            else { clauses.add(selector + "=?"); arguments.add(where.get(selector)); }
+                        }
                         try (android.database.Cursor row = db.query("SELECT * FROM " + entry.getString("table")
-                                + " WHERE " + String.join(" AND ", selectors.stream().map(key -> key + "=?").toList()), arguments.toArray())) {
+                                + " WHERE " + String.join(" AND ", clauses), arguments.toArray())) {
+                            if (entry.has("absent")) {
+                                assertEquals(Boolean.TRUE, entry.get("absent"));
+                                assertEquals(fixture.getString("id") + ": forbidden " + entry, 0, row.getCount());
+                                continue;
+                            }
+                            JSONObject values = entry.getJSONObject("values");
                             assertTrue(fixture.getString("id") + ": " + entry, row.moveToFirst());
                             for (String key : keys(values)) assertEquals(fixture.getString("id") + ": " + key,
                                     values.isNull(key) ? null : values.get(key).toString(), row.getString(row.getColumnIndexOrThrow(key)));

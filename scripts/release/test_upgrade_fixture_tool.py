@@ -14,7 +14,7 @@ CORPUS = ROOT / "release" / "upgrade-fixtures"
 
 
 class UpgradeFixtureToolTest(unittest.TestCase):
-    def test_repository_corpus_produces_the_exact_five_risk_lanes(self):
+    def test_repository_corpus_produces_the_exact_six_risk_lanes(self):
         result = upgrade_fixture_tool.matrix(CORPUS)
 
         self.assertEqual(
@@ -23,6 +23,7 @@ class UpgradeFixtureToolTest(unittest.TestCase):
                 ("schema-8-floor", "forest-android-1008001", 35),
                 ("schema-8-floor", "forest-android-1008001", "37.0"),
                 ("schema-20-organic-flow", "forest-android-1013701", 26),
+                ("schema-22-clean-candidate", "forest-android-1015701", 26),
                 ("schema-23-repair-boundary", "forest-android-1015801", 26),
             ],
             [
@@ -30,6 +31,32 @@ class UpgradeFixtureToolTest(unittest.TestCase):
                 for lane in result["include"]
             ],
         )
+
+    def test_target_expectations_accept_values_or_explicit_absence(self):
+        for entry in (
+            {"table": "migration_recovery", "where": {"sourceId": "clean"}, "absent": True},
+            {"table": "tasks", "where": {"id": "task"}, "values": {"note": None}},
+        ):
+            with self.subTest(entry=entry):
+                fixture = copy.deepcopy(upgrade_fixture_tool.fixture_by_id(CORPUS, "schema-8-floor"))
+                fixture["expectedTarget"] = [entry]
+                upgrade_fixture_tool.validate_fixture(fixture)
+
+    def test_target_expectations_reject_ambiguous_or_unbounded_checks(self):
+        base = {"table": "migration_recovery", "where": {"sourceId": "clean"}, "absent": True}
+        defects = [
+            {**base, "absent": False}, {**base, "absent": "true"}, {**base, "absent": 1},
+            {**base, "where": {}}, {**base, "values": {"sourceSchema": 24}},
+            {**base, "unknown": True}, {"table": "tasks", "where": {"id": "task"}},
+            {"table": "tasks", "where": {"id": "task"}, "values": {}},
+            {**base, "table": "tasks WHERE 1=1"}, {**base, "where": {"id OR 1=1": "clean"}},
+        ]
+        for entry in defects:
+            with self.subTest(entry=entry):
+                fixture = copy.deepcopy(upgrade_fixture_tool.fixture_by_id(CORPUS, "schema-8-floor"))
+                fixture["expectedTarget"] = [entry]
+                with self.assertRaises(upgrade_fixture_tool.UpgradeFixtureError):
+                    upgrade_fixture_tool.validate_fixture(fixture)
 
     def test_unknown_fixture_is_rejected(self):
         with self.assertRaisesRegex(upgrade_fixture_tool.UpgradeFixtureError, "Unknown"):
