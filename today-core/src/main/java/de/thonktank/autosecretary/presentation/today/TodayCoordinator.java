@@ -81,6 +81,9 @@ public final class TodayCoordinator implements TodayActionSink {
             case HARVEST:
                 commands.execute(TodayCommand.action(TodayCommand.Kind.HARVEST, action));
                 return;
+            case BRING_FIRST:
+                commands.execute(TodayCommand.action(TodayCommand.Kind.BRING_FIRST, action));
+                break;
             case DEFER:
                 commands.execute(TodayCommand.action(TodayCommand.Kind.DEFER, action));
                 return;

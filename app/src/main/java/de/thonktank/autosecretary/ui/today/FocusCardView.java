@@ -29,6 +29,7 @@ public final class FocusCardView extends ViewGroup {
     private final FrameLayout titleRow;
     private final TextView title;
     private final TextView backlog;
+    private final TextView placement;
     private final XpVesselView ring;
     private final DewDotView taskDew;
     private final FocusStepListLayout steps;
@@ -61,6 +62,8 @@ public final class FocusCardView extends ViewGroup {
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
         titleParams.topMargin = style.dp(4);
         titleBlock.addView(title, titleParams);
+        placement = style.sans("", 14, 0, false);
+        titleBlock.addView(placement, new LinearLayout.LayoutParams(-1, -2));
         backlog = style.sans("", 14, 0, true);
         titleBlock.addView(backlog, new LinearLayout.LayoutParams(-1, -2));
         titleRow.addView(titleBlock, new FrameLayout.LayoutParams(-1, -2));
@@ -122,6 +125,10 @@ public final class FocusCardView extends ViewGroup {
         actionParams.topMargin = style.dimen(compact
                 ? R.dimen.focus_card_compact_actions_gap : R.dimen.focus_card_actions_gap);
 
+        placement.setText(task.placementLabel);
+        placement.setTextColor(model.palette.hint);
+        placement.setVisibility(task.placementLabel.isEmpty() ? GONE : VISIBLE);
+        placement.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         title.setText(task.title());
         title.setTextColor(model.palette.ink);
         backlog.setText(task.backlogCount == 0 ? "" : getContext().getString(

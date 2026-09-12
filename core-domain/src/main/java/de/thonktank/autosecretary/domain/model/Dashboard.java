@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 
 public final class Dashboard {
+    public final List<TodayPlacement> todayPlacements;
     public final int xp;
     public final List<DashboardTask> tasks;
     public final Map<String, ComboProgress> combos;
@@ -36,6 +37,13 @@ public final class Dashboard {
     public Dashboard(int xp, List<DashboardTask> tasks, Map<String, ComboProgress> combos,
                      List<FlowRunSummary> flowRuns, List<FlowTaskSheet> flowTaskSheets,
                      Map<String, TrainingContext> trainingContexts) {
+        this(xp, tasks, combos, flowRuns, flowTaskSheets, trainingContexts, Collections.emptyList());
+    }
+
+    public Dashboard(int xp, List<DashboardTask> tasks, Map<String, ComboProgress> combos,
+                     List<FlowRunSummary> flowRuns, List<FlowTaskSheet> flowTaskSheets,
+                     Map<String, TrainingContext> trainingContexts, List<TodayPlacement> placements) {
+        this.todayPlacements = Collections.unmodifiableList(new ArrayList<>(placements));
         this.xp = Math.max(0, xp);
         this.tasks = Collections.unmodifiableList(new ArrayList<>(tasks));
         this.combos = Collections.unmodifiableMap(new LinkedHashMap<>(combos));

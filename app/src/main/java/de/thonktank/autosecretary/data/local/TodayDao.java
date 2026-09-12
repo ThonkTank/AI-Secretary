@@ -10,6 +10,29 @@ import java.util.List;
 
 @Dao
 public interface TodayDao {
+    @Query("DELETE FROM today_placements WHERE "
+            + "(kind = 'OCCURRENCE' AND NOT EXISTS (SELECT 1 FROM occurrences o JOIN tasks t "
+            + "ON t.id=o.taskId WHERE o.id=today_placements.id AND o.state='OPEN' "
+            + "AND t.archived=0 AND t.conditionDone=0)) OR "
+            + "(kind = 'TASK' AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.id=today_placements.id "
+            + "AND t.archived=0 AND t.conditionDone=0)) OR "
+            + "(kind = 'FLOW_TASK_SHEET' AND NOT EXISTS (SELECT 1 FROM flow_task_sheet_placements p "
+            + "JOIN tasks t ON t.id=p.taskId WHERE p.id=today_placements.id AND t.archived=0 "
+            + "AND t.conditionDone=0 AND (EXISTS (SELECT 1 FROM flow_candidates c "
+            + "WHERE c.taskId=p.taskId AND c.slot=p.slot) OR EXISTS (SELECT 1 FROM step_flow_runs r "
+            + "WHERE r.taskId=p.taskId AND r.slot=p.slot AND r.collected=0 AND r.cancelled=0))))")
+    void pruneTodayPlacements();
+    @androidx.room.Transaction
+    default List<TodayPlacementEntity> activeTodayPlacements() {
+        List<TodayPlacementEntity> current = todayPlacements();
+        if (current.isEmpty()) return current;
+        pruneTodayPlacements();
+        return todayPlacements();
+    }
+    @Query("SELECT * FROM today_placements") List<TodayPlacementEntity> todayPlacements();
+    @Insert(onConflict = OnConflictStrategy.REPLACE) void putTodayPlacement(TodayPlacementEntity value);
+    @Query("DELETE FROM today_placements WHERE kind = :kind AND id = :id")
+    void deleteTodayPlacement(String kind, String id);
     @Insert(onConflict = OnConflictStrategy.IGNORE) void insertOccurrence(OccurrenceEntity value);
     @Update void updateOccurrence(OccurrenceEntity occurrence);
     @Query("DELETE FROM occurrences WHERE id = :id") void deleteOccurrence(String id);

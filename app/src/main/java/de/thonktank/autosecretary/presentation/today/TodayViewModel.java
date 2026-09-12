@@ -384,12 +384,19 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     }
 
     @Override public void handleDefer(TodayItemTarget target) {
+        moveTodayItem(target, de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.LATER);
+    }
+
+    @Override public void handleBringFirst(TodayItemTarget target) {
+        moveTodayItem(target, de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.FIRST);
+    }
+
+    private void moveTodayItem(TodayItemTarget target,
+            de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action action) {
         if (target == null) return;
-        run(command(UiCommand.Kind.DEFER, target.id), () -> {
-            if (target.kind == TodayItemTarget.Kind.FLOW_TASK_SHEET)
-                today.deferFlowTaskSheet.execute(target.id);
-            else today.defer.execute(target.id);
-        });
+        run(command(UiCommand.Kind.ORGANIZE, target.id), () -> today.moveItem.execute(
+                de.thonktank.autosecretary.domain.model.TodayPlacement.Kind.valueOf(target.kind.name()),
+                target.id, action));
     }
 
     @Override public void handleStartFlowCandidate(String candidateId,

@@ -280,7 +280,8 @@ public final class DashboardRenderer {
                         task -> todayActions.emit(task.terminalCondition
                                 ? TodayAction.requestClose(task.taskId, task.title)
                                 : TodayAction.completeOccurrence(task.itemId)),
-                        task -> todayActions.emit(TodayAction.openTaskMenu(task.actionTarget)));
+                        task -> todayActions.emit(TodayAction.openTaskMenu(task.actionTarget)),
+                        task -> todayActions.emit(TodayAction.bringFirst(task.actionTarget)));
                 RewardAnchorKey.Kind kind = item.task.terminalCondition
                         ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE;
                 rewardAnchors.register(new RewardAnchorKey(kind, item.task.terminalCondition

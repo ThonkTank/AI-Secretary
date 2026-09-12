@@ -15,6 +15,7 @@ public final class TodayAction {
         COMPLETE_REMAINING,
         HARVEST,
         DEFER,
+        BRING_FIRST,
         START_FLOW_CANDIDATE,
         START_FLOW_CANDIDATE_WITH_DELAY,
         COMPLETE_FLOW_STEP, COMPLETE_FLOW_STEP_WITH_DELAY, COLLECT_FLOW, ADJUST_FLOW_WAIT,
@@ -108,6 +109,12 @@ public final class TodayAction {
 
     public static TodayAction harvest(String occurrenceId) {
         return identified(Kind.HARVEST, occurrenceId);
+    }
+
+    public static TodayAction bringFirst(TaskActionTarget target) {
+        if (target == null) throw new IllegalArgumentException("Today target is required");
+        return new TodayAction(Kind.BRING_FIRST, target.item.id, null, null, 0,
+                Collections.emptyList(), target, null);
     }
 
     public static TodayAction defer(TaskActionTarget target) {

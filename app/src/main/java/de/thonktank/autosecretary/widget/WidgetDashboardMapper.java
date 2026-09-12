@@ -26,13 +26,9 @@ public final class WidgetDashboardMapper {
 
     public WidgetDashboardUiModel map(Dashboard dashboard, LocalDate today) {
         List<WidgetSource> sources = new ArrayList<>();
-        for (DashboardTask item : dashboard.tasks) if (!item.done)
-            sources.add(WidgetSource.task(item));
-        for (FlowTaskSheet sheet : dashboard.flowTaskSheets)
-            sources.add(WidgetSource.sheet(sheet));
-        sources.sort(java.util.Comparator.comparing((WidgetSource value) -> value.date())
-                .thenComparingInt(value -> value.slotRank())
-                .thenComparingInt(WidgetSource::order).thenComparing(WidgetSource::id));
+        for (de.thonktank.autosecretary.domain.today.TodayQueue.Entry entry :
+                de.thonktank.autosecretary.domain.today.TodayQueue.visible(dashboard, today))
+            sources.add(new WidgetSource(entry.task, entry.sheet));
         if (sources.isEmpty()) return WidgetDashboardUiModel.empty();
         WidgetSource focus = sources.get(0);
         String afterTitle = null;

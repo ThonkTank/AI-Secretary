@@ -862,6 +862,26 @@ public final class DatabaseMigrationRobolectricTest {
         migrated.close();
     }
 
+    @Test public void version25AddsTodayPlacementWithoutChangingExistingTables() {
+        SupportSQLiteOpenHelper helper = new FrameworkSQLiteOpenHelperFactory().create(
+                SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
+                        .callback(new SupportSQLiteOpenHelper.Callback(25) {
+                            @Override public void onCreate(SupportSQLiteDatabase database) {
+                                ExportedRoomSchemaFixture.create(database, 25);
+                            }
+                            @Override public void onUpgrade(SupportSQLiteDatabase database, int oldVersion, int newVersion) { }
+                        }).build());
+        helper.getWritableDatabase().execSQL("INSERT OR REPLACE INTO stats(id,xp) VALUES(1,123)");
+        helper.close();
+        AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
+                .addMigrations(DatabaseMigrations.from(25)).allowMainThreadQueries().build();
+        try {
+            assertEquals(123, migrated.today().stats().xp);
+            assertTrue(migrated.today().todayPlacements().isEmpty());
+            assertEquals(26, migrated.getOpenHelper().getWritableDatabase().getVersion());
+        } finally { migrated.close(); }
+    }
+
     @Test public void supportedVersionEightUpgradeThroughSixteenIsLossless() {
         SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration
                 .builder(context).name(DATABASE)

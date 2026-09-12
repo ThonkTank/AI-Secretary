@@ -55,6 +55,23 @@ import de.thonktank.autosecretary.timer.TimerSession;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class FocusTaskViewTest {
+    @Test public void timelineTitleIsAccessibleAndEmitsBringFirstWithoutCompletion() {
+        Context context = ApplicationProvider.getApplicationContext();
+        TaskLeafView leaf = new TaskLeafView(context);
+        TodayActionRecorder events = new TodayActionRecorder();
+        leaf.bind(FocusTaskFixtures.timeline(DashboardFixtures.recurringTask(), "Abend", 0),
+                "danach", false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+                task -> { throw new AssertionError("Title must not complete work"); },
+                task -> { throw new AssertionError("Title must not open menu"); },
+                task -> events.emit(TodayAction.bringFirst(task.actionTarget)));
+        View title = findByContentDescription(leaf, "Abendrunde, jetzt bearbeiten");
+        assertNotNull(title);
+        assertTrue(title.isClickable());
+        assertTrue(title.getMinimumHeight() >= new UiStyle(context).dp(48));
+        title.performClick();
+        assertEquals("occurrence-routine", events.lastToday(TodayAction.Kind.BRING_FIRST).target.item.id);
+    }
+
     @Test public void titleToStepsGapIsTwelveDp() {
         Context context = ApplicationProvider.getApplicationContext();
         FocusTaskView view = new FocusTaskView(context);

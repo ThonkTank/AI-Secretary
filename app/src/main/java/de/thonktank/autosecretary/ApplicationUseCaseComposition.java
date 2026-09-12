@@ -27,8 +27,6 @@ import de.thonktank.autosecretary.domain.usecase.CompleteRemainingSteps;
 import de.thonktank.autosecretary.domain.usecase.CorrectRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.CorrectSetResult;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
-import de.thonktank.autosecretary.domain.usecase.DeferTask;
-import de.thonktank.autosecretary.domain.usecase.DeferFlowTaskSheet;
 import de.thonktank.autosecretary.domain.usecase.DeleteTask;
 import de.thonktank.autosecretary.domain.usecase.FinishStepForToday;
 import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
@@ -120,9 +118,9 @@ final class ApplicationUseCaseComposition {
 
         ToggleStep toggleStep = new ToggleStep(catalogRepository, stepRepository,
                 todayRepository, transactions, clock, policies, flowRuntime);
-        today = new TodayUseCases(new DeferTask(catalogRepository, todayRepository,
-                transactions), new DeferFlowTaskSheet(flowRepository, todayRepository,
-                transactions, clock), toggleStep,
+        LoadDashboard dashboard = new LoadDashboard(catalogRepository, stepRepository, todayRepository,
+                flowRepository, trainingRepository, transactions, graphSheets);
+        today = new TodayUseCases(toggleStep,
                 new AdvanceTodayStep(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies,
                         flowRuntime),
@@ -160,8 +158,8 @@ final class ApplicationUseCaseComposition {
                         transactions, clock),
                 new MaterializeDueOccurrences(catalogRepository, stepRepository, todayRepository,
                         flowRepository, transactions, clock, moments, ids, definitions, graphRuns),
-                new LoadDashboard(catalogRepository, stepRepository, todayRepository,
-                        flowRepository, trainingRepository, transactions, graphSheets));
+                dashboard, new de.thonktank.autosecretary.domain.usecase.MoveTodayItem(
+                        todayRepository, dashboard, transactions, clock));
 
         flows = new FlowUseCases(flowRuntime,
                 new de.thonktank.autosecretary.domain.usecase.LoadFlowGraph(catalogRepository,

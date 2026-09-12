@@ -28,6 +28,7 @@ class DatabaseInvalidationSource(database: AppDatabase) {
             "flow_run_edges",
             "flow_candidates",
             "flow_task_sheet_placements",
+        "today_placements",
             "step_resource_leases",
             "step_flow_runs",
             "flow_run_steps",

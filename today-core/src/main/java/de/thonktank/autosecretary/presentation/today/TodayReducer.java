@@ -150,6 +150,7 @@ public final class TodayReducer {
                 .steps(steps, focus.remainingSteps)
                 .ongoing(focus.ongoing)
                 .overdue(focus.overdue)
+                .placementLabel(focus.placementLabel)
                 .allowDefer(focus.allowDefer)
                 .harvestReady(focus.harvestReady)
                 .allowBulkComplete(focus.allowBulkComplete)

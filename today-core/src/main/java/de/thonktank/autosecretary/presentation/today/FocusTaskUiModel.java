@@ -10,6 +10,7 @@ import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 /** Task projection containing exactly the state rendered by the Today focus card. */
 public final class FocusTaskUiModel {
     public final TaskActionTarget actionTarget;
+    public final String placementLabel;
     public final String nextAction;
     public final List<FocusStepUiModel> steps;
     public final int remainingSteps;
@@ -31,6 +32,7 @@ public final class FocusTaskUiModel {
         if (!builder.reward.equals(builder.vessel.reward))
             throw new IllegalArgumentException("Focus and vessel rewards must match");
         this.actionTarget = builder.actionTarget;
+        this.placementLabel = builder.placementLabel;
         this.nextAction = builder.nextAction;
         this.steps = Collections.unmodifiableList(new ArrayList<>(builder.steps));
         this.remainingSteps = Math.max(0, builder.remainingSteps);
@@ -59,6 +61,7 @@ public final class FocusTaskUiModel {
 
     public static final class Builder {
         private final TaskActionTarget actionTarget;
+        private String placementLabel = "";
         private String nextAction = "";
         private List<FocusStepUiModel> steps = Collections.emptyList();
         private int remainingSteps;
@@ -75,6 +78,7 @@ public final class FocusTaskUiModel {
 
         private Builder(TaskActionTarget target) { this.actionTarget = target; }
 
+        public Builder placementLabel(String value) { placementLabel = value; return this; }
         public Builder nextAction(String value) { nextAction = value; return this; }
         public Builder steps(List<FocusStepUiModel> value, int remaining) {
             steps = value; remainingSteps = remaining; return this;

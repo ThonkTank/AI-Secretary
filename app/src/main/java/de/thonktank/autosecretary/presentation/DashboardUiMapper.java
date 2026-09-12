@@ -59,27 +59,22 @@ public final class DashboardUiMapper {
 
     public TodayUiModel map(Dashboard dashboard, LocalDate today) {
         List<TodaySource> open = new ArrayList<>();
-        for (DashboardTask item : dashboard.tasks) {
-            if (!item.done) open.add(TodaySource.task(item));
-        }
-        for (FlowTaskSheet sheet : dashboard.flowTaskSheets) open.add(TodaySource.sheet(sheet));
-        open.sort(java.util.Comparator.comparing((TodaySource value) -> value.date())
-                .thenComparingInt(value -> value.slot().rank)
-                .thenComparingInt(TodaySource::order)
-                .thenComparing(TodaySource::id));
+        for (de.thonktank.autosecretary.domain.today.TodayQueue.Entry entry :
+                de.thonktank.autosecretary.domain.today.TodayQueue.visible(dashboard, today))
+            open.add(new TodaySource(entry.task, entry.sheet, entry.slot));
         TodaySource focusSource = open.isEmpty() ? null : open.get(0);
 
         FocusTaskUiModel focus = focusSource == null ? null
                 : focusSource.sheet == null
-                ? focus(focusSource.task, today, dashboard, open.size() > 1)
-                : focus(focusSource.sheet, dashboard, open.size() > 1);
+                ? focus(focusSource.task, today, dashboard, true)
+                : focus(focusSource.sheet, dashboard, true);
         String focusId = focusSource == null ? null : focusSource.id();
         List<TimelineItemUiModel> timeline = new ArrayList<>();
         List<CompletedTaskUiModel> completed = new ArrayList<>();
         for (TodaySource item : open) if (!item.id().equals(focusId))
             timeline.add(TimelineItemUiModel.task(item.sheet == null
-                    ? timeline(item.task, today, dashboard)
-                    : timeline(item.sheet, dashboard)));
+                    ? timeline(item.task, today, dashboard, item.displaySlot)
+                    : timeline(item.sheet, dashboard, item.displaySlot)));
         for (DashboardTask item : dashboard.tasks) {
             if (item.done) {
                 if (item.occurrence != null)
@@ -117,6 +112,7 @@ public final class DashboardUiMapper {
                 .ongoing(task.ongoing)
                 .overdue(overdue(item, today))
                 .backlogCount(item.backlogCount)
+                .placementLabel(placementLabel(target.item, dashboard))
                 .allowDefer(allowDefer)
                 .allowBulkComplete(true)
                 .harvestReady(!steps.isEmpty() && collected > 0)
@@ -138,6 +134,7 @@ public final class DashboardUiMapper {
                 .steps(steps, remaining)
                 .ongoing(false)
                 .overdue(false)
+                .placementLabel(placementLabel(TodayItemTarget.flowTaskSheet(sheet.placement.id), dashboard))
                 .allowDefer(allowDefer)
                 .allowBulkComplete(false)
                 .waits(flowWaits(sheet))
@@ -148,7 +145,7 @@ public final class DashboardUiMapper {
     }
 
     private TimelineTaskUiModel timeline(DashboardTask item, LocalDate today,
-                                         Dashboard dashboard) {
+                                         Dashboard dashboard, TaskSlot displaySlot) {
         List<FocusStepUiModel> focusSteps = focusSteps(item, dashboard);
         List<TimelineStepUiModel> steps = new ArrayList<>();
         for (FocusStepUiModel step : focusSteps)
@@ -156,22 +153,22 @@ public final class DashboardUiMapper {
         ComboProgress taskCombo = dashboard.combos.get(ComboProgress.taskOwner(item.task.id));
         RewardBreakdown reward = taskReward(item, today, taskCombo, focusSteps,
                 collectedXp(focusSteps));
-        TaskSlot slot = item.displaySlot;
+        TaskSlot slot = displaySlot;
         return TimelineTaskUiModel.of(actionTarget(item), item.task.id.value,
                 item.task.title, slot,
                 softTime(slot, item.task.ongoing), steps, !item.task.conditionText.isEmpty(),
                 overdue(item, today), item.task.catalogOrder, reward);
     }
 
-    private TimelineTaskUiModel timeline(FlowTaskSheet sheet, Dashboard dashboard) {
+    private TimelineTaskUiModel timeline(FlowTaskSheet sheet, Dashboard dashboard, TaskSlot displaySlot) {
         List<TimelineStepUiModel> steps = new ArrayList<>();
         for (int index = 0; index < sheet.entries.size(); index++)
             steps.add(TimelineStepUiModel.completion(false));
         return TimelineTaskUiModel.of(TaskActionTarget.of(sheet.task.id.value,
                         TodayItemTarget.flowTaskSheet(sheet.placement.id), sheet.task.title,
                         sheet.placement.slot, sheet.task.recurrence != Recurrence.ONCE, false),
-                sheet.task.id.value, sheet.task.title, sheet.placement.slot,
-                softTime(sheet.placement.slot, false), steps, false, false,
+                sheet.task.id.value, sheet.task.title, displaySlot,
+                softTime(displaySlot, false), steps, false, false,
                 sheet.placement.sortOrder, RewardBreakdown.fromStage(0, 0));
     }
 
@@ -334,6 +331,17 @@ public final class DashboardUiMapper {
         return !item.done && due != null && due.isBefore(today);
     }
 
+    private String placementLabel(TodayItemTarget target, Dashboard dashboard) {
+        for (de.thonktank.autosecretary.domain.model.TodayPlacement p : dashboard.todayPlacements) {
+            if (!p.kind.name().equals(target.kind.name()) || !p.id.equals(target.id)) continue;
+            int label = p.slot == TaskSlot.MORNING ? R.string.slot_morning
+                    : p.slot == TaskSlot.MIDDAY ? R.string.slot_midday
+                    : p.slot == TaskSlot.EVENING ? R.string.slot_evening : R.string.slot_later;
+            return texts.text(R.string.today_placement_label, texts.text(label));
+        }
+        return "";
+    }
+
     public String softTime(TaskSlot slot, boolean ongoing) {
         if (ongoing) return texts.text(R.string.soft_time_ongoing);
         if (slot == TaskSlot.MORNING) return texts.text(R.string.soft_time_morning);
@@ -345,20 +353,10 @@ public final class DashboardUiMapper {
     private static final class TodaySource {
         final DashboardTask task;
         final FlowTaskSheet sheet;
-
-        private TodaySource(DashboardTask task, FlowTaskSheet sheet) {
-            this.task = task; this.sheet = sheet;
+        final TaskSlot displaySlot;
+        TodaySource(DashboardTask task, FlowTaskSheet sheet, TaskSlot displaySlot) {
+            this.task = task; this.sheet = sheet; this.displaySlot = displaySlot;
         }
-
-        static TodaySource task(DashboardTask value) { return new TodaySource(value, null); }
-        static TodaySource sheet(FlowTaskSheet value) { return new TodaySource(null, value); }
         String id() { return sheet == null ? stableId(task) : "flow-sheet:" + sheet.placement.id; }
-        LocalDate date() { return sheet == null
-                ? task.occurrence == null ? LocalDate.MAX : task.occurrence.scheduledOn
-                : sheet.placement.displayOn; }
-        TaskSlot slot() { return sheet == null ? task.displaySlot : sheet.placement.slot; }
-        int order() { return sheet == null
-                ? task.occurrence == null ? Integer.MAX_VALUE : task.occurrence.sortOrder
-                : sheet.placement.sortOrder; }
     }
 }

@@ -66,12 +66,18 @@ public final class TaskLeafView extends LeafSurface {
 
     public void bind(TimelineTaskUiModel task, String markerText, boolean deep,
                      DayPalette palette, Consumer<TimelineTaskUiModel> complete,
-                     Consumer<TimelineTaskUiModel> showMenu) {
+                     Consumer<TimelineTaskUiModel> showMenu,
+                     Consumer<TimelineTaskUiModel> bringFirst) {
         bindSurface(palette, deep ? palette.leaf3 : palette.leaf2,
                 style.edge(palette, deep ? 3 : 2), deep ? 5 : 7, deep ? .6f : .7f);
         setRotation(deep ? 1.5f : 1.1f);
         title.setText(breakable(task.title));
         title.setTextColor(palette.ink);
+        title.setMinHeight(style.dp(48));
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        AccessibilityRoles.button(title);
+        title.setContentDescription(task.title + ", jetzt bearbeiten");
+        title.setOnClickListener(view -> bringFirst.accept(task));
         marker.setText(markerText); marker.setTextColor(task.overdue ? palette.bad : palette.muted);
         marker.setVisibility(markerText.isEmpty() ? GONE : VISIBLE);
         softTime.setText(task.softTime); softTime.setTextColor(palette.hint);
