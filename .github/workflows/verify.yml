@@ -21,6 +21,7 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
+      verification_tree: ${{ steps.content.outputs.tree }}
       verification_profile: ${{ steps.scope.outputs.verification_profile }}
       verification_policy: ${{ steps.scope.outputs.verification_policy }}
       verification_reasons: ${{ steps.scope.outputs.verification_reasons }}
@@ -42,6 +43,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+      - name: Bind the actual checked-out content
+        id: content
+        run: echo "tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
       - name: Classify verification and release scope
         id: scope
         env:
@@ -82,6 +86,17 @@ jobs:
           UPGRADE_MATRIX=$(python3 scripts/release/upgrade_fixture_tool.py matrix \
             --fixtures release/upgrade-fixtures)
           printf 'upgrade_matrix=%s\n' "$UPGRADE_MATRIX" >> "$GITHUB_OUTPUT"
+
+  verification-content:
+    name: verification-content (${{ needs.release_scope.outputs.verification_tree }})
+    needs: [release_scope]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Prove the content executed by this workflow
+        env:
+          EXPECTED_TREE: ${{ needs.release_scope.outputs.verification_tree }}
+        run: test "$(git rev-parse 'HEAD^{tree}')" = "$EXPECTED_TREE"
 
   verification-policy:
     name: verification-policy (${{ needs.release_scope.outputs.verification_policy }}, ${{ needs.release_scope.outputs.verification_profile }})
@@ -212,7 +227,7 @@ jobs:
   quality:
     name: quality
     if: always() && needs.release_scope.outputs.quality_required == 'true'
-    needs: [release_scope, verification-policy, quality-contracts, quality-goldens, quality-build]
+    needs: [release_scope, verification-policy, verification-content, quality-contracts, quality-goldens, quality-build]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -342,7 +357,7 @@ jobs:
   instrumentation-gate:
     name: instrumentation-gate
     if: always()
-    needs: [quality, release_scope, verification-policy, instrumentation, animation-instrumentation]
+    needs: [quality, release_scope, verification-policy, verification-content, instrumentation, animation-instrumentation]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -355,7 +370,7 @@ jobs:
   pr-gate:
     name: pull-request-gate
     if: always() && github.event_name == 'pull_request'
-    needs: [quality, release_scope, verification-policy, instrumentation-gate]
+    needs: [quality, release_scope, verification-policy, verification-content, instrumentation-gate]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -79,8 +79,10 @@ public final class TodayInteractionInstrumentationTest {
                 Log.e(TAG, "Could not release the active test gesture", error);
             }
         }
-        if (activity != null) activity.finish();
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        if (activity != null) {
+            activity.finish();
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        }
     }
 
     @Test public void titleTouchAndAccessibleLaterChangeActualFocusAndPersistOnRecreation() {

@@ -6,7 +6,7 @@ from reuse_pr_verification import ReuseDecision, decide, live_decision
 
 MAIN = "main-sha"
 HEAD = "head-sha"
-TREE = "tree-sha"
+TREE = "1" * 40
 RUN = 42
 
 
@@ -34,7 +34,7 @@ def run(run_id=RUN, head_sha=HEAD, conclusion="success", created="2026-09-07"):
 def jobs(conclusion="success", profile="full"):
     return [
         {"name": name, "status": "completed", "conclusion": conclusion}
-        for name in required_jobs(profile)
+        for name in (*required_jobs(profile), f"verification-content ({TREE})")
     ]
 
 
@@ -147,6 +147,26 @@ class ReusePrVerificationTest(unittest.TestCase):
                         self.assertFalse(decision(profile=profile,
                             release_required=profile in {"today", "full"},
                             jobs_by_run={RUN: evidence}).reuse)
+
+    def test_tested_merge_tree_must_match_even_when_pr_head_matches_main(self):
+        name = f"verification-content ({TREE})"
+        good = jobs()
+        witness = next(job for job in good if job["name"] == name)
+        variants = [
+            [job for job in good if job["name"] != name],
+            good + [dict(witness)],
+            [dict(job, name=f"verification-content ({'2' * 40})")
+             if job["name"] == name else job for job in good],
+        ]
+        for outcome in ("failure", "skipped", "cancelled", None):
+            variants.append([dict(job, conclusion=outcome) if job["name"] == name else job
+                             for job in good])
+        variants.append([dict(job, status="in_progress") if job["name"] == name else job
+                         for job in good])
+        for evidence in variants:
+            with self.subTest(evidence=evidence):
+                self.assertFalse(decision(jobs_by_run={RUN: evidence}).reuse)
+        self.assertFalse(decision(main_tree="bad", head_trees={HEAD: "bad"}).reuse)
 
     def test_live_job_evidence_must_be_complete(self):
         for count in (len(jobs()), len(jobs()) + 1, None):

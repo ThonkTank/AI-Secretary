@@ -41,8 +41,11 @@ Der stabile `pull-request-gate` und seine Aggregate prüfen die tatsächlich aus
 `verification_gate.py`. Erfolgreich, übersprungen und fehlend sind verschiedene Zustände.
 Ein Jobname `verification-policy (VERSION, PROFIL)` belegt die Auswahl zusätzlich in der Jobs-API.
 Main darf PR-Nachweise nur übernehmen, wenn genau ein passender gemergter PR, identischer
-Git-Baum, aktuelle Policy, identisches Profil und sämtliche ausgewählten erfolgreichen Einzeljobs
+Git-Baum von PR-Head und Main, aktuelle Policy, identisches Profil und sämtliche ausgewählten erfolgreichen Einzeljobs
 vorliegen. Fehlende, doppelte, fremde, rote oder unvollständige Nachweise verhindern die Übernahme.
+Zusätzlich muss der eindeutige erfolgreiche Job `verification-content (TREE_SHA)` den wirklich
+ausgecheckten und getesteten PR-Merge-Baum mit demselben Main-Baum belegen. Der PR-Head allein
+beweist diesen Inhalt bei zwischenzeitlich veränderter Basis nicht.
 Ein neuerer gescheiterter Lauf wird nicht durch einen älteren grünen ersetzt. Die Prüfung gilt
 auch für reine Teständerungen. Ohne Übernahme führt Main sein ausgewähltes Profil selbst aus.
 

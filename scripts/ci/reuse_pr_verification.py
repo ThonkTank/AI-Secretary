@@ -7,6 +7,7 @@ import argparse
 from dataclasses import dataclass
 import json
 import os
+import re
 import subprocess
 from typing import Callable, Iterable, Mapping, Sequence
 
@@ -61,7 +62,7 @@ def decide(
         return ReuseDecision.denied("merged_pr_not_unique")
     pull = merged[0]
     head_sha = str(_nested(pull, "head", "sha"))
-    if not main_tree or head_trees.get(head_sha) != main_tree:
+    if not re.fullmatch(r"[0-9a-f]{40}", main_tree) or head_trees.get(head_sha) != main_tree:
         return ReuseDecision.denied("tree_mismatch")
     eligible = [
         run
@@ -78,12 +79,16 @@ def decide(
             return ReuseDecision.denied("latest_pr_run_not_green")
         run_id = int(run["id"])
         jobs = jobs_by_run.get(run_id, ())
-        expected = required_jobs(profile)
+        content_job = f"verification-content ({main_tree})"
+        expected = (*required_jobs(profile), content_job)
         selected = {name: [job for job in jobs if job.get("name") == name]
                     for name in expected}
         witnesses = [job.get("name") for job in jobs
                      if str(job.get("name", "")).startswith("verification-policy (")]
+        content_witnesses = [job.get("name") for job in jobs
+                             if str(job.get("name", "")).startswith("verification-content (")]
         if (witnesses == [policy_job(profile, policy_version)]
+                and content_witnesses == [content_job]
                 and all(len(matches) == 1
                         and matches[0].get("status") == "completed"
                         and matches[0].get("conclusion") == "success"

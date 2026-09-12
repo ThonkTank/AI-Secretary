@@ -8,10 +8,11 @@ from verification_gate import validate
 def evidence(profile, reuse=False):
     scope = ChangeScope(profile, profile in {"today", "full"})
     outputs = dict(line.split("=", 1) for line in scope.github_output().splitlines())
-    outputs.update(reuse_pr_verification=str(reuse).lower(), verification_pr_number="7",
+    outputs.update(verification_tree="1" * 40, reuse_pr_verification=str(reuse).lower(), verification_pr_number="7",
                    verification_pr_head_sha="head", verification_run_id="42")
     needs = {"release_scope": {"result": "success", "outputs": outputs},
              "verification-policy": {"result": "success"},
+             "verification-content": {"result": "success"},
              "instrumentation-gate": {"result": "success"},
              "quality": {"result": "success" if scope.quality_required else "skipped"}}
     for job, required in {
@@ -36,9 +37,9 @@ class VerificationGateTest(unittest.TestCase):
 
     def test_missing_red_or_unexpected_skipped_dependencies_are_denied(self):
         stages = {
-            "quality": ("release_scope", "verification-policy", "quality-contracts", "quality-goldens", "quality-build"),
-            "android": ("release_scope", "verification-policy", "quality", "instrumentation", "animation-instrumentation"),
-            "pr": ("release_scope", "verification-policy", "quality", "instrumentation-gate"),
+            "quality": ("release_scope", "verification-policy", "verification-content", "quality-contracts", "quality-goldens", "quality-build"),
+            "android": ("release_scope", "verification-policy", "verification-content", "quality", "instrumentation", "animation-instrumentation"),
+            "pr": ("release_scope", "verification-policy", "verification-content", "quality", "instrumentation-gate"),
         }
         for stage, dependencies in stages.items():
             for dependency in dependencies:

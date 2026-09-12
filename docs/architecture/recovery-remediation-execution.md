@@ -265,3 +265,110 @@ Rohbeleg `/tmp/p2-historical-diff-profiles.json`.
 - Noch unbewiesen und vor Phasenabschluss erforderlich: kompletter lokaler Check, vollständige
   P2-PR-Läufe, Squash und exaktes Main, aktueller plus fünf historische signierte Upgrades und
   bytegeprüfte Veröffentlichung. Die Pixel-Abnahme bleibt unabhängig davon offen.
+
+### P2 – Korrekturrunde 4: native Wartegrenze und tatsächlicher PR-Testinhalt
+
+Der vollständige lokale Gate bestand auf `e4e66733` (Exit 0, 13m58s; 791 Tests, keine Fehler,
+1 optionaler Benchmark übersprungen; Lint/Build/Identität/Größe grün). PR 365, Lauf 34702118064,
+bestand Quality und fünf Android-Lanes. API-35-Animation scheiterte am 20-Minuten-Schrittlimit.
+32/36 Tests waren fertig. Das fortlaufende geräteseitige Protokoll identifiziert den neuen
+`titleTouchAndAccessibleLaterChangeActualFocusAndPersistOnRecreation`: Start 15:38:43Z,
+MainActivity resumed 15:38:43Z, erste Neuerstellung erst 15:44:53Z, laufende Frames bis zum
+Abbruch 15:49:06Z. Keine beobachtete App-Exception in diesem Bedienweg. Rohbelege:
+`/tmp/p2-api35-failure/` und `/tmp/p2-pr-failed.log`.
+
+Der tatsächlich eingebundene AndroidX-Test-Core 1.7.0 ruft in `ActivityScenario.launch`,
+`onActivity`, `recreate` und seinen Zustandsabfragen jeweils `Instrumentation.waitForIdleSync`
+auf (Bytecodebeleg `/tmp/p2-activity-scenario.txt`). Diese unbeschränkten Leerqueue-Wartepunkte
+liegen außerhalb des signalgebundenen `PresentationAwaiter`-Timeouts. Die Logs stützen eine
+Blockade an diesen globalen Wartepunkten; ein lokaler nativer Reproduktions-/Stacknachweis wird
+vor der endgültigen Ursachenbehauptung ergänzt.
+
+Plan: isolierten API-35-Emulator bereitstellen und den unveränderten fehlgeschlagenen Stand
+gezielt untersuchen. Für den animierenden Produktbildschirm die globale Queue-Ruhe durch
+beobachtete echte Lifecycle-Ereignisse mit harten Zeitgrenzen ersetzen, sofern die Reproduktion
+diese Ursache bestätigt. Titel-Touch, Accessibility-Später, Fokus, Speicherung und echte
+Neuerstellung beibehalten. Keine Animation abschalten, Assertion abschwächen oder identischen
+roten Lauf automatisch wiederholen. Der Produktcode und TouchGestureDriver bleiben außerhalb
+solcher Harness-Korrekturen, solange kein eigener Defekt nachgewiesen ist.
+
+Zusätzlicher P2-Auditbefund bei Artefaktzuordnung: GitHub testet im PR den synthetischen Merge
+(`GITHUB_SHA`), während die Runs-API `head_sha` des Themenbranches meldet. Nur dessen Baum gegen
+Main zu vergleichen ist als allgemeiner Inhaltsnachweis zu schwach, etwa wenn Basisänderungen
+zwischen PR-Test und Merge hinzukommen und wieder zurückgenommen werden. Plan: zusätzlich den
+wirklich ausgecheckten Git-Baum als erfolgreichen, eindeutigen Jobzeugen binden und bei Main-
+Wiederverwendung exakt prüfen. Gegenproben für fremden/fehlenden/doppelten Baumzeugen ergänzen.
+Danach passende lokale Prüfungen und vollständiger PR-Gate auf dem korrigierten Head; kein Merge
+mit dem gegenwärtig roten Nachweis.
+
+Die erste Prüfung des Baumzeugen besteht 44 CI-Vertragstests und Actionlint. Zwei bestehende
+Release-Verdrahtungsassertionen erwarten noch die alten Abhängigkeitslisten; sie werden vor
+der nächsten Prüfung um den jetzt verbindlichen Inhaltszeugen ergänzt. Negative ausführbare
+Gatetests verlangen dessen Erfolg bereits in Quality, Android und PR.
+
+Lokale native Vorbereitung: API-35-Systemabbild installiert, eigenes AVD unter
+`/tmp/p2-avd-home` mit 2-GB-Testdatenpartition angelegt. Der vorhandene Emulator 36.4.9
+segfaultet vor abgeschlossenem Boot sowohl mit swiftshader_indirect als auch swiftshader
+ohne Vulkan. Damit ist ein Host-/Emulatorfehler belegt, seine genaue interne Ursache nicht.
+Kein App-Test wurde dabei ausgeführt. Für die Reproduktion wird das offizielle stabile
+37.1.11-Binary aus Googles SDK-Metadaten getrennt vom bestehenden SDK entpackt und dessen
+veröffentlichte Prüfsumme geprüft; CI und Produkt bleiben dadurch unverändert.
+
+Der Host-Coredump grenzt den ersten Emulatorabsturz auf einen SwiftShader-Worker
+(`libGLESv2.so`) ein; Rohbeleg `/tmp/p2-emulator-host-backtrace.txt`. Auch das aktuelle
+37.1.11-Binary scheitert mit SwiftShader vor Boot. Der nächste lokale Versuch verwendet
+daher die vorhandene Intel-GPU ohne Vulkan; Animationseinstellungen bleiben 1.0. Dies ist
+keine Wiederholung eines unveränderten App-/CI-Tests.
+
+API35 mit Intel-GPU bootet. Der erste Instrumentierungsstart wurde vom Android-System
+nach 30 Sekunden noch beim DEX-Klassenladen abgebrochen; kein JUnit-Test gestartet. Gleichzeitig
+ANRs mehrerer Google-Systemapps, CPU-Load 29.52 bei zwei Kernen. Belege:
+`/tmp/p2-native-before-all-logcat.txt`, `/tmp/p2-emulator-anr/`. Dies reproduziert nicht den
+CI-Wartefehler. Vor erneutem diagnostischem Teststart wird der Erstboot-/Paketladezustand
+beendet und dessen Last geprüft; keine Änderung von Animationen oder Testassertionen.
+
+Die tatsächliche App-Testreproduktion bleibt getrennt von den Host-/Erstbootfehlern offen.
+Der Bytecode belegt die unbeschränkte Synchronisierung unabhängig davon. Die begrenzte
+Lifecycle-Hilfe wird daher jetzt vorbereitet, während das eigene AVD mit vier Kernen/4 GB
+und vorhandenem Bootbestand startet. Vor Integration müssen der native Bedienweg und echte
+Neuerstellungen bestehen. Eine nicht erfasste CI-Stackposition wird nicht nachträglich als
+bewiesen ausgegeben; der unveränderte Test-APK bleibt für die Ursachenprobe erhalten.
+
+Die Lifecycle-Hilfe kompiliert (1m04s). Die gemeinsame `@After`-Methode enthält für
+den Produktfall ohne Harness-Activity noch einen unnötigen unbeschränkten Idle-Wait. Plan:
+Diesen Wartepunkt nur zusammen mit der tatsächlich vorhandenen alten Harness-Activity ausführen;
+der Produktfall beendet und beobachtet seine Activities bereits in der begrenzten Session.
+
+### P2 – Direktnachweis und Prüfung der Wartekorrektur
+
+Nach beendetem Erstboot und gezielter DEX-Vorkompilierung ausschließlich der beiden isolierten
+Testpakete startet der unveränderte Test. Bei aktiven Animationen bleibt er nach Titel-Touch,
+Fokus- und Queue-Assertion in der ersten Neuerstellung stehen. SIGQUIT-Stack vom 18:20:50Z:
+`Instrumentation$Idler.waitForIdle` → `Instrumentation.waitForIdleSync` →
+`ActivityScenario.getCurrentActivityState` → `ActivityScenario.recreate` →
+`TodayProductInteractionScenario.execute:68`. Rohbeleg `/tmp/p2-native-before-wait-stack.txt`,
+Zeilen 206–222, plus `/tmp/p2-native-before-compiled-result.txt`. Damit ist der zuvor nur aus
+CI-Verlauf/Bytecode abgeleitete konkrete Wartepunkt lokal reproduziert. Die exakte Stackposition
+des früheren CI-Laufs selbst wurde dort nicht erfasst.
+
+Die Korrektur ersetzt ausschließlich die Lifecycle-Synchronisierung des echten Produktfalls
+und seinen unnötigen gemeinsamen Nachlauf durch beobachtete, zeitbegrenzte Ereignisse. Touch,
+Accessibility, Fokus-/Reihenfolge-/Erhaltungsassertionen und zwei echte Neuerstellungen bleiben.
+Vollständiger lokaler Check auf korrigiertem Code: Exit 0, 34s (vorhandene unveränderte Host-
+Ergebnisse wiederverwendet; 44 CI- und 38 Release-Python-Tests frisch, native APKs neu gebaut).
+Actionlint und Diffprüfung grün. Native Prüfung des korrigierten APK steht als nächster Schritt an.
+
+Korrigierter nativer Produktfall auf demselben API-35-AVD erfolgreich: 1 Test, 0 Fehler,
+10.778s. Alle drei Animationsskalen unmittelbar vorher als 1.0 bestätigt. Lifecycle-Protokoll
+zeigt drei unterschiedliche MainActivity-Instanzen mit zwei vollständigen Zerstörungs-/Start-
+Übergängen und abschließender Zerstörung. Belege `/tmp/p2-native-fixed-result.txt` und
+`/tmp/p2-native-fixed-logcat.txt`. Kein neuer Touch-Treiber, keine Koordinatenwiederholung,
+kein Abschalten der Animationen und keine abgeschwächte fachliche Assertion.
+
+Abgleich Korrekturrunde 4 gegen Plan: konkreter Wartepunkt mit unverändertem APK reproduziert,
+begrenzte Lifecycle-Synchronisierung implementiert und nativ bestätigt; tatsächlicher PR-Testbaum
+als eigener erfolgreicher Zeuge gebunden und Gegenproben bestanden. Abgleich gegen Roadmap:
+P1-Bediennachweis erhalten; P2-Inhalts-/Profil-/Policy-Nachweis geschlossen; vollständiger lokaler
+Gate erfolgreich. Gegenwärtig offen bleiben vollständiger PR-Gate auf diesem neuen Head,
+Squash/exaktes Main, signierte aktuelle/historische Upgrades und Veröffentlichung. P3 beginnt
+weiterhin erst nach P2-Abschluss. Pixel-Abnahme bleibt separat offen.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 
 from change_scope import ChangeScope, POLICY_VERSION
 
@@ -17,6 +18,8 @@ def validate(stage: str, needs: dict, *, event: str, ref: str) -> None:
 
     result("release_scope")
     outputs = needs["release_scope"].get("outputs", {})
+    if not re.fullmatch(r"[0-9a-f]{40}", outputs.get("verification_tree", "")):
+        raise ValueError("Missing or invalid checked-out content tree")
     if outputs.get("verification_policy") != POLICY_VERSION:
         raise ValueError("Unsupported or missing policy version")
     if outputs.get("release_required") not in {"true", "false"}:
@@ -49,6 +52,7 @@ def validate(stage: str, needs: dict, *, event: str, ref: str) -> None:
         result("upgrade", "success" if scope.historical_upgrades_required else "skipped")
         return
     result("verification-policy")
+    result("verification-content")
 
     def selected(job: str, required: bool) -> None:
         result(job, "success" if required and reuse != "true" else "skipped")

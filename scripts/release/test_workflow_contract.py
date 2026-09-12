@@ -511,7 +511,7 @@ class WorkflowContractTest(unittest.TestCase):
                                    (quality_goldens, "goldens_required"), (quality_build, "build_required")):
             self.assertIn(f"outputs.{flag} == 'true'", quality_lane)
         self.assertIn(
-            "needs: [release_scope, verification-policy, quality-contracts, quality-goldens, quality-build]",
+            "needs: [release_scope, verification-policy, verification-content, quality-contracts, quality-goldens, quality-build]",
             quality,
         )
         self.assertIn("outputs.instrumentation_required == 'true'", instrumentation)
@@ -661,14 +661,14 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("TodayInteractionInstrumentationTest", animation_instrumentation)
         self.assertNotIn("INSTRUMENTATION_RERUN_TASKS", animation_instrumentation)
         self.assertIn(
-            "needs: [quality, release_scope, verification-policy, instrumentation, animation-instrumentation]",
+            "needs: [quality, release_scope, verification-policy, verification-content, instrumentation, animation-instrumentation]",
             instrumentation_gate,
         )
         self.assertIn("verification_gate.py android", instrumentation_gate)
         self.assertIn("VERIFICATION_NEEDS: ${{ toJSON(needs) }}", instrumentation_gate)
         self.assertIn("name: pull-request-gate", pull_request_gate)
         self.assertIn(
-            "needs: [quality, release_scope, verification-policy, instrumentation-gate]", pull_request_gate
+            "needs: [quality, release_scope, verification-policy, verification-content, instrumentation-gate]", pull_request_gate
         )
         self.assertIn("verification_gate.py pr", pull_request_gate)
         self.assertIn("needs: [quality, instrumentation-gate, release_scope]", package)
