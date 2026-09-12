@@ -2,6 +2,14 @@
 
 Kanonische Roadmap: [recovery-remediation-roadmap.md](recovery-remediation-roadmap.md)
 
+## Aktueller Arbeitsstand (nach P3, vor P4-Integration)
+
+P0-Belegbestand, P1, P2 und P3 sind auf Remote-Main integriert. P3 ist mit0.2.174 veröffentlicht.
+P4 hat den Erzeuger der drei Waisenkategorien nativ aufAPI26 reproduziert; vollständige
+Prüfungen und Integration stehen noch aus. P4b ist aufgrund dieses Befunds erforderlich,
+aber noch nicht implementiert. Pixel-Diagnose und sichtbare Bedienabnahme bleiben bei P5 offen.
+Die folgenden ursprünglichen Planungsstände und Fehlversuche bleiben historische Aufzeichnungen.
+
 ## Planungsstand 2026-09-12
 
 - Status: Roadmap entworfen; Umsetzung nicht begonnen.
@@ -714,3 +722,145 @@ Zeitgrenze jetzt innerhalb der Diagnose, anschließender Normalprozess ausdrück
 Der Emulator wird nach diesen Nachweisen beendet. Produktionshelper-Build und vollständiger
 lokaler Abschluss werden für den korrigierten Stand neu geprüft; neuer PR-Head bleibt bis dahin
 und bis zum passenden vollständigen CI-Ergebnis ungemergt.
+
+## P3 – geprüfter Main-/Releaseabschluss
+
+PR367 wurde auf Head edb349a44de53f0235cc906c695a9e4edba8701e im Lauf34713738417 vollständig
+geprüft: Qualitäts-, Instrumentierungs- und PR-Gate sowie alle sechs API26/35/37-Lanes grün.
+Alle zwölf heruntergeladenen Diagnosefälle binden Provider, Service, Worker, echte Activity-
+Callbacks und vollständige Daten-/Room-Assertions an die ursprüngliche Diagnose-PID; Ende/Abbruch
+und folgender Normalbetrieb bestehen. Zusätzliche Diagnosefolge je CI-Plattform: 58.78s/53.96s/
+55.59s (API26/35/37), nicht mit dem gesamten Android-Job gleichzusetzen.
+
+Finaler lokaler check-all.sh auf dem korrigierten Stand: Exit0, 15m09s; 793 Hosttests, keine Fehler,
+ein optionaler Benchmark-Skip; 55 CI- und 43 Release-Skriptprüfungen, Lint, alle Builds, Identität
+und Größenlimits bestanden. Native ältere/neue isolierte APK-Prüfung auch auf API26 bestanden.
+
+Squash-Main 3c0a873efa0eb553bcf670b778443d17659422fa ist inhaltsgleich zum PR-Baum
+c7a9d533b83281eaee76b371b2d4b521222aec4a. Exakter Main-Lauf34714576280 erfolgreich: gültige
+Wiederverwendung von PR367/Lauf34713738417 mit Profil full und Policy1, Packaging, aktueller
+signierter 27->27-Smoke und alle fünf historischen Upgrades, anschließend Veröffentlichung.
+Die Quelle0.2.173 wird vom neuen signierten Helper vor App-Erzeugung explizit als unsupported
+abgewiesen; Kandidat0.2.174 liefert supported, Schema27 ohne FK-/Zählerfehler und bestätigtes
+Ende der Diagnose-PID. Historische Seed-/Verify-Lanes bleiben funktionsfähig.
+
+Release forest-android-1017401 / 0.2.174 /1017401 veröffentlicht am2026-09-12T19:47:41Z;
+Tag zeigt auf denselben Main-Commit. Erneut heruntergeladene APK und Metadaten sind bytegleich
+mit dem getesteten Kandidaten. APK SHA256 80c2a04bdf085e5d447f8140e22baf8b6d99c3b3e97986f746864fe7d64827de;
+Metadaten359f8789dd318f17ba168368efc43f4227e8244d41cda54fe5afb285cb257cd9;
+Helper860502b4c9c9c7cfa9115f123687e56755eab3139512aad54e999ce6a8303435.
+APK und Helper tragen reguläres Zertifikatde45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da.
+Belege `/tmp/p3-publication-proof.json`, `/tmp/p3-candidate-proof.json`,
+`/tmp/p3-main-reuse-proof.json`, `/tmp/p3-current-upgrade-job.log`, `/tmp/p3-round4-ci-diagnostics/`.
+
+Abgleich gegen Phasenplan und Roadmap: implementierter Diagnosevertrag und sämtliche automatischen
+Freigabenachweise erfüllt. Der erste fehlgeschlagene API26-Testlauf bleibt als Historie erhalten;
+Korrektur erhält Datenumfang und tatsächliche Android-Lifecycle-Zustellung. Keine Produktionsdaten
+verändert. Softwareseitiger P3-Abschluss belegt; mangels verbundenem Pixel bleiben dessen unterstützte
+lesende Diagnose, Helper-Entfernung und sichtbarer Normal-/Bediennachweis ausdrücklich bei P5 offen.
+P4-Arbeit an isolierten Datenbanken ist dadurch nicht blockiert.
+
+## P4 – Phasenplan vor nativer Ursachenuntersuchung
+
+Ausgangspunkt Main3c0a873e / veröffentlichte0.2.174 /Schema27.
+Branch codex/recovery-origin-investigation. Erwartetes Profil full wegen neuer nativer Tests;
+kein Produktrelease bei ausschließlich Untersuchungsdokumentation und isolierten Testfixtures.
+Keine Produktmigration oder Fachlogik wird in dieser Untersuchungsphase geändert.
+
+1. Den vorhandenen hostseitigen SQL-Befund am echten Room-Öffnungspfad prüfen. Synthetische
+   gesunde Quellbestände mit clean/started/waiting-Runs, nichtleeren Kindtabellen und vorhandenem
+   Verlauf verwenden. Fremdschlüsselmodus innerhalb der echten Migration22->23 messen, nicht
+   im Test auf einen gewünschten Wert umschalten. Reale Migrationen delegieren; vor und nach
+   22->23 die Beziehungen festhalten, bevor24->25 mögliche Waisen archiviert.
+2. Zwei tatsächliche Schemahistorien prüfen: exportiertes Schema22 sowie aus Schema20 durch
+   die realen Zwischenmigrationen entstandene physische Spaltenordnung. Die ursprünglichen
+   Fachwerte und drei beobachteten Waisenkategorien differenzieren. Bei aktuellem Öffnen bis27
+   zusätzlich exakte Archiv-IDs/Quelle und erhaltene gestartete/wartende Abläufe, Kandidaten und
+   Verlauf prüfen. Datenbanken liegen ausschließlich im isolierten Emulator-Testpaket.
+3. Einführungsversion anhand Historie/Release belegen: PR335/f6e72e51 führt die Umwandlung ein;
+   früheste veröffentlichte enthaltene Version0.2.158 (Tag1015801, Commita25add10). Der getrennte
+   frühere Spaltenpermutationsfehler bleibt von der Waisenerzeugung unterscheidbar.
+4. Sequenzzähler als eigene Frage abschließen: bereits betrachtete Offer-/Carry-forward-, Rewind-,
+   Abbruch-/Lösch- und Snapshot-/Mapper-Pfade mit ihren Transaktionsgrenzen dokumentieren.
+   Der ausgeführte originale Schema20-Modellcode besteht32 Übergänge ohne Zählerrücksetzung;
+   dies beweist weder sämtliche Versionen noch die persönliche Historie. Fehlende Belege konkret
+   nennen; keinen Ursachenfix ohne erreichbaren Reproduktionspfad erfinden.
+5. Zuerst gezielte native API26-Prüfung, anschließend vollständiger lokaler Check und geltende
+   PR-Matrix. Ergebnis pro Anomalie mit reproduziertem Vorgang oder begrenztem Negativbefund
+   dokumentieren. Gesonderter Abgleich gegen diesen Plan und P4 der Roadmap. Geprüfter PR,
+   Squash und passender Main-Abschluss vor einer eventuellen Folgephase.
+6. Nur wenn ein weiterhin vorhandener Erzeuger nachgewiesen ist, P4b separat mit kleinstem
+   Ursachenfix, Regressions- und Erhaltungsnachweisen abgrenzen. Keine stillschweigende neue
+   Daten-/Produktentscheidung und keine pauschale Freigabe eines Architekturumbaus.
+
+### P4 – Fixture-Abgleich vor dem nativen Lauf
+
+Der erste Test-Build besteht. Quellenabgleich mit MigrateLinearFlowExecution zeigt vor Ausführung:
+WAITING_TIME setzt einen abgeschlossenen Vorgänger voraus; Position0 wäre fachlich ungültig.
+Begrenzte Fixture-Korrektur: wartender Ablauf mit zwei Schritten und Cursor1, erwartete Wartezeit
+am Vorgänger. Ressourcenenden liegen innerhalb der vorhandenen Snapshotpositionen. Der Test
+bleibt eine gesunde Ausgangsdatenbank; keine Akzeptanz eines ungültigen Bestands als Reproduktion.
+
+### P4 – Nativer Nachweis und Audit vor vollständiger Freigabe
+
+RecoveryOriginInstrumentationTest besteht nativ auf eigenem API26-Emulator: zwei Tests,4.256s,
+keine Fehler. Tatsächlicher Room-Migrationsmodus FK=0, innerhalb Upgrade-Transaktion. Gesunde
+Schemata20/22 erzeugen direkt durch22→23 jeweils eine flow_run_steps-, flow_run_resources- und
+occurrence_steps-Verletzung. Physische Vorgeschichten unterscheiden sich nachweislich; alle
+semantischen Spaltenwerte bleiben beim Umbau korrekt. Nach Öffnung auf27 sind die drei Zeilen
+vollständig samt SQLite-Typ archiviert; gültige Mischabläufe, Verlauf und Belohnungen erhalten.
+Logs `/tmp/p4-api26-native-results.txt`, `/tmp/p4-api26-origin-logcat.txt`; native Builds17s/13s.
+
+Untersuchungsbericht: [recovery-origin-investigation.md](recovery-origin-investigation.md).
+Einführung PR335/erste reguläre Version0.2.158 separat belegt. Der Sequenzzähler hat nach Prüfung
+der direkten historischen Aufrufer, Transaktionen, Mapper und32 Modellübergänge weiterhin keinen
+reproduzierten Erzeuger. Persönliche Herkunft wird weder aus dem Archivschema noch aus diesem
+begrenzten Negativbefund behauptet.
+
+Abgleich gegen Phasenplan: tatsächlicher Room-Pfad, beide physischen Historien, Zwischenprüfung,
+vollständige Archivspalten und erhaltener nichtleerer Verlauf belegt. Abgleich gegen RoadmapP4:
+drei Kategorien haben gemeinsamen reproduzierten Erzeuger, Sequenz bleibt abgegrenzt unbekannt.
+Der Erzeuger ist noch im aktuellen Migrationspfad enthalten; deshalb P4b erforderlich. Keine
+Produktänderung in P4. Vollständiger lokaler Check, frischer PR/API26/35/37 und exakter Main-Abschluss
+stehen bis zu ihren tatsächlichen Ergebnissen offen; keine Wiederholung abgeschlossener P3-Belege.
+
+Vollständiger lokaler check-all.sh anschließend mit Exit0 abgeschlossen: 55 CI- und43 Release-
+Skriptprüfungen frisch erfolgreich; Gradle9s mit172 Tasks, davon169 UP-TO-DATE. Unveränderte Host-
+Tests, Lint und Produktbuilds wurden gültig wiederverwendet, nicht als neue793 Testausführungen
+gezählt. Native neue Testklasse zuvor frisch gebaut und ausgeführt. Instrumentierungsidentität
+und Größenlimits bestanden. Klassifikation bestätigt full, release_required=false; PR-Matrix
+bleibt vollständig. Die folgenden noch offenen Nachweise sind PR und exakter Main.
+
+### P4 – Korrekturrunde 1: historisch zulässige Zustände
+
+Nach PR368/Headb5788c9f zeigt der direkte Quellabgleich eine Fixture-Grenze: PENDING_START wird
+erst mit PR325/c5f062d1 unter Schema22 eingeführt. Der erste erfolgreiche native Lauf bewies
+FK-Modus und Waisenerzeugung, aber seine als20 bezeichnete Datenvorgeschichte enthielt bereits
+diesen späteren Zustand. Die grüne Ausführung ist kein Nachweis seiner historischen Zulässigkeit.
+
+Korrekturplan vor Änderung: gesunde gestartete/wartende Bestände mit damals vorhandenen
+Zuständen OFFERED/WAITING_TIME unter20 anlegen; durch die echten Migrationen20→21→22 führen.
+Erst dann ein neues synthetisches PENDING_START-Angebot in dieser real entstandenen Datenbank
+ergänzen. Der exportierte22-Fall erhält dasselbe Angebot. Anschließend wieder echter Room-
+Upgrade22→27, unverändert umfassende Archiv-/Erhaltungsprüfung. Keine historischen Runtime-
+Aufrufe vortäuschen: das spätere Angebot ist expliziter Fixture-Aufbau unter22. Den Bericht
+entsprechend präzisieren und die geänderten nativen Fälle erneut aufAPI26 prüfen. Der ursprüngliche
+PR-Lauf bleibt seinem ursprünglichen Head zugeordnet; neuer Prüfstand nach dem korrigierten Build.
+
+Ergänzung desselben Fixture-Abgleichs: Reward-Originalwerte bereits vor20→22 aufnehmen;
+ungehandelte Schritte haben noch keinen gewählten Delay. Statische Spalten aller erhaltenen
+Ablauf-Snapshots zusätzlich vollständig gegen den Zustand vor22→23 vergleichen, damit die
+Archivprüfung nicht der einzige umfassende Spaltennachweis bleibt.
+
+Korrigierter nativer Lauf auf eigenemAPI26: beide Fälle erfolgreich,4.73s. Build9s/8s.
+Originale Reward-Zeilen über20→22→27 unverändert; vollständige ursprüngliche Spalten aller vier
+erhaltenen Ablauf-Schritte bis27 verglichen. Ursprüngliches Angebot wird ausschließlich unter22
+angelegt. Originale und korrigierte Protokolle bleiben getrennt (`/tmp/p4-round1-api26-*`).
+Gesondertes Audit gegen Korrekturplan und Roadmap: historisch unmöglicher Quellzustand entfernt,
+reale physische Vorgeschichte und beobachteter Room-Modus beibehalten, Erhaltungsnachweis verstärkt.
+Der bekannte Erzeuger ist unverändert reproduziert. Neuer vollständiger lokaler Check läuft;
+PR368 erhält erst danach den korrigierten Head und passende neue PR-Prüfungen.
+
+Finaler lokaler check-all.sh der Korrekturrunde mit Exit0: 55+43 Skriptprüfungen erfolgreich,
+Gradle8s mit169 von172 unveränderten Tasks wiederverwendet; Identität und Größenlimits bestanden.
+Keine neue Ausführung der unveränderten Hosttests behauptet. Nur frische PR-/Main-Nachweise offen.
