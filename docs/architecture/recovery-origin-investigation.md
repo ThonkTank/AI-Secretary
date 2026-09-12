@@ -57,12 +57,16 @@ Zuordnung dieser Werte.
 
 Datei: `app/src/androidTest/java/de/thonktank/autosecretary/RecoveryOriginInstrumentationTest.java`.
 
-- Zwei gesunde Ausgangsbestände: exportiertes Schema22 sowie Schema20 mit echten Zwischen-
-  migrationen. Der Test prüft die tatsächlich unterschiedliche physische Spaltenreihenfolge.
+- Zwei gesunde Ausgangsbestände: exportiertes Schema22 sowie gestartete/wartende Abläufe unter
+  Schema20 mit echten Zwischenmigrationen20→21→22. Erst unter22 wird jeweils ein neues synthetisches
+  PENDING_START-Angebot ergänzt. Diesen Zustand führte PR325/c5f062d1 erst unter22 ein; der Test
+  behauptet keinen Start eines solchen Angebots in einer Schema20-App. Er prüft die tatsächlich
+  unterschiedliche physische Spaltenreihenfolge und den Erhalt des alten Bestands.
 - Je ein ungestarteter, gestarteter und wartender Ablauf; nichtleere Kindtabellen; abgeschlossener
   Verlauf, offene Ausführung, Reward-Buchung und Zuordnung. WAITING_TIME hat einen abgeschlossenen
   Vorgänger; alle Ressourcenpositionen liegen innerhalb ihres Ablaufs.
-- MigrationTestHelper erstellt ausschließlich die alte Datei. Das Upgrade selbst läuft über
+- MigrationTestHelper erstellt die alte Datei und führt beim20-Fall die echten Zwischenmigrationen
+  bis22 aus. Der untersuchte Upgrade22→27 läuft über
   `Room.databaseBuilder(..., AppDatabase.class, ...)` und den Produktionsmigrationspfad ab8.
   Ein beobachtender Wrapper um22→23 delegiert die unveränderte produktive Migration.
 - Prüfung der drei Anomalien unmittelbar nach22→23, bevor die Schutzmigration24→25 sie versteckt.
@@ -73,10 +77,19 @@ Datei: `app/src/androidTest/java/de/thonktank/autosecretary/RecoveryOriginInstru
 - Ausschließlich eigener Emulator und isoliertes Testpaket; eigener Datenbankname. Keine
   persönlichen Gerätezeilen, Produktionsinstallation oder produktive Datenbank beteiligt.
 
-Lokaler nativer API26-Lauf: beide Tests erfolgreich, 4.256s reine Instrumentierungszeit.
-Getrennte Rohbelege: `/tmp/p4-api26-native-results.txt` und `/tmp/p4-api26-origin-logcat.txt`.
+Erster lokaler nativer API26-Lauf: beide Tests erfolgreich, 4.256s reine Instrumentierungszeit.
+Er hatte jedoch PENDING_START bereits unter20 gesät; diese historische Ungenauigkeit wird in der
+Korrekturrunde des Ausführungsprotokolls ausdrücklich benannt. Der korrigierte native Nachweis
+steht bis zu seinem Ergebnis offen. Ursprüngliche Rohbelege bleiben unverändert:
+`/tmp/p4-api26-native-results.txt` und `/tmp/p4-api26-origin-logcat.txt`.
 Der reguläre AndroidJUnit-Korpus wählt die Klasse automatisch aus; weitere Plattformnachweise
 werden mit dem tatsächlichen PR-Lauf im Ausführungsprotokoll ergänzt.
+
+Korrigierter lokaler API26-Lauf: beide Fälle erfolgreich, 4.73s. Schema20 enthält ausschließlich
+damals verfügbare Zustände; das neue Angebot wird erst nach20→22 ergänzt. Alle vorher vorhandenen
+Reward-Spalten werden schon vor den Zwischenmigrationen aufgenommen und bis27 verglichen;
+zusätzlich bleiben sämtliche ursprünglichen Spalten der vier gültigen Ablauf-Schritte erhalten.
+Neue Belege: `/tmp/p4-round1-api26-native-results.txt`, `/tmp/p4-round1-api26-origin-logcat.txt`.
 
 ## Sequenzzähler: begrenzter Negativbefund
 
@@ -99,6 +112,12 @@ sieben erhaltenden Übergänge und ein neues Angebot geprüft: 32 Übergänge er
 kleiner Probe-Aufrufer und Ergebnis liegen unter `/tmp/p4-historical-counter-model/`.
 Die öffentliche Methode nimmt eine Sequenz entgegen; ein hypothetischer fehlerhafter Aufrufer
 könnte einen älteren Wert übergeben. In den betrachteten produktiven Aufrufen ist das nicht belegt.
+
+Der anschließend abgeglichene Schema22-Runtime-Stand aus PR325/c5f062d1 behandelt PENDING_START
+erstmals explizit. Auch dessen `placeCandidate` verwendet bei einem neuen Blatt den aktuellen
+Zähler, erhöht ihn über `offerOnSheet` und übernimmt ihn bei `withState`; ein vorhandenes offenes
+Blatt wird weiterverwendet. Diese zusätzliche Quellenprüfung erklärt die historisch zulässige
+Fixture-Vorgeschichte, liefert aber ebenfalls keine beobachtete erste Zählerabweichung.
 
 Es fehlt eine Vorgangsfolge oder ein Zwischenbestand, der das erste Auseinanderlaufen von
 Zähler und vorhandener Historie zeigt. Deshalb lautet das Ergebnis „Erzeuger unbekannt“,

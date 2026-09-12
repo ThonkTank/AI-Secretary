@@ -52,10 +52,25 @@ public final class RecoveryOriginInstrumentationTest {
         // Seed a demonstrably healthy database. This connection is closed before Room opens it.
         old.setForeignKeyConstraintsEnabled(true);
         seed(old, source);
-        assertEquals(1, scalar(old, "PRAGMA foreign_keys"));
-        assertEquals(new TreeMap<>(), violations(old));
         Map<String, String> bookings = row(old, "reward_bookings", "id='history-booking'");
         Map<String, String> assignments = row(old, "reward_assignments", "bookingId='history-booking'");
+        if (source == 20) {
+            // PENDING_START did not exist in the schema20 app. Preserve its real data first,
+            // then add a later schema22 offer to the physically upgraded database.
+            assertEquals(new TreeMap<>(), violations(old));
+            old.close();
+            old = helper.runMigrationsAndValidate(DATABASE, 22, true,
+                    DatabaseMigrations.MIGRATION_20_21, DatabaseMigrations.MIGRATION_21_22);
+            old.setForeignKeyConstraintsEnabled(true);
+        }
+        seedUntouchedOffer(old);
+        assertEquals(1, scalar(old, "PRAGMA foreign_keys"));
+        assertEquals(new TreeMap<>(), violations(old));
+        assertEquals(bookings, row(old, "reward_bookings", "id='history-booking'"));
+        assertEquals(assignments, row(old, "reward_assignments", "bookingId='history-booking'"));
+        Map<String, Map<String, String>> retainedSteps = new LinkedHashMap<>();
+        for (String id : new String[]{"started-prep", "started-run-step", "waiting-run-step", "waiting-next-step"})
+            retainedSteps.put(id, row(old, "flow_run_steps", "id='" + id + "'"));
         old.close();
 
         Map<String, Map<String, String>> originals = new LinkedHashMap<>();
@@ -118,6 +133,11 @@ public final class RecoveryOriginInstrumentationTest {
             }
             assertEquals(bookings, row(db, "reward_bookings", "id='history-booking'"));
             assertEquals(assignments, row(db, "reward_assignments", "bookingId='history-booking'"));
+            for (Map.Entry<String, Map<String, String>> step : retainedSteps.entrySet()) {
+                Map<String, String> actual = row(db, "flow_run_steps", "id='" + step.getKey() + "'");
+                for (Map.Entry<String, String> column : step.getValue().entrySet())
+                    assertEquals(step.getKey() + "." + column.getKey(), column.getValue(), actual.get(column.getKey()));
+            }
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM tasks WHERE id='laundry' AND title='Laundry'"));
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM flow_candidates WHERE id='clean' AND seedStepId='colors'"));
             assertEquals(2, scalar(db, "SELECT COUNT(*) FROM step_flow_runs"));
@@ -145,20 +165,15 @@ public final class RecoveryOriginInstrumentationTest {
                 "weekdayMask", 0, "ongoing", 0, "conditionText", "", "conditionDone", 0, "archived", 0,
                 "nextDueOn", "2026-08-25", "catalogOrder", 1, "hasCompletedOccurrence", 1,
                 "boundKind", "FOREVER", "note", "retained task", "missedOccurrenceMode", "SKIP");
-        run(db, "clean", "colors", "PENDING_START", 0, null, "clean-sheet", 1);
-        run(db, "started", "prep", "PENDING_START", 1, null, "started-sheet", 2);
+        run(db, "started", "prep", "OFFERED", 1, null, "started-sheet", 2);
         run(db, "waiting", "sheets", "WAITING_TIME", 1, READY_AT, null, 1);
-        step(db, version, "clean-run-step", "clean", 0, "colors");
         step(db, version, "started-prep", "started", 0, "prep");
         step(db, version, "started-run-step", "started", 1, "whites");
         step(db, version, "waiting-run-step", "waiting", 0, "sheets");
         step(db, version, "waiting-next-step", "waiting", 1, "fold");
-        resource(db, "clean", "PLANNED", 0);
         resource(db, "started", "ACTIVE", 1);
-        occurrence(db, "clean-sheet", "clean", 0, false);
         occurrence(db, "started-history", "started", 0, true);
         occurrence(db, "started-sheet", "started", 1, false);
-        offeredStep(db, version, "clean-offered-step", "clean-sheet", "colors", false);
         offeredStep(db, version, "history-step", "started-history", "prep", true);
         offeredStep(db, version, "started-offered-step", "started-sheet", "whites", false);
         insert(db, "reward_bookings", "id", "history-booking", "transactionId", "history-transaction",
@@ -166,6 +181,15 @@ public final class RecoveryOriginInstrumentationTest {
                 "kind", "LEGACY_COMPLETION", "target", "HEAD", "xpDelta", 7, "comboPointDelta", 0,
                 "bookedOn", "2026-08-24", "plannedXp", 7);
         insert(db, "reward_assignments", "bookingId", "history-booking", "occurrenceId", "started-history");
+    }
+
+    private static void seedUntouchedOffer(SupportSQLiteDatabase db) {
+        assertEquals(22, db.getVersion());
+        run(db, "clean", "colors", "PENDING_START", 0, null, "clean-sheet", 1);
+        step(db, 22, "clean-run-step", "clean", 0, "colors");
+        resource(db, "clean", "PLANNED", 0);
+        occurrence(db, "clean-sheet", "clean", 0, false);
+        offeredStep(db, 22, "clean-offered-step", "clean-sheet", "colors", false);
     }
 
     private static void run(SupportSQLiteDatabase db, String id, String seed, String state, int position,
@@ -181,7 +205,7 @@ public final class RecoveryOriginInstrumentationTest {
         ContentValues values = values("id", id, "runId", run, "position", position, "sourceTemplateId", template,
                 "text", id + " text", "amountKind", "NONE", "restTimerMode", "OFF", "note", id + " note",
                 "delayMode", "FIXED", "defaultDelayMillis", 12345, "lastUsedDelayMillis", 9876,
-                "chosenDelayMillis", 12345);
+                "chosenDelayMillis", position == 0 && !run.equals("clean") ? 12345 : null);
         addLoadFields(values, version);
         db.insert("flow_run_steps", SQLiteDatabase.CONFLICT_ABORT, values);
     }

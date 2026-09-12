@@ -830,3 +830,37 @@ Tests, Lint und Produktbuilds wurden gültig wiederverwendet, nicht als neue793 
 gezählt. Native neue Testklasse zuvor frisch gebaut und ausgeführt. Instrumentierungsidentität
 und Größenlimits bestanden. Klassifikation bestätigt full, release_required=false; PR-Matrix
 bleibt vollständig. Die folgenden noch offenen Nachweise sind PR und exakter Main.
+
+### P4 – Korrekturrunde 1: historisch zulässige Zustände
+
+Nach PR368/Headb5788c9f zeigt der direkte Quellabgleich eine Fixture-Grenze: PENDING_START wird
+erst mit PR325/c5f062d1 unter Schema22 eingeführt. Der erste erfolgreiche native Lauf bewies
+FK-Modus und Waisenerzeugung, aber seine als20 bezeichnete Datenvorgeschichte enthielt bereits
+diesen späteren Zustand. Die grüne Ausführung ist kein Nachweis seiner historischen Zulässigkeit.
+
+Korrekturplan vor Änderung: gesunde gestartete/wartende Bestände mit damals vorhandenen
+Zuständen OFFERED/WAITING_TIME unter20 anlegen; durch die echten Migrationen20→21→22 führen.
+Erst dann ein neues synthetisches PENDING_START-Angebot in dieser real entstandenen Datenbank
+ergänzen. Der exportierte22-Fall erhält dasselbe Angebot. Anschließend wieder echter Room-
+Upgrade22→27, unverändert umfassende Archiv-/Erhaltungsprüfung. Keine historischen Runtime-
+Aufrufe vortäuschen: das spätere Angebot ist expliziter Fixture-Aufbau unter22. Den Bericht
+entsprechend präzisieren und die geänderten nativen Fälle erneut aufAPI26 prüfen. Der ursprüngliche
+PR-Lauf bleibt seinem ursprünglichen Head zugeordnet; neuer Prüfstand nach dem korrigierten Build.
+
+Ergänzung desselben Fixture-Abgleichs: Reward-Originalwerte bereits vor20→22 aufnehmen;
+ungehandelte Schritte haben noch keinen gewählten Delay. Statische Spalten aller erhaltenen
+Ablauf-Snapshots zusätzlich vollständig gegen den Zustand vor22→23 vergleichen, damit die
+Archivprüfung nicht der einzige umfassende Spaltennachweis bleibt.
+
+Korrigierter nativer Lauf auf eigenemAPI26: beide Fälle erfolgreich,4.73s. Build9s/8s.
+Originale Reward-Zeilen über20→22→27 unverändert; vollständige ursprüngliche Spalten aller vier
+erhaltenen Ablauf-Schritte bis27 verglichen. Ursprüngliches Angebot wird ausschließlich unter22
+angelegt. Originale und korrigierte Protokolle bleiben getrennt (`/tmp/p4-round1-api26-*`).
+Gesondertes Audit gegen Korrekturplan und Roadmap: historisch unmöglicher Quellzustand entfernt,
+reale physische Vorgeschichte und beobachteter Room-Modus beibehalten, Erhaltungsnachweis verstärkt.
+Der bekannte Erzeuger ist unverändert reproduziert. Neuer vollständiger lokaler Check läuft;
+PR368 erhält erst danach den korrigierten Head und passende neue PR-Prüfungen.
+
+Finaler lokaler check-all.sh der Korrekturrunde mit Exit0: 55+43 Skriptprüfungen erfolgreich,
+Gradle8s mit169 von172 unveränderten Tasks wiederverwendet; Identität und Größenlimits bestanden.
+Keine neue Ausführung der unveränderten Hosttests behauptet. Nur frische PR-/Main-Nachweise offen.
