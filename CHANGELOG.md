@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Ablauf-Schritte erhalten auch nach älteren, zurückliegenden Zählerständen eine freie Kennung;
+  vorhandene Ausführungen und ihr Verlauf bleiben erhalten.
+
 - Auch verwaiste Aufgabenschritte samt abhängigen Wiederholungen, Timern und Buchungen werden vor dem Upgrade vollständig gesichert.
 - Startabsturz beim Ablauf-Upgrade behoben: verwaiste Schritte und Ressourcen werden vollständig
   und atomar archiviert; gültige Aufgaben, Abläufe und Verlauf bleiben erhalten.

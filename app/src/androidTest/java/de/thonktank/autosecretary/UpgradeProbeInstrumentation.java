@@ -59,7 +59,19 @@ public final class UpgradeProbeInstrumentation extends Instrumentation {
             try (android.database.Cursor rows = db.rawQuery("PRAGMA foreign_key_check", null)) {
                 while (rows.moveToNext()) violations.merge(rows.getString(0), 1, Integer::sum);
             }
-            return "schema=" + db.getVersion() + "; foreignKeys=" + violations;
+            String report = "schema=" + db.getVersion() + "; foreignKeys=" + violations;
+            if (db.getVersion() >= 25) {
+                try (android.database.Cursor rows = db.rawQuery("SELECT COUNT(*) FROM step_flow_runs r "
+                        + "WHERE EXISTS (SELECT 1 FROM occurrences o WHERE o.flowRunId=r.id "
+                        + "AND o.flowExecutionSequence>=r.nextExecutionSequence)", null)) {
+                    rows.moveToFirst(); report += "; staleExecutionCounters=" + rows.getLong(0);
+                }
+                try (android.database.Cursor rows = db.rawQuery("SELECT COUNT(*) FROM step_flow_runs r "
+                        + "WHERE EXISTS (SELECT 1 FROM occurrences o WHERE o.sourceKey='flow-step:' || r.id || ':' || r.nextExecutionSequence)", null)) {
+                    rows.moveToFirst(); report += "; occupiedNextExecutionKeys=" + rows.getLong(0);
+                }
+            }
+            return report;
         }
     }
 

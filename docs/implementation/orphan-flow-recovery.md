@@ -63,3 +63,23 @@ The signed upgrade probe also supports `upgradePhase=diagnose`: it suppresses
 application startup and opens the retained database read-only, returning its
 version and all FK table counts without running migrations or reading payloads.
 Never use the destructive `seed` phase on a retained user database.
+
+## Runtime allocation follow-up
+
+On the retained Pixel, 0.2.170 committed schema 27 with no FK violations and
+archived 8 flow steps, 4 flow resources and 2 occurrence steps. Startup no longer
+crashed, but loading the dashboard failed while creating a flow occurrence step.
+The parent occurrence insert used IGNORE on its unique source key; a lagging
+execution counter reused an existing key, so the new parent ID was absent.
+A full Room runtime regression reproduces the same FK exception before the fix.
+
+Sequence allocation now stays ahead of both the stored counter and retained
+occurrence sequences and checks the actual unique source key. It advances only
+the counter in the same transaction, preserving historical occurrences, steps
+and rewards. This works for already-migrated schema-27 databases without another
+schema migration.
+
+For signed read-only diagnosis, invoke the diagnostic phase directly: an explicit
+force-stop beforehand can cause Android to deliver a pending boot broadcast while
+application initialization is suppressed. On the Pixel the direct diagnostic run
+succeeded; component state changes were denied by Android and no override was made.

@@ -108,10 +108,27 @@ public final class SqlFlowGraphRunRepository implements FlowGraphRunRepository {
         FlowGraphRunRecord before = find(runId);
         if (before == null || before.run.collected || before.run.cancelled)
             throw new IllegalStateException("No active flow execution to attach an occurrence to");
-        int next = Math.addExact(before.nextExecutionSequence, 1);
+        int allocated;
+        try (Cursor history = database().query("SELECT COALESCE(MAX(flowExecutionSequence),0) FROM occurrences WHERE flowRunId=?",
+                new Object[]{runId})) {
+            history.moveToFirst();
+            allocated = Math.toIntExact(Math.max((long) before.nextExecutionSequence,
+                    Math.addExact(history.getLong(0), 1L)));
+        }
+        // Older counters can lag behind retained history. Also respect the actual unique key
+        // if a legacy row's sequence metadata differs; never replace its history or children.
+        while (hasExecutionKey(runId, allocated)) allocated = Math.addExact(allocated, 1);
+        int next = Math.addExact(allocated, 1);
         database().execSQL("UPDATE step_flow_runs SET nextExecutionSequence=?,updatedAtEpochMillis=? WHERE id=?",
                 new Object[]{next, now, runId});
-        return before.nextExecutionSequence;
+        return allocated;
+    }
+
+    private boolean hasExecutionKey(String runId, int sequence) {
+        try (Cursor existing = database().query("SELECT 1 FROM occurrences WHERE sourceKey=?",
+                new Object[]{"flow-step:" + runId + ':' + sequence})) {
+            return existing.moveToFirst();
+        }
     }
 
     private SupportSQLiteDatabase database() {
