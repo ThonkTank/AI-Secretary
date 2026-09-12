@@ -371,6 +371,21 @@ public final class FlowGraphSqlMigrationTest {
         assertEquals("1", scalar("SELECT COUNT(*) FROM flow_candidates"));
     }
 
+    @Test public void executionAllocationRespectsReservedKeysEvenWithOlderSequenceMetadata() {
+        run("run", StepFlowRunState.OFFERED, 1, FlowResourceState.ACTIVE, 0);
+        occurrence("history", "run", "COMPLETED", "template0", true);
+        db.execSQL("UPDATE occurrences SET sourceKey='flow-step:run:10',flowExecutionSequence=1 WHERE id='history'");
+        migrate();
+        db.execSQL("UPDATE step_flow_runs SET nextExecutionSequence=10 WHERE id='run'");
+        Map<String, String> history = unchangedRows();
+        inTransaction(() -> {
+            assertEquals(11, repository().allocateExecutionSequence("run", 1000));
+            assertEquals(12, repository().allocateExecutionSequence("run", 1001));
+        });
+        assertEquals(history, unchangedRows());
+        assertEquals("13", scalar("SELECT nextExecutionSequence FROM step_flow_runs WHERE id='run'"));
+    }
+
     @Test public void executionRepositoryCountsLiveClaimsEvenWhenCapacityIsReducedOrDeleted() {
         run("active", StepFlowRunState.OFFERED, 1, FlowResourceState.ACTIVE, 0);
         run("reserved", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.RESERVED, 1);

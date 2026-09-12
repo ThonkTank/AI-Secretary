@@ -141,6 +141,33 @@ public final class StepFlowRuntimeRobolectricTest {
         assertEquals(3, activeRuns().size());
     }
 
+    @Test @Config(sdk = {26, 35})
+    public void staleExecutionCounterDoesNotReuseHistoryKeyOrBreakDashboard() {
+        FlowGraphRun active = start("colors", TWO_HOURS);
+        List<Occurrence> history = repository.today.occurrences(task.id);
+        assertEquals(1, history.size());
+        Occurrence previous = history.get(0);
+        int earnedXp = repository.today.xp();
+        database.getOpenHelper().getWritableDatabase().execSQL(
+                "UPDATE step_flow_runs SET nextExecutionSequence=? WHERE id=?",
+                new Object[]{previous.flowExecutionSequence, active.id});
+        moments.advance(TWO_HOURS);
+        assertTrue(useCases.flows.activateReadyFlows.execute());
+        TodayUiModel dashboard = mapper().map(useCases.today.loadDashboard.execute(TODAY), TODAY);
+        assertEquals("Buntwäsche: Aufhängen", dashboard.focus.steps.get(0).title);
+        List<Occurrence> after = repository.today.occurrences(task.id);
+        assertEquals(2, after.size());
+        Occurrence retained = after.stream().filter(value -> value.id.equals(previous.id)).findFirst().orElseThrow();
+        assertEquals(previous.sourceKey, retained.sourceKey);
+        assertEquals(previous.state, retained.state);
+        assertEquals(earnedXp, repository.today.xp());
+        Occurrence offered = after.stream().filter(value -> value.state == OccurrenceState.OPEN).findFirst().orElseThrow();
+        assertTrue(offered.flowExecutionSequence > previous.flowExecutionSequence);
+        assertEquals(1, repository.steps.occurrenceSteps(offered.id).size());
+        assertFalse(useCases.flows.activateReadyFlows.execute());
+        assertEquals(2, repository.today.occurrences(task.id).size());
+    }
+
     @Test public void followUpsShareSheetAndKeepOriginTitle() {
         FlowGraphRun run = start("colors", TWO_HOURS);
         moments.advance(TWO_HOURS);
