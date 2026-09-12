@@ -1094,3 +1094,16 @@ Frischer lesender Vorabgleich: PR364/366/367/368 sind gemergt, ihre Main-Läufe3
 34708748445/34714576280/34717366394 erfolgreich und alle vier Merge-Commits Vorfahren des
 aktuellen Branches. Remote-Main unverändertd779ed38; Pixel weiterhin nicht verbunden.
 Beleg `/tmp/p4b-crossphase-remote-proof.json`. Keine neue Ausführung früherer Phasenprüfungen.
+
+### P4b – Dokumentkorrekturrunde 4 vor neuer PR-Prüfung
+
+Der abschließende direkte Abgleich von ADR-005 zeigt eine übersehene zweite Pflicht-Lanetabelle:
+ADR-035/037 und releasing.md sind bereits aktualisiert, ADR-005 nennt aber weiterhin fünf Lanes
+und lässt das neue Schema22-Fixture aus. Korrekturplan: dort sechs historische Lanes und den
+konkreten neuen Quell-/Risikofall ergänzen; vorhandene drei Quellen und API-Verteilung beibehalten.
+Keine Produkt-, Test- oder CI-Logik ändern. Draft-PR369/Headcf5bb71d/Lauf34719827334 erhält danach
+einen neuen Head. Der alte Lauf wird als überholt abgebrochen, bevor dessen Android-Matrix weitere
+Kosten erzeugt. Er ist kein finaler Nachweis. Der bereits laufende lokale Gradle-Vollcheck bleibt
+unverändert; dessen Quell-/Testinhalt ist weiterhin01f1dd64. Skriptverträge werden für die aktuelle
+Dokumentkorrektur erneut geprüft. Der neue PR-Gate bleibt vollständig; keine künstliche Wiederholung
+des unveränderten lokalen Produktbuilds allein wegen dieser Dokumentänderung.
