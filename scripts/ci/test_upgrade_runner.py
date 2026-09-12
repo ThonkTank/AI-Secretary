@@ -11,7 +11,7 @@ RUNNER = ROOT / "scripts" / "ci" / "run-upgrade-test.sh"
 
 
 class UpgradeRunnerTest(unittest.TestCase):
-    def run_runner(self, package_present=False, probe_crash=False):
+    def run_runner(self, package_present=False, probe_crash=False, diagnostics=None):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = pathlib.Path(temporary.name)
@@ -57,6 +57,21 @@ class UpgradeRunnerTest(unittest.TestCase):
         environment["ADB_LOG"] = str(log)
         environment["ADB_PACKAGE_PRESENT"] = str(package_present).lower()
         environment["ADB_PROBE_CRASH"] = str(probe_crash).lower()
+        if diagnostics is not None:
+            python = root / "python3"
+            python.write_text("#!/usr/bin/env bash\n"
+                'if [ ! -f "$DIAGNOSTIC_SOURCE_DONE" ]; then\n'
+                '  touch "$DIAGNOSTIC_SOURCE_DONE"\n'
+                '  echo "diagnostic source" >> "$ADB_LOG"\n'
+                '  exit "$DIAGNOSTIC_SOURCE_STATUS"\n'
+                'fi\n'
+                'echo "diagnostic candidate" >> "$ADB_LOG"\n'
+                'exit "$DIAGNOSTIC_CANDIDATE_STATUS"\n')
+            python.chmod(0o755)
+            environment.update({"UPGRADE_DIAGNOSTIC_CONTRACT": "true",
+                "DIAGNOSTIC_SOURCE_DONE": str(root / "source-done"),
+                "DIAGNOSTIC_SOURCE_STATUS": str(diagnostics[0]),
+                "DIAGNOSTIC_CANDIDATE_STATUS": str(diagnostics[1])})
         result = subprocess.run(
             [
                 str(RUNNER),
@@ -115,6 +130,24 @@ class UpgradeRunnerTest(unittest.TestCase):
                 for call in calls
             ),
         )
+
+    def test_old_unsupported_source_is_explicit_but_candidate_must_support_diagnosis(self):
+        root, result, calls = self.run_runner(diagnostics=(4, 0))
+        self.assertEqual(0, result.returncode, result.stderr)
+        upgrade = calls.index(f"install -r {root / 'candidate.apk'}")
+        self.assertLess(calls.index("diagnostic source"), upgrade)
+        self.assertLess(upgrade, calls.index("diagnostic candidate"))
+        verify = next(i for i, call in enumerate(calls) if "-e upgradePhase verify" in call)
+        self.assertLess(calls.index("diagnostic candidate"), verify)
+
+    def test_unexplained_source_crash_and_unsupported_candidate_block_upgrade_gate(self):
+        for statuses in [(1, 0), (4, 4), (0, 1)]:
+            with self.subTest(statuses=statuses):
+                root, result, calls = self.run_runner(diagnostics=statuses)
+                self.assertNotEqual(0, result.returncode)
+                self.assertFalse(any("-e upgradePhase verify" in call for call in calls))
+                if statuses[0] == 1:
+                    self.assertNotIn(f"install -r {root / 'candidate.apk'}", calls)
 
     def test_existing_package_fails_before_candidate_install(self):
         root, result, calls = self.run_runner(package_present=True)

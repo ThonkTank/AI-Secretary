@@ -22,8 +22,10 @@ public final class UpgradeProbeInstrumentation extends Instrumentation {
     }
 
     @Override public void callApplicationOnCreate(android.app.Application application) {
-        // Diagnostic runs must not start widgets, Room, or migrations in the target application.
-        if (!"diagnose".equals(arguments == null ? "" : arguments.getString("upgradePhase", ""))) {
+        // Only the dedicated runner has a pre-provider diagnostic contract. Invalid legacy
+        // requests do not start business initialization here, but are not a supported diagnosis.
+        String phase = arguments == null ? "" : arguments.getString("upgradePhase", "");
+        if ("seed".equals(phase) || "verify".equals(phase)) {
             super.callApplicationOnCreate(application);
         }
     }
@@ -33,14 +35,13 @@ public final class UpgradeProbeInstrumentation extends Instrumentation {
         String phase = arguments.getString("upgradePhase", "");
         String fixtureId = arguments.getString("upgradeFixture", "");
         try {
-            if ("diagnose".equals(phase)) {
-                result.putString("diagnosis", readOnlyDiagnosis(getTargetContext().getDatabasePath("auto_secretary.db")));
-            } else if ("seed".equals(phase)) {
+            if ("seed".equals(phase)) {
                 UpgradePersistenceProbe.seed(getTargetContext(), getContext(), this, fixtureId);
             } else if ("verify".equals(phase)) {
                 UpgradePersistenceProbe.verify(getTargetContext(), getContext(), this, fixtureId);
             } else {
-                throw new AssertionError("Unknown upgrade phase: " + phase);
+                throw new AssertionError("Unsupported upgrade phase: " + phase
+                        + "; diagnosis requires DiagnosticProbeInstrumentation");
             }
             result.putString("stream", "\nOK (1 probe)\n");
             finish(Activity.RESULT_OK, result);
@@ -49,29 +50,6 @@ public final class UpgradeProbeInstrumentation extends Instrumentation {
             result.putString("shortMsg", failure.toString());
             result.putString("stream", "\nFAIL: " + failure + "\n");
             finish(Activity.RESULT_CANCELED, result);
-        }
-    }
-
-    static String readOnlyDiagnosis(java.io.File file) {
-        try (android.database.sqlite.SQLiteDatabase db = android.database.sqlite.SQLiteDatabase.openDatabase(
-                file.getPath(), null, android.database.sqlite.SQLiteDatabase.OPEN_READONLY)) {
-            java.util.Map<String, Integer> violations = new java.util.TreeMap<>();
-            try (android.database.Cursor rows = db.rawQuery("PRAGMA foreign_key_check", null)) {
-                while (rows.moveToNext()) violations.merge(rows.getString(0), 1, Integer::sum);
-            }
-            String report = "schema=" + db.getVersion() + "; foreignKeys=" + violations;
-            if (db.getVersion() >= 25) {
-                try (android.database.Cursor rows = db.rawQuery("SELECT COUNT(*) FROM step_flow_runs r "
-                        + "WHERE EXISTS (SELECT 1 FROM occurrences o WHERE o.flowRunId=r.id "
-                        + "AND o.flowExecutionSequence>=r.nextExecutionSequence)", null)) {
-                    rows.moveToFirst(); report += "; staleExecutionCounters=" + rows.getLong(0);
-                }
-                try (android.database.Cursor rows = db.rawQuery("SELECT COUNT(*) FROM step_flow_runs r "
-                        + "WHERE EXISTS (SELECT 1 FROM occurrences o WHERE o.sourceKey='flow-step:' || r.id || ':' || r.nextExecutionSequence)", null)) {
-                    rows.moveToFirst(); report += "; occupiedNextExecutionKeys=" + rows.getLong(0);
-                }
-            }
-            return report;
         }
     }
 

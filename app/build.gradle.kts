@@ -38,11 +38,14 @@ android {
         versionCode = configuredVersionCode
         versionName = configuredVersionName
         manifestPlaceholders["appLabel"] = "Auto Secretary"
+        manifestPlaceholders["diagnosticTargetPackage"] =
+            "de.thonktank.autosecretary" + if (useUpgradeProbeRunner) "" else ".test"
         testInstrumentationRunner = if (useUpgradeProbeRunner) {
             "de.thonktank.autosecretary.UpgradeProbeInstrumentation"
         } else {
             "androidx.test.runner.AndroidJUnitRunner"
         }
+        manifestPlaceholders["primaryTestRunner"] = testInstrumentationRunner!!
         buildConfigField("String", "UPDATE_REPOSITORY_OWNER",
             "\"${releaseContract.getProperty("repositoryOwner")}\"")
         buildConfigField("String", "UPDATE_REPOSITORY_NAME",
@@ -123,6 +126,9 @@ android {
     sourceSets {
         // The test target uses the product renderer plus debug-only harnesses without shrinking.
         getByName("instrumentation").setRoot("src/debug")
+        if (useUpgradeProbeRunner) {
+            getByName("androidTest").manifest.srcFile("src/androidTest/AndroidManifest-upgrade.xml")
+        }
         getByName("androidTest").assets.directories.add("$projectDir/schemas")
         getByName("androidTest").assets.directories.add(
             rootProject.file("release/upgrade-fixtures").absolutePath,

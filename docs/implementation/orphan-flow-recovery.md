@@ -59,10 +59,14 @@ The migration logs all pre-existing FK table counts and reports all remaining
 violations together instead of exposing one table per failed device upgrade.
 The committed recovery report remains separate from this pre-upgrade diagnosis.
 
-The signed upgrade probe also supports `upgradePhase=diagnose`: it suppresses
-application startup and opens the retained database read-only, returning its
-version and all FK table counts without running migrations or reading payloads.
-Never use the destructive `seed` phase on a retained user database.
+The supported read-only entry is now the dedicated `DiagnosticProbeInstrumentation`,
+activated before Application/provider creation through bootstrap contract 1. Use
+`scripts/release/diagnostic_probe.py` with the matching signed helper. APKs without
+that contract, including releases through 0.2.173, are explicitly unsupported;
+`upgradePhase=diagnose` on the historical runner is no longer supported. The protected
+scope is business schema/data, while Android/WorkManager bookkeeping still initializes.
+See [ADR-038](../architecture/adr-038-frueher-diagnose-bootstrap.md) for the exact lifecycle,
+compatibility and validation boundary. Never use `seed` on a retained user database.
 
 ## Runtime allocation follow-up
 
@@ -79,7 +83,8 @@ the counter in the same transaction, preserving historical occurrences, steps
 and rewards. This works for already-migrated schema-27 databases without another
 schema migration.
 
-For signed read-only diagnosis, invoke the diagnostic phase directly: an explicit
-force-stop beforehand can cause Android to deliver a pending boot broadcast while
-application initialization is suppressed. On the Pixel the direct diagnostic run
-succeeded; component state changes were denied by Android and no override was made.
+Historical device observation: the old diagnostic phase succeeded when invoked
+directly, while an explicit prior force-stop could expose a pending boot broadcast
+against the suppressed application initialization. Component state changes were
+denied by Android and no override was made. That observation did not prove provider
+or receiver safety; the new early contract and native event tests address that gap.

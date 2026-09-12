@@ -63,6 +63,26 @@ class InstrumentationRunnerTest(unittest.TestCase):
                 with self.subTest(command=command):
                     self.assertIn(command, calls)
 
+    def test_diagnostic_failure_blocks_lane_after_successful_gradle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = pathlib.Path(directory)
+            gradle = self._executable(temporary / "gradle", "#!/usr/bin/env bash\nexit 0\n")
+            diagnostic = self._executable(temporary / "diagnostic", "#!/usr/bin/env bash\nexit 31\n")
+            self._executable(temporary / "adb", "#!/usr/bin/env bash\nexit 0\n")
+            environment = os.environ.copy()
+            environment.update({
+                "INSTRUMENTATION_GRADLE_EXECUTABLE": str(gradle),
+                "INSTRUMENTATION_DIAGNOSTIC_LIFECYCLE": "true",
+                "INSTRUMENTATION_DIAGNOSTIC_EXECUTABLE": str(diagnostic),
+                "INSTRUMENTATION_REPORT_ROOT": str(temporary / "reports"),
+                "PATH": str(temporary) + os.pathsep + environment["PATH"],
+            })
+            result = subprocess.run([str(RUNNER)], cwd=ROOT, env=environment, check=False)
+            self.assertEqual(31, result.returncode)
+            report = temporary / "reports/api-unknown/attempt-1/run-context.txt"
+            self.assertIn("gradle_exit_code=0", report.read_text())
+            self.assertIn("exit_code=31", report.read_text())
+
     def test_success_does_not_create_failure_artifacts(self):
         with tempfile.TemporaryDirectory() as directory:
             temporary = pathlib.Path(directory)

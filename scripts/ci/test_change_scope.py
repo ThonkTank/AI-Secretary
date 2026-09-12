@@ -72,6 +72,10 @@ class ChangeScopeTest(unittest.TestCase):
     def test_signed_upgrade_probe_and_corpus_are_full_release_inputs(self):
         for path in ('app/src/androidTest/java/de/thonktank/autosecretary/UpgradeProbeInstrumentation.java',
                      'app/src/androidTest/java/de/thonktank/autosecretary/UpgradePersistenceProbe.java',
+                     'app/src/androidTest/java/de/thonktank/autosecretary/EarlyDiagnosticInstrumentation.java',
+                     'app/src/androidTest/java/de/thonktank/autosecretary/DiagnosticProbeInstrumentation.java',
+                     'app/src/androidTest/AndroidManifest.xml',
+                     'app/src/androidTest/AndroidManifest-upgrade.xml',
                      'release/upgrade-fixtures/schema-20-organic-flow.json',
                      'scripts/release/upgrade_fixture_tool.py'):
             scope = classify([path])

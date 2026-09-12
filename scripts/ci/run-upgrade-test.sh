@@ -79,6 +79,20 @@ run_probe() {
   return 1
 }
 
+run_diagnostic() {
+  local expectation=$1
+  local status
+  set +e
+  python3 scripts/release/diagnostic_probe.py --package "$package_name"
+  status=$?
+  set -e
+  if [ "$status" -eq 0 ]; then return; fi
+  # The pinned preceding APK may predate the early contract. That must be an explicit
+  # unsupported result, not a generic process crash. Every new candidate must support it.
+  if [ "$expectation" = source ] && [ "$status" -eq 4 ]; then return; fi
+  return "$status"
+}
+
 for artifact in "$source_apk" "$candidate_apk" "$test_apk"; do
   test -f "$artifact"
 done
@@ -102,8 +116,10 @@ start_main_activity
 adb shell am force-stop "$package_name"
 install_apk "$test_apk"
 run_probe seed
+if [ "${UPGRADE_DIAGNOSTIC_CONTRACT:-false}" = true ]; then run_diagnostic source; fi
 
 install_apk "$candidate_apk" upgrade
 verify_installed_version
+if [ "${UPGRADE_DIAGNOSTIC_CONTRACT:-false}" = true ]; then run_diagnostic candidate; fi
 run_probe verify
 adb shell am force-stop "$package_name"

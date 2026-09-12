@@ -2,6 +2,7 @@ package de.thonktank.autosecretary.data.local;
 
 import de.thonktank.autosecretary.AppDatabase;
 import de.thonktank.autosecretary.DatabaseContract;
+import de.thonktank.autosecretary.DiagnosticBootstrap;
 
 import android.content.Context;
 
@@ -10,6 +11,7 @@ import androidx.room.Room;
 
 public final class DatabaseFactory {
     public AppDatabase create(Context context) {
+        DiagnosticBootstrap.requireNormalDatabaseAccess();
         return Room.databaseBuilder(context.getApplicationContext(), AppDatabase.class,
                         "auto_secretary.db")
                 // 0.2.80 ships schema 8. Earlier migrations remain executable test fixtures,

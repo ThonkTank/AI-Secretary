@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <instrumentation
+        android:name="${primaryTestRunner}"
+        android:targetPackage="${diagnosticTargetPackage}"
+        android:functionalTest="false"
+        android:handleProfiling="false" />
+    <instrumentation
+        android:name="de.thonktank.autosecretary.DiagnosticProbeInstrumentation"
+        android:targetPackage="${diagnosticTargetPackage}"
+        android:functionalTest="false"
+        android:handleProfiling="false" />
+</manifest>

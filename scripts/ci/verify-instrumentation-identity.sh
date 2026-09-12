@@ -21,11 +21,4 @@ case "$test_badging" in
   *"package: name='de.thonktank.autosecretary.test.test'"*) ;;
   *) echo "Unexpected regular instrumentation test package: $test_badging" >&2; exit 1 ;;
 esac
-case "$test_manifest" in
-  *'android:name(0x01010003)="androidx.test.runner.AndroidJUnitRunner"'*) ;;
-  *) echo "Regular instrumentation APK uses the wrong runner" >&2; exit 1 ;;
-esac
-case "$test_manifest" in
-  *'android:targetPackage(0x01010021)="de.thonktank.autosecretary.test"'*) ;;
-  *) echo "Regular instrumentation APK targets the wrong app" >&2; exit 1 ;;
-esac
+python3 scripts/ci/instrumentation_manifest.py --mode regular <<< "$test_manifest"

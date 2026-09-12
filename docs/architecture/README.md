@@ -154,3 +154,6 @@ Ein weiteres DI-Framework oder generisches Design-System ist dafür nicht vorges
 
 Die aktuelle risikobasierte Prüfauswahl und signierte Updatepflicht stehen in
 [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md).
+
+Der unterstützte frühe Diagnosezugang und die geschützten Android-Einstiege stehen in
+[ADR-038](adr-038-frueher-diagnose-bootstrap.md).

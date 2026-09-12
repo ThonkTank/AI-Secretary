@@ -429,3 +429,220 @@ Verlauf bleiben im aktuellen Smoke gefordert; Quelle und Artefakte bleiben unver
 Veröffentlichung bleibt bei rotem Smoke blockiert. Der eigene Klassifikator verlangt für diesen
 Korrekturstand `full` einschließlich Release und aller historischen Lanes. Vollständiger lokaler
 Check läuft; sein Ergebnis wird vor Merge geprüft. PR-/Main-/Publish-Nachweise sind noch offen.
+
+
+## P2 – geprüfter Abschluss
+
+Die Kalenderkorrektur bestand den vollständigen lokalen Check (Exit 0, 8m): 793 Hosttests,
+0 Fehler, 0 Errors, 1 optionaler Benchmark-Skip; 44 CI- und 39 Release-Python-Tests,
+Lint sowie Release-/Instrumentierungsbuilds. PR 366 bestand auf `35d2b3ad` den vollständigen
+Lauf 34707845004 einschließlich aller sechs Android-Lanes. Der API-35-Animationsjob dauerte
+11m28s; dies ist der vollständige Animationskorpus, keine gemessene Today-Profillaufzeit.
+Abgleich gegen Korrekturplan und Roadmap ohne offene Abweichung.
+
+Squash-Main `d0099a63448d79d0d937ace67497ee7f88e218b3` hat denselben geprüften Baum
+`3d28156e6c228f6c815e09b42f62b846f5b981a2`. Exakter Main-Lauf 34708748445 bestand die
+Inhalts-/Profil-Wiederverwendung, Packaging, aktuellen signierten 27→27-Smoke, alle fünf
+historischen signierten Upgrade-Lanes und Publish. Release 0.2.173 / 1017301 wurde am
+2026-09-12 um 17:44:40Z veröffentlicht; Tag `forest-android-1017301` zeigt auf diesen Main.
+Heruntergeladene öffentliche APK und Metadaten sind bytegleich zum geprüften Kandidaten.
+APK-SHA256 `1ced1d33234fa2e418030bdf622c103dc6bed94f697b53b1728b6d5fa4055aca`,
+Metadaten-SHA256 `9929b316c56a2e9d7de63850bb219041ab3f657f0518ae9b2cf246579bb12aa6`.
+App und Helper tragen die reguläre Signatur `de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da`.
+Belege: `/tmp/p2-calendar-{pr-completed,main-completed,candidate-proof,publish-proof}.json`.
+P2 ist damit abgeschlossen; der vorherige fehlgeschlagene Main-Lauf bleibt als Historie erhalten.
+Pixel ist bei der letzten frischen Abfrage nicht angeschlossen; sichtbare Geräteabnahme bleibt offen.
+
+## P3 – konkreter Phasenplan vor Produktänderungen
+
+Branch `codex/diagnostic-lifecycle-contract` von Main `d0099a63`. Profil `full`, Release erforderlich.
+Die kanonische Roadmap bleibt unverändert. Ziel ist Schutz von Schema und sämtlichen Nutzdaten
+während eines ausdrücklich unterstützten Diagnosezugangs, mit sicherem anschließenden Normalstart.
+Android-/WorkManager-Verwaltungsdaten und Framework-Caches sind keine zugesicherte Dateisystemruhe.
+
+Belegter Einstieg: Auf API 26 und Android 16 erzeugt `Instrumentation.newApplication` die App
+vor Providern; `Instrumentation.onCreate(arguments)` kommt erst nach Providern. Der bestehende
+Argumentcheck ist deshalb zu spät. Der neue, getrennte Diagnose-Runner kennt seinen Modus durch
+seine Komponente und aktiviert vor `super.newApplication` einen kleinen, versionierten, beim
+Shrinking erhaltenen, nur prozesslokalen Bootstrapvertrag. Fehlt der Vertrag, wird die Kombination
+vor App-/Provider-Erzeugung ausdrücklich abgewiesen. Der alte Runner bleibt für historische
+Seed-/Verify-Läufe zuständig; sein bisheriger Diagnosezugang wird ausdrücklich ersetzt.
+
+Die tatsächlich aufgelöste WorkManager-Version 2.11.2 benötigt ihre Provider-Initialisierung:
+`SystemJobService.onCreate` wirft sonst bei dieser Application eine Ausnahme. Deshalb bleiben
+WorkManager und die übrigen geprüften Framework-Provider initialisiert. Der Schutz verhindert
+AppContainer-/Room-Erzeugung sowie fachliche Receiver-, Widget-, Timer- und Workerarbeit.
+Er beansprucht nicht, WorkManagers eigene Verwaltungsdatenbank schreibfrei zu halten.
+
+Implementierungsfolge:
+
+1. Bootstrapvertrag und eigener Diagnose-Runner, explizite Helper-Manifestkomponente mit korrektem
+   Zielpaket, Erhaltungsregel für die reflektierte ABI und eindeutige Versions-/Fehlermeldung.
+   Keine späte Umschaltung anhand Diagnoseargumenten, keine persistenten Flags/Komponentenänderungen.
+2. Application vor Containeraufbau sperren; registrierte Boot-/Timer-/Task-Receiver vor `goAsync`
+   und WidgetProvider vor Framework-Callbackdispatch abfangen. FlowWakeWorker gibt vor Containerzugriff
+   `retry` zurück. MainActivity, FlowRunsActivity und FlowSetupActivity beenden einen während
+   Diagnose erfolgenden Start vor fachlichen ViewModels sicher. Zentraler Room-Einstieg darf im
+   Diagnoseprozess keine Datenbank erzeugen. Normale Bedien- und Timerpfade bleiben erhalten.
+3. Frische native Prozesse mit getrennten isolierten Fixture-/Diagnose-/Normalphasen prüfen.
+   Fixture-Schreiben ausschließlich für das verifizierte Emulator-Testpaket. Die produktive
+   Diagnosekomponente bekommt keinen Seed-Modus. Echte Schema-24-Daten belegen fehlende Migration;
+   Schema-27-Daten umfassen zusätzlich Archiv, Historie, Platzierung, Belohnungen und Timer.
+   Vollständige typisierte Nutzdaten-/Schema-Snapshots vor und nach Diagnose vergleichen.
+4. Während einer begrenzten Diagnose echte Manifest-Broadcasts für Boot, Paketwechsel, passende
+   Timer, Widget-Lifecycle und gültige Widget-Aktionen zustellen; zusätzlich Activity-Start und
+   echte WorkManager-Ausführung prüfen. SystemJobService muss trotz Diagnose initialisieren können.
+   Direkte Callbackaufrufe oder ein gezähltes Application.onCreate ersetzen diese Nachweise nicht.
+5. Normales Diagnoseende und kontrollierten Prozessabbruch getrennt prüfen. Ohne `--no-restart`
+   beendet Android den Instrumentierungsprozess; der unterstützte Aufruf prüft dessen Ende und
+   startet danach normal. Fällige Timer und zurückgestellte Systemarbeit werden abgeglichen,
+   ohne ignorierte Benutzeraktionen nachzuholen oder Historie/Belohnungen doppelt zu buchen.
+6. Den neuen Runner mit regulär signiertem Kandidaten prüfen, einschließlich ausdrücklicher
+   Ablehnung des vorherigen APK ohne ABI. Die alten signierten Seed-/Verify-Pfade bleiben grün.
+   Eine mögliche Migration durch Paketwechsel vor dem Diagnoseaufruf wird nicht als Nachweis
+   einer schreibfreien Diagnose alter Schemata ausgegeben; dafür existiert die isolierte Phase 3.
+7. Ausführbare Skript-/Identitätsprüfungen und Dokumentation auf diese Zugänge ausrichten.
+   Vollständiger lokaler Gate, native Plattformmatrix, geprüfter PR/Squash, exaktes Main und
+   erforderlicher Release. Danach getrennte unterstützte lesende Pixel-Diagnose, Helper entfernen
+   und Normalstart prüfen, sobald das Gerät verfügbar ist.
+
+Abnahme gegen Plan und Roadmap separat: früher Schutz tatsächlich nativ belegt; keine Migration
+oder fachliche Schreibarbeit in den Diagnoseintervallen; alle Nutzdatenkategorien erhalten;
+Ereignisbehandlung ohne Absturz oder nachträgliche Benutzeraktion; normaler Neustart/Timerabgleich
+nach Ende und Abbruch; klare alte/neue APK-Grenze; historische Upgrades weiterhin funktionsfähig.
+Jede festgestellte Abweichung erhält vor Änderungen einen begrenzten Korrekturplan.
+
+### P3 – erste Buildprüfung und Manifestkorrektur
+
+Der erste Instrumentierungs-/Helper-Build bestand (58s). Die anschließende Prüfung des tatsächlichen
+APK-Manifests zeigte jedoch nur AndroidJUnitRunner, Fixture- und Normal-Runner: AGP hatte den zuerst
+declarierten DiagnosticProbeInstrumentation durch den ausgewählten Standardrunner ersetzt. Ein
+grüner Build allein beweist daher den neuen Einstieg nicht. Korrekturplan vor Änderung: den primären
+Gradle-Runner als eigenes erstes Instrumentierungselement mit gebundenem Namen ausdrücken, die drei
+zusätzlichen Komponenten danach belassen. Erneut bauen und alle Runner/Zielpaket-Paare prüfen;
+die spätere ausführbare Identitätsprüfung muss eine solche fehlende Komponente erkennen.
+
+### P3 – native Kontrolle und Korrekturrunde 2: geschützte Testzustellung
+
+Manifestkorrektur bestanden: alle vier Komponenten mit isoliertem Ziel im tatsächlichen APK;
+weiterer Build 16s. Vier neue ausführbare Manifestprüfungen erkennen fehlende, doppelte und falsch
+zugeordnete Komponenten. Der erste native Normalkontrolllauf mit Schema27-Daten, unverändertem
+Verlauf/Platzierung/Archiv/Belohnungen und fälligem Timer besteht (`/tmp/p3-native-first/normal-control`).
+Der erste gehaltene Schema24-Diagnoseprozess meldet den frühen Vertrag; der echte nachgelagerte
+Provider bestätigt Diagnosemodus, fehlenden Container und initialisierten WorkManager.
+
+Der Ereignislauf scheitert im ausschließlich debugseitigen Testsender: Android verbietet dessen
+App-UID den Versand des geschützten `APPWIDGET_UPDATE_OPTIONS`-Broadcasts. Konkreter nativer Stack
+in `/tmp/p3-native-first-runtime.log`, `DiagnosticWitnessProvider:48`; noch kein bestandenes
+P3-Ereignis-/Erhaltungsurteil. Die Diagnose wurde dabei beendet, während der erste Treiber weitere
+Testereignisse zustellte; dies darf nicht als ununterbrochenes Diagnoseintervall gelten.
+
+Korrekturplan vor Änderungen: das Optionsereignis wie die anderen geschützten Ereignisse über die
+bereits rootberechtigte, zuvor als Emulator geprüfte Shell zustellen. Android15 `AppWidgetProvider`
+Zeilen80–87 prüft die Anwesenheit beider Extra-Schlüssel und ruft den Callback auch mit null-Options
+auf; der geprüfte Produktcallback verwendet diesen Parameter nicht. Daher `--ei appWidgetId 901`
+und `--esn appWidgetOptions` verwenden und diese konkrete Testeingabe benennen, statt eine App-UID
+als Systemsender auszugeben. App-seitigen geschützten Testsender entfernen, echte WorkManager-
+Ausführung und Bindung des registrierten SystemJobService behalten. Der Treiber prüft vor und nach
+jeder Zustellung die originale Diagnose-PID und bricht bei Prozessende sofort ab. Danach neue,
+eigene Artefaktablage und erneuter nativer Lauf, keine unveränderte Wiederholung des Fehlers.
+Quelle lokal `/tmp/p3-AppWidgetProvider-android15.java`, offizieller AOSP-Tag android-15.0.0_r1.
+
+### P3 – native Ereignisabnahme API35 und Korrekturrunde 3: erkennbare ABI-Ablehnung
+
+Der korrigierte native Lauf `/tmp/p3-native-sender-fixed/result.json` besteht vollständig:
+Normalkontrolle sowie Schema24/27 mit jeweils regulärem Ende und absichtlichem Prozessabbruch.
+Alle Schema-/typisierten Datensnapshots sind in den Diagnoseintervallen unverändert. Der echte
+Provider belegt frühe Diagnose, fehlenden Container und initialisierten WorkManager; der tatsächlich
+registrierte SystemJobService wird über Android gebunden; der echte FlowWakeWorker wird durch
+WorkManager ausgeführt und als ENQUEUED nach mindestens einem Versuch zurückgestellt. Echte
+Manifest- und Activity-Zustellungen bestehen mit derselben PID ohne Produktfehler. Der folgende
+Normalprozess erreicht Schema27, gleicht den fälligen Timer ab und führt den zurückgestellten Worker
+erfolgreich aus; vorhandene Daten einschließlich Buchungen bleiben bis auf den erwarteten Timerstand
+unverändert. Dies ist API35; weitere Plattformen, signierte APKs und vollständige Gates bleiben offen.
+
+Zusätzliche native alte-APK-Probe verwendet ausschließlich das erhaltene P2-Test-APK ohne Bootstrap
+(`/tmp/p2-native-before/app-instrumentation.apk`, SHA256 b8b50ec80af018147d80feaff662b9aa0ff8c8851f3cfbb55e84fe00861c1a1e)
+und den neuen Helper im eigenen Emulator. Kein Produktions-APK wurde ersetzt. Der frühe Hook lehnt
+vor App-Erzeugung ab; Datenbank, WAL und SHM sind bytegleich vorher/nachher. Die regulär signierte
+Kombination bleibt separat im Release-Gate erforderlich. Abweichung: der Instrumentierungsclient
+bekommt nur `shortMsg=Process crashed`, obwohl die Exception den ABI-Grund nennt; damit ist die
+geforderte erkennbare Ablehnung noch nicht erfüllt. Beleg `/tmp/p3-legacy-early-rejection.json`.
+
+Korrekturplan vor Änderung: der bereits initialisierte Instrumentierungsrunner sendet im frühen
+Ablehnungspfad ein ausdrückliches Unsupported-Ergebnis per `finish`, bevor die weiterhin nötige
+Exception eine App-Erzeugung verhindert. ActivityThread.finishInstrumentation ruft auf API26/16
+direkt den schon vorhandenen Systemdienst auf und benötigt keine erzeugte Application. Den alten
+APK-Fall erneut nativ mit Datenbank-Bytevergleich prüfen. Der unterstützte lesende CLI-Zugang und
+der aktuelle signierte Upgrade-Lauf müssen dieses Ergebnis von einer tatsächlichen Diagnose und
+von einem unbekannten Prozessabsturz unterscheiden; ein Kandidat muss erfolgreich unterstützt sein.
+
+Korrekturrunde 3 nativ bestanden: derselbe ältere Teststand wird über den unterstützten CLI mit
+Status `unsupported`, angefordertem Protokoll1, bestätigtem Prozessende und Exit4 abgewiesen;
+DB/WAL/SHM sind bytegleich. Die aktuelle isolierte APK liefert anschließend `supported`, Protokoll1,
+Schema27 und bestätigtes Prozessende (Exit0). Belege `/tmp/p3-legacy-explicit-rejection.json`,
+`/tmp/p3-legacy-explicit-cli.json`, `/tmp/p3-current-supported-cli.json`. Drei Parser-/Zugangsprüfungen
+und sechs Upgrade-Wrapper-Prüfungen sind grün; unbekannte Quellenabstürze sowie nicht unterstützte
+Kandidaten sperren den Gate. Historische Lanes behalten ihren bisherigen Seed-/Verify-Zugang.
+
+Die Helper-Veröffentlichung bekommt abschließend ein eigenes Manifest: nur historischer Upgrade-
+Runner und unterstützter Diagnose-Runner werden am Produktionsziel deklariert. Fixture- und Normal-
+Kontrollrunner bleiben ausschließlich im Manifest des isolierten Testziels. Die vollständige Paar-
+prüfung muss diese beiden zulässigen Manifestmengen getrennt erzwingen. Dadurch wird insbesondere
+kein Normal-Kontrollrunner angeboten, der vor seiner späten Isolationsprüfung eine produktive
+Application normal starten könnte. Diese Grenze ist Teil der geplanten Helper-Identität.
+
+### P3 – abschließende Prüfverdrahtung
+
+Die erste vollständige schnelle Skriptprüfung bestand 52 CI-Tests; ein bestehender Release-
+Quelltextvertrag erwartete den Runnernamen noch direkt im Shellskript statt im neuen ausführbaren
+Paarprüfer. Der zusätzliche Room-Zugriffsgegencheck benutzte zunächst `try`-with-resources, obwohl
+RoomDatabase hier kein AutoCloseable ist. Beides ist auf die Testverdrahtung begrenzt.
+Korrektur vor erneuter Prüfung: den bestehenden Wiring-Vertrag auf den aufgerufenen Paarprüfer
+richten (dessen positive/negative Verhaltensfälle bleiben), die Room-Probe explizit in `finally`
+schließen. Erfolgreiche native CI-Lanes müssen ihre Diagnosebelege ebenfalls hochladen; so bleiben
+API-/Schema-/Ereignisnachweise nach dem vergänglichen Emulator zugänglich, nicht nur der Exitcode.
+
+Die Produktions-Helper-Kompilierung besteht nach der expliziten Room-Schließung. Die erneute
+Release-Skriptprüfung findet zwei weitere veraltete Textprüfungen im selben bestehenden
+Workflowtest: alte Fehlermeldungen der ersetzten Runnerprüfung. Begrenzte Fortsetzung der
+Prüfverdrahtungskorrektur: den tatsächlichen Aufruf des vollständigen Manifest-Paarprüfers im
+Packaging prüfen; dessen ausführbare Negativfälle tragen weiterhin den Verhaltensnachweis.
+
+### P3 – abschließende lokale Vorprüfungen
+
+Produktions-Helper-Build grün (7s); tatsächliches APK-Manifest mit genau Upgrade- und Diagnose-
+Runner am Produktionsziel bestanden (`/tmp/p3-production-helper-proof/`). Anschließender regulärer
+App-/Helper-Build grün (10s), vollständige isolierte Identitätsprüfung ebenfalls. Alle 42 Release-
+Skriptprüfungen bestehen. Actionlint findet ausschließlich den unverändert auch im Main-Vorgänger
+vorhandenen Shellcheck-Stilhinweis SC2129 im Packaging; keine neue Workflowdiagnose.
+
+Zusätzlicher nativer Schema24-Gegencheck mit dem final kompilierten Testcode besteht:
+DatabaseFactory verweigert den Zugriff mit der vorgesehenen frühen Schutzmeldung, vollständiger
+Schema-/Datensnapshot bleibt unverändert (`/tmp/p3-native-database-guard/`). Der bisherige gesamte
+API35-Ereignisnachweis bleibt gültig; der letzte Zusatz prüft gezielt den neuen direkten Room-Zugriff.
+Der eigene Emulator wird für den vollständigen Hostcheck beendet. Kein physisches Gerät verbunden.
+
+### P3 – Abgleich vor PR (noch kein Freigabeabschluss)
+
+Abgleich gegen den konkreten Phasenplan: früher reflektierter Vertrag, zentrale Room-Sperre,
+alle registrierten fachlichen Receiver/Activities und FlowWakeWorker sind erfasst. Die echten
+AndroidX-Provider bleiben erhalten; der nachgelagerte native Providerzeuge bestätigt deren
+Reihenfolge. Die zwei Schemata, Ende/Abbruch, vollständige Nutzdatensnapshots, reale Worker-
+Zurückstellung und folgender Normalstart sind im API35-Ergebnis vorhanden. Alte Test-APK ohne ABI
+wird vor App-Erzeugung explizit abgewiesen; Produktionshelper exponiert ausschließlich zwei Zugänge.
+
+Gesonderter Abgleich gegen Roadmap P3: Schreibruhe bezieht sich auf die fachliche Datenbank;
+WorkManager-Verwaltung ist ausdrücklich ausgenommen. Die SystemJobService-Bindung beweist
+Serviceerzeugung, keinen JobScheduler-Dispatch. Ereignisse werden innerhalb derselben Diagnose-PID
+zugestellt, Benutzeraktionen nicht nachgeholt; Timer und Worker werden danach regulär abgeglichen.
+Keine persistenten Diagnoseflags, deaktivierten Produktkomponenten oder geänderten Geräteeinstellungen.
+Der unterstützte CLI prüft Komponentenidentität, ABI-Ergebnis und Prozessende. Historische
+Seed-/Verify-Lanes bleiben erhalten. Vollständiges Profil ist zwingend; P3 kann sich nicht selbst
+auf das Today-Profil verkürzen.
+
+Offene Freigabenachweise bleiben ausdrücklich: laufender vollständiger lokaler Check, frische
+API26/35/37-PR-Läufe, regulär signierte vorherige/neue APK im aktuellen Upgrade-Lane sowie fünf
+historische Lanes, geprüfter Squash/Main/Publikation. Unterstützte Pixel-Diagnose und anschließende
+Normal-/Bedienabnahme bleiben bei fehlendem Gerät separat offen. Remote-Main aktuell d0099a63;
+noch kein P3-PR vorhanden. Kein weiterer Produktumfang aus P4 in diesem Branch.

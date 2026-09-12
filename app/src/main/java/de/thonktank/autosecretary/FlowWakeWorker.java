@@ -13,6 +13,7 @@ public final class FlowWakeWorker extends Worker {
     }
 
     @NonNull @Override public Result doWork() {
+        if (DiagnosticBootstrap.isDiagnosing()) return Result.retry();
         AppContainer container = AutoSecretaryApplication.from(getApplicationContext()).container();
         try {
             container.flows.activateReadyFlows.execute();

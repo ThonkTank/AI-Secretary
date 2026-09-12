@@ -21,6 +21,7 @@ public final class FlowRunsActivity extends ComponentActivity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        if (DiagnosticBootstrap.isDiagnosing()) { finish(); return; }
         AppContainer container = AutoSecretaryApplication.from(this).container();
         palette = DayPalette.at(container.clock.time(), DayPalette.Mode.AUTO);
         viewModel = new ViewModelProvider(this,

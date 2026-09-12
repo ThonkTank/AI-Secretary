@@ -246,6 +246,7 @@ jobs:
     env:
       INSTRUMENTATION_API_LEVEL: ${{ matrix.api-level }}
       INSTRUMENTATION_PREPARE_INTERACTION_DEVICE: "true"
+      INSTRUMENTATION_DIAGNOSTIC_LIFECYCLE: "true"
     strategy:
       fail-fast: false
       matrix:
@@ -290,6 +291,13 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           pre-emulator-launch-script: adb start-server
           script: ./scripts/ci/run-instrumentation.sh
+      - name: Retain diagnostic lifecycle evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: diagnostic-lifecycle-${{ matrix.api-level }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: build/reports/instrumentation/api-${{ matrix.api-level }}/attempt-1/diagnostic-lifecycle/
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload instrumentation failure diagnostics
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -487,14 +495,7 @@ jobs:
             *) echo "Unexpected production probe package: $UPGRADE_BADGING" >&2; exit 1 ;;
           esac
           UPGRADE_MANIFEST=$($AAPT dump xmltree "$CANDIDATE/upgrade-test.apk" AndroidManifest.xml)
-          case "$UPGRADE_MANIFEST" in
-            *'android:name(0x01010003)="de.thonktank.autosecretary.UpgradeProbeInstrumentation"'*) ;;
-            *) echo "Production probe uses the wrong runner" >&2; exit 1 ;;
-          esac
-          case "$UPGRADE_MANIFEST" in
-            *"android:targetPackage(0x01010021)=\"$PACKAGE_NAME\""*) ;;
-            *) echo "Production probe targets the wrong package" >&2; exit 1 ;;
-          esac
+          python3 scripts/ci/instrumentation_manifest.py --mode upgrade <<< "$UPGRADE_MANIFEST"
           cp "$PLAN" "$CANDIDATE/release-plan.json"
           python3 scripts/release/release_tool.py metadata --plan "$PLAN" \
             --apk "$CANDIDATE/$APK_ASSET" --output "$CANDIDATE/$METADATA_ASSET"
@@ -618,6 +619,8 @@ jobs:
       needs.package.result == 'success' && needs.package.outputs.already_published != 'true'
     needs: [package, release_scope]
     runs-on: ubuntu-latest
+    env:
+      UPGRADE_DIAGNOSTIC_CONTRACT: "true"
     permissions:
       contents: read
     strategy:
