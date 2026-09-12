@@ -83,7 +83,7 @@ public final class TodayCoordinator implements TodayActionSink {
                 return;
             case BRING_FIRST:
                 commands.execute(TodayCommand.action(TodayCommand.Kind.BRING_FIRST, action));
-                break;
+                return;
             case DEFER:
                 commands.execute(TodayCommand.action(TodayCommand.Kind.DEFER, action));
                 return;
