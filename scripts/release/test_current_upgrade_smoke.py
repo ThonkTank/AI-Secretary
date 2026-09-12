@@ -1,4 +1,6 @@
 from copy import deepcopy
+from datetime import datetime, timezone
+from unittest.mock import patch
 import hashlib
 import json
 from pathlib import Path
@@ -41,6 +43,25 @@ class CurrentUpgradeSmokeTest(unittest.TestCase):
                          source_contract=self.contract, target_contract=self.contract, template=self.template)
         arguments.update(overrides)
         return fixture(**arguments)
+
+    def test_current_work_and_placement_share_the_bound_day_without_rewriting_history(self):
+        before = deepcopy(self.template)
+        for day in ("2026-09-12", "2031-06-18"):
+            with patch("current_upgrade_smoke.datetime") as clock:
+                clock.now.return_value = datetime.fromisoformat(day).replace(tzinfo=timezone.utc)
+                result = self.build()
+            seeded = {(entry["table"], row["id"]): row
+                      for entry in result["seed"] for row in entry["rows"]}
+            expected = {(entry["table"], entry["where"]["id"]): entry["values"]
+                        for entry in result["expectedTarget"]}
+            for rows in (seeded, expected):
+                self.assertEqual(day, rows["occurrences", "current-smoke-open"]["scheduledOn"])
+                self.assertEqual(day, rows["today_placements", "current-smoke-open"]["displayOn"])
+                self.assertEqual("2000-01-01", rows["occurrences", "current-smoke-history"]["scheduledOn"])
+                self.assertEqual("COMPLETED", rows["occurrences", "current-smoke-history"]["state"])
+                self.assertEqual("COLLAPSE", rows["tasks", "current-smoke-task"]["missedOccurrenceMode"])
+            self.assertNotIn("${TODAY}", json.dumps(result))
+        self.assertEqual(before, self.template)
 
     def test_same_schema_is_only_allowed_for_explicit_current_smoke(self):
         result = self.build()

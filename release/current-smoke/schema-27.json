@@ -65,7 +65,7 @@
         {
           "id": "current-smoke-open",
           "taskId": "current-smoke-task",
-          "scheduledOn": "2000-01-02",
+          "scheduledOn": "${TODAY}",
           "state": "OPEN",
           "sortOrder": 2101,
           "completedOn": null,
@@ -84,7 +84,7 @@
         {
           "kind": "OCCURRENCE",
           "id": "current-smoke-open",
-          "displayOn": "2000-01-02",
+          "displayOn": "${TODAY}",
           "slot": "MIDDAY",
           "position": 17
         }
@@ -163,7 +163,7 @@
       "values": {
         "id": "current-smoke-open",
         "taskId": "current-smoke-task",
-        "scheduledOn": "2000-01-02",
+        "scheduledOn": "${TODAY}",
         "state": "OPEN",
         "sortOrder": 2101,
         "completedOn": null,
@@ -182,7 +182,7 @@
       "values": {
         "kind": "OCCURRENCE",
         "id": "current-smoke-open",
-        "displayOn": "2000-01-02",
+        "displayOn": "${TODAY}",
         "slot": "MIDDAY",
         "position": 17
       }

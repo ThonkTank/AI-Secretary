@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import base64
-from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -66,16 +65,10 @@ def fixture(plan: dict, release: dict, tag_ref: dict, metadata_path: Path, apk_p
             raise UpgradeFixtureError(f"Current source {field} is incompatible")
     if metadata["versionCode"] >= plan["versionCode"]:
         raise UpgradeFixtureError("Current smoke requires a higher application version")
-    seed = deepcopy(template["seed"])
-    expected = deepcopy(template["expectedTarget"])
     day = datetime.now(timezone.utc).date().isoformat()
-    for entry in seed:
-        if entry["table"] == "today_placements":
-            for row in entry["rows"]:
-                row["displayOn"] = day
-    for entry in expected:
-        if entry["table"] == "today_placements":
-            entry["values"]["displayOn"] = day
+    rendered = bind_calendar_day(template, day)
+    seed = rendered["seed"]
+    expected = rendered["expectedTarget"]
     result = {
         "contractVersion": 2, "kind": "current-smoke", "id": "current-production",
         "risk": "Signed in-place update retains tasks, Today ordering and completed history",
@@ -96,6 +89,15 @@ def fixture(plan: dict, release: dict, tag_ref: dict, metadata_path: Path, apk_p
     validate_current_smoke(result)
     verify_source(result, release, tag_ref, metadata_path, apk_path, current_smoke=True)
     return result
+
+
+def bind_calendar_day(value: object, day: str) -> object:
+    """Resolve the template's exact day marker without changing historical dates."""
+    if isinstance(value, dict):
+        return {key: bind_calendar_day(item, day) for key, item in value.items()}
+    if isinstance(value, list):
+        return [bind_calendar_day(item, day) for item in value]
+    return day if value == "${TODAY}" else value
 
 
 def gh_json(endpoint: str) -> dict:
