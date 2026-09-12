@@ -31,6 +31,16 @@ public final class TodayQueue {
         }
         public String key() { return kind.name() + ":" + id; }
     }
+    public static int sectionEnd(List<Entry> entries, TaskSlot slot) {
+        int insertion = 0;
+        int lastInSection = -1;
+        for (int i = 0; i < entries.size(); i++) {
+            if (entries.get(i).slot.rank < slot.rank) insertion = i + 1;
+            if (entries.get(i).slot == slot) lastInSection = i;
+        }
+        return lastInSection < 0 ? insertion : lastInSection + 1;
+    }
+
     public static List<Entry> visible(Dashboard dashboard, LocalDate date) {
         List<Entry> baseline = new ArrayList<>();
         for (DashboardTask task : dashboard.tasks) if (!task.done) baseline.add(new Entry(task, null));
@@ -56,9 +66,7 @@ public final class TodayQueue {
             int position = placements.get(e.key()).position;
             if (position == Integer.MAX_VALUE) {
                 // A deferred item returns at the end of its original section tomorrow.
-                position = 0;
-                for (int i = 0; i < result.size(); i++)
-                    if (result.get(i).slot.rank <= e.slot.rank) position = i + 1;
+                position = sectionEnd(result, e.slot);
             }
             result.add(Math.min(position, result.size()), e);
         }

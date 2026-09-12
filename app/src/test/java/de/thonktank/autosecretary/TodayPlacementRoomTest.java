@@ -71,6 +71,16 @@ public final class TodayPlacementRoomTest {
         assertOrder(a); assertEquals(TaskSlot.MORNING, queue().get(0).slot);
         assertEquals(a.scheduledOn, repository.today.findOccurrence(a.id).scheduledOn);
     }
+    @Test public void tomorrowReturnsAfterItsSectionEvenWhenOverdueDatesInterleaveSections() {
+        Occurrence a = add("A", TaskSlot.MIDDAY, date.minusDays(2));
+        Occurrence b = add("B", TaskSlot.MIDDAY, date.minusDays(1));
+        Occurrence c = add("C", TaskSlot.MORNING, date);
+        later(a); later(a); later(a); later(a);
+        assertOrder(b, c);
+        date = date.plusDays(1);
+        assertOrder(b, a, c);
+    }
+
     @Test public void placementSurvivesDatabaseCloseAndCompletedTargetIsCleaned() {
         android.content.Context context = ApplicationProvider.getApplicationContext();
         String name = "today-placement-restart";

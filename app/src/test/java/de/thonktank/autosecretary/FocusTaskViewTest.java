@@ -67,7 +67,9 @@ public final class FocusTaskViewTest {
         View title = findByContentDescription(leaf, "Abendrunde, jetzt bearbeiten");
         assertNotNull(title);
         assertTrue(title.isClickable());
-        assertTrue(title.getMinimumHeight() >= new UiStyle(context).dp(48));
+        title.measure(View.MeasureSpec.makeMeasureSpec(new UiStyle(context).dp(280),
+                View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        assertTrue(title.getMeasuredHeight() >= new UiStyle(context).dp(48));
         title.performClick();
         assertEquals("occurrence-routine", events.lastToday(TodayAction.Kind.BRING_FIRST).target.item.id);
     }

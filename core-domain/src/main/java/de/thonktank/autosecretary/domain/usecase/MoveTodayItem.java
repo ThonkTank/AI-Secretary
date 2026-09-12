@@ -43,14 +43,7 @@ public final class MoveTodayItem {
                 } else {
                     if (atEnd) slot = TaskSlot.values()[slot.ordinal() + 1];
                     moving.slot = slot;
-                    int insertion = 0;
-                    int lastInSection = -1;
-                    for (int i = 0; i < entries.size(); i++) {
-                        if (entries.get(i).slot.rank < slot.rank) insertion = i + 1;
-                        if (entries.get(i).slot == slot) lastInSection = i;
-                    }
-                    if (lastInSection >= 0) insertion = lastInSection + 1;
-                    entries.add(insertion, moving);
+                    entries.add(TodayQueue.sectionEnd(entries, slot), moving);
                 }
             }
             for (int i = 0; i < entries.size(); i++) {
