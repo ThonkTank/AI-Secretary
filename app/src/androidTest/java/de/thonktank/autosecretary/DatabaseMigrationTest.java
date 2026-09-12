@@ -31,6 +31,21 @@ public final class DatabaseMigrationTest {
         InstrumentationRegistry.getInstrumentation().getTargetContext().deleteDatabase(DATABASE);
     }
 
+    @Test public void diagnosticRunnerSuppressesApplicationStartupOnlyForDiagnosis() throws Exception {
+        UpgradeProbeInstrumentation runner = new UpgradeProbeInstrumentation();
+        java.lang.reflect.Field arguments = UpgradeProbeInstrumentation.class.getDeclaredField("arguments");
+        arguments.setAccessible(true);
+        android.os.Bundle values = new android.os.Bundle();
+        values.putString("upgradePhase", "diagnose"); arguments.set(runner, values);
+        int[] started = {0};
+        android.app.Application application = new android.app.Application() {
+            @Override public void onCreate() { started[0]++; }
+        };
+        runner.callApplicationOnCreate(application); assertEquals(0, started[0]);
+        values.putString("upgradePhase", "verify");
+        runner.callApplicationOnCreate(application); assertEquals(1, started[0]);
+    }
+
     @Test public void schema24OrphansAreArchivedBeforeGraphUpgrade() throws Exception {
         SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 24);
         database.setForeignKeyConstraintsEnabled(false);
@@ -44,13 +59,22 @@ public final class DatabaseMigrationTest {
                 + "capacityAtCreation,units,acquirePosition,releasePosition,state,reservedAtEpochMillis,"
                 + "activatedAtEpochMillis,releasedAtEpochMillis) VALUES "
                 + "('orphan-resource','missing-run','lease','resource','Original resource',2,1,0,1,'ACTIVE',1,2,NULL)");
+        database.execSQL("INSERT INTO occurrence_steps(id,occurrenceId,position,text,done,amountKind,"
+                + "restTimerMode,plannedLoadMode,plannedLoadUnit,targetRir,note,actualRepetitions,comboOwnerId,carryForwardReason) "
+                + "VALUES('orphan-occurrence-step','missing-occurrence',0,'Original occurrence',0,'NONE','OFF','NONE','KG',"
+                + "0,'Preserved occurrence note','','owner','NONE')");
+        database.execSQL("INSERT INTO repetition_results(stepId,slotIndex,actualRepetitions,loadMode,loadUnit,loadMilli,rir,source,safetyFlag) "
+                + "VALUES('orphan-occurrence-step',0,7,'EXTERNAL','KG',23500,2,'ACTUAL','NONE')");
         try (Cursor violations = database.query("PRAGMA foreign_key_check")) {
-            assertEquals(2, violations.getCount());
+            assertEquals(3, violations.getCount());
         }
         database.close();
+        assertEquals("schema=24; foreignKeys={flow_run_resources=1, flow_run_steps=1, occurrence_steps=1}",
+                UpgradeProbeInstrumentation.readOnlyDiagnosis(InstrumentationRegistry.getInstrumentation()
+                        .getTargetContext().getDatabasePath(DATABASE)));
         database = helper.runMigrationsAndValidate(DATABASE, DatabaseContract.VERSION, true, DatabaseMigrations.from(24));
         try (Cursor rows = database.query("SELECT sourceSchema,sourceTable,sourceId,payload FROM migration_recovery ORDER BY sourceTable")) {
-            assertEquals(2, rows.getCount());
+            assertEquals(4, rows.getCount());
             assertTrue(rows.moveToFirst()); assertEquals(24, rows.getInt(0));
             assertEquals("flow_run_resources", rows.getString(1));
             assertEquals("orphan-resource", rows.getString(2));

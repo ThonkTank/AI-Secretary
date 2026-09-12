@@ -610,6 +610,54 @@ public final class FlowGraphSqlMigrationTest {
         assertEquals("0", scalar("SELECT COUNT(*) FROM migration_recovery"));
     }
 
+    @Test public void missingOccurrenceClosurePreservesEveryChildBeforeAnyCascade() {
+        for (boolean foreignKeys : new boolean[]{false, true}) {
+            // Use a separate helper per iteration because the migration changes the schema.
+            if (foreignKeys) { tearDown(); setUp(); }
+            run("healthy", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.ACTIVE, 0);
+            occurrence("paid", "healthy", "COMPLETED", "template0", true);
+            booking("earned", "paid", "paid-step", "VESSEL", 4, null);
+            booking("harvest", "paid", null, "HEAD", 40, null);
+            Map<String, String> healthy = unchangedRows();
+            occurrence("gone", "healthy", "OPEN", "template1", false);
+            booking("orphan-booking", "gone", "gone-step", "VESSEL", 9, null);
+            db.execSQL("INSERT INTO reward_assignments(bookingId,occurrenceId) VALUES('orphan-booking','gone')");
+            db.execSQL("INSERT INTO repetition_results(stepId,slotIndex,actualRepetitions,loadMode,loadUnit,loadMilli,rir,source,safetyFlag) "
+                    + "VALUES('gone-step',0,7,'EXTERNAL','KG',23500,2,'ACTUAL','NONE')");
+            db.execSQL("INSERT INTO timer_sessions(id,stepId,title,kind,state,totalSeconds,remainingMillis,targetElapsedRealtime,"
+                    + "targetEpochMillis,notificationId,completionObserved) VALUES('orphan-timer','gone-step','Timer','DURATION',"
+                    + "'PAUSED',60,31000,0,0,17,0)");
+            db.execSQL("INSERT INTO combo_obligations(id,ownerId,taskId,kind,slot,scheduledOn,occurrenceId,state,resolvedOn) "
+                    + "VALUES('orphan-obligation','owner','task','TASK','MORNING','2026-09-11','gone','OPEN',NULL)");
+            Map<String, String> copies = new LinkedHashMap<>();
+            for (String table : Arrays.asList("occurrence_steps", "reward_bookings", "reward_assignments", "repetition_results", "timer_sessions", "combo_obligations")) {
+                String selector = table.equals("occurrence_steps") ? "id='gone-step'" :
+                        table.equals("repetition_results") ? "stepId='gone-step'" :
+                        table.equals("reward_assignments") ? "bookingId='orphan-booking'" :
+                        table.equals("reward_bookings") ? "id='orphan-booking'" :
+                        table.equals("timer_sessions") ? "id='orphan-timer'" : "id='orphan-obligation'";
+                try (Cursor row = db.query("SELECT * FROM " + table + " WHERE " + selector)) {
+                    assertTrue(row.moveToFirst()); copies.put(table, OrphanFlowRecovery.encode(row));
+                }
+            }
+            db.setForeignKeyConstraintsEnabled(false);
+            db.execSQL("DELETE FROM occurrences WHERE id='gone'");
+            db.setForeignKeyConstraintsEnabled(foreignKeys);
+            migrate();
+            assertEquals(healthy, unchangedRows());
+            assertEquals(4, read("healthy").alreadyPaidTau);
+            assertEquals("6", scalar("SELECT COUNT(*) FROM migration_recovery"));
+            try (Cursor rows = db.query("SELECT sourceTable,sourceId,payload FROM migration_recovery")) {
+                while (rows.moveToNext()) {
+                    assertEquals(copies.remove(rows.getString(0)), rows.getString(2));
+                    if (rows.getString(0).equals("repetition_results")) assertEquals("[\"gone-step\",0]", rows.getString(1));
+                }
+            }
+            assertTrue(copies.isEmpty());
+            try (Cursor keys = db.query("PRAGMA foreign_key_check")) { assertFalse(keys.moveToFirst()); }
+        }
+    }
+
     @Test public void healthySchema25And26UpgradeToEmptyRecoveryArchive() {
         for (int version : new int[]{25, 26}) {
             Context context = ApplicationProvider.getApplicationContext();

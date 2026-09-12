@@ -7,9 +7,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-/** Narrow recovery for snapshots whose parent run is absent at the schema-24 boundary. */
+/** Recovery of snapshots whose run/occurrence parent is absent at the schema-24 boundary. */
 public final class OrphanFlowRecovery {
-    private static final String[] TABLES = {"flow_run_steps", "flow_run_resources"};
+    private static final String[] TABLES = {"flow_run_steps", "flow_run_resources", "occurrence_steps",
+            "repetition_results", "timer_sessions", "reward_bookings", "reward_assignments", "combo_obligations"};
     private OrphanFlowRecovery() { }
 
     static void createArchive(SupportSQLiteDatabase db) {
@@ -21,27 +22,62 @@ public final class OrphanFlowRecovery {
     static void recover(SupportSQLiteDatabase db) {
         if (!db.inTransaction()) throw new IllegalStateException("Recovery requires an upgrade transaction");
         createArchive(db);
-        // Save BOTH tables before deleting either. Plain INSERT deliberately fails on conflicts.
+        // Capture the full dependency closure first. This works with foreign keys both ON and OFF;
+        // no cascade may remove a child before that child's original payload has been archived.
+        db.execSQL("CREATE TEMP TABLE _recovery_rows (sourceTable TEXT NOT NULL, rowId INTEGER NOT NULL, "
+                + "PRIMARY KEY(sourceTable,rowId))");
+        mark(db, "flow_run_steps", missing("step_flow_runs", "runId"));
+        mark(db, "flow_run_resources", missing("step_flow_runs", "runId"));
+        mark(db, "occurrence_steps", missing("occurrences", "occurrenceId"));
+        mark(db, "repetition_results", missing("occurrence_steps", "stepId")
+                + " OR " + selectedParent("occurrence_steps", "stepId"));
+        mark(db, "timer_sessions", missing("occurrence_steps", "stepId")
+                + " OR " + selectedParent("occurrence_steps", "stepId"));
+        mark(db, "reward_bookings", missing("occurrences", "occurrenceId")
+                + " OR " + selectedParent("occurrence_steps", "occurrenceStepId"));
+        mark(db, "reward_assignments", missing("occurrences", "occurrenceId")
+                + " OR " + selectedParent("reward_bookings", "bookingId"));
+        mark(db, "combo_obligations", missing("occurrences", "occurrenceId"));
         for (String table : TABLES) {
-            try (Cursor rows = db.query("SELECT * FROM " + table + " WHERE " + orphanPredicate(table))) {
+            try (Cursor rows = db.query("SELECT * FROM " + table + " WHERE " + selected(table))) {
                 while (rows.moveToNext()) {
                     db.execSQL("INSERT INTO migration_recovery(sourceSchema,sourceTable,sourceId,reason,payload) "
                                     + "VALUES (24,?,?,?,?)",
-                            new Object[]{table, rows.getString(rows.getColumnIndexOrThrow("id")),
-                                    "MISSING_PARENT_RUN", encode(rows)});
+                            new Object[]{table, sourceId(table, rows),
+                                    table.startsWith("flow_run_") ? "MISSING_PARENT_RUN" : "MISSING_OCCURRENCE_OR_STEP", encode(rows)});
                 }
             }
         }
-        for (String table : TABLES) {
-            // Each deleted row must have its own archived copy, even if this code is later changed.
-            db.execSQL("DELETE FROM " + table + " WHERE " + orphanPredicate(table)
-                    + " AND EXISTS (SELECT 1 FROM migration_recovery a WHERE a.sourceSchema=24 "
-                    + "AND a.sourceTable=? AND a.sourceId=" + table + ".id)", new Object[]{table});
+        // Children first, using the frozen row identities (not predicates changed by deletion).
+        for (int i = TABLES.length - 1; i >= 0; i--) {
+            String table = TABLES[i];
+            db.execSQL("DELETE FROM " + table + " WHERE " + selected(table));
         }
+        db.execSQL("DROP TABLE _recovery_rows");
     }
 
-    private static String orphanPredicate(String table) {
-        return "NOT EXISTS (SELECT 1 FROM step_flow_runs r WHERE r.id=" + table + ".runId)";
+    private static void mark(SupportSQLiteDatabase db, String table, String predicate) {
+        db.execSQL("INSERT INTO _recovery_rows(sourceTable,rowId) SELECT ?,child.rowid FROM "
+                + table + " child WHERE " + predicate, new Object[]{table});
+    }
+
+    private static String missing(String parent, String column) {
+        return "NOT EXISTS (SELECT 1 FROM " + parent + " p WHERE p.id=child." + column + ")";
+    }
+
+    private static String selectedParent(String parent, String column) {
+        return "child." + column + " IN (SELECT id FROM " + parent + " WHERE " + selected(parent) + ")";
+    }
+
+    private static String selected(String table) {
+        return "rowid IN (SELECT rowId FROM _recovery_rows WHERE sourceTable='" + table + "')";
+    }
+
+    private static String sourceId(String table, Cursor row) {
+        if ("repetition_results".equals(table)) return new JSONArray()
+                .put(row.getString(row.getColumnIndexOrThrow("stepId")))
+                .put(row.getLong(row.getColumnIndexOrThrow("slotIndex"))).toString();
+        return row.getString(row.getColumnIndexOrThrow("reward_assignments".equals(table) ? "bookingId" : "id"));
     }
 
     // Version 1 payload: ordered [column name, SQLite cursor type, value] tuples.

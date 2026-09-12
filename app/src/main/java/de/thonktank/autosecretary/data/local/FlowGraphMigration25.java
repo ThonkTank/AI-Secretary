@@ -15,6 +15,8 @@ public final class FlowGraphMigration25 extends Migration {
 
     @Override public void migrate(SupportSQLiteDatabase database) {
         if (!database.inTransaction()) throw new IllegalStateException("Flow migration requires an upgrade transaction");
+        String before = foreignKeySummary(database);
+        if (!before.isEmpty()) android.util.Log.w("MigrationRecovery", "Pre-upgrade foreign keys: " + before);
         OrphanFlowRecovery.recover(database);
         requireForeignKeys(database);
         prepareExecutionStates(database);
@@ -156,8 +158,15 @@ public final class FlowGraphMigration25 extends Migration {
     }
 
     private static void requireForeignKeys(SupportSQLiteDatabase db) {
+        String summary = foreignKeySummary(db);
+        if (!summary.isEmpty()) throw new IllegalStateException("Flow upgrade found broken foreign keys: " + summary);
+    }
+
+    private static String foreignKeySummary(SupportSQLiteDatabase db) {
+        java.util.Map<String, Integer> counts = new java.util.TreeMap<>();
         try (Cursor cursor = db.query("PRAGMA foreign_key_check")) {
-            if (cursor.moveToFirst()) throw new IllegalStateException("Flow upgrade found a broken foreign key in " + cursor.getString(0));
+            while (cursor.moveToNext()) counts.merge(cursor.getString(0), 1, Integer::sum);
         }
+        return counts.isEmpty() ? "" : counts.toString();
     }
 }

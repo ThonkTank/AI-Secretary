@@ -21,12 +21,21 @@ public final class UpgradeProbeInstrumentation extends Instrumentation {
         start();
     }
 
+    @Override public void callApplicationOnCreate(android.app.Application application) {
+        // Diagnostic runs must not start widgets, Room, or migrations in the target application.
+        if (!"diagnose".equals(arguments == null ? "" : arguments.getString("upgradePhase", ""))) {
+            super.callApplicationOnCreate(application);
+        }
+    }
+
     @Override public void onStart() {
         Bundle result = new Bundle();
         String phase = arguments.getString("upgradePhase", "");
         String fixtureId = arguments.getString("upgradeFixture", "");
         try {
-            if ("seed".equals(phase)) {
+            if ("diagnose".equals(phase)) {
+                result.putString("diagnosis", readOnlyDiagnosis(getTargetContext().getDatabasePath("auto_secretary.db")));
+            } else if ("seed".equals(phase)) {
                 UpgradePersistenceProbe.seed(getTargetContext(), getContext(), this, fixtureId);
             } else if ("verify".equals(phase)) {
                 UpgradePersistenceProbe.verify(getTargetContext(), getContext(), this, fixtureId);
@@ -42,4 +51,16 @@ public final class UpgradeProbeInstrumentation extends Instrumentation {
             finish(Activity.RESULT_CANCELED, result);
         }
     }
+
+    static String readOnlyDiagnosis(java.io.File file) {
+        try (android.database.sqlite.SQLiteDatabase db = android.database.sqlite.SQLiteDatabase.openDatabase(
+                file.getPath(), null, android.database.sqlite.SQLiteDatabase.OPEN_READONLY)) {
+            java.util.Map<String, Integer> violations = new java.util.TreeMap<>();
+            try (android.database.Cursor rows = db.rawQuery("PRAGMA foreign_key_check", null)) {
+                while (rows.moveToNext()) violations.merge(rows.getString(0), 1, Integer::sum);
+            }
+            return "schema=" + db.getVersion() + "; foreignKeys=" + violations;
+        }
+    }
+
 }
