@@ -27,11 +27,20 @@ import org.robolectric.annotation.Config;
 @Config(sdk = {26, 35})
 public final class CurrentUpgradeSmokeRoomTest {
     @Test public void seededCurrentStateSurvivesMaterializationProjectionAndReopening() throws Exception {
+        verifyOn(LocalDate.of(2026, 9, 12));
+    }
+
+    @Test public void calendarBindingAlsoPreservesStateOnALaterDay() throws Exception {
+        verifyOn(LocalDate.of(2031, 6, 18));
+    }
+
+    private void verifyOn(LocalDate day) throws Exception {
         Context context = ApplicationProvider.getApplicationContext();
         String name = "current-smoke-" + java.util.UUID.randomUUID();
-        JSONObject fixture = new JSONObject(Files.readString(Path.of("../release/current-smoke/schema-27.json")));
+        JSONObject fixture = new JSONObject(Files.readString(Path.of("../release/current-smoke/schema-27.json"))
+                .replace("${TODAY}", day.toString()));
         Clock clock = new Clock() {
-            public LocalDate today() { return LocalDate.of(2000, 1, 2); }
+            public LocalDate today() { return day; }
             public LocalTime time() { return LocalTime.NOON; }
         };
         try {

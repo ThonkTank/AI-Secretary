@@ -66,7 +66,10 @@ keinen zusätzlichen manuellen Freigabeschritt nach einer vollständig grünen V
    Zertifikat geprüft. APK, Metadaten, Releaseplan und signiertes Test-APK werden als kurzlebiges
    internes Workflow-Artefakt weitergereicht.
 6. Der aktuelle In-place-Smoke auf API 35 erhält Aufgaben, Today-Platzierung und Verlauf auch bei
-   unverändertem Schema. Fehlende Quelle blockiert Publish. Im vollständigen Profil ergänzt der
+   unverändertem Schema. Im aktuellen Template bindet `${TODAY}` die offene Fälligkeit und
+   ihre Platzierung gemeinsam an den UTC-Planungstag; historische Datumswerte bleiben erhalten.
+   So wird eine reguläre Tagesfortschreibung nicht fälschlich als Updateverlust geprüft.
+   Fehlende Quelle blockiert Publish. Im vollständigen Profil ergänzt der
    Korpus unter `release/upgrade-fixtures/corpus.json` fünf verpflichtende Lanes:
    Schema 8 aus 0.2.80 auf API 26/35/37 sowie Schema 20 aus 0.2.137 und Schema 23 aus 0.2.158
    jeweils auf API 26. Jede exakt festgelegte Produktions-APK wird installiert und mit ihrer

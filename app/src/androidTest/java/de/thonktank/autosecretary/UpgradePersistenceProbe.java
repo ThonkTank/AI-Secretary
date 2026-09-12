@@ -210,17 +210,19 @@ final class UpgradePersistenceProbe {
                 for (String column : columns) {
                     Object expected = values.get(column);
                     int position = row.getColumnIndexOrThrow(column);
+                    String detail = table + " " + where + "." + column + " differs: expected="
+                            + expected + ", actual=" + (row.isNull(position) ? "NULL" : row.getString(position));
                     if (expected == JSONObject.NULL) {
-                        check(row.isNull(position), table + "." + column + " must be NULL");
+                        check(row.isNull(position), detail);
                     } else if (expected instanceof Number) {
                         equal(((Number) expected).longValue(), row.getLong(position),
-                                table + "." + column + " differs");
+                                detail);
                     } else if (expected instanceof Boolean) {
                         equal((Boolean) expected ? 1L : 0L, row.getLong(position),
-                                table + "." + column + " differs");
+                                detail);
                     } else {
                         equal(expected, row.getString(position),
-                                table + "." + column + " differs");
+                                detail);
                     }
                 }
             } finally {

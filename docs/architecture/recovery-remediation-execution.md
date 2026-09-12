@@ -372,3 +372,60 @@ P1-Bediennachweis erhalten; P2-Inhalts-/Profil-/Policy-Nachweis geschlossen; vol
 Gate erfolgreich. Gegenwärtig offen bleiben vollständiger PR-Gate auf diesem neuen Head,
 Squash/exaktes Main, signierte aktuelle/historische Upgrades und Veröffentlichung. P3 beginnt
 weiterhin erst nach P2-Abschluss. Pixel-Abnahme bleibt separat offen.
+
+## P2 – Main-Integration und Korrekturrunde 5: aktuelles Kalender-Fixture
+
+PR 365 bestand auf `34992250` den vollständigen Lauf 34705066507 und wurde als `074a3ad2`
+nach Main gesquasht. Exakter Main-Baum `87865ef77a1ad6f072756878e46d307865d59ef2` stimmt mit
+dem erfolgreichen PR-Inhaltszeugen überein; Wiederverwendung und Main-Aggregate bestanden.
+Kandidat 0.2.173 / 1017301 ist regulär signiert und an diesen Main-Commit gebunden. Main-Lauf
+34706313825 bestand alle fünf historischen signierten Upgrades, scheiterte aber im aktuellen
+27→27-Smoke mit `occurrences.state differs`. Veröffentlichung wurde übersprungen; 0.2.173
+ist damit noch kein freigegebener Release. Belege `/tmp/p2-main-failed.log`,
+`/tmp/p2-main-candidate/`, `/tmp/p2-candidate-proof.json`.
+
+Korrekturbranch: `codex/current-upgrade-smoke-fix` vom integrierten Main `074a3ad2`.
+Vorläufige Ursache anhand Code/Fixture: Die Platzierung wird auf den Planungstag gebunden,
+der offene Datensatz bleibt jedoch auf 2000-01-02 datiert. `OccurrenceCarryForward.collect`
+markiert alte offene Einträge im regulären COLLAPSE-Modus als MISSED. Der vorhandene Room-
+Test verwendet genau 2000-01-02 als Uhr und verdeckt deshalb diese Datumsabweichung.
+
+Plan vor Änderungen: Unveränderten signierten Übergang ausschließlich im eigenen Emulator
+nachvollziehen und die tatsächlich geänderte Zeile/Spalte abfragen. Den Room-Test zunächst
+mit einem späteren Datum und der bisherigen Generatorbindung reproduzierend rot machen.
+Dann den Planungstag im Template explizit durch einen gemeinsamen Tagesplatzhalter für
+scheduledOn und displayOn ausdrücken und diesen in Generator sowie Testaufbau binden.
+COLLAPSE und vollständige Erhaltungsassertionen bleiben erhalten; keine Produktschreiblogik
+ändern oder die erwartete Zustandsänderung pauschal akzeptieren. Generatorprüfungen müssen
+alle gebundenen Datumsfelder in Seed und Erwartung kontrollieren; Room muss mehrere Daten
+und echte Neuöffnung prüfen. Fehlermeldungen der Probe sollen die konkrete synthetische Zeile
+und Soll/Ist-Werte nennen. Danach vollständiger lokaler Check, eigener geprüfter PR/Squash und
+neuer exakter Main-/Release-Gate; kein Wiederholen des unveränderten roten Main-Laufs.
+
+Reproduktion bestätigt: Der unveränderte signierte Source→Kandidat-Übergang scheitert
+auch lokal. Anschließendes lesendes SQL zeigt den alten offenen Datensatz als MISSED, einen
+neuen OPEN-Datensatz vom 2026-09-12 und keine alte Platzierung. Die abgeschlossene Historie
+bleibt unverändert. Rohbelege `/tmp/p2-native-calendar-repro.log` und
+`/tmp/p2-native-calendar-rows.txt`. Der Room-Test mit späterem Datum und bisheriger Generator-
+bindung scheitert auf API 26/35 (2 Tests, 2 Fehler, 55s); `/tmp/p2-calendar-repro.xml`.
+Der erste Host-Aufruf nannte eine nicht vorhandene Gradle-Aufgabe und führte keine Tests aus;
+der tatsächliche Reproduktionslauf nutzte die vorhandene Aufgabe `testInstrumentationUnitTest`.
+
+Korrigierter Generator: 39 Release-Python-Tests grün, einschließlich beider Tagesbindungen
+in Seed/Erwartung und unveränderter Historie/COLLAPSE. Room-Aufbau auf zwei Kalendertagen
+(2026-09-12, 2031-06-18), jeweils API 26/35 und Neuöffnung: 4 Tests grün, 54s.
+Zusätzliche lokale Prüfung der real generierten korrigierten Daten auf denselben regulär
+signierten APKs: Quelle 0.2.172 und Kandidat 0.2.173 zeigen die Aufgabe im echten MainActivity,
+alle Seedspalten und die Platzierung bleiben nach Start erhalten, In-place-Installation
+erhält firstInstallTime. Beleg `/tmp/p2-native-fixed-calendar.log`. Setup/SQL-Abgleich dieses
+Zusatznachweises erfolgte extern im eigenen Emulator; er ersetzt nicht den noch ausstehenden
+CI-Lauf des neu gebauten signierten Probe-APK. Kein Zugriff auf produktive Pixel-Daten.
+
+Abgleich der Kalenderkorrektur gegen Plan: unveränderten Fehler signiert und im echten Room-
+Ablauf reproduziert; Ursache auf die widersprüchlichen Fixture-Daten begrenzt; gemeinsame
+explizite Tagesbindung und aussagekräftige Spaltenfehler umgesetzt; keine Produktschreiblogik
+oder COLLAPSE-Assertion geändert. Abgleich gegen P2-Roadmap: Aufgaben, Today-Platzierung und
+Verlauf bleiben im aktuellen Smoke gefordert; Quelle und Artefakte bleiben unveränderlich gebunden;
+Veröffentlichung bleibt bei rotem Smoke blockiert. Der eigene Klassifikator verlangt für diesen
+Korrekturstand `full` einschließlich Release und aller historischen Lanes. Vollständiger lokaler
+Check läuft; sein Ergebnis wird vor Merge geprüft. PR-/Main-/Publish-Nachweise sind noch offen.
