@@ -26,7 +26,14 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Die schnelle lokale Prüfschleife ohne visuelle Goldens ist:
+Der lokale Vorabcheck wählt dasselbe Risikoprofil wie CI und berücksichtigt unversionierte Dateien:
+
+```bash
+./scripts/ci/check-changes.sh            # gegen origin/main
+./scripts/ci/check-changes.sh --all      # Vollprüfung erzwingen
+```
+
+Die schnelle Prüfschleife ohne visuelle Goldens ist weiterhin direkt nutzbar:
 
 ```bash
 ./scripts/ci/check-fast.sh
@@ -46,8 +53,10 @@ Der vollständige lokale Quality-Gate führt alle Verträge ohne doppelte Hostte
 ./scripts/ci/check-all.sh
 ```
 
-Die CI führt die drei Lanes parallel aus und fasst sie in einem stabilen `quality`-Ergebnis
-zusammen. Reguläre
+Im vollständigen Profil führt CI die drei Lanes parallel aus. Die stabilen Aggregate verlangen
+alle ausgewählten Nachweise. Das enge Today-Profil verwendet Contracts, Build/Lint und einen
+API-35-Animationslauf; Details und Grenzen stehen in
+[ADR-037](docs/architecture/adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md). Reguläre
 Gerätetests installieren die sichtbar benannte App „Auto Secretary Test“ unter
 `de.thonktank.autosecretary.test`; nur der signierte Upgrade-Probe-Pfad verwendet die echte
 Produktions-ID.
@@ -55,7 +64,7 @@ Produktions-ID.
 Deterministische Zustände für Layout Inspector und Preview-Werkzeuge liegen im Debug-Build
 unter `DebugPreviewFixtures`. Die 17 Editor-Referenzzustände werden zusätzlich als
 Robolectric-Goldens geprüft. Für den Today-Screen decken Phone-Goldens unter anderem leere,
-teilgefüllte, erntereife und abgeschlossene Gefäße sowie Tag, Abend und Nacht ab. Die CI führt die
+teilgefüllte, erntereife und abgeschlossene Gefäße sowie Tag, Abend und Nacht ab. Im vollständigen Profil führt CI die
 Room-Migrationstests auf API 26, API 35 und API 37 aus.
 
 Die Release-Einrichtung ist in [docs/releasing.md](docs/releasing.md) beschrieben. Die
@@ -63,6 +72,7 @@ Produktentscheidung ist in [docs/produktziele.md](docs/produktziele.md) festgeha
 verbindlichen Architekturentscheidungen und visuellen Referenzen beginnen unter
 [docs/architecture](docs/architecture/README.md).
 
-Jeder grüne Push auf `main` wird automatisch als installierbarer Build veröffentlicht. Beim
+Releasewirksame Änderungen werden nach ihrem grünen Main- und signierten Upgrade-Gate
+automatisch als installierbarer Build veröffentlicht. Beim
 ersten Wechsel von einem Debug-Build ist wegen der dauerhaft anderen Signatur eine einmalige
 Neuinstallation nötig; danach bleiben Aufgaben bei Updates erhalten.

@@ -78,7 +78,7 @@ semantisch und benötigt keine Reparaturheuristik.
 
 Der Produktionskorpus enthält aktuell:
 
-| Fixture | Signierte Quelle | Pflicht-Lanes | Risiko |
+| Fixture | Signierte Quelle | Pflicht-Lanes bei `full` | Risiko |
 | --- | --- | --- | --- |
 | `schema-8-floor` | `forest-android-1008001` / 0.2.80 | API 26, 35 und 37 | unterstützte Untergrenze und Plattformkompatibilität |
 | `schema-20-organic-flow` | `forest-android-1013701` / 0.2.137 | API 26 | organische Spaltenhistorie, leere Crashzelle und vollständig belegte Vertauschungszeile |
@@ -86,8 +86,11 @@ Der Produktionskorpus enthält aktuell:
 
 Jede Quelle wird vor der Installation gegen Release- und Tag-Ziel, Commit, Paketname,
 Versionscode, Versionsname, Metadaten- und APK-SHA-256 sowie Produktionssignatur geprüft. Alle
-fünf Lanes verwenden denselben signierten Kandidaten; Publish hängt von ihrem gemeinsamen
-Erfolg ab.
+fünf Lanes verwenden denselben signierten Kandidaten. Nach [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md) bleiben sie
+bei vollständigen Änderungen verpflichtend; Publish hängt dann von ihrem gemeinsamen Erfolg ab.
+Jeder Produktrelease ergänzt den separat gebundenen aktuellen Smoke. Dessen expliziter Vertrag 2
+erlaubt gleiche Schemata bei höherer App-Version; historische Fixtures behalten Vertrag 1 mit
+strikt höherem Zielschema und bleiben vollständig manifestiert.
 
 ## Konsequenzen
 
@@ -97,7 +100,9 @@ releasewirksam und müssen die zugehörigen Lineage- und Produktionspfade besteh
 werden nur ergänzt, wenn sie ein eigenes Datenhistorien- oder Plattformrisiko abdecken; der
 Korpus wird nicht pauschal über alle Android-Versionen kreuzmultipliziert.
 
-Das aktuelle Zielschema bleibt 24. Diese ADR ändert keine App-, Domain- oder UI-API. Den
+Zum ursprünglichen Entscheidungszeitpunkt war das Zielschema 24. Maßgeblich sind heute
+`DatabaseContract.VERSION` und die damit abgeglichenen Fixture-Zielversionen. Diese ADR ändert
+keine App-, Domain- oder UI-API. Den
 operativen, datenbewahrenden Gerätepfad beschreibt das
 [Signing- und Recovery-Runbook](../signing-and-recovery.md); die phasenweise Herleitung steht in
 der [Migrationssicherheits-Roadmap](database-migration-safety-roadmap.md) und ihrem

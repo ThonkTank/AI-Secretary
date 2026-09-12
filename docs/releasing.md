@@ -1,13 +1,13 @@
 # Auto Secretary – Builds und Updates veröffentlichen
 
-Der Workflow klassifiziert jede Änderung getrennt für Host-Qualität, Android-Instrumentierung und
-Produktveröffentlichung. Reine Änderungen unter `docs/` sowie an Repository-Markdown bestehen mit
-dem Scope- und PR-Sammelcheck, ohne einen Android-Build zu starten. Andere Nicht-Produktänderungen
-durchlaufen das passende Quality- beziehungsweise Instrumentierungs-Gate, erzeugen aber keine neue
-App-Version. Produkt- und eingebettete Vertragsänderungen werden schon im Pull Request auf API 26,
-API 35 und API 37 instrumentiert. Nach dem Merge wiederholt `main` diese Prüfungen für den exakten
-Release-Commit und führt zusätzlich die fünf echten Produktions-Upgrades aus dem signierten
-Fixture-Korpus aus.
+Der Workflow verwendet die vier Profile aus
+[ADR-037](architecture/adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md).
+Dokumentation und Hosttests erzeugen keinen Release. Das enge Today-Profil benötigt Contracts,
+Build/Lint/Identität/Größe und einen nativen API-35-Animationslauf. Vollständige Änderungen behalten
+alle sechs Android-Lanes. CI-/Freigabeänderungen sind selbst vollständig und releasewirksam.
+Main kann ausschließlich identische, profil-/policygleiche und vollständig grüne PR-Nachweise
+übernehmen. Jeder Produktrelease benötigt den signierten aktuellen Update-Smoke, vollständige
+Änderungen zusätzlich die fünf historischen Upgrades auf demselben Kandidaten.
 
 ## Dauerhafter Signaturschlüssel
 
@@ -48,22 +48,26 @@ keinen zusätzlichen manuellen Freigabeschritt nach einer vollständig grünen V
 ## Automatischer Ablauf
 
 1. Eine Änderung wird auf einem Themenbranch committed. Der getestete Scope-Classifier entscheidet
-   unabhängig, ob Quality, API-26/35/37-Instrumentierung und später ein Produktrelease
-   erforderlich sind.
+   anhand des tatsächlichen Git-Status über Profil und Releasebedarf. Unbekannte, strukturelle
+   oder gemischte Änderungen werden konservativ behandelt.
 2. Der stabile Check `pull-request-gate` fasst alle für den Pull Request anwendbaren Prüfungen
    zusammen. Das Ruleset von `main` verlangt diesen aktuellen grünen Check und einen Squash-Merge.
    Instrumentierungsfehler laden je API Screenshot, UI-Hierarchie, Logcat und Input-/Displaydaten
    hoch; der ursprüngliche Test-Exitcode bleibt dabei maßgeblich.
 3. Der Merge-Commit auf `main` wird erneut klassifiziert. Nur eine produktionswirksame Änderung
-   darf Packaging, Upgrade und Publish starten; Test-, Workflow- und Dokumentationsänderungen
-   veröffentlichen keine App-Version.
+   darf Packaging, Upgrade und Publish starten; reine Hosttests und Dokumentation
+   veröffentlichen keine App-Version. Upgrade-Probe, Build und Freigabelogik sind releasewirksam.
 4. `scripts/release/release_tool.py` schreibt die letzte veröffentlichte Produktversion um genau
    eins fort. Workflownummern beeinflussen die sichtbare Version nicht; ein fehlgeschlagener Lauf
    kann deshalb keine Versionsnummer überspringen.
-5. Die Produktions-APK wird einmal signiert und auf Paketname, Version, Größe, Hash und
+5. Die aktuelle veröffentlichte Quelle wird einmalig mit Commit, Tag, Schema, Metadaten-/APK-Hash
+   und Produktionsidentität gebunden. Sie wird mit dem Kandidaten archiviert.
+   Die Produktions-APK wird einmal signiert und auf Paketname, Version, Größe, Hash und
    Zertifikat geprüft. APK, Metadaten, Releaseplan und signiertes Test-APK werden als kurzlebiges
    internes Workflow-Artefakt weitergereicht.
-6. Der Korpus unter `release/upgrade-fixtures/corpus.json` erzeugt fünf verpflichtende Lanes:
+6. Der aktuelle In-place-Smoke auf API 35 erhält Aufgaben, Today-Platzierung und Verlauf auch bei
+   unverändertem Schema. Fehlende Quelle blockiert Publish. Im vollständigen Profil ergänzt der
+   Korpus unter `release/upgrade-fixtures/corpus.json` fünf verpflichtende Lanes:
    Schema 8 aus 0.2.80 auf API 26/35/37 sowie Schema 20 aus 0.2.137 und Schema 23 aus 0.2.158
    jeweils auf API 26. Jede exakt festgelegte Produktions-APK wird installiert und mit ihrer
    Fixture befüllt. `adb install -r` aktualisiert sie auf den Kandidaten; anschließend müssen

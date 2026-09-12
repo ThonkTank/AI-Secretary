@@ -23,18 +23,12 @@ konkreten Konstanten bleibt `release/release.properties`.
 - Der Updatekanal berücksichtigt ausschließlich Tags mit dem Präfix `forest-android-`.
 - Ein Release-Tag enthält nach dem Präfix den dezimalen Android-`versionCode`.
 - Die aktuelle sichtbare Versionsreihe ist `0.2`.
-- GitHub Actions vergibt pro Lauf einen Versionscode oberhalb von `1000000` nach
-  `versionCodeFloor + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT`.
-- Ein neuer Versionscode muss größer als jeder bereits vorhandene Tag des aktuellen Updatekanals
-  sein; andernfalls bricht die Planung ab.
-- Ein wiederholter Workflowlauf erhält einen eigenen Versionscode und den Suffix `-rN` im
-  sichtbaren Versionsnamen. Bereits veröffentlichte Commits werden nicht erneut veröffentlicht.
-- Lokale Builds verwenden nur Entwicklungswerte. Sie sind keine Quelle für die nächste
-  Produktionsversion.
-
-Die Kopplung der Versionsvergabe an den GitHub-Workflow ist der aktuelle Vertrag, aber keine
-gewünschte dauerhafte Architektur. Eine spätere, workflowunabhängige Vergabe muss monotone
-Versionscodes für alle bereits veröffentlichten Builds garantieren.
+- Die nächste Produktversion folgt der höchsten stabil veröffentlichten Produktversion, unabhängig
+  von der GitHub-Workflownummer. Der Code bleibt im bestehenden Format
+  `versionCodeFloor + Produktnummer * 100 + Versuch` monoton.
+- Ein belegter Draft kann für denselben Commit wiederaufgenommen werden. Andernfalls wird ein
+  freier Code im nächsten Produktfenster gewählt. Bereits veröffentlichte Commits werden nicht
+  erneut veröffentlicht. Lokale Entwicklungswerte sind keine Quelle für Produktionsversionen.
 
 ### Signatur und Vertrauensmodell
 
@@ -76,8 +70,9 @@ Das Metadatenformat hat `schemaVersion` 1 und enthält:
 - den kleingeschriebenen Zertifikat-Fingerprint `signerSha256`
 - den vollständigen Git-Commit `commitSha`
 
-Die Pipeline baut und signiert einen Produktionskandidaten genau einmal. Die fünf signierten
-Upgrade-Lanes auf API 26, API 35 und API 37 sowie der Veröffentlichungsschritt verwenden dieses
+Die Pipeline baut und signiert einen Produktionskandidaten genau einmal. Der aktuelle signierte
+Update-Smoke, die nach [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md) anwendbaren historischen Upgrade-Lanes
+und der Veröffentlichungsschritt verwenden dieses
 interne Workflow-Artefakt. Die Pipeline erstellt oder übernimmt anschließend einen Draft, lädt
 beide öffentlichen Assets hoch, lädt sie als Beweis erneut herunter und veröffentlicht erst nach
 erfolgreicher Hash-, Commit- und Byteprüfung. Der Release mit dem höchsten Versionscode im
@@ -106,18 +101,15 @@ den geplanten Commit zeigen. Die Workflow-Actions sind auf vollständige Commit-
 
 ### CI-Gates
 
-Jeder Push auf `main` muss vor einer Veröffentlichung folgende Prüfungen bestehen:
+Die Prüfauswahl richtet sich nach [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md). `docs`, `host`, `today` und `full`
+verwenden denselben Classifier lokal, im PR und auf Main. `full` enthält weiterhin Unit-/Room-/
+Golden-Tests, Lint, Builds, Größen-/Identitätsprüfungen und sechs normale/animierte Android-Lanes
+auf API 26, 35 und 37. `today` ist auf zwei geprüfte plattformfreie Weiterleitungsdateien begrenzt
+und verlangt Contracts inklusive produktivem Today-Bedienweg, Build/Lint/Identität/Größe und die
+native API-35-Today-Suite mit Animationen. Fehlende oder unklare Einordnung führt zu `full`.
 
-- Unit- und Robolectric-Tests
-- Android Lint
-- Debug-, Android-Test- und Release-Build
-- normale und animationsaktive Instrumentierungstests auf API 26, API 35 und API 37
-- Größenlimit für Installationsartefakt und eingebettete Schriftarten
-- Paket-, Versions- und Signaturprüfung der Produktions-APK
-- signierte Upgrades aus dem manifestierten Produktions-Fixture-Korpus auf exakt den später
-  veröffentlichten Kandidaten
-
-Der Produktionskorpus trennt Plattform- und Datenhistorienrisiken in fünf verpflichtende Lanes:
+Jeder Produktrelease benötigt den signierten aktuellen In-place-Update-Smoke. Im vollständigen
+Profil bleiben zusätzlich diese fünf historischen Lanes verpflichtend:
 
 | Fixture | Quelle und Ausgangsschema | API-Lanes |
 | --- | --- | --- |
@@ -132,19 +124,17 @@ einer vertauschten 0.2.158-Zeile als auch den unveränderten Erhalt einer korrek
 Migrationsvertrag und die Fixture-Arten sind in
 [ADR-035](adr-035-physische-migrationshistorie-und-upgrade-fixtures.md) festgelegt.
 
-Ein getesteter Scope-Classifier unterscheidet Quality-, Instrumentierungs- und Releasebedarf.
-Reine Dokumentationsänderungen bestehen ohne Android-Build; Hosttests und Releasewerkzeuge lösen
-keine Produktveröffentlichung aus. Für Produktionscode, Android-Instrumentierung,
-Buildkonfiguration oder Instrumentierungsskripte führt bereits der Pull Request die
-API-26/35/37-Matrix aus. Der stabile Sammelcheck `pull-request-gate` verlangt alle für den Scope
-anwendbaren Jobs und bleibt auch bei begründet übersprungenen Jobs vorhanden.
+Der stabile Sammelcheck `pull-request-gate` verlangt alle für das Profil anwendbaren Jobs.
+Dokumentation und Hosttests erzeugen keinen Release. Änderungen an Produkt, Build, Signierung,
+Upgrade-Probe und Freigabelogik bleiben releasewirksam. Gewöhnliche Test-APK-/Debug-Harness-
+Änderungen werden vollständig geprüft, ohne ein Produktupdate zu veröffentlichen.
 
 Das Ruleset von `main` verlangt einen aktuellen Pull Request, den grünen `pull-request-gate` und
-einen Squash-Merge; Force-Push und Löschen sind gesperrt. Der resultierende `main`-Commit wiederholt
-seine anwendbaren Prüfungen. Ausschließlich eine produktionswirksame Änderung startet danach den
-vollständigen Release-Gate mit signiertem Produktionskandidaten, echtem Upgrade der festgelegten
-Produktionsquellen in allen fünf Lanes und bytegeprüfter Veröffentlichung. Ein lokaler
-Release-Build bleibt ohne ausdrücklich bereitgestellte Produktionszugangsdaten unsigniert.
+einen Squash-Merge. Main kann ausschließlich inhaltsidentische PR-Nachweise mit identischer
+Policy, identischem Profil und allen eindeutigen grünen Einzeljobs übernehmen. Andernfalls läuft
+das ausgewählte Profil auf Main erneut. Packaging, aktuelle und anwendbare historische Upgrades
+sowie Veröffentlichung bleiben am exakten Main-Kandidaten. Ein lokaler Release-Build ist ohne
+Produktionszugangsdaten unsigniert.
 
 Auch Fehlerbehebungen mit unmittelbarer Nutzerwirkung folgen dem Pull-Request-Gate. Eine Änderung
 der Versionsstrategie bleibt ein separates Vorhaben; sie wird nicht mit gewöhnlichen
@@ -168,6 +158,6 @@ Paketname, Produktionsschlüssel, Versionscode und Metadatenschema sind öffentl
 Kompatibilitätsgrenzen. Änderungen sind keine gewöhnlichen Refactorings. Der Releaseworkflow und
 der In-App-Updater müssen denselben Vertrag implementieren, und ein erfolgreicher Clean Install
 allein genügt nicht als Nachweis für Updatekompatibilität. Reproduzierbare Tests von den
-festgelegten signierten Schemaepochen auf das aktuelle Release sind deshalb Bestandteil jedes
-Produktionslaufs. Die interne Schichtung des In-App-Updaters ist in
+festgelegten signierten Schemaepochen sind deshalb Bestandteil vollständiger Produktionsläufe;
+der aktuelle signierte In-place-Smoke ist Bestandteil jedes Produktreleases. Die interne Schichtung des In-App-Updaters ist in
 [ADR-006](adr-006-update-schichten-und-fehler.md) festgelegt.

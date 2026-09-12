@@ -151,3 +151,6 @@ Neue fachlich reine Typen sollen direkt in die passende Grenze eingeordnet werde
 Root-Klassen werden nur bei konkreter Bearbeitung verschoben; eine mechanische Massenverschiebung
 ist ausdrücklich nicht Teil dieses Refactorings. Zusätzliche Gradle-Module, ein DI-Framework,
 Ein weiteres DI-Framework oder generisches Design-System ist dafür nicht vorgesehen.
+
+Die aktuelle risikobasierte Prüfauswahl und signierte Updatepflicht stehen in
+[ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md).

@@ -130,11 +130,20 @@ android {
         getByName("test").resources.directories.add(
             rootProject.file("release/upgrade-fixtures").absolutePath,
         )
+        // Generated, source-pinned current smoke remains separate from the historical corpus.
+        providers.gradleProperty("currentUpgradeSmokeAssets").orNull?.let { directory ->
+            val smokeAssets = rootProject.file(directory)
+            require(smokeAssets.resolve("current-production.json").isFile) {
+                "Pinned current upgrade smoke asset is missing"
+            }
+            getByName("androidTest").assets.directories.add(smokeAssets.absolutePath)
+        }
     }
 }
 
 val robolectricTempDir = layout.buildDirectory.dir("tmp/robolectric")
 tasks.withType<Test>().configureEach {
+    inputs.dir(rootProject.file("release/current-smoke"))
     doFirst { robolectricTempDir.get().asFile.mkdirs() }
     systemProperty("java.io.tmpdir", robolectricTempDir.get().asFile.absolutePath)
     System.getProperty("woodgrain.benchmark")?.let {

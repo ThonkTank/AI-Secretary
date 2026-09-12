@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.TextView;
-import androidx.test.core.app.ActivityScenario;
 import androidx.test.platform.app.InstrumentationRegistry;
 import de.thonktank.autosecretary.*;
 import de.thonktank.autosecretary.domain.model.*;
@@ -49,14 +48,13 @@ final class TodayProductInteractionScenario {
             expected.remove(b.key());
             expected.add(0, b.key());
 
-            try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
-                AtomicReference<MainActivity> activity = new AtomicReference<>();
-                scenario.onActivity(activity::set);
-                View root = activity.get().getWindow().getDecorView();
+            try (ProductActivitySession scenario = new ProductActivitySession(instrumentation)) {
+                MainActivity activity = scenario.launch();
+                View root = activity.getWindow().getDecorView();
                 awaitFocus(root, firstTitle);
                 View title = awaitView(root, view -> (secondTitle + ", jetzt bearbeiten")
                         .contentEquals(view.getContentDescription() == null ? "" : view.getContentDescription()));
-                Rect bounds = reveal(activity.get(), title);
+                Rect bounds = reveal(activity, title);
                 TouchGestureDriver touch = new TouchGestureDriver(instrumentation, title);
                 try {
                     touch.down(new int[] {bounds.centerX(), bounds.centerY()});
@@ -65,22 +63,20 @@ final class TodayProductInteractionScenario {
                 awaitFocus(root, secondTitle);
                 assertEquals(expected, keys(queue(container)));
 
-                scenario.recreate();
-                scenario.onActivity(activity::set);
-                root = activity.get().getWindow().getDecorView();
+                activity = scenario.recreate();
+                root = activity.getWindow().getDecorView();
                 awaitFocus(root, secondTitle);
                 View later = awaitView(root, view -> view instanceof TextView
                         && context.getString(R.string.action_later).contentEquals(((TextView) view).getText()));
-                reveal(activity.get(), later);
+                reveal(activity, later);
                 instrumentation.runOnMainSync(() -> assertTrue(later.performAccessibilityAction(
                         AccessibilityNodeInfo.ACTION_CLICK, null)));
                 awaitFocus(root, firstTitle);
                 assertEquals(a.key(), queue(container).get(0).key());
                 assertTrue("Later must retain B as open work", keys(queue(container)).contains(b.key()));
                 List<String> afterLater = keys(queue(container));
-                scenario.recreate();
-                scenario.onActivity(activity::set);
-                awaitFocus(activity.get().getWindow().getDecorView(), firstTitle);
+                activity = scenario.recreate();
+                awaitFocus(activity.getWindow().getDecorView(), firstTitle);
                 assertEquals(afterLater, keys(queue(container)));
             }
         } finally {

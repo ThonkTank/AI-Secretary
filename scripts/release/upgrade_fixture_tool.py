@@ -54,14 +54,27 @@ def _positive_integer(value, field: str) -> int:
 
 
 def validate_fixture(fixture: dict, expected_id: str | None = None) -> dict:
+    return _validate_fixture(fixture, expected_id, current_smoke=False)
+
+
+def validate_current_smoke(fixture: dict) -> dict:
+    return _validate_fixture(fixture, "current-production", current_smoke=True)
+
+
+def _validate_fixture(fixture: dict, expected_id: str | None, *, current_smoke: bool) -> dict:
     required = {
         "contractVersion", "id", "risk", "source", "targetDatabaseVersion", "apiLanes",
         "seed", "expectedTarget",
     }
+    if current_smoke:
+        required.add("kind")
     if not isinstance(fixture, dict) or set(fixture) != required:
         raise UpgradeFixtureError("Fixture fields do not match contract version 1")
-    if fixture.get("contractVersion") != 1:
-        raise UpgradeFixtureError("Fixture contractVersion must be 1")
+    version = 2 if current_smoke else 1
+    if fixture.get("contractVersion") != version:
+        raise UpgradeFixtureError(f"Fixture contractVersion must be {version}")
+    if current_smoke and fixture.get("kind") != "current-smoke":
+        raise UpgradeFixtureError("Current fixture requires explicit current-smoke kind")
     fixture_id = fixture.get("id")
     if not isinstance(fixture_id, str) or not FIXTURE_ID.fullmatch(fixture_id):
         raise UpgradeFixtureError("Fixture id is invalid")
@@ -76,7 +89,8 @@ def validate_fixture(fixture: dict, expected_id: str | None = None) -> dict:
     version_code = _positive_integer(source["versionCode"], "source.versionCode")
     _positive_integer(source["databaseVersion"], "source.databaseVersion")
     _positive_integer(fixture["targetDatabaseVersion"], "targetDatabaseVersion")
-    if fixture["targetDatabaseVersion"] <= source["databaseVersion"]:
+    if (fixture["targetDatabaseVersion"] < source["databaseVersion"]
+            or (not current_smoke and fixture["targetDatabaseVersion"] == source["databaseVersion"])):
         raise UpgradeFixtureError(f"Fixture {fixture_id} target schema is not newer")
     if source["tag"] != f"forest-android-{version_code}":
         raise UpgradeFixtureError(f"Fixture {fixture_id} tag and versionCode differ")
@@ -194,8 +208,8 @@ def matrix(root: Path) -> dict:
 
 
 def verify_source(fixture: dict, release: dict, tag_ref: dict,
-                  metadata_path: Path, apk_path: Path) -> None:
-    fixture = validate_fixture(fixture)
+                  metadata_path: Path, apk_path: Path, *, current_smoke: bool = False) -> None:
+    fixture = validate_current_smoke(fixture) if current_smoke else validate_fixture(fixture)
     source = fixture["source"]
     if (release.get("tag_name") != source["tag"] or release.get("draft") is not False
             or release.get("prerelease") is not False
@@ -242,12 +256,13 @@ def parser() -> argparse.ArgumentParser:
     fixture_command.add_argument("--fixture-id", required=True)
     fixture_command.add_argument("--output", type=Path, required=True)
 
-    verify = commands.add_parser("verify-source")
-    verify.add_argument("--fixture", type=Path, required=True)
-    verify.add_argument("--release-json", type=Path, required=True)
-    verify.add_argument("--tag-ref-json", type=Path, required=True)
-    verify.add_argument("--metadata", type=Path, required=True)
-    verify.add_argument("--apk", type=Path, required=True)
+    for command in ("verify-source", "verify-current-source"):
+        verify = commands.add_parser(command)
+        verify.add_argument("--fixture", type=Path, required=True)
+        verify.add_argument("--release-json", type=Path, required=True)
+        verify.add_argument("--tag-ref-json", type=Path, required=True)
+        verify.add_argument("--metadata", type=Path, required=True)
+        verify.add_argument("--apk", type=Path, required=True)
     return root
 
 
@@ -260,7 +275,8 @@ def main() -> int:
             write_json(arguments.output, fixture_by_id(arguments.fixtures, arguments.fixture_id))
         else:
             verify_source(read_json(arguments.fixture), read_json(arguments.release_json),
-                          read_json(arguments.tag_ref_json), arguments.metadata, arguments.apk)
+                          read_json(arguments.tag_ref_json), arguments.metadata, arguments.apk,
+                          current_smoke=arguments.command == "verify-current-source")
         return 0
     except (OSError, KeyError, TypeError, json.JSONDecodeError, UpgradeFixtureError) as error:
         print(f"upgrade_fixture_tool: {error}", file=sys.stderr)

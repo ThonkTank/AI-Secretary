@@ -114,7 +114,7 @@ Verbindliches Abschluss-Gate:
 ```
 
 Der serielle Modus ist die reproduzierbare Referenz auf speicherknappen Rechnern. Die verbindliche
-Remote-Matrix ergänzt normale und animationsaktive Instrumentierung auf API 26, 35 und 37. Bei
+Remote-Matrix des vollständigen Profils ergänzt normale und animationsaktive Instrumentierung auf API 26, 35 und 37. Bei
 produktwirksamen Änderungen schließen Produktionsupgrade, Packaging, Signatur-, Hash-, Paket-,
 Versions- und Trust-Prüfungen sowie Publish den exakten Main-Stand ab. Der Abschluss folgt
 [ADR-030](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md).
@@ -198,15 +198,14 @@ Die Schichten belegen getrennt:
 - unveränderte sichtbare Zeit-/Mengenangaben, Herkunftstitel und Accessibility bei entfallenden
   Status- und Satzfortschrittstexten.
 
-Die PR-Matrix bleibt vollständig. Der Main-Nachweis darf Quality und Instrumentierung
-nur bei identischem Git-Baum, identischem Workflowvertrag und nachgewiesen grünem PR-Gate
-überspringen. Packaging, Signatur, Hash, drei Produktionsupgrades und Publish bleiben immer an
-den exakten Main-Commit gebunden; jeder fehlende oder abweichende Nachweis fällt auf die
-vollständige Main-Matrix zurück.
+Für den damaligen Schema-23-Cutover blieb die PR-Matrix vollständig. Die aktuelle profilabhängige
+Auswahl und strenge PR-/Main-Wiederverwendung sind in [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md) festgelegt.
+Packaging, Signatur, Hash, anwendbare Upgrades und Publish bleiben am exakten Main-Kandidaten.
 
 ## Aktueller Verifikationsvertrag
 
-Die lokale und die Remote-Prüfung besitzen drei getrennte Lanes:
+Die lokale und die Remote-Prüfung verwenden die vier Profile aus [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md).
+Das vollständige Profil besitzt drei getrennte Qualitäts-Lanes:
 
 - `scripts/ci/check-fast.sh` führt Helferverträge sowie nichtvisuelle Unit-, Room- und
   Architekturtests aus;
@@ -214,10 +213,13 @@ Die lokale und die Remote-Prüfung besitzen drei getrennte Lanes:
 - der Build-Lane führt Lint und alle installierbaren Debug-, Instrumentierungs-, Test- und
   Release-Pakete aus.
 
-Der lokale Abschluss verwendet `scripts/ci/check-all.sh`, damit die vollständige Host- und
-Golden-Suite nur einmal läuft; er ergänzt denselben Identitäts- und Größenvertrag wie CI.
+Der lokale Vorabcheck `scripts/ci/check-changes.sh [BASIS]` verwendet dieselbe Klassifikation wie
+CI: Dokumentverträge für `docs`, die gesamte Hostsuite einschließlich Goldens für `host`, schnelle
+Contracts inklusive P1 für `today`, `check-all.sh` für `full`. Ein lokaler Today-Vorabcheck behauptet
+keinen lokalen Build oder Gerätelauf; CI verlangt diese zusätzlich. `--all` beziehungsweise der
+direkte `check-all.sh` erzwingen weiterhin die Vollprüfung ohne doppelte Hosttest-Aufgabe.
 
-GitHub fasst alle drei Ergebnisse fail-closed als `quality` zusammen. Vertrags- und Golden-Jobs
+GitHub fasst alle ausgewählten Qualitätsergebnisse fail-closed als `quality` zusammen. Vertrags- und Golden-Jobs
 enden nach 15 Minuten, ihre Hauptschritte nach 12 Minuten; der gemessene kalte Build-Lane erhält
 30 beziehungsweise 25 Minuten. Geräteaktionen enden nach 20 Minuten. Fehlerpfade laden die
 anwendbaren Test-, Golden-, Lint-, Build- oder Gerätedaten hoch; automatische Wiederholung ist

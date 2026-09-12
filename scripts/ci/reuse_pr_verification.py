@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed proof that a main squash has already passed the full PR gate."""
+"""Fail-closed proof that a main squash has already passed the selected PR gate."""
 
 from __future__ import annotations
 
@@ -7,11 +7,12 @@ import argparse
 from dataclasses import dataclass
 import json
 import os
+import re
 import subprocess
 from typing import Callable, Iterable, Mapping, Sequence
 
 
-REQUIRED_JOBS = ("quality", "instrumentation-gate", "pull-request-gate")
+from change_scope import POLICY_VERSION, policy_job, required_jobs
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,8 @@ def decide(
     event_name: str,
     ref: str,
     release_required: bool,
+    profile: str,
+    policy_version: str,
     main_sha: str,
     main_tree: str,
     pulls: Sequence[Mapping[str, object]],
@@ -41,8 +44,12 @@ def decide(
 ) -> ReuseDecision:
     if event_name != "push" or ref != "refs/heads/main":
         return ReuseDecision.denied("not_main_push")
-    if not release_required:
-        return ReuseDecision.denied("not_product_change")
+    try:
+        policy_job(profile, policy_version)
+        if release_required and profile in {"docs", "host"}:
+            return ReuseDecision.denied("invalid_profile_release")
+    except ValueError:
+        return ReuseDecision.denied("unsupported_policy_or_profile")
     merged = [
         pull
         for pull in pulls
@@ -55,28 +62,37 @@ def decide(
         return ReuseDecision.denied("merged_pr_not_unique")
     pull = merged[0]
     head_sha = str(_nested(pull, "head", "sha"))
-    if not main_tree or head_trees.get(head_sha) != main_tree:
+    if not re.fullmatch(r"[0-9a-f]{40}", main_tree) or head_trees.get(head_sha) != main_tree:
         return ReuseDecision.denied("tree_mismatch")
     eligible = [
         run
         for run in runs
         if run.get("event") == "pull_request"
         and run.get("head_sha") == head_sha
-        and run.get("status") == "completed"
-        and run.get("conclusion") == "success"
         and isinstance(run.get("id"), int)
     ]
     eligible.sort(key=lambda run: (str(run.get("created_at", "")), int(run["id"])),
                   reverse=True)
-    for run in eligible:
+    # A later failed/incomplete run must not be hidden by an older green one.
+    for run in eligible[:1]:
+        if run.get("status") != "completed" or run.get("conclusion") != "success":
+            return ReuseDecision.denied("latest_pr_run_not_green")
         run_id = int(run["id"])
         jobs = jobs_by_run.get(run_id, ())
-        conclusions = {
-            str(job.get("name")): job.get("conclusion")
-            for job in jobs
-            if job.get("status") == "completed"
-        }
-        if all(conclusions.get(name) == "success" for name in REQUIRED_JOBS):
+        content_job = f"verification-content ({main_tree})"
+        expected = (*required_jobs(profile), content_job)
+        selected = {name: [job for job in jobs if job.get("name") == name]
+                    for name in expected}
+        witnesses = [job.get("name") for job in jobs
+                     if str(job.get("name", "")).startswith("verification-policy (")]
+        content_witnesses = [job.get("name") for job in jobs
+                             if str(job.get("name", "")).startswith("verification-content (")]
+        if (witnesses == [policy_job(profile, policy_version)]
+                and content_witnesses == [content_job]
+                and all(len(matches) == 1
+                        and matches[0].get("status") == "completed"
+                        and matches[0].get("conclusion") == "success"
+                        for matches in selected.values())):
             return ReuseDecision(
                 True,
                 "identical_tree_and_green_pr",
@@ -84,7 +100,7 @@ def decide(
                 head_sha,
                 run_id,
             )
-    return ReuseDecision.denied("green_product_pr_run_missing")
+    return ReuseDecision.denied("selected_pr_evidence_missing")
 
 
 def live_decision(
@@ -92,6 +108,8 @@ def live_decision(
     event_name: str,
     ref: str,
     release_required: bool,
+    profile: str,
+    policy_version: str,
     repository: str,
     main_sha: str,
     workflow: str,
@@ -99,11 +117,17 @@ def live_decision(
 ) -> ReuseDecision:
     if event_name != "push" or ref != "refs/heads/main":
         return ReuseDecision.denied("not_main_push")
-    if not release_required:
-        return ReuseDecision.denied("not_product_change")
+    try:
+        policy_job(profile, policy_version)
+        if release_required and profile in {"docs", "host"}:
+            return ReuseDecision.denied("invalid_profile_release")
+    except ValueError:
+        return ReuseDecision.denied("unsupported_policy_or_profile")
     try:
         main_commit = _mapping(request(f"repos/{repository}/git/commits/{main_sha}"))
-        pulls = _sequence(request(f"repos/{repository}/commits/{main_sha}/pulls"))
+        pulls = _sequence(request(f"repos/{repository}/commits/{main_sha}/pulls?per_page=100"))
+        if len(pulls) >= 100:
+            raise ValueError("Associated pull request evidence may be truncated")
         merged = [
             pull
             for pull in pulls
@@ -137,12 +161,17 @@ def live_decision(
                     jobs = _mapping(request(
                         f"repos/{repository}/actions/runs/{run_id}/jobs?per_page=100"
                     ))
-                    jobs_by_run[run_id] = _sequence(jobs.get("jobs", []))
+                    listed_jobs = _sequence(jobs.get("jobs", []))
+                    if jobs.get("total_count") != len(listed_jobs):
+                        raise ValueError("PR job evidence is truncated or lacks a count")
+                    jobs_by_run[run_id] = listed_jobs
         main_tree = _nested(main_commit, "tree", "sha")
         return decide(
             event_name=event_name,
             ref=ref,
             release_required=release_required,
+            profile=profile,
+            policy_version=policy_version,
             main_sha=main_sha,
             main_tree=main_tree if isinstance(main_tree, str) else "",
             pulls=pulls,
@@ -210,6 +239,8 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser.add_argument("--event-name", required=True)
     parser.add_argument("--ref", required=True)
     parser.add_argument("--release-required", choices=("true", "false"), required=True)
+    parser.add_argument("--profile", required=True)
+    parser.add_argument("--policy-version", required=True)
     parser.add_argument("--repository", required=True)
     parser.add_argument("--main-sha", required=True)
     parser.add_argument("--workflow", default="verify.yml")
@@ -218,6 +249,8 @@ def main(argv: Iterable[str] | None = None) -> int:
         event_name=arguments.event_name,
         ref=arguments.ref,
         release_required=arguments.release_required == "true",
+        profile=arguments.profile,
+        policy_version=arguments.policy_version,
         repository=arguments.repository,
         main_sha=arguments.main_sha,
         workflow=arguments.workflow,

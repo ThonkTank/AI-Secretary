@@ -111,8 +111,13 @@ final class UpgradePersistenceProbe {
                 "Seed and verify fixture IDs differ");
         JSONObject fixture = fixture(testContext, fixtureId);
         int targetDatabaseVersion = fixture.getInt("targetDatabaseVersion");
-        check(targetDatabaseVersion > previousDatabaseVersion,
-                "The fixture target must be newer than its source schema");
+        equal(fixture.getJSONObject("source").getInt("databaseVersion"), previousDatabaseVersion,
+                "Source schema marker differs from pinned fixture");
+        equal(fixture.getJSONObject("source").getLong("versionCode"), previousVersion,
+                "Source version marker differs from pinned fixture");
+        check(currentSmoke(fixture) ? targetDatabaseVersion >= previousDatabaseVersion
+                        : targetDatabaseVersion > previousDatabaseVersion,
+                "The fixture target violates its declared upgrade contract");
         check(installedVersion(context) > previousVersion,
                 "adb install -r did not install a newer version");
         Activity activity = startMainActivity(context, instrumentation);
@@ -277,8 +282,21 @@ final class UpgradePersistenceProbe {
             while ((count = stream.read(buffer)) != -1) bytes.write(buffer, 0, count);
             JSONObject fixture = new JSONObject(bytes.toString(StandardCharsets.UTF_8.name()));
             equal(fixtureId, fixture.getString("id"), "Loaded upgrade fixture ID differs");
+            int contract = fixture.getInt("contractVersion");
+            check((contract == 1 && !fixture.has("kind")) || currentSmoke(fixture),
+                    "Unsupported upgrade fixture contract");
+            int sourceSchema = fixture.getJSONObject("source").getInt("databaseVersion");
+            int targetSchema = fixture.getInt("targetDatabaseVersion");
+            check(currentSmoke(fixture) ? targetSchema >= sourceSchema : targetSchema > sourceSchema,
+                    "Unsupported source/target schema pair");
             return fixture;
         }
+    }
+
+    private static boolean currentSmoke(JSONObject fixture) {
+        return fixture.optInt("contractVersion") == 2
+                && "current-smoke".equals(fixture.optString("kind"))
+                && "current-production".equals(fixture.optString("id"));
     }
 
     private static String[] keys(JSONObject object) {
