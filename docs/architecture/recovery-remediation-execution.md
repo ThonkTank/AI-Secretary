@@ -7,7 +7,8 @@ Kanonische Roadmap: [recovery-remediation-roadmap.md](recovery-remediation-roadm
 P0-Belegbestand und P1–P4 sind geprüft auf Remote-Main integriert. P4b ist über PR369 auf
 Mainc87d3240 integriert und als0.2.175 veröffentlicht. Vollständiger lokaler Check, alle15 PR-
 Gates, exakter Main, aktueller Smoke und sechs historische signierte Upgrades sind grün;
-öffentliche APK und Metadaten sind bytegleich zum getesteten Kandidaten. Die P5-Geräteabnahme
+öffentliche APK und Metadaten sind bytegleich zum getesteten Kandidaten. Der P5-Softwareabgleich ist im
+[Abschlussbericht](recovery-remediation-acceptance.md) festgehalten. Die P5-Geräteabnahme
 bleibt offen: Pixel nicht verbunden.
 Die folgenden ursprünglichen Planungsstände und Fehlversuche bleiben historische Aufzeichnungen.
 
@@ -1207,3 +1208,88 @@ Wiederherstellungsarchiv und robuster Zähler unverändert, keine neuen produkti
 keine Behauptung zur unbekannten persönlichen Zählerentstehung. Software- und Releasekriterien
 von P4b erfüllt; Abschluss dieses Ergebnisprotokolls folgt als docs-only PR. P5 bleibt separat
 offen. Pixel wurde frisch nicht gefunden; Geräteverfügbarkeit ist beim Nutzer angefragt.
+
+## P5 – Phasenplan vor Abschlussaudit und Geräteabnahme
+
+Ausgangspunkt Remote-Main1e3b8a40a5e38429455c3c3b9c41539fa6263f71; P4b-Dokumentabschluss
+PR370/Head7556aea9/Lauf34721551677 und exakter Main34721694044 erfolgreich. Zwischen Produkt-
+Mainc87d3240 und diesem Stand änderte sich ausschließlich das Ausführungsprotokoll; keine weitere
+Android-Matrix oder Veröffentlichung. P4b damit vollständig abgeschlossen. Belege
+`/tmp/p4b-closeout-{pr-results,merged-pr,main-results}.json`.
+
+P5-Branch codex/remediation-acceptance. Umfang: gezielter Anforderungs-/Belegabgleich und
+Abschlussbericht, danach vorhandener Pixel-Bestand. Erwartetes Profil für Bericht/Protokoll docs,
+kein neuer Produktrelease. Roadmap und frühere Belege bleiben unverändert.
+
+1. Jede nummerierte Roadmap-Anforderung und Abnahme mit aktuellem Code, tatsächlich abgedeckten
+   Tests, Phasenplänen und den zugeordneten PR-/Main-/Releasebelegen abgleichen. Aktuelle lokale
+   Testberichte und vorhandene native/GitHub-Protokolle nutzen; keine neuen Produktprüfungen ohne
+   konkreten offenen Befund. Abweichungen vor Korrekturen festhalten.
+2. Kompakten Abschlussbericht recovery-remediation-acceptance.md mit Anforderungsmatrix, R1–R4,
+   U1/P4b, Versions-/Commitbindung, tatsächlichen Grenzen und separater Geräteabnahme erstellen.
+   Historische0.2.172-Geräteabnahme ist bisher nicht belegt; sie wird weder erfunden noch durch
+   ein Downgrade nachgeholt. Der verfügbare aktuelle Bestand und der höhere veröffentlichte
+   Reparaturstand sind Gegenstand der verbleibenden Geräteprüfung.
+3. Bei verbundenem entsperrtem Pixel8 zuerst Geräte-/App-Version, Herkunft und sichtbaren Bestand
+   erfassen. Ausschließlich das verifizierte öffentliche regulär signierte0.2.175-Paket über die
+   bestehende Installation installieren, sofern es ein Vorwärtsupdate ist. Kein Downgrade,
+   keine Neuinstallation, kein Löschen von App-Daten. Bei bereits neuerem Stand zunächst dessen
+   Herkunft klären, statt die gebundene Version darüberzuschreiben.
+4. Auf unterstütztem Stand lesende Diagnose mit passendem signiertem Helper ausführen; keine Seed-
+   oder synthetischen Fixture-Kommandos am Pixel. Unterstützte Diagnosegrenze beachten; alte APKs
+   ohne Bootstrapvertrag nicht mit dem alten unsicheren Diagnoseweg umgehen. Danach Helper
+   entfernen und Normalbetrieb prüfen. Kaltstart und frische Prozessprotokolle, vorhandene
+   Aufgaben/Abläufe, Titel-Klick, Später und Persistenz prüfen. Bestehende Auswahl möglichst
+   zurückstellen; keine Erledigungen, Belohnungsbuchungen oder neuen Ablaufstarts als Klicktest.
+5. Bei fehlendem Gerät Software-Abgleich und Berichtsintegrierung regulär abschließen, alle
+   konkreten Geräteprüfungen offen lassen. Aktuelle USB-Abfrage2026-09-13: keine Geräte.
+   Verfügbarkeitsfrage ist bereits gestellt; fehlende Antwort ist keine Gerätefreigabe oder
+   Abnahme. Gesamtes Ziel bleibt bis zum tatsächlichen P5-Nachweis unerfüllt.
+6. Bericht und Protokoll gegen diesen Phasenplan und die kanonische Roadmap auditieren,
+   check-docs.sh, dokumentiertes Profil, geprüfter PR/Squash und exakter Main. Passende Software-
+   Nachweise erhalten; keine wiederholten Vollbuilds für reine Ergebnisdokumentation.
+
+### P5 – Auditbefund und begrenzter Dokumentations-Korrekturplan
+
+Der vorangegangene Zielturn lieferte zusätzliche Code-/Belegprüfung, beendete aber den
+Abschlussbericht nicht; die erneute Roadmap-Zusammenfassung war kein Phasenabschluss.
+Frischer Remote-Main weiterhin1e3b8a40, Produkt-Mainc87d3240/Lauf34720901999 erfolgreich,
+öffentlicher Release0.2.175 mit unveränderten Digests bestätigt. USB-Liste weiterhin leer.
+
+Abweichung zu P5.2: Der historische Ursachenbericht trennt P4/P4b zwar, bezeichnet am Ende
+aber weiterhin „offene Freigaben“. Plan vor Änderung: einen aktuellen, datierten Statushinweis
+mit dem abgeschlossenen P4b-Release voranstellen und diese überholte Schlussreferenz präzisieren.
+Die historischen Reproduktionsbeschreibungen, Fehlversuche und Grenzen bleiben unverändert.
+Zusätzlich den geplanten separaten Abschlussbericht mit Anforderungsmatrix und Geräte-Restplan
+erstellen. Keine Produktlücke in den bisher abgeglichenen Bedien-, Profil-, Diagnose- oder
+Migrationsanforderungen festgestellt; keine Produktänderung oder erneute Android-Matrix daraus.
+
+### P5 – Softwareaudit und lokale Dokumentprüfung
+
+Der Abschlussbericht ordnet sämtliche nummerierten Roadmap-Anforderungen und Abnahmen
+konkreten Nachweisen zu. Getrennter Planabgleich: P0/P1/P2/P3/P4/P4b-Ergebnisse entsprechen den
+vorab gespeicherten Plänen einschließlich dokumentierter Korrekturrunden; P5-Bericht und
+aktualisierter Herkunftshinweis erfüllen den unabhängigen Software-/Dokumentationsanteil.
+Getrennter Roadmap-Abgleich: R1/R2 softwareseitig geschlossen, R3/R4 mit ausdrücklich offenem
+Geräteanteil; Waisenerzeuger in P4b beseitigt, historischer Zählerursprung weiterhin unbekannt.
+P0.5 ist historisch unbelegt und wird nicht rückwirkend als erfüllt ausgegeben. P3-Geräteabnahme
+und P5.4 bleiben bis zum tatsächlichen Pixel-Nachweis offen. Keine Gesamtabnahme behauptet.
+
+Aktuelle XML-Dateien bestätigen P1 (10 Integrations-, 5 Coordinator-, 1 Dispatcher-Fall) und
+9 Fixture-Vertragsfälle ohne Fehler. Gesicherte drei P1-Mutations-XMLs scheitern je auf API26/35
+am vorgesehenen Verhalten. Finale P4b-PR-Jobprotokolle bestätigen zusätzlich alle zwölf nativen
+Diagnose-Schema-/Endefälle auf API26/35/37; reine Diagnosezeiten53.59/57.95/56.45s, keine ganzen
+Jobzeiten. Nicht der ältere Zwischenstand aus einem Diagnose-Artefaktverzeichnis wird als
+aktueller Produktbeleg ausgegeben. Öffentliche Release-Digests und exakter Produkt-Main wurden
+frisch erfolgreich bestätigt; keine neue Produktprüfung oder Veröffentlichung erforderlich.
+
+Lokales check-docs.sh: Exit0,55 CI- plus45 Release-Vertragstests erfolgreich. git diff --check
+fehlerfrei; Profil docs/Policy1 ohne Build, Android, signierte Upgrades oder Releasebedarf.
+Relative Berichtlinks und die vollständige Nummernzuordnung P0.1–5/P1.1–6/P2.1–8/P3.1–5/
+P4.1–4/P5.1–5 geprüft; diese Strukturprüfung wird nicht als Produktverhaltensnachweis ausgegeben.
+Die abschließende Integrationsspur des Berichts wird durch seinen Themenbranch-PR und dessen
+exakten Main-Lauf belegt; sie ändert keine schon abgeschlossenen Produktnachweise.
+
+Verbleibender ausführbarer Schritt nach diesem Dokumentationsabschluss: verbundenes entsperrtes
+Pixel identifizieren und den fünfteiligen Geräte-Restplan des Abschlussberichts ausführen.
+Bis dahin bleibt das Gesamtziel aktiv; Geräteverfügbarkeit ist bereits angefragt.
