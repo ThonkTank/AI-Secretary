@@ -2,12 +2,12 @@
 
 Kanonische Roadmap: [recovery-remediation-roadmap.md](recovery-remediation-roadmap.md)
 
-## Aktueller Arbeitsstand (nach P3, vor P4-Integration)
+## Aktueller Arbeitsstand (P4 integriert, P4b in Arbeit)
 
 P0-Belegbestand, P1, P2 und P3 sind auf Remote-Main integriert. P3 ist mit0.2.174 veröffentlicht.
-P4 hat den Erzeuger der drei Waisenkategorien nativ aufAPI26 reproduziert; vollständige
-Prüfungen und Integration stehen noch aus. P4b ist aufgrund dieses Befunds erforderlich,
-aber noch nicht implementiert. Pixel-Diagnose und sichtbare Bedienabnahme bleiben bei P5 offen.
+P4 hat den Erzeuger der drei Waisenkategorien reproduziert und ist nach vollständiger PR-Prüfung
+und exaktem Main-Nachweis integriert. P4b enthält den lokalen Ursachenfix und die nativen Erhaltungs-/Rollbackbelege.
+Der ergänzte signierte Fixture-Vertrag wird geprüft; PR, Main und Release sind noch offen. Pixel-Diagnose und sichtbare Bedienabnahme bleiben bei P5 offen.
 Die folgenden ursprünglichen Planungsstände und Fehlversuche bleiben historische Aufzeichnungen.
 
 ## Planungsstand 2026-09-12
@@ -864,3 +864,246 @@ PR368 erhält erst danach den korrigierten Head und passende neue PR-Prüfungen.
 Finaler lokaler check-all.sh der Korrekturrunde mit Exit0: 55+43 Skriptprüfungen erfolgreich,
 Gradle8s mit169 von172 unveränderten Tasks wiederverwendet; Identität und Größenlimits bestanden.
 Keine neue Ausführung der unveränderten Hosttests behauptet. Nur frische PR-/Main-Nachweise offen.
+
+## P4 – Integration und Abschluss
+
+PR368 auf korrigiertem Headf4f519ccf8204e3850df86e5275c0a2ada4d9efa besteht Lauf34716431030:
+alle Quality-/Policy-/Inhaltsnachweise, sechs normale/animierte API26/35/37-Lanes und beide
+abschließenden Gates grün. Normale JUnit-Läufe entdecken60/60/39 Tests auf26/35/37, jeweils mit
+genau den zwei vorgesehenen UpgradePersistenceTest-Skips. Die neue Klasse ist ohne SDK- oder
+Klassenfilter im regulären Korpus enthalten. Logs `/tmp/p4-pr-api26.log`, `-api35.log`, `-api37.log`.
+Der ursprüngliche Lauf34716089627 wurde nach dem korrigierten Head als überholt abgebrochen;
+sein Headb5788c9f wird nicht als finaler Nachweis verwendet.
+
+Squash-Maind779ed38ec2915717a710a1811b74a049bf58f06, gemergt2026-09-12T20:31:50Z,
+hat denselben Baume42106fc7f1d5bf425548cf99adf0aef6f5c78ed. Exakter Main-Lauf34717366394 grün.
+Tatsächliche Policy-Job-Eingaben bestätigen PR368/Headf4f519cc/Lauf34716431030, full/Policy1,
+identical_tree_and_green_pr und release_required=false. Keine zweite Android-Matrix und kein
+Produktrelease. Belege `/tmp/p4-main-reuse-proof.json`, `/tmp/p4-main-policy.log`,
+`/tmp/p4-pr-final-results.json`, `/tmp/p4-main-final-results.json`.
+
+Abgleich gegen P4-Plan und Roadmap: reproduzierter gemeinsamer Erzeuger, historische Einführung,
+beide physische Vorgeschichten, erhaltene Daten und begrenzter Zähler-Negativbefund dokumentiert.
+Die korrigierte Fixture respektiert die Einführung von PENDING_START unter22. P4 abgeschlossen;
+P4b ist erforderlich. Keine Aussage über die persönliche Entstehungsgeschichte oder ausgeschlossene
+zukünftige Zählerfehler. Pixel weiterhin nicht verbunden; dessen Abnahme verbleibt bei P5.
+
+Präzisierung eines früheren P3-Zahlenvermerks: `/tmp/p3-api26-first-job.log` meldet Starting58
+einschließlich zwei Upgrade-Skips, nicht60 zusätzliche ausgeführte Tests. P4 meldet60 aufAPI26/35
+und39 aufAPI37; die SDK-Auswahl unterscheidet deren Korpora. Skips werden nicht doppelt gezählt.
+
+## P4b – Phasenplan vor Ursachenfix
+
+Ausgangspunkt geprüfter Maind779ed38 / veröffentlichte0.2.174 /Schema27.
+Branch codex/recovery-candidate-cleanup. Umfang: Migration22→23, unmittelbar zugehörige native/
+Room-Regressionen, ein gezieltes signiertes Upgradefixture und Dokumentation. Erwartetes Profil
+full mit Produktrelease, aktuellem signiertem Smoke und dem historischen Korpus.
+
+Bindende vorhandene Entscheidung: ADR-033, Abschnitt Schema-23-Migration, entfernt ungenutzte
+Steps/Ressourcen/Einzelblätter unberührter PENDING_START-Runs beim Übergang zu Kandidaten.
+Gestartete oder inkonsistent als PENDING_START markierte Runs mit Bearbeitungs-/Ressourcenbelegen
+müssen erhalten bleiben. Der Fix setzt diesen bestehenden Vertrag um; keine neue Löschpolitik,
+kein neues Schema, keine Rekonstruktion fehlender Abläufe und keine Abschwächung des Archivs.
+
+1. Die nativen P4-Reproduktionen zu Regressionen erweitern: vor24→25 keine neu erzeugten Waisen,
+   keine unnötigen Archiveinträge für gesunde unbenutzte Angebote, Kandidat korrekt übernommen,
+   unverändert erhaltene gestartete/wartende Abläufe, Snapshotspalten, Historie und Rewards.
+   Die bisherigen Gegenbelege mit produktivem Fehler bleiben im P4-Commit erhalten; neue
+   Erwartungen zunächst gegen den noch unveränderten Erzeuger tatsächlich ausführen.
+2. Abhängigkeiten vor explizitem Löschen prüfen. Gegenfälle mit PENDING_START plus Teilergebnissen,
+   Timer, abgeschlossenem Verlauf oder quer zugeordneter Reward-Buchung dürfen nicht als
+   unberührt entfernt werden. Falls diese Reproduktion die heutige Kandidatenauswahl widerlegt,
+   deren Prädikat begrenzt gemäß vorhandener ADR-033-Erhaltungsregel ergänzen. Offene, rein
+   terminbedingte Combo-Verpflichtungen nicht mit abgeschlossenem Fortschritt verwechseln.
+3. Nur für die eingefrorene Menge wirklich unberührter Angebote deren abhängige Zeilen vor den
+   Eltern entfernen. Beziehungen aus Schema22 vollständig berücksichtigen; keine alleinige
+   Reparatur der drei obersten Tabellen bei zurückbleibenden Nachfahren. Kein globales Umschalten
+   von FK innerhalb der Upgrade-Transaktion und keine neue globale Vorprüfung, die vorhandene
+   schema24-Recovery für bereits beschädigte historische Bestände vorzeitig blockiert.
+4. Gezielter Fehler nach Kindbehandlung und vor Elternlöschung: gesamtes Upgrade muss zurückrollen.
+   Originalschema und ursprüngliche Datensätze vollständig vergleichen. Bestehende schema24-
+   Archiv-/Rollback-/Fremdfehler-Tests sowie gesunde25/26-Pfade bleiben unverändert erforderlich.
+5. Signierter direkter Regressionspfad22→27 aufAPI26 zusätzlich zum bestehenden Korpus. Quelle
+   0.2.157/1015701, Tagforest-android-1015701, Commit324205e914a73aea0a406b718509e1508afb6165
+   wurde veröffentlicht2026-09-07T12:03:57Z; heruntergeladene Bytes, Metadaten, Tag und reguläre
+   Signatur frisch geprüft. APK865db75b1f9305e84d4b9239bf17a112fac2e947f52ab5d98feb3d797bb63ed1,
+   Metadatene798d44361d197e91b74f1a6fa05e6df8a83abde488fc07085ebb30eff602138.
+   Der vorhandene Korpus8/20/23 enthält kein solches unberührtes Schema22-Angebot; die zusätzliche
+   Lane prüft genau den jetzt reparierten Auslöser am signierten Kandidaten. Bestehende fünf
+   historische Lanes bleiben erhalten. Synthetische Daten ausschließlich im eigenen Emulator.
+6. Zuerst gezielte nativeAPI26-/Room- und Fixtureprüfungen, dann vollständiger lokaler Check,
+   voller PR-Gate und Squash. Gesonderter Abgleich gegen diesen Plan und RoadmapP4b. Exakter Main,
+   regulär signierter höher versionierter Kandidat, aktueller und sechs historische Upgradefälle,
+   Veröffentlichung und Hash-/Signaturabgleich. Pixel-In-place-Installation und sichtbare
+   Abnahme unter P5; fehlender Gerätezugang bleibt separat offen.
+
+Abnahme: derselbe bislang schädigende Vorgang erzeugt keine Waisen; Bearbeitungsnachweise werden
+nicht zu unbenutzten Kandidaten zurückgestuft; Rollback erhält den vollständigen Quellbestand;
+das signierte Update besteht den direkten Schema22-Auslöser und die vorhandenen Schutzpfade.
+Die unbekannte ursprüngliche Zählerabweichung bleibt ausdrücklich außerhalb eines erfundenen Fixes.
+
+### P4b – Reproduktion vor Produktänderung
+
+Sieben erweiterte native Regressionen auf eigenemAPI26 scheitern gegen die unveränderte produktive
+Migration am erwarteten Zwischenbefund (Build9s, `/tmp/p4b-api26-red-results.txt`). Neben den drei
+bekannten Kategorien bleibt eine offene Combo-Verpflichtung zurück; bei quer zugewiesener Buchung
+zusätzlich reward_assignments. Teilergebnisse, Timer, abgeschlossenes Vorkommen und bereits
+aufgelöste Verpflichtung verhindern die bisherige Entfernung ebenfalls nicht. Damit ist auch die
+zu weite Auswahl als „unberührt“ konkret widerlegt, nicht nur aus einer hypothetischen Löschgefahr
+abgeleitet. Planpräzisierung: diese vorhandenen Nachweise und beide Reward-FK-Bezüge ausschließen,
+offene rein terminbedingte Verpflichtung dagegen mit dem wirklich unbenutzten Angebot entfernen.
+Zusätzlicher Gegenfall für Buchung mit fremdem Ursprung, aber Bezug auf den betroffenen Schritt,
+und Fehlerzeugung nach Kindbehandlung sichern die vollständige Abhängigkeits-/Rollbackgrenze.
+
+Auch diese zwei zusätzlichen nativen Gegenproben scheitern gezielt vor Produktänderung:
+fremde Buchung mit betroffenem occurrenceStepId lässt den Run verschwinden; der Fehlertrigger
+meldet children-not-cleaned statt injected-after-cleanup. Damit sind alle neun neuen Erwartungen
+gegen den alten Code tatsächlich rot (`/tmp/p4b-api26-red-extra-results.txt`). Kein Build- oder
+Fixture-Setupfehler wird als erwartetes Regressionsversagen gezählt. Nun begrenzte Umsetzung:
+Bearbeitungsbelege aus der Kandidatenmenge ausschließen; offene Verpflichtungen und ungenutzte
+Snapshotkinder vor Eltern löschen. Timer-/Ergebnis-/Reward-Zeilen selbst werden nicht gelöscht,
+weil ihre vorhandenen Bezüge die betreffenden Runs erhalten.
+
+### P4b – Korrekturrunde 1: gültige alte Ressourcenintervalle
+
+Erster Lauf nach dem lokalen Fix: unbenutzte20/22-Fälle und vollständiger Rollback bestehen;
+sechs erhaltene Pending-Fälle erreichen jetzt24→25, scheitern dort aber an der Fixture-Ressource.
+FlowRunResourceSnapshot verlangt releasePosition > acquirePosition. Der bisherige Clean-Run
+hatte nur einen Schritt und Intervall0→0; P4 erreichte dessen Domain-Konvertierung wegen der
+Elternentfernung nicht. Die ursprüngliche FK-Reproduktion war real, ihr „gesunder“ Ressourcen-
+Begriff aber zu schwach. Kein Produktfehler wird durch Abschwächen dieser Validierung versteckt.
+
+Korrekturplan: zweiter unbenutzter Folgeschritt und gültiges Intervall0→1; diese Form schon beim
+Fixture-Aufbau prüfen. Erhaltene Snapshotzählung und vollständiger Spaltenvergleich entsprechend
+erweitern. Mit dieser gültigen Form die alte Migration nochmals isoliert als Gegenprobe ausführen
+(vorübergehende, gesicherte Quellvariante ausschließlich im eigenen Worktree/Emulator), danach
+den unveränderten Fix wiederherstellen und alle neun Fälle erneut prüfen. Frühere Logs bleiben
+unverändert (`/tmp/p4b-api26-green-results.txt`, drei bestanden/sechs Fixturefehler).
+
+Gültiger korrigierter Bestand: alle neun Gegenproben scheitern am alten Code am erwarteten
+Verhalten (acht Waisenbefunde und children-not-cleaned). Der gesicherte Fix wurde anschließend
+bytegleich wiederhergestellt (SHA2568b86bd3fbcaedab9c6bd7da6ee2fb19d1eee4a838f996b99c0e482da58bac8e4).
+Mit Fix bestehen alle neun nativen Fälle in14.121s, einschließlich vollständigem Schema-/Zeilen-
+Rollback. Belege `/tmp/p4b-round1-api26-counter-results.txt` und
+`/tmp/p4b-round1-api26-fixed-results.txt`. Abschließend wird der vorhandene Spaltenvergleich auch
+für das erhaltene Pending-Vorkommen, dessen Schritt und die umbenannten Ressourcenbindungen bis27
+vollständig ausgeführt; Umfang weiterhin derselbe Erhaltungsvertrag.
+
+### P4b – Präzisierung des signierten Regressionstests
+
+Der vorhandene Fixture-Vertrag kann nur die Anwesenheit einzelner Zielzeilen prüfen. Das genügt
+hier nicht: der alte Fehler mit späterer Archivierung würde dieselben Kandidaten/gesunden Zeilen
+liefern. Für den direkten Schema22-Nachweis muss ausdrücklich geprüft werden, dass für die
+unbenutzten Snapshot-IDs keine Recovery-Zeilen entstanden sind. Daher vor Fixture-Implementierung
+begrenzte Erweiterung des bestehenden Erwartungsformats: pro table/where entweder nichtleere
+values (genau eine Zeile mit diesen Werten) oder absent:true (keine Zeile). Keine freien SQL-
+Ausdrücke, keine leeren Selektoren und keine mehrdeutige Kombination. Bestehende Fixtures und
+aktueller Smoke behalten unverändert ihre bisherige Bedeutung. Python-Vertragsprüfung,
+Room-Fixturetest und produktionskompatibler UpgradePersistenceProbe müssen dieselbe Form prüfen;
+negative Vertragsfälle und tatsächlich vorhandene verbotene Zeile müssen den Nachweis stoppen.
+Danach gezieltes Schema22-Fixture mit Kandidat, gültiger Historie und negativen Archiv-Assertions;
+alte Migration muss dessen Abwesenheitsnachweis verfehlen. Diese Testvertragsänderung gehört
+zum bestehenden full/Release-Umfang und ändert keine fachliche Datenentscheidung.
+
+### P4b – Korrekturrunde 2: Zielspalten vollständig berücksichtigen
+
+Die zusätzlich verschärfte Erhaltungsprüfung meldet sechs Fehler im Lauf
+`/tmp/p4b-round1-api26-final-results.txt`. Der verglichene Schritt enthält nach24→25
+korrekt die neue Spalte flowRunStepId=clean-run-step; die Erwartung enthielt nur die
+Schema22-Spalten. FlowGraphMigration25 ergänzt und befüllt diese Zuordnung ausdrücklich.
+Korrekturplan: die vollständige erwartete Zielzeile um genau diese geprüfte Zuordnung ergänzen,
+alle Originalspalten weiter unverändert vergleichen. Keine Produktänderung und keine Entfernung
+der Erhaltungsprüfung. Danach alle neun nativen Fälle erneut ausführen; die spätere Ressourcen-
+Assertion wird erst durch diesen Lauf vollständig erreicht und gilt vorher nicht als bestanden.
+
+Korrekturrunde2 bestanden: alle neun nativen API26-Fälle erfolgreich in14.356s
+(`/tmp/p4b-round2-api26-results.txt`), einschließlich der vollständigen Zielzeilen für
+Vorkommen, Schritt und Ressource. Ursprüngliche Werte und neue Schrittzuordnungen geprüft.
+
+Das signierte22-Fixture fokussiert auf den zuvor durch Recovery verdeckten Erzeuger: zwei
+unbenutzte Schritte, geplante Ressource und Angebot; daneben gültiger wartender Ablauf,
+aktive Ressource, abgeschlossener Verlauf und HEAD-/VESSEL-Buchungen samt Zuordnungen.
+Offene Combo-Verpflichtungen bleiben in der nativen Regression abgedeckt; sie werden hier
+bewusst nicht zusätzlich gesät, damit der alte Code bis zur Archivierung gelangt und gerade
+am neuen Abwesenheitsnachweis scheitern muss. Der signierte Quellpfad bleibt22→27 aufAPI26.
+
+### P4b – Fixture-Korrekturrunde 3: vorhandene Reward-Projektion
+
+Erster fokussierter Fixture-Lauf: sieben Vertragsfälle bestehen, beide realen Room-Upgrades
+API26/35 erreichen die Zielprüfung und melden alreadyPaidTau=4 statt erwarteter0. Die neue
+Fixture enthält im Unterschied zur übernommenen Schema20-Basis eine VESSEL-Buchung4 und eine
+HEAD-Buchung im selben abgeschlossenen Vorkommen. Schema24FlowMigrationInput zählt diesen
+bezahlten Hauptwert ausdrücklich als4. Korrekturplan: diese bestehende Projektion als4 am Run
+und earnedTau=4 am zugeordneten Schritt prüfen; Buchungen und Zuordnungen unverändert vollständig
+vergleichen. Zusätzlich die schon bestehende COALESCE-Normalisierung eines schlussständigen
+Schritts ohne Übergang (delayMode FIXED/defaultDelayMillis0) im erweiterten Spaltenvergleich
+berücksichtigen. Keine Buchung oder Produktlogik ändern. Wiederholung der fokussierten Contracts
+und echten26/35-Migrationen; ursprünglicher Fehler bleibt im ersten Log dokumentiert.
+
+### P4b – gezielte Nachweise und Abgleich vor Vollprüfung
+
+Fixture-Korrekturrunde3: neun Host-Vertragsfälle einschließlich echter Room-Upgrades auf26/35
+bestanden, 42.22s Testzeit (`/tmp/p4b-fixture-round3-build.log`, Build54s). Neuer nativer Lauf
+auf eigenemAPI26: elf Fälle bestanden,20.44s (`/tmp/p4b-native-final-api26.txt`). Dies umfasst
+neun Erzeuger-/Erhaltungs-/Rollbackfälle sowie zwei Tests des tatsächlichen Release-Zeilenprüfers:
+vorhandene verbotene Zeilen, Null-Selektor, fehlende/mehrfache/falsche Wertzeilen und mehrdeutige
+Erwartungen werden abgewiesen. In-memory-Datenbank und isoliertes Testpaket; kein Pixel betroffen.
+
+Die reale Room-Gegenprobe mit unveränderter alter Migration scheitert auf26/35 exakt an
+migration_recovery(sourceTable=flow_run_steps,sourceId=upgrade-clean-step-0): erwartet0,
+gefunden1. Alle vorherigen positiven Zielerwartungen bestanden bis dahin. Damit ist das
+Maskierungsproblem konkret bewiesen, nicht bloß vermutet. Originalfix danach bytegleich
+wiederhergestellt (SHA2568b86bd3fbcaedab9c6bd7da6ee2fb19d1eee4a838f996b99c0e482da58bac8e4).
+Belege `/tmp/p4b-fixture-old-counter.log` und `-results.xml`; erwartete Gegenproben zählen nicht
+als Freigabeerfolg. Eigener Emulator anschließend regulär beendet.
+
+Abgleich gegen P4b-Plan: bestehender ADR-033-Vertrag umgesetzt, keine neue Löschpolitik oder
+Schemaänderung, echte Room-FK-Beobachtung, sofortige Integrität, vollständiger Rollback und
+separate Bearbeitungsbelege geprüft. Fixture-Vertrag und Python/Room/Release-Runner unterstützen
+explizite Abwesenheit; bestehende Quellen unverändert. Quelle0.2.157 erneut per Bytehash und
+regulärem Zertifikat geprüft. 45 Release-Werkzeugtests grün. Dokumentation benennt sechs
+historische Lanes plus aktuellen Smoke und die tatsächlichen Grenzen der früheren Fixture.
+
+Abgleich gegen kanonische Roadmap: bedingter P4b-Ursachenfix ist durch P4-Reproduktion ausgelöst;
+kein Umbau von Room/Domain/Bedienung, kein erfundener Zählerfix, keine Änderung am bestehenden
+Archiv. Unbekannte persönliche Entstehungsgeschichte und P5-Geräteabnahme bleiben offen.
+Klassifikation frisch full/Policy1/release_required=true. Noch offene Software-Gates:
+vollständiger lokaler Check, vollständiger PR, Squash, exakter Main, signierte Upgrades und
+veröffentlichte Kandidatenbytes. Alle gezielten Ergebnisse gehören zum uncommitteten Stand.
+
+Produktionskompatibler Helper separat mit upgradeProbeRunner=true gebaut (11s) und sein Manifest
+gegen den Upgrade-Vertrag geprüft: ausschließlich die vorgesehenen Runner. Dies ist ein lokaler
+Build-/Identitätsnachweis ohne Produktionssignatur. Der vollständige lokale check-all.sh läuft
+anschließend mit regulärer Instrumentierungsvariante; Logs `/tmp/p4b-full-local-check.log`.
+Aktuell veröffentlichte Version frisch über GitHub geprüft:0.2.174/tag1017401. P4b-PR noch nicht
+angelegt; regulär signierter höher versionierter Release wird erst nach dessen geprüftem Merge gebaut.
+
+### P4b – Präzisierung der Prüfungsreihenfolge vor PR-Eröffnung
+
+Der vollständige lokale Check läuft nach den grünen gezielten Nachweisen weiterhin nachweislich
+in seiner ursprünglichen Sitzung. Statt bis zu dessen Ende auch mit dem Start unabhängiger
+PR-Prüfungen zu warten, wird ein Draft-PR parallel eröffnet. Das ändert ausschließlich die
+zeitliche Überlappung: lokaler Vollcheck und vollständiger PR-Gate bleiben beide vor Ready/Merge
+erforderlich, kein grünes Ergebnis wird vorweggenommen. Bei einem lokalen Fehler wird zuerst
+dessen Ursache geklärt; ein überholter CI-Stand wird nicht als Nachweis übernommen. Keine
+Wiederholung des laufenden lokalen Checks. Produkt-/Testdateien sind seit Commit01f1dd64 unverändert;
+der folgende Commit ergänzt nur diesen Ausführungsvermerk. Das vorgeschaltete Warten bis vor
+PR-Eröffnung wird damit ausdrücklich ersetzt, der Freigabevertrag bleibt unverändert.
+
+Frischer lesender Vorabgleich: PR364/366/367/368 sind gemergt, ihre Main-Läufe34699171018/
+34708748445/34714576280/34717366394 erfolgreich und alle vier Merge-Commits Vorfahren des
+aktuellen Branches. Remote-Main unverändertd779ed38; Pixel weiterhin nicht verbunden.
+Beleg `/tmp/p4b-crossphase-remote-proof.json`. Keine neue Ausführung früherer Phasenprüfungen.
+
+### P4b – Dokumentkorrekturrunde 4 vor neuer PR-Prüfung
+
+Der abschließende direkte Abgleich von ADR-005 zeigt eine übersehene zweite Pflicht-Lanetabelle:
+ADR-035/037 und releasing.md sind bereits aktualisiert, ADR-005 nennt aber weiterhin fünf Lanes
+und lässt das neue Schema22-Fixture aus. Korrekturplan: dort sechs historische Lanes und den
+konkreten neuen Quell-/Risikofall ergänzen; vorhandene drei Quellen und API-Verteilung beibehalten.
+Keine Produkt-, Test- oder CI-Logik ändern. Draft-PR369/Headcf5bb71d/Lauf34719827334 erhält danach
+einen neuen Head. Der alte Lauf wird als überholt abgebrochen, bevor dessen Android-Matrix weitere
+Kosten erzeugt. Er ist kein finaler Nachweis. Der bereits laufende lokale Gradle-Vollcheck bleibt
+unverändert; dessen Quell-/Testinhalt ist weiterhin01f1dd64. Skriptverträge werden für die aktuelle
+Dokumentkorrektur erneut geprüft. Der neue PR-Gate bleibt vollständig; keine künstliche Wiederholung
+des unveränderten lokalen Produktbuilds allein wegen dieser Dokumentänderung.

@@ -109,17 +109,20 @@ und verlangt Contracts inklusive produktivem Today-Bedienweg, Build/Lint/Identit
 native API-35-Today-Suite mit Animationen. Fehlende oder unklare Einordnung führt zu `full`.
 
 Jeder Produktrelease benötigt den signierten aktuellen In-place-Update-Smoke. Im vollständigen
-Profil bleiben zusätzlich diese fünf historischen Lanes verpflichtend:
+Profil bleiben zusätzlich diese sechs historischen Lanes verpflichtend:
 
 | Fixture | Quelle und Ausgangsschema | API-Lanes |
 | --- | --- | --- |
 | `schema-8-floor` | 0.2.80 / `forest-android-1008001`, Schema 8 | 26, 35 und 37 |
 | `schema-20-organic-flow` | 0.2.137 / `forest-android-1013701`, Schema 20 | 26 |
+| `schema-22-clean-candidate` | 0.2.157 / `forest-android-1015701`, Schema 22 | 26 |
 | `schema-23-repair-boundary` | 0.2.158 / `forest-android-1015801`, Schema 23 | 26 |
 
 Jede Quelle ist durch Release- und Tag-Ziel, Commit, Paketname, Versionscode, Versionsname,
 Metadaten- und APK-SHA-256 sowie Produktionssignatur festgelegt. Die Schema-20-Fixture bildet die
-organische SQLite-Spaltenhistorie ab; die Schema-23-Fixture beweist sowohl die gezielte Reparatur
+organische SQLite-Spaltenhistorie ab. Die Schema-22-Fixture prüft die vollständige Entfernung
+unbenutzter Angebote ohne neue Recovery-Zeilen sowie den Erhalt aktiver Ressourcen und Historie.
+Die Schema-23-Fixture beweist sowohl die gezielte Reparatur
 einer vertauschten 0.2.158-Zeile als auch den unveränderten Erhalt einer korrekten Zeile. Der
 Migrationsvertrag und die Fixture-Arten sind in
 [ADR-035](adr-035-physische-migrationshistorie-und-upgrade-fixtures.md) festgelegt.

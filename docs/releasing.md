@@ -7,7 +7,7 @@ Build/Lint/Identität/Größe und einen nativen API-35-Animationslauf. Vollstän
 alle sechs Android-Lanes. CI-/Freigabeänderungen sind selbst vollständig und releasewirksam.
 Main kann ausschließlich identische, profil-/policygleiche und vollständig grüne PR-Nachweise
 übernehmen. Jeder Produktrelease benötigt den signierten aktuellen Update-Smoke, vollständige
-Änderungen zusätzlich die fünf historischen Upgrades auf demselben Kandidaten.
+Änderungen zusätzlich die sechs historischen Upgrades auf demselben Kandidaten.
 
 ## Dauerhafter Signaturschlüssel
 
@@ -76,11 +76,13 @@ keinen zusätzlichen manuellen Freigabeschritt nach einer vollständig grünen V
    Runner; die isolierten Fixture-/Normal-Kontrollen sind dort nicht zugänglich. Details:
    [ADR-038](architecture/adr-038-frueher-diagnose-bootstrap.md).
    Fehlende Quelle blockiert Publish. Im vollständigen Profil ergänzt der
-   Korpus unter `release/upgrade-fixtures/corpus.json` fünf verpflichtende Lanes:
-   Schema 8 aus 0.2.80 auf API 26/35/37 sowie Schema 20 aus 0.2.137 und Schema 23 aus 0.2.158
+   Korpus unter `release/upgrade-fixtures/corpus.json` sechs verpflichtende Lanes:
+   Schema 8 aus 0.2.80 auf API 26/35/37 sowie Schema 20 aus 0.2.137, Schema 22 aus 0.2.157 und Schema 23 aus 0.2.158
    jeweils auf API 26. Jede exakt festgelegte Produktions-APK wird installiert und mit ihrer
    Fixture befüllt. `adb install -r` aktualisiert sie auf den Kandidaten; anschließend müssen
    App-Start, höherer Versionscode, Room-Schema und sämtliche erwarteten Testdaten erhalten sein.
+   Das Schema-22-Fixture prüft außerdem, dass unbenutzte Angebote vollständig entfernt werden
+   und dabei keine Recovery-Zeilen entstehen; eine spätere Archivierung darf den Erzeuger nicht verdecken.
 7. Ein neuer oder nach einem Fehler wiederaufgenommener Draft erhält genau
    `AutoSecretary.apk` und `release-metadata.json`; vorhandene Assets werden kontrolliert ersetzt.
 8. GitHub lädt beide Dateien zur Gegenprüfung erneut herunter, vergleicht die APK byteweise mit
@@ -97,13 +99,13 @@ vorhandenen Draft, Tag und Assets desselben Commits weiter. Ein bereits veröffe
 erzeugt kein Duplikat. Das interne Artefakt trägt zusätzlich die Workflow-Versuchsnummer, damit
 auch ein GitHub-Rerun nicht mit einem unveränderlichen Artefakt des vorigen Versuchs kollidiert.
 
-Der Upgrade-Test lädt ausschließlich die drei im Korpus festgeschriebenen Tags. Historische
+Der Upgrade-Test lädt ausschließlich die vier im Korpus festgeschriebenen Tags. Historische
 Schemaexporte und ihre Migrationen bleiben zusätzlich durch schnelle Robolectric- und
-Lineage-Tests abgedeckt; der signierte Korpus verspricht gezielt die drei dokumentierten
+Lineage-Tests abgedeckt; der signierte Korpus verspricht gezielt die vier dokumentierten
 Produktionsquellen und keinen beliebigen Rolling-Installationspfad. Der normale Unit-Test prüft
 alle Fixture-Spalten gegen das exportierte Ausgangs- und Zielschema sowie die zentrale
 `DatabaseContract.VERSION`. Das Test-APK wird mit demselben Produktionsschlüssel signiert, damit
-es den nicht-debugbaren Releaseprozess vor und nach dem Android-Upgrade prüfen kann. Alle fünf
+es den nicht-debugbaren Releaseprozess vor und nach dem Android-Upgrade prüfen kann. Alle sechs historischen
 Upgrade-Lanes und der Veröffentlichungsschritt laden dasselbe interne Produktionsartefakt
 herunter; der Veröffentlichungsschritt beweist die Bytegleichheit zusätzlich mit `cmp`.
 

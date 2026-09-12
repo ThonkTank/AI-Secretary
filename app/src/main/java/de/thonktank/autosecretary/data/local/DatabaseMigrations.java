@@ -921,10 +921,33 @@ public final class DatabaseMigrations {
                     + "WHERE resource.runId=run.id AND resource.state!='PLANNED') "
                     + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
                     + "JOIN occurrence_steps step ON step.occurrenceId=occurrence.id "
-                    + "WHERE occurrence.flowRunId=run.id AND step.done=1) "
+                    + "WHERE occurrence.flowRunId=run.id AND (step.done=1 "
+                    + "OR LENGTH(TRIM(step.actualRepetitions))>0)) "
+                    + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
+                    + "WHERE occurrence.flowRunId=run.id "
+                    + "AND (occurrence.state!='OPEN' OR occurrence.completedOn IS NOT NULL)) "
+                    + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
+                    + "JOIN occurrence_steps step ON step.occurrenceId=occurrence.id "
+                    + "JOIN repetition_results result ON result.stepId=step.id "
+                    + "WHERE occurrence.flowRunId=run.id) "
+                    + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
+                    + "JOIN occurrence_steps step ON step.occurrenceId=occurrence.id "
+                    + "JOIN timer_sessions timer ON timer.stepId=step.id "
+                    + "WHERE occurrence.flowRunId=run.id) "
                     + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
                     + "JOIN reward_bookings booking ON booking.occurrenceId=occurrence.id "
-                    + "WHERE occurrence.flowRunId=run.id)");
+                    + "WHERE occurrence.flowRunId=run.id) "
+                    + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
+                    + "JOIN occurrence_steps step ON step.occurrenceId=occurrence.id "
+                    + "JOIN reward_bookings booking ON booking.occurrenceStepId=step.id "
+                    + "WHERE occurrence.flowRunId=run.id) "
+                    + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
+                    + "JOIN reward_assignments assignment ON assignment.occurrenceId=occurrence.id "
+                    + "WHERE occurrence.flowRunId=run.id) "
+                    + "AND NOT EXISTS (SELECT 1 FROM occurrences occurrence "
+                    + "JOIN combo_obligations obligation ON obligation.occurrenceId=occurrence.id "
+                    + "WHERE occurrence.flowRunId=run.id "
+                    + "AND (obligation.state!='OPEN' OR obligation.resolvedOn IS NOT NULL))");
 
             database.execSQL("INSERT OR IGNORE INTO flow_candidates(id,taskId,seedStepId,"
                     + "sourceKey,scheduledOn,slot,queueOrder,createdAtEpochMillis) "
@@ -942,6 +965,17 @@ public final class DatabaseMigrations {
                     + "taskId,slot,MIN(scheduledOn),CAST(MIN(queueOrder / 1000000000) AS INTEGER) "
                     + "FROM flow_candidates GROUP BY taskId,slot");
 
+            // Room enables FK constraints only in onOpen, after this upgrade transaction.
+            // Delete unused children explicitly; results, timers and both reward references
+            // exclude a run above, so no execution evidence is discarded by this cleanup.
+            database.execSQL("DELETE FROM combo_obligations WHERE occurrenceId IN "
+                    + "(SELECT id FROM occurrences WHERE flowRunId IN (SELECT id FROM _clean_flow_candidates))");
+            database.execSQL("DELETE FROM occurrence_steps WHERE occurrenceId IN "
+                    + "(SELECT id FROM occurrences WHERE flowRunId IN (SELECT id FROM _clean_flow_candidates))");
+            database.execSQL("DELETE FROM flow_run_resources WHERE runId IN "
+                    + "(SELECT id FROM _clean_flow_candidates)");
+            database.execSQL("DELETE FROM flow_run_steps WHERE runId IN "
+                    + "(SELECT id FROM _clean_flow_candidates)");
             database.execSQL("DELETE FROM occurrences WHERE flowRunId IN "
                     + "(SELECT id FROM _clean_flow_candidates)");
             database.execSQL("DELETE FROM step_flow_runs WHERE id IN "
