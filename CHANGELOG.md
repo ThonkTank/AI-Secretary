@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Startabsturz beim Ablauf-Upgrade behoben: verwaiste Schritte und Ressourcen werden vollständig
+  und atomar archiviert; gültige Aufgaben, Abläufe und Verlauf bleiben erhalten.
+
 - „Später“ verschiebt Heute-Aufgaben ans Abschnittsende, danach in den nächsten Abschnitt und
   zuletzt auf morgen; normale Aufgaben und Abläufe verwenden dieselbe gespeicherte Reihenfolge.
 - Ein Klick auf den Aufgabentitel in Heute holt die Aufgabe direkt in den Fokus. Fälligkeit,

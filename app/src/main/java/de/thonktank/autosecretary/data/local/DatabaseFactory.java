@@ -16,6 +16,11 @@ public final class DatabaseFactory {
                 // but are intentionally not part of the supported production graph.
                 .addMigrations(DatabaseMigrations.from(
                         DatabaseContract.PRODUCTION_UPGRADE_SOURCE_VERSION))
+                .addCallback(new androidx.room.RoomDatabase.Callback() {
+                    @Override public void onOpen(androidx.sqlite.db.SupportSQLiteDatabase db) {
+                        OrphanFlowRecovery.report(db);
+                    }
+                })
                 .build();
     }
 }

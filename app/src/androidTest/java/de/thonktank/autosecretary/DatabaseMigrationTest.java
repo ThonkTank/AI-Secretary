@@ -31,6 +31,38 @@ public final class DatabaseMigrationTest {
         InstrumentationRegistry.getInstrumentation().getTargetContext().deleteDatabase(DATABASE);
     }
 
+    @Test public void schema24OrphansAreArchivedBeforeGraphUpgrade() throws Exception {
+        SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 24);
+        database.setForeignKeyConstraintsEnabled(false);
+        database.execSQL("INSERT INTO flow_run_steps (id,runId,position,sourceTemplateId,text,amountKind,"
+                + "plannedSets,plannedReps,plannedDurationSeconds,restTimerMode,restTimerSeconds,"
+                + "plannedLoadMode,plannedLoadUnit,plannedLoadMilli,targetRir,note,delayMode,defaultDelayMillis,"
+                + "lastUsedDelayMillis,chosenDelayMillis) VALUES "
+                + "('orphan-step','missing-run',0,'deleted-template','Original','NONE',NULL,NULL,NULL,"
+                + "'OFF',NULL,'NONE','KG',NULL,0,'Original note',NULL,NULL,NULL,NULL)");
+        database.execSQL("INSERT INTO flow_run_resources (id,runId,sourceLeaseId,resourceId,resourceName,"
+                + "capacityAtCreation,units,acquirePosition,releasePosition,state,reservedAtEpochMillis,"
+                + "activatedAtEpochMillis,releasedAtEpochMillis) VALUES "
+                + "('orphan-resource','missing-run','lease','resource','Original resource',2,1,0,1,'ACTIVE',1,2,NULL)");
+        try (Cursor violations = database.query("PRAGMA foreign_key_check")) {
+            assertEquals(2, violations.getCount());
+        }
+        database.close();
+        database = helper.runMigrationsAndValidate(DATABASE, DatabaseContract.VERSION, true, DatabaseMigrations.from(24));
+        try (Cursor rows = database.query("SELECT sourceSchema,sourceTable,sourceId,payload FROM migration_recovery ORDER BY sourceTable")) {
+            assertEquals(2, rows.getCount());
+            assertTrue(rows.moveToFirst()); assertEquals(24, rows.getInt(0));
+            assertEquals("flow_run_resources", rows.getString(1));
+            assertEquals("orphan-resource", rows.getString(2));
+            assertTrue(rows.getString(3).contains("Original resource"));
+            assertTrue(rows.moveToNext()); assertEquals("orphan-step", rows.getString(2));
+            assertTrue(rows.getString(3).contains("Original note"));
+        }
+        try (Cursor violations = database.query("PRAGMA foreign_key_check")) { assertEquals(0, violations.getCount()); }
+        try (Cursor rows = database.query("SELECT COUNT(*) FROM flow_run_steps")) { assertTrue(rows.moveToFirst()); assertEquals(0, rows.getInt(0)); }
+        try (Cursor rows = database.query("SELECT COUNT(*) FROM flow_run_resources")) { assertTrue(rows.moveToFirst()); assertEquals(0, rows.getInt(0)); }
+    }
+
     @Test public void migration1To2PreservesTasksAndInitializesNewFields() throws IOException {
         SupportSQLiteDatabase database = helper.createDatabase(DATABASE, 1);
         database.execSQL("INSERT INTO tasks (id,title,slot,recurrence,intervalDays,weekdayMask,ongoing,"

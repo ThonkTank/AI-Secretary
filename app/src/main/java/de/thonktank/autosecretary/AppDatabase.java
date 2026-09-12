@@ -33,7 +33,7 @@ import de.thonktank.autosecretary.data.local.TrainingLoadRequestEntity;
 import androidx.room.Database;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {de.thonktank.autosecretary.data.local.TodayPlacementEntity.class, TaskEntity.class, TaskStepEntity.class, OccurrenceEntity.class,
+@Database(entities = {de.thonktank.autosecretary.data.local.MigrationRecoveryEntity.class, de.thonktank.autosecretary.data.local.TodayPlacementEntity.class, TaskEntity.class, TaskStepEntity.class, OccurrenceEntity.class,
         OccurrenceStepEntity.class, StatsEntity.class, ComboEntity.class,
         RewardBookingEntity.class, RewardAssignmentEntity.class,
         RepetitionResultEntity.class, TaskScheduleEntity.class,

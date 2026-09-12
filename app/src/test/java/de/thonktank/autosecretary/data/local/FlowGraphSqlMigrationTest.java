@@ -531,6 +531,137 @@ public final class FlowGraphSqlMigrationTest {
         insert("tasks", new TaskEntityMapper().toEntity(task));
     }
 
+    @Test public void orphanSnapshotsAreArchivedExactlyAndHealthyHistorySurvivesRoomUpgrade() throws Exception {
+        run("healthy", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.ACTIVE, 0);
+        occurrence("paid", "healthy", "COMPLETED", "template0", true);
+        booking("earned", "paid", "paid-step", "VESSEL", 4, null);
+        booking("harvest", "paid", null, "HEAD", 40, null);
+        orphanRun("orphan");
+        // SQLite allows values of unexpected storage classes even in a TEXT-affinity column.
+        db.execSQL("UPDATE flow_run_steps SET note=X'0001FF', chosenDelayMillis=9223372036854775807 WHERE id='orphan-s0'");
+        db.execSQL("UPDATE flow_run_resources SET resourceName='Ä\n\"snapshot\"', units=1.25 WHERE id='orphan-lease'");
+        Map<String, String> unchanged = unchangedRows();
+        Map<String, List<List<Object>>> originals = orphanValues();
+        helper.close();
+        de.thonktank.autosecretary.AppDatabase room = androidx.room.Room.databaseBuilder(
+                ApplicationProvider.getApplicationContext(), de.thonktank.autosecretary.AppDatabase.class, databaseName)
+                .addMigrations(DatabaseMigrations.from(24)).allowMainThreadQueries().build();
+        try {
+            db = room.getOpenHelper().getWritableDatabase();
+            assertEquals(27, db.getVersion());
+            assertEquals(unchanged, unchangedRows());
+            assertEquals(4, read("healthy").alreadyPaidTau);
+            assertEquals("3", scalar("SELECT COUNT(*) FROM flow_run_steps"));
+            assertEquals("1", scalar("SELECT COUNT(*) FROM flow_run_resources"));
+            assertEquals("4", scalar("SELECT COUNT(*) FROM migration_recovery"));
+            try (Cursor rows = db.query("SELECT sourceSchema,sourceTable,sourceId,reason,payload FROM migration_recovery")) {
+                while (rows.moveToNext()) {
+                    assertEquals(24, rows.getInt(0));
+                    assertEquals("MISSING_PARENT_RUN", rows.getString(3));
+                    org.json.JSONObject payload = new org.json.JSONObject(rows.getString(4));
+                    assertEquals(1, payload.getInt("formatVersion"));
+                    org.json.JSONArray columns = payload.getJSONArray("columns");
+                    List<List<Object>> expected = originals.remove(rows.getString(1) + ":" + rows.getString(2));
+                    assertNotNull(expected);
+                    assertEquals(expected.size(), columns.length());
+                    for (int i = 0; i < columns.length(); i++) {
+                        org.json.JSONArray cell = columns.getJSONArray(i);
+                        assertEquals(expected.get(i).get(0), cell.getString(0));
+                        int type = cell.getInt(1);
+                        assertEquals(expected.get(i).get(1), type);
+                        Object value;
+                        switch (type) {
+                            case Cursor.FIELD_TYPE_NULL: value = null; break;
+                            case Cursor.FIELD_TYPE_INTEGER: value = Long.parseLong(cell.getString(2)); break;
+                            case Cursor.FIELD_TYPE_FLOAT: value = Double.valueOf(cell.getString(2)); break;
+                            case Cursor.FIELD_TYPE_BLOB:
+                                value = Arrays.toString(android.util.Base64.decode(cell.getString(2), android.util.Base64.DEFAULT)); break;
+                            default: value = cell.getString(2);
+                        }
+                        assertEquals(expected.get(i).get(2), value);
+                    }
+                }
+            }
+            assertTrue(originals.isEmpty());
+            try (Cursor keys = db.query("PRAGMA foreign_key_check")) { assertFalse(keys.moveToFirst()); }
+        } finally { room.close(); }
+    }
+
+    @Test public void unrelatedForeignKeyFailureRollsBackArchiveAndEveryOriginalRow() {
+        orphanRun("orphan");
+        db.execSQL("UPDATE task_steps SET taskId='missing-task' WHERE id='template0'");
+        Map<String, List<List<Object>>> before = orphanValues();
+        try { migrate(); fail("Unrelated FK violation must fail"); }
+        catch (IllegalStateException expected) { assertTrue(expected.getMessage().contains("task_steps")); }
+        assertEquals(before, orphanValues());
+        assertEquals("0", scalar("SELECT COUNT(*) FROM sqlite_master WHERE name='migration_recovery'"));
+        assertEquals("missing-task", scalar("SELECT taskId FROM task_steps WHERE id='template0'"));
+    }
+
+    @Test public void archiveWriteFailureRollsBackAllCopiesAndLeavesOriginals() {
+        orphanRun("orphan");
+        Map<String, List<List<Object>>> before = orphanValues();
+        OrphanFlowRecovery.createArchive(db);
+        db.execSQL("CREATE TRIGGER reject_resource_archive BEFORE INSERT ON migration_recovery "
+                + "WHEN NEW.sourceTable='flow_run_resources' BEGIN SELECT RAISE(ABORT,'archive unavailable'); END");
+        try { migrate(); fail("Archive failure must abort migration"); }
+        catch (android.database.SQLException expected) { assertTrue(expected.getMessage().contains("archive unavailable")); }
+        assertEquals(before, orphanValues());
+        assertEquals("0", scalar("SELECT COUNT(*) FROM migration_recovery"));
+    }
+
+    @Test public void healthySchema25And26UpgradeToEmptyRecoveryArchive() {
+        for (int version : new int[]{25, 26}) {
+            Context context = ApplicationProvider.getApplicationContext();
+            String name = "healthy-recovery-" + version + UUID.randomUUID();
+            SupportSQLiteOpenHelper source = new FrameworkSQLiteOpenHelperFactory().create(
+                    SupportSQLiteOpenHelper.Configuration.builder(context).name(name)
+                    .callback(new SupportSQLiteOpenHelper.Callback(version) {
+                        @Override public void onCreate(SupportSQLiteDatabase database) { ExportedRoomSchemaFixture.create(database, version); }
+                        @Override public void onUpgrade(SupportSQLiteDatabase database, int oldVersion, int newVersion) { throw new AssertionError(); }
+                    }).build());
+            source.getWritableDatabase(); source.close();
+            de.thonktank.autosecretary.AppDatabase room = androidx.room.Room.databaseBuilder(context,
+                    de.thonktank.autosecretary.AppDatabase.class, name)
+                    .addMigrations(DatabaseMigrations.from(version)).allowMainThreadQueries().build();
+            try (Cursor rows = room.getOpenHelper().getWritableDatabase().query("SELECT COUNT(*) FROM migration_recovery")) {
+                assertEquals(27, room.getOpenHelper().getWritableDatabase().getVersion());
+                assertTrue(rows.moveToFirst()); assertEquals(0, rows.getInt(0));
+            } finally { room.close(); context.deleteDatabase(name); }
+        }
+    }
+
+    private void orphanRun(String id) {
+        run(id, StepFlowRunState.WAITING_TIME, 1, FlowResourceState.ACTIVE, 0);
+        db.setForeignKeyConstraintsEnabled(false);
+        db.execSQL("DELETE FROM step_flow_runs WHERE id=?", new Object[]{id});
+    }
+
+    private Map<String, List<List<Object>>> orphanValues() {
+        Map<String, List<List<Object>>> result = new LinkedHashMap<>();
+        for (String table : Arrays.asList("flow_run_steps", "flow_run_resources")) {
+            try (Cursor rows = db.query("SELECT * FROM " + table + " WHERE runId='orphan' ORDER BY id")) {
+                while (rows.moveToNext()) {
+                    List<List<Object>> cells = new ArrayList<>();
+                    for (int i = 0; i < rows.getColumnCount(); i++) {
+                        int type = rows.getType(i);
+                        Object value;
+                        switch (type) {
+                            case Cursor.FIELD_TYPE_NULL: value = null; break;
+                            case Cursor.FIELD_TYPE_INTEGER: value = rows.getLong(i); break;
+                            case Cursor.FIELD_TYPE_FLOAT: value = rows.getDouble(i); break;
+                            case Cursor.FIELD_TYPE_BLOB: value = Arrays.toString(rows.getBlob(i)); break;
+                            default: value = rows.getString(i);
+                        }
+                        cells.add(Arrays.asList(rows.getColumnName(i), type, value));
+                    }
+                    result.put(table + ":" + rows.getString(rows.getColumnIndexOrThrow("id")), cells);
+                }
+            }
+        }
+        return result;
+    }
+
     private void run(String id, StepFlowRunState state, int position, FlowResourceState resourceState, int acquire) {
         StepFlowRun header = new StepFlowRun(id, TaskId.of("task"), "template0", "source-" + id, DATE, TaskSlot.MORNING,
                 state, position, state == StepFlowRunState.WAITING_TIME ? 999L : null, null, 1234, 7, 100, 200);
