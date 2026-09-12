@@ -37,3 +37,29 @@ Regression coverage includes mixed healthy runs with earned/paid history,
 full typed payload comparison, archive-write failure rollback, unrelated FK
 failure rollback, healthy 25/26 upgrades, and a native instrumentation migration
 fixture. Existing historical signed-upgrade fixtures now target schema 27.
+
+## Retained-device follow-up
+
+The signed 0.2.169 update reached a second pre-cutover violation on the retained
+Pixel database: `occurrence_steps.occurrenceId` referenced an absent occurrence.
+The entire upgrade rolled back, including the initial snapshot archive. Thus
+0.2.169 was published and installed, but did not restore this device's startup.
+
+Recovery now captures the occurrence dependency closure: orphan occurrence
+steps, their repetitions and timers, bookings/assignments and obligations tied
+to missing occurrences, and descendants that a cascade would otherwise remove.
+All identities are frozen in a temporary row set, every payload is archived,
+and children are explicitly removed before parents, with foreign keys either
+on or off. Unrelated violations still fail the transaction. Repetition-result
+archive identities use a JSON tuple `[stepId, slotIndex]`; their original key
+columns also remain in the typed payload. Valid ledgers and stored balances
+are not rewritten. No additional schema change is needed beyond schema 27.
+
+The migration logs all pre-existing FK table counts and reports all remaining
+violations together instead of exposing one table per failed device upgrade.
+The committed recovery report remains separate from this pre-upgrade diagnosis.
+
+The signed upgrade probe also supports `upgradePhase=diagnose`: it suppresses
+application startup and opens the retained database read-only, returning its
+version and all FK table counts without running migrations or reading payloads.
+Never use the destructive `seed` phase on a retained user database.
