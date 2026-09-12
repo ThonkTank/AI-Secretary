@@ -3,10 +3,16 @@ package de.thonktank.autosecretary;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 
 /** Thin RemoteViews lifecycle adapter; all loading and rendering lives in the coordinator. */
 public final class TaskWidgetProvider extends AppWidgetProvider {
+    @Override public void onReceive(Context context, Intent intent) {
+        if (DiagnosticBootstrap.isDiagnosing()) return;
+        super.onReceive(context, intent);
+    }
+
     @Override public void onEnabled(Context context) {
         coordinator(context).reconcileInstalledWidgets();
     }

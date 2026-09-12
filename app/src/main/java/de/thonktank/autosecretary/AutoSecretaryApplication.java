@@ -11,6 +11,7 @@ public final class AutoSecretaryApplication extends Application {
 
     @Override public void onCreate() {
         super.onCreate();
+        if (!DiagnosticBootstrap.beginNormalStartup()) return;
         AppLogger logger = new AndroidAppLogger();
         container = AppContainer.create(this, logger);
         container.widgetUpdates.reconcileInstalledWidgets();

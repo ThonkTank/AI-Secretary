@@ -20,6 +20,7 @@ class FlowSetupActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (DiagnosticBootstrap.isDiagnosing()) { finish(); return }
         val container = AutoSecretaryApplication.from(this).container()
         val gateway = UseCaseFlowEditorGateway(container.flows.loadGraph, container.flows.saveGraph)
         editor = ViewModelProvider(this, object : ViewModelProvider.Factory {

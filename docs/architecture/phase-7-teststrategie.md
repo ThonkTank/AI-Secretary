@@ -229,4 +229,18 @@ Reguläre Instrumentierung besitzt den Paketnamen `de.thonktank.autosecretary.te
 zugehörige Test-APK `de.thonktank.autosecretary.test.test` und das sichtbare Label „Auto
 Secretary Test“. Sie kann deshalb eine installierte Produktions-App nicht ersetzen. Nur
 `-PupgradeProbeRunner=true` baut bewusst gegen `de.thonktank.autosecretary`; dieser Pfad wird
-ausschließlich mit dem signierten Produktionskandidaten in der Upgrade-Matrix verwendet.
+mit dem signierten Produktionskandidaten in der Upgrade-Matrix und für den ausdrücklich
+unterstützten lesenden Diagnosezugang verwendet.
+
+Der frühe Diagnosevertrag aus [ADR-038](adr-038-frueher-diagnose-bootstrap.md) wird in den
+normalen vollständigen API-26/35/37-Lanes zusätzlich durch frische Prozesse geprüft:
+Schema24/27, echte Plattformereignisse, vollständige Nutzdaten-/Schema-Snapshots, reguläres Ende
+und Abbruch sowie normaler Timer-/Worker-Wiederanlauf. Der native Treiber akzeptiert ausschließlich
+das Emulator-Testpaket; der Produktionshelper deklariert seine Fixture-/Normal-Runner nicht.
+Ein fehlgeschlagener Diagnose-Lifecycle sperrt die Lane auch nach erfolgreicher JUnit-Prüfung.
+
+Der Diagnose-Treiber vergleicht den vollständigen Datenbestand vor Ende des gehaltenen Prozesses.
+Ein nachfolgender normaler Systemprozess darf bereits Timer und Worker abgleichen; dessen Änderungen
+sind kein Verstoß gegen die beendete Diagnose. Activity-Ereignisse werden durch echte Erzeugungs-/
+Zerstörungs-Callbacks in der Diagnose-PID belegt, nicht durch `am start -W` auf eine absichtlich
+sofort beendete Oberfläche. Der CLI verfolgt ebenfalls die ursprüngliche Diagnose-PID.

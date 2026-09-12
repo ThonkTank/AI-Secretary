@@ -1,0 +1,202 @@
+{
+  "seed": [
+    {
+      "table": "tasks",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "current-smoke-task",
+          "title": "Aktuelles signiertes Update",
+          "recurrence": "ONCE",
+          "intervalDays": 1,
+          "weekdayMask": 0,
+          "ongoing": 0,
+          "conditionText": "",
+          "conditionDone": 0,
+          "archived": 0,
+          "nextDueOn": "2999-12-31",
+          "cadenceAnchorOn": "2999-12-31",
+          "lastScheduledOn": null,
+          "lastCompletedOn": "2000-01-01",
+          "catalogOrder": 4023001,
+          "hasCompletedOccurrence": 1,
+          "estimatedMinutes": 31,
+          "boundKind": "FOREVER",
+          "boundUntilOn": null,
+          "boundWeeks": null,
+          "remainingCount": null,
+          "deadlineOn": null,
+          "note": "Persistenz aktuelles Update",
+          "missedOccurrenceMode": "COLLAPSE",
+          "taskKind": "TASK"
+        }
+      ]
+    },
+    {
+      "table": "task_schedule_entries",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "current-smoke-schedule",
+          "taskId": "current-smoke-task",
+          "slot": "MORNING",
+          "displayOrder": 19
+        }
+      ]
+    },
+    {
+      "table": "occurrences",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "current-smoke-history",
+          "taskId": "current-smoke-task",
+          "scheduledOn": "2000-01-01",
+          "state": "COMPLETED",
+          "sortOrder": 2100,
+          "completedOn": "2000-01-01",
+          "slot": "MORNING",
+          "kind": "SCHEDULED",
+          "sourceKey": "current-smoke:history",
+          "flowRunId": null,
+          "flowExecutionSequence": 0
+        },
+        {
+          "id": "current-smoke-open",
+          "taskId": "current-smoke-task",
+          "scheduledOn": "${TODAY}",
+          "state": "OPEN",
+          "sortOrder": 2101,
+          "completedOn": null,
+          "slot": "MORNING",
+          "kind": "SCHEDULED",
+          "sourceKey": "current-smoke:open",
+          "flowRunId": null,
+          "flowExecutionSequence": 0
+        }
+      ]
+    },
+    {
+      "table": "today_placements",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "kind": "OCCURRENCE",
+          "id": "current-smoke-open",
+          "displayOn": "${TODAY}",
+          "slot": "MIDDAY",
+          "position": 17
+        }
+      ]
+    },
+    {
+      "table": "occurrence_steps",
+      "rows": [
+        {
+          "id": "diagnostic-open-step",
+          "occurrenceId": "current-smoke-open",
+          "position": 0,
+          "text": "Unchanged diagnostic step",
+          "done": 0,
+          "amountKind": "NONE",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": null,
+          "restTimerMode": "OFF",
+          "restTimerSeconds": null,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2,
+          "note": "Keep this exact note",
+          "actualRepetitions": "",
+          "sourceTemplateId": null,
+          "comboOwnerId": "step:diagnostic-open-step",
+          "originOccurrenceId": null,
+          "carryForwardReason": "NONE"
+        },
+        {
+          "id": "diagnostic-history-step",
+          "occurrenceId": "current-smoke-history",
+          "position": 0,
+          "text": "Retained completed step",
+          "done": 1,
+          "amountKind": "NONE",
+          "plannedSets": null,
+          "plannedReps": null,
+          "plannedDurationSeconds": null,
+          "restTimerMode": "OFF",
+          "restTimerSeconds": null,
+          "plannedLoadMode": "UNSPECIFIED",
+          "plannedLoadUnit": "NONE",
+          "plannedLoadMilli": null,
+          "targetRir": 2,
+          "note": "Keep this exact note",
+          "actualRepetitions": "",
+          "sourceTemplateId": null,
+          "comboOwnerId": "step:diagnostic-history-step",
+          "originOccurrenceId": null,
+          "carryForwardReason": "NONE"
+        }
+      ]
+    },
+    {
+      "table": "reward_bookings",
+      "rows": [
+        {
+          "id": "diagnostic-booking",
+          "transactionId": "diagnostic-transaction",
+          "occurrenceId": "current-smoke-history",
+          "occurrenceStepId": "diagnostic-history-step",
+          "ownerId": "head",
+          "kind": "LEGACY_COMPLETION",
+          "target": "HEAD",
+          "xpDelta": 7,
+          "comboPointDelta": 0,
+          "bookedOn": "2000-01-01",
+          "reversesBookingId": null,
+          "plannedXp": 7
+        }
+      ]
+    },
+    {
+      "table": "reward_assignments",
+      "rows": [
+        {
+          "bookingId": "diagnostic-booking",
+          "occurrenceId": "current-smoke-history"
+        }
+      ]
+    },
+    {
+      "table": "timer_sessions",
+      "rows": [
+        {
+          "id": "diagnostic-timer",
+          "stepId": "diagnostic-history-step",
+          "title": "Expired diagnostic timer",
+          "kind": "REST",
+          "state": "RUNNING",
+          "totalSeconds": 60,
+          "remainingMillis": 12345,
+          "targetElapsedRealtime": 1,
+          "targetEpochMillis": 1,
+          "notificationId": 812301,
+          "completionObserved": 0
+        }
+      ]
+    },
+    {
+      "table": "migration_recovery",
+      "rows": [
+        {
+          "sourceSchema": 24,
+          "sourceTable": "flow_run_steps",
+          "sourceId": "diagnostic-archived-step",
+          "reason": "synthetic missing parent",
+          "payload": "{\"id\":{\"type\":\"text\",\"value\":\"diagnostic-archived-step\"},\"runId\":{\"type\":\"text\",\"value\":\"synthetic-missing-run\"},\"note\":{\"type\":\"text\",\"value\":\"Preserve original diagnostic fixture payload\"}}"
+        }
+      ]
+    }
+  ]
+}

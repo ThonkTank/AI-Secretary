@@ -69,6 +69,12 @@ keinen zusätzlichen manuellen Freigabeschritt nach einer vollständig grünen V
    unverändertem Schema. Im aktuellen Template bindet `${TODAY}` die offene Fälligkeit und
    ihre Platzierung gemeinsam an den UTC-Planungstag; historische Datumswerte bleiben erhalten.
    So wird eine reguläre Tagesfortschreibung nicht fälschlich als Updateverlust geprüft.
+   Im selben aktuellen Lane wird der frühe Diagnosezugang mit dem regulär signierten Helper
+   geprüft: Die vorherige APK muss einen Bericht oder eine ausdrückliche Nichtunterstützung
+   liefern, der neue Kandidat zwingend einen erfolgreichen Bericht. Ein generischer Absturz
+   blockiert den Gate. Der Produktionshelper deklariert ausschließlich Upgrade- und Diagnose-
+   Runner; die isolierten Fixture-/Normal-Kontrollen sind dort nicht zugänglich. Details:
+   [ADR-038](architecture/adr-038-frueher-diagnose-bootstrap.md).
    Fehlende Quelle blockiert Publish. Im vollständigen Profil ergänzt der
    Korpus unter `release/upgrade-fixtures/corpus.json` fünf verpflichtende Lanes:
    Schema 8 aus 0.2.80 auf API 26/35/37 sowie Schema 20 aus 0.2.137 und Schema 23 aus 0.2.158

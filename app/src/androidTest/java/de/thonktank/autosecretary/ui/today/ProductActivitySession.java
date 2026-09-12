@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Real product lifecycle with finite event waits, including while the window keeps animating. */
-final class ProductActivitySession implements AutoCloseable, Application.ActivityLifecycleCallbacks {
+public final class ProductActivitySession implements AutoCloseable, Application.ActivityLifecycleCallbacks {
     private static final long TIMEOUT_SECONDS = 10;
     private final Application application;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -28,12 +28,12 @@ final class ProductActivitySession implements AutoCloseable, Application.Activit
     private CountDownLatch resumeSignal;
     private CountDownLatch destroySignal;
 
-    ProductActivitySession(Instrumentation instrumentation) {
+    public ProductActivitySession(Instrumentation instrumentation) {
         application = (Application) instrumentation.getTargetContext().getApplicationContext();
         onMain(() -> application.registerActivityLifecycleCallbacks(this));
     }
 
-    MainActivity launch() {
+    public MainActivity launch() {
         return resumeAfter(null, () -> application.startActivity(new Intent(application, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)));
     }

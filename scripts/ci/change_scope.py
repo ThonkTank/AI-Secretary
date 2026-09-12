@@ -25,6 +25,10 @@ TODAY_TESTS = frozenset({
 RELEASE_UPGRADE_INPUTS = frozenset({
     "app/src/androidTest/java/de/thonktank/autosecretary/UpgradePersistenceProbe.java",
     "app/src/androidTest/java/de/thonktank/autosecretary/UpgradeProbeInstrumentation.java",
+    "app/src/androidTest/java/de/thonktank/autosecretary/EarlyDiagnosticInstrumentation.java",
+    "app/src/androidTest/java/de/thonktank/autosecretary/DiagnosticProbeInstrumentation.java",
+    "app/src/androidTest/AndroidManifest.xml",
+    "app/src/androidTest/AndroidManifest-upgrade.xml",
 })
 NATIVE_LANES = (
     {"api-level": 26, "target": "default", "arch": "x86_64", "channel": "stable"},

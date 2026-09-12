@@ -31,7 +31,7 @@ public final class DatabaseMigrationTest {
         InstrumentationRegistry.getInstrumentation().getTargetContext().deleteDatabase(DATABASE);
     }
 
-    @Test public void diagnosticRunnerSuppressesApplicationStartupOnlyForDiagnosis() throws Exception {
+    @Test public void legacyRunnerStartsApplicationOnlyForUpgradePhases() throws Exception {
         UpgradeProbeInstrumentation runner = new UpgradeProbeInstrumentation();
         java.lang.reflect.Field arguments = UpgradeProbeInstrumentation.class.getDeclaredField("arguments");
         arguments.setAccessible(true);
@@ -70,7 +70,7 @@ public final class DatabaseMigrationTest {
         }
         database.close();
         assertEquals("schema=24; foreignKeys={flow_run_resources=1, flow_run_steps=1, occurrence_steps=1}",
-                UpgradeProbeInstrumentation.readOnlyDiagnosis(InstrumentationRegistry.getInstrumentation()
+                DiagnosticProbeInstrumentation.readOnlyDiagnosis(InstrumentationRegistry.getInstrumentation()
                         .getTargetContext().getDatabasePath(DATABASE)));
         database = helper.runMigrationsAndValidate(DATABASE, DatabaseContract.VERSION, true, DatabaseMigrations.from(24));
         try (Cursor rows = database.query("SELECT sourceSchema,sourceTable,sourceId,payload FROM migration_recovery ORDER BY sourceTable")) {
@@ -87,7 +87,7 @@ public final class DatabaseMigrationTest {
         try (Cursor rows = database.query("SELECT COUNT(*) FROM flow_run_resources")) { assertTrue(rows.moveToFirst()); assertEquals(0, rows.getInt(0)); }
         database.close();
         assertEquals("schema=27; foreignKeys={}; staleExecutionCounters=0; occupiedNextExecutionKeys=0",
-                UpgradeProbeInstrumentation.readOnlyDiagnosis(InstrumentationRegistry.getInstrumentation()
+                DiagnosticProbeInstrumentation.readOnlyDiagnosis(InstrumentationRegistry.getInstrumentation()
                         .getTargetContext().getDatabasePath(DATABASE)));
     }
 

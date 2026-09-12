@@ -117,6 +117,7 @@ public class MainActivity extends ComponentActivity {
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (DiagnosticBootstrap.isDiagnosing()) { finish(); return; }
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "create",
                 "saved=" + (savedInstanceState != null));
         container = AutoSecretaryApplication.from(this).container();

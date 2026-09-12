@@ -9,6 +9,8 @@ test_class="${INSTRUMENTATION_TEST_CLASS:-}"
 gradle_executable="${INSTRUMENTATION_GRADLE_EXECUTABLE:-./gradlew}"
 animation_scale="${INSTRUMENTATION_ANIMATION_SCALE:-}"
 prepare_interaction_device="${INSTRUMENTATION_PREPARE_INTERACTION_DEVICE:-false}"
+diagnostic_lifecycle="${INSTRUMENTATION_DIAGNOSTIC_LIFECYCLE:-false}"
+diagnostic_executable="${INSTRUMENTATION_DIAGNOSTIC_EXECUTABLE:-./scripts/ci/run-diagnostic-lifecycle.py}"
 animation_settings=(window_animation_scale transition_animation_scale animator_duration_scale)
 error_dialog_setting=hide_error_dialogs
 
@@ -21,6 +23,7 @@ if [ "${INSTRUMENTATION_RERUN_TASKS:-false}" = true ]; then
 fi
 
 status=0
+gradle_status=not_run
 if [ "$prepare_interaction_device" = true ]; then
   adb shell settings put global "$error_dialog_setting" 1 || status=43
   actual=$(adb shell settings get global "$error_dialog_setting") || status=43
@@ -48,13 +51,19 @@ fi
 if [ "$status" -eq 0 ]; then
   "$gradle_executable" "${gradle_arguments[@]}"
   status=$?
+  gradle_status=$status
+fi
+
+if [ "$status" -eq 0 ] && [ "$diagnostic_lifecycle" = true ]; then
+  "$diagnostic_executable" --report-dir "$report_dir/diagnostic-lifecycle"
+  status=$?
 fi
 
 if [ "$status" -ne 0 ]; then
   mkdir -p "$report_dir"
-  printf 'api_level=%s\nattempt=%s\ntest_class=%s\nanimation_scale=%s\nprepare_interaction_device=%s\ngradle_exit_code=%s\nexit_code=%s\n' \
+  printf 'api_level=%s\nattempt=%s\ntest_class=%s\nanimation_scale=%s\nprepare_interaction_device=%s\ndiagnostic_lifecycle=%s\ngradle_exit_code=%s\nexit_code=%s\n' \
     "$api_level" "$attempt" "${test_class:-all}" "${animation_scale:-unchanged}" \
-    "$prepare_interaction_device" "$status" "$status" \
+    "$prepare_interaction_device" "$diagnostic_lifecycle" "$gradle_status" "$status" \
     > "$report_dir/run-context.txt"
   for setting in "${animation_settings[@]}"; do
     printf '%s=%s\n' "$setting" "$(adb shell settings get global "$setting" 2>/dev/null \

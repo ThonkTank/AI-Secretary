@@ -13,6 +13,7 @@ public final class TaskActionReceiver extends BroadcastReceiver {
     public static final String EXTRA_STEP_ID = "step_id";
 
     @Override public void onReceive(Context context, Intent intent) {
+        if (DiagnosticBootstrap.isDiagnosing()) return;
         PendingResult pending = goAsync();
         Context app = context.getApplicationContext();
         Intent stableIntent = intent == null ? null : new Intent(intent);
