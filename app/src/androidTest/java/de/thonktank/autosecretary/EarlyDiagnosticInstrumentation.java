@@ -28,6 +28,7 @@ public abstract class EarlyDiagnosticInstrumentation extends Instrumentation {
             rejected.initCause(failure);
             Bundle result = new Bundle();
             result.putInt("diagnosticProtocol", 1);
+            result.putInt("diagnosticPid", android.os.Process.myPid());
             result.putString("diagnosticUnsupported", "Target cannot enter contract 1 before providers");
             result.putString("stream", "\nUNSUPPORTED_DIAGNOSTIC_PROTOCOL\n");
             finish(Activity.RESULT_CANCELED, result);

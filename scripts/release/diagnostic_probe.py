@@ -49,14 +49,19 @@ def diagnose(serial: str, package: str) -> dict:
     # No force-stop, seed, legacy diagnose, component changes, or no-restart option here.
     process = shell("am", "instrument", "-w", "-r", component, timeout=45, check=False)
     result = interpret(process.stdout)
+    pids = re.findall(r"^INSTRUMENTATION_RESULT: diagnosticPid=([1-9][0-9]*)\s*$", process.stdout, re.MULTILINE)
+    if len(pids) != 1:
+        raise ValueError("Diagnostic result must identify exactly one original process")
+    diagnostic_pid = pids[0]
     if process.returncode != 0 and result["status"] == "supported":
         raise ValueError("Diagnostic transport failed despite a success marker")
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         state = shell("pidof", package, check=False)
-        if state.returncode in (0, 1) and not state.stdout.strip():
+        if state.returncode in (0, 1) and diagnostic_pid not in state.stdout.split():
             return {**result, "serial": serial, "package": package, "versionCode": int(version[1]),
-                    "processExited": True}
+                    "diagnosticPid": int(diagnostic_pid), "processExited": True,
+                    "normalProcessRunning": bool(state.stdout.strip())}
         time.sleep(0.1)
     raise ValueError("Diagnostic process did not exit; a normal restart is not yet proved safe")
 

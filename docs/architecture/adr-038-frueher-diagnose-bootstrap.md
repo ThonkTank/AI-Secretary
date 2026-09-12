@@ -43,8 +43,10 @@ Wiederherstellungsarchiv; sie ist keine Behauptung vollständiger Dateisystemruh
 
 Es gibt keine gespeicherte Moduspräferenz, dauerhaft deaktivierte Komponente oder erforderliche
 Geräteeinstellung. Das unterstützte Kommando benutzt kein `--no-restart`. Das reguläre Ende der
-Instrumentierung beendet den Prozess; der CLI prüft dessen Ende. Der nächste normale Start baut
-die App regulär auf, gleicht Timer ab und lässt zurückgestellte Systemarbeit weiterlaufen.
+Instrumentierung beendet den Diagnoseprozess; der CLI prüft dessen konkrete PID. Android darf
+inzwischen bereits einen neuen normalen Hintergrundprozess starten; der CLI benennt dies separat.
+Der normale Start baut die App regulär auf, gleicht Timer ab und lässt zurückgestellte Systemarbeit
+weiterlaufen. Die Schreibruhe endet mit dem Diagnoseprozess.
 
 ## Kompatibilität und Bedienung
 
@@ -75,12 +77,20 @@ Vorwärtsupdates über die vorhandene Installation.
 `run-diagnostic-lifecycle.py` prüft vor Rootzugriff, Installation oder Fixture-Schreiben das
 isolierte Emulatorziel. Die Java-Fixtures prüfen zusätzlich Testpaket und Emulatorhardware.
 Schema 24 belegt fehlende Migration; Schema 27 enthält auch Archiv und explizite Today-Platzierung.
-Vollständige typisierte Daten- und Schemasnapshots werden vor/nach Diagnose verglichen.
+Vollständige typisierte Daten- und Schemasnapshots werden vor und nach den Ereignissen noch
+innerhalb des ursprünglichen Diagnoseprozesses verglichen. Im ausdrücklich auf das isolierte
+Emulator-Testpaket begrenzten lesenden Prüfmodus bindet ein zufälliger Token das Bereitschaftssignal
+des Treibers an diesen Lauf. Nach diesem Signal bestätigt der echte Diagnose-Runner den vollständigen
+Snapshot, die Room-Sperre und die nativen Ereignisbelege vor seinem Ende bzw. dem gezielten Abbruch.
+Der Produktionsaufruf verwendet diesen Testmodus nicht; er enthält keinen Seed-Zugang.
 
 Echte Boot-, Paketwechsel-, Timer-, Widget- und Activity-Ereignisse werden während einer gehaltenen
 Diagnose zugestellt. Das Optionsereignis verwendet die vom Framework akzeptierte null-Options-
 Eingabe; die Präsenz beider Extra-Schlüssel erreicht den tatsächlichen Optionscallback. Der Treiber
-prüft die unveränderte PID vor und nach jeder Zustellung. Ein ausschließlich debugseitiger Provider
+prüft die unveränderte PID vor und nach jeder Zustellung. Activity-Starts erfolgen einmal ohne
+Warten auf eine sichtbare Oberfläche: die Activities sollen sich gerade sofort beenden. Echte
+ActivityLifecycleCallbacks müssen Erzeugung und zerstörten, beendeten Zustand in derselben
+Diagnose-PID bestätigen. Ein ausschließlich debugseitiger Provider
 belegt den frühen Modus nach AndroidX Startup, bindet über Android den tatsächlich registrierten
 SystemJobService und lässt WorkManager einen echten FlowWakeWorker ausführen. Die Servicebindung
 beweist dessen Erzeugung; sie wird nicht als ausgelöster JobScheduler-Job ausgegeben.

@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import android.app.Activity;
+import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentProvider;
@@ -12,6 +14,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.IBinder;
 import android.os.Process;
+import android.os.Bundle;
 
 import androidx.core.content.ContextCompat;
 import androidx.work.BackoffPolicy;
@@ -32,6 +35,25 @@ public final class DiagnosticWitnessProvider extends ContentProvider {
         Context app = getContext().getApplicationContext();
         if (!"de.thonktank.autosecretary.test".equals(app.getPackageName())
                 || !DiagnosticBootstrap.isDiagnosing()) return true;
+        ((Application) app).registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
+            private final java.util.Set<String> created = new java.util.HashSet<>();
+            @Override public void onActivityCreated(Activity activity, Bundle state) {
+                created.add(activity.getClass().getName());
+                activityProof(activity, false);
+            }
+            @Override public void onActivityDestroyed(Activity activity) { activityProof(activity, true); }
+            private void activityProof(Activity activity, boolean destroyed) {
+                proof(app, "diagnostic-activity-" + activity.getClass().getSimpleName() + ".json",
+                        "activity", activity.getClass().getName(),
+                        "created", created.contains(activity.getClass().getName()), "destroyed", destroyed,
+                        "finishing", activity.isFinishing(), "diagnosing", DiagnosticBootstrap.isDiagnosing());
+            }
+            @Override public void onActivityStarted(Activity activity) { }
+            @Override public void onActivityResumed(Activity activity) { }
+            @Override public void onActivityPaused(Activity activity) { }
+            @Override public void onActivityStopped(Activity activity) { }
+            @Override public void onActivitySaveInstanceState(Activity activity, Bundle state) { }
+        });
         WorkManager manager = WorkManager.getInstance(app);
         proof(app, "diagnostic-provider-proof.json", "earlyMode", true,
                 "containerMissing", AutoSecretaryApplication.from(app).container() == null,

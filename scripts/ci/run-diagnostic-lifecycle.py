@@ -10,6 +10,7 @@ import re
 import shlex
 import subprocess
 import time
+import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
 NAMESPACE = "de.thonktank.autosecretary"
@@ -26,6 +27,17 @@ def validate_probe(output: str, marker: str) -> None:
 def ready_pid(output: str) -> int | None:
     match = re.search(r"diagnosticReady=protocol=1; pid=([1-9][0-9]*)", output)
     return int(match.group(1)) if match else None
+
+
+def validate_activity(proof: dict, pid: int, activity: str) -> None:
+    if not (proof.get("pid") == pid and proof.get("activity") == NAMESPACE + "." + activity
+            and all(proof.get(key) is True for key in ("created", "destroyed", "finishing", "diagnosing"))):
+        raise AssertionError(f"Activity did not finish in the original diagnostic process: {proof}")
+
+
+def verified_interval(output: str, pid: int, token: str) -> bool:
+    expected = f"INSTRUMENTATION_STATUS: diagnosticVerified=protocol=1; pid={pid}; token={token}"
+    return expected in output.splitlines()
 
 
 class Device:
@@ -98,10 +110,24 @@ def exercise_events(device: Device, directory: Path, pid: int) -> None:
               "--ei", "appWidgetId", "901", "--esn", "appWidgetOptions")
     for activity in ("MainActivity", "FlowRunsActivity", "FlowSetupActivity"):
         alive()
-        output = device.shell("am", "start", "-W", "-n", f"{PACKAGE}/{NAMESPACE}.{activity}")
+        output = device.shell("am", "start", "-n", f"{PACKAGE}/{NAMESPACE}.{activity}")
         alive()
-        if "Status: ok" not in output:
+        if "Starting: Intent" not in output or "Error:" in output or "Exception" in output:
             raise AssertionError(f"Activity was not delivered during diagnosis: {output}")
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            alive()
+            try:
+                proof = device.proof(f"diagnostic-activity-{activity}.json")
+                if proof.get("pid") == pid and proof.get("destroyed"):
+                    validate_activity(proof, pid, activity)
+                    (directory / f"activity-{activity}.json").write_text(json.dumps(proof, indent=2))
+                    break
+            except (subprocess.CalledProcessError, json.JSONDecodeError):
+                pass
+            time.sleep(0.05)
+        else:
+            raise AssertionError(f"Missing native creation/destruction callbacks for {activity}")
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         alive()
@@ -129,7 +155,9 @@ def exercise_events(device: Device, directory: Path, pid: int) -> None:
 
 def held_diagnosis(device: Device, directory: Path, abort: bool) -> int:
     logfile = directory / "diagnosis.txt"
-    command = device.command("DiagnosticProbeInstrumentation", diagnosticHoldMillis="30000")
+    token = uuid.uuid4().hex
+    command = device.command("DiagnosticProbeInstrumentation", diagnosticFixtureToken=token,
+                             diagnosticAbortExpected=str(abort).lower())
     with logfile.open("w") as output:
         process = subprocess.Popen([*device.prefix, "shell", shlex.join(command)], stdout=output,
                                    stderr=subprocess.STDOUT, text=True)
@@ -146,7 +174,20 @@ def held_diagnosis(device: Device, directory: Path, abort: bool) -> int:
             if pid is None:
                 raise AssertionError("Diagnostic runner did not report its early entry")
             exercise_events(device, directory, pid)
+            device.shell("touch", f"/data/data/{PACKAGE}/files/diagnostic-events-{token}")
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                if verified_interval(logfile.read_text(), pid, token):
+                    break
+                if process.poll() is not None:
+                    raise AssertionError(f"Diagnostic ended without its data witness:\n{logfile.read_text()}")
+                time.sleep(0.05)
+            else:
+                raise AssertionError("No full data/Room/event witness before diagnostic end")
+            (directory / "unchanged.txt").write_text(f"Verified in diagnostic PID {pid}, token {token}\n")
             if abort:
+                if str(pid) not in device.shell("pidof", PACKAGE).split():
+                    raise AssertionError("Diagnostic ended before the requested abort")
                 device.shell("kill", "-9", str(pid))
             process.wait(timeout=40)
             result = logfile.read_text()
@@ -158,7 +199,7 @@ def held_diagnosis(device: Device, directory: Path, abort: bool) -> int:
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:
                 try:
-                    if not device.shell("pidof", PACKAGE).strip():
+                    if str(pid) not in device.shell("pidof", PACKAGE).split():
                         return pid
                 except subprocess.CalledProcessError as stopped:
                     if stopped.returncode == 1:
@@ -199,9 +240,7 @@ def run(serial: str, reports: Path) -> None:
                 case.mkdir()
                 device.probe(case, "seed", "DiagnosticFixtureInstrumentation", "OK (1 diagnostic fixture)",
                              fixturePhase="seed", fixtureSchema=str(version))
-                pid = held_diagnosis(device, case, abort)
-                device.probe(case, "unchanged", "DiagnosticFixtureInstrumentation", "OK (1 diagnostic fixture)",
-                             fixturePhase="assert", fixturePid=str(pid))
+                held_diagnosis(device, case, abort)
                 device.probe(case, "normal", "NormalDiagnosticRecoveryInstrumentation", "OK (1 normal diagnostic recovery)")
                 print(f"PASS {case.name}: native events, unchanged schema/data, normal timer/worker recovery", flush=True)
         result = {"status": "passed", "serial": serial,

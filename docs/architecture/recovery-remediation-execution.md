@@ -646,3 +646,71 @@ API26/35/37-PR-Läufe, regulär signierte vorherige/neue APK im aktuellen Upgrad
 historische Lanes, geprüfter Squash/Main/Publikation. Unterstützte Pixel-Diagnose und anschließende
 Normal-/Bedienabnahme bleiben bei fehlendem Gerät separat offen. Remote-Main aktuell d0099a63;
 noch kein P3-PR vorhanden. Kein weiterer Produktumfang aus P4 in diesem Branch.
+
+### P3 – PR367 Korrekturrunde 4: native Activity- und Diagnoseintervallgrenzen
+
+PR-Head e04b0c1b, Lauf 34712253576: normale API35/37- und animierte API26/37-Lanes bestehen;
+API35-Animation noch aktiv. Normaler API26-Gradle-Korpus besteht (60 gemeldete Tests, zwei
+vorgesehene Upgrade-Skips), aber der anschließende Diagnose-Treiber läuft beim ersten
+`am start -W MainActivity` in seinen 30s-Timeout. Die Diagnose selbst meldet danach regulär
+Schema24 ohne FK-Fehler. Job103603663949 und `/tmp/p3-api26-first-artifacts/` belegen die Grenze.
+
+Zusätzliche beobachtete Grenze: API26 startet direkt nach dem Ende der Instrumentierung einen
+normalen SystemJobService-Prozess; der zurückgestellte Worker läuft dort erfolgreich. Daher
+würde ein erst in einem weiteren Diagnoseprozess aufgenommener Snapshot erlaubte normale
+Wiederherstellung mit unerlaubter Arbeit innerhalb der Diagnose verwechseln. Der bisherige
+API35-Erfolg widerlegt diese native API26-Reihenfolge nicht.
+
+Begrenzter Korrekturplan vor Änderung:
+1. Der ausschließlich debugseitige Provider registriert ActivityLifecycleCallbacks. Für jede
+   reale Produkt-Activity werden Erzeugung und Zerstörung, finishing, Diagnosemodus und PID
+   festgehalten. Der Treiber sendet den Start einmal ohne `-W` und wartet begrenzt auf diese
+   tatsächlichen Callbackbelege sowie dieselbe PID; keine schwächere reine Shell-Erfolgskontrolle.
+2. Die echte DiagnosticProbeInstrumentation erhält einen explizit auf Emulator-Testpaket
+   begrenzten lesenden Prüfmodus. Ein zufälliger Token bindet das vom Treiber nach allen Ereignissen
+   geschriebene Bereitschaftssignal an den gehaltenen Prozess. Noch vor Diagnoseende werden
+   vollständiger ursprünglicher Schema-/Datensnapshot, direkte Room-Sperre und native Ereignis-
+   belege geprüft und bestätigt. Der Zugang enthält weiterhin keinen Seed-Modus.
+3. Im Abbruchfall bestätigt der Runner dieselben Prüfungen und hält danach begrenzt bis zur
+   gezielten Prozessbeendigung. Der Treiber muss diese Bestätigung vor dem Abbruch sehen.
+   Nach Ende/Abbruch ist normales Hintergrundanlaufen erlaubt; der frische Normal-Kontrolllauf
+   prüft weiterhin Timer, denselben zurückgestellten Worker und sämtliche erhaltenen Fachzeilen.
+   Der normale Produktionsdiagnoseaufruf behält seinen bisherigen lesenden Weg ohne Testsynchronisation.
+4. Dokumentation und fokussierte Treiber-Gegenprüfungen auf tatsächliche Activitycallbacks,
+   Diagnose-PID und Intervallbestätigung ausrichten. API26 nativ und die betroffenen API35/37-
+   Diagnosefälle neu prüfen. Der vorhandene vollständige lokale Lauf wird regulär beendet und
+   seinem ursprünglichen Quellstand zugeordnet; Änderungen erst nach dessen Buildabschluss.
+
+Die gleiche belegte Normalprozess-Rennbedingung gilt für den CLI: nach Ende der Diagnose darf
+ein neuer normaler Prozess bereits laufen. Die Beendigungsprüfung muss daher die originale
+Diagnose-PID verfolgen, statt jede neue Paket-PID als weiterlaufende Diagnose einzustufen.
+Ergänzung zum Korrekturplan: PID im unterstützten und frühen Unsupported-Ergebnis eindeutig
+berichten und ausschließlich deren Ende prüfen; einen bereits gestarteten Normalprozess separat
+benennen. Keine Zusicherung einer dauerhaft gestoppten App oder von Schreibruhe nach Diagnoseende.
+
+Vollständiger lokaler Check für e04b0c1b regulär mit Exit0 abgeschlossen: 22m49s, 793 Hosttests,
+0 Fehler, ein optionaler Benchmark-Skip, 52 CI-/42 Release-Skriptprüfungen, Lint, alle Builds,
+Identität und Größenlimits bestanden. APKs unter `/tmp/p3-initial-full-proof/` erhalten.
+Dieser Befund gilt für den ursprünglichen P3-Stand und schließt die API26-Korrekturrunde nicht.
+
+Korrekturrunde 4 nativ auf API26 bestanden (`/tmp/p3-round4-api26/result.json`, 169.08s):
+Normalkontrolle und alle vier Schema24/27-Ende-/Abbruchfälle. Für MainActivity, FlowRunsActivity
+und FlowSetupActivity liegen tatsächliche created/destroyed/finishing/diagnosing-Belege der
+originalen PID vor. Der echte Diagnose-Runner bestätigt vor seinem Ende den vollständigen
+Datensnapshot, die Room-Sperre und die Worker-/Servicebelege mit gebundenem Token. Nach Ende
+und Abbruch bestehen Timer-/Workerabgleich und vollständiger Erhaltungscheck im Normalbetrieb.
+55 CI- und 43 Release-Skriptprüfungen bestehen; Gegenfälle erkennen fremde PID, alten Token,
+fehlende Activitycallbacks und verweigern physische Geräte vor Root/Installation/Fixture-Arbeit.
+Die Synchronisation ist ausschließlich am isolierten Emulator-Testpaket erlaubt; feste reflektierte
+lesende Assertions vermeiden eine Room-/Fixture-ABI-Verknüpfung im Produktionsdiagnosepfad.
+
+Der geänderte CLI besteht zusätzlich nativ auf API26: ältere isolierte APK ohne ABI wird vor
+App-Erzeugung mit explizitem Unsupported, originaler PID und Exit4 abgewiesen; DB/WAL/SHM bleiben
+bytegleich. Die aktuelle APK liefert danach einen erfolgreichen Diagnosebericht und bestätigt
+das Ende ihrer PID (Exit0). Belege `/tmp/p3-round4-api26-legacy-rejection.json` und
+`/tmp/p3-round4-api26-supported-cli.json`; frühere API35-Belege werden nicht überschrieben.
+Abgleich der Korrektur: echte Activity-Zustellung und vollständiger Datenumfang bleiben erhalten;
+Zeitgrenze jetzt innerhalb der Diagnose, anschließender Normalprozess ausdrücklich zulässig.
+Der Emulator wird nach diesen Nachweisen beendet. Produktionshelper-Build und vollständiger
+lokaler Abschluss werden für den korrigierten Stand neu geprüft; neuer PR-Head bleibt bis dahin
+und bis zum passenden vollständigen CI-Ergebnis ungemergt.

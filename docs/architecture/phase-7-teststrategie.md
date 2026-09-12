@@ -238,3 +238,9 @@ Schema24/27, echte Plattformereignisse, vollständige Nutzdaten-/Schema-Snapshot
 und Abbruch sowie normaler Timer-/Worker-Wiederanlauf. Der native Treiber akzeptiert ausschließlich
 das Emulator-Testpaket; der Produktionshelper deklariert seine Fixture-/Normal-Runner nicht.
 Ein fehlgeschlagener Diagnose-Lifecycle sperrt die Lane auch nach erfolgreicher JUnit-Prüfung.
+
+Der Diagnose-Treiber vergleicht den vollständigen Datenbestand vor Ende des gehaltenen Prozesses.
+Ein nachfolgender normaler Systemprozess darf bereits Timer und Worker abgleichen; dessen Änderungen
+sind kein Verstoß gegen die beendete Diagnose. Activity-Ereignisse werden durch echte Erzeugungs-/
+Zerstörungs-Callbacks in der Diagnose-PID belegt, nicht durch `am start -W` auf eine absichtlich
+sofort beendete Oberfläche. Der CLI verfolgt ebenfalls die ursprüngliche Diagnose-PID.
