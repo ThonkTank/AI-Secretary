@@ -161,7 +161,7 @@ public final class LoadDashboard {
                     if (context != null) trainingContexts.put(step.sourceTemplateId, context);
                 }
         return new Dashboard(this.today.xp(), result, combos, flowRuns, visibleFlowSheets,
-                trainingContexts);
+                trainingContexts, this.today.todayPlacements());
     }
 
     private static DashboardTask item(Task task, Occurrence occurrence,

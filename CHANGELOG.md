@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- „Später“ verschiebt Heute-Aufgaben ans Abschnittsende, danach in den nächsten Abschnitt und
+  zuletzt auf morgen; normale Aufgaben und Abläufe verwenden dieselbe gespeicherte Reihenfolge.
+- Ein Klick auf den Aufgabentitel in Heute holt die Aufgabe direkt in den Fokus. Fälligkeit,
+  Wiederholungsplan, Fortschritt und laufende Timer bleiben erhalten; das Widget folgt derselben Reihenfolge.
+
 - Dauer-Schritte können in Today als eigenständige Countdown-Timer gestartet, pausiert und
   zurückgesetzt werden, ohne den Schritt automatisch abzuhaken.
 - Gym-Schritte mit Sätzen und Wiederholungen unterstützen automatische, pro Schritt konfigurierbare

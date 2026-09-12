@@ -22,6 +22,22 @@ public final class RoomTodayRepository implements TodayRepository {
 
     public RoomTodayRepository(AppDatabase database) { this.dao = database.today(); }
 
+    @Override public List<de.thonktank.autosecretary.domain.model.TodayPlacement> todayPlacements() {
+        List<de.thonktank.autosecretary.domain.model.TodayPlacement> result = new ArrayList<>();
+        for (TodayPlacementEntity e : dao.activeTodayPlacements())
+            result.add(new de.thonktank.autosecretary.domain.model.TodayPlacement(
+                    de.thonktank.autosecretary.domain.model.TodayPlacement.Kind.valueOf(e.kind),
+                    e.id, LocalDate.parse(e.displayOn), TaskSlot.fromStorage(e.slot), e.position));
+        return result;
+    }
+    @Override public void putTodayPlacement(de.thonktank.autosecretary.domain.model.TodayPlacement p) {
+        dao.putTodayPlacement(new TodayPlacementEntity(p.kind.name(), p.id,
+                p.displayOn.toString(), p.slot.storageCode, p.position));
+    }
+    @Override public void deleteTodayPlacement(
+            de.thonktank.autosecretary.domain.model.TodayPlacement.Kind kind, String id) {
+        dao.deleteTodayPlacement(kind.name(), id);
+    }
     @Override public void insertOccurrence(Occurrence value) {
         dao.insertOccurrence(mapper.toEntity(value));
     }

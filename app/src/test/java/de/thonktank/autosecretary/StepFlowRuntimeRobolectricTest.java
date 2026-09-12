@@ -189,9 +189,34 @@ public final class StepFlowRuntimeRobolectricTest {
         useCases.today.materializeDue.execute();
         String sheetId = useCases.today.loadDashboard.execute(TODAY)
                 .flowTaskSheets.get(0).placement.id;
-        assertTrue(useCases.today.deferFlowTaskSheet.execute(sheetId));
+        assertTrue(useCases.today.moveItem.execute(
+                de.thonktank.autosecretary.domain.model.TodayPlacement.Kind.FLOW_TASK_SHEET,
+                sheetId, de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.LATER));
         TodayUiModel mapped = mapper().map(useCases.today.loadDashboard.execute(TODAY), TODAY);
         assertEquals("Abwasch", mapped.focus.title());
+        assertEquals(4, repository.flows.flowCandidates(task.id).size());
+        assertTrue(activeRuns().isEmpty());
+        assertTrue(consumingResources().isEmpty());
+    }
+
+    @Test public void normalAndFlowCardsShareLaterAndTitleOrderingWithoutStartingWork() {
+        useCases.catalog.create.execute(TaskDefinition.basic("Abwasch", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, Collections.singletonList("Spülen")));
+        useCases.today.materializeDue.execute();
+        String normal = repository.today.openOccurrences().get(0).id;
+        String sheet = useCases.today.loadDashboard.execute(TODAY).flowTaskSheets.get(0).placement.id;
+        useCases.today.moveItem.execute(TodayPlacement.Kind.OCCURRENCE, normal,
+                de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.FIRST);
+        useCases.today.moveItem.execute(TodayPlacement.Kind.OCCURRENCE, normal,
+                de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.LATER);
+        assertEquals(sheet, mapper().map(useCases.today.loadDashboard.execute(TODAY), TODAY).focus.itemId());
+        useCases.today.moveItem.execute(TodayPlacement.Kind.OCCURRENCE, normal,
+                de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.LATER);
+        assertEquals(TaskSlot.MIDDAY, mapper().map(useCases.today.loadDashboard.execute(TODAY), TODAY)
+                .timeline.get(0).task.slot);
+        useCases.today.moveItem.execute(TodayPlacement.Kind.OCCURRENCE, normal,
+                de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.FIRST);
+        assertEquals(normal, mapper().map(useCases.today.loadDashboard.execute(TODAY), TODAY).focus.itemId());
         assertEquals(4, repository.flows.flowCandidates(task.id).size());
         assertTrue(activeRuns().isEmpty());
         assertTrue(consumingResources().isEmpty());

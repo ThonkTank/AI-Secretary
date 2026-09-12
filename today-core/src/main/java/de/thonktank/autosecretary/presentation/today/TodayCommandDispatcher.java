@@ -8,6 +8,7 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
         void handleRequestClose(String taskId, String title);
         void handleCompleteRemaining(String occurrenceId);
         void handleHarvest(String occurrenceId);
+        void handleBringFirst(TodayItemTarget target);
         void handleDefer(TodayItemTarget target);
         void handleStartFlowCandidate(String candidateId, Long chosenDelayMillis);
         default void handleCompleteFlowStep(String runtimeStepId, Long chosenDelayMillis) {
@@ -61,6 +62,9 @@ public final class TodayCommandDispatcher implements TodayCoordinator.CommandSin
                 return;
             case HARVEST:
                 handlers.handleHarvest(command.id);
+                return;
+            case BRING_FIRST:
+                handlers.handleBringFirst(command.itemTarget);
                 return;
             case DEFER:
                 handlers.handleDefer(command.itemTarget);

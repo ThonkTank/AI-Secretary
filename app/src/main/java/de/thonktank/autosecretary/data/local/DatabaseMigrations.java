@@ -1273,7 +1273,13 @@ public final class DatabaseMigrations {
                 MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
                 MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20,
                 MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24,
-                new FlowGraphMigration25()};
+                new FlowGraphMigration25(), new Migration(25, 26) {
+                    @Override public void migrate(SupportSQLiteDatabase database) {
+                        database.execSQL("CREATE TABLE IF NOT EXISTS today_placements (kind TEXT NOT NULL, "
+                                + "id TEXT NOT NULL, displayOn TEXT NOT NULL, slot TEXT NOT NULL, "
+                                + "position INTEGER NOT NULL, PRIMARY KEY(kind,id))");
+                    }
+                }};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

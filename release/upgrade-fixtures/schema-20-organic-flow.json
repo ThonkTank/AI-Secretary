@@ -15,7 +15,7 @@
     "metadataSha256": "5e7138351cfae612e7672051eec097c65ea9f8d2b8307e8af723a3ab54f08b35",
     "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
   },
-  "targetDatabaseVersion": 25,
+  "targetDatabaseVersion": 26,
   "apiLanes": [
     {
       "apiLevel": 26,

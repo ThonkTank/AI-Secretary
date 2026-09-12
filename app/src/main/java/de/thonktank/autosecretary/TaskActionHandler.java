@@ -19,7 +19,9 @@ final class TaskActionHandler {
                 container.today.complete.execute(occurrenceId);
             }
             @Override public void defer(String occurrenceId) {
-                container.today.defer.execute(occurrenceId);
+                container.today.moveItem.execute(
+                        de.thonktank.autosecretary.domain.model.TodayPlacement.Kind.OCCURRENCE,
+                        occurrenceId, de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.LATER);
             }
             @Override public void toggleStep(String stepId) {
                 container.today.toggleStep.execute(stepId);

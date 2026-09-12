@@ -32,7 +32,9 @@ import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.usecase.CloseOngoingTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
-import de.thonktank.autosecretary.domain.usecase.DeferTask;
+import de.thonktank.autosecretary.domain.usecase.MoveTodayItem;
+import de.thonktank.autosecretary.domain.model.TodayPlacement;
+import de.thonktank.autosecretary.domain.today.TodayQueue;
 import de.thonktank.autosecretary.domain.usecase.DeleteTask;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
@@ -271,7 +273,7 @@ public final class UseCaseRobolectricTest {
         assertEquals(2, repository.today.combo(repository.steps.findOccurrenceStep(stepId).comboOwnerId).points);
     }
 
-    @Test public void deferSwapsOnlyTheSelectedAndNextOpenTask() {
+    @Test public void deferMovesSelectedTaskToSectionEnd() {
         CreateTask create = new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids);
         create.execute(TaskDefinition.basic("Erste", TaskSlot.MORNING,
                 Recurrence.ONCE, 1, 0, Collections.emptyList()));
@@ -283,11 +285,12 @@ public final class UseCaseRobolectricTest {
         TaskId first = before.tasks.get(0).task.id;
         String occurrenceId = before.tasks.get(0).occurrence.id;
 
-        new DeferTask(repository.catalog, repository.today, repository.transactions).execute(occurrenceId);
+        new MoveTodayItem(repository.today, load, repository.transactions, clock).execute(
+                TodayPlacement.Kind.OCCURRENCE, occurrenceId, MoveTodayItem.Action.LATER);
         Dashboard after = load.execute(TODAY);
 
-        assertNotEquals(first, after.tasks.get(0).task.id);
-        assertEquals(first, after.tasks.get(1).task.id);
+        assertNotEquals(first, TodayQueue.visible(after, TODAY).get(0).task.task.id);
+        assertEquals(first, TodayQueue.visible(after, TODAY).get(1).task.task.id);
     }
 
     @Test public void closingOngoingTaskCreatesAReceiptAndCanBeFullyUndoneToday() {

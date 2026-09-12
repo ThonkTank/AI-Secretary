@@ -30,6 +30,7 @@
     <string name="greeting_afternoon">Nachmittag</string>
     <string name="greeting_evening">Guten Abend</string>
     <string name="greeting_late">Es wird spät</string>
+    <string name="today_placement_label">Heute · %1$s</string>
     <string name="action_later">später</string>
     <string name="action_complete">erledigen</string>
     <string name="action_complete_all">Alle erledigen</string>
