@@ -2,12 +2,13 @@
 
 Kanonische Roadmap: [recovery-remediation-roadmap.md](recovery-remediation-roadmap.md)
 
-## Aktueller Arbeitsstand (P4 integriert, P4b in Arbeit)
+## Aktueller Arbeitsstand (P4b-Software veröffentlicht, P5-Geräteabnahme offen)
 
-P0-Belegbestand, P1, P2 und P3 sind auf Remote-Main integriert. P3 ist mit0.2.174 veröffentlicht.
-P4 hat den Erzeuger der drei Waisenkategorien reproduziert und ist nach vollständiger PR-Prüfung
-und exaktem Main-Nachweis integriert. P4b enthält den lokalen Ursachenfix und die nativen Erhaltungs-/Rollbackbelege.
-Der ergänzte signierte Fixture-Vertrag wird geprüft; PR, Main und Release sind noch offen. Pixel-Diagnose und sichtbare Bedienabnahme bleiben bei P5 offen.
+P0-Belegbestand und P1–P4 sind geprüft auf Remote-Main integriert. P4b ist über PR369 auf
+Mainc87d3240 integriert und als0.2.175 veröffentlicht. Vollständiger lokaler Check, alle15 PR-
+Gates, exakter Main, aktueller Smoke und sechs historische signierte Upgrades sind grün;
+öffentliche APK und Metadaten sind bytegleich zum getesteten Kandidaten. Die P5-Geräteabnahme
+bleibt offen: Pixel nicht verbunden.
 Die folgenden ursprünglichen Planungsstände und Fehlversuche bleiben historische Aufzeichnungen.
 
 ## Planungsstand 2026-09-12
@@ -1107,3 +1108,102 @@ Kosten erzeugt. Er ist kein finaler Nachweis. Der bereits laufende lokale Gradle
 unverändert; dessen Quell-/Testinhalt ist weiterhin01f1dd64. Skriptverträge werden für die aktuelle
 Dokumentkorrektur erneut geprüft. Der neue PR-Gate bleibt vollständig; keine künstliche Wiederholung
 des unveränderten lokalen Produktbuilds allein wegen dieser Dokumentänderung.
+
+### P4b – vollständiger lokaler Abschluss, PR noch offen
+
+Ursprünglicher check-all.sh mit Exit0 abgeschlossen; Gradle19m50s,172 Tasks mit43 ausgeführten
+und129 unveränderten wiederverwendeten Tasks. Alle793 Hostfälle erfasst,0 Fehler/Errors,
+1 ausdrücklich optionaler WoodGrainBenchmark-Skip. Lint, Debug-/Release-/reguläre Instrumentierungs-
+Builds, Paketidentität und Größenlimits bestanden. APK-Größen10337629/2913240 Bytes (Debug/unsigned
+Release). Frische55 CI- und45 Release-Werkzeugtests auch nach der reinen Dokumentkorrektur grün.
+Belege `/tmp/p4b-full-local-check.log`, `/tmp/p4b-full-local-proof.json` und
+`/tmp/p4b-doc-round4-{ci,release}-contracts.log`.
+
+Geprüfter Produkt-/Testinhalt ist01f1dd6440c98d732bdfacdceca44453c4ebefdc; aktueller PR369-Head
+bf42fe37e440929cba3361fc1b08660421ff7031 unterscheidet sich ausschließlich in ADR-005 und diesem
+Ausführungsprotokoll. Der frühere Lauf34719827334 ist bestätigt cancelled; keine Android-Matrix
+lief dort. Der aktuelle vollständige Lauf34720018607 läuft weiter. Keine PR-/Main-/Releasefreigabe
+aus dem lokalen Ergebnis abgeleitet. Draft bleibt bis zu beiden grünen Gates bestehen.
+
+Dieser laufende Ergebnisvermerk wird lokal fortgeschrieben und mit dem Phasenabschluss als reine
+Dokumentation integriert. Er verändert den bereits laufenden PR-Prüfstand nicht; dessen aktuelle
+Nachweise stehen zusätzlich im PR-Text. Keine Produkt-/Testdateien seit01f1dd64 geändert.
+
+### P4b – vollständige PR-Freigabe vor Merge
+
+PR369/Headbf42fe37e440929cba3361fc1b08660421ff7031 besteht Lauf34720018607 vollständig:
+15 erforderliche Qualitäts-/Inhalts-/Policy-/Android-/Abschlussjobs erfolgreich. Alle sechs
+normalen/animierten API26/35/37-Lanes grün; API35-Animationsjob10m01s. Normale Läufe entdecken
+69/69/48 Tests auf26/35/37, jeweils genau die zwei vorgesehenen UpgradePersistenceTest-Skips.
+Die zusätzlich neun nativen Fälle sind im regulären ungekürzten Korpus enthalten. Belege:
+`/tmp/p4b-pr-final-results.json`, `/tmp/p4b-pr-before-merge.json`,
+`/tmp/p4b-pr-api{26,35,37}.log`, `/tmp/p4b-pr-native-proof.json`.
+
+Gesonderter Abgleich gegen Phasenplan: Ursachenfix, sofortige Integrität, Erhalt aller vorhandenen
+Bearbeitungsbelege, atomarer Rollback, direktes Schema22-Fixture und dessen fehlersensitive
+Abwesenheitsprüfung umgesetzt; lokaler Vollcheck und kompletter PR-Gate grün. Abgleich gegen
+Roadmap: begrenzter P4b-Fix des bewiesenen Erzeugers, bestehende Archiv-/Zähler-Schutzpfade erhalten,
+keine neue Domainentscheidung, keine Datenlöschung oder Rekonstruktion am Pixel. Signierte
+Upgrades/Veröffentlichung sind noch offen und werden nicht durch diese PR-Prüfung ersetzt.
+
+Unmittelbar vor Merge: Remote-Maind779ed38 unverändert, PR mergeable, Git-Inhaltsbaum
+5ed682fbac2fb9a0bd2cfd9a2a38fafeda92e0ad stimmt mit dem tatsächlichen CI-Inhaltsnachweis überein.
+Ready/Squash wird erst jetzt ausgeführt, gebunden an den geprüften Head.
+
+### P4b – Main-Integration, signierter Abschluss läuft
+
+PR369 ist am2026-09-12T21:46:27Z per Squash nach
+c87d3240e0394681d2a57724ee82b64d58fc9572 gemergt. Remote-Main frisch abgeglichen; Baum
+5ed682fbac2fb9a0bd2cfd9a2a38fafeda92e0ad identisch zum geprüften PR. Exakter Main-Lauf
+34720901999 ist gestartet. Quelle `/tmp/p4b-merged-pr.json`. Noch keine Veröffentlichung
+oder Geräteabnahme behauptet.
+
+Plan für den reinen P4b-Dokumentabschluss: die bereits lokal fortgeschriebenen Prüfergebnisse
+auf codex/recovery-candidate-cleanup-status vom gemergten Main erhalten, nach Abschluss der
+signierten Main-Prüfungen um tatsächliche Wiederverwendung, Kandidaten-/Publikationsbelege und
+Phasenstatus ergänzen. Erst dann als reine Dokumentation per geprüftem PR/Squash integrieren.
+Keine weitere Änderung des Produkt-/Testinhalts und kein erneuter vollständiger Android-Lauf
+allein zum Einchecken der Ergebnisse. P5 beginnt nach diesem P4b-Abschluss; physische Abnahme
+bleibt bis zum tatsächlichen Gerätenachweis offen.
+
+Main-Wiederverwendung anhand tatsächlicher Policy-Job-Eingaben bestätigt: PR369/Headbf42fe37/
+Lauf34720018607, Baum5ed682fb, full/Policy1, identical_tree_and_green_pr,
+release_required=true und historical_upgrades_required=true. Die dynamische Matrix enthält
+sechs historische Lanes einschließlich schema-22-clean-candidate/forest-android-1015701/API26.
+Keine erneute normale/animierte Android-Matrix auf Main; Packaging und signierte Upgrades bleiben
+zwingend. Belege `/tmp/p4b-main-policy.log` und `/tmp/p4b-main-reuse-proof.json`.
+
+### P4b – signierter Main- und Veröffentlichungsabschluss
+
+Exakter Main-Lauf34720901999 ist erfolgreich abgeschlossen. Packaging2m46s; alle sieben
+signierten Upgradefälle erfolgreich: aktueller0.2.174→0.2.175/Schema27→27 aufAPI35, Schema8
+aufAPI26/35/37 sowie Schema20/22/23 jeweils aufAPI26. Schema22-Lauf103626864338 bestätigt
+Seed und Verify jeweils mit OK(1 probe); der aktuelle Lauf103626864240 zusätzlich den
+unterstützten frühen Diagnosezugang sowohl der Quelle als auch des neuen Kandidaten.
+Kein signed-upgrade-Fall wurde übersprungen oder automatisch wiederholt. Belege
+`/tmp/p4b-main-final-results.json`, `/tmp/p4b-signed-schema22.log`, `/tmp/p4b-signed-current.log`.
+
+Release0.2.175/1017501, Tagforest-android-1017501, veröffentlicht2026-09-12T21:53:55Z,
+zeigt aufc87d3240e0394681d2a57724ee82b64d58fc9572. Heruntergeladene öffentliche APK und
+Metadaten sind vollständig bytegleich zum Kandidaten aus demselben Main-Lauf; GitHub-Asset-
+Digests und Größen stimmen ebenfalls überein. APK-SHA256
+0e5e49bfd7dd26e4ac3a96c9977915aed1ec2f9cceac505119f08fdc5e7e3a7b;
+Metadaten2b773a0525c05c3715b9a908a294a6fb34c64a6f111bd681a127e86c86d14699;
+Helperb0d6b6ab483691167b5a84978eaa9e8ac754b258963c4ca5b5c63f87dd84a760.
+App und Helper tragen reguläres Zertifikat
+de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da.
+Auch die tatsächlichen aktuellen Quellbytes0.2.174 sind gegen den gebundenen Tag, Release und
+Metadaten geprüft. Ein erster manueller Validatoraufruf ohne current_smoke=True wurde korrekt
+als falscher Vertragsmodus abgewiesen; der explizite aktuelle Modus bestätigt die Quelle.
+Dies war keine fehlgeschlagene Upgradeausführung und führte zu keinem erneuten CI-Lauf.
+Belege `/tmp/p4b-candidate-proof.json`, `/tmp/p4b-publication-proof.json`,
+`/tmp/p4b-main-34720901999-candidate/`, `/tmp/p4b-public-1017501/`.
+
+Gesondertes Abschlussaudit gegen P4b-Plan: der direkte Erzeuger ist entfernt, Erhaltungs-/Rollback-
+Grenzen geprüft, signed schema22-Nachweis erkennt die bisher verdeckte Archivierung und alle
+bestehenden historischen Quellen bleiben geprüft. Lokaler/PR/exakter Main/signierter/public-
+Nachweis getrennt zugeordnet. Gegen Roadmap: bedingter Ursachenfix geliefert; bestehendes
+Wiederherstellungsarchiv und robuster Zähler unverändert, keine neuen produktiven Datenentscheidungen,
+keine Behauptung zur unbekannten persönlichen Zählerentstehung. Software- und Releasekriterien
+von P4b erfüllt; Abschluss dieses Ergebnisprotokolls folgt als docs-only PR. P5 bleibt separat
+offen. Pixel wurde frisch nicht gefunden; Geräteverfügbarkeit ist beim Nutzer angefragt.
