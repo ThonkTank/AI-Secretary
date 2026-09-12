@@ -15,6 +15,7 @@ public final class FlowGraphMigration25 extends Migration {
 
     @Override public void migrate(SupportSQLiteDatabase database) {
         if (!database.inTransaction()) throw new IllegalStateException("Flow migration requires an upgrade transaction");
+        OrphanFlowRecovery.recover(database);
         requireForeignKeys(database);
         prepareExecutionStates(database);
         migrateDefinitions(database);

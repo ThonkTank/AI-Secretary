@@ -878,7 +878,7 @@ public final class DatabaseMigrationRobolectricTest {
         try {
             assertEquals(123, migrated.today().stats().xp);
             assertTrue(migrated.today().todayPlacements().isEmpty());
-            assertEquals(26, migrated.getOpenHelper().getWritableDatabase().getVersion());
+            assertEquals(DatabaseContract.VERSION, migrated.getOpenHelper().getWritableDatabase().getVersion());
         } finally { migrated.close(); }
     }
 

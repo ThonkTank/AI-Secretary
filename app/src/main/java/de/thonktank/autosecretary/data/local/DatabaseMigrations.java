@@ -1279,6 +1279,10 @@ public final class DatabaseMigrations {
                                 + "id TEXT NOT NULL, displayOn TEXT NOT NULL, slot TEXT NOT NULL, "
                                 + "position INTEGER NOT NULL, PRIMARY KEY(kind,id))");
                     }
+                }, new Migration(26, 27) {
+                    @Override public void migrate(SupportSQLiteDatabase database) {
+                        OrphanFlowRecovery.createArchive(database);
+                    }
                 }};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
