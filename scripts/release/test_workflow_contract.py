@@ -1,9 +1,13 @@
 import hashlib
 import pathlib
 import unittest
+import sys
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts/ci"))
+from change_scope import ChangeScope
+
 ROOT_BUILD = (ROOT / "build.gradle.kts").read_text(encoding="utf-8")
 SETTINGS_BUILD = (ROOT / "settings.gradle.kts").read_text(encoding="utf-8")
 APP_BUILD = (ROOT / "app" / "build.gradle.kts").read_text(encoding="utf-8")
@@ -416,8 +420,13 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("MAX_APK_BYTES = 8 * 1024 * 1024", RELEASE_TOOL)
         for job in (instrumentation, animation):
             with self.subTest(job=job[:40]):
-                self.assertIn('api-level: "37.0"', job)
-                self.assertIn("channel: canary", job)
+                if job == instrumentation:
+                    self.assertIn('api-level: "37.0"', job)
+                    self.assertIn("channel: canary", job)
+                else:
+                    self.assertIn("fromJSON(needs.release_scope.outputs.animation_matrix)", job)
+                    self.assertIn({"api-level": "37.0", "target": "google_apis", "arch": "x86_64", "channel": "canary"},
+                                  ChangeScope("full", True).animation_matrix["include"])
                 self.assertIn("if: matrix.channel != 'stable'", job)
                 self.assertIn("./scripts/ci/prepare-preview-sdk-tools.sh", job)
                 self.assertIn("channel: ${{ matrix.channel }}", job)
@@ -498,10 +507,11 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("scripts/ci/reuse_pr_verification.py", release_scope)
         self.assertIn("python3 scripts/ci/change_scope.py", release_scope)
         self.assertNotIn("app_changed", WORKFLOW)
-        for quality_lane in (quality_contracts, quality_goldens, quality_build):
-            self.assertIn("outputs.quality_required == 'true'", quality_lane)
+        for quality_lane, flag in ((quality_contracts, "quality_required"),
+                                   (quality_goldens, "goldens_required"), (quality_build, "build_required")):
+            self.assertIn(f"outputs.{flag} == 'true'", quality_lane)
         self.assertIn(
-            "needs: [release_scope, quality-contracts, quality-goldens, quality-build]",
+            "needs: [release_scope, verification-policy, quality-contracts, quality-goldens, quality-build]",
             quality,
         )
         self.assertIn("outputs.instrumentation_required == 'true'", instrumentation)
@@ -511,7 +521,7 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("github.event_name != 'pull_request'", instrumentation)
         self.assertIn("outputs.release_required == 'true'", package)
 
-    def test_main_reuses_only_content_identical_green_product_pr_verification(self):
+    def test_main_reuses_only_content_identical_profile_matched_green_pr_verification(self):
         release_scope = WORKFLOW.split("\n  release_scope:", 1)[1].split(
             "\n  quality-contracts:", 1
         )[0]
@@ -555,8 +565,8 @@ class WorkflowContractTest(unittest.TestCase):
             self.assertIn(
                 "outputs.reuse_pr_verification != 'true'", job
             )
-        self.assertIn("REUSE_PR_VERIFICATION", quality)
-        self.assertIn("REUSE_PR_VERIFICATION", gate)
+        self.assertIn("verification_gate.py quality", quality)
+        self.assertIn("verification_gate.py android", gate)
         self.assertIn("needs.quality.result == 'success'", package)
         self.assertIn("outputs.reuse_pr_verification == 'true'", package)
         self.assertIn("needs.instrumentation-gate.result == 'success'", package)
@@ -567,13 +577,30 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("always()", publish)
         self.assertIn("needs.package.result == 'success'", publish)
         self.assertIn("needs.upgrade.result == 'success'", publish)
-        self.assertIn('REQUIRED_JOBS = ("quality", "instrumentation-gate", '
-                      '"pull-request-gate")', REUSE_PR_VERIFICATION)
+        self.assertIn("required_jobs(profile)", REUSE_PR_VERIFICATION)
+        self.assertIn('--profile "${{ steps.scope.outputs.verification_profile }}"', release_scope)
+        self.assertIn('--policy-version "${{ steps.scope.outputs.verification_policy }}"', release_scope)
         self.assertIn('event_name != "push"', REUSE_PR_VERIFICATION)
         self.assertIn('ref != "refs/heads/main"', REUSE_PR_VERIFICATION)
         self.assertIn('pull.get("merge_commit_sha") == main_sha', REUSE_PR_VERIFICATION)
         self.assertIn('head_trees.get(head_sha) != main_tree', REUSE_PR_VERIFICATION)
         self.assertIn('ReuseDecision.denied("evidence_unavailable")', REUSE_PR_VERIFICATION)
+
+    def test_current_source_is_pinned_before_build_and_all_selected_upgrades_gate_publish(self):
+        package = WORKFLOW.split("\n  package:", 1)[1].split("\n  upgrade:", 1)[0]
+        current = WORKFLOW.split("\n  current-upgrade:", 1)[1].split("\n  publish:", 1)[0]
+        publish = WORKFLOW.split("\n  publish:", 1)[1]
+        self.assertLess(package.index("current_upgrade_smoke.py"), package.index("./gradlew assembleRelease"))
+        self.assertIn("-PcurrentUpgradeSmokeAssets=", package)
+        self.assertIn('cp -R "$RUNNER_TEMP/current-upgrade-smoke"', package)
+        self.assertIn("verify-current-source", current)
+        self.assertNotIn("gh release download", current)
+        self.assertNotIn("releases/latest", current)
+        self.assertIn('"$SOURCE_APK" "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk"', current)
+        self.assertIn("./scripts/ci/run-upgrade-test.sh", current)
+        self.assertIn("needs.current-upgrade.result == 'success'", publish)
+        self.assertIn("needs: [package, upgrade, current-upgrade, release_scope]", publish)
+        self.assertLess(publish.index("verification_gate.py publish"), publish.index("gh release create"))
 
     def test_signing_alias_and_passwords_are_independent_inputs(self):
         self.assertIn("SIGNING_KEY_ALIAS: ${{ secrets.KEYSTORE_ALIAS || 'release' }}", WORKFLOW)
@@ -605,10 +632,11 @@ class WorkflowContractTest(unittest.TestCase):
 
         self.assertIn("./scripts/ci/run-instrumentation.sh", instrumentation)
         self.assertIn("name: instrumentation-gate", instrumentation_gate)
-        self.assertIn("api-level: 26", animation_instrumentation)
-        self.assertIn("api-level: 35", animation_instrumentation)
-        self.assertIn('api-level: "37.0"', animation_instrumentation)
-        self.assertIn("channel: canary", animation_instrumentation)
+        self.assertIn("fromJSON(needs.release_scope.outputs.animation_matrix)", animation_instrumentation)
+        self.assertEqual([26, 35, "37.0"], [lane["api-level"] for lane in
+                         ChangeScope("full", True).animation_matrix["include"]])
+        self.assertEqual([35], [lane["api-level"] for lane in
+                         ChangeScope("today", True).animation_matrix["include"]])
         self.assertIn(
             "name: Update SDK tools for minor-versioned preview packages",
             animation_instrumentation,
@@ -633,18 +661,16 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("TodayInteractionInstrumentationTest", animation_instrumentation)
         self.assertNotIn("INSTRUMENTATION_RERUN_TASKS", animation_instrumentation)
         self.assertIn(
-            "needs: [quality, release_scope, instrumentation, animation-instrumentation]",
+            "needs: [quality, release_scope, verification-policy, instrumentation, animation-instrumentation]",
             instrumentation_gate,
         )
-        self.assertIn('test "$INSTRUMENTATION_RESULT" = success', instrumentation_gate)
-        self.assertIn(
-            'test "$ANIMATION_INSTRUMENTATION_RESULT" = success', instrumentation_gate
-        )
+        self.assertIn("verification_gate.py android", instrumentation_gate)
+        self.assertIn("VERIFICATION_NEEDS: ${{ toJSON(needs) }}", instrumentation_gate)
         self.assertIn("name: pull-request-gate", pull_request_gate)
         self.assertIn(
-            "needs: [quality, release_scope, instrumentation-gate]", pull_request_gate
+            "needs: [quality, release_scope, verification-policy, instrumentation-gate]", pull_request_gate
         )
-        self.assertIn('test "$INSTRUMENTATION_GATE_RESULT" = success', pull_request_gate)
+        self.assertIn("verification_gate.py pr", pull_request_gate)
         self.assertIn("needs: [quality, instrumentation-gate, release_scope]", package)
 
     def test_instrumentation_failures_are_captured_before_the_emulator_stops(self):

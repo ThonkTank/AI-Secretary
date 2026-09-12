@@ -21,6 +21,14 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
+      verification_profile: ${{ steps.scope.outputs.verification_profile }}
+      verification_policy: ${{ steps.scope.outputs.verification_policy }}
+      verification_reasons: ${{ steps.scope.outputs.verification_reasons }}
+      build_required: ${{ steps.scope.outputs.build_required }}
+      goldens_required: ${{ steps.scope.outputs.goldens_required }}
+      normal_instrumentation_required: ${{ steps.scope.outputs.normal_instrumentation_required }}
+      historical_upgrades_required: ${{ steps.scope.outputs.historical_upgrades_required }}
+      animation_matrix: ${{ steps.scope.outputs.animation_matrix }}
       quality_required: ${{ steps.scope.outputs.quality_required }}
       instrumentation_required: ${{ steps.scope.outputs.instrumentation_required }}
       release_required: ${{ steps.scope.outputs.release_required }}
@@ -51,8 +59,7 @@ jobs:
           else
             FROM_SHA="$BEFORE_SHA"
           fi
-          git diff --name-only "$FROM_SHA" "$GITHUB_SHA" \
-            | python3 scripts/ci/change_scope.py >> "$GITHUB_OUTPUT"
+          python3 scripts/ci/change_scope.py --base "$FROM_SHA" --head "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
       - name: Prove a content-identical green pull-request verification
         id: reuse
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -63,6 +70,8 @@ jobs:
             --event-name "${{ github.event_name }}" \
             --ref "${{ github.ref }}" \
             --release-required "${{ steps.scope.outputs.release_required }}" \
+            --profile "${{ steps.scope.outputs.verification_profile }}" \
+            --policy-version "${{ steps.scope.outputs.verification_policy }}" \
             --repository "${{ github.repository }}" \
             --main-sha "${{ github.sha }}" \
             --workflow verify.yml
@@ -73,6 +82,30 @@ jobs:
           UPGRADE_MATRIX=$(python3 scripts/release/upgrade_fixture_tool.py matrix \
             --fixtures release/upgrade-fixtures)
           printf 'upgrade_matrix=%s\n' "$UPGRADE_MATRIX" >> "$GITHUB_OUTPUT"
+
+  verification-policy:
+    name: verification-policy (${{ needs.release_scope.outputs.verification_policy }}, ${{ needs.release_scope.outputs.verification_profile }})
+    needs: [release_scope]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Validate and explain the selected verification policy
+        env:
+          VERIFICATION_NEEDS: ${{ toJSON(needs) }}
+        run: |
+          python3 scripts/ci/verification_gate.py policy
+          python3 - <<'PYTHON'
+          import json, os
+          scope = json.loads(os.environ["VERIFICATION_NEEDS"])["release_scope"]["outputs"]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as report:
+              report.write("Verification profile: **" + scope["verification_profile"] + "**; policy " + scope["verification_policy"] + "\n\n")
+              for reason in json.loads(scope["verification_reasons"]):
+                  report.write("- " + reason + "\n")
+              report.write("\nPR evidence reuse: " + scope["reuse_pr_verification"] + " (" + scope["verification_reason"] + ")\n")
+          PYTHON
+      - name: Documentation and repository contracts
+        if: needs.release_scope.outputs.verification_profile == 'docs' && needs.release_scope.outputs.reuse_pr_verification != 'true'
+        run: ./scripts/ci/check-docs.sh
 
   quality-contracts:
     if: >-
@@ -90,7 +123,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6
       - name: CI, release, unit and architecture contracts
         timeout-minutes: 12
-        run: ./scripts/ci/check-fast.sh
+        env:
+          VERIFICATION_PROFILE: ${{ needs.release_scope.outputs.verification_profile }}
+        run: |
+          if [ "$VERIFICATION_PROFILE" = host ]; then
+            ./scripts/ci/check-host.sh
+          else
+            ./scripts/ci/check-fast.sh
+          fi
       - name: Upload contract failure diagnostics
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -104,7 +144,7 @@ jobs:
 
   quality-goldens:
     if: >-
-      needs.release_scope.outputs.quality_required == 'true' &&
+      needs.release_scope.outputs.goldens_required == 'true' &&
       needs.release_scope.outputs.reuse_pr_verification != 'true'
     needs: [release_scope]
     runs-on: ubuntu-latest
@@ -133,7 +173,7 @@ jobs:
 
   quality-build:
     if: >-
-      needs.release_scope.outputs.quality_required == 'true' &&
+      needs.release_scope.outputs.build_required == 'true' &&
       needs.release_scope.outputs.reuse_pr_verification != 'true'
     needs: [release_scope]
     runs-on: ubuntu-latest
@@ -172,33 +212,19 @@ jobs:
   quality:
     name: quality
     if: always() && needs.release_scope.outputs.quality_required == 'true'
-    needs: [release_scope, quality-contracts, quality-goldens, quality-build]
+    needs: [release_scope, verification-policy, quality-contracts, quality-goldens, quality-build]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require every applicable quality lane
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Require the selected quality verification outcomes
         env:
-          SCOPE_RESULT: ${{ needs.release_scope.result }}
-          REUSE_PR_VERIFICATION: ${{ needs.release_scope.outputs.reuse_pr_verification }}
-          CONTRACT_RESULT: ${{ needs.quality-contracts.result }}
-          GOLDEN_RESULT: ${{ needs.quality-goldens.result }}
-          BUILD_RESULT: ${{ needs.quality-build.result }}
-        run: |
-          set -euo pipefail
-          test "$SCOPE_RESULT" = success
-          if [ "$REUSE_PR_VERIFICATION" = true ]; then
-            test "$CONTRACT_RESULT" = skipped
-            test "$GOLDEN_RESULT" = skipped
-            test "$BUILD_RESULT" = skipped
-          else
-            test "$CONTRACT_RESULT" = success
-            test "$GOLDEN_RESULT" = success
-            test "$BUILD_RESULT" = success
-          fi
+          VERIFICATION_NEEDS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci/verification_gate.py quality
 
   instrumentation:
     if: >-
-      needs.release_scope.outputs.instrumentation_required == 'true' &&
+      needs.release_scope.outputs.normal_instrumentation_required == 'true' &&
       needs.release_scope.outputs.reuse_pr_verification != 'true'
     needs: [quality, release_scope]
     runs-on: ubuntu-latest
@@ -270,23 +296,10 @@ jobs:
       INSTRUMENTATION_API_LEVEL: ${{ matrix.api-level }}
       INSTRUMENTATION_ANIMATION_SCALE: "1.0"
       INSTRUMENTATION_PREPARE_INTERACTION_DEVICE: "true"
-      INSTRUMENTATION_TEST_CLASS: de.thonktank.autosecretary.TaskEditorComposeInstrumentationTest,de.thonktank.autosecretary.TaskEditorComposeApi37InstrumentationTest,de.thonktank.autosecretary.AllTasksComposeInstrumentationTest,de.thonktank.autosecretary.AllTasksComposeApi37InstrumentationTest,de.thonktank.autosecretary.FlowTileEditorInstrumentationTest,de.thonktank.autosecretary.FlowTileEditorAccessibleInstrumentationTest,de.thonktank.autosecretary.FlowProductEditorInstrumentationTest,de.thonktank.autosecretary.ui.today.TodayInteractionInstrumentationTest
+      INSTRUMENTATION_TEST_CLASS: ${{ needs.release_scope.outputs.verification_profile == 'today' && 'de.thonktank.autosecretary.ui.today.TodayInteractionInstrumentationTest' || 'de.thonktank.autosecretary.TaskEditorComposeInstrumentationTest,de.thonktank.autosecretary.TaskEditorComposeApi37InstrumentationTest,de.thonktank.autosecretary.AllTasksComposeInstrumentationTest,de.thonktank.autosecretary.AllTasksComposeApi37InstrumentationTest,de.thonktank.autosecretary.FlowTileEditorInstrumentationTest,de.thonktank.autosecretary.FlowTileEditorAccessibleInstrumentationTest,de.thonktank.autosecretary.FlowProductEditorInstrumentationTest,de.thonktank.autosecretary.ui.today.TodayInteractionInstrumentationTest' }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - api-level: 26
-            target: default
-            arch: x86_64
-            channel: stable
-          - api-level: 35
-            target: google_apis
-            arch: x86_64
-            channel: stable
-          - api-level: "37.0"
-            target: google_apis
-            arch: x86_64
-            channel: canary
+      matrix: ${{ fromJSON(needs.release_scope.outputs.animation_matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -329,64 +342,28 @@ jobs:
   instrumentation-gate:
     name: instrumentation-gate
     if: always()
-    needs: [quality, release_scope, instrumentation, animation-instrumentation]
+    needs: [quality, release_scope, verification-policy, instrumentation, animation-instrumentation]
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    timeout-minutes: 5
     steps:
-      - name: Require the applicable Android verification jobs
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Require the selected android verification outcomes
         env:
-          SCOPE_RESULT: ${{ needs.release_scope.result }}
-          REUSE_PR_VERIFICATION: ${{ needs.release_scope.outputs.reuse_pr_verification }}
-          QUALITY_REQUIRED: ${{ needs.release_scope.outputs.quality_required }}
-          QUALITY_RESULT: ${{ needs.quality.result }}
-          INSTRUMENTATION_REQUIRED: ${{ needs.release_scope.outputs.instrumentation_required }}
-          INSTRUMENTATION_RESULT: ${{ needs.instrumentation.result }}
-          ANIMATION_INSTRUMENTATION_RESULT: ${{ needs.animation-instrumentation.result }}
-        run: |
-          set -euo pipefail
-          test "$SCOPE_RESULT" = success
-          if [ "$QUALITY_REQUIRED" = true ]; then
-            test "$QUALITY_RESULT" = success
-          else
-            test "$QUALITY_RESULT" = skipped
-          fi
-          if [ "$INSTRUMENTATION_REQUIRED" = true ]; then
-            if [ "$REUSE_PR_VERIFICATION" = true ]; then
-              test "$INSTRUMENTATION_RESULT" = skipped
-              test "$ANIMATION_INSTRUMENTATION_RESULT" = skipped
-            else
-              test "$INSTRUMENTATION_RESULT" = success
-              test "$ANIMATION_INSTRUMENTATION_RESULT" = success
-            fi
-          else
-            test "$INSTRUMENTATION_RESULT" = skipped
-            test "$ANIMATION_INSTRUMENTATION_RESULT" = skipped
-          fi
+          VERIFICATION_NEEDS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci/verification_gate.py android
 
   pr-gate:
     name: pull-request-gate
     if: always() && github.event_name == 'pull_request'
-    needs: [quality, release_scope, instrumentation-gate]
+    needs: [quality, release_scope, verification-policy, instrumentation-gate]
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    timeout-minutes: 5
     steps:
-      - name: Require every applicable pull-request gate
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Require the selected pr verification outcomes
         env:
-          SCOPE_RESULT: ${{ needs.release_scope.result }}
-          QUALITY_REQUIRED: ${{ needs.release_scope.outputs.quality_required }}
-          QUALITY_RESULT: ${{ needs.quality.result }}
-          INSTRUMENTATION_GATE_RESULT: ${{ needs.instrumentation-gate.result }}
-        run: |
-          set -euo pipefail
-          test "$SCOPE_RESULT" = success
-          if [ "$QUALITY_REQUIRED" = true ]; then
-            test "$QUALITY_RESULT" = success
-          else
-            test "$QUALITY_RESULT" = skipped
-          fi
-          test "$INSTRUMENTATION_GATE_RESULT" = success
+          VERIFICATION_NEEDS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci/verification_gate.py pr
 
   package:
     if: >-
@@ -432,6 +409,14 @@ jobs:
           printf 'METADATA_ASSET=%s\n' "$(jq -r .metadataAsset "$PLAN")" >> "$GITHUB_ENV"
           printf 'EXPECTED_SIGNER=%s\n' "$(jq -r .signerSha256 "$PLAN")" >> "$GITHUB_ENV"
           printf 'ANDROID_BUILD_TOOLS=%s\n' "$(jq -r .androidBuildTools "$PLAN")" >> "$GITHUB_ENV"
+      - name: Pin the current published source before building
+        if: steps.plan.outputs.already_published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/release/current_upgrade_smoke.py --plan "$PLAN" \
+            --releases "$RUNNER_TEMP/releases.json" \
+            --output-dir "$RUNNER_TEMP/current-upgrade-smoke"
       - name: Build, sign and validate the production candidate once
         if: steps.plan.outputs.already_published != 'true'
         env:
@@ -456,9 +441,11 @@ jobs:
           export SIGNING_STORE_FILE="$KEYSTORE"
           ./gradlew assembleRelease assembleInstrumentationAndroidTest \
             -PversionCode="$VERSION_CODE" -PversionName="$VERSION_NAME" \
-            -PrequireReleaseSigning=true -PupgradeProbeRunner=true
+            -PrequireReleaseSigning=true -PupgradeProbeRunner=true \
+            -PcurrentUpgradeSmokeAssets="$RUNNER_TEMP/current-upgrade-smoke/assets"
           CANDIDATE="$RUNNER_TEMP/release-candidate"
           mkdir -p "$CANDIDATE"
+          cp -R "$RUNNER_TEMP/current-upgrade-smoke" "$CANDIDATE/current-upgrade"
           cp app/build/outputs/apk/release/app-release.apk "$CANDIDATE/$APK_ASSET"
           APKSIGNER="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/apksigner"
           AAPT="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/aapt"
@@ -510,7 +497,8 @@ jobs:
   upgrade:
     if: >-
       always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
-      needs.package.result == 'success' && needs.package.outputs.already_published != 'true'
+      needs.package.result == 'success' && needs.package.outputs.already_published != 'true' &&
+      needs.release_scope.outputs.historical_upgrades_required == 'true'
     needs: [package, release_scope]
     runs-on: ubuntu-latest
     permissions:
@@ -609,12 +597,108 @@ jobs:
           pre-emulator-launch-script: adb start-server
           script: ./scripts/ci/run-upgrade-test.sh "$SOURCE_APK" "$CANDIDATE_APK" "$TEST_APK" "$PACKAGE_NAME" "$CANDIDATE_VERSION" "$FIXTURE_ID"
 
+  current-upgrade:
+    if: >-
+      always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
+      needs.package.result == 'success' && needs.package.outputs.already_published != 'true'
+    needs: [package, release_scope]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: 35
+            target: google_apis
+            arch: x86_64
+            channel: stable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: production-release-candidate-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-candidate
+      - name: Validate candidate and the source pinned at release planning
+        run: |
+          set -euo pipefail
+          CANDIDATE="$RUNNER_TEMP/release-candidate"
+          PLAN="$CANDIDATE/release-plan.json"
+          FIXTURE_ID=current-production
+          FIXTURE="$CANDIDATE/current-upgrade/assets/current-production.json"
+          SOURCE_APK_ASSET=$(jq -r .source.apkAsset "$FIXTURE")
+          SOURCE_METADATA_ASSET=$(jq -r .source.metadataAsset "$FIXTURE")
+          APK_ASSET=$(jq -r .apkAsset "$PLAN")
+          METADATA_ASSET=$(jq -r .metadataAsset "$PLAN")
+          PACKAGE_NAME=$(jq -r .packageName "$PLAN")
+          CANDIDATE_VERSION=$(jq -r .versionCode "$PLAN")
+          EXPECTED_SIGNER=$(jq -r .signerSha256 "$PLAN")
+          BUILD_TOOLS=$(jq -r .androidBuildTools "$PLAN")
+          python3 scripts/release/release_tool.py validate --plan "$PLAN" \
+            --metadata "$CANDIDATE/$METADATA_ASSET" --apk "$CANDIDATE/$APK_ASSET"
+          SOURCE_DIR="$CANDIDATE/current-upgrade/source"
+          RELEASE_JSON="$SOURCE_DIR/release.json"
+          TAG_REF_JSON="$SOURCE_DIR/tag-ref.json"
+          SOURCE_APK="$SOURCE_DIR/$SOURCE_APK_ASSET"
+          SOURCE_METADATA="$SOURCE_DIR/$SOURCE_METADATA_ASSET"
+          python3 scripts/release/upgrade_fixture_tool.py verify-current-source \
+            --fixture "$FIXTURE" --release-json "$RELEASE_JSON" \
+            --tag-ref-json "$TAG_REF_JSON" --metadata "$SOURCE_METADATA" \
+            --apk "$SOURCE_APK"
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt"
+          for SIGNED_APK in "$SOURCE_APK" "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk"; do
+            "$APKSIGNER" verify --verbose "$SIGNED_APK"
+            APK_CERT=$($APKSIGNER verify --print-certs "$SIGNED_APK" \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              | tr '[:upper:]' '[:lower:]')
+            test "$APK_CERT" = "$EXPECTED_SIGNER"
+          done
+          SOURCE_VERSION_NAME=$(jq -r .source.versionName "$FIXTURE")
+          SOURCE_VERSION_CODE=$(jq -r .source.versionCode "$FIXTURE")
+          SOURCE_BADGING=$($AAPT dump badging "$SOURCE_APK" | sed -n '1p')
+          case "$SOURCE_BADGING" in
+            *"package: name='$PACKAGE_NAME'"*"versionCode='$SOURCE_VERSION_CODE'"*"versionName='$SOURCE_VERSION_NAME'"*) ;;
+            *) echo "Unexpected fixture source package/version: $SOURCE_BADGING" >&2; exit 1 ;;
+          esac
+          ACTUAL_SOURCE_VERSION=$(printf '%s\n' "$SOURCE_BADGING" \
+            | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
+          test "$ACTUAL_SOURCE_VERSION" = "$SOURCE_VERSION_CODE"
+          test "$ACTUAL_SOURCE_VERSION" -lt "$CANDIDATE_VERSION"
+          printf 'SOURCE_APK=%s\nCANDIDATE_APK=%s\nTEST_APK=%s\n' \
+            "$SOURCE_APK" "$CANDIDATE/$APK_ASSET" "$CANDIDATE/upgrade-test.apk" >> "$GITHUB_ENV"
+          printf 'PACKAGE_NAME=%s\nCANDIDATE_VERSION=%s\nFIXTURE_ID=%s\n' \
+            "$PACKAGE_NAME" "$CANDIDATE_VERSION" "$FIXTURE_ID" >> "$GITHUB_ENV"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Update SDK tools for minor-versioned preview packages
+        if: matrix.channel != 'stable'
+        run: ./scripts/ci/prepare-preview-sdk-tools.sh
+      - name: Upgrade the exact production candidate on API ${{ matrix.api-level }}
+        timeout-minutes: 20
+        uses: reactivecircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808 # v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: ${{ matrix.arch }}
+          channel: ${{ matrix.channel }}
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          pre-emulator-launch-script: adb start-server
+          script: ./scripts/ci/run-upgrade-test.sh "$SOURCE_APK" "$CANDIDATE_APK" "$TEST_APK" "$PACKAGE_NAME" "$CANDIDATE_VERSION" "$FIXTURE_ID"
+
   publish:
     if: >-
       always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' &&
-      needs.package.result == 'success' && needs.upgrade.result == 'success' &&
+      needs.package.result == 'success' && needs.current-upgrade.result == 'success' &&
+      ((needs.release_scope.outputs.historical_upgrades_required == 'true' && needs.upgrade.result == 'success') ||
+       (needs.release_scope.outputs.historical_upgrades_required == 'false' && needs.upgrade.result == 'skipped')) &&
       needs.package.outputs.already_published != 'true'
-    needs: [package, upgrade]
+    needs: [package, upgrade, current-upgrade, release_scope]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -624,6 +708,10 @@ jobs:
         with:
           name: production-release-candidate-${{ github.sha }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/release-candidate
+      - name: Require every selected signed upgrade result
+        env:
+          VERIFICATION_NEEDS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci/verification_gate.py publish
       - name: Resume, prove and publish the tested release candidate
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,191 @@
+{
+  "databaseVersion": 27,
+  "seed": [
+    {
+      "table": "tasks",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "current-smoke-task",
+          "title": "Aktuelles signiertes Update",
+          "recurrence": "ONCE",
+          "intervalDays": 1,
+          "weekdayMask": 0,
+          "ongoing": 0,
+          "conditionText": "",
+          "conditionDone": 0,
+          "archived": 0,
+          "nextDueOn": "2999-12-31",
+          "cadenceAnchorOn": "2999-12-31",
+          "lastScheduledOn": null,
+          "lastCompletedOn": "2000-01-01",
+          "catalogOrder": 4023001,
+          "hasCompletedOccurrence": 1,
+          "estimatedMinutes": 31,
+          "boundKind": "FOREVER",
+          "boundUntilOn": null,
+          "boundWeeks": null,
+          "remainingCount": null,
+          "deadlineOn": null,
+          "note": "Persistenz aktuelles Update",
+          "missedOccurrenceMode": "COLLAPSE",
+          "taskKind": "TASK"
+        }
+      ]
+    },
+    {
+      "table": "task_schedule_entries",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "current-smoke-schedule",
+          "taskId": "current-smoke-task",
+          "slot": "MORNING",
+          "displayOrder": 19
+        }
+      ]
+    },
+    {
+      "table": "occurrences",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "id": "current-smoke-history",
+          "taskId": "current-smoke-task",
+          "scheduledOn": "2000-01-01",
+          "state": "COMPLETED",
+          "sortOrder": 2100,
+          "completedOn": "2000-01-01",
+          "slot": "MORNING",
+          "kind": "SCHEDULED",
+          "sourceKey": "current-smoke:history",
+          "flowRunId": null,
+          "flowExecutionSequence": 0
+        },
+        {
+          "id": "current-smoke-open",
+          "taskId": "current-smoke-task",
+          "scheduledOn": "2000-01-02",
+          "state": "OPEN",
+          "sortOrder": 2101,
+          "completedOn": null,
+          "slot": "MORNING",
+          "kind": "SCHEDULED",
+          "sourceKey": "current-smoke:open",
+          "flowRunId": null,
+          "flowExecutionSequence": 0
+        }
+      ]
+    },
+    {
+      "table": "today_placements",
+      "conflict": "ABORT",
+      "rows": [
+        {
+          "kind": "OCCURRENCE",
+          "id": "current-smoke-open",
+          "displayOn": "2000-01-02",
+          "slot": "MIDDAY",
+          "position": 17
+        }
+      ]
+    }
+  ],
+  "expectedTarget": [
+    {
+      "table": "tasks",
+      "where": {
+        "id": "current-smoke-task"
+      },
+      "values": {
+        "id": "current-smoke-task",
+        "title": "Aktuelles signiertes Update",
+        "recurrence": "ONCE",
+        "intervalDays": 1,
+        "weekdayMask": 0,
+        "ongoing": 0,
+        "conditionText": "",
+        "conditionDone": 0,
+        "archived": 0,
+        "nextDueOn": "2999-12-31",
+        "cadenceAnchorOn": "2999-12-31",
+        "lastScheduledOn": null,
+        "lastCompletedOn": "2000-01-01",
+        "catalogOrder": 4023001,
+        "hasCompletedOccurrence": 1,
+        "estimatedMinutes": 31,
+        "boundKind": "FOREVER",
+        "boundUntilOn": null,
+        "boundWeeks": null,
+        "remainingCount": null,
+        "deadlineOn": null,
+        "note": "Persistenz aktuelles Update",
+        "missedOccurrenceMode": "COLLAPSE",
+        "taskKind": "TASK"
+      }
+    },
+    {
+      "table": "task_schedule_entries",
+      "where": {
+        "id": "current-smoke-schedule"
+      },
+      "values": {
+        "id": "current-smoke-schedule",
+        "taskId": "current-smoke-task",
+        "slot": "MORNING",
+        "displayOrder": 19
+      }
+    },
+    {
+      "table": "occurrences",
+      "where": {
+        "id": "current-smoke-history"
+      },
+      "values": {
+        "id": "current-smoke-history",
+        "taskId": "current-smoke-task",
+        "scheduledOn": "2000-01-01",
+        "state": "COMPLETED",
+        "sortOrder": 2100,
+        "completedOn": "2000-01-01",
+        "slot": "MORNING",
+        "kind": "SCHEDULED",
+        "sourceKey": "current-smoke:history",
+        "flowRunId": null,
+        "flowExecutionSequence": 0
+      }
+    },
+    {
+      "table": "occurrences",
+      "where": {
+        "id": "current-smoke-open"
+      },
+      "values": {
+        "id": "current-smoke-open",
+        "taskId": "current-smoke-task",
+        "scheduledOn": "2000-01-02",
+        "state": "OPEN",
+        "sortOrder": 2101,
+        "completedOn": null,
+        "slot": "MORNING",
+        "kind": "SCHEDULED",
+        "sourceKey": "current-smoke:open",
+        "flowRunId": null,
+        "flowExecutionSequence": 0
+      }
+    },
+    {
+      "table": "today_placements",
+      "where": {
+        "id": "current-smoke-open"
+      },
+      "values": {
+        "kind": "OCCURRENCE",
+        "id": "current-smoke-open",
+        "displayOn": "2000-01-02",
+        "slot": "MIDDAY",
+        "position": 17
+      }
+    }
+  ]
+}
