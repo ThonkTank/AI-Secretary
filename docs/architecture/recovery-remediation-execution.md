@@ -2,14 +2,17 @@
 
 Kanonische Roadmap: [recovery-remediation-roadmap.md](recovery-remediation-roadmap.md)
 
-## Aktueller Arbeitsstand (P4b-Software veröffentlicht, P5-Geräteabnahme offen)
+## Aktueller Arbeitsstand (Software veröffentlicht, P5-Geräteabnahme bestanden)
 
 P0-Belegbestand und P1–P4 sind geprüft auf Remote-Main integriert. P4b ist über PR369 auf
 Mainc87d3240 integriert und als0.2.175 veröffentlicht. Vollständiger lokaler Check, alle15 PR-
 Gates, exakter Main, aktueller Smoke und sechs historische signierte Upgrades sind grün;
-öffentliche APK und Metadaten sind bytegleich zum getesteten Kandidaten. Der P5-Softwareabgleich ist im
-[Abschlussbericht](recovery-remediation-acceptance.md) festgehalten. Die P5-Geräteabnahme
-bleibt offen: Pixel nicht verbunden.
+öffentliche APK und Metadaten sind bytegleich zum getesteten Kandidaten. Der P5-Softwareabgleich
+und die am2026-09-13
+bestandene Pixel-Abnahme sind im [Abschlussbericht](recovery-remediation-acceptance.md)
+festgehalten. 0.2.175 ist auf dem bestehenden Pixel-Bestand installiert; Titel/Später und
+Persistenz, unterstützte Diagnose und anschließender Normalbetrieb sind belegt. Die Integration
+der abschließenden Geräteergebnisse erfolgt über den separaten Dokumentations-PR.
 Die folgenden ursprünglichen Planungsstände und Fehlversuche bleiben historische Aufzeichnungen.
 
 ## Planungsstand 2026-09-12
@@ -1293,3 +1296,86 @@ exakten Main-Lauf belegt; sie ändert keine schon abgeschlossenen Produktnachwei
 Verbleibender ausführbarer Schritt nach diesem Dokumentationsabschluss: verbundenes entsperrtes
 Pixel identifizieren und den fünfteiligen Geräte-Restplan des Abschlussberichts ausführen.
 Bis dahin bleibt das Gesamtziel aktiv; Geräteverfügbarkeit ist bereits angefragt.
+
+### P5 – Fortsetzung am angeschlossenen Pixel: Plan vor Geräteänderungen
+
+Ausgangspunkt Remote-Main5e08e974b5cf1a4270155a07dd08a88f6b471554; PR371/Head0a61ad15,
+PR-Lauf34722519125 und exakter Main34722604368 erfolgreich. Berichtsoftware geprüft integriert.
+Neuer Abschlussbranch codex/remediation-device-acceptance von diesem Main; voraussichtlich
+weiterhin ausschließlich Dokumentation, kein Produktrelease.
+
+Frische Geräteidentifikation am2026-09-13: Pixel8/shiba, Android16/API36, bestehende Installation
+0.2.172/1017201; firstInstallTime2026-08-17 11:50:24, lastUpdateTime2026-09-12 13:56:25,
+Updateherkunft com.android.shell. Bildschirm zunächst gesperrt; Entsperren ist angefragt.
+Private Bildschirm-/Paketbelege bleiben außerhalb des Repository unter /tmp/p5-device-proof/.
+
+Plan: installierte APK lesend kopieren und Herkunft/Signatur gegen veröffentlichtes0.2.172
+prüfen; öffentlichen0.2.175-Kandidaten samt passendem Helper erneut gegen bekannte Hashes und
+reguläres Zertifikat prüfen. Nach Entsperren den sichtbaren bisherigen Bestand erfassen;
+Titel-/Später-Baseline auf tatsächlich noch installierter0.2.172 prüfen, soweit ohne neue
+Abschlüsse oder Starts möglich. Erst danach verifiziertes0.2.175 per Vorwärtsupdate über die
+bestehende Installation installieren. Kein alter Diagnose-Runner auf0.2.172. Unterstützte
+lesende Diagnose erst auf0.2.175; danach ausschließlich Helper entfernen, normaler Kaltstart
+und frische Logs. Bestehende Aufgaben/Abläufe, Titel/Später und Persistenz prüfen, Auswahl
+soweit möglich wiederherstellen. Jede unerwartete Wirkung zuerst belegen und gezielt
+diagnostizieren. Ausstehende Geräteabnahme nicht durch automatisierte Tests ersetzen.
+
+Nach den tatsächlichen Ergebnissen Abschlussbericht und aktuellen Protokollstatus aktualisieren,
+separat gegen Roadmap und P5-Plan auditieren, docs-Gate/PR/Squash/exakten Main abschließen.
+Die bislang unbelegte historische Prüfung wird nicht rückdatiert; eine heutige0.2.172-Baseline
+wäre ausdrücklich ein neuer Nachweis mit heutigem Zeitpunkt.
+
+### P5 – Tatsächliche Geräteergebnisse und gesondertes Abschlussaudit
+
+Der Nutzer hat das verbundene Pixel ausdrücklich entsperrt. Vor Update ließ sich die installierte
+0.2.172-APK lesend kopieren und gegen öffentliche Releasebytes plus reguläres Zertifikat prüfen.
+Der noch offene P0.5-Bediennachweis wurde auf dieser tatsächlich noch installierten Version am
+2026-09-13 frisch erbracht: nativer Titel-Tap ändert Fokus; Später führt zum ursprünglichen Fokus
+zurück; kein Absturz und keine Erledigung. Dies ist keine rückdatierte Abnahme vom Vortag.
+
+Vorwärtsupdate1017201→1017501 per adb install -r erfolgreich; ursprüngliche firstInstallTime vom
+2026-08-17 unverändert. Die danach gelesene installierte APK ist exakt bytegleich zur öffentlichen
+0.2.175-APK mit bekanntem SHA2560e5e49bf…e7e3a7b. Kein Downgrade, keine Neuinstallation und kein
+Löschen produktiver App-Daten. Passender signierter Helper wurde ausschließlich für den neuen
+lesenden Diagnosezugang installiert. Unterstützter Bericht: Schema27, keine FK-Verletzungen,
+0 rückständige Ausführungszähler,0 belegte nächste Ausführungsschlüssel; Diagnose-PID23465 beendet.
+Anschließend ausschließlich Helper entfernt und fehlende Instrumentierung geprüft.
+
+Erster normaler Start COLD/PID23568,605ms Android-Launchzeit. Room-Startbericht bestätigt weiterhin
+Archiv8 Ablauf-Schritte/4 Ressourcen/2 Aufgabenschritte mit Herkunft24. Native Titelwahl auf0.2.175
+überlebt echten Prozessneustart23568→24205; Später überlebt24205→24505. Hierarchien und Screenshots
+zeigen die jeweilige Wirkung; keine Koordinatenwiederholungen oder Erledigungen als Klicktest.
+Sämtliche sichtbaren Katalogtexte/-beschreibungen vor/nach Update identisch:4 Aufgaben,31 Schritte,
+2 Hintergrundabläufe und unveränderte Belohnungsanzeige. Beide Abläufe samt Wartezuständen und
+Ressourcen in der Laufübersicht sichtbar. Abschließend Heute-Ansicht und ursprünglicher Fokus
+wiederhergestellt. Frische Protokolle der drei normalen Prüfprozesse ohne App-/Datenbankfehler.
+Temporäre UI-Hierarchiedatei auf dem Gerät entfernt; keine dauerhaften Einstellungen geändert.
+
+Private Belege /tmp/p5-device-proof/acceptance-proof.json und zugeordnete Screenshots/XMLs/APKs/
+Paket-/Prozessprotokolle. Abnahmeende2026-09-13T10:55:19Z; tatsächlich Android16/API36. Keine
+persönlichen Datenbankzeilen oder Aufgabentitel in das Repository kopiert. Kein vollständiger
+Vorher/Nachher-Snapshot der persönlichen DB behauptet: alter unsicherer Diagnoseweg nicht genutzt;
+Gerätevergleich sichtbarer Bestand plus Archivzählungen, vollständige synthetische Datenerhaltung
+und Rollback bleiben den automatisierten Migrations-/Upgradeprüfungen zugeordnet.
+
+Audit gegen P5-Fortsetzungsplan: Identität/Baseline vor Update, vorwärts signierte Installation,
+unterstützte lesende Diagnose, Helper-Entfernung, Kaltstart/Logs, Bestand, beide Bedienaktionen,
+Persistenz und ursprünglicher Fokus erfüllt. Audit gegen kanonische Roadmap: die zuvor offenen
+P0.5-, P3-Geräte- und P5.4-Anforderungen sind jetzt tatsächlich belegt; R1–R4 geschlossen,
+U1-Waisenerzeuger repariert, ursprüngliche Zählerherkunft bleibt entsprechend P4 ausdrücklich
+unbekannt. Keine neue Produktabweichung festgestellt. Aktuelle Zusammenfassungen wurden anhand
+der neuen Belege aktualisiert; frühere fehlende Geräteverbindung bleibt historische Aufzeichnung.
+
+Abschlussvertrag für diese Geräteergebnisse: ausschließlich docs-Prüfung, geprüfter PR/Squash
+und exakter Main. Kein erneuter Produktbuild, Android-Vollkorpus oder Release erforderlich.
+
+### P5 – Dokumentprüfung der Geräteergebnisse vor Integration
+
+Lokales check-docs.sh erfolgreich:55 CI-Vertragstests und45 Release-Vertragstests, Exit0.
+Profil docs/Policy1 ohne Produkt-/Android-/Upgrade-/Releasebedarf; git diff --check fehlerfrei.
+Relative Berichtlinks und sämtliche nummerierten Anforderungen weiterhin vollständig vorhanden.
+Das private Gerätebelegobjekt bestätigt Installationserhalt, Helper-Entfernung, ursprünglichen
+Fokus, beide Persistenzprüfungen, identischen sichtbaren Katalog und leere App-Fehlerliste.
+Die kanonische Roadmap ist unverändert. Der abschließende Dokumentations-PR bindet den genauen
+geprüften Head und ergänzt nach Squash den zugehörigen Main-Lauf; diese Integrationsbelege
+werden nicht durch eine weitere Produktprüfung ersetzt.
