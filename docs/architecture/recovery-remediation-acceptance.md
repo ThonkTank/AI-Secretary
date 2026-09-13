@@ -1,25 +1,28 @@
-# Recovery-Remediation: Abschlussabgleich und offene Geräteabnahme
+# Recovery-Remediation: Abschlussabgleich und bestandene Geräteabnahme
 
 Stand: 2026-09-13. Referenz ist die unveränderte
 [Roadmap](recovery-remediation-roadmap.md), Durchführung und Korrekturrunden stehen im
 [Ausführungsprotokoll](recovery-remediation-execution.md).
 
-**Software geliefert; Gesamtabnahme offen.** P0-Belegbestand und P1–P4b sind geprüft auf
-Remote-Main integriert. Der letzte Produktstand ist 0.2.175 / 1017501, Schema 27,
-Commit `c87d3240e0394681d2a57724ee82b64d58fc9572`. Der geprüfte Dokumentationsabschluss
-`1e3b8a40a5e38429455c3c3b9c41539fa6263f71` verändert gegenüber diesem Produktstand nur das
-Ausführungsprotokoll. Dieser P5-Bericht ändert ebenfalls keine Software oder Freigaberegel.
-Die aktuelle USB-Abfrage findet kein Gerät. Installierter Pixel-Stand und sichtbare Abnahme
-werden deshalb nicht aus CI, Release oder historischen Protokollen abgeleitet.
+**Software geliefert und Geräteabnahme bestanden.** P0-Belegbestand und P1–P4b sind geprüft
+auf Remote-Main integriert. Der Produktstand 0.2.175 / 1017501, Schema 27, Commit
+`c87d3240e0394681d2a57724ee82b64d58fc9572` ist öffentlich und seit 2026-09-13 auf dem Pixel 8
+über die bestehende Installation aktualisiert. Die Geräteprüfung auf Android 16 / API 36 ist
+am 2026-09-13 um 10:55 UTC abgeschlossen. Dieser Bericht führt die tatsächlichen Nachweise
+und ihre Grenzen auf; seine Abschlussintegration erfolgt über den eigenen Dokumentations-PR.
+
+Der erste Softwarebericht wurde mit PR371 als `5e08e974b5cf1a4270155a07dd08a88f6b471554`
+integriert; exakter Main-Lauf 34722604368 erfolgreich. Die jetzige Ergänzung enthält nur
+Geräteergebnisse. Produktcode, kanonische Roadmap und Freigaberegel bleiben unverändert.
 
 ## Ergebnis je Befund
 
 | Befund | Tatsächliches Ergebnis | Grenze |
 |---|---|---|
-| R1 – getrennte UI-/Speicherungstests | Echte Today-Verdrahtung bis zur file-backed Room-Datenbank geprüft; drei gezielte Fehlergegenproben erkannt | Native Geste, Activity-Neuerzeugung und Datenbank-Neuöffnung sind unterschiedliche Nachweise; Pixel-Bestand noch offen |
+| R1 – getrennte UI-/Speicherungstests | Echte Today-Verdrahtung bis zur file-backed Room-Datenbank geprüft; drei gezielte Fehlergegenproben erkannt | Native Geste, Activity-Neuerzeugung und Datenbank-Neuöffnung sind unterschiedliche Nachweise; zusätzlicher Pixel-Prozessneustart jetzt belegt |
 | R2 – pauschale Prüfpflichten | Vier konservative Profile, gemeinsamer lokaler/CI-Vertrag, aktuelle signierte Upgradequelle und geprüfte Main-Wiederverwendung | Keine pauschale Behauptung, alle sechs Android-Läufe oder historische Upgrades seien unnötig; keine gemessene Today-Profil-Zeitersparnis behauptet |
 | R3 – zu später Diagnosezustand | Früher Bootstrap, Room-Sperre, native Ereignisse und anschließender Normalbetrieb geprüft | Schutz gilt für die Fach-Datenbank; Framework-/WorkManager-Verwaltungsdaten können geschrieben werden. APKs bis 0.2.173 unterstützen den neuen Diagnosevertrag nicht |
-| R4 – unklarer Nachweisstatus | Lokaler Check, PR, exakter Main, signierter Kandidat, veröffentlichte Bytes und Gerät werden getrennt zugeordnet | Der Geräteanteil ist noch nicht geschlossen |
+| R4 – unklarer Nachweisstatus | Lokaler Check, PR, exakter Main, signierter Kandidat, veröffentlichte Bytes und Gerät werden getrennt zugeordnet | Geräteanteil jetzt belegt; sichtbarer Bestand und Archivzählungen sind kein vollständiger Datenbankvergleich |
 | U1 – Datenursprung | Migration 22→23 als Erzeuger aller drei Waisenkategorien reproduziert und in P4b repariert | Keine Rekonstruktion persönlicher Gerätehistorie; ursprünglicher Erzeuger des rückständigen Zählers weiterhin unbekannt |
 
 Bereits vor dieser Roadmap gelieferte Schutzmechanismen bleiben erhalten: reguläre Rückkehr
@@ -85,10 +88,10 @@ genannten Nachweis; die jeweiligen konkreten Wirkungen werden ausdrücklich aufg
 
 | Roadmap-Anforderung | Geprüfter Nachweis und Ergebnis | Status |
 |---|---|---|
-| P0.1 | Ausgangs-Main/PR362/Release 0.2.172 im P0-Protokoll gebunden; historische installierte Version getrennt vom heute unbekannten Pixel-Stand | Belegbestand erfüllt |
+| P0.1 | Ausgangs-Main/PR362/Release 0.2.172 im P0-Protokoll gebunden; am 2026-09-13 tatsächliche installierte APK vor und nach 0.2.172→0.2.175 gegen öffentliche Bytes geprüft | Belegbestand erfüllt |
 | P0.2–3 | Vier schon reparierte Fehler getrennt von R1–R4/U1; ursprüngliche Absturzprotokolle und Archive 8/4/2 lokal zugeordnet, keine persönliche Datenbank als Repositoryfixture | erfüllt |
 | P0.4 | Baseline lokal 22m44s, PR 20m22s, Main 7m11s; einzelne Jobs und 35 erfolgreiche API-35-Animationsfälle dokumentiert; Parallelität nicht addiert | erfüllt |
-| P0.5 und Geräteanteil der P0-Abnahme | Sichtbarer Titel-/Später-Test auf 0.2.172 damals nicht belegt; wird nicht rückwirkend behauptet oder durch Downgrade nachgeholt | historisch unbelegt; aktuelle Abnahme in P5 offen |
+| P0.5 und Geräteanteil der P0-Abnahme | Am 2026-09-12 noch unbelegt; am 2026-09-13 vor dem Update auf tatsächlich noch installierter 0.2.172 frisch geprüft: Titel ändert Fokus, Später stellt ursprünglichen Fokus wieder her, kein Absturz | erfüllt; neuer datierter Nachweis, kein Downgrade |
 | P1.1 | TodayActionIntegrationRobolectricTest: echter DashboardRenderer → TodayViewModel → ApplicationUseCaseComposition → dateibasierte Room-DB; keine Recorder hinter dem Klick | Software belegt |
 | P1.2 | Titel-Test C hinter A/B → C/A/B, relative Reihenfolge und Zustand nach DB-Neuöffnung geprüft | Software belegt |
 | P1.3 | Drei Später-Szenarien prüfen Abschnittsende, Wechsel hinter vorhandene Einträge des Folgeabschnitts und Einzelaufgabe über alle Abschnitte bis ausgeblendet, einschließlich Persistenz | Software belegt |
@@ -109,15 +112,15 @@ genannten Nachweis; die jeweiligen konkreten Wirkungen werden ausdrücklich aufg
 | P3.3 | Tatsächliche Boot-/Paketwechsel-/Timer-/Widget-/Activity-Ereignisse sowie Worker und gebundener SystemJobService im Diagnoseprozess; typisierte Schema-/Nutzdatensnapshots unverändert. Nach Ende/Abbruch Normalstart, Timerabgleich und Worker-Erfolg geprüft | Software belegt |
 | P3.4–5 | Neuer Runner weist fehlenden Bootstrap explizit vor App-Erzeugung ab; historische seed/verify bleiben unterstützt. Modus nur pro Prozess, keine dauerhaften Geräteeinstellungen/Komponentenabschaltung | Software und signierte Kompatibilität belegt |
 | P3-Abnahme: native/Upgrade | Auf API 26/35/37 je vier Schema-/Endefälle samt ursprünglicher PID und Vollsnapshot; aktuelle P4b-PR-Protokolle bestätigen alle zwölf Fälle. Signierte aktuelle und historische Upgrades separat grün | belegt |
-| P3-Abnahme: Pixel | Unterstützte lesende Diagnose, Helper-Entfernung und Normalstart am tatsächlichen Gerät noch auszuführen | offen |
+| P3-Abnahme: Pixel | Auf Pixel/API36 unterstützte Diagnose, beendete Diagnose-PID, Helper-Entfernung und anschließender normaler Kaltstart erfolgreich | erfüllt |
 | P4.1–2 | Herkunftsbericht trennt drei FK-Kategorien von Zähler; direkte historische Umbauten, Snapshot-/Lösch-/Abbruch-/Abschlusspfade und Vergabe untersucht; Herkunft24 nicht als Entstehungsversion ausgegeben | erfüllt |
 | P4.3–4 und Abnahme | Native echte Room-Upgradeverbindung misst FK=0 in 22→23 und FK=1 nach onOpen. Drei Waisenkategorien reproduziert; physische Schemahistorie berücksichtigt. Historische Zählerprobe mit 32 Übergängen und direkte Aufrufer ergeben nur begrenzten Negativbefund | Waisenerzeuger belegt; Zählerursprung unbekannt |
 | P4b, bedingter Ursachenfix | Eigener vorab protokollierter Plan; explizite Kindbehandlung, konservative Auswahl. Neun native Erhaltungs-/Rollbackfälle; gültige 2-Schritt-Fixture erkennt alten Fehler. Signierter Schema22-Fall plus strikte positive/absent-Verifikationsverträge | Software, Main und Release belegt |
-| P5.1 | Dieser Abgleich deckt alle nummerierten Anforderungen, Abnahmen und Befunde ab; Geräteanteile und U1-Grenze bleiben ausdrücklich offen | Softwareaudit erfolgt; Gesamtabschluss offen |
-| P5.2 | Testgrenzen unten, aktueller Status im Ausführungsprotokoll und datierter Hinweis im Herkunftsbericht; frühere Fehlversuche bleiben historisch erhalten | Berichtsänderung erstellt; Integrationsbeleg im Ausführungsprotokoll |
+| P5.1 | Dieser Abgleich deckt alle nummerierten Anforderungen, Abnahmen und Befunde ab; Geräteanteile nachgetragen, U1-Grenze ausdrücklich erhalten | Software- und Geräteaudit erfolgt |
+| P5.2 | Testgrenzen unten, aktueller Status im Ausführungsprotokoll und datierter Hinweis im Herkunftsbericht; frühere Fehlversuche bleiben historisch erhalten | erfüllt; Abschlussintegration separat über PR/Main |
 | P5.3 | Letzter Produkt-Vollcheck, PR, exakter Main, signierte Upgrades und öffentliche Bytes oben zugeordnet; für diese Dokumente nur docs-Profil | Produktnachweise erfüllt; Dokumentgate separat |
-| P5.4 | Aktuelle installierte Version/Herkunft, Kaltstart, frische Prozesslogs, Bestand, Titel/Später und Persistenz auf dem entsperrten Pixel fehlen | offen: Gerät nicht verbunden |
-| P5.5 und Gesamtabnahme | Software/Release/Gerät getrennt berichtet. Ohne P5.4 kein vollständiger Abschluss | offen |
+| P5.4 | 0.2.172→0.2.175 regulär signiert in-place; COLD-Start, frische Prozesslogs, vorhandener Bestand, native Titel-/Später-Taps und je ein echter Prozessneustart erfolgreich; Helper entfernt | erfüllt auf Pixel 8 / Android16 / API36 |
+| P5.5 und Gesamtabnahme | Software/Release/Gerät getrennt berichtet; Gerätebelege unten schließen P5.4. Unbekannter historischer Zählererzeuger bleibt ausdrücklich unbekannt | Inhaltliche Gesamtabnahme erfüllt; Dokumentationsintegration über PR/Main |
 
 ## Getrennter Abgleich gegen Phasenpläne und Grenzen
 
@@ -130,10 +133,11 @@ Kalender-, Nachweis- und Dokumentkorrekturen sind vor ihren Änderungen im Ausf�
 festgehalten. Die Ergebnisse werden jeweils ihrem tatsächlichen Prüfstand zugeordnet.
 
 Gegen den P5-Phasenplan: Anforderungsmatrix, Befundstatus, Versionen und Nachweisgrenzen
-sind erstellt. Die veraltete Freigabereferenz im Herkunftsbericht ist berichtigt. Die
-Geräteschritte 3–4 des Phasenplans sind wegen fehlender Verbindung nicht ausgeführt; dessen
-Punkt 5 erlaubt ausdrücklich den gesonderten Dokumentationsabschluss. Das macht P5 insgesamt
-noch nicht vollständig. Dokumentprüfung und Integration gehören zum separaten docs-Gate.
+sind erstellt. Der zunächst unabhängige Softwarebericht wurde geprüft integriert; nach
+Anschließen und Entsperren wurden auch die Geräteschritte 3–4 samt frischer 0.2.172-Baseline,
+Vorwärtsupdate, unterstützter Diagnose und Wiederherstellung des ursprünglichen Fokus
+ausgeführt. Die Geräteergebnisse entsprechen dem vorab protokollierten Fortsetzungsplan.
+Dokumentprüfung und Integration dieser Ergebnisse gehören zum separaten docs-Gate.
 
 Gegen die unveränderlichen Roadmap-Grenzen: Der kanonische Text bleibt unverändert; der
 ursprüngliche Frontend-Checkout ist unberührt. Umsetzung und Korrekturen erfolgten über
@@ -151,7 +155,8 @@ synthetischen Daten oder Fachaktionen als Test.
 Die Host-Integration prüft die produktive Verdrahtung und das erneute Öffnen der Datenbank,
 jedoch keine native Touch-Geometrie. Das native Szenario prüft den tatsächlichen Touch auf den
 Titel und Accessibility-Klick auf Später sowie Activity-Neuerzeugung; es ersetzt keinen
-Kaltstart des persönlichen Produktionsbestands. Der bestehende Quelltext-Vollständigkeitstest
+Kaltstart des persönlichen Produktionsbestands. Dieser wurde zusätzlich am Pixel ausgeführt.
+Der bestehende Quelltext-Vollständigkeitstest
 ist ein Architekturhinweis, kein Verhaltensnachweis. Fehlermutationen wurden isoliert geprüft
 und zurückgenommen; sie sind keine committed Produktvarianten.
 
@@ -174,28 +179,33 @@ Die ursprüngliche Zählerabweichung bleibt mangels Vorgangsfolge oder Zwischenb
 Die korrekte heutige Vergabe und erhaltende historische Modellübergänge beweisen nicht, dass
 alle früheren Aufrufer, Versionen oder konkurrierenden Datenbankvorgänge fehlerfrei waren.
 
-## Verbleibende P5-Geräteabnahme
+## P5-Geräteabnahme am 2026-09-13
 
-Voraussetzung ist das verbundene, entsperrte Pixel 8. Der nächste Schritt ist eine frische
-Geräte-/App-Identifikation, keine weitere allgemeine Testsuite.
+| Prüfung | Tatsächlicher Nachweis |
+|---|---|
+| Identität vor Update | Pixel 8 / shiba, Android16 / API36, 0.2.172 / 1017201. Lesend kopierte installierte APK hat SHA-256 `84ce792395f217bc53ba984503bca40344f522389b159f6e545255cc90f1ea2b`, identisch zum öffentlichen Release; reguläres Zertifikat bestätigt |
+| Sichtbare Baseline | Noch auf 0.2.172 native Taps auf den Titel einer bestehenden Aufgabe und Später. Fokus wechselt hin und zurück; Prozess bleibt bestehen, kein App-/Datenbankfehler. Dieser Nachweis wurde heute erbracht, nicht rückdatiert |
+| Vorwärtsupdate | `adb install -r` des geprüften öffentlichen 0.2.175-Pakets erfolgreich. Versionscode 1017201→1017501; ursprüngliches Installationsdatum 2026-08-17 erhalten. Die anschließend vom Gerät gelesene APK ist bytegleich zum veröffentlichten Kandidaten |
+| Unterstützte Diagnose | Neuer passender regulär signierter Helper, ausschließlich DiagnosticProbeInstrumentation. Ergebnis: `schema=27; foreignKeys={}; staleExecutionCounters=0; occupiedNextExecutionKeys=0`; Diagnose-PID23465 beendet, kein normaler Folgeprozess zum Diagnoseende |
+| Helper und Normalstart | Ausschließlich der Helper deinstalliert und seine Instrumentierung danach nicht mehr vorhanden. Normaler Start der unverändert vorhandenen Haupt-App meldet `LaunchState: COLD`, Prozess23568; Start und frische App-Protokolle ohne App-/Datenbankfehler |
+| Archiv | Normaler Room-Start meldet Herkunft24 mit weiterhin 8 flow_run_steps, 4 flow_run_resources und 2 occurrence_steps im Wiederherstellungsarchiv |
+| Titel auf 0.2.175 | Einzelner nativer Tap auf den aus der aktuellen Hierarchie bestimmten Titel: ausgewählte bestehende Aufgabe wird Fokus. Nach echtem Prozessende und COLD-Neustart23568→24205 bleibt sie Fokus |
+| Später auf 0.2.175 | Einzelner nativer Tap auf Später: ursprüngliche Aufgabe wird wieder Fokus, verschobene Aufgabe bleibt vorhanden. Nach echtem Prozessende und COLD-Neustart24205→24505 bleibt dieser Zustand erhalten |
+| Vorhandener Bestand | Sämtliche sichtbaren Katalogtexte und Accessibility-Beschreibungen stimmen vor/nach Update überein: 4 Aufgaben, 31 Schritte, 2 bestehende Hintergrundabläufe, unveränderte Belohnungsanzeige. Ablaufübersicht zeigt beide vorhandenen Abläufe samt Wartezuständen und Ressourcen |
+| Abschlusszustand | Zur Heute-Ansicht mit ursprünglichem Fokus zurückgekehrt. Keine Erledigung, Reward-Buchung, Änderung einer Wartezeit oder neuer Ablaufstart als Test. Frische Prozesslogs ohne App-/Datenbankfehler; temporäre Hierarchiedatei auf dem Gerät entfernt |
 
-1. Installierte Version und Herkunft erfassen, sichtbare vorhandene Aufgaben/Abläufe festhalten.
-   Die historischen Belege zu 0.2.172 (in-place, Kaltstart, Archiv 8/4/2) sind kein aktueller Bestand
-   und keine nachträgliche sichtbare Abnahme dieser alten Version.
-2. Falls erforderlich und ausschließlich vorwärts: verifiziertes öffentliches 0.2.175 über die
-   vorhandene Installation installieren. Bei bereits neuerem Stand zuerst dessen Herkunft
-   prüfen; niemals downgraden oder App-Daten löschen.
-3. Auf unterstütztem Stand den passenden regulär signierten Helper für lesende Diagnose nutzen.
-   Alte APKs ohne Bootstrap nicht über den früheren unsicheren Diagnoseweg untersuchen.
-   Keine seed-/Fixture-Kommandos am Pixel. Nur den Helper anschließend entfernen.
-4. Normalen Kaltstart und frisches Prozessprotokoll prüfen; vorhandene Aufgaben/Abläufe sichtbar
-   kontrollieren, eine bestehende Aufgabe per Titel vorziehen und Später auslösen. Wirkung nach
-   Neustart prüfen; Auswahl nach Möglichkeit zurückstellen. Keine Erledigungen, Rewards oder
-   neuen Ablaufstarts als Test auslösen.
-5. Tatsächliche Ergebnisse mit Version, Zeitpunkt und beobachtetem Bestand nachtragen. Bei
-   Fehlern die betroffene Prüfung offen lassen und gezielt diagnostizieren. P5 erst nach
-   erfolgreicher Geräteabnahme vollständig schließen.
+Private Screenshots, UI-Hierarchien, Paket-/Signaturbelege und Prozessprotokolle bleiben lokal
+unter `/tmp/p5-device-proof/`; `acceptance-proof.json` ordnet die Ergebnisse zu. Keine persönlichen
+Aufgabentitel, Datenbankzeilen oder Bildschirmbilder wurden als Repositoryfixture übernommen.
 
-Die Geräteverfügbarkeit ist bereits angefragt. Schweigen ist weder ein Testergebnis noch eine
-Abnahme. Dieser fehlende Nachweis blockiert den Gesamtabschluss, nicht die Integration dieses
-Software-Abschlussberichts.
+Aussagegrenze: Es wurde kein vollständiger Vorher/Nachher-Snapshot der persönlichen Datenbank
+angelegt. Der alte Stand unterstützt den sicheren Diagnosevertrag noch nicht; er wurde nicht
+über den unsicheren alten Diagnoseweg umgangen. Die Geräteabnahme belegt das in-place-Update,
+den sichtbaren Bestand, Archivzählungen, unterstützte Diagnose und konkrete Bedienung samt
+Prozessneustart. Vollständige typisierte Datenerhaltung und Rollback werden durch die gesonderten
+synthetischen Migrations-/Upgradefälle belegt. Eine anfänglich gesperrte Anzeige wurde vom Nutzer
+entsperrt; keine dauerhaften Geräteeinstellungen oder Komponenten wurden dafür geändert.
+
+Die zuvor offene Geräteabnahme ist damit erfüllt. Die unbekannte ursprüngliche Zählerentstehung
+bleibt eine dokumentierte historische Wissensgrenze; die aktuelle Gerätediagnose mit null
+rückständigen Zählern rekonstruiert diese Vergangenheit nicht.

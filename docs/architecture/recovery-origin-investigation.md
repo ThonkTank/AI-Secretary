@@ -3,7 +3,8 @@
 Aktueller Status (2026-09-13): Der unten historisch untersuchte Waisenerzeuger wurde in
 P4b behoben, mit PR369 auf Main `c87d3240` integriert und als 0.2.175 veröffentlicht.
 Die ursprüngliche Entstehung des rückständigen Zählers bleibt unbekannt. Die Geräteabnahme
-ist weiterhin offen; aktuelle Nachweise stehen im [Abschlussbericht](recovery-remediation-acceptance.md).
+auf Pixel 8 / Android16 / API36 ist am 2026-09-13 bestanden; aktuelle Nachweise stehen im
+[Abschlussbericht](recovery-remediation-acceptance.md).
 Die folgenden P4-Beschreibungen beziehen sich auf den damaligen Untersuchungsstand.
 
 Untersuchter Produktstand: `3c0a873efa0eb553bcf670b778443d17659422fa`, Version0.2.174,
@@ -152,6 +153,7 @@ Reproduktion, verletzte aber die Domain-Regel releasePosition > acquirePosition.
 sie auf zwei Schritte und0→1. Mit gültigem Bestand wurde der alte Code erneut ausgeführt:
 alle neun neuen Erwartungen scheiterten am erwarteten Verhalten; mit Fix bestehen sie einschließlich
 Erhaltungs- und Rollbackprüfung. Rohbelege und die inzwischen abgeschlossenen Software- und
-Releasefreigaben stehen im Ausführungsprotokoll; die Pixel-Abnahme bleibt separat offen.
+Releasefreigaben stehen im Ausführungsprotokoll; die spätere Pixel-Abnahme ist separat im
+Abschlussbericht belegt.
 Dies korrigiert die damalige Aussage über einen vollständig gesunden Ausgangsbestand, ohne
 Originalprotokolle oder die nachgewiesene FK-Ursache nachträglich umzuschreiben.
