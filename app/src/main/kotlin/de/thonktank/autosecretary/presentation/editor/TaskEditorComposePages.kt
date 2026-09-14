@@ -48,7 +48,6 @@ import java.time.ZoneId
 @Composable
 internal fun EditorPageContent(
     state: EditorUiState,
-    trainingHistory: Map<String, TrainingHistoryUiModel>,
     palette: DayPalette,
     today: LocalDate,
     layout: EditorLayout,
@@ -60,7 +59,6 @@ internal fun EditorPageContent(
         when {
             state.expandedStepId != null -> EditorStepDetailPage(
                 state,
-                trainingHistory[state.expandedStepId],
                 palette,
                 layout,
                 dispatcher,

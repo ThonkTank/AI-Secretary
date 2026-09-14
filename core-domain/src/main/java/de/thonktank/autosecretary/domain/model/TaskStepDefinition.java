@@ -10,13 +10,12 @@ public final class TaskStepDefinition {
     public final int weekdayMask;
     public final int intervalDays;
     public final StepPrescription prescription;
-    public final TrainingAssistantPolicy assistantPolicy;
     public final String note;
     public final StepActivationKind activationKind;
 
     public TaskStepDefinition(String id, int position, String text, int weekdayMask,
                               int intervalDays, StepPrescription prescription,
-                              TrainingAssistantPolicy assistantPolicy, String note,
+                              String note,
                               StepActivationKind activationKind) {
         if (position < 0) throw new IllegalArgumentException("Step position must not be negative");
         if (text == null || text.trim().isEmpty())
@@ -31,23 +30,13 @@ public final class TaskStepDefinition {
             throw new IllegalArgumentException("Step weekdays and interval are mutually exclusive");
         this.intervalDays = intervalDays;
         this.prescription = Objects.requireNonNull(prescription, "prescription");
-        if (assistantPolicy != null && !(prescription.amount instanceof StepAmount.SetsReps))
-            throw new IllegalArgumentException("Only set steps may use the training assistant");
-        if (assistantPolicy != null && prescription.training == null)
-            throw new IllegalArgumentException("An assistant policy needs a training prescription");
-        if (assistantPolicy != null && prescription.training.load.adjustable()
-                && (prescription.training.load.milliUnits == null
-                || prescription.training.load.milliUnits <= 0))
-            throw new IllegalArgumentException(
-                    "An enabled assistant needs a positive numeric starting load");
-        this.assistantPolicy = assistantPolicy;
         this.note = note == null ? "" : note;
         this.activationKind = Objects.requireNonNull(activationKind, "activationKind");
     }
 
     public TaskStepDefinition withIdentity(String value, int newPosition) {
         return new TaskStepDefinition(value, newPosition, text, weekdayMask, intervalDays,
-                prescription, assistantPolicy, note, activationKind);
+                prescription, note, activationKind);
     }
 
     @Override public boolean equals(Object other) {
@@ -56,12 +45,11 @@ public final class TaskStepDefinition {
         return Objects.equals(id, value.id) && position == value.position
                 && text.equals(value.text) && weekdayMask == value.weekdayMask
                 && intervalDays == value.intervalDays && prescription.equals(value.prescription)
-                && Objects.equals(assistantPolicy, value.assistantPolicy)
                 && note.equals(value.note) && activationKind == value.activationKind;
     }
 
     @Override public int hashCode() {
         return Objects.hash(id, position, text, weekdayMask, intervalDays, prescription,
-                assistantPolicy, note, activationKind);
+                note, activationKind);
     }
 }

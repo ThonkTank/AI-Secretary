@@ -12,14 +12,10 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
-import de.thonktank.autosecretary.domain.model.TrainingAdjustment;
-import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
-import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.repository.CatalogRepository;
 import de.thonktank.autosecretary.domain.repository.FlowRepository;
 import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.repository.TodayRepository;
-import de.thonktank.autosecretary.domain.repository.TrainingRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
@@ -44,7 +40,6 @@ public final class InMemoryExecutionRepository {
     public final StepRepository steps = adapter(StepRepository.class);
     public final TodayRepository today = adapter(TodayRepository.class);
     public final FlowRepository flows = adapter(FlowRepository.class);
-    public final TrainingRepository training = adapter(TrainingRepository.class);
     public final TransactionRunner transactions = adapter(TransactionRunner.class);
     private Map<TaskId, Task> tasks = new LinkedHashMap<>();
     private Map<String, TaskStepTemplate> templates = new LinkedHashMap<>();
@@ -56,9 +51,6 @@ public final class InMemoryExecutionRepository {
     private Map<String, String> rewardAssignments = new LinkedHashMap<>();
     private Map<String, ComboObligation> comboObligations = new LinkedHashMap<>();
     private Map<String, ComboDecayEvent> comboDecayEvents = new LinkedHashMap<>();
-    private Map<String, TrainingAdjustment> trainingAdjustments = new LinkedHashMap<>();
-    private Map<String, TrainingLoadRequest> trainingLoadRequests = new LinkedHashMap<>();
-    private boolean failTrainingAdjustmentInsert;
     private int xp;
 
     private <T> T adapter(Class<T> port) {
@@ -377,84 +369,27 @@ public final class InMemoryExecutionRepository {
             throw new IllegalStateException("Duplicate combo decay event " + key);
     }
 
-    public synchronized double effectiveSetsSince(TrainingMuscleGroup muscle,
-                                                             LocalDate start, LocalDate end) {
-        return 0.0;
-    }
 
-    public synchronized void insertTrainingAdjustment(TrainingAdjustment adjustment) {
-        if (failTrainingAdjustmentInsert) {
-            failTrainingAdjustmentInsert = false;
-            throw new IllegalStateException("Injected training adjustment failure");
-        }
-        trainingAdjustments.put(adjustment.id, adjustment);
-    }
 
-    public synchronized void failNextTrainingAdjustmentInsert() {
-        failTrainingAdjustmentInsert = true;
-    }
 
-    public synchronized TrainingAdjustment latestTrainingAdjustment(String templateId) {
-        TrainingAdjustment latest = null;
-        for (TrainingAdjustment value : trainingAdjustments.values()) {
-            if (!templateId.equals(value.templateId)) continue;
-            if (latest == null || value.auditOrder > latest.auditOrder) latest = value;
-        }
-        return latest;
-    }
 
-    public synchronized List<TrainingAdjustment> recentTrainingAdjustments(
-            String templateId, int limit) {
-        List<TrainingAdjustment> result = new ArrayList<>();
-        for (TrainingAdjustment value : trainingAdjustments.values())
-            if (templateId.equals(value.templateId)) result.add(value);
-        result.sort(Comparator.comparingLong((TrainingAdjustment value) -> value.auditOrder)
-                .reversed());
-        return new ArrayList<>(result.subList(0, Math.min(Math.max(limit, 0), result.size())));
-    }
 
-    public synchronized void updateTrainingAdjustment(TrainingAdjustment adjustment) {
-        trainingAdjustments.put(adjustment.id, adjustment);
-    }
 
-    public synchronized long nextTrainingAuditOrder() {
-        long maximum = 0;
-        for (TrainingAdjustment value : trainingAdjustments.values())
-            maximum = Math.max(maximum, value.auditOrder);
-        for (TrainingLoadRequest value : trainingLoadRequests.values())
-            maximum = Math.max(maximum, value.auditOrder);
-        return maximum + 1;
-    }
 
-    public synchronized void insertTrainingLoadRequest(TrainingLoadRequest request) {
-        if (openTrainingLoadRequest(request.templateId) != null)
-            throw new IllegalStateException("An open training load request already exists");
-        trainingLoadRequests.put(request.id, request);
-    }
 
-    public synchronized TrainingLoadRequest openTrainingLoadRequest(String templateId) {
-        TrainingLoadRequest latest = null;
-        for (TrainingLoadRequest value : trainingLoadRequests.values()) {
-            if (!templateId.equals(value.templateId)
-                    || value.state != TrainingLoadRequest.State.OPEN) continue;
-            if (latest == null || value.auditOrder > latest.auditOrder) latest = value;
-        }
-        return latest;
-    }
 
-    public synchronized List<TrainingLoadRequest> recentTrainingLoadRequests(
-            String templateId, int limit) {
-        List<TrainingLoadRequest> result = new ArrayList<>();
-        for (TrainingLoadRequest value : trainingLoadRequests.values())
-            if (templateId.equals(value.templateId)) result.add(value);
-        result.sort(Comparator.comparingLong((TrainingLoadRequest value) -> value.auditOrder)
-                .reversed());
-        return new ArrayList<>(result.subList(0, Math.min(Math.max(limit, 0), result.size())));
-    }
 
-    public synchronized void updateTrainingLoadRequest(TrainingLoadRequest request) {
-        trainingLoadRequests.put(request.id, request);
-    }
+
+
+
+
+
+
+
+
+
+
+
 
     private List<Occurrence> byState(OccurrenceState state) {
         List<Occurrence> result = new ArrayList<>();
@@ -491,8 +426,7 @@ public final class InMemoryExecutionRepository {
                 new LinkedHashMap<>(rewardAssignments),
                 new LinkedHashMap<>(comboObligations),
                 new LinkedHashMap<>(comboDecayEvents),
-                new LinkedHashMap<>(trainingAdjustments),
-                new LinkedHashMap<>(trainingLoadRequests), xp);
+                xp);
     }
 
     private void restore(Snapshot value) {
@@ -506,8 +440,6 @@ public final class InMemoryExecutionRepository {
         rewardAssignments = value.rewardAssignments;
         comboObligations = value.comboObligations;
         comboDecayEvents = value.comboDecayEvents;
-        trainingAdjustments = value.trainingAdjustments;
-        trainingLoadRequests = value.trainingLoadRequests;
         xp = value.xp;
     }
 
@@ -522,8 +454,6 @@ public final class InMemoryExecutionRepository {
         final Map<String, String> rewardAssignments;
         final Map<String, ComboObligation> comboObligations;
         final Map<String, ComboDecayEvent> comboDecayEvents;
-        final Map<String, TrainingAdjustment> trainingAdjustments;
-        final Map<String, TrainingLoadRequest> trainingLoadRequests;
         final int xp;
 
         Snapshot(Map<TaskId, Task> tasks, Map<String, TaskStepTemplate> templates,
@@ -534,8 +464,7 @@ public final class InMemoryExecutionRepository {
                  Map<String, String> rewardAssignments,
                  Map<String, ComboObligation> comboObligations,
                  Map<String, ComboDecayEvent> comboDecayEvents,
-                 Map<String, TrainingAdjustment> trainingAdjustments,
-                 Map<String, TrainingLoadRequest> trainingLoadRequests, int xp) {
+                 int xp) {
             this.tasks = tasks;
             this.templates = templates;
             this.schedule = schedule;
@@ -546,8 +475,6 @@ public final class InMemoryExecutionRepository {
             this.rewardAssignments = rewardAssignments;
             this.comboObligations = comboObligations;
             this.comboDecayEvents = comboDecayEvents;
-            this.trainingAdjustments = trainingAdjustments;
-            this.trainingLoadRequests = trainingLoadRequests;
             this.xp = xp;
         }
     }

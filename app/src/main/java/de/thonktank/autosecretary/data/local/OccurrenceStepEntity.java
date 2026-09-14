@@ -25,10 +25,6 @@ public class OccurrenceStepEntity {
     public Integer plannedDurationSeconds;
     @NonNull public String restTimerMode;
     public Integer restTimerSeconds;
-    @NonNull public String plannedLoadMode;
-    @NonNull public String plannedLoadUnit;
-    public Long plannedLoadMilli;
-    public int targetRir;
     @NonNull public String note;
     /** Transitional v4-v7 payload; v8 writes an empty value and reads structured rows only. */
     @ColumnInfo(name = "actualRepetitions") @NonNull
@@ -86,8 +82,6 @@ public class OccurrenceStepEntity {
         this.plannedSets = plannedSets; this.plannedReps = plannedReps;
         this.plannedDurationSeconds = plannedDurationSeconds;
         this.restTimerMode = restTimerMode; this.restTimerSeconds = restTimerSeconds;
-        this.plannedLoadMode = "UNSPECIFIED"; this.plannedLoadUnit = "NONE";
-        this.targetRir = 2;
         this.note = note;
         this.legacyActualRepetitions = legacyActualRepetitions;
         this.sourceTemplateId = sourceTemplateId;

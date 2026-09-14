@@ -17,6 +17,7 @@ import java.util.Set;
 /** Complete atomic state for the Today screen and its acknowledgeable effects. */
 public final class TodayScreenState {
     public final TodayFeatureState feature;
+    @Nullable public final StepNoteDraft stepNoteDraft;
     public final boolean loading;
     public final Set<UiCommand> runningActions;
     public final RepetitionInputState repetitionInput;
@@ -32,6 +33,16 @@ public final class TodayScreenState {
                             TimerManager.Snapshot timers,
                             RewardEffectQueue.Snapshot rewards,
                             List<TodayRequest> requests) {
+        this(feature, loading, runningActions, repetitionInput, focusStepLimit, timers,
+                rewards, requests, null);
+    }
+
+    private TodayScreenState(TodayFeatureState feature, boolean loading,
+                            Set<UiCommand> runningActions, RepetitionInputState repetitionInput,
+                            FocusStepLimit focusStepLimit, TimerManager.Snapshot timers,
+                            RewardEffectQueue.Snapshot rewards, List<TodayRequest> requests,
+                            StepNoteDraft stepNoteDraft) {
+        this.stepNoteDraft = stepNoteDraft;
         if (feature == null || runningActions == null || repetitionInput == null
                 || focusStepLimit == null || timers == null || rewards == null
                 || requests == null)
@@ -125,7 +136,7 @@ public final class TodayScreenState {
                 timers, rewards, value);
     }
 
-    private static TodayScreenState copy(TodayFeatureState feature, boolean loading,
+    private TodayScreenState copy(TodayFeatureState feature, boolean loading,
                                          Set<UiCommand> runningActions,
                                          RepetitionInputState repetitionInput,
                                          FocusStepLimit focusStepLimit,
@@ -133,6 +144,11 @@ public final class TodayScreenState {
                                          RewardEffectQueue.Snapshot rewards,
                                          List<TodayRequest> requests) {
         return new TodayScreenState(feature, loading, runningActions, repetitionInput,
-                focusStepLimit, timers, rewards, requests);
+                focusStepLimit, timers, rewards, requests, stepNoteDraft);
+    }
+
+    public TodayScreenState withStepNoteDraft(StepNoteDraft value) {
+        return new TodayScreenState(feature, loading, runningActions, repetitionInput,
+                focusStepLimit, timers, rewards, requests, value);
     }
 }

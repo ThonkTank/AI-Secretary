@@ -35,13 +35,13 @@ FT-01	focus-task/active-without-amount.png	Ein aktiver Schritt ohne Menge behäl
 FT-02	focus-task/all-amount-kinds.png	Alle Mengenarten bleiben in einer gemeinsamen Fokuskarte unterscheidbar.
 FT-03	focus-task/gym-routine.png	Eine umfangreiche Trainingsroutine behält Hierarchie und kompakte Geometrie.
 FT-04	focus-task/repetition-rings.png	Wiederholungsringe zeigen Plan, Ist und Auswahl ohne Überlagerung.
-FT-05	focus-task/set-dots-20-412dp-20-dark.png	Zwanzig Sätze bleiben bei großer Schrift im Dunkelmodus erkennbar.
-FT-06	focus-task/set-dots-21-320dp-20-light.png	Einundzwanzig Sätze umbrechen auf Minimalbreite mit großer Schrift korrekt.
-FT-07	focus-task/set-dots-3-412dp-10-light.png	Eine kleine Satzanzahl nutzt Standardbreite ohne unnötige Verdichtung.
-FT-08	focus-task/set-dots-40-412dp-13-light.png	Die maximale Satzmatrix bleibt bei mittlerer Schrift innerhalb der Karte.
-FT-09	focus-task/set-dots-8-320dp-10-dark.png	Acht Sätze bleiben auf Minimalbreite im Dunkelmodus klar getrennt.
-FT-10	focus-task/set-dots-selected-3-412dp-10-light.png	Die ausgewählte Satzmarke unterscheidet sich eindeutig von offenen und fertigen Sätzen.
-FT-11	focus-task/training-assistant-question.png	Die Trainingsassistent-Frage bleibt im Fokusfluss hierarchisch und zugänglich.
+FT-05	focus-task/set-bars-20-412dp-20-dark.png	Zwanzig Sätze bleiben bei großer Schrift im Dunkelmodus erkennbar.
+FT-06	focus-task/set-bars-21-320dp-20-light.png	Einundzwanzig Satzbalken bleiben auf Minimalbreite mit großer Schrift scrollbar.
+FT-07	focus-task/set-bars-3-412dp-10-light.png	Eine kleine Satzanzahl nutzt Standardbreite ohne unnötige Verdichtung.
+FT-08	focus-task/set-bars-40-412dp-13-light.png	Die maximale Satzanzahl bleibt bei mittlerer Schrift innerhalb der Karte scrollbar.
+FT-09	focus-task/set-bars-8-320dp-10-dark.png	Acht Sätze bleiben auf Minimalbreite im Dunkelmodus klar getrennt.
+FT-10	focus-task/set-bars-selected-3-412dp-10-light.png	Die ausgewählte Satzmarke unterscheidet sich eindeutig von offenen und fertigen Sätzen.
+FT-11	focus-task/step-weight-note.png	Das Gewicht bleibt als Schrittnotiz direkt sichtbar.
 FO-01	forest-anchors.sha256	Die kanonischen Waldtexturen behalten ihre bytegenauen Renderanker.
 HS-01	homescreen/complete.png	Ein vollständig abgeschlossener Fokuszustand zeigt die korrekte Abschlusskomposition.
 HS-02	homescreen/empty-vessel.png	Ein leeres XP-Gefäß behält Boden, Kontur und Nullfüllung.

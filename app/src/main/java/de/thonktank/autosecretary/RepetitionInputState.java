@@ -6,29 +6,21 @@ import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepListUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepRowUiModel;
 import de.thonktank.autosecretary.domain.model.RepetitionProgress;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 
 /** Immutable draft for the repetition stepper and an optional saved-slot correction. */
 public final class RepetitionInputState {
     @Nullable public final String stepId;
     public final int value;
     public final int editingIndex;
-    public final ResistanceLoad load;
-    public final int rir;
-    public final boolean safetyFlag;
 
-    private RepetitionInputState(@Nullable String stepId, int value, int editingIndex,
-                                 ResistanceLoad load, int rir, boolean safetyFlag) {
+    private RepetitionInputState(@Nullable String stepId, int value, int editingIndex) {
         this.stepId = stepId;
         this.value = clamp(value);
         this.editingIndex = editingIndex;
-        this.load = load == null ? ResistanceLoad.unspecified() : load;
-        this.rir = Math.max(0, Math.min(5, rir));
-        this.safetyFlag = safetyFlag;
     }
 
     public static RepetitionInputState idle() {
-        return new RepetitionInputState(null, 0, -1, ResistanceLoad.unspecified(), 2, false);
+        return new RepetitionInputState(null, 0, -1);
     }
 
     public int valueFor(FocusStepUiModel step) {
@@ -42,53 +34,17 @@ public final class RepetitionInputState {
     }
 
     public RepetitionInputState adjust(FocusStepUiModel step, int delta) {
-        return active(step, valueFor(step) + delta, editingIndexFor(step), loadFor(step),
-                rirFor(step), safetyFor(step));
+        return active(step, valueFor(step) + delta, editingIndexFor(step));
     }
 
     public RepetitionInputState edit(FocusStepUiModel step, int index) {
         if (step.repetitionProgress == null || index < 0
                 || index >= step.repetitionProgress.repetitions.size()) return this;
-        return active(step, step.repetitionProgress.repetitions.get(index), index,
-                loadFor(step), rirFor(step), safetyFor(step));
+        return active(step, step.repetitionProgress.repetitions.get(index), index);
     }
 
-    public ResistanceLoad loadFor(FocusStepUiModel step) {
-        return stepId != null && stepId.equals(step.id) ? load
-                : step.repetitionProgress == null ? ResistanceLoad.unspecified()
-                : step.repetitionProgress.plannedLoad;
-    }
-
-    public int rirFor(FocusStepUiModel step) {
-        return stepId != null && stepId.equals(step.id) ? rir
-                : step.repetitionProgress == null ? 2 : step.repetitionProgress.targetRir;
-    }
-
-    public boolean safetyFor(FocusStepUiModel step) {
-        return stepId != null && stepId.equals(step.id) && safetyFlag;
-    }
-
-    public RepetitionInputState adjustLoad(FocusStepUiModel step, long delta) {
-        ResistanceLoad current = loadFor(step);
-        if (!current.adjustable()) return this;
-        long value = Math.max(0, (current.milliUnits == null ? 0 : current.milliUnits) + delta);
-        return active(step, valueFor(step), editingIndexFor(step),
-                ResistanceLoad.numeric(current.mode, current.unit, value), rirFor(step), safetyFor(step));
-    }
-
-    public RepetitionInputState adjustRir(FocusStepUiModel step, int delta) {
-        return active(step, valueFor(step), editingIndexFor(step), loadFor(step),
-                rirFor(step) + delta, safetyFor(step));
-    }
-
-    public RepetitionInputState toggleSafety(FocusStepUiModel step) {
-        return active(step, valueFor(step), editingIndexFor(step), loadFor(step),
-                rirFor(step), !safetyFor(step));
-    }
-
-    private static RepetitionInputState active(FocusStepUiModel step, int value, int index,
-                                               ResistanceLoad load, int rir, boolean safety) {
-        return new RepetitionInputState(step.id, value, index, load, rir, safety);
+    private static RepetitionInputState active(FocusStepUiModel step, int value, int index) {
+        return new RepetitionInputState(step.id, value, index);
     }
 
     public RepetitionInputState reconcile(@Nullable FocusStepListUiModel focus) {

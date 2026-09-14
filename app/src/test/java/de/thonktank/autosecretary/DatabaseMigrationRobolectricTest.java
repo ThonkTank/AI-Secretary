@@ -339,7 +339,7 @@ public final class DatabaseMigrationRobolectricTest {
         }
     }
 
-    @Test public void migrationTwentyToTwentyOnePreservesFlowsAndAddsTrainingSnapshots() {
+    @Test public void migrationTwentyToCurrentPreservesFlowsAndRetiresTrainingSnapshots() {
         SupportSQLiteOpenHelper.Configuration configuration =
                 SupportSQLiteOpenHelper.Configuration.builder(context).name(DATABASE)
                         .callback(new SupportSQLiteOpenHelper.Callback(20) {
@@ -369,13 +369,13 @@ public final class DatabaseMigrationRobolectricTest {
             assertEquals("Rack", cursor.getString(0));
             assertEquals(1, cursor.getInt(1));
         }
-        assertColumnsPresent(database, "task_steps", "assistantEnabled", "plannedLoadMode");
-        assertColumnsPresent(database, "occurrence_steps", "plannedLoadMode", "targetRir");
-        assertColumnsPresent(database, "flow_run_steps", "plannedLoadMode", "targetRir");
+        assertColumnsPresent(database, "task_steps", "note", "plannedReps");
+        assertColumnsPresent(database, "occurrence_steps", "note", "actualRepetitions");
+        assertColumnsPresent(database, "flow_run_steps", "note", "state");
         try (Cursor cursor = database.query("SELECT COUNT(*) FROM sqlite_master "
                 + "WHERE type='table' AND name='training_adjustments'")) {
             assertTrue(cursor.moveToFirst());
-            assertEquals(1, cursor.getInt(0));
+            assertEquals(0, cursor.getInt(0));
         }
         migrated.close();
     }
@@ -418,7 +418,7 @@ public final class DatabaseMigrationRobolectricTest {
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
         assertEquals(DatabaseContract.VERSION, database.getVersion());
         try (Cursor cursor = database.query("SELECT id,text,note,sourceTemplateId,amountKind,"
-                + "plannedSets,plannedReps,actualRepetitions,plannedLoadMode,targetRir "
+                + "plannedSets,plannedReps,actualRepetitions "
                 + "FROM occurrence_steps WHERE id='roman-step'")) {
             assertTrue(cursor.moveToFirst());
             assertEquals("roman-step", cursor.getString(0));
@@ -429,8 +429,6 @@ public final class DatabaseMigrationRobolectricTest {
             assertEquals(3, cursor.getInt(5));
             assertEquals(12, cursor.getInt(6));
             assertEquals("10", cursor.getString(7));
-            assertEquals("UNSPECIFIED", cursor.getString(8));
-            assertEquals(2, cursor.getInt(9));
         }
         migrated.close();
     }
@@ -535,11 +533,11 @@ public final class DatabaseMigrationRobolectricTest {
         AppDatabase migrated = Room.databaseBuilder(context, AppDatabase.class, DATABASE)
                 .addMigrations(DatabaseMigrations.from(21)).allowMainThreadQueries().build();
         SupportSQLiteDatabase database = migrated.getOpenHelper().getWritableDatabase();
-        try (Cursor cursor = database.query("SELECT text,plannedLoadMilli FROM task_steps "
+        try (Cursor cursor = database.query("SELECT text,note FROM task_steps "
                 + "WHERE id='first'")) {
             assertTrue(cursor.moveToFirst());
             assertEquals("Rudern", cursor.getString(0));
-            assertEquals(50_000L, cursor.getLong(1));
+            assertEquals("Gewicht: 50 kg", cursor.getString(1));
         }
         try (Cursor cursor = database.query("SELECT targetStepId FROM step_transitions "
                 + "WHERE sourceStepId='first'")) {
@@ -549,11 +547,8 @@ public final class DatabaseMigrationRobolectricTest {
                 + "WHERE id='lease'")) {
             assertTrue(cursor.moveToFirst()); assertEquals("rack", cursor.getString(0));
         }
-        try (Cursor cursor = database.query("SELECT reason,auditOrder,ruleVersion FROM "
-                + "training_adjustments WHERE id='adjust'")) {
-            assertTrue(cursor.moveToFirst());
-            assertEquals("REPETITIONS_INCREASED", cursor.getString(0));
-            assertTrue(cursor.getLong(1) > 0); assertEquals(1, cursor.getInt(2));
+        try (Cursor cursor = database.query("SELECT COUNT(*) FROM sqlite_master WHERE name='training_adjustments'")) {
+            assertTrue(cursor.moveToFirst()); assertEquals(0, cursor.getInt(0));
         }
         try (Cursor cursor = database.query("PRAGMA table_info(task_steps)")) {
             while (cursor.moveToNext())

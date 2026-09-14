@@ -9,7 +9,6 @@ import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.SetResult;
-import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.repository.CatalogRepository;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
@@ -138,11 +137,8 @@ public final class StepExecutionService {
             if (current == null)
                 return result(StepExecutionResult.Status.INVALID_STEP, null,
                         RewardReceipt.none());
-            TrainingObservation training = current.repetitionProgress == null
-                    || index < 0 || index >= current.repetitionProgress.results.size() ? null
-                    : current.repetitionProgress.results.get(index).training;
             return correctSetResultInsideTransaction(stepId, index,
-                    new SetResult(repetitions, training));
+                    new SetResult(repetitions));
         });
     }
 

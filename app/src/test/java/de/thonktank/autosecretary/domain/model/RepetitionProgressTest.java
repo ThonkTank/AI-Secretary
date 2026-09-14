@@ -44,7 +44,7 @@ public final class RepetitionProgressTest {
 
     @Test public void legacyValuesRemainReadableButCannotBeRecordedAgain() {
         RepetitionProgress legacy = RepetitionProgress.restoreResults(2,
-                Collections.singletonList(SetResult.restore(1_200, null)), false);
+                Collections.singletonList(SetResult.restore(1_200)), false);
 
         assertEquals(Collections.singletonList(1_200), legacy.repetitions());
         assertEquals(1, legacy.nextOpenSlotIndex());
@@ -84,11 +84,8 @@ public final class RepetitionProgressTest {
                 StepAmount.none(), Collections.singletonList(SetResult.repetitions(10)), false));
     }
 
-    @Test public void repetitionProjectionCannotDivergeFromTrainingObservation() {
-        TrainingObservation observation = TrainingObservation.user(
-                ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
-                        ResistanceLoad.Unit.KG, 23_000), 2);
-        SetResult result = new SetResult(12, observation);
+    @Test public void repetitionProjectionIsAnImmutableViewOfResults() {
+        SetResult result = new SetResult(12);
 
         RepetitionProgress progress = RepetitionProgress.restoreResults(
                 1, Collections.singletonList(result), false);

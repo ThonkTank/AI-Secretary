@@ -68,11 +68,8 @@ Vorprüfungen, Phasenergebnisse und Selbstkritik werden getrennt im
 [Fortschrittsprotokoll der Frontend-Modernisierung](frontend-modernization-progress.md)
 festgehalten.
 
-Die verbindliche
-[Roadmap zum minimalen Trainingsassistenten](training-assistant-minimal-roadmap.md) reduziert
-Schritt-, Trainings-, Ergebnis- und Persistenzgrenzen ohne Übergangsarchitektur. Ihr kompaktes
-[Ausführungsprotokoll](training-assistant-minimal-execution.md) hält Phasenstatus, Plan,
-Validierung und Abweichungen separat fest.
+[ADR-039: Schrittnotizen ohne Trainingsassistent](adr-039-schrittnotizen-ohne-trainingsassistent.md) ersetzt den
+Trainingsassistenten durch direkte Notizbearbeitung und die allgemeine Schrittbedienung.
 
 Die verbindliche
 [Roadmap zur sauberen Heute-Aufgabenblatt-Architektur](today-focus-clean-roadmap.md) führt
@@ -132,18 +129,17 @@ belastbaren Verantwortungsgrenzen:
   benannten Katalog-, Schritt- und Today-Ports;
 - `presentation.alltasks`: Katalogzustand, Filter, flaches Listenmodell und Verwaltungs-UI;
 - `presentation.today`: verbraucherspezifische Today-Projektionen, geschlossene Aktionen und der
-  fokussierte Trainingsassistentenhandler;
-- `presentation.editor`: zustandsloser Compose-Editor mit eigener
-  `TrainingAssistantEditorSection` auf kanonischen Typen;
+  Zustand des Notizdialogs mit erhaltenem Entwurf;
+- `presentation.editor`: zustandsloser Compose-Editor für allgemeine Schrittangaben;
 - `presentation`: gemeinsam genutzte Präsentationsadapter und lokalisierte Textformatierung;
 - `editor`: reine, Android-unabhängige Zustandsübergänge des Aufgabeneditors;
 - `widget`: direkte Domain-zu-Widget-Projektion und größenabhängige UI-Modelle;
 - `domain.repository`: exakt `CatalogRepository`, `StepRepository`, `TodayRepository`,
-  `FlowRepository` und `TrainingRepository` ohne Transaktionsvererbung;
+  `FlowRepository` ohne Transaktionsvererbung;
 - `domain.transaction`: unabhängiger atomarer Ausführungsport;
-- `data.local`: fünf fokussierte Room-DAOs und Einzelportadapter, Entities, Mapper sowie der
+- `data.local`: vier fokussierte Room-DAOs und Einzelportadapter, Entities, Mapper sowie der
   getrennte `RoomTransactionRunner`; ein Sammelgateway existiert nicht;
-- `ui.today`: Fokus-/Timeline-Views und `TrainingAssistantPanelView` als Owner seiner Controls;
+- `ui.today`: Fokus-/Timeline-Views und der kleine Schrittnotizdialog;
 - Root-Paket: Android-Views, Lifecycle-/Composition-Root und historisch noch nicht verschobene
 kleine Adapter.
 

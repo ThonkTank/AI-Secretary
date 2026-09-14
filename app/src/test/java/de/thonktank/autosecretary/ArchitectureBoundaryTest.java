@@ -181,7 +181,7 @@ public final class ArchitectureBoundaryTest {
         assertFalse(Files.exists(main("UiEvent.java")));
     }
 
-    @Test public void slicesAndFivePersistencePortsAreConcretePackageBoundaries()
+    @Test public void slicesAndFourPersistencePortsAreConcretePackageBoundaries()
             throws Exception {
         assertTrue(Files.isDirectory(main("presentation/alltasks")));
         assertTrue(Files.isDirectory(main("presentation/today")));
@@ -189,7 +189,7 @@ public final class ArchitectureBoundaryTest {
         assertTrue(Files.isDirectory(main("domain/steps")));
         assertTrue(Files.isDirectory(main("domain/today")));
         assertTrue(Files.isDirectory(main("data/local")));
-        for (String port : new String[]{"Catalog", "Step", "Today", "Flow", "Training"}) {
+        for (String port : new String[]{"Catalog", "Step", "Today", "Flow"}) {
             Path source = main("domain/repository/" + port + "Repository.java");
             assertTrue(port, Files.exists(source));
             assertFalse(port + " port inherits another capability",
@@ -263,7 +263,7 @@ public final class ArchitectureBoundaryTest {
         assertFalse(Files.exists(main("domain/usecase/TaskUseCases.java")));
         assertTrue(Files.exists(main("domain/transaction/TransactionRunner.java")));
         for (String bundle : new String[]{"CatalogUseCases.java", "TodayUseCases.java",
-                "FlowUseCases.java", "TrainingUseCases.java"})
+                "FlowUseCases.java"})
             assertTrue(bundle, Files.exists(main("domain/usecase/" + bundle)));
 
         forEachJava(main("domain/repository"), source -> {
@@ -289,16 +289,16 @@ public final class ArchitectureBoundaryTest {
         assertTrue(container.contains("CatalogUseCases catalog"));
         assertTrue(container.contains("TodayUseCases today"));
         assertTrue(container.contains("FlowUseCases flows"));
-        assertTrue(container.contains("TrainingUseCases training"));
+        assertFalse(container.contains("TrainingUseCases"));
         assertFalse(container.contains("TaskUseCases"));
         assertFalse(container.contains("container.tasks"));
     }
 
-    @Test public void roomPersistenceHasExactlyFiveFocusedAdaptersAndOneRunner()
+    @Test public void roomPersistenceHasExactlyFourFocusedAdaptersAndOneRunner()
             throws Exception {
         String composition = read(main("ApplicationUseCaseComposition.java"));
         String database = read(main("AppDatabase.java"));
-        for (String slice : new String[]{"Catalog", "Step", "Today", "Flow", "Training"}) {
+        for (String slice : new String[]{"Catalog", "Step", "Today", "Flow"}) {
             String port = slice + "Repository";
             String adapter = "Room" + port;
             String dao = slice + "Dao";
@@ -321,8 +321,7 @@ public final class ArchitectureBoundaryTest {
                 read(main("data/local/RoomCatalogRepository.java")),
                 read(main("data/local/RoomStepRepository.java")),
                 read(main("data/local/RoomTodayRepository.java")),
-                read(main("data/local/RoomFlowRepository.java")),
-                read(main("data/local/RoomTrainingRepository.java"))})
+                read(main("data/local/RoomFlowRepository.java"))})
             productionRunnerCreations += occurrences(source,
                     "new RoomTransactionRunner(database)");
         assertTrue(productionRunnerCreations == 1);
@@ -340,14 +339,6 @@ public final class ArchitectureBoundaryTest {
         forEachJava(tests.resolve("steps"), source -> assertFalse(source
                 + " uses execution acceptance store", read(source).contains(
                 "InMemoryExecutionRepository")));
-        for (String trainingSlice : new String[]{"ResolveTrainingLoadRequestTest.java",
-                "LoadTrainingContextTest.java", "UndoLatestTrainingAdjustmentTest.java"}) {
-            String source = read(tests.resolve("usecase").resolve(trainingSlice));
-            assertFalse(trainingSlice + " uses execution acceptance store",
-                    source.contains("InMemoryExecutionRepository"));
-            assertTrue(trainingSlice + " uses focused training store",
-                    source.contains("InMemoryTrainingRepository"));
-        }
     }
 
     @Test public void productionMigrationGraphStartsAtSupportedSchemaEight() throws Exception {
@@ -397,7 +388,7 @@ public final class ArchitectureBoundaryTest {
         assertFalse(editor.contains("public boolean ongoing"));
     }
 
-    @Test public void trainingDomainHasOneCanonicalStepAndResultLanguage() throws Exception {
+    @Test public void stepsHaveOneCanonicalPrescriptionAndResultLanguage() throws Exception {
         assertFalse(Files.exists(main("domain/model/TrainingAssistant" + "Config.java")));
         String template = read(main("domain/model/TaskStepTemplate.java"));
         String definition = read(main("domain/model/TaskStepDefinition.java"));
@@ -416,53 +407,9 @@ public final class ArchitectureBoundaryTest {
         assertTrue(progress.contains("public List<Integer> repetitions()"));
         assertFalse(progress.contains("actual" + "Repetitions"));
         assertFalse(progress.contains("public static RepetitionProgress restore("));
-        String decision = read(main("domain/model/TrainingDecision.java"));
-        assertTrue(decision.contains("public final StepPrescription nextPrescription"));
-        assertTrue(decision.contains("public final TrainingAssistantState nextState"));
-        assertFalse(decision.contains("public final StepAmount.SetsReps prescription"));
-        assertFalse(decision.contains("public final ResistanceLoad load"));
-        assertFalse(decision.contains("public final TrainingAssistantState state"));
     }
 
-    @Test public void trainingAssistantUiHasOnePanelActionAndHandlerOwner() throws Exception {
-        String row = read(main("ui/today/FocusStepRowView.java"));
-        String panel = read(main("ui/today/TrainingAssistantPanelView.java"));
-        String action = read(main("presentation/today/TrainingAssistantUiAction.java"));
-        String todayAction = read(main("presentation/today/TodayAction.java"));
-        String handler = read(main("presentation/today/TrainingAssistantActionHandler.java"));
-        String viewModel = read(main("presentation/today/TodayViewModel.java"));
 
-        assertTrue(row.contains("new TrainingAssistantPanelView"));
-        assertTrue(row.contains("assistantPanel.bind("));
-        assertFalse(row.contains("parseLoad("));
-        assertFalse(row.contains("loadQuestion"));
-        assertFalse(row.contains("undoAdjustment"));
-        assertTrue(panel.contains("TrainingAssistantUiAction.ApplyLoad"));
-        assertTrue(panel.contains("TrainingAssistantUiAction.NoHigherLoad"));
-        assertTrue(panel.contains("TrainingAssistantUiAction.Later"));
-        assertFalse(panel.contains("TrainingAssistantUiAction.Undo"));
-        assertFalse(action.contains("class Undo"));
-        assertTrue(action.contains("public final String rawLoad"));
-        assertTrue(action.contains("ResistanceLoad.Mode currentMode"));
-        assertTrue(action.contains("ResistanceLoad.Unit currentUnit"));
-        assertTrue(todayAction.contains("TRAINING_ASSISTANT"));
-        assertFalse(todayAction.contains("APPLY_" + "TRAINING_LOAD"));
-        assertFalse(todayAction.contains("NO_HIGHER_" + "TRAINING_LOAD"));
-        assertFalse(todayAction.contains("LATER_" + "TRAINING_LOAD"));
-        assertFalse(todayAction.contains("UNDO_" + "TRAINING_ADJUSTMENT"));
-        assertTrue(handler.contains(
-                "TrainingAssistantActionHandler(TrainingUseCases training)"));
-        assertFalse(handler.contains("UiTextProvider"));
-        assertFalse(handler.contains("TodayUiModel"));
-        assertTrue(handler.contains("new BigDecimal"));
-        assertTrue(handler.contains("replace(',', '.')"));
-        assertTrue(handler.contains("movePointRight(3).longValueExact()"));
-        assertTrue(viewModel.contains("trainingAssistantActions.handle(action)"));
-        assertFalse(viewModel.contains("ResolveTrainingLoadRequest"));
-        assertFalse(viewModel.contains("ResistanceLoad"));
-        assertFalse(viewModel.contains("resolveTrainingLoadRequest"));
-        assertFalse(viewModel.contains("undoLatestTrainingAdjustment"));
-    }
 
     @Test public void stepSnapshotsHaveOneFactoryAndNamedRehydrationBoundaries()
             throws Exception {

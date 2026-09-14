@@ -37,7 +37,7 @@ public final class CurrentUpgradeSmokeRoomTest {
     private void verifyOn(LocalDate day) throws Exception {
         Context context = ApplicationProvider.getApplicationContext();
         String name = "current-smoke-" + java.util.UUID.randomUUID();
-        JSONObject fixture = new JSONObject(Files.readString(Path.of("../release/current-smoke/schema-27.json"))
+        JSONObject fixture = new JSONObject(Files.readString(Path.of("../release/current-smoke/schema-28.json"))
                 .replace("${TODAY}", day.toString()));
         Clock clock = new Clock() {
             public LocalDate today() { return day; }

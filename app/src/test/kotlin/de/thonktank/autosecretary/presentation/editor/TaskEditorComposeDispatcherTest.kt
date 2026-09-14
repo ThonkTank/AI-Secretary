@@ -82,9 +82,8 @@ class TaskEditorComposeDispatcherTest {
         "ruhig beginnen",
         listOf(EditorStepState(
             "step-1", "Dehnen", StepCadenceMode.ALWAYS, 0, null,
-            StepPrescription.forAmount(StepAmount.none()), null, "",
-            StepActivationKind.SCHEDULED,
-        )),
+            StepPrescription.forAmount(StepAmount.none()), "",
+            StepActivationKind.SCHEDULED)),
         null,
         2,
     )
@@ -98,7 +97,6 @@ class TaskEditorComposeDispatcherTest {
             onDraftChanged = { draft = it },
             onSave = { saved = it },
             onDelete = { },
-            onUndoTrainingAdjustment = { },
             onDismiss = { dismisses++ },
         )
     }

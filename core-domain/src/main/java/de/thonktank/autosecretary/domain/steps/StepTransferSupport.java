@@ -71,7 +71,7 @@ final class StepTransferSupport {
         return new TaskStepTemplate(value.id, task.id, position, value.text,
                 task.recurrence == Recurrence.ONCE ? 0 : value.weekdayMask,
                 task.recurrence == Recurrence.ONCE ? 0 : value.intervalDays,
-                value.prescription, value.assistantProfile, value.note, value.activationKind);
+                value.prescription, value.note, value.activationKind);
     }
 
     static boolean resequenceOpen(StepRepository repository, TodayRepository today,

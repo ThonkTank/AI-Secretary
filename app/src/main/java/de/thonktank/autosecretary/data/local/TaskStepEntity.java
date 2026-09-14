@@ -22,22 +22,6 @@ public class TaskStepEntity {
     public Integer plannedDurationSeconds;
     @NonNull public String restTimerMode;
     public Integer restTimerSeconds;
-    public boolean assistantEnabled;
-    public int assistantMinSets;
-    public int assistantMaxSets;
-    public int assistantMinReps;
-    public int assistantMaxReps;
-    public int assistantTargetRir;
-    public int assistantWeeklySetCeiling;
-    @NonNull public String plannedLoadMode;
-    @NonNull public String plannedLoadUnit;
-    public Long plannedLoadMilli;
-    public String primaryMuscle;
-    @NonNull public String secondaryMuscles;
-    @NonNull public String assistantStatus;
-    public int assistantObservations;
-    public int assistantReadyStreak;
-    public int assistantHardStreak;
     @NonNull public String note;
     @ColumnInfo(defaultValue = "'SCHEDULED'") @NonNull public String activationKind;
     @Ignore public TaskStepEntity(@NonNull String id, @NonNull String taskId, int position,
@@ -97,11 +81,6 @@ public class TaskStepEntity {
         this.plannedSets = plannedSets; this.plannedReps = plannedReps;
         this.plannedDurationSeconds = plannedDurationSeconds;
         this.restTimerMode = restTimerMode; this.restTimerSeconds = restTimerSeconds;
-        this.assistantEnabled = false; this.assistantMinSets = 2; this.assistantMaxSets = 3;
-        this.assistantMinReps = 8; this.assistantMaxReps = 12; this.assistantTargetRir = 2;
-        this.assistantWeeklySetCeiling = 10;
-        this.plannedLoadMode = "UNSPECIFIED"; this.plannedLoadUnit = "NONE";
-        this.secondaryMuscles = ""; this.assistantStatus = "DISABLED";
         this.note = note;
         this.activationKind = activationKind;
     }

@@ -15,7 +15,7 @@
     "metadataSha256": "d0705009ed1286495b2d085721e2f1278bf898991cc9747286c6e45e5d126ecf",
     "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
   },
-  "targetDatabaseVersion": 27,
+  "targetDatabaseVersion": 28,
   "apiLanes": [
     {
       "apiLevel": 26,
@@ -155,7 +155,9 @@
   "expectedTarget": [
     {
       "table": "flow_run_steps",
-      "where": {"id": "upgrade-repair-finish"},
+      "where": {
+        "id": "upgrade-repair-finish"
+      },
       "values": {
         "sourceTemplateId": "upgrade-repair-template-3",
         "amountKind": "DURATION",
@@ -168,7 +170,9 @@
     },
     {
       "table": "flow_run_steps",
-      "where": {"id": "upgrade-repair-permuted"},
+      "where": {
+        "id": "upgrade-repair-permuted"
+      },
       "values": {
         "runId": "upgrade-repair-run",
         "position": 0,
@@ -180,11 +184,7 @@
         "plannedDurationSeconds": null,
         "restTimerMode": "CUSTOM",
         "restTimerSeconds": 45,
-        "plannedLoadMode": "EXTERNAL",
-        "plannedLoadUnit": "KG",
-        "plannedLoadMilli": 12345,
-        "targetRir": 3,
-        "note": "Korrupte Notiz",
+        "note": "Korrupte Notiz\nGewicht: 12,345 kg",
         "delayMode": "FIXED",
         "defaultDelayMillis": 6000,
         "lastUsedDelayMillis": 7000,
@@ -193,7 +193,9 @@
     },
     {
       "table": "flow_run_steps",
-      "where": {"id": "upgrade-repair-correct"},
+      "where": {
+        "id": "upgrade-repair-correct"
+      },
       "values": {
         "runId": "upgrade-repair-run",
         "position": 1,
@@ -205,11 +207,7 @@
         "plannedDurationSeconds": null,
         "restTimerMode": "DEFAULT",
         "restTimerSeconds": null,
-        "plannedLoadMode": "BODYWEIGHT_PLUS",
-        "plannedLoadUnit": "LB",
-        "plannedLoadMilli": 54321,
-        "targetRir": 4,
-        "note": "Korrekte Notiz",
+        "note": "Korrekte Notiz\nGewicht: Körpergewicht + 54,321 lb",
         "delayMode": "REMEMBER_LAST",
         "defaultDelayMillis": 9000,
         "lastUsedDelayMillis": 10000,

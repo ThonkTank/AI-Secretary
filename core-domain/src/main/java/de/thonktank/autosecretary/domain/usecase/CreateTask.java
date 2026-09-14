@@ -63,13 +63,8 @@ public final class CreateTask {
         for (int i = 0; i < definitions.size(); i++) {
             TaskStepDefinition step = definitions.get(i);
             String id = step.id == null ? ids.nextId() : step.id;
-            de.thonktank.autosecretary.domain.model.TrainingAssistantProfile profile =
-                    step.assistantPolicy == null ? null
-                            : new de.thonktank.autosecretary.domain.model.TrainingAssistantProfile(
-                            step.assistantPolicy,
-                            de.thonktank.autosecretary.domain.model.TrainingAssistantState.calibrating());
             result.add(new TaskStepTemplate(id, taskId, i, step.text, step.weekdayMask,
-                    step.intervalDays, step.prescription, profile, step.note,
+                    step.intervalDays, step.prescription, step.note,
                     step.activationKind));
         }
         return result;

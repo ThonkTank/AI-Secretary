@@ -1317,7 +1317,7 @@ public final class DatabaseMigrations {
                     @Override public void migrate(SupportSQLiteDatabase database) {
                         OrphanFlowRecovery.createArchive(database);
                     }
-                }};
+                }, new RemoveTrainingMigration28()};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

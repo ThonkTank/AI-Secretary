@@ -26,14 +26,12 @@ import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.SetResult;
-import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
 import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
 import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
 import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
-import de.thonktank.autosecretary.domain.usecase.TrainingUseCases;
 import de.thonktank.autosecretary.domain.schedule.ScheduleMoveResult;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
@@ -70,7 +68,6 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private final TodayUseCases today;
     @Nullable private FlowUseCases flows;
     private final CatalogUseCases catalog;
-    private final TrainingAssistantActionHandler trainingAssistantActions;
     private final DashboardPresenter dashboard;
     private final CalendarDataSource calendar;
     private final UiPreferences preferences;
@@ -100,7 +97,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     public TodayViewModel(AppContainer container, AppNavigator navigator,
                    SavedStateHandle savedState, ExecutorService worker) {
-        this(container.today, container.catalog, container.training,
+        this(container.today, container.catalog,
                 container.dashboardPresenter, container.calendar,
                 container.uiPreferences, container.clock, container.logger, container.texts,
                 container.presentationInvalidations, container.timers, navigator,
@@ -109,19 +106,19 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     }
 
     public TodayViewModel(TodayUseCases today, CatalogUseCases catalog,
-                  TrainingUseCases training, DashboardPresenter dashboard,
+                  DashboardPresenter dashboard,
                   CalendarDataSource calendar,
                   UiPreferences preferences, Clock clock, AppLogger logger,
                   UiTextProvider texts, PresentationInvalidationSource invalidations,
                   SavedStateHandle savedState, ExecutorService worker,
                   @Nullable Executor collectionExecutor) {
-        this(today, catalog, training, dashboard, calendar, preferences, clock, logger, texts,
+        this(today, catalog, dashboard, calendar, preferences, clock, logger, texts,
                 invalidations,
                 null, destination -> { }, savedState, worker, collectionExecutor);
     }
 
     public TodayViewModel(TodayUseCases today, CatalogUseCases catalog,
-                  TrainingUseCases training, DashboardPresenter dashboard,
+                  DashboardPresenter dashboard,
                   CalendarDataSource calendar,
                   UiPreferences preferences, Clock clock, AppLogger logger,
                   UiTextProvider texts, PresentationInvalidationSource invalidations,
@@ -131,7 +128,6 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         this.today = today;
         this.flows = null;
         this.catalog = catalog;
-        this.trainingAssistantActions = new TrainingAssistantActionHandler(training);
         this.dashboard = dashboard;
         this.calendar = calendar;
         this.preferences = preferences;
@@ -155,6 +151,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 Collections.emptySet(), RepetitionInputState.idle(), display.focusStepLimit,
                 timers == null ? TimerManager.Snapshot.empty() : timers.snapshot(),
                 rewardQueue.snapshot(), restored);
+        current = current.withStepNoteDraft(StepNoteDraft.restore(savedState.get(SAVED_STEP_NOTE)));
         state = StateFlowKt.MutableStateFlow(current);
         todayCoordinator = new TodayCoordinator(initial,
                 new TodayCommandDispatcher(this), this::publishTodayFeatureState);
@@ -188,6 +185,9 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     private void reduce(TodayAction action) {
         switch (action.kind) {
+            case EDIT_STEP_NOTE:
+                openStepNote(action.id);
+                return;
             case ADD_TASK:
                 navigator.navigate(AppDestination.newTask());
                 return;
@@ -232,12 +232,68 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
             case ACKNOWLEDGE_REWARD:
                 publishRewards(rewardQueue.acknowledge(action.id));
                 return;
-            case TRAINING_ASSISTANT:
-                handleTrainingAssistant(action.trainingAssistantAction);
-                return;
             default:
                 todayCoordinator.emit(action);
         }
+    }
+
+    private static final String SAVED_STEP_NOTE = "today.stepNote";
+    private final android.os.Handler noteHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private long noteGeneration;
+
+    private void setStepNoteDraft(StepNoteDraft draft) {
+        synchronized (stateLock) {
+            savedState.set(SAVED_STEP_NOTE, draft == null ? null : draft.saved());
+            publish(current.withStepNoteDraft(draft));
+        }
+    }
+
+    private void openStepNote(String stepId) {
+        if (current.stepNoteDraft != null) return;
+        long generation = ++noteGeneration;
+        worker.execute(() -> {
+            try {
+                de.thonktank.autosecretary.domain.model.StepNote note = today.editStepNote.load(stepId);
+                if (note == null) throw new IllegalArgumentException("Step no longer exists");
+                noteHandler.post(() -> {
+                    if (generation == noteGeneration)
+                        setStepNoteDraft(new StepNoteDraft(note.id, note.note, "", false));
+                });
+            } catch (RuntimeException error) {
+                logger.error("TodayViewModel", "Step note could not be loaded", error);
+                enqueue(TodayRequest.feedback(nextRequestId(), TodayRequest.Kind.ERROR,
+                        texts.text(R.string.error_change_save)));
+            }
+        });
+    }
+
+    public void changeStepNote(String text) {
+        StepNoteDraft draft = current.stepNoteDraft;
+        if (draft == null || draft.saving) return;
+        setStepNoteDraft(new StepNoteDraft(draft.id, text, "", false));
+    }
+
+    public void cancelStepNote() {
+        if (current.stepNoteDraft == null || !current.stepNoteDraft.saving) {
+            noteGeneration++;
+            setStepNoteDraft(null);
+        }
+    }
+
+    public void saveStepNote() {
+        StepNoteDraft draft = current.stepNoteDraft;
+        if (draft == null || draft.saving) return;
+        setStepNoteDraft(new StepNoteDraft(draft.id, draft.text, "", true));
+        worker.execute(() -> {
+            try {
+                today.editStepNote.save(draft.id, draft.text);
+                noteHandler.post(() -> setStepNoteDraft(null));
+            } catch (RuntimeException error) {
+                logger.error("TodayViewModel", "Step note could not be saved", error);
+                noteHandler.post(() -> setStepNoteDraft(new StepNoteDraft(draft.id, draft.text,
+                        texts.text(R.string.error_change_save), false)));
+            }
+        });
     }
 
     private void enqueue(TodayRequest request) {
@@ -310,18 +366,16 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private void recordRepetitionResult(RepetitionInputReducer.Submission submission) {
         runTodayStepResult(command(UiCommand.Kind.RECORD_REPETITION_RESULT, submission.stepId),
                 () -> today.recordSetResult.execute(submission.stepId,
-                        trainingResult(submission)));
+                        repetitionResult(submission)));
     }
     private void correctRepetitionResult(RepetitionInputReducer.Submission submission) {
         runTodayStepResult(command(UiCommand.Kind.CORRECT_REPETITION_RESULT, submission.stepId),
                 () -> today.correctSetResult.execute(submission.stepId,
-                        submission.editingIndex, trainingResult(submission)));
+                        submission.editingIndex, repetitionResult(submission)));
     }
 
-    private static SetResult trainingResult(RepetitionInputReducer.Submission value) {
-        return new SetResult(value.value, new TrainingObservation(value.load, value.rir,
-                value.safetyFlag ? TrainingObservation.Safety.PAIN_OR_TECHNIQUE
-                : TrainingObservation.Safety.NONE, TrainingObservation.Origin.USER));
+    private static SetResult repetitionResult(RepetitionInputReducer.Submission value) {
+        return new SetResult(value.value);
     }
     private void close(String taskId) {
         runTodayReward(command(UiCommand.Kind.CLOSE, taskId),
@@ -340,23 +394,9 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 () -> catalog.delete.execute(TaskId.of(taskId)));
     }
 
-    private void handleTrainingAssistant(TrainingAssistantUiAction action) {
-        run(command(UiCommand.Kind.TRAINING_ASSISTANT, action.templateId), () -> {
-            TrainingAssistantActionHandler.Result result =
-                    trainingAssistantActions.handle(action);
-            if (result instanceof TrainingAssistantActionHandler.Feedback) {
-                trainingFeedback(((TrainingAssistantActionHandler.Feedback) result).message);
-            } else if (result instanceof TrainingAssistantActionHandler.Rejected) {
-                throw new IllegalArgumentException(texts.text(
-                        ((TrainingAssistantActionHandler.Rejected) result).message));
-            }
-        });
-    }
 
-    private void trainingFeedback(int stringId) {
-        enqueue(TodayRequest.feedback(nextRequestId(), TodayRequest.Kind.INFO,
-                texts.text(stringId)));
-    }
+
+
 
     @Override public void handleCompleteOccurrence(String occurrenceId) {
         runTodayReward(command(UiCommand.Kind.COMPLETE, occurrenceId),
@@ -462,17 +502,11 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         reduceRepetitionInput(TodayAction.adjustRepetition(stepId, delta));
     }
 
-    @Override public void handleAdjustTrainingLoad(String stepId, int milliUnitDelta) {
-        reduceRepetitionInput(TodayAction.adjustTrainingLoad(stepId, milliUnitDelta));
-    }
 
-    @Override public void handleAdjustTrainingRir(String stepId, int delta) {
-        reduceRepetitionInput(TodayAction.adjustTrainingRir(stepId, delta));
-    }
 
-    @Override public void handleToggleTrainingSafety(String stepId) {
-        reduceRepetitionInput(TodayAction.toggleTrainingSafety(stepId));
-    }
+
+
+
 
     @Override public void handleEditRepetition(String stepId, int index) {
         reduceRepetitionInput(TodayAction.editRepetition(stepId, index));

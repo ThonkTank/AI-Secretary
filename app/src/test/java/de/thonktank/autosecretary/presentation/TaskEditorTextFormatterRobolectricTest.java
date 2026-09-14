@@ -68,6 +68,6 @@ public final class TaskEditorTextFormatterRobolectricTest {
     private static EditorStepState step(String id, String text, StepCadenceMode cadence,
                                         int weekdays, Integer interval, StepAmount amount) {
         return new EditorStepState(id, text, cadence, weekdays, interval,
-                StepPrescription.forAmount(amount), null, "", StepActivationKind.SCHEDULED);
+                StepPrescription.forAmount(amount), "", StepActivationKind.SCHEDULED);
     }
 }

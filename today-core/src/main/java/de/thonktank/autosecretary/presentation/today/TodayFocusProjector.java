@@ -16,13 +16,11 @@ public final class TodayFocusProjector {
         if (focus == null) return FocusStepListUiModel.empty();
 
         List<FocusStepUiModel> open = new ArrayList<>();
-        List<FocusStepUiModel> assistants = new ArrayList<>();
         int doneCount = 0;
         for (FocusStepUiModel step : focus.steps) {
             if (!step.isDone()) open.add(step);
             else {
                 doneCount++;
-                if (step.trainingPrompt != null) assistants.add(step);
             }
         }
 
@@ -36,8 +34,6 @@ public final class TodayFocusProjector {
             rows.add(expanded ? FocusStepRowUiModel.expanded(step)
                     : FocusStepRowUiModel.compact(step));
         }
-        for (FocusStepUiModel step : assistants)
-            rows.add(FocusStepRowUiModel.assistant(step));
         return new FocusStepListUiModel(focus.itemId(), rows, doneCount);
     }
 

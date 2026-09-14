@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 import de.thonktank.autosecretary.domain.model.*;
 import java.util.HashSet;
 
-/** Schema-25 persistence boundary. It must share the admission/action/ledger transaction. */
+/** Current graph persistence boundary. It must share the admission/action/ledger transaction. */
 public final class FlowGraphSnapshotWriter {
     private final SupportSQLiteDatabase database;
     private final FlowGraphSnapshotReader reader;
@@ -137,9 +137,6 @@ public final class FlowGraphSnapshotWriter {
         }
         values.put("restTimerMode", prescription.rest.mode.name());
         values.put("restTimerSeconds", prescription.rest.customSeconds);
-        ResistanceLoad load = prescription.plannedLoad();
-        values.put("plannedLoadMode", load.mode.name()); values.put("plannedLoadUnit", load.unit.name());
-        values.put("plannedLoadMilli", load.milliUnits); values.put("targetRir", prescription.targetRir());
     }
 
     private void requireTransaction(long now) {

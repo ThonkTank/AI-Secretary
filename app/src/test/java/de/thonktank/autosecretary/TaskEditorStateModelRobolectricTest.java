@@ -26,13 +26,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
-import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
-import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
@@ -46,24 +40,7 @@ public final class TaskEditorStateModelRobolectricTest {
                 de.thonktank.autosecretary.editor.TaskEditorStateReducer.navigate(
                         state, EditorUiState.Page.FLOW, false).page);
     }
-    @Test public void editorRoundTripPreservesVisibleAssistantLearningState() {
-        TaskStepTemplate template = new TaskStepTemplate("press", TaskId.of("gym"), 0,
-                "Beinpresse", 0, 0,
-                new StepPrescription(StepAmount.setsReps(3, 12), RestTimerPolicy.inherit(),
-                        new TrainingPrescription(ResistanceLoad.numeric(
-                                ResistanceLoad.Mode.EXTERNAL, ResistanceLoad.Unit.KG, 50_000), 2)),
-                new TrainingAssistantProfile(TrainingAssistantPolicy.defaults(
-                        TrainingMuscleGroup.QUADRICEPS), new TrainingAssistantState(
-                        TrainingAssistantState.Status.PAUSED, 5, 0, 2)), "",
-                StepActivationKind.SCHEDULED);
 
-        EditorStepState restored = EditorStepState.fromBundle(
-                EditorStepState.from(template).toBundle());
-
-        assertEquals(TrainingAssistantState.Status.PAUSED, restored.assistantState.status);
-        assertEquals(5, restored.assistantState.eligibleObservations);
-        assertEquals(2, restored.assistantState.hardStreak);
-    }
 
     @Test public void normalEditorRoundTripPreservesAutomaticFollowUpRole() {
         TaskStepTemplate template = de.thonktank.autosecretary.testing.StepTestFixtures.template("hang", TaskId.of("laundry"), 0,
@@ -82,7 +59,7 @@ public final class TaskEditorStateModelRobolectricTest {
     @Test public void currentBundleIsVersionedNestedAndRestoresAllThreeStateParts() {
         EditorStepState step = new EditorStepState("draft:1", "Laufen",
                 StepCadenceMode.INTERVAL, 0, 3,
-                StepPrescription.forAmount(StepAmount.duration(600)), null, "locker",
+                StepPrescription.forAmount(StepAmount.duration(600)), "locker",
                 StepActivationKind.SCHEDULED);
         ValidationIssue issue = ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, step.id);
         EditorUiState state = EditorUiState.create().draft("Training", TaskSlot.EVENING, 40,
@@ -160,7 +137,7 @@ public final class TaskEditorStateModelRobolectricTest {
         legacy.putString("note", "übernommen"); legacy.putInt("next_id", 2);
         EditorStepState step = new EditorStepState("step-1", "Anrufen",
                 StepCadenceMode.ALWAYS, 0, null,
-                StepPrescription.forAmount(StepAmount.repetitions(2)), null, "",
+                StepPrescription.forAmount(StepAmount.repetitions(2)), "",
                 StepActivationKind.SCHEDULED);
         ArrayList<Bundle> steps = new ArrayList<>(); steps.add(step.toBundle());
         legacy.putParcelableArrayList("step_states", steps);

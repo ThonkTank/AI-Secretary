@@ -74,8 +74,7 @@ public final class TodayCoordinatorTest {
                 TodayAction.toggleStep("step"), TodayAction.toggleStep("step", 75_000L),
                 TodayAction.finishStep("step"), TodayAction.advanceStep("step"),
                 TodayAction.undoOccurrence("occ"), TodayAction.adjustRepetition("step", 2),
-                TodayAction.adjustTrainingLoad("step", 500), TodayAction.adjustTrainingRir("step", -1),
-                TodayAction.toggleTrainingSafety("step"), TodayAction.editRepetition("step", 3),
+                TodayAction.editRepetition("step", 0),
                 TodayAction.submitRepetition("step"), TodayAction.startDurationTimer("step", "Timer", 90),
                 TodayAction.pauseTimer("timer"), TodayAction.resumeTimer("timer"),
                 TodayAction.resetTimer("timer"), TodayAction.observeTimer("timer"));

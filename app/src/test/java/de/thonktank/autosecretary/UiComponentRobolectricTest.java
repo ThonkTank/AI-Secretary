@@ -10,8 +10,6 @@ import de.thonktank.autosecretary.presentation.editor.TaskEditorComposeHostView;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
-import de.thonktank.autosecretary.presentation.today.TrainingPromptUiModel;
-import de.thonktank.autosecretary.presentation.today.TrainingAssistantUiAction;
 
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
@@ -200,27 +198,6 @@ public final class UiComponentRobolectricTest {
                 Recurrence.ONCE, 1, 0, Collections.emptyList());
         assertTrue(validator.issues(valid, LocalDate.of(2026, 8, 21)).isEmpty());
 
-        EditorStepState exercise = EditorStepState.blank(1).withText("Rudern")
-                .withAmount(de.thonktank.autosecretary.domain.model.StepAmount.setsReps(3, 12))
-                .withTraining(new de.thonktank.autosecretary.domain.model.StepPrescription(
-                                de.thonktank.autosecretary.domain.model.StepAmount
-                                        .setsReps(3, 12),
-                                de.thonktank.autosecretary.domain.model.RestTimerPolicy.inherit(),
-                                new de.thonktank.autosecretary.domain.model.TrainingPrescription(
-                                        de.thonktank.autosecretary.domain.model.ResistanceLoad
-                                                .numeric(
-                                                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
-                                                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG,
-                                                        0), 2)),
-                        de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy
-                                .defaults(null));
-        EditorUiState missingLoad = base.draft("Training", TaskSlot.LATER, null,
-                Recurrence.ONCE, 1, 0, 0,
-                de.thonktank.autosecretary.domain.model.TaskBoundKind.FOREVER,
-                null, null, null, null, "", Collections.singletonList(exercise),
-                exercise.id, 2);
-        assertTrue(validator.issues(missingLoad, LocalDate.of(2026, 8, 21)).contains(
-                ValidationIssue.step(ValidationIssue.Field.TRAINING_LOAD, exercise.id)));
     }
 
     @Test public void rendererReusesTheMountedViewTreeForNormalUpdates() {
@@ -459,17 +436,16 @@ public final class UiComponentRobolectricTest {
         focus.measure(View.MeasureSpec.makeMeasureSpec(style.dp(330), View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(style.dp(600), View.MeasureSpec.AT_MOST));
         focus.layout(0, 0, focus.getMeasuredWidth(), focus.getMeasuredHeight());
-        assertTrue(focus.findViewById(R.id.training_repetitions_value).performClick());
-        View plus = focus.findViewById(R.id.inline_value_increment);
+        View plus = focus.findViewById(R.id.rep_stepper_increment);
         assertNotNull(plus);
         plus.performClick();
         assertEquals(13, input.get().valueFor(set));
-        assertEquals("12 Wdh.", ((TextView) focus.findViewById(R.id.inline_value_current))
+        assertEquals("12", ((TextView) focus.findViewById(R.id.rep_stepper_value))
                 .getText().toString());
         focus.bind(FocusCardTestModels.of(feature, palette, FocusStepLimit.AUTO,
                 input.get(), de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty()),
                 false, events);
-        assertEquals("13 Wdh.", ((TextView) focus.findViewById(R.id.inline_value_current))
+        assertEquals("13", ((TextView) focus.findViewById(R.id.rep_stepper_value))
                 .getText().toString());
         DewDotView dew = firstDew(focus);
         assertNotNull(dew);
@@ -494,13 +470,13 @@ public final class UiComponentRobolectricTest {
         android.widget.PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
         assertNotNull(popup);
         assertTrue(((ShadowPopupMenu) Shadow.extract(popup)).getOnMenuItemClickListener()
-                .onMenuItemClick(popup.getMenu().getItem(0)));
+                .onMenuItemClick(popup.getMenu().getItem(1)));
         focus.bind(FocusCardTestModels.of(feature, palette, FocusStepLimit.AUTO,
                 input.get(), de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty()),
                 false, events);
         assertEquals(View.VISIBLE,
-                focus.findViewById(R.id.training_inline_editor).getVisibility());
-        focus.findViewById(R.id.inline_value_increment).performClick();
+                focus.findViewById(R.id.rep_stepper_value).getVisibility());
+        focus.findViewById(R.id.rep_stepper_increment).performClick();
         firstDew(focus).performClick();
         assertEquals(0, submitted.get().editingIndex);
         assertEquals(11, submitted.get().value);
@@ -531,59 +507,7 @@ public final class UiComponentRobolectricTest {
         assertTrue(texts.contains("Duschen"));
     }
 
-    @Test public void trainingQuestionStaysInlineAndEmitsConcreteAvailableLoad() {
-        Context context = ApplicationProvider.getApplicationContext();
-        de.thonktank.autosecretary.domain.model.ResistanceLoad load =
-                de.thonktank.autosecretary.domain.model.ResistanceLoad.numeric(
-                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
-                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG, 50_000);
-        TrainingPromptUiModel training = new TrainingPromptUiModel("template-press",
-                de.thonktank.autosecretary.domain.model.TrainingDecision.LoadDirection.PROGRESS,
-                load);
-        FocusStepUiModel set = FocusTaskFixtures.step("set-step", "Beinpresse")
-                .amount("3 × 12").note("50 kg")
-                .repetition(RepetitionProgressUiModel.trainingSets(3, 12,
-                        Collections.emptyList(), load, 2))
-                .build().withTrainingPrompt(training);
-        de.thonktank.autosecretary.presentation.today.FocusTaskUiModel task =
-                FocusTaskFixtures.task("training", "Training")
-                        .occurrence("training-today").slot(TaskSlot.MORNING)
-                        .recurrence(Recurrence.DAILY).steps(Collections.singletonList(set)).build();
-        java.util.concurrent.atomic.AtomicReference<TodayAction> emitted =
-                new java.util.concurrent.atomic.AtomicReference<>();
-        FocusTaskView focus = new FocusTaskView(context);
-        focus.bind(FocusCardTestModels.of(task,
-                DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), false, emitted::set);
 
-        TextView answerToggle = descendants(focus).stream()
-                .filter(view -> view instanceof TextView)
-                .map(view -> (TextView) view)
-                .filter(view -> "Antworten".contentEquals(view.getText()))
-                .findFirst().orElse(null);
-        assertNotNull(answerToggle);
-        assertTrue(answerToggle.performClick());
-        EditText answer = first(focus, EditText.class);
-        assertNotNull(answer);
-        answer.setText("52,5");
-        TextView apply = null;
-        for (View view : descendants(focus))
-            if (view instanceof TextView
-                    && "Anwenden".contentEquals(((TextView) view).getText())) apply = (TextView) view;
-        assertNotNull(apply);
-        apply.performClick();
-
-        assertEquals(TodayAction.Kind.TRAINING_ASSISTANT, emitted.get().kind);
-        assertEquals("template-press", emitted.get().id);
-        assertTrue(emitted.get().trainingAssistantAction
-                instanceof TrainingAssistantUiAction.ApplyLoad);
-        TrainingAssistantUiAction.ApplyLoad action =
-                (TrainingAssistantUiAction.ApplyLoad) emitted.get().trainingAssistantAction;
-        assertEquals("52,5", action.rawLoad);
-        assertEquals(de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
-                action.currentMode);
-        assertEquals(de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG,
-                action.currentUnit);
-    }
 
     private static DewDotView firstDew(View root) {
         for (View view : descendants(root))

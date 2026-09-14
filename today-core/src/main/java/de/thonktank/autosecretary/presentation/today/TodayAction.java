@@ -25,11 +25,8 @@ public final class TodayAction {
         ADVANCE_STEP,
         UNDO_OCCURRENCE,
         ADJUST_REPETITION,
-        ADJUST_TRAINING_LOAD,
-        ADJUST_TRAINING_RIR,
-        TOGGLE_TRAINING_SAFETY,
-        TRAINING_ASSISTANT,
         EDIT_REPETITION,
+        EDIT_STEP_NOTE,
         SUBMIT_REPETITION,
         START_DURATION_TIMER,
         PAUSE_TIMER,
@@ -63,7 +60,6 @@ public final class TodayAction {
     public final List<String> order;
     public final TaskActionTarget target;
     public final TaskSlot slot;
-    public final TrainingAssistantUiAction trainingAssistantAction;
 
     private TodayAction(Kind kind, String id, String relatedId,
                         String text, int value, List<String> order,
@@ -71,16 +67,11 @@ public final class TodayAction {
         this(kind, id, relatedId, text, value, 0L, order, target, slot);
     }
 
-    private TodayAction(Kind kind, String id, String relatedId,
-                        String text, int value, long longValue, List<String> order,
-                        TaskActionTarget target, TaskSlot slot) {
-        this(kind, id, relatedId, text, value, longValue, order, target, slot, null);
-    }
+
 
     private TodayAction(Kind kind, String id, String relatedId,
                         String text, int value, long longValue, List<String> order,
-                        TaskActionTarget target, TaskSlot slot,
-                        TrainingAssistantUiAction trainingAssistantAction) {
+                        TaskActionTarget target, TaskSlot slot) {
         if (kind == null) throw new IllegalArgumentException("Today action kind is required");
         this.kind = kind;
         this.id = id == null ? "" : id;
@@ -91,7 +82,6 @@ public final class TodayAction {
         this.order = Collections.unmodifiableList(new ArrayList<>(order));
         this.target = target;
         this.slot = slot;
-        this.trainingAssistantAction = trainingAssistantAction;
     }
 
     public static TodayAction completeOccurrence(String occurrenceId) {
@@ -162,6 +152,10 @@ public final class TodayAction {
                 null, 0, chosenDelayMillis, Collections.emptyList(), null, null);
     }
 
+    public static TodayAction editStepNote(String stepId) {
+        return identified(Kind.EDIT_STEP_NOTE, stepId);
+    }
+
     public static TodayAction finishStep(String stepId) {
         return identified(Kind.FINISH_STEP, stepId);
     }
@@ -186,27 +180,13 @@ public final class TodayAction {
                 null, index, Collections.emptyList(), null, null);
     }
 
-    public static TodayAction adjustTrainingLoad(String stepId, int milliUnitDelta) {
-        if (milliUnitDelta == 0) throw new IllegalArgumentException("Adjustment must not be zero");
-        return new TodayAction(Kind.ADJUST_TRAINING_LOAD, requiredId(stepId), null,
-                null, milliUnitDelta, Collections.emptyList(), null, null);
-    }
 
-    public static TodayAction adjustTrainingRir(String stepId, int delta) {
-        if (delta == 0) throw new IllegalArgumentException("Adjustment must not be zero");
-        return new TodayAction(Kind.ADJUST_TRAINING_RIR, requiredId(stepId), null,
-                null, delta, Collections.emptyList(), null, null);
-    }
 
-    public static TodayAction toggleTrainingSafety(String stepId) {
-        return identified(Kind.TOGGLE_TRAINING_SAFETY, stepId);
-    }
 
-    public static TodayAction trainingAssistant(TrainingAssistantUiAction action) {
-        if (action == null) throw new IllegalArgumentException("Training action is required");
-        return new TodayAction(Kind.TRAINING_ASSISTANT, action.templateId, null,
-                null, 0, 0L, Collections.emptyList(), null, null, action);
-    }
+
+
+
+
 
     public static TodayAction submitRepetition(String stepId) {
         return identified(Kind.SUBMIT_REPETITION, stepId);

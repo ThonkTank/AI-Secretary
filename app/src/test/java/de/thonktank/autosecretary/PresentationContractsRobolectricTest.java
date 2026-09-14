@@ -109,7 +109,7 @@ public final class PresentationContractsRobolectricTest {
                     @Override public void onDraftChanged(EditorUiState draft) { }
                     @Override public void onSave(EditorUiState draft) { }
                     @Override public void onDelete(String taskId) { }
-                    @Override public void onUndoTrainingAdjustment(String stepId) { }
+
                     @Override public void onDismiss() { }
                 });
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
@@ -146,7 +146,7 @@ public final class PresentationContractsRobolectricTest {
                     @Override public void onDraftChanged(EditorUiState draft) { }
                     @Override public void onSave(EditorUiState draft) { }
                     @Override public void onDelete(String taskId) { }
-                    @Override public void onUndoTrainingAdjustment(String stepId) { }
+
                     @Override public void onDismiss() { }
                 });
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
@@ -173,6 +173,6 @@ public final class PresentationContractsRobolectricTest {
     }
 
     private static TaskEditorScreenState screen(EditorUiState state) {
-        return new TaskEditorScreenState(state, Collections.emptyMap(), Collections.emptyList());
+        return new TaskEditorScreenState(state, Collections.emptyList());
     }
 }

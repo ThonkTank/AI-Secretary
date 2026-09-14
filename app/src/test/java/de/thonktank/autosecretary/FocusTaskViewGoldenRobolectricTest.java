@@ -6,7 +6,6 @@ import de.thonktank.autosecretary.ui.leaf.WoodGrainRenderPipeline;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
-import de.thonktank.autosecretary.presentation.today.TrainingPromptUiModel;
 
 import android.app.Activity;
 import android.graphics.Bitmap;
@@ -50,8 +49,8 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 824, 900, 1);
     }
 
-    @Test public void trainingAssistantQuestionExplainsHistoryInline() throws Exception {
-        render("training-assistant-question", trainingAssistantTask(), FocusStepLimit.FIVE,
+    @Test public void stepNoteKeepsWeightVisible() throws Exception {
+        render("step-weight-note", stepNoteTask(), FocusStepLimit.FIVE,
                 false, 824, 1500, 1);
     }
 
@@ -112,7 +111,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
         FocusStepUiModel squats = step("squats", "Kniebeugen", "3 × 12",
                 "Hantel 10 kg, langsam runter", false,
                 RepetitionProgressUiModel.sets(3, 12, Collections.singletonList(12)));
-        FocusStepUiModel pushups = step("pushups", "Liegestütze", "12 Wdh.",
+        FocusStepUiModel pushups = step("pushups", "Liegestütze", "12",
                 "auf Fäusten", false,
                 RepetitionProgressUiModel.single(12, Collections.emptyList()));
         FocusStepUiModel plank = step("plank", "Plank", "45 Sek.", "", false, null);
@@ -125,18 +124,11 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 .steps(Arrays.asList(warmup, squats, pushups, plank, stretch, shower)).build();
     }
 
-    private static FocusTaskUiModel trainingAssistantTask() {
-        de.thonktank.autosecretary.domain.model.ResistanceLoad load =
-                de.thonktank.autosecretary.domain.model.ResistanceLoad.numeric(
-                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Mode.EXTERNAL,
-                        de.thonktank.autosecretary.domain.model.ResistanceLoad.Unit.KG, 50_000);
-        TrainingPromptUiModel training = new TrainingPromptUiModel("press-template",
-                de.thonktank.autosecretary.domain.model.TrainingDecision.LoadDirection.PROGRESS,
-                load);
+    private static FocusTaskUiModel stepNoteTask() {
         FocusStepUiModel press = FocusTaskFixtures.step("press", "Beinpresse")
-                .amount("3 × 12").note("Sitz 7")
-                .repetition(RepetitionProgressUiModel.trainingSets(3, 12,
-                        Arrays.asList(12, 12), load, 2)).build().withTrainingPrompt(training);
+                .amount("3 × 12").note("Sitz 7, 50 kg")
+                .repetition(RepetitionProgressUiModel.sets(3, 12,
+                        Arrays.asList(12, 12))).build();
         FocusStepUiModel curl = FocusTaskFixtures.step("curl", "Beinbeuger")
                 .amount("3 × 12").note("32 kg, Sitz 5").build();
         return FocusTaskFixtures.task("gym-assistant", "Gym")
@@ -153,7 +145,7 @@ public final class FocusTaskViewGoldenRobolectricTest {
                         step("squats", "Kniebeugen", "3 × 12", "", true,
                                 RepetitionProgressUiModel.sets(3, 12,
                                         Arrays.asList(12, 12, 12))),
-                        step("pushups", "Liegestütze", "12 Wdh.", "", true,
+                        step("pushups", "Liegestütze", "12", "", true,
                                 RepetitionProgressUiModel.single(12,
                                         Collections.singletonList(12))),
                         step("plank", "Plank", "45 Sek.", "", true, null),

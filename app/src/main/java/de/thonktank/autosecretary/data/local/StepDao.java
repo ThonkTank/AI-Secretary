@@ -11,6 +11,17 @@ import java.util.List;
 
 @Dao
 public interface StepDao {
+    @Query("UPDATE task_steps SET note=:note WHERE id=:id")
+    int updateTemplateNote(String id, String note);
+    @Query("UPDATE occurrence_steps SET note=:note WHERE id=:id")
+    int updateOccurrenceNote(String id, String note);
+    @Query("UPDATE occurrence_steps SET note=:note WHERE flowRunStepId=:id")
+    void updateRuntimeOccurrenceNote(String id, String note);
+    @Query("SELECT * FROM flow_run_steps WHERE id=:id")
+    GraphRunStepEntity graphStep(String id);
+    @Query("UPDATE flow_run_steps SET note=:note WHERE id=:id")
+    int updateGraphStepNote(String id, String note);
+
     @Upsert void insertTemplates(List<TaskStepEntity> steps);
     @Update void updateTemplate(TaskStepEntity step);
     @Query("DELETE FROM task_steps WHERE id = :id") void deleteTemplate(String id);

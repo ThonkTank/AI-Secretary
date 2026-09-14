@@ -34,7 +34,7 @@ class CurrentUpgradeSmokeTest(unittest.TestCase):
             packageName=self.plan["packageName"], apkAsset=self.apk.name,
             apkSizeBytes=self.apk.stat().st_size, sha256=hashlib.sha256(self.apk.read_bytes()).hexdigest(),
             signerSha256=self.plan["signerSha256"], commitSha="b" * 40)))
-        self.template = json.loads((ROOT / "release/current-smoke/schema-27.json").read_text())
+        self.template = json.loads((ROOT / "release/current-smoke/schema-28.json").read_text())
         self.contract = (ROOT / DATABASE_CONTRACT).read_text()
 
     def build(self, **overrides):
@@ -65,8 +65,8 @@ class CurrentUpgradeSmokeTest(unittest.TestCase):
 
     def test_same_schema_is_only_allowed_for_explicit_current_smoke(self):
         result = self.build()
-        self.assertEqual(27, result["source"]["databaseVersion"])
-        self.assertEqual(27, result["targetDatabaseVersion"])
+        self.assertEqual(28, result["source"]["databaseVersion"])
+        self.assertEqual(28, result["targetDatabaseVersion"])
         validate_current_smoke(result)
         with self.assertRaises(UpgradeFixtureError):
             validate_fixture(result)
@@ -95,12 +95,12 @@ class CurrentUpgradeSmokeTest(unittest.TestCase):
                 select_source(self.plan, releases)
 
     def test_source_metadata_format_is_not_used_as_database_version(self):
-        self.assertEqual(27, database_version(self.contract))
+        self.assertEqual(28, database_version(self.contract))
         self.assertEqual(1, json.loads(self.metadata.read_text())["schemaVersion"])
         with self.assertRaises(UpgradeFixtureError):
-            self.build(source_contract=self.contract.replace("VERSION = 27;", "VERSION = 28;"))
+            self.build(source_contract=self.contract.replace("VERSION = 28;", "VERSION = 29;"))
         with self.assertRaises(UpgradeFixtureError):
-            self.build(target_contract=self.contract.replace("VERSION = 27;", "VERSION = 26;"))
+            self.build(target_contract=self.contract.replace("VERSION = 28;", "VERSION = 26;"))
         with self.assertRaises(UpgradeFixtureError):
             database_version("// no database version")
 
@@ -131,7 +131,7 @@ class CurrentUpgradeSmokeTest(unittest.TestCase):
 
     def test_current_fixture_is_valid_in_real_sqlite_and_preserves_all_seed_values(self):
         result = self.build()
-        schema = json.loads(next((ROOT / "app/schemas").rglob("27.json")).read_text())["database"]
+        schema = json.loads(next((ROOT / "app/schemas").rglob("28.json")).read_text())["database"]
         database = sqlite3.connect(":memory:")
         self.addCleanup(database.close)
         database.execute("PRAGMA foreign_keys=ON")

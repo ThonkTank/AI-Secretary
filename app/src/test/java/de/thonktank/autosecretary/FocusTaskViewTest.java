@@ -47,10 +47,7 @@ import java.util.Collections;
 import java.util.List;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.model.TrainingDecision;
-import de.thonktank.autosecretary.presentation.today.TrainingPromptUiModel;
 import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.timer.TimerManager;
 import de.thonktank.autosecretary.timer.TimerSession;
@@ -116,7 +113,7 @@ public final class FocusTaskViewTest {
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO)), false, actions);
 
         assertTrue(visibleTexts(view).contains("23 kg, Sitz 5"));
-        assertTrue(visibleTexts(view).contains("12 Wdh."));
+        assertTrue(visibleTexts(view).contains("12"));
     }
 
     @Test public void laundrySheetNeedsNoInstructionOrTrailingStatusCopy() {
@@ -179,8 +176,7 @@ public final class FocusTaskViewTest {
         assertTrue(row.rewardAnchor().getContentDescription().toString()
                 .contains("Satz 1 mit 12 Wiederholungen"));
         assertTrue(row.grainOcclusions().size() >= 4);
-        assertTrue(row.findViewById(R.id.training_repetitions_value).performClick());
-        View plus = row.findViewById(R.id.inline_value_increment);
+        View plus = row.findViewById(R.id.rep_stepper_increment);
         assertTrue(plus.performClick());
         TodayAction adjustment = events.lastToday(TodayAction.Kind.ADJUST_REPETITION);
         assertEquals("step-1", adjustment.id);
@@ -201,11 +197,10 @@ public final class FocusTaskViewTest {
         List<String> progressTexts = visibleTexts(row);
         assertFalse(progressTexts.contains("Satz 2 von 3"));
         assertFalse(progressTexts.contains("1/3 erledigt"));
-        SetDotsView dots = row.findViewById(R.id.set_dots);
+        SetBarsView dots = row.findViewById(R.id.set_bars);
         assertEquals(View.VISIBLE, dots.getVisibility());
         assertTrue(dots.getContentDescription().toString()
-                .contains("1 von 3 Sätzen abgeschlossen"));
-        assertTrue(dots.getContentDescription().toString().contains("Satz 2 ist aktuell"));
+                .contains("Satz 1: 10"));
 
         row.bind(FocusStepRowUiModel.expanded(step), palette,
                 RepetitionInputState.idle().edit(step, 0), TimerManager.Snapshot.empty(),
@@ -215,9 +210,8 @@ public final class FocusTaskViewTest {
         assertFalse(correctionTexts.contains("Satz 1 von 3"));
         assertFalse(correctionTexts.contains("1/3 erledigt"));
         assertTrue(dots.getContentDescription().toString()
-                .contains("Satz 1 mit 10 Wiederholungen ausgewählt"));
+                .contains("Satz 1: 10"));
         AccessibilityNodeInfo info = dots.createAccessibilityNodeInfo();
-        assertEquals(1f, info.getRangeInfo().getCurrent(), 0f);
         info.recycle();
     }
 
@@ -239,11 +233,28 @@ public final class FocusTaskViewTest {
         assertTrue(menu.performClick());
         android.widget.PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
         assertTrue(popup != null);
-        assertEquals("Satz 1 bearbeiten", popup.getMenu().getItem(0).getTitle().toString());
-        assertEquals("Für heute abschließen", popup.getMenu().getItem(1).getTitle().toString());
+        assertEquals("Notiz bearbeiten", popup.getMenu().getItem(0).getTitle().toString());
+        assertEquals("Für heute abschließen", popup.getMenu().getItem(2).getTitle().toString());
         assertTrue(((ShadowPopupMenu) Shadow.extract(popup)).getOnMenuItemClickListener()
-                .onMenuItemClick(popup.getMenu().getItem(1)));
+                .onMenuItemClick(popup.getMenu().getItem(2)));
         assertEquals("step-1", events.lastToday(TodayAction.Kind.FINISH_STEP).id);
+    }
+
+    @Test public void ordinaryStepMenuEditsItsNoteWithoutCompletingTheStep() {
+        Context context = ApplicationProvider.getApplicationContext();
+        FocusStepUiModel step = FocusTaskFixtures.step("plain", "Duschen").build();
+        TodayActionRecorder events = new TodayActionRecorder();
+        FocusStepRowView row = new FocusStepRowView(context);
+        row.bind(FocusStepRowUiModel.expanded(step), DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
+                RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
+        findByContentDescription(row, context.getString(R.string.content_step_actions, "Duschen")).performClick();
+        android.widget.PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
+        assertEquals(1, popup.getMenu().size());
+        assertEquals("Notiz bearbeiten", popup.getMenu().getItem(0).getTitle().toString());
+        ((ShadowPopupMenu) Shadow.extract(popup)).getOnMenuItemClickListener()
+                .onMenuItemClick(popup.getMenu().getItem(0));
+        assertEquals("plain", events.lastToday(TodayAction.Kind.EDIT_STEP_NOTE).id);
+        assertNull(events.lastToday(TodayAction.Kind.TOGGLE_STEP));
     }
 
     @Test public void singleRepetitionsConfirmOnceWhileDurationCompletesDirectly() {
@@ -260,7 +271,7 @@ public final class FocusTaskViewTest {
                 TimerManager.Snapshot.empty(), events);
 
         assertEquals(View.VISIBLE, ((View) controlsParent(row)).getVisibility());
-        assertEquals(View.GONE, row.findViewById(R.id.set_dots).getVisibility());
+        assertEquals(View.GONE, row.findViewById(R.id.set_bars).getVisibility());
         row.rewardAnchor().performClick();
         assertEquals("reps", events.lastToday(TodayAction.Kind.SUBMIT_REPETITION).id);
 
@@ -309,19 +320,15 @@ public final class FocusTaskViewTest {
     @Test public void sameStepRebindFullyClearsEveryOptionalRegionAndListener() {
         Context context = ApplicationProvider.getApplicationContext();
         DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO);
-        ResistanceLoad weightedLoad = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
-                ResistanceLoad.Unit.KG, 23_000);
-        TrainingPromptUiModel assistant = new TrainingPromptUiModel("template-roman",
-                TrainingDecision.LoadDirection.PROGRESS, weightedLoad);
         FocusStepUiModel weighted = FocusTaskFixtures.step("roman", "Römische Liege")
                 .amount("3 × 12").note("23 kg, Sitz 2")
-                .repetition(RepetitionProgressUiModel.trainingSets(3, 12,
-                        Collections.singletonList(10), weightedLoad, 2))
-                .build().withTrainingPrompt(assistant).withDurationSeconds(90);
+                .repetition(RepetitionProgressUiModel.sets(3, 12,
+                        Collections.singletonList(10)))
+                .build().withDurationSeconds(90);
         FocusStepUiModel bodyweight = FocusTaskFixtures.step("roman", "Römische Liege")
                 .amount("3 × 12")
-                .repetition(RepetitionProgressUiModel.trainingSets(3, 12,
-                        Collections.emptyList(), ResistanceLoad.bodyweight(), 2)).build();
+                .repetition(RepetitionProgressUiModel.sets(3, 12,
+                        Collections.emptyList())).build();
         FocusStepUiModel plain = FocusTaskFixtures.step("roman", "Römische Liege").build();
         TodayActionRecorder events = new TodayActionRecorder();
         FocusStepRowView row = new FocusStepRowView(context);
@@ -329,16 +336,9 @@ public final class FocusTaskViewTest {
         row.bind(FocusStepRowUiModel.expanded(weighted), palette,
                 RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
         assertTrue(visibleTexts(row).contains("23 kg, Sitz 2"));
-        assertTrue(visibleTexts(row).stream()
-                .anyMatch(value -> value.startsWith("23") && value.endsWith("kg")));
-        assertTrue(visibleTexts(row).stream().anyMatch(value ->
-                value.startsWith("Welches höhere Gewicht ist nach 23")
-                        && value.endsWith("am Gerät verfügbar?")));
-        assertFalse(visibleTexts(row).contains("Letzte Entscheidungen"));
-
         row.bind(FocusStepRowUiModel.expanded(bodyweight), palette,
                 RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
-        assertTrue(visibleTexts(row).contains("KG"));
+        assertFalse(visibleTexts(row).contains("23 kg, Sitz 2"));
         assertFalse(visibleTexts(row).stream()
                 .anyMatch(value -> value.startsWith("23") && value.endsWith("kg")));
         assertFalse(visibleTexts(row).contains("23 kg, Sitz 2"));
@@ -352,90 +352,13 @@ public final class FocusTaskViewTest {
         assertFalse(visible.stream().anyMatch(value -> value.startsWith("Welches höhere Gewicht")));
         assertFalse(visible.contains("1:30"));
         int before = events.todayActions().size();
-        row.findViewById(R.id.inline_value_increment).performClick();
-        TextView apply = firstText(row, "Anwenden");
-        assertTrue(apply != null);
-        apply.performClick();
+        row.findViewById(R.id.rep_stepper_increment).performClick();
         assertEquals(before, events.todayActions().size());
     }
 
-    @Test public void activeTrainingRowOwnsExactlyOneEditorAndResetsItOnStateChanges() {
-        Context context = ApplicationProvider.getApplicationContext();
-        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT);
-        ResistanceLoad load = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
-                ResistanceLoad.Unit.KG, 50_000);
-        TrainingPromptUiModel prompt = new TrainingPromptUiModel("press-template",
-                TrainingDecision.LoadDirection.PROGRESS, load);
-        FocusStepUiModel step = FocusTaskFixtures.step("press", "Beinpresse")
-                .amount("20 × 12").repetition(RepetitionProgressUiModel.trainingSets(
-                        20, 12, Collections.emptyList(), load, 2))
-                .build().withTrainingPrompt(prompt);
-        TodayActionRecorder events = new TodayActionRecorder();
-        FocusStepRowView row = new FocusStepRowView(context);
-        row.bind(FocusStepRowUiModel.expanded(step), palette, RepetitionInputState.idle(),
-                TimerManager.Snapshot.empty(), events);
 
-        assertTrue(row.findViewById(R.id.training_repetitions_value).performClick());
-        assertEquals(View.VISIBLE, row.findViewById(R.id.training_inline_editor).getVisibility());
-        assertTrue(visibleTexts(row).contains("Wiederholungen"));
-        assertTrue(row.findViewById(R.id.training_load_value_today).performClick());
-        assertTrue(visibleTexts(row).contains("Gewicht"));
-        assertTrue(row.findViewById(R.id.inline_value_increment).performClick());
-        assertEquals(TodayAction.Kind.ADJUST_TRAINING_LOAD,
-                events.lastToday(TodayAction.Kind.ADJUST_TRAINING_LOAD).kind);
-        assertTrue(row.findViewById(R.id.training_rir_value_today).performClick());
-        assertTrue(visibleTexts(row).contains("RIR"));
-        assertTrue(row.findViewById(R.id.training_safety_value).performClick());
-        assertEquals("press", events.lastToday(TodayAction.Kind.TOGGLE_TRAINING_SAFETY).id);
 
-        assertTrue(row.findViewById(R.id.training_answer_toggle).performClick());
-        assertEquals(View.GONE, row.findViewById(R.id.training_inline_editor).getVisibility());
-        assertEquals(View.VISIBLE, row.findViewById(R.id.training_answer_actions).getVisibility());
-        ((EditText) row.findViewById(R.id.training_answer_input)).setText("52,5");
 
-        FocusStepUiModel progressed = FocusTaskFixtures.step("press", "Beinpresse")
-                .amount("20 × 12").repetition(RepetitionProgressUiModel.trainingSets(
-                        20, 12, Collections.singletonList(12), load, 2))
-                .build().withTrainingPrompt(prompt);
-        row.bind(FocusStepRowUiModel.expanded(progressed), palette,
-                RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
-        assertEquals(View.GONE, row.findViewById(R.id.training_answer_actions).getVisibility());
-        assertEquals(View.GONE, row.findViewById(R.id.training_inline_editor).getVisibility());
-        assertEquals("", ((EditText) row.findViewById(R.id.training_answer_input))
-                .getText().toString());
-
-        row.findViewById(R.id.training_repetitions_value).performClick();
-        row.bind(FocusStepRowUiModel.compact(progressed), palette,
-                RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
-        assertEquals(View.GONE, row.findViewById(R.id.training_inline_editor).getVisibility());
-    }
-
-    @Test public void trainingValuesRenderOnlyWhenTheirPrescriptionProvidesThem() {
-        Context context = ApplicationProvider.getApplicationContext();
-        DayPalette palette = DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT);
-        FocusStepRowView row = new FocusStepRowView(context);
-        TodayActionRecorder events = new TodayActionRecorder();
-        FocusStepUiModel plain = FocusTaskFixtures.step("plain", "Kniebeugen")
-                .amount("3 × 12").repetition(RepetitionProgressUiModel.sets(
-                        3, 12, Collections.emptyList())).build();
-        row.bind(FocusStepRowUiModel.expanded(plain), palette, RepetitionInputState.idle(),
-                TimerManager.Snapshot.empty(), events);
-        assertEquals(View.VISIBLE,
-                row.findViewById(R.id.training_repetitions_value).getVisibility());
-        assertEquals(View.GONE, row.findViewById(R.id.training_load_value_today).getVisibility());
-        assertEquals(View.GONE, row.findViewById(R.id.training_rir_value_today).getVisibility());
-        assertEquals(View.GONE, row.findViewById(R.id.training_safety_value).getVisibility());
-
-        assertTrainingLoad(row, palette, events, ResistanceLoad.bodyweight(), "KG", false);
-        assertTrainingLoad(row, palette, events, ResistanceLoad.numeric(
-                ResistanceLoad.Mode.EXTERNAL, ResistanceLoad.Unit.KG, 50_000), "50", true);
-        assertTrainingLoad(row, palette, events, ResistanceLoad.numeric(
-                ResistanceLoad.Mode.BODYWEIGHT_PLUS, ResistanceLoad.Unit.KG, 20_000),
-                "+20", true);
-        assertTrainingLoad(row, palette, events, ResistanceLoad.numeric(
-                ResistanceLoad.Mode.ASSISTED_BODYWEIGHT, ResistanceLoad.Unit.KG, 20_000),
-                "−20", true);
-    }
 
     @Test public void rowCacheUsesOccurrenceAndStepIdentityInsteadOfDisplayPosition() {
         Context context = ApplicationProvider.getApplicationContext();
@@ -734,7 +657,7 @@ public final class FocusTaskViewTest {
                         3, 12, Collections.singletonList(12))).build());
         for (int index = 1; index <= 5; index++)
             models.add(FocusTaskFixtures.step("future-" + index,
-                            "Folgeschritt " + index).amount("12 Wdh.")
+                            "Folgeschritt " + index).amount("12")
                     .note("Eine lange unveränderte Notiz für zwei Zeilen")
                     .repetition(RepetitionProgressUiModel.single(
                             12, Collections.emptyList())).build());
@@ -783,23 +706,10 @@ public final class FocusTaskViewTest {
         else assertEquals(beforeStepId, move.relatedId);
     }
 
-    private static void assertTrainingLoad(FocusStepRowView row, DayPalette palette,
-                                           TodayActionRecorder events, ResistanceLoad load,
-                                           String expected, boolean editable) {
-        FocusStepUiModel step = FocusTaskFixtures.step("load", "Ziehen")
-                .amount("3 × 12").repetition(RepetitionProgressUiModel.trainingSets(
-                        3, 12, Collections.emptyList(), load, 2)).build();
-        row.bind(FocusStepRowUiModel.expanded(step), palette, RepetitionInputState.idle(),
-                TimerManager.Snapshot.empty(), events);
-        TextView value = row.findViewById(R.id.training_load_value_today);
-        assertEquals(View.VISIBLE, value.getVisibility());
-        if ("KG".equals(expected)) assertEquals(expected, value.getText().toString());
-        else assertTrue(value.getText().toString().startsWith(expected));
-        assertEquals(editable, value.isClickable());
-    }
+
 
     private static Object controlsParent(FocusStepRowView row) {
-        return row.findViewById(R.id.set_dots).getParent();
+        return row.findViewById(R.id.rep_stepper_increment).getParent().getParent();
     }
 
     private static View stepBody(View root, Context context, String title) {

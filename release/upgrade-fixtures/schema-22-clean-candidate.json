@@ -15,7 +15,7 @@
     "metadataSha256": "e798d44361d197e91b74f1a6fa05e6df8a83abde488fc07085ebb30eff602138",
     "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
   },
-  "targetDatabaseVersion": 27,
+  "targetDatabaseVersion": 28,
   "apiLanes": [
     {
       "apiLevel": 26,
@@ -423,10 +423,6 @@
         "defaultDelayMillis": 6000,
         "lastUsedDelayMillis": null,
         "chosenDelayMillis": 7000,
-        "plannedLoadMode": "UNSPECIFIED",
-        "plannedLoadUnit": "NONE",
-        "plannedLoadMilli": null,
-        "targetRir": 2,
         "state": "DONE",
         "readyAtEpochMillis": null,
         "earnedTau": 4
@@ -453,10 +449,6 @@
         "defaultDelayMillis": 8000,
         "lastUsedDelayMillis": 9000,
         "chosenDelayMillis": 10000,
-        "plannedLoadMode": "UNSPECIFIED",
-        "plannedLoadUnit": "NONE",
-        "plannedLoadMilli": null,
-        "targetRir": 2,
         "state": "WAITING_TIME",
         "readyAtEpochMillis": 32503680000000,
         "earnedTau": 0
@@ -483,10 +475,6 @@
         "defaultDelayMillis": 0,
         "lastUsedDelayMillis": null,
         "chosenDelayMillis": null,
-        "plannedLoadMode": "UNSPECIFIED",
-        "plannedLoadUnit": "NONE",
-        "plannedLoadMilli": null,
-        "targetRir": 2,
         "state": "BLOCKED",
         "actionAtEpochMillis": null,
         "earnedTau": 0
@@ -577,10 +565,6 @@
         "plannedDurationSeconds": null,
         "restTimerMode": "OFF",
         "restTimerSeconds": null,
-        "plannedLoadMode": "UNSPECIFIED",
-        "plannedLoadUnit": "NONE",
-        "plannedLoadMilli": null,
-        "targetRir": 2,
         "note": "Erhaltung upgrade-candidate-history-step",
         "actualRepetitions": "",
         "sourceTemplateId": "upgrade-candidate-valid-template",

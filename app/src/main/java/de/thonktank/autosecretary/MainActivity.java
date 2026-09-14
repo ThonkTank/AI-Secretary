@@ -63,6 +63,7 @@ public class MainActivity extends ComponentActivity {
     public static final String CONFIRM_TASK = "confirm_task";
     public static final String CONFIRM_TASK_TITLE = "confirm_task_title";
     public static final String OPEN_EDITOR = "open_editor";
+    private de.thonktank.autosecretary.ui.today.StepNoteDialog stepNoteDialog;
     private AppContainer container;
     private TodayViewModel todayViewModel;
     private AppShellViewModel shellViewModel;
@@ -85,7 +86,7 @@ public class MainActivity extends ComponentActivity {
     private LinearLayout dashboardContent;
     private AllTasksUiState allTasksState = AllTasksUiState.empty();
     private TaskEditorScreenState editorState = new TaskEditorScreenState(
-            EditorUiState.closed(), java.util.Collections.emptyMap(),
+            EditorUiState.closed(),
             java.util.Collections.emptyList());
     private String handledAllTasksRequestId;
     private String handledEditorRequestId;
@@ -136,6 +137,7 @@ public class MainActivity extends ComponentActivity {
                 new AppShellViewModel.Factory(container)).get(AppShellViewModel.class);
         todayViewModel = new ViewModelProvider(this,
                 new TodayViewModel.Factory(container, appNavigator)).get(TodayViewModel.class);
+        stepNoteDialog = new de.thonktank.autosecretary.ui.today.StepNoteDialog(this, todayViewModel);
         allTasksViewModel = new ViewModelProvider(this,
                 new AllTasksViewModel.Factory(container, appNavigator)).get(AllTasksViewModel.class);
         optionsViewModel = new ViewModelProvider(this,
@@ -158,9 +160,7 @@ public class MainActivity extends ComponentActivity {
                     @Override public void onDelete(String taskId) {
                         editorViewModel.dispatch(TaskEditorAction.delete(taskId));
                     }
-                    @Override public void onUndoTrainingAdjustment(String stepId) {
-                        editorViewModel.dispatch(TaskEditorAction.undoTrainingAdjustment(stepId));
-                    }
+
                     @Override public void onDismiss() {
                         editorViewModel.dispatch(TaskEditorAction.dismiss());
                     }
@@ -212,6 +212,7 @@ public class MainActivity extends ComponentActivity {
 
     @Override protected void onDestroy() {
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "destroy", "");
+        if (stepNoteDialog != null) stepNoteDialog.dismiss();
         if (rewardAnimator != null) rewardAnimator.dispose();
         if (editorCoordinator != null) editorCoordinator.dispose();
         super.onDestroy();
@@ -274,6 +275,7 @@ public class MainActivity extends ComponentActivity {
     private void renderTodayState(TodayScreenState state) {
         if (state == null) return;
         todayState = state;
+        stepNoteDialog.bind(state.stepNoteDraft);
         render();
         handleTodayRequest(state.firstRequest());
         handleRewardEffects(state.rewards);

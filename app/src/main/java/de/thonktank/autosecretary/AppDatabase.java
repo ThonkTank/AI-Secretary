@@ -11,7 +11,6 @@ import de.thonktank.autosecretary.data.local.CatalogDao;
 import de.thonktank.autosecretary.data.local.FlowDao;
 import de.thonktank.autosecretary.data.local.StepDao;
 import de.thonktank.autosecretary.data.local.TodayDao;
-import de.thonktank.autosecretary.data.local.TrainingDao;
 import de.thonktank.autosecretary.data.local.TaskEntity;
 import de.thonktank.autosecretary.data.local.TaskScheduleEntity;
 import de.thonktank.autosecretary.data.local.TaskStepEntity;
@@ -27,8 +26,6 @@ import de.thonktank.autosecretary.data.local.FlowTaskSheetPlacementEntity;
 import de.thonktank.autosecretary.data.local.StepFlowRunEntity;
 import de.thonktank.autosecretary.data.local.StepResourceLeaseEntity;
 import de.thonktank.autosecretary.data.local.StepTransitionEntity;
-import de.thonktank.autosecretary.data.local.TrainingAdjustmentEntity;
-import de.thonktank.autosecretary.data.local.TrainingLoadRequestEntity;
 
 import androidx.room.Database;
 import androidx.room.RoomDatabase;
@@ -45,8 +42,7 @@ import androidx.room.RoomDatabase;
         de.thonktank.autosecretary.data.local.GraphRunStepEntity.class,
         de.thonktank.autosecretary.data.local.GraphRunResourceEntity.class,
         de.thonktank.autosecretary.data.local.GraphRunEdgeEntity.class, FlowCandidateEntity.class,
-        FlowTaskSheetPlacementEntity.class, TrainingAdjustmentEntity.class,
-        TrainingLoadRequestEntity.class},
+        FlowTaskSheetPlacementEntity.class},
         version = DatabaseContract.VERSION,
         exportSchema = true)
 public abstract class AppDatabase extends RoomDatabase {
@@ -54,6 +50,5 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract StepDao steps();
     public abstract TodayDao today();
     public abstract FlowDao flows();
-    public abstract TrainingDao training();
     public abstract TimerSessionDao timers();
 }

@@ -9,6 +9,9 @@ import java.util.List;
 
 /** Reusable templates, materialized steps, ordering and their atomic set results. */
 public interface StepRepository {
+    de.thonktank.autosecretary.domain.model.StepNote findNote(String stepId);
+    /** Caller owns the transaction; changes only the chosen execution and source note. */
+    boolean updateNote(String stepId, String note);
     void insertTemplates(List<TaskStepTemplate> steps);
     void updateTemplate(TaskStepTemplate template);
     void deleteTemplates(TaskId taskId);

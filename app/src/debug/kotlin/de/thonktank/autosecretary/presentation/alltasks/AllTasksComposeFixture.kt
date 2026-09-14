@@ -139,9 +139,8 @@ object AllTasksComposeFixture {
         val templates = steps.mapIndexed { index, text ->
             TaskStepTemplate(
                 "$id-step-$index", task.id, index, text, 0, 0,
-                StepPrescription.forAmount(StepAmount.none()), null, "",
-                StepActivationKind.SCHEDULED,
-            )
+                StepPrescription.forAmount(StepAmount.none()), "",
+                StepActivationKind.SCHEDULED)
         }
         return TaskCatalog.Item(task, templates, schedule)
     }

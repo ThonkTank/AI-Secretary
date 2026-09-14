@@ -194,7 +194,6 @@ private fun MoveButton(
 @Composable
 internal fun EditorStepDetailPage(
     state: EditorUiState,
-    trainingHistory: TrainingHistoryUiModel?,
     palette: DayPalette,
     layout: EditorLayout,
     dispatcher: TaskEditorComposeDispatcher,
@@ -232,23 +231,6 @@ internal fun EditorStepDetailPage(
     }
     AmountInputs(state, step, index, palette, dispatcher)
     if (step.prescription.amount is StepAmount.SetsReps) {
-        TrainingAssistantEditorSection(
-            prescription = step.prescription,
-            policy = step.assistantPolicy,
-            assistantState = step.assistantState,
-            hasLoadIssue = state.hasStepIssue(ValidationIssue.Field.TRAINING_LOAD, step.id),
-            stepId = step.id,
-            palette = palette,
-        ) { prescription, policy ->
-            updateStep(state, index, step.withTraining(prescription, policy), dispatcher)
-        }
-        TrainingHistorySection(
-            history = trainingHistory,
-            dirty = state.dirty,
-            stepId = step.id,
-            palette = palette,
-            onUndo = { dispatcher.undoTrainingAdjustment(step.id) },
-        )
         RestTimerInputs(state, step, index, palette, dispatcher)
     }
     if (state.hasStepIssue(ValidationIssue.Field.STEP_AMOUNT, step.id)) {
@@ -477,7 +459,6 @@ private fun moveStep(
 private fun stepHasAnyIssue(state: EditorUiState, stepId: String): Boolean =
     state.hasStepIssue(ValidationIssue.Field.STEP_TITLE, stepId) ||
             state.hasStepIssue(ValidationIssue.Field.STEP_AMOUNT, stepId) ||
-            state.hasStepIssue(ValidationIssue.Field.TRAINING_LOAD, stepId) ||
             state.hasStepIssue(ValidationIssue.Field.STEP_INTERVAL, stepId)
 
 private fun EditorUiState.hasStepIssue(field: ValidationIssue.Field, stepId: String): Boolean =

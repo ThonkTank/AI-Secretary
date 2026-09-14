@@ -8,7 +8,6 @@ import de.thonktank.autosecretary.domain.model.FlowRunStepSnapshot;
 import de.thonktank.autosecretary.domain.model.FlowCandidate;
 import de.thonktank.autosecretary.domain.model.FlowTaskSheetPlacement;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
@@ -98,24 +97,22 @@ final class StepFlowEntityMapper {
                 FlowDelayPolicy.Mode.valueOf(value.delayMode), value.defaultDelayMillis,
                 value.lastUsedDelayMillis);
         return FlowRunStepSnapshot.rehydrate(value.id, value.runId, value.position,
-                value.sourceTemplateId, value.text, StepPrescription.restore(
+                value.sourceTemplateId, value.text, new StepPrescription(
                 amount(value.amountKind, value.plannedSets,
                 value.plannedReps, value.plannedDurationSeconds),
-                RestTimerPolicy.fromStorage(value.restTimerMode, value.restTimerSeconds),
-                ResistanceLoad.restore(value.plannedLoadMode, value.plannedLoadUnit,
-                        value.plannedLoadMilli), value.targetRir), value.note, delay,
+                RestTimerPolicy.fromStorage(value.restTimerMode, value.restTimerSeconds)), LegacyTrainingNote.append(value.note,
+                        value.plannedLoadMode, value.plannedLoadUnit, value.plannedLoadMilli), delay,
                 value.chosenDelayMillis);
     }
 
     FlowRunStepEntity toEntity(FlowRunStepSnapshot value) {
         StoredAmount amount = stored(value.prescription.amount);
-        ResistanceLoad load = value.prescription.plannedLoad();
         return new FlowRunStepEntity(value.id, value.runId, value.position,
                 value.sourceTemplateId, value.text, amount.kind.storageCode(), amount.sets,
                 amount.repetitions, amount.durationSeconds,
                 value.prescription.rest.mode.name(),
-                value.prescription.rest.customSeconds, load.mode.name(),
-                load.unit.name(), load.milliUnits, value.prescription.targetRir(),
+                value.prescription.rest.customSeconds, "UNSPECIFIED",
+                "NONE", null, 2,
                 value.note,
                 value.delayAfter == null ? null : value.delayAfter.mode.name(),
                 value.delayAfter == null ? null : value.delayAfter.defaultDelayMillis,
