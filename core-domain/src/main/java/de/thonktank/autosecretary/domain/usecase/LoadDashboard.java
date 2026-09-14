@@ -12,8 +12,6 @@ import de.thonktank.autosecretary.domain.repository.CatalogRepository;
 import de.thonktank.autosecretary.domain.repository.FlowRepository;
 import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.repository.TodayRepository;
-import de.thonktank.autosecretary.domain.repository.TrainingRepository;
-import de.thonktank.autosecretary.domain.model.TrainingContext;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -46,7 +44,6 @@ public final class LoadDashboard {
     private final CatalogRepository catalog;
     private final StepRepository steps;
     private final TodayRepository today;
-    private final LoadTrainingContext loadTrainingContext;
     private final LoadGraphFlowSheets graphSheets;
     private final TransactionRunner transactions;
 
@@ -57,22 +54,19 @@ public final class LoadDashboard {
 
     public LoadDashboard(CatalogRepository catalog, StepRepository steps,
                          TodayRepository today, FlowRepository flowRepository,
-                         TrainingRepository trainingRepository,
                          TransactionRunner transactions) {
-        this(catalog, steps, today, flowRepository, trainingRepository, transactions, null);
+        this(catalog, steps, today, flowRepository, transactions, null);
     }
 
     public LoadDashboard(CatalogRepository catalog, StepRepository steps,
                          TodayRepository today, FlowRepository flowRepository,
-                         TrainingRepository trainingRepository, TransactionRunner transactions,
+                         TransactionRunner transactions,
                          LoadGraphFlowSheets graphSheets) {
         this.catalog = catalog;
         this.steps = steps;
         this.today = today;
         this.graphSheets = graphSheets;
         this.transactions = transactions;
-        this.loadTrainingContext = trainingRepository == null ? null
-                : new LoadTrainingContext(steps, trainingRepository, transactions);
     }
 
     public Dashboard execute(LocalDate today) {
@@ -152,16 +146,8 @@ public final class LoadDashboard {
         Map<String, ComboProgress> combos = new HashMap<>();
         for (ComboProgress combo : this.today.combos()) combos.put(combo.ownerId, combo);
         List<FlowRunSummary> flowRuns = new ArrayList<>(allFlowRuns);
-        Map<String, TrainingContext> trainingContexts = new HashMap<>();
-        if (loadTrainingContext != null) for (DashboardTask item : result)
-            for (OccurrenceStep step : item.steps)
-                if (step.sourceTemplateId != null
-                        && !trainingContexts.containsKey(step.sourceTemplateId)) {
-                    TrainingContext context = loadTrainingContext.execute(step.sourceTemplateId);
-                    if (context != null) trainingContexts.put(step.sourceTemplateId, context);
-                }
         return new Dashboard(this.today.xp(), result, combos, flowRuns, visibleFlowSheets,
-                trainingContexts, this.today.todayPlacements());
+                this.today.todayPlacements());
     }
 
     private static DashboardTask item(Task task, Occurrence occurrence,

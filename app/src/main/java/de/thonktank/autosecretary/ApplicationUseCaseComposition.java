@@ -4,14 +4,12 @@ import de.thonktank.autosecretary.data.local.RoomCatalogRepository;
 import de.thonktank.autosecretary.data.local.RoomFlowRepository;
 import de.thonktank.autosecretary.data.local.RoomStepRepository;
 import de.thonktank.autosecretary.data.local.RoomTodayRepository;
-import de.thonktank.autosecretary.data.local.RoomTrainingRepository;
 import de.thonktank.autosecretary.data.local.RoomTransactionRunner;
 import de.thonktank.autosecretary.domain.repository.CatalogRepository;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.repository.FlowRepository;
 import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.repository.TodayRepository;
-import de.thonktank.autosecretary.domain.repository.TrainingRepository;
 import de.thonktank.autosecretary.domain.schedule.MoveScheduleEntry;
 import de.thonktank.autosecretary.domain.schedule.MoveTaskPlacement;
 import de.thonktank.autosecretary.domain.steps.MoveTaskStep;
@@ -38,12 +36,10 @@ import de.thonktank.autosecretary.domain.usecase.LoadFlowRuns;
 import de.thonktank.autosecretary.domain.usecase.LoadStepFlowSetup;
 import de.thonktank.autosecretary.domain.usecase.LoadTaskCatalog;
 import de.thonktank.autosecretary.domain.usecase.LoadTaskDetails;
-import de.thonktank.autosecretary.domain.usecase.LoadTrainingContext;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.MoveTodayStep;
 import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.RecordSetResult;
-import de.thonktank.autosecretary.domain.usecase.ResolveTrainingLoadRequest;
 import de.thonktank.autosecretary.domain.usecase.SaveCapacityResource;
 import de.thonktank.autosecretary.domain.usecase.SaveStepFlowDefinition;
 import de.thonktank.autosecretary.domain.usecase.SaveStepFlowSetup;
@@ -52,8 +48,6 @@ import de.thonktank.autosecretary.domain.usecase.SettlePreviousPartialOccurrence
 import de.thonktank.autosecretary.domain.usecase.StartFlowCandidate;
 import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
-import de.thonktank.autosecretary.domain.usecase.TrainingUseCases;
-import de.thonktank.autosecretary.domain.usecase.UndoLatestTrainingAdjustment;
 import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
 import de.thonktank.autosecretary.domain.usecase.UpdateTask;
 
@@ -62,7 +56,6 @@ final class ApplicationUseCaseComposition {
     final CatalogUseCases catalog;
     final TodayUseCases today;
     final FlowUseCases flows;
-    final TrainingUseCases training;
 
     ApplicationUseCaseComposition(AppDatabase database, Clock clock, IdGenerator ids,
                                   ComboPolicySource policies) {
@@ -77,7 +70,6 @@ final class ApplicationUseCaseComposition {
         StepRepository stepRepository = new RoomStepRepository(database, transactions);
         TodayRepository todayRepository = new RoomTodayRepository(database);
         FlowRepository flowRepository = new RoomFlowRepository(database);
-        TrainingRepository trainingRepository = new RoomTrainingRepository(database);
 
         de.thonktank.autosecretary.domain.repository.FlowGraphDefinitionRepository definitions =
                 new de.thonktank.autosecretary.data.local.SqlFlowGraphDefinitionRepository(
@@ -96,7 +88,7 @@ final class ApplicationUseCaseComposition {
         CreateTask create = new CreateTask(catalogRepository, stepRepository, todayRepository,
                 transactions, clock, ids);
         UpdateTask update = new UpdateTask(catalogRepository, stepRepository, todayRepository,
-                flowRepository, trainingRepository,
+                flowRepository,
                 transactions, ids, clock);
         catalog = new CatalogUseCases(create, update,
                 new MoveTaskPlacement(catalogRepository, todayRepository, transactions),
@@ -109,17 +101,10 @@ final class ApplicationUseCaseComposition {
                 new SaveTaskConfiguration(catalogRepository, stepRepository, flowRepository,
                         transactions, create, update, ids));
 
-        LoadTrainingContext loadTrainingContext = new LoadTrainingContext(stepRepository,
-                trainingRepository, transactions);
-        training = new TrainingUseCases(new UndoLatestTrainingAdjustment(stepRepository,
-                trainingRepository, transactions, clock),
-                new ResolveTrainingLoadRequest(stepRepository, trainingRepository,
-                        transactions, clock, ids), loadTrainingContext);
-
         ToggleStep toggleStep = new ToggleStep(catalogRepository, stepRepository,
                 todayRepository, transactions, clock, policies, flowRuntime);
         LoadDashboard dashboard = new LoadDashboard(catalogRepository, stepRepository, todayRepository,
-                flowRepository, trainingRepository, transactions, graphSheets);
+                flowRepository, transactions, graphSheets);
         today = new TodayUseCases(toggleStep,
                 new AdvanceTodayStep(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies,
@@ -131,10 +116,10 @@ final class ApplicationUseCaseComposition {
                 new CorrectRepetitionResult(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies),
                 new RecordSetResult(catalogRepository, stepRepository, todayRepository,
-                        trainingRepository, transactions, clock,
+                        transactions, clock,
                         ids, policies, flowRuntime),
                 new CorrectSetResult(catalogRepository, stepRepository, todayRepository,
-                        trainingRepository, transactions,
+                        transactions,
                         clock, policies, flowRuntime),
                 new FinishStepForToday(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies),
@@ -159,7 +144,8 @@ final class ApplicationUseCaseComposition {
                 new MaterializeDueOccurrences(catalogRepository, stepRepository, todayRepository,
                         flowRepository, transactions, clock, moments, ids, definitions, graphRuns),
                 dashboard, new de.thonktank.autosecretary.domain.usecase.MoveTodayItem(
-                        todayRepository, dashboard, transactions, clock));
+                        todayRepository, dashboard, transactions, clock),
+                new de.thonktank.autosecretary.domain.usecase.EditStepNote(stepRepository, transactions));
 
         flows = new FlowUseCases(flowRuntime,
                 new de.thonktank.autosecretary.domain.usecase.LoadFlowGraph(catalogRepository,

@@ -10,15 +10,8 @@ public final class FocusStepRowUiModel {
                         StepExecutionUiAction action) {
         if (step == null || mode == null || action == null)
             throw new IllegalArgumentException("Complete focus-step row is required");
-        if (mode == FocusStepRowMode.ASSISTANT && !step.isDone())
-            throw new IllegalArgumentException("Assistant rows must represent completed steps");
-        if (mode != FocusStepRowMode.ASSISTANT && step.isDone())
-            throw new IllegalArgumentException("Completed steps can only render as assistant rows");
-        if (mode == FocusStepRowMode.ASSISTANT
-                && action.kind != StepExecutionUiAction.Kind.NONE)
-            throw new IllegalArgumentException("Assistant rows do not execute the step again");
-        if (mode != FocusStepRowMode.ASSISTANT && !step.id.equals(action.stepId))
-            throw new IllegalArgumentException("Projected action must match its row");
+        if (step.isDone() || !step.id.equals(action.stepId))
+            throw new IllegalArgumentException("Projected action must match an open step");
         this.step = step;
         this.mode = mode;
         this.action = action;
@@ -37,8 +30,5 @@ public final class FocusStepRowUiModel {
                         : StepExecutionUiAction.advancePlannedRepetitions(step.id));
     }
 
-    public static FocusStepRowUiModel assistant(FocusStepUiModel step) {
-        return new FocusStepRowUiModel(step, FocusStepRowMode.ASSISTANT,
-                StepExecutionUiAction.none());
-    }
+
 }

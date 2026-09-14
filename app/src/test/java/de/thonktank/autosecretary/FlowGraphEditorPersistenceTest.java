@@ -202,10 +202,9 @@ public final class FlowGraphEditorPersistenceTest {
         TaskId id = save.execute(withRack(twoSteps()).edit());
         FlowEditorDraft editing = FlowEditorDraft.from(load.execute(id));
         TaskStepTemplate old = repository.steps.templates(id).get(0);
-        StepPrescription changed = StepPrescription.restore(StepAmount.setsReps(3, 8), RestTimerPolicy.inherit(),
-                ResistanceLoad.restore("EXTERNAL", "KG", 12000L), 3);
+        StepPrescription changed = new StepPrescription(StepAmount.setsReps(3, 8), RestTimerPolicy.inherit());
         repository.steps.insertTemplates(Collections.singletonList(new TaskStepTemplate(old.id, id, old.position,
-                old.text, old.weekdayMask, old.intervalDays, changed, null, "Neue Notiz", old.activationKind)));
+                old.text, old.weekdayMask, old.intervalDays, changed, "Neue Notiz", old.activationKind)));
         String resourceId = editing.capacities.resources.get(0).persistedId;
         repository.flows.putCapacityResource(new CapacityResource(resourceId, "Live-Name", 2));
         save.execute(editing.rename("Editorname").edit());

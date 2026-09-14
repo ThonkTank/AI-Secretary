@@ -1,5 +1,7 @@
 # Ausführung: minimaler Trainingsassistent
 
+> Historischer Stand: Trainingsfunktionen und Satzpunkte werden durch [ADR-039](adr-039-schrittnotizen-ohne-trainingsassistent.md) abgelöst.
+
 Kanonische Grundlage:
 [Roadmap: minimaler Trainingsassistent ohne Übergangsarchitektur](training-assistant-minimal-roadmap.md)
 

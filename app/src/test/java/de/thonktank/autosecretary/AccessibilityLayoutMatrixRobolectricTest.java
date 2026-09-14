@@ -81,21 +81,20 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         focus.bind(FocusCardTestModels.of(task, palette(), FocusStepLimit.AUTO,
                 RepetitionInputState.idle()), false, events);
         measure(focus, dp(context, 360), dp(context, 2_400));
-        assertTrue(focus.findViewById(R.id.training_repetitions_value).performClick());
         measure(focus, dp(context, 360), dp(context, 2_400));
 
         XpVesselView vessel = first(focus, XpVesselView.class);
         DewDotView dot = first(focus, DewDotView.class);
-        View minus = focus.findViewById(R.id.inline_value_decrement);
-        TextView input = focus.findViewById(R.id.inline_value_current);
-        View plus = focus.findViewById(R.id.inline_value_increment);
-        SetDotsView dots = focus.findViewById(R.id.set_dots);
+        View minus = focus.findViewById(R.id.rep_stepper_decrement);
+        TextView input = focus.findViewById(R.id.rep_stepper_value);
+        View plus = focus.findViewById(R.id.rep_stepper_increment);
+        SetBarsView dots = focus.findViewById(R.id.set_bars);
         assertNotNull(vessel); assertNotNull(dot); assertNotNull(input);
         assertNotNull(minus); assertNotNull(plus); assertNotNull(dots);
         List<View> order = descendants(focus);
         assertTrue(order.indexOf(vessel) < order.indexOf(dot));
         assertTrue(order.indexOf(dot) < order.indexOf(dots));
-        assertTrue(order.indexOf(dots) < order.indexOf(input));
+        assertTrue(order.indexOf(input) < order.indexOf(dots));
         assertTrue(order.indexOf(minus) < order.indexOf(input));
         assertTrue(order.indexOf(input) < order.indexOf(plus));
 
@@ -169,18 +168,17 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
                 R.dimen.page_start) + context.getResources().getDimensionPixelSize(R.dimen.page_end);
         int available = dp(context, widthDp) - horizontalPagePadding;
         measure(focus, available, dp(context, 4_000));
-        assertTrue(focus.findViewById(R.id.training_repetitions_value).performClick());
         measure(focus, available, dp(context, 4_000));
-        View minus = focus.findViewById(R.id.inline_value_decrement);
-        TextView input = focus.findViewById(R.id.inline_value_current);
-        View plus = focus.findViewById(R.id.inline_value_increment);
-        SetDotsView dots = focus.findViewById(R.id.set_dots);
+        View minus = focus.findViewById(R.id.rep_stepper_decrement);
+        TextView input = focus.findViewById(R.id.rep_stepper_value);
+        View plus = focus.findViewById(R.id.rep_stepper_increment);
+        SetBarsView dots = focus.findViewById(R.id.set_bars);
         String message = label(widthDp, fontScale);
         assertNotNull(message, minus); assertNotNull(message, input);
         assertNotNull(message, plus); assertNotNull(message, dots);
         int target = dp(context, 44);
         for (View control : Arrays.asList(minus, plus,
-                focus.findViewById(R.id.training_repetitions_value))) {
+                focus.findViewById(R.id.rep_stepper_value))) {
             assertNotNull(message, control);
             assertTrue(message + " height", control.getHeight() >= target);
         }
@@ -251,7 +249,7 @@ public final class AccessibilityLayoutMatrixRobolectricTest {
         for (int index = 1; index <= 5; index++)
             steps.add(FocusTaskFixtures.step("future-" + index,
                             "Ein ausgesprochen langer Folgeschritt " + index)
-                    .amount("12 Wdh.")
+                    .amount("12")
                     .note("Lange Notiz, die bei großer Schrift zwei Zeilen benötigt")
                     .repetition(RepetitionProgressUiModel.single(
                             12, Collections.emptyList())).build());

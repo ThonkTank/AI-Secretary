@@ -110,7 +110,6 @@ class TaskEditorComposeDispatcherTest {
                 onDraftChanged = { state = it },
                 onSave = { saved = it; saveCount++ },
                 onDelete = { deletedTaskId = it; deleteCount++ },
-                onUndoTrainingAdjustment = { },
                 onDismiss = { dismissCount++ },
             ),
             TaskEditorValidator(),

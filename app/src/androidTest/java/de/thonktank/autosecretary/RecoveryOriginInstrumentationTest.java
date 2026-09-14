@@ -178,7 +178,7 @@ public final class RecoveryOriginInstrumentationTest {
             assertEquals(0, scalar(db, "SELECT COUNT(*) FROM migration_recovery"));
             if (keepPending) {
                 assertEquals(pendingOccurrence, row(db, "occurrences", "id='clean-sheet'"));
-                Map<String, String> offeredStep = new TreeMap<>(originals.get("occurrence_steps"));
+                Map<String, String> offeredStep = currentColumns("occurrence_steps", originals.get("occurrence_steps"));
                 offeredStep.put("flowRunStepId", Cursor.FIELD_TYPE_STRING + ":clean-run-step");
                 assertEquals(offeredStep, row(db, "occurrence_steps", "id='clean-offered-step'"));
                 Map<String, String> resource = new TreeMap<>(originals.get("flow_run_resources"));
@@ -189,14 +189,14 @@ public final class RecoveryOriginInstrumentationTest {
                 assertEquals(resource, row(db, "flow_run_resources", "id='clean-resource'"));
             }
             for (Map.Entry<String, String> query : evidenceQueries.entrySet())
-                assertEquals("Retained " + evidence + " evidence", evidenceRows.get(query.getKey()),
+                assertEquals("Retained " + evidence + " evidence", currentColumns(query.getKey(), evidenceRows.get(query.getKey())),
                         row(db, query.getKey(), query.getValue()));
             assertEquals(retainedPending, scalar(db, "SELECT COUNT(*) FROM combo_obligations WHERE id='clean-obligation'"));
             assertEquals(bookings, row(db, "reward_bookings", "id='history-booking'"));
             assertEquals(assignments, row(db, "reward_assignments", "bookingId='history-booking'"));
             for (Map.Entry<String, Map<String, String>> step : retainedSteps.entrySet()) {
                 Map<String, String> actual = row(db, "flow_run_steps", "id='" + step.getKey() + "'");
-                for (Map.Entry<String, String> column : step.getValue().entrySet())
+                for (Map.Entry<String, String> column : currentColumns("flow_run_steps", step.getValue()).entrySet())
                     assertEquals(step.getKey() + "." + column.getKey(), column.getValue(), actual.get(column.getKey()));
             }
             assertEquals(1, scalar(db, "SELECT COUNT(*) FROM tasks WHERE id='laundry' AND title='Laundry'"));
@@ -219,6 +219,21 @@ public final class RecoveryOriginInstrumentationTest {
                     + "; roomMigrationForeignKeys=0; intermediate=" + observed
                     + "; newRecoveryRows=0; retainedHistory=true; pendingEvidence=" + evidence);
         } finally { room.close(); }
+    }
+
+    /** These historical fixtures seed unspecified loads; all surviving values must stay exact. */
+    private static Map<String, String> currentColumns(String table, Map<String, String> original) {
+        Map<String, String> expected = new TreeMap<>(original);
+        if (table.equals("occurrence_steps") || table.equals("flow_run_steps")) {
+            assertEquals("3:UNSPECIFIED", expected.remove("plannedLoadMode"));
+            assertEquals("3:NONE", expected.remove("plannedLoadUnit"));
+            assertEquals("0:null", expected.remove("plannedLoadMilli"));
+            expected.remove("targetRir");
+        } else if (table.equals("repetition_results")) {
+            for (String retired : new String[]{"loadMode", "loadUnit", "loadMilli", "rir", "source", "safetyFlag"})
+                expected.remove(retired);
+        }
+        return expected;
     }
 
     private static void seed(SupportSQLiteDatabase db, int version) {

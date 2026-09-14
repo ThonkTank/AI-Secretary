@@ -202,11 +202,11 @@ public final class ProductionUpgradeFixtureContractTest {
         assertTrue(empty.getJSONObject("values").isNull("lastUsedDelayMillis"));
         assertEquals("Leere letzte Verzögerung",
                 empty.getJSONObject("values").getString("note"));
-        assertEquals(2, empty.getJSONObject("values").getInt("targetRir"));
+        assertFalse(empty.getJSONObject("values").has("targetRir"));
         JSONObject full = expectedById(rows, "upgrade-organic-full-delay");
         assertEquals(9000, full.getJSONObject("values").getInt("lastUsedDelayMillis"));
         assertEquals(10000, full.getJSONObject("values").getInt("chosenDelayMillis"));
-        assertEquals(2, full.getJSONObject("values").getInt("targetRir"));
+        assertFalse(full.getJSONObject("values").has("targetRir"));
     }
 
     @Test public void seededTaskModesAreValidCurrentDomainValues() throws Exception {
@@ -227,14 +227,12 @@ public final class ProductionUpgradeFixtureContractTest {
         }
     }
 
-    @Test public void schemaTwentyThreeSeparatesRepairFromByteEqualCorrectRow() throws Exception {
+    @Test public void schemaTwentyThreeRepairsPayloadAndConvertsBothWeightsIntoNotes() throws Exception {
         JSONObject fixture = fixtures().get("schema-23-repair-boundary");
         List<JSONObject> rows = expectedRows(fixture, "flow_run_steps");
         JSONObject repaired = expectedById(rows, "upgrade-repair-permuted")
                 .getJSONObject("values");
-        assertEquals("EXTERNAL", repaired.getString("plannedLoadMode"));
-        assertEquals("KG", repaired.getString("plannedLoadUnit"));
-        assertEquals("Korrupte Notiz", repaired.getString("note"));
+        assertEquals("Korrupte Notiz\nGewicht: 12,345 kg", repaired.getString("note"));
         assertEquals("FIXED", repaired.getString("delayMode"));
 
         JSONObject seededCorrect = seedRow(fixture, "flow_run_steps",
@@ -243,6 +241,10 @@ public final class ProductionUpgradeFixtureContractTest {
         JSONObject combinedExpected = new JSONObject(expectedCorrect.getJSONObject("values")
                 .toString());
         combinedExpected.put("id", expectedCorrect.getJSONObject("where").getString("id"));
+        for (String retired : new String[]{"plannedLoadMode", "plannedLoadUnit", "plannedLoadMilli", "targetRir"})
+            seededCorrect.remove(retired);
+        assertEquals("Korrekte Notiz\nGewicht: Körpergewicht + 54,321 lb", combinedExpected.getString("note"));
+        seededCorrect.put("note", combinedExpected.getString("note"));
         assertEquals(keys(seededCorrect), keys(combinedExpected));
         for (Iterator<String> names = seededCorrect.keys(); names.hasNext();) {
             String name = names.next();

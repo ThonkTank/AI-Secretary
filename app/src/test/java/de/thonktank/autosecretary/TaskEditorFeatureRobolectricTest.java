@@ -28,7 +28,6 @@ import java.util.List;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepAmountKind;
@@ -44,7 +43,6 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
@@ -142,7 +140,7 @@ public final class TaskEditorFeatureRobolectricTest {
 
         TaskStepDefinition edited = de.thonktank.autosecretary.testing.StepTestFixtures.definition(stableId, 0, "Neu", 0,
                 StepAmount.setsReps(4, 10), "25 kg");
-        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.training, repository.transactions, ids, clock).execute(task.id,
+        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, ids, clock).execute(task.id,
                 definition("Training neu", Recurrence.DAILY, 0, TaskBoundKind.FOREVER,
                         null, Collections.singletonList(edited)));
 
@@ -205,7 +203,7 @@ public final class TaskEditorFeatureRobolectricTest {
                         StepAmount.none(), ""),
                 de.thonktank.autosecretary.testing.StepTestFixtures.definition(templates.get(1).id, 1, "Intervall", 0, 2,
                         StepAmount.none(), "")));
-        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.training, repository.transactions, ids, clock).execute(task.id, edited);
+        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, ids, clock).execute(task.id, edited);
         repository = new RoomRepositoryFixture(database);
         assertEquals(TODAY, repository.catalog.findTask(task.id).cadenceAnchorOn);
 
@@ -246,7 +244,7 @@ public final class TaskEditorFeatureRobolectricTest {
         TaskDefinition everyFiveDays = new TaskDefinition("Intervall", null, TaskSlot.MORNING,
                 Recurrence.INTERVAL, 5, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", Collections.emptyList());
-        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.training, repository.transactions, ids, clock).execute(task.id, everyFiveDays);
+        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, ids, clock).execute(task.id, everyFiveDays);
 
         Task updated = repository.catalog.findTask(task.id);
         assertEquals(TODAY.plusDays(1), updated.nextDueOn);
@@ -275,8 +273,6 @@ public final class TaskEditorFeatureRobolectricTest {
 
         OccurrenceStep restored = new RoomRepositoryFixture(database).steps.findOccurrenceStep(step.id);
         assertEquals(Arrays.asList(10, 11), restored.repetitionProgress.repetitions());
-        assertTrue(restored.repetitionProgress.results.stream()
-                .allMatch(value -> value.training == null));
         assertFalse(restored.done);
         CorrectRepetitionResult correct = new CorrectRepetitionResult(repository.catalog,
                 repository.steps, repository.today, repository.transactions);
@@ -309,14 +305,10 @@ public final class TaskEditorFeatureRobolectricTest {
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
         OccurrenceStep step = repository.steps.occurrenceSteps(
                 repository.today.openOccurrences().get(0).id).get(0);
-        ResistanceLoad load = ResistanceLoad.numeric(ResistanceLoad.Mode.EXTERNAL,
-                ResistanceLoad.Unit.KG, 23_000);
-        RecordSetResult record = new RecordSetResult(repository.catalog, repository.steps, repository.today, repository.training, repository.transactions, clock, ids,
+        RecordSetResult record = new RecordSetResult(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids,
                 ComboPolicySource.defaults());
-        SetResult first = new SetResult(12, TrainingObservation.user(load, 2));
-        SetResult second = new SetResult(11, new TrainingObservation(load, 1,
-                TrainingObservation.Safety.PAIN_OR_TECHNIQUE,
-                TrainingObservation.Origin.USER));
+        SetResult first = new SetResult(12);
+        SetResult second = new SetResult(11);
 
         record.execute(step.id, first);
         record.execute(step.id, second);
@@ -324,8 +316,8 @@ public final class TaskEditorFeatureRobolectricTest {
 
         assertEquals(Arrays.asList(first, second), restored.repetitionProgress.results);
         assertEquals(Arrays.asList(12, 11), restored.repetitionProgress.repetitions());
-        SetResult corrected = new SetResult(10, TrainingObservation.user(load, 3));
-        new CorrectSetResult(repository.catalog, repository.steps, repository.today, repository.training, repository.transactions, clock, ComboPolicySource.defaults())
+        SetResult corrected = new SetResult(10);
+        new CorrectSetResult(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ComboPolicySource.defaults())
                 .execute(step.id, 1, corrected);
         assertEquals(Arrays.asList(first, corrected), new RoomRepositoryFixture(database).steps
                 .findOccurrenceStep(step.id).repetitionProgress.results);
@@ -415,7 +407,7 @@ public final class TaskEditorFeatureRobolectricTest {
     @Test public void stepCadenceBundleKeepsSelectedEmptyIntervalAndReadsLegacyValues() {
         EditorStepState interval = new EditorStepState("step", "Gießen",
                 StepCadenceMode.INTERVAL, 0, null,
-                StepPrescription.forAmount(StepAmount.none()), null, "",
+                StepPrescription.forAmount(StepAmount.none()), "",
                 StepActivationKind.SCHEDULED);
         EditorStepState restored = EditorStepState.fromBundle(interval.toBundle());
         assertEquals(StepCadenceMode.INTERVAL, restored.cadenceMode);

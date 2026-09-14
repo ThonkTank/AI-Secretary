@@ -23,8 +23,6 @@ import de.thonktank.autosecretary.domain.model.XpProgress;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
 import de.thonktank.autosecretary.domain.model.FlowRunSummary;
 import de.thonktank.autosecretary.domain.model.FlowTaskSheet;
-import de.thonktank.autosecretary.domain.model.TrainingContext;
-import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.presentation.today.CompletedTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
@@ -38,7 +36,6 @@ import de.thonktank.autosecretary.presentation.today.TimelineStepUiModel;
 import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
-import de.thonktank.autosecretary.presentation.today.TrainingPromptUiModel;
 
 public final class DashboardUiMapper {
     private final UiTextProvider texts;
@@ -194,10 +191,6 @@ public final class DashboardUiMapper {
             if (step.prescription.amount instanceof StepAmount.Duration)
                 mapped = mapped.withDurationSeconds(
                         ((StepAmount.Duration) step.prescription.amount).seconds);
-            TrainingContext training = step.sourceTemplateId == null ? null
-                    : dashboard.trainingContexts.get(step.sourceTemplateId);
-            TrainingPromptUiModel prompt = training == null ? null : trainingPrompt(training);
-            if (prompt != null) mapped = mapped.withTrainingPrompt(prompt);
             steps.add(mapped);
         }
         return steps;
@@ -242,7 +235,8 @@ public final class DashboardUiMapper {
             FocusStepUiModel mapped = FocusStepUiModel.executableWithGrainLevel(id, entry.title,
                     amount, note, false, action,
                     null, reward, RewardPolicy.step(combo).comboStage, 0);
-            result.add(mapped);
+            result.add(mapped.withNoteTarget(entry.kind == FlowTaskSheet.Entry.Kind.CANDIDATE
+                    ? entry.candidateTemplate.id : id));
         }
         return result;
     }
@@ -258,18 +252,13 @@ public final class DashboardUiMapper {
         return result;
     }
 
-    private TrainingPromptUiModel trainingPrompt(TrainingContext value) {
-        TrainingLoadRequest request = value.openLoadRequest;
-        return request == null ? null : new TrainingPromptUiModel(value.templateId,
-                request.direction, request.currentLoad);
-    }
+
 
     private static RepetitionProgressUiModel repetition(OccurrenceStep step) {
         if (step.prescription.amount instanceof StepAmount.SetsReps) {
             StepAmount.SetsReps amount = (StepAmount.SetsReps) step.prescription.amount;
-            return RepetitionProgressUiModel.trainingSets(amount.sets, amount.repetitions,
-                    step.repetitionProgress.repetitions(), step.prescription.plannedLoad(),
-                    step.prescription.targetRir());
+            return RepetitionProgressUiModel.sets(amount.sets, amount.repetitions,
+                    step.repetitionProgress.repetitions());
         }
         if (step.prescription.amount instanceof StepAmount.Repetitions)
             return RepetitionProgressUiModel.single(

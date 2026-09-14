@@ -15,7 +15,7 @@
     "metadataSha256": "5e7138351cfae612e7672051eec097c65ea9f8d2b8307e8af723a3ab54f08b35",
     "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
   },
-  "targetDatabaseVersion": 27,
+  "targetDatabaseVersion": 28,
   "apiLanes": [
     {
       "apiLevel": 26,
@@ -164,7 +164,9 @@
   "expectedTarget": [
     {
       "table": "step_flow_runs",
-      "where": {"id": "upgrade-organic-run"},
+      "where": {
+        "id": "upgrade-organic-run"
+      },
       "values": {
         "taskId": "upgrade-organic-task",
         "seedStepId": "upgrade-organic-template",
@@ -183,7 +185,9 @@
     },
     {
       "table": "flow_run_steps",
-      "where": {"id": "upgrade-organic-empty-delay"},
+      "where": {
+        "id": "upgrade-organic-empty-delay"
+      },
       "values": {
         "runId": "upgrade-organic-run",
         "position": 0,
@@ -195,10 +199,6 @@
         "plannedDurationSeconds": null,
         "restTimerMode": "CUSTOM",
         "restTimerSeconds": 45,
-        "plannedLoadMode": "UNSPECIFIED",
-        "plannedLoadUnit": "NONE",
-        "plannedLoadMilli": null,
-        "targetRir": 2,
         "note": "Leere letzte Verzögerung",
         "delayMode": "FIXED",
         "defaultDelayMillis": 6000,
@@ -210,7 +210,9 @@
     },
     {
       "table": "flow_run_steps",
-      "where": {"id": "upgrade-organic-full-delay"},
+      "where": {
+        "id": "upgrade-organic-full-delay"
+      },
       "values": {
         "runId": "upgrade-organic-run",
         "position": 1,
@@ -222,10 +224,6 @@
         "plannedDurationSeconds": null,
         "restTimerMode": "DEFAULT",
         "restTimerSeconds": null,
-        "plannedLoadMode": "UNSPECIFIED",
-        "plannedLoadUnit": "NONE",
-        "plannedLoadMilli": null,
-        "targetRir": 2,
         "note": "Vollständige Vertauschungsprobe",
         "delayMode": "REMEMBER_LAST",
         "defaultDelayMillis": 8000,
@@ -237,7 +235,9 @@
     },
     {
       "table": "flow_run_steps",
-      "where": {"id": "upgrade-organic-finish"},
+      "where": {
+        "id": "upgrade-organic-finish"
+      },
       "values": {
         "sourceTemplateId": "upgrade-organic-template-3",
         "amountKind": "DURATION",
@@ -250,7 +250,9 @@
     },
     {
       "table": "flow_run_resources",
-      "where": {"id": "upgrade-organic-resource"},
+      "where": {
+        "id": "upgrade-organic-resource"
+      },
       "values": {
         "runId": "upgrade-organic-run",
         "sourceLeaseId": "upgrade-organic-lease",

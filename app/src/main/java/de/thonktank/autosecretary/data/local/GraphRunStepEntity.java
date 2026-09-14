@@ -23,10 +23,6 @@ public final class GraphRunStepEntity {
     @Nullable public Integer plannedDurationSeconds;
     @NonNull public String restTimerMode = "";
     @Nullable public Integer restTimerSeconds;
-    @NonNull public String plannedLoadMode = "";
-    @NonNull public String plannedLoadUnit = "";
-    @Nullable public Long plannedLoadMilli;
-    public int targetRir;
     @NonNull public String note = "";
     @NonNull public String delayMode = "";
     public long defaultDelayMillis;

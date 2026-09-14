@@ -32,12 +32,10 @@ public final class FlowGraphSnapshotReader {
             Row row = new Row(cursor);
             while (cursor.moveToNext()) {
                 String id = row.text("id"); ids.add(id);
-                StepPrescription prescription = StepPrescription.restore(StepAmount.fromStorage(
+                StepPrescription prescription = new StepPrescription(StepAmount.fromStorage(
                         StepAmountKind.fromStorage(row.text("amountKind")), row.optionalInt("plannedSets"),
                         row.optionalInt("plannedReps"), row.optionalInt("plannedDurationSeconds")),
-                        RestTimerPolicy.fromStorage(row.text("restTimerMode"), row.optionalInt("restTimerSeconds")),
-                        ResistanceLoad.restore(row.text("plannedLoadMode"), row.text("plannedLoadUnit"),
-                                row.optionalLong("plannedLoadMilli")), Math.toIntExact(row.number("targetRir")));
+                        RestTimerPolicy.fromStorage(row.text("restTimerMode"), row.optionalInt("restTimerSeconds")));
                 FlowGraphDefinition.Node node = new FlowGraphDefinition.Node(row.text("sourceTemplateId"),
                         row.text("text"), prescription, row.text("note"), new FlowDelayPolicy(
                         FlowDelayPolicy.Mode.valueOf(row.text("delayMode")), row.number("defaultDelayMillis"),

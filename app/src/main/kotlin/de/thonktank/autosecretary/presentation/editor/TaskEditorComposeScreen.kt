@@ -63,14 +63,12 @@ data class TaskEditorComposeCallbacks(
     val onDraftChanged: (EditorUiState) -> Unit,
     val onSave: (EditorUiState) -> Unit,
     val onDelete: (String) -> Unit,
-    val onUndoTrainingAdjustment: (String) -> Unit,
     val onDismiss: () -> Unit,
 )
 
 @Composable
 fun TaskEditorComposeScreen(
     state: EditorUiState,
-    trainingHistory: Map<String, TrainingHistoryUiModel>,
     palette: DayPalette,
     today: LocalDate,
     callbacks: TaskEditorComposeCallbacks,
@@ -110,7 +108,6 @@ fun TaskEditorComposeScreen(
             EditorHeader(state, palette, layout, dispatcher)
             EditorPageViewport(
                 state = state,
-                trainingHistory = trainingHistory,
                 palette = palette,
                 today = today,
                 layout = layout,
@@ -186,7 +183,6 @@ private fun EditorHeader(
 @Composable
 private fun EditorPageViewport(
     state: EditorUiState,
-    trainingHistory: Map<String, TrainingHistoryUiModel>,
     palette: DayPalette,
     today: LocalDate,
     layout: EditorLayout,
@@ -242,7 +238,6 @@ private fun EditorPageViewport(
             if (summary) {
                 EditorPageContent(
                     displayedState,
-                    trainingHistory,
                     palette,
                     today,
                     layout,
@@ -264,7 +259,6 @@ private fun EditorPageViewport(
                 ) {
                     EditorPageContent(
                         displayedState,
-                        trainingHistory,
                         palette,
                         today,
                         layout,
@@ -584,6 +578,5 @@ internal class TaskEditorComposeDispatcher(
 
     fun closePrompt() = showPrompt(EditorUiState.Prompt.NONE)
     fun delete() = state.taskId?.let(callbacks.onDelete)
-    fun undoTrainingAdjustment(stepId: String) = callbacks.onUndoTrainingAdjustment(stepId)
     fun dismiss() = callbacks.onDismiss()
 }

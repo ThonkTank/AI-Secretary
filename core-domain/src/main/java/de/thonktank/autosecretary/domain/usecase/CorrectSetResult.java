@@ -1,43 +1,29 @@
 package de.thonktank.autosecretary.domain.usecase;
 
 import de.thonktank.autosecretary.Clock;
-import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.SetResult;
-import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
-import de.thonktank.autosecretary.domain.model.TrainingLoadRequest;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.repository.CatalogRepository;
 import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.repository.TodayRepository;
-import de.thonktank.autosecretary.domain.repository.TrainingRepository;
 import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
-/** Atomically corrects one result and restarts learning for its exercise. */
+/** Atomically corrects one repetition result and its reward. */
 public final class CorrectSetResult {
-    private final StepRepository steps;
-    private final TrainingRepository training;
     private final TransactionRunner transactions;
     private final StepExecutionService execution;
-    private final Clock clock;
 
     public CorrectSetResult(CatalogRepository catalog, StepRepository steps, TodayRepository today,
-                            TrainingRepository training,
                             TransactionRunner transactions, Clock clock,
                             ComboPolicySource policies) {
-        this(catalog, steps, today, training, transactions, clock, policies, null);
+        this(catalog, steps, today, transactions, clock, policies, null);
     }
 
     public CorrectSetResult(CatalogRepository catalog, StepRepository steps, TodayRepository today,
-                            TrainingRepository training,
                             TransactionRunner transactions, Clock clock,
                             ComboPolicySource policies, FlowProgression flows) {
-        this.steps = steps;
-        this.training = training;
         this.transactions = transactions;
-        this.clock = clock;
         execution = new StepExecutionService(catalog, steps, today, transactions, clock,
                 new RewardCalculator(policies), new CompletionStateMachine(), flows);
     }
@@ -46,19 +32,6 @@ public final class CorrectSetResult {
         return transactions.inTransaction(() -> {
             StepExecutionResult result = execution.correctSetResultInsideTransaction(
                     stepId, index, value);
-            if (result.status != StepExecutionResult.Status.CORRECTED) return result;
-            OccurrenceStep step = steps.findOccurrenceStep(stepId);
-            if (step != null && step.sourceTemplateId != null) {
-                TaskStepTemplate template = steps.findTemplate(step.sourceTemplateId);
-                if (template != null && template.assistantProfile != null)
-                    steps.updateTemplate(template.withTraining(template.prescription,
-                            new TrainingAssistantProfile(template.assistantProfile.policy,
-                                    TrainingAssistantState.calibrating())));
-                TrainingLoadRequest request = training.openTrainingLoadRequest(
-                        step.sourceTemplateId);
-                if (request != null) training.updateTrainingLoadRequest(request.cancel(
-                        TrainingLoadRequest.Resolution.SET_RESULT_CORRECTED, clock.today()));
-            }
             return result;
         });
     }

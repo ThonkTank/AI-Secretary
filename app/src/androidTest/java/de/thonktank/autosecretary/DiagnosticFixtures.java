@@ -148,7 +148,7 @@ final class DiagnosticFixtures {
     private static void assertNormalData(Context context) throws Exception {
         JSONObject before = new JSONObject(read(context, "diagnostic-before.json"));
         try (SQLiteDatabase db = open(context)) {
-            check(db.getVersion() == 27, "Normal Room start did not reach schema27");
+            check(db.getVersion() == DatabaseContract.VERSION, "Normal Room start did not reach the current schema");
             JSONArray tables = before.getJSONArray("tables");
             for (int i = 0; i < tables.length(); i++) {
                 JSONObject table = tables.getJSONObject(i);
@@ -163,6 +163,26 @@ final class DiagnosticFixtures {
                     }
                 }
                 JSONArray columns = table.getJSONArray("columns");
+                // The diagnostic fixture has only unspecified loads. A normal 28+ upgrade
+                // retires these four columns; the read-only diagnostic snapshot above stays exact.
+                if (name.equals("occurrence_steps") && expected.length() > 0) {
+                    JSONArray survivingColumns = new JSONArray();
+                    List<Integer> positions = new ArrayList<>();
+                    for (int j = 0; j < columns.length(); j++) {
+                        String column = columns.getString(j);
+                        if (List.of("plannedLoadMode", "plannedLoadUnit", "plannedLoadMilli", "targetRir").contains(column)) continue;
+                        survivingColumns.put(column); positions.add(j);
+                    }
+                    List<String> projected = new ArrayList<>();
+                    for (int j = 0; j < expected.length(); j++) {
+                        JSONArray original = new JSONArray(expected.getString(j));
+                        JSONArray retained = new JSONArray();
+                        for (int position : positions) retained.put(original.get(position));
+                        projected.add(retained.toString());
+                    }
+                    Collections.sort(projected);
+                    expected = new JSONArray(projected); columns = survivingColumns;
+                }
                 List<String> selected = new ArrayList<>();
                 for (int j = 0; j < columns.length(); j++) selected.add(quote(columns.getString(j)));
                 // An empty historical table may have structurally removed columns after migration.

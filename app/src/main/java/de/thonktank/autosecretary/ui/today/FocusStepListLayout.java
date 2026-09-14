@@ -82,7 +82,7 @@ public final class FocusStepListLayout extends ViewGroup {
         reorderIds.clear();
         for (FocusStepRowUiModel row : model.steps.rows) {
             rowIds.add(row.id());
-            if (row.mode != FocusStepRowMode.ASSISTANT) reorderIds.add(row.id());
+            reorderIds.add(row.id());
         }
         doneStatus.setText(model.steps.doneCount == 0 ? "" : getResources().getQuantityString(
                 R.plurals.focus_steps_done, model.steps.doneCount, model.steps.doneCount));
@@ -104,8 +104,7 @@ public final class FocusStepListLayout extends ViewGroup {
                 addView(row, getChildCount() - 1, new MarginLayoutParams(-1, -2));
             row.bind(projected, model.palette,
                     model.repetitionInput, model.timers, actions);
-            boolean reorderable = projected.mode != FocusStepRowMode.ASSISTANT
-                    && !projected.step.activeAction.isFlowExecution();
+            boolean reorderable = !projected.step.activeAction.isFlowExecution();
             final int renderedIndex = index;
             row.bindInteractions(projected.id(), projected.step.title,
                     projected.mode == FocusStepRowMode.COMPACT

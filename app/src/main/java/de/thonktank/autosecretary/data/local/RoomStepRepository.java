@@ -2,11 +2,9 @@ package de.thonktank.autosecretary.data.local;
 
 import de.thonktank.autosecretary.AppDatabase;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.TrainingObservation;
 import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
@@ -31,6 +29,31 @@ public final class RoomStepRepository implements StepRepository {
         this.dao = database.steps();
         this.mapper = mapper;
         this.transactions = transactions;
+    }
+
+    @Override public de.thonktank.autosecretary.domain.model.StepNote findNote(String stepId) {
+        OccurrenceStepEntity step = dao.occurrenceStep(stepId);
+        if (step != null) return new de.thonktank.autosecretary.domain.model.StepNote(step.id, step.text, step.note);
+        GraphRunStepEntity graph = dao.graphStep(stepId);
+        if (graph != null) return new de.thonktank.autosecretary.domain.model.StepNote(graph.id, graph.text, graph.note);
+        TaskStepEntity template = dao.template(stepId);
+        return template == null ? null : new de.thonktank.autosecretary.domain.model.StepNote(template.id, template.text, template.note);
+    }
+
+    @Override public boolean updateNote(String stepId, String note) {
+        OccurrenceStepEntity step = dao.occurrenceStep(stepId);
+        if (step != null) {
+            dao.updateOccurrenceNote(step.id, note);
+            if (step.sourceTemplateId != null) dao.updateTemplateNote(step.sourceTemplateId, note);
+            if (step.flowRunStepId != null) dao.updateGraphStepNote(step.flowRunStepId, note);
+            return true;
+        }
+        GraphRunStepEntity graph = dao.graphStep(stepId);
+        if (graph == null) return dao.updateTemplateNote(stepId, note) == 1;
+        dao.updateGraphStepNote(graph.id, note);
+        dao.updateRuntimeOccurrenceNote(graph.id, note);
+        dao.updateTemplateNote(graph.sourceTemplateId, note);
+        return true;
     }
 
     @Override public void insertTemplates(List<TaskStepTemplate> steps) {
@@ -159,30 +182,10 @@ public final class RoomStepRepository implements StepRepository {
     }
 
     private static SetResult setResult(RepetitionResultEntity value) {
-        ResistanceLoad load = ResistanceLoad.restore(value.loadMode, value.loadUnit,
-                value.loadMilli);
-        TrainingObservation.Origin origin = enumValue(TrainingObservation.Origin.class,
-                value.source, TrainingObservation.Origin.LEGACY);
-        TrainingObservation.Safety safety = enumValue(TrainingObservation.Safety.class,
-                value.safetyFlag, TrainingObservation.Safety.NONE);
-        TrainingObservation observation = load.mode == ResistanceLoad.Mode.UNSPECIFIED
-                && value.rir == null && origin == TrainingObservation.Origin.LEGACY
-                && safety == TrainingObservation.Safety.NONE ? null
-                : new TrainingObservation(load, value.rir, safety, origin);
-        return SetResult.restore(value.actualRepetitions, observation);
+        return SetResult.restore(value.actualRepetitions);
     }
 
     private static RepetitionResultEntity entity(String stepId, int index, SetResult value) {
-        if (value.training == null)
-            return new RepetitionResultEntity(stepId, index, value.repetitions);
-        TrainingObservation training = value.training;
-        return new RepetitionResultEntity(stepId, index, value.repetitions,
-                training.load.mode.name(), training.load.unit.name(), training.load.milliUnits,
-                training.rir, training.origin.name(), training.safety.name());
-    }
-
-    private static <T extends Enum<T>> T enumValue(Class<T> type, String value, T fallback) {
-        try { return Enum.valueOf(type, value); }
-        catch (RuntimeException invalid) { return fallback; }
+        return new RepetitionResultEntity(stepId, index, value.repetitions);
     }
 }

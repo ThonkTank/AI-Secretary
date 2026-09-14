@@ -86,7 +86,8 @@ public final class DatabaseMigrationTest {
         try (Cursor rows = database.query("SELECT COUNT(*) FROM flow_run_steps")) { assertTrue(rows.moveToFirst()); assertEquals(0, rows.getInt(0)); }
         try (Cursor rows = database.query("SELECT COUNT(*) FROM flow_run_resources")) { assertTrue(rows.moveToFirst()); assertEquals(0, rows.getInt(0)); }
         database.close();
-        assertEquals("schema=27; foreignKeys={}; staleExecutionCounters=0; occupiedNextExecutionKeys=0",
+        assertEquals("schema=" + DatabaseContract.VERSION
+                        + "; foreignKeys={}; staleExecutionCounters=0; occupiedNextExecutionKeys=0",
                 DiagnosticProbeInstrumentation.readOnlyDiagnosis(InstrumentationRegistry.getInstrumentation()
                         .getTargetContext().getDatabasePath(DATABASE)));
     }

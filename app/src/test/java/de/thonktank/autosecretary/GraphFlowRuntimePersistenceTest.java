@@ -65,15 +65,16 @@ public final class GraphFlowRuntimePersistenceTest {
                         new de.thonktank.autosecretary.presentation.AndroidUiTextProvider(ApplicationProvider.getApplicationContext()));
         LoadGraphFlowSheets.Result before = projection();
         var candidateModel = mapper.map(new Dashboard(0, List.of(), Map.of(combo.ownerId, combo),
-                before.runs, before.sheets, Map.of()), DATE).focus;
+                before.runs, before.sheets), DATE).focus;
         assertEquals(3, candidateModel.steps.get(0).grainLevel);
+        assertEquals(template, candidateModel.steps.get(0).noteTargetId);
         assertEquals(0, candidateModel.steps.get(0).reward.resultXp);
         assertTrue(candidateModel.chains.isEmpty());
         String runId = runtime.start(candidateId, null).runId;
         assertTrue(projection().sheets.isEmpty());
         now += 100; runtime.activateReady();
         LoadGraphFlowSheets.Result after = projection();
-        var ready = mapper.map(new Dashboard(0, List.of(), Map.of(), after.runs, after.sheets, Map.of()), DATE).focus;
+        var ready = mapper.map(new Dashboard(0, List.of(), Map.of(), after.runs, after.sheets), DATE).focus;
         assertNotNull(ready); assertTrue(ready.steps.isEmpty()); assertEquals(1, ready.chains.size());
         assertEquals(runId, ready.chains.get(0).runId); assertTrue(ready.chains.get(0).vessel.ready);
         assertEquals(0, repository.today.xp());

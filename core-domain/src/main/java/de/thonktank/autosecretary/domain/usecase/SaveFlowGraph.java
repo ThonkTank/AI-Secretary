@@ -59,12 +59,11 @@ public final class SaveFlowGraph {
             stepIds.put(key, id);
             TaskStepTemplate old = oldSteps.get(id);
             boolean start = roots.contains(key);
-            // The small step dialog does not edit prescriptions, notes or assistant state.
-            // Retain live values, including assistant adjustments made while this editor was open.
+            // The small step dialog does not edit prescriptions or notes.
+            // Retain live values that may have changed while this editor was open.
             definitions.add(new TaskStepDefinition(id, i, request.text,
                     start ? request.weekdayMask : 0, start ? request.intervalDays : 0,
                     old == null ? request.prescription : old.prescription,
-                    old == null ? request.assistantPolicy : old.assistantProfile == null ? null : old.assistantProfile.policy,
                     old == null ? request.note : old.note,
                     start ? StepActivationKind.SCHEDULED : StepActivationKind.FOLLOW_UP));
         }
@@ -81,11 +80,8 @@ public final class SaveFlowGraph {
             List<TaskStepTemplate> templates = new ArrayList<>();
             for (TaskStepDefinition definition : definitions) {
                 TaskStepTemplate old = oldSteps.get(definition.id);
-                TrainingAssistantProfile profile = old == null ? definition.assistantPolicy == null ? null
-                        : new TrainingAssistantProfile(definition.assistantPolicy, TrainingAssistantState.calibrating())
-                        : old.assistantProfile;
                 templates.add(new TaskStepTemplate(definition.id, taskId, definition.position, definition.text,
-                        definition.weekdayMask, definition.intervalDays, definition.prescription, profile,
+                        definition.weekdayMask, definition.intervalDays, definition.prescription,
                         definition.note, definition.activationKind));
             }
             steps.insertTemplates(templates);

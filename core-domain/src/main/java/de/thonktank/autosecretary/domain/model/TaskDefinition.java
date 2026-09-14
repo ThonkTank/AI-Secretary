@@ -78,7 +78,7 @@ public final class TaskDefinition {
             copied.add(recurrence == Recurrence.ONCE
                     && (step.weekdayMask != 0 || step.intervalDays != 0)
                     ? new TaskStepDefinition(step.id, i, step.text, 0, 0,
-                    step.prescription, step.assistantPolicy, step.note, step.activationKind)
+                    step.prescription, step.note, step.activationKind)
                     : step);
         }
         this.title = title.trim();
@@ -111,7 +111,7 @@ public final class TaskDefinition {
         for (String value : stepTitles)
             if (value != null && !value.trim().isEmpty())
                 steps.add(new TaskStepDefinition(null, steps.size(), value, 0,
-                        0, StepPrescription.forAmount(StepAmount.none()), null, "",
+                        0, StepPrescription.forAmount(StepAmount.none()), "",
                         StepActivationKind.SCHEDULED));
         return new TaskDefinition(title, null, slot, recurrence, intervalDays, weekdayMask,
                 recurrence == Recurrence.ONCE ? 0 : TimeOfDay.fromSlot(slot).bit,

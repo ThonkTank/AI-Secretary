@@ -89,7 +89,7 @@ public final class TaskEditorCoordinator {
             editor.setContentInsets(topInset, bottomInset);
             root.addView(editor, new FrameLayout.LayoutParams(-1, -1));
         }
-        editor.bind(state, screen.trainingHistoryByStepId, palette, today, listener);
+        editor.bind(state, palette, today, listener);
     }
 
     public boolean handleBack() {

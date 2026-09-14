@@ -1,5 +1,7 @@
 # Roadmap: minimaler Trainingsassistent ohne Übergangsarchitektur
 
+> Historischer Stand: Trainingsfunktionen und Satzpunkte werden durch [ADR-039](adr-039-schrittnotizen-ohne-trainingsassistent.md) abgelöst.
+
 Status: verbindlich
 
 Beschlossen: 2026-09-01

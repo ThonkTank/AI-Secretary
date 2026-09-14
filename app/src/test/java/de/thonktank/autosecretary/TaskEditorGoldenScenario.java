@@ -121,7 +121,7 @@ final class TaskEditorGoldenScenario {
                             : StepAmount.none();
             result.add(new EditorStepState("s" + index, labels[index],
                     weekdays == 0 ? StepCadenceMode.ALWAYS : StepCadenceMode.WEEKDAYS,
-                    weekdays, null, StepPrescription.forAmount(amount), null,
+                    weekdays, null, StepPrescription.forAmount(amount),
                     steps == Steps.DETAIL && index == 0 ? "23 kg, Sitz 5" : "",
                     StepActivationKind.SCHEDULED));
         }

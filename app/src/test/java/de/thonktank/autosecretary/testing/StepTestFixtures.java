@@ -12,9 +12,6 @@ import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
 
 /** Concise construction belongs to test data, not the production model API. */
 public final class StepTestFixtures {
@@ -29,31 +26,30 @@ public final class StepTestFixtures {
                                                 int weekdays, int interval, StepAmount amount,
                                                 String note) {
         return new TaskStepDefinition(id, position, text, weekdays, interval,
-                StepPrescription.forAmount(amount), null, note, StepActivationKind.SCHEDULED);
+                StepPrescription.forAmount(amount), note, StepActivationKind.SCHEDULED);
     }
 
     public static TaskStepDefinition definition(String id, int position, String text,
                                                 int weekdays, int interval, StepAmount amount,
                                                 String note, StepActivationKind activation) {
         return new TaskStepDefinition(id, position, text, weekdays, interval,
-                StepPrescription.forAmount(amount), null, note, activation);
+                StepPrescription.forAmount(amount), note, activation);
     }
 
     public static TaskStepDefinition definition(String id, int position, String text,
                                                 int weekdays, int interval, StepAmount amount,
                                                 RestTimerPolicy rest, String note) {
         return new TaskStepDefinition(id, position, text, weekdays, interval,
-                new StepPrescription(amount, rest, null), null, note,
+                new StepPrescription(amount, rest), note,
                 StepActivationKind.SCHEDULED);
     }
 
     public static TaskStepDefinition definition(String id, int position, String text,
                                                 int weekdays, int interval,
                                                 StepPrescription prescription,
-                                                TrainingAssistantPolicy policy, String note,
+                                                String note,
                                                 StepActivationKind activation) {
-        return new TaskStepDefinition(id, position, text, weekdays, interval, prescription,
-                policy, note, activation);
+        return new TaskStepDefinition(id, position, text, weekdays, interval, prescription, note, activation);
     }
 
     public static TaskStepTemplate template(String id, TaskId taskId, int position, String text) {
@@ -68,22 +64,21 @@ public final class StepTestFixtures {
     public static TaskStepTemplate template(String id, TaskId taskId, int position, String text,
                                             int weekdays, StepPrescription prescription,
                                             String note) {
-        return new TaskStepTemplate(id, taskId, position, text, weekdays, 0, prescription,
-                null, note, StepActivationKind.SCHEDULED);
+        return new TaskStepTemplate(id, taskId, position, text, weekdays, 0, prescription, note, StepActivationKind.SCHEDULED);
     }
 
     public static TaskStepTemplate template(String id, TaskId taskId, int position, String text,
                                             int weekdays, int interval, StepAmount amount,
                                             String note) {
         return new TaskStepTemplate(id, taskId, position, text, weekdays, interval,
-                StepPrescription.forAmount(amount), null, note, StepActivationKind.SCHEDULED);
+                StepPrescription.forAmount(amount), note, StepActivationKind.SCHEDULED);
     }
 
     public static TaskStepTemplate template(String id, TaskId taskId, int position, String text,
                                             int weekdays, int interval, StepAmount amount,
                                             String note, StepActivationKind activation) {
         return new TaskStepTemplate(id, taskId, position, text, weekdays, interval,
-                StepPrescription.forAmount(amount), null, note, activation);
+                StepPrescription.forAmount(amount), note, activation);
     }
 
     public static TaskStepTemplate template(String id, TaskId taskId, int position, String text,
@@ -91,16 +86,15 @@ public final class StepTestFixtures {
                                             RestTimerPolicy rest, String note,
                                             StepActivationKind activation) {
         return new TaskStepTemplate(id, taskId, position, text, weekdays, interval,
-                new StepPrescription(amount, rest, null), null, note, activation);
+                new StepPrescription(amount, rest), note, activation);
     }
 
     public static TaskStepTemplate template(String id, TaskId taskId, int position, String text,
                                             int weekdays, int interval,
                                             StepPrescription prescription,
-                                            TrainingAssistantProfile profile, String note,
+                                            String note,
                                             StepActivationKind activation) {
-        return new TaskStepTemplate(id, taskId, position, text, weekdays, interval, prescription,
-                profile, note, activation);
+        return new TaskStepTemplate(id, taskId, position, text, weekdays, interval, prescription, note, activation);
     }
 
     public static OccurrenceStep occurrence(String id, String occurrenceId, int position,
@@ -157,6 +151,6 @@ public final class StepTestFixtures {
     }
 
     private static List<SetResult> results(List<Integer> repetitions) {
-        return repetitions.stream().map(value -> SetResult.restore(value, null)).toList();
+        return repetitions.stream().map(value -> SetResult.restore(value)).toList();
     }
 }

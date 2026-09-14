@@ -189,7 +189,7 @@ public final class UseCaseRobolectricTest {
         List<Task> tasks = ordering.sorted(repository.catalog.allTasks());
         TaskId first = tasks.get(0).id;
         TaskId second = tasks.get(1).id;
-        UpdateTask update = new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.training, repository.transactions, ids, clock);
+        UpdateTask update = new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, ids, clock);
 
         update.execute(first, new TaskDefinition("Umbenannt", null, TaskSlot.MORNING,
                 Recurrence.ONCE, 1, 0, 0, TaskBoundKind.FOREVER, null, null, null,
@@ -214,7 +214,7 @@ public final class UseCaseRobolectricTest {
                         StepAmount.none(), ""),
                 de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 1, "Zweiter Schritt", 0,
                         StepAmount.none(), ""));
-        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.training, repository.transactions, ids, clock).execute(task.id,
+        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, ids, clock).execute(task.id,
                 new TaskDefinition("Neu", 25, TaskSlot.EVENING,
                         Recurrence.WEEKDAYS, 1, 1 << 0 | 1 << 4,
                         TimeOfDay.EVENING.bit, TaskBoundKind.FOREVER, null, null, null,
@@ -241,7 +241,7 @@ public final class UseCaseRobolectricTest {
         repository.catalog.updateTask(task.withOccurrenceState(true, task.nextDueOn,
                 task.lastScheduledOn, TODAY, task.hasCompletedOccurrence));
 
-        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.training, repository.transactions, ids, clock).execute(task.id,
+        new UpdateTask(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, ids, clock).execute(task.id,
                 TaskDefinition.basic("Archiv geändert", TaskSlot.EVENING,
                         Recurrence.ONCE, 1, 0, Collections.singletonList("Neu")));
 

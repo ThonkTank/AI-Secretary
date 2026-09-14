@@ -66,7 +66,7 @@ public final class FlowGraphSqlMigrationTest {
         occurrence("paid", "run", "COMPLETED", "template0", true);
         booking("earned", "paid", "paid-step", "VESSEL", 4, null);
         booking("harvest", "paid", null, "HEAD", 40, null);
-        Map<String, String> unchanged = unchangedRows();
+        Map<String, String> unchanged = unchangedRows(true);
         helper.close();
         de.thonktank.autosecretary.AppDatabase room = androidx.room.Room.databaseBuilder(
                 ApplicationProvider.getApplicationContext(), de.thonktank.autosecretary.AppDatabase.class, databaseName)
@@ -77,7 +77,7 @@ public final class FlowGraphSqlMigrationTest {
                 FlowGraphRun restored = read("run");
                 assertEquals(4, restored.alreadyPaidTau);
                 assertEquals(FlowGraphRun.State.WAITING_TIME, restored.steps.get("run-s0").state);
-                assertEquals(unchanged, unchangedRows());
+                assertEquals(unchanged, unchangedRows(true));
                 assertEquals("1", scalar("SELECT COUNT(*) FROM flow_candidates"));
             });
         } finally { room.close(); }
@@ -100,8 +100,8 @@ public final class FlowGraphSqlMigrationTest {
         assertEquals(Long.valueOf(50), first.chosenDelayMillis);
         assertEquals("Frozen note 0", first.source.note);
         assertEquals(FlowDelayPolicy.Mode.REMEMBER_LAST, first.source.waitAfter.mode);
-        assertEquals(4, first.source.prescription.targetRir());
-        assertEquals(Long.valueOf(12345), first.source.prescription.plannedLoad().milliUnits);
+        assertEquals("4", scalar("SELECT targetRir FROM flow_run_steps WHERE id='run-s0'"));
+        assertEquals("12345", scalar("SELECT plannedLoadMilli FROM flow_run_steps WHERE id='run-s0'"));
         assertEquals("run-s0", scalar("SELECT acquireStepId FROM flow_run_resources"));
         assertEquals("run-s2", scalar("SELECT releaseStepId FROM flow_run_resources"));
         assertEquals("0", scalar("SELECT releaseAfterWait FROM flow_run_resources"));
@@ -224,7 +224,7 @@ public final class FlowGraphSqlMigrationTest {
 
     @Test public void migratedWaitCanBeExtendedAndSavedWithoutRewritingResourceHistory() {
         run("run", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.ACTIVE, 0);
-        migrate();
+        migrateCurrent();
         FlowGraphRun original = read("run");
         FlowGraphRun extended = engine().adjustWait(original, "flow-wait:run-s0", 2500, 500, capacity()).run;
         write(extended, 500);
@@ -237,7 +237,7 @@ public final class FlowGraphSqlMigrationTest {
     }
 
     @Test public void newParallelSnapshotRoundTripsAndWaitsRemainIndependentlyAddressable() {
-        migrate();
+        migrateCurrent();
         FlowGraphRun run = newParallelRun();
         insertRun(run);
         FlowGraphRun loaded = read(run.id);
@@ -267,7 +267,7 @@ public final class FlowGraphSqlMigrationTest {
     }
 
     @Test public void snapshotUpdatesRejectDefinitionEditsAndLeaveTheFrozenPayloadUntouched() {
-        migrate();
+        migrateCurrent();
         FlowGraphRun run = newParallelRun(); insertRun(run);
         List<FlowGraphRun.Step> changedSteps = new ArrayList<>();
         for (FlowGraphRun.Step step : run.steps.values()) {
@@ -283,7 +283,7 @@ public final class FlowGraphSqlMigrationTest {
     }
 
     @Test public void duplicateSourceCannotReplaceAnExistingRunOrAnyOfItsSteps() {
-        migrate();
+        migrateCurrent();
         FlowGraphRun first = newParallelRun(); insertRun(first);
         FlowGraphRun duplicate = newParallelRun();
         assertThrows(android.database.SQLException.class, () -> insertRun(duplicate));
@@ -295,7 +295,7 @@ public final class FlowGraphSqlMigrationTest {
 
     @Test public void failedPaymentTransactionRestoresStepClaimsAndCollectionMarkerTogether() {
         run("run", StepFlowRunState.OFFERED, 2, FlowResourceState.ACTIVE, 0);
-        migrate();
+        migrateCurrent();
         FlowGraphRun before = read("run");
         FlowGraphExecution.Change completed = engine().complete(before, "run-s2", null, 4, 1000, capacity());
         assertTrue(completed.run.collected);
@@ -312,14 +312,13 @@ public final class FlowGraphSqlMigrationTest {
         assertEquals("110", scalar("SELECT activatedAtEpochMillis FROM flow_run_resources"));
     }
 
-    @Test public void newSnapshotsPreserveAllAmountKindsTrainingAndRememberedWaits() {
-        migrate();
+    @Test public void newSnapshotsPreserveAllAmountKindsNotesAndRememberedWaits() {
+        migrateCurrent();
         int index = 0;
         for (StepAmount amount : Arrays.asList(StepAmount.none(), StepAmount.repetitions(12),
                 StepAmount.duration(120), StepAmount.setsReps(3, 8))) {
             StepPrescription prescription = amount instanceof StepAmount.SetsReps
-                    ? StepPrescription.restore(amount, RestTimerPolicy.fromStorage("CUSTOM", 75),
-                            ResistanceLoad.restore("EXTERNAL", "LB", 12345L), 4)
+                    ? new StepPrescription(amount, RestTimerPolicy.fromStorage("CUSTOM", 75))
                     : StepPrescription.forAmount(amount);
             FlowGraphDefinition.Node node = new FlowGraphDefinition.Node("template0", "Payload " + index,
                     prescription, "Preserved note", new FlowDelayPolicy(FlowDelayPolicy.Mode.REMEMBER_LAST, 300, 600L));
@@ -347,7 +346,7 @@ public final class FlowGraphSqlMigrationTest {
         run("run", StepFlowRunState.OFFERED, 1, FlowResourceState.ACTIVE, 0);
         run("cancelled", StepFlowRunState.CANCELLED, 1, FlowResourceState.RELEASED, 0);
         run("collected", StepFlowRunState.COMPLETED, 2, FlowResourceState.RELEASED, 0);
-        migrate();
+        migrateCurrent();
         inTransaction(() -> {
             SqlFlowGraphRunRepository repository = repository();
             assertEquals(1, repository.active().size());
@@ -375,14 +374,14 @@ public final class FlowGraphSqlMigrationTest {
         run("run", StepFlowRunState.OFFERED, 1, FlowResourceState.ACTIVE, 0);
         occurrence("history", "run", "COMPLETED", "template0", true);
         db.execSQL("UPDATE occurrences SET sourceKey='flow-step:run:10',flowExecutionSequence=1 WHERE id='history'");
-        migrate();
+        migrateCurrent();
         db.execSQL("UPDATE step_flow_runs SET nextExecutionSequence=10 WHERE id='run'");
-        Map<String, String> history = unchangedRows();
+        Map<String, String> history = unchangedRows(true);
         inTransaction(() -> {
             assertEquals(11, repository().allocateExecutionSequence("run", 1000));
             assertEquals(12, repository().allocateExecutionSequence("run", 1001));
         });
-        assertEquals(history, unchangedRows());
+        assertEquals(history, unchangedRows(true));
         assertEquals("13", scalar("SELECT nextExecutionSequence FROM step_flow_runs WHERE id='run'"));
     }
 
@@ -391,7 +390,7 @@ public final class FlowGraphSqlMigrationTest {
         run("reserved", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.RESERVED, 1);
         run("planned", StepFlowRunState.WAITING_RESOURCE, 1, FlowResourceState.PLANNED, 1);
         run("released", StepFlowRunState.COMPLETED, 2, FlowResourceState.RELEASED, 0);
-        migrate();
+        migrateCurrent();
         inTransaction(() -> {
             assertEquals(Map.of("rack", 2L), repository().consumingUnitsExcluding("new-run"));
             assertEquals(Map.of("rack", 1L), repository().consumingUnitsExcluding("active"));
@@ -405,7 +404,7 @@ public final class FlowGraphSqlMigrationTest {
     }
 
     @Test public void executionRepositorySelectsTheEarliestParallelWait() {
-        migrate();
+        migrateCurrent();
         FlowGraphRun run = newParallelRun(); insertRun(run);
         String first = run.availableSteps().get(0).id;
         String second = run.availableSteps().get(1).id;
@@ -426,7 +425,7 @@ public final class FlowGraphSqlMigrationTest {
     }
 
     @Test public void executionRepositoryRetainsOnePendingCollectionAfterATerminalWait() {
-        migrate();
+        migrateCurrent();
         FlowGraphDefinition.Node node = new FlowGraphDefinition.Node("template0", "Start",
                 StepPrescription.forAmount(StepAmount.none()), "", FlowDelayPolicy.fixed(10));
         FlowGraphDefinition definition = new FlowGraphDefinition(TaskId.of("task"),
@@ -448,8 +447,8 @@ public final class FlowGraphSqlMigrationTest {
 
     @Test public void executionRepositoryReordersMetadataWithoutChangingStepsClaimsWaitsOrSheetPlacement() {
         run("run", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.ACTIVE, 0);
-        migrate();
-        Map<String, String> untouched = unchangedRows();
+        migrateCurrent();
+        Map<String, String> untouched = unchangedRows(true);
         FlowGraphRun before = read("run");
         inTransaction(() -> {
             assertTrue(repository().reorder("run", 9876, 400));
@@ -463,14 +462,14 @@ public final class FlowGraphSqlMigrationTest {
             assertEquals(before.leases.get(0).state, after.run.leases.get(0).state);
             assertEquals(before.alreadyPaidTau, after.run.alreadyPaidTau);
         });
-        assertEquals(untouched, unchangedRows());
+        assertEquals(untouched, unchangedRows(true));
         assertEquals("100", scalar("SELECT reservedAtEpochMillis FROM flow_run_resources"));
         assertEquals("110", scalar("SELECT activatedAtEpochMillis FROM flow_run_resources"));
     }
 
     @Test public void executionSequenceAllocationIsAtomicAndPreservesMigratedSequence() {
         run("run", StepFlowRunState.OFFERED, 1, FlowResourceState.ACTIVE, 0);
-        migrate();
+        migrateCurrent();
         assertThrows(IllegalStateException.class, () -> inTransaction(() -> {
             assertEquals(7, repository().allocateExecutionSequence("run", 400));
             throw new IllegalStateException("Occurrence insertion failed");
@@ -486,7 +485,7 @@ public final class FlowGraphSqlMigrationTest {
     }
 
     @Test public void executionRepositoryRequiresATransactionForAllReadWriteEntryPoints() {
-        migrate();
+        migrateCurrent();
         SqlFlowGraphRunRepository repository = repository();
         assertThrows(IllegalStateException.class, () -> repository.find("missing"));
         assertThrows(IllegalStateException.class, () -> repository.findByStepId("missing"));
@@ -555,7 +554,7 @@ public final class FlowGraphSqlMigrationTest {
         // SQLite allows values of unexpected storage classes even in a TEXT-affinity column.
         db.execSQL("UPDATE flow_run_steps SET note=X'0001FF', chosenDelayMillis=9223372036854775807 WHERE id='orphan-s0'");
         db.execSQL("UPDATE flow_run_resources SET resourceName='Ä\n\"snapshot\"', units=1.25 WHERE id='orphan-lease'");
-        Map<String, String> unchanged = unchangedRows();
+        Map<String, String> unchanged = unchangedRows(true);
         Map<String, List<List<Object>>> originals = orphanValues();
         helper.close();
         de.thonktank.autosecretary.AppDatabase room = androidx.room.Room.databaseBuilder(
@@ -563,8 +562,8 @@ public final class FlowGraphSqlMigrationTest {
                 .addMigrations(DatabaseMigrations.from(24)).allowMainThreadQueries().build();
         try {
             db = room.getOpenHelper().getWritableDatabase();
-            assertEquals(27, db.getVersion());
-            assertEquals(unchanged, unchangedRows());
+            assertEquals(de.thonktank.autosecretary.DatabaseContract.VERSION, db.getVersion());
+            assertEquals(unchanged, unchangedRows(true));
             assertEquals(4, read("healthy").alreadyPaidTau);
             assertEquals("3", scalar("SELECT COUNT(*) FROM flow_run_steps"));
             assertEquals("1", scalar("SELECT COUNT(*) FROM flow_run_resources"));
@@ -688,7 +687,7 @@ public final class FlowGraphSqlMigrationTest {
                     de.thonktank.autosecretary.AppDatabase.class, name)
                     .addMigrations(DatabaseMigrations.from(version)).allowMainThreadQueries().build();
             try (Cursor rows = room.getOpenHelper().getWritableDatabase().query("SELECT COUNT(*) FROM migration_recovery")) {
-                assertEquals(27, room.getOpenHelper().getWritableDatabase().getVersion());
+                assertEquals(de.thonktank.autosecretary.DatabaseContract.VERSION, room.getOpenHelper().getWritableDatabase().getVersion());
                 assertTrue(rows.moveToFirst()); assertEquals(0, rows.getInt(0));
             } finally { room.close(); context.deleteDatabase(name); }
         }
@@ -730,12 +729,12 @@ public final class FlowGraphSqlMigrationTest {
                 state, position, state == StepFlowRunState.WAITING_TIME ? 999L : null, null, 1234, 7, 100, 200);
         insert("step_flow_runs", mapper.toEntity(header));
         for (int i = 0; i < 3; i++) {
-            StepPrescription prescription = StepPrescription.restore(StepAmount.setsReps(3, 10), RestTimerPolicy.fromStorage("OFF", null),
-                    ResistanceLoad.restore("EXTERNAL", "LB", 12345L), 4);
+            StepPrescription prescription = new StepPrescription(StepAmount.setsReps(3, 10), RestTimerPolicy.fromStorage("OFF", null));
             insert("flow_run_steps", mapper.toEntity(FlowRunStepSnapshot.rehydrate(id + "-s" + i, id, i,
                     "template" + i, "Frozen " + i, prescription, "Frozen note " + i,
                     i == 2 ? null : FlowDelayPolicy.rememberLast(25), i == 0 ? 50L : null)));
         }
+        db.execSQL("UPDATE flow_run_steps SET plannedLoadMode='BODYWEIGHT_PLUS',plannedLoadUnit='LB',plannedLoadMilli=12345,targetRir=4 WHERE runId=?", new Object[]{id});
         insert("flow_run_resources", mapper.toEntity(new FlowRunResourceSnapshot(id + "-lease", id, "definition-lease",
                 "rack", "Wäscheständer zur Startzeit", 7, 1, acquire, 2, resourceState,
                 resourceState == FlowResourceState.PLANNED ? null : 100L,
@@ -756,6 +755,15 @@ public final class FlowGraphSqlMigrationTest {
                 target, xp, 0, DATE.toString(), reverses, null));
     }
 
+    private void migrateCurrent() {
+        db.beginTransaction();
+        try {
+            for (androidx.room.migration.Migration migration : DatabaseMigrations.from(24))
+                migration.migrate(db);
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
+    }
+
     private void migrate() {
         db.beginTransaction();
         try { new FlowGraphMigration25().migrate(db); db.setTransactionSuccessful(); }
@@ -772,11 +780,15 @@ public final class FlowGraphSqlMigrationTest {
         try (Cursor cursor = db.query(query)) { assertTrue(query, cursor.moveToFirst()); return cursor.getString(0); }
     }
 
-    private Map<String, String> unchangedRows() {
+    private Map<String, String> unchangedRows() { return unchangedRows(false); }
+
+    private Map<String, String> unchangedRows(boolean currentColumns) {
         Map<String, String> rows = new LinkedHashMap<>();
         for (String table : Arrays.asList("tasks", "task_steps", "occurrences", "occurrence_steps", "reward_bookings",
                 "reward_assignments", "capacity_resources", "flow_candidates", "flow_task_sheet_placements")) {
-            String columns = String.join(",", ExportedRoomSchemaFixture.columns(24, table));
+            List<String> selected = new ArrayList<>(ExportedRoomSchemaFixture.columns(24, table));
+            if (currentColumns) selected.retainAll(ExportedRoomSchemaFixture.columns(28, table));
+            String columns = String.join(",", selected);
             StringBuilder values = new StringBuilder();
             try (Cursor cursor = db.query("SELECT " + columns + " FROM " + table + " ORDER BY 1")) {
                 while (cursor.moveToNext()) {
@@ -789,13 +801,26 @@ public final class FlowGraphSqlMigrationTest {
         return rows;
     }
 
+    private static Object retiredTrainingDefault(String column) {
+        if (column.equals("plannedLoadMode")) return "UNSPECIFIED";
+        if (column.equals("plannedLoadUnit")) return "NONE";
+        if (column.equals("plannedLoadMilli") || column.equals("primaryMuscle")) return null;
+        if (column.equals("secondaryMuscles")) return "";
+        if (column.equals("assistantStatus")) return "DISABLED";
+        if (column.equals("targetRir") || column.equals("assistantTargetRir")) return 2;
+        if (column.startsWith("assistant")) return 0;
+        throw new AssertionError("Unmapped historical field: " + column);
+    }
+
     /** Fixture writes use the frozen v24 column list, never Java reflection order. */
     private void insert(String table, Object entity) {
         ContentValues values = new ContentValues();
         try {
             for (String column : ExportedRoomSchemaFixture.columns(24, table)) {
-                Object value = entity.getClass().getField(column.equals("actualRepetitions")
-                        ? "legacyActualRepetitions" : column).get(entity);
+                Object value;
+                try { value = entity.getClass().getField(column.equals("actualRepetitions")
+                        ? "legacyActualRepetitions" : column).get(entity); }
+                catch (NoSuchFieldException retired) { value = retiredTrainingDefault(column); }
                 if (value == null) values.putNull(column);
                 else if (value instanceof Boolean) values.put(column, (Boolean) value);
                 else if (value instanceof Number) values.put(column, ((Number) value).longValue());

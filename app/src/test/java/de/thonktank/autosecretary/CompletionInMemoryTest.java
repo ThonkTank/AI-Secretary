@@ -12,7 +12,6 @@ import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
@@ -28,7 +27,6 @@ import de.thonktank.autosecretary.domain.model.TaskScheduleEntry;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
-import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.usecase.CloseOngoingTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
@@ -190,14 +188,13 @@ public final class CompletionInMemoryTest {
 
     @Test public void carryForwardKeepsUniqueTemplateMetadataThroughDashboardMapping() {
         StepPrescription bodyweight = new StepPrescription(StepAmount.setsReps(3, 12),
-                RestTimerPolicy.inherit(), new TrainingPrescription(
-                ResistanceLoad.bodyweight(), 2));
+                RestTimerPolicy.inherit());
         List<TaskStepDefinition> definitions = Arrays.asList(
                 de.thonktank.autosecretary.testing.StepTestFixtures.definition(
                         "machine-template", 0, "Brustpresse", 0, 0, StepAmount.none(),
                         "23 kg, Sitz 2", StepActivationKind.SCHEDULED),
                 new TaskStepDefinition("roman-template", 1, "Römische Liege", 0, 0,
-                        bodyweight, null, "", StepActivationKind.SCHEDULED));
+                        bodyweight, "", StepActivationKind.SCHEDULED));
         TaskDefinition definition = new TaskDefinition("Gym", null, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", definitions);
@@ -223,7 +220,6 @@ public final class CompletionInMemoryTest {
                 .findFirst().orElseThrow();
 
         assertEquals("", roman.note);
-        assertEquals(ResistanceLoad.bodyweight(), roman.prescription.plannedLoad());
         assertEquals(first.id, roman.originOccurrenceId);
         assertEquals("23 kg, Sitz 2", freshMachine.note);
         Dashboard dashboard = new LoadDashboard(repository.catalog, repository.steps,

@@ -17,13 +17,8 @@ import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
 import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantState;
-import de.thonktank.autosecretary.domain.model.TrainingMuscleGroup;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.model.SetResult;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantPolicy;
-import de.thonktank.autosecretary.domain.model.TrainingAssistantProfile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -79,13 +74,10 @@ public final class TaskEntityMapper {
         StepAmount amount = StepAmount.fromStorage(
                 StepAmountKind.fromStorage(entity.amountKind), entity.plannedSets,
                 entity.plannedReps, entity.plannedDurationSeconds);
-        ResistanceLoad load = ResistanceLoad.restore(entity.plannedLoadMode,
-                entity.plannedLoadUnit, entity.plannedLoadMilli);
         return new TaskStepTemplate(entity.id, TaskId.of(entity.taskId), entity.position, entity.text,
                 entity.weekdayMask, entity.intervalDays,
-                StepPrescription.restore(amount,
-                        RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
-                        load, entity.assistantTargetRir), profile(entity), entity.note,
+                new StepPrescription(amount,
+                        RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds)), entity.note,
                 StepActivationKind.fromStorage(entity.activationKind));
     }
 
@@ -96,29 +88,6 @@ public final class TaskEntityMapper {
                 amount.repetitions, amount.durationSeconds, step.prescription.rest.mode.name(),
                 step.prescription.rest.customSeconds, step.note,
                 step.activationKind.storageCode());
-        TrainingAssistantPolicy policy = step.assistantProfile == null
-                ? null : step.assistantProfile.policy;
-        entity.assistantEnabled = policy != null;
-        entity.assistantMinSets = policy == null ? 2 : policy.minSets;
-        entity.assistantMaxSets = policy == null ? 3 : policy.maxSets;
-        entity.assistantMinReps = policy == null ? 8 : policy.minRepetitions;
-        entity.assistantMaxReps = policy == null ? 12 : policy.maxRepetitions;
-        entity.assistantTargetRir = step.prescription.targetRir();
-        entity.assistantWeeklySetCeiling = policy == null
-                ? 10 : policy.automaticWeeklySetCeiling;
-        ResistanceLoad load = step.prescription.plannedLoad();
-        entity.plannedLoadMode = load.mode.name();
-        entity.plannedLoadUnit = load.unit.name();
-        entity.plannedLoadMilli = load.milliUnits;
-        entity.primaryMuscle = policy == null || policy.primaryMuscle == null
-                ? null : policy.primaryMuscle.name();
-        entity.secondaryMuscles = policy == null ? "" : muscles(policy.secondaryMuscles);
-        TrainingAssistantState state = step.assistantProfile == null
-                ? TrainingAssistantState.disabled() : step.assistantProfile.state;
-        entity.assistantStatus = state.status.name();
-        entity.assistantObservations = state.eligibleObservations;
-        entity.assistantReadyStreak = state.readyStreak;
-        entity.assistantHardStreak = state.hardStreak;
         return entity;
     }
 
@@ -134,13 +103,11 @@ public final class TaskEntityMapper {
 
     public OccurrenceStep toDomain(OccurrenceStepEntity entity, List<SetResult> results) {
         return OccurrenceStep.rehydrate(entity.id, entity.occurrenceId, entity.position, entity.text,
-                entity.done, StepPrescription.restore(
+                entity.done, new StepPrescription(
                 StepAmount.fromStorage(StepAmountKind.fromStorage(entity.amountKind),
                         entity.plannedSets, entity.plannedReps,
                         entity.plannedDurationSeconds),
-                RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds),
-                ResistanceLoad.restore(entity.plannedLoadMode, entity.plannedLoadUnit,
-                        entity.plannedLoadMilli), entity.targetRir), entity.note,
+                RestTimerPolicy.fromStorage(entity.restTimerMode, entity.restTimerSeconds)), entity.note,
                 results,
                 entity.sourceTemplateId, entity.comboOwnerId,
                 entity.originOccurrenceId,
@@ -155,48 +122,8 @@ public final class TaskEntityMapper {
                 step.prescription.rest.customSeconds, step.note, "", step.sourceTemplateId,
                 step.comboOwnerId, step.originOccurrenceId,
                 step.carryForwardReason.storageCode());
-        ResistanceLoad load = step.prescription.plannedLoad();
-        entity.plannedLoadMode = load.mode.name();
-        entity.plannedLoadUnit = load.unit.name();
-        entity.plannedLoadMilli = load.milliUnits;
-        entity.targetRir = step.prescription.targetRir();
         entity.flowRunStepId = step.flowRunStepId;
         return entity;
-    }
-
-    private static TrainingAssistantProfile profile(TaskStepEntity entity) {
-        if (!entity.assistantEnabled) return null;
-        TrainingAssistantPolicy policy = new TrainingAssistantPolicy(entity.assistantMinSets,
-                entity.assistantMaxSets, entity.assistantMinReps, entity.assistantMaxReps,
-                entity.assistantWeeklySetCeiling, muscle(entity.primaryMuscle),
-                parseMuscles(entity.secondaryMuscles));
-        TrainingAssistantState state = TrainingAssistantState.restore(entity.assistantStatus,
-                entity.assistantObservations, entity.assistantReadyStreak,
-                entity.assistantHardStreak);
-        if (state.status == TrainingAssistantState.Status.DISABLED)
-            state = TrainingAssistantState.calibrating();
-        return new TrainingAssistantProfile(policy, state);
-    }
-
-    private static TrainingMuscleGroup muscle(String value) {
-        try { return value == null ? null : TrainingMuscleGroup.valueOf(value); }
-        catch (IllegalArgumentException invalid) { return null; }
-    }
-
-    private static Set<TrainingMuscleGroup> parseMuscles(String value) {
-        EnumSet<TrainingMuscleGroup> result = EnumSet.noneOf(TrainingMuscleGroup.class);
-        if (value == null || value.isEmpty()) return result;
-        for (String part : value.split(",")) {
-            TrainingMuscleGroup muscle = muscle(part);
-            if (muscle != null) result.add(muscle);
-        }
-        return result;
-    }
-
-    private static String muscles(Set<TrainingMuscleGroup> values) {
-        StringJoiner result = new StringJoiner(",");
-        for (TrainingMuscleGroup value : values) result.add(value.name());
-        return result.toString();
     }
 
     private static StoredAmount stored(StepAmount amount) {

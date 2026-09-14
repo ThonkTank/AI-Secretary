@@ -37,7 +37,7 @@ public final class OccurrenceStep {
             throw new IllegalArgumentException(
                     "Occurrence step identity, occurrence and text are required");
         TaskStepDefinition checked = new TaskStepDefinition(id, position, text, 0, 0,
-                prescription, null, note, StepActivationKind.SCHEDULED);
+                prescription, note, StepActivationKind.SCHEDULED);
         RepetitionProgress progress = RepetitionProgress.forAmount(
                 checked.prescription.amount, setResults, done);
         this.id = id;
@@ -106,10 +106,7 @@ public final class OccurrenceStep {
     }
 
     public OccurrenceStep correctRepetitionResult(int index, int repetitions) {
-        TrainingObservation training = repetitionProgress == null
-                || index < 0 || index >= repetitionProgress.results.size() ? null
-                : repetitionProgress.results.get(index).training;
-        return correctSetResult(index, new SetResult(repetitions, training));
+        return correctSetResult(index, new SetResult(repetitions));
     }
 
     public OccurrenceStep correctSetResult(int index, SetResult result) {

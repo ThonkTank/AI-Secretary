@@ -41,10 +41,6 @@ public final class TaskEditorValidator {
                 issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_TITLE, step.id));
             if (!step.prescription.amount.isValid())
                 issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, step.id));
-            if (step.assistantPolicy != null && step.prescription.training.load.adjustable()
-                    && (step.prescription.training.load.milliUnits == null
-                    || step.prescription.training.load.milliUnits <= 0))
-                issues.add(ValidationIssue.step(ValidationIssue.Field.TRAINING_LOAD, step.id));
             if (!draft.flowDraft.isFollowUp(step.id)
                     && step.cadenceMode == StepCadenceMode.INTERVAL
                     && (step.intervalDays == null || step.intervalDays < 2))

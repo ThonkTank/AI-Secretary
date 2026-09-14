@@ -1,5 +1,7 @@
 # ADR-032: Satzpunkte und Editorverlauf
 
+> Historischer Stand: Trainingsfunktionen und Satzpunkte werden durch [ADR-039](adr-039-schrittnotizen-ohne-trainingsassistent.md) abgelöst.
+
 - Status: angenommen
 - Datum: 2026-09-05
 

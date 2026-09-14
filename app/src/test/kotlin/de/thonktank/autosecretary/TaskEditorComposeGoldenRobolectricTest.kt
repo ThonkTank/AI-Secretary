@@ -108,7 +108,7 @@ class TaskEditorComposeGoldenRobolectricTest {
         editor.setContentInsets(dp(activity, 28), 0)
         root.addView(editor, FrameLayout.LayoutParams(-1, -1))
         activity.setContentView(root)
-        editor.bind(scenario.state(), emptyMap(), palette, TaskEditorGoldenScenario.TODAY, NoopListener)
+        editor.bind(scenario.state(), palette, TaskEditorGoldenScenario.TODAY, NoopListener)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
         root.measure(
             View.MeasureSpec.makeMeasureSpec(824, View.MeasureSpec.EXACTLY),
@@ -138,7 +138,7 @@ class TaskEditorComposeGoldenRobolectricTest {
         editor.setContentInsets(dp(activity, 28), 0)
         root.addView(editor, FrameLayout.LayoutParams(-1, -1))
         activity.setContentView(root)
-        editor.bind(state, emptyMap(), palette, TaskEditorGoldenScenario.TODAY, NoopListener)
+        editor.bind(state, palette, TaskEditorGoldenScenario.TODAY, NoopListener)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
         root.measure(
             View.MeasureSpec.makeMeasureSpec(824, View.MeasureSpec.EXACTLY),
@@ -187,8 +187,7 @@ class TaskEditorComposeGoldenRobolectricTest {
 
     private fun editorStep(id: String, text: String) = EditorStepState(
         id, text, StepCadenceMode.ALWAYS, 0, null,
-        StepPrescription.forAmount(StepAmount.none()), null, "", StepActivationKind.SCHEDULED,
-    )
+        StepPrescription.forAmount(StepAmount.none()), "", StepActivationKind.SCHEDULED)
 
     private fun render(scenario: TaskEditorAdaptiveGoldenScenario): Bitmap {
         val controller = Robolectric.buildActivity(ComponentActivity::class.java)
@@ -209,7 +208,7 @@ class TaskEditorComposeGoldenRobolectricTest {
         editor.setContentInsets(dp(activity, 28), 0)
         root.addView(editor, FrameLayout.LayoutParams(-1, -1))
         activity.setContentView(root)
-        editor.bind(scenario.state(), emptyMap(), palette, TaskEditorGoldenScenario.TODAY, NoopListener)
+        editor.bind(scenario.state(), palette, TaskEditorGoldenScenario.TODAY, NoopListener)
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
         val width = dp(activity, scenario.widthDp)
         val height = dp(activity, scenario.heightDp)
@@ -234,7 +233,6 @@ class TaskEditorComposeGoldenRobolectricTest {
         override fun onDraftChanged(draft: EditorUiState) = Unit
         override fun onSave(draft: EditorUiState) = Unit
         override fun onDelete(taskId: String) = Unit
-        override fun onUndoTrainingAdjustment(stepId: String) = Unit
         override fun onDismiss() = Unit
     }
 }

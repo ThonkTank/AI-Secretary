@@ -15,7 +15,6 @@ import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
 import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
 import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
-import de.thonktank.autosecretary.domain.usecase.TrainingUseCases;
 import de.thonktank.autosecretary.domain.usecase.UuidGenerator;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
 import de.thonktank.autosecretary.presentation.DashboardPresenter;
@@ -51,7 +50,6 @@ public final class AppContainer {
     public final CatalogUseCases catalog;
     public final TodayUseCases today;
     public final FlowUseCases flows;
-    public final TrainingUseCases training;
     public final CalendarDataSource calendar;
     public final UiPreferences uiPreferences;
     public final CalendarInvalidationSource calendarInvalidations;
@@ -86,7 +84,6 @@ public final class AppContainer {
         this.catalog = useCases.catalog;
         this.today = useCases.today;
         this.flows = useCases.flows;
-        this.training = useCases.training;
         this.texts = new AndroidUiTextProvider(app);
         this.calendar = new CalendarRepository(app, clock, zones,
                 uiPreferences::calendarPolicy, logger, texts);

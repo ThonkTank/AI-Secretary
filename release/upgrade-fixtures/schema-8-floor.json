@@ -15,7 +15,7 @@
     "metadataSha256": "6c08e4feddac3688f5a93131688a555cf6a58363d9936f71b7aec0d2b913778e",
     "signerSha256": "de45d94c9724beeaa2e0dff31f69f53bb0f4c9ba79a5aa419d1f29d18f4d91da"
   },
-  "targetDatabaseVersion": 27,
+  "targetDatabaseVersion": 28,
   "apiLanes": [
     {
       "apiLevel": 26,
@@ -158,7 +158,9 @@
   "expectedTarget": [
     {
       "table": "tasks",
-      "where": {"id": "upgrade-floor-task"},
+      "where": {
+        "id": "upgrade-floor-task"
+      },
       "values": {
         "title": "Upgrade-Daten bleiben erhalten",
         "catalogOrder": 4001024,
@@ -168,12 +170,19 @@
     },
     {
       "table": "task_schedule_entries",
-      "where": {"taskId": "upgrade-floor-task"},
-      "values": {"slot": "LATER", "displayOrder": 4001024}
+      "where": {
+        "taskId": "upgrade-floor-task"
+      },
+      "values": {
+        "slot": "LATER",
+        "displayOrder": 4001024
+      }
     },
     {
       "table": "task_steps",
-      "where": {"id": "upgrade-floor-template"},
+      "where": {
+        "id": "upgrade-floor-template"
+      },
       "values": {
         "text": "Persistierten Schritt lesen",
         "intervalDays": 0,
@@ -183,12 +192,20 @@
     },
     {
       "table": "occurrences",
-      "where": {"id": "upgrade-floor-occurrence"},
-      "values": {"taskId": "upgrade-floor-task", "state": "OPEN", "slot": "LATER"}
+      "where": {
+        "id": "upgrade-floor-occurrence"
+      },
+      "values": {
+        "taskId": "upgrade-floor-task",
+        "state": "OPEN",
+        "slot": "LATER"
+      }
     },
     {
       "table": "occurrence_steps",
-      "where": {"id": "upgrade-floor-step"},
+      "where": {
+        "id": "upgrade-floor-step"
+      },
       "values": {
         "text": "Persistierten Schritt lesen",
         "done": 1,
@@ -201,13 +218,21 @@
     },
     {
       "table": "reward_bookings",
-      "where": {"id": "upgrade-floor-booking"},
-      "values": {"xpDelta": 10}
+      "where": {
+        "id": "upgrade-floor-booking"
+      },
+      "values": {
+        "xpDelta": 10
+      }
     },
     {
       "table": "stats",
-      "where": {"id": 1},
-      "values": {"xp": 73}
+      "where": {
+        "id": 1
+      },
+      "values": {
+        "xp": 73
+      }
     }
   ]
 }

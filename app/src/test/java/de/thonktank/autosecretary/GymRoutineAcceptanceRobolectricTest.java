@@ -36,8 +36,6 @@ import de.thonktank.autosecretary.domain.model.StepAmountKind;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.StepPrescription;
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy;
-import de.thonktank.autosecretary.domain.model.ResistanceLoad;
-import de.thonktank.autosecretary.domain.model.TrainingPrescription;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskOrdering;
@@ -110,7 +108,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
 
         List<String> texts = visibleTexts(view);
         assertTrue(texts.contains("23kg, Sitz 5"));
-        assertTrue(texts.contains("12 Wdh."));
+        assertTrue(texts.contains("12"));
         assertTrue(contentDescriptions(view).stream()
                 .anyMatch(value -> value.contains("0 von 3 Sätzen abgeschlossen")
                         && value.contains("Satz 1 ist aktuell")));
@@ -155,10 +153,9 @@ public final class GymRoutineAcceptanceRobolectricTest {
                     "machine-" + index, index, "Gerät " + index, 0, 0,
                     StepAmount.none(), (20 + index) + " kg, Sitz " + index));
         StepPrescription bodyweight = new StepPrescription(StepAmount.setsReps(3, 12),
-                RestTimerPolicy.inherit(), new TrainingPrescription(
-                ResistanceLoad.bodyweight(), 2));
+                RestTimerPolicy.inherit());
         definitions.add(new TaskStepDefinition("roman-chair", 8, "Römische Liege", 0, 0,
-                bodyweight, null, "", de.thonktank.autosecretary.domain.model.StepActivationKind.SCHEDULED));
+                bodyweight, "", de.thonktank.autosecretary.domain.model.StepActivationKind.SCHEDULED));
         TaskDefinition gym = new TaskDefinition("Gym", null, TaskSlot.MORNING,
                 Recurrence.DAILY, 1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER,
                 null, null, null, null, "", definitions);
@@ -176,8 +173,6 @@ public final class GymRoutineAcceptanceRobolectricTest {
         }
         assertEquals("roman-chair", materialized.get(8).sourceTemplateId);
         assertEquals("", materialized.get(8).note);
-        assertEquals(ResistanceLoad.bodyweight(),
-                materialized.get(8).prescription.plannedLoad());
 
         TodayUiModel dashboard = dashboard(repository, clock, context);
         FocusStepUiModel roman = dashboard.focus.steps.stream()

@@ -213,7 +213,7 @@ public final class TodayActionIntegrationRobolectricTest {
         AndroidUiTextProvider texts = new AndroidUiTextProvider(context);
         DashboardPresenter presenter = new DashboardPresenter(clock, useCases.today.loadDashboard,
                 useCases.today.materializeDue, new DashboardUiMapper(texts));
-        viewModel = new TodayViewModel(useCases.today, useCases.catalog, useCases.training, presenter,
+        viewModel = new TodayViewModel(useCases.today, useCases.catalog, presenter,
                 calendar, preferences, clock, logger, texts, invalidations, new SavedStateHandle(),
                 new DirectExecutor(), Runnable::run);
         ScrollView scroll = new ScrollView(context);
