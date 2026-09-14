@@ -215,6 +215,10 @@ public final class TodayInteractionInstrumentationTest {
         List<TodayAction> recorded = new java.util.concurrent.CopyOnWriteArrayList<>();
         instrumentation.runOnMainSync(() -> {
             FlowChainStripView strip = new FlowChainStripView(activity);
+            strip.setOnTouchListener((view, event) -> {
+                Log.i(TAG, "flow-scroll touch=" + event.getActionMasked() + " scroll=" + strip.getScrollX());
+                return false;
+            });
             strip.bind(Arrays.asList(
                     de.thonktank.autosecretary.FlowChainFixtures.chain("first", "Wäsche",
                             de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.READY, 4_000_000),
@@ -233,16 +237,22 @@ public final class TodayInteractionInstrumentationTest {
         FlowChainStripView strip = mounted.get(); Rect bounds = awaitInteractiveBounds(strip);
         currentGesture = new TouchGestureDriver(instrumentation, strip);
         currentGesture.down(new int[]{bounds.right - 8, bounds.centerY()});
-        currentGesture.moveTo(new int[]{bounds.left + 8, bounds.centerY()}); currentGesture.up();
+        currentGesture.moveTo(new int[]{bounds.left + 8, bounds.centerY()});
+        currentGesture.settleDragVelocity(); currentGesture.up();
         instrumentation.waitForIdleSync();
         assertTrue("Swiping must not collect", recorded.isEmpty());
+        assertTrue("The native drag must actually scroll", strip.getScrollX() > 0);
         AtomicReference<View> last = new AtomicReference<>();
         instrumentation.runOnMainSync(() -> {
             strip.scrollTo(strip.getChildAt(0).getWidth(), 0);
             last.set(((ViewGroup) strip.getChildAt(0)).getChildAt(2));
+            last.get().setOnTouchListener((view, event) -> {
+                Log.i(TAG, "flow-container touch=" + event.getActionMasked() + " clickable=" + view.isClickable());
+                return false;
+            });
         });
         instrumentation.waitForIdleSync(); Rect target = awaitInteractiveBounds(last.get());
-        currentGesture.down(new int[]{target.centerX(), target.centerY()}); currentGesture.up();
+        currentGesture.tap(new int[]{target.centerX(), target.centerY()});
         instrumentation.waitForIdleSync();
         assertEquals(1, recorded.size()); assertEquals(TodayAction.Kind.COLLECT_FLOW, recorded.get(0).kind);
         assertEquals("third", recorded.get(0).id);
