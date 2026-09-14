@@ -48,6 +48,23 @@ final class TouchGestureDriver {
         send(MotionEvent.ACTION_DOWN, startX, startY);
     }
 
+    /** A tap has Down/Up only, with time for Android to observe the pressed state. */
+    void tap(int[] location) {
+        down(location);
+        SystemClock.sleep(50L);
+        up();
+    }
+
+    /** End a deliberate drag at rest, so the following tap is not a fling-stop gesture. */
+    void settleDragVelocity() {
+        requireActive();
+        if (lastX == startX && lastY == startY)
+            throw new IllegalStateException("Stationary samples are only valid after a drag");
+        send(MotionEvent.ACTION_MOVE, lastX, lastY);
+        SystemClock.sleep(200L);
+        send(MotionEvent.ACTION_MOVE, lastX, lastY);
+    }
+
     void holdForLongPress() {
         requireActive();
         SystemClock.sleep(ViewConfiguration.getLongPressTimeout() + 100L);

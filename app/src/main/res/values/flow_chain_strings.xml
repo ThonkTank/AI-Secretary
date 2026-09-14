@@ -1,0 +1,11 @@
+<resources>
+    <string name="flow_clock_hours">Std.</string>
+    <string name="flow_clock_minutes">Min.</string>
+    <string name="flow_clock_seconds">Sek.</string>
+    <plurals name="flow_clock_days"><item quantity="one">Tag</item><item quantity="other">Tage</item></plurals>
+    <string name="flow_chain_adjust">Wartezeit ändern</string>
+    <string name="flow_chain_collect">%1$s, %2$d Tau einsammeln</string>
+    <string name="flow_chain_progress">%1$s, %2$d von %3$d Schritten, %4$d Tau</string>
+    <string name="flow_chain_waiting">%1$s, noch %2$d %3$s, Wartezeit ändern</string>
+    <string name="flow_chain_resource">%1$s, wartet auf Kapazität, Abläufe öffnen</string>
+</resources>

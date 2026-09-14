@@ -134,7 +134,7 @@ public final class DashboardUiMapper {
                 .placementLabel(placementLabel(TodayItemTarget.flowTaskSheet(sheet.placement.id), dashboard))
                 .allowDefer(allowDefer)
                 .allowBulkComplete(false)
-                .waits(flowWaits(sheet))
+                .chains(flowChains(sheet, dashboard))
                 .harvestReady(false)
                 .reward(reward, XpVesselUiModel.quantitative(reward, 0, steps.size(),
                         0, plannedXp(steps), false, rewardTexts))
@@ -199,14 +199,7 @@ public final class DashboardUiMapper {
     private List<FocusStepUiModel> flowSteps(FlowTaskSheet sheet, Dashboard dashboard) {
         List<FocusStepUiModel> result = new ArrayList<>();
         for (FlowTaskSheet.Entry entry : sheet.entries) {
-            if (entry.kind == FlowTaskSheet.Entry.Kind.COLLECTION) {
-                RewardBreakdown reward = RewardPolicy.routine(Math.toIntExact(entry.finalTau),
-                        dashboard.combos.get(ComboProgress.taskOwner(sheet.task.id)));
-                result.add(FocusStepUiModel.executable(entry.targetId, entry.title,
-                        reward.resultXp + " Tau", "", false, StepExecutionUiAction.collectFlow(entry.targetId),
-                        null, reward, 0, reward.resultXp).withNoteTarget(null));
-                continue;
-            }
+            if (entry.kind == FlowTaskSheet.Entry.Kind.COLLECTION) continue;
             de.thonktank.autosecretary.domain.model.StepPrescription prescription;
             String note;
             String id;
@@ -239,26 +232,23 @@ public final class DashboardUiMapper {
                     dashboard.combos.get(ComboProgress.taskOwner(sheet.task.id)));
             String amount = stepTexts.compactAmount(prescription.amount);
             if (entry.finalTau != null) amount = (amount.isEmpty() ? "" : amount + " · ") + reward.resultXp + " Tau";
-            FocusStepUiModel mapped = FocusStepUiModel.executable(id, entry.title,
+            FocusStepUiModel mapped = FocusStepUiModel.executableWithGrainLevel(id, entry.title,
                     amount, note, false, action,
-                    null, reward, 0, reward.resultXp);
+                    null, reward, RewardPolicy.step(combo).comboStage, 0);
             result.add(mapped.withNoteTarget(entry.kind == FlowTaskSheet.Entry.Kind.CANDIDATE
                     ? entry.candidateTemplate.id : id));
         }
         return result;
     }
 
-    private List<de.thonktank.autosecretary.presentation.today.FlowWaitUiModel> flowWaits(FlowTaskSheet sheet) {
-        List<de.thonktank.autosecretary.presentation.today.FlowWaitUiModel> result = new ArrayList<>();
-        for (FlowRunSummary run : sheet.running) for (FlowRunSummary.Step step : run.steps)
-            if (step.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.WAITING_TIME
-                    || step.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.WAITING_RESOURCE
-                    || step.canAdjustWait) {
-                String title = run.seedTitle.equals(step.title) ? run.seedTitle : run.seedTitle + ": " + step.title;
-                result.add(new de.thonktank.autosecretary.presentation.today.FlowWaitUiModel(
-                        run.id, step.waitId, title, step.readyAtEpochMillis,
-                        step.state == de.thonktank.autosecretary.domain.model.FlowGraphRun.State.DONE));
-            }
+    private List<de.thonktank.autosecretary.presentation.today.FlowChainUiModel> flowChains(
+            FlowTaskSheet sheet, Dashboard dashboard) {
+        List<FlowRunSummary> runs = new ArrayList<>(sheet.running);
+        runs.sort(java.util.Comparator.comparingLong((FlowRunSummary run) -> run.queueOrder)
+                .thenComparing(run -> run.id));
+        List<de.thonktank.autosecretary.presentation.today.FlowChainUiModel> result = new ArrayList<>();
+        for (FlowRunSummary run : runs) result.add(
+                new de.thonktank.autosecretary.presentation.today.FlowChainUiModel(run, dashboard.combos, rewardTexts));
         return result;
     }
 

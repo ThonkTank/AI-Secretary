@@ -67,6 +67,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private static final String SAVED_TIMER_PERMISSION_WARNED = "today_timer_permission_warned";
     private final TodayUseCases today;
     @Nullable private FlowUseCases flows;
+    @Nullable private FlowDeadlineScheduler flowDeadlines;
     private final CatalogUseCases catalog;
     private final DashboardPresenter dashboard;
     private final CalendarDataSource calendar;
@@ -103,6 +104,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 container.presentationInvalidations, container.timers, navigator,
                 savedState, worker, null);
         this.flows = container.flows;
+        flowDeadlines = new FlowDeadlineScheduler(container.clockInvalidations::materializeForeground);
     }
 
     public TodayViewModel(TodayUseCases today, CatalogUseCases catalog,
@@ -454,7 +456,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     @Override public void handleCollectFlow(String runId) {
         if (flows == null || flows.runtime == null) return;
-        runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, runId), () -> flows.runtime.collect(runId).reward);
+        runTodayReward(command(UiCommand.Kind.HARVEST, runId), () -> flows.runtime.collect(runId).reward);
     }
 
     @Override public void handleAdjustFlowWait(String runId, String waitId, long readyAt) {
@@ -694,6 +696,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         }
         TodayUiModel composed = content.dashboard.withCalendar(eventsSnapshot);
         synchronized (stateLock) { loadedDate = content.date; }
+        if (flowDeadlines != null) flowDeadlines.update(composed.flowRuns);
         todayCoordinator.rebind(composed);
     }
 
@@ -780,7 +783,12 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         }
     }
 
+    public void setFlowForeground(boolean foreground) {
+        if (flowDeadlines != null) flowDeadlines.setForeground(foreground);
+    }
+
     @Override public void onCleared() {
+        if (flowDeadlines != null) flowDeadlines.close();
         contentReads.close();
         appearanceReads.close();
         if (timers != null) timers.removeListener(timerListener);

@@ -51,6 +51,37 @@ public final class GraphFlowRuntimePersistenceTest {
 
     @After public void close() { database.close(); }
 
+    @Test public void nativeProjectionPreservesStepComboAndMovesCollectionToHeader() {
+        TaskId task = save.execute(FlowEditorDraft.empty().rename("Wäsche")
+                .addStep("Buntwäsche", FlowDelayPolicy.fixed(100)).edit());
+        String candidateId = candidate(task, "Buntwäsche");
+        FlowTaskSheet initial = projection().sheets.get(0);
+        String template = initial.entries.get(0).candidateTemplate.id;
+        ComboProgress combo = new ComboProgress(ComboProgress.stepOwner(template), task,
+                ComboProgress.Kind.STEP, 6, DATE);
+        repository.today.putCombo(combo);
+        de.thonktank.autosecretary.presentation.DashboardUiMapper mapper =
+                new de.thonktank.autosecretary.presentation.DashboardUiMapper(
+                        new de.thonktank.autosecretary.presentation.AndroidUiTextProvider(ApplicationProvider.getApplicationContext()));
+        LoadGraphFlowSheets.Result before = projection();
+        var candidateModel = mapper.map(new Dashboard(0, List.of(), Map.of(combo.ownerId, combo),
+                before.runs, before.sheets), DATE).focus;
+        assertEquals(3, candidateModel.steps.get(0).grainLevel);
+        assertEquals(template, candidateModel.steps.get(0).noteTargetId);
+        assertEquals(0, candidateModel.steps.get(0).reward.resultXp);
+        assertTrue(candidateModel.chains.isEmpty());
+        String runId = runtime.start(candidateId, null).runId;
+        assertTrue(projection().sheets.isEmpty());
+        now += 100; runtime.activateReady();
+        LoadGraphFlowSheets.Result after = projection();
+        var ready = mapper.map(new Dashboard(0, List.of(), Map.of(), after.runs, after.sheets), DATE).focus;
+        assertNotNull(ready); assertTrue(ready.steps.isEmpty()); assertEquals(1, ready.chains.size());
+        assertEquals(runId, ready.chains.get(0).runId); assertTrue(ready.chains.get(0).vessel.ready);
+        assertEquals(0, repository.today.xp());
+        runtime.collect(runId); int paid = repository.today.xp();
+        runtime.collect(runId); assertEquals(paid, repository.today.xp()); assertTrue(projection().sheets.isEmpty());
+    }
+
     @Test public void oneStepCollectsThroughTheRealLedgerOnceAndLeavesNoOpenExecution() {
         TaskId task = save.execute(FlowEditorDraft.empty().rename("Ein Ablauf").addStep("Beginnen", FlowDelayPolicy.fixed(0)).edit());
         String candidate = candidate(task, "Beginnen");

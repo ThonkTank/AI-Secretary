@@ -51,6 +51,7 @@ final class FocusCardDecoration {
         style.shadow(middle, palette, 5, .75f);
         surface.bindSurface(palette, palette.leaf1, style.edge(palette, 1), 12, 1f);
         surface.setGrainSpec(card.grainSpec(task));
+        card.setChainScrollListener(() -> surface.setGrainSpec(card.grainSpec(task)));
     }
 
     LeafSurface surface() { return surface; }

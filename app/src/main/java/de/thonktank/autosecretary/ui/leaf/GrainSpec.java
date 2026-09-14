@@ -25,11 +25,16 @@ public abstract class GrainSpec {
     }
 
     public static Anchor anchor(View target, int level) {
-        return new Anchor(target, level, 0f, 0f);
+        return new Anchor(target, level, 0f, 0f, false);
     }
 
     public static Anchor sizedAnchor(View target, float width, float height, int level) {
-        return new Anchor(target, level, width, height);
+        return new Anchor(target, level, width, height, false);
+    }
+
+    /** Scroll content contributes grain only while its reward source is visible. */
+    public static Anchor visibleAnchor(View target, int level) {
+        return new Anchor(target, level, 0f, 0f, true);
     }
 
     public static final class Corner extends GrainSpec {
@@ -59,10 +64,12 @@ public abstract class GrainSpec {
         final int level;
         final float width;
         final float height;
+        final boolean visibleOnly;
 
-        private Anchor(View target, int level, float width, float height) {
+        private Anchor(View target, int level, float width, float height, boolean visibleOnly) {
             if (target == null) throw new IllegalArgumentException("target == null");
             this.target = target;
+            this.visibleOnly = visibleOnly;
             this.level = Math.max(0, level);
             this.width = Math.max(0f, width);
             this.height = Math.max(0f, height);
