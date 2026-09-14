@@ -98,6 +98,7 @@ public class LeafSurface extends FrameLayout {
         List<WoodGrainView.Anchor> resolved = new ArrayList<>();
         for (GrainSpec.Anchor anchor : anchors.anchors) {
             RectF bounds = localBounds(anchor.target);
+            if (anchor.visibleOnly && !clipToVisibleBounds(new RectF(bounds), anchor.target)) continue;
             if (anchor.width > 0f && anchor.height > 0f) {
                 float centerX = bounds.centerX();
                 float centerY = bounds.centerY();

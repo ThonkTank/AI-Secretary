@@ -206,6 +206,48 @@ public final class TodayInteractionInstrumentationTest {
         return new GestureScenario(harness, gesture, start, rowTarget, bottomEdge);
     }
 
+    @Test public void flowContainersSwipeWithoutCollectingAndTapTheCorrectRun() {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        Intent intent = new Intent(instrumentation.getTargetContext(),
+                TodayInteractionHarnessActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        activity = (TodayInteractionHarnessActivity) instrumentation.startActivitySync(intent);
+        AtomicReference<FlowChainStripView> mounted = new AtomicReference<>();
+        List<TodayAction> recorded = new java.util.concurrent.CopyOnWriteArrayList<>();
+        instrumentation.runOnMainSync(() -> {
+            FlowChainStripView strip = new FlowChainStripView(activity);
+            strip.bind(Arrays.asList(
+                    de.thonktank.autosecretary.FlowChainFixtures.chain("first", "Wäsche",
+                            de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.READY, 4_000_000),
+                    de.thonktank.autosecretary.FlowChainFixtures.chain("second", "Wäsche",
+                            de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.READY, 4_000_000),
+                    de.thonktank.autosecretary.FlowChainFixtures.chain("third", "Wäsche",
+                            de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.READY, 4_000_000)),
+                    DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT), recorded::add);
+            android.widget.FrameLayout root = new android.widget.FrameLayout(activity);
+            android.widget.FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
+                    new de.thonktank.autosecretary.UiStyle(activity).dp(100), -2);
+            params.topMargin = new de.thonktank.autosecretary.UiStyle(activity).dp(80);
+            root.addView(strip, params); activity.setContentView(root); mounted.set(strip);
+        });
+        instrumentation.waitForIdleSync();
+        FlowChainStripView strip = mounted.get(); Rect bounds = awaitInteractiveBounds(strip);
+        currentGesture = new TouchGestureDriver(instrumentation, strip);
+        currentGesture.down(new int[]{bounds.right - 8, bounds.centerY()});
+        currentGesture.moveTo(new int[]{bounds.left + 8, bounds.centerY()}); currentGesture.up();
+        instrumentation.waitForIdleSync();
+        assertTrue("Swiping must not collect", recorded.isEmpty());
+        AtomicReference<View> last = new AtomicReference<>();
+        instrumentation.runOnMainSync(() -> {
+            strip.scrollTo(strip.getChildAt(0).getWidth(), 0);
+            last.set(((ViewGroup) strip.getChildAt(0)).getChildAt(2));
+        });
+        instrumentation.waitForIdleSync(); Rect target = awaitInteractiveBounds(last.get());
+        currentGesture.down(new int[]{target.centerX(), target.centerY()}); currentGesture.up();
+        instrumentation.waitForIdleSync();
+        assertEquals(1, recorded.size()); assertEquals(TodayAction.Kind.COLLECT_FLOW, recorded.get(0).kind);
+        assertEquals("third", recorded.get(0).id);
+    }
+
     private Harness mount() {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         Intent intent = new Intent(instrumentation.getTargetContext(),

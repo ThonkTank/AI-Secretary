@@ -34,7 +34,18 @@ public final class GraphFlowSheetGoldenRobolectricTest {
         if (failure != null) throw failure;
     }
 
-    private void render(float scale) throws Exception {
+    @Test public void wideDarkSheetAndCollectionOnlyHeader() throws Exception {
+        AssertionError failure = null;
+        for (int scenario : new int[]{1, 2}) try { render(1f, 412, scenario); }
+        catch (AssertionError error) { if (failure == null) failure = error; }
+        if (failure != null) throw failure;
+    }
+
+    private void render(float scale) throws Exception { render(scale, 320, 0); }
+
+    private void render(float scale, int width, int scenario) throws Exception {
+        org.robolectric.RuntimeEnvironment.setQualifiers("w" + width + "dp-h700dp-mdpi");
+        long now = 1_800_000_000_000L;
         var controller = Robolectric.buildActivity(Activity.class).setup();
         Activity activity = controller.get();
         Configuration original = new Configuration(activity.getResources().getConfiguration());
@@ -44,6 +55,7 @@ public final class GraphFlowSheetGoldenRobolectricTest {
             List<FocusStepUiModel> rows = List.of(
                     flowStep("white-hang", "Weißwäsche: Aufhängen", "", 0),
                     flowStep("towels-store", "Handtücher: Wegräumen", "30 Tau", 30));
+            if (scenario == 2) rows = List.of();
             FocusTaskUiModel base = FocusTaskFixtures.task("laundry", "Wäsche")
                     .steps(rows).flowTaskSheet(true).allowDefer(true).build();
             TaskActionTarget target = TaskActionTarget.of("laundry",
@@ -51,32 +63,35 @@ public final class GraphFlowSheetGoldenRobolectricTest {
                     TaskSlot.MORNING, true, false);
             FocusTaskUiModel task = FocusTaskUiModel.builder(target).steps(rows, 2)
                     .allowDefer(true).allowBulkComplete(false).reward(base.reward, base.vessel)
-                    .waits(List.of(new FlowWaitUiModel("colors", "colors-dry", "Buntwäsche: Aufhängen",
-                                    System.currentTimeMillis() + 7_230_000),
-                            new FlowWaitUiModel("white", "white-wash", "Weißwäsche", null, true))).build();
-            DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.LIGHT);
+                    .chains(List.of(FlowChainFixtures.chain("colors", "Buntwäsche", scenario == 2 ? FlowChainUiModel.Mode.READY : FlowChainUiModel.Mode.TAU, 4_000_000),
+                            FlowChainFixtures.chain("white", "Weißwäsche", scenario == 2 ? FlowChainUiModel.Mode.RESOURCE : FlowChainUiModel.Mode.COUNTDOWN,
+                                    now + 1_470_000))).build();
+            DayPalette palette = DayPalette.at(LocalTime.of(9, 40), scenario == 1 ? DayPalette.Mode.DARK : DayPalette.Mode.LIGHT);
             TodayActionRecorder events = new TodayActionRecorder();
-            FocusTaskView view = new FocusTaskView(activity);
+            FocusTaskView view = new FocusTaskView(activity, new RewardAnchorRegistry(), null, () -> now);
             view.bind(FocusCardTestModels.of(task, palette, FocusStepLimit.AUTO, RepetitionInputState.idle()),
                     false, events);
             FrameLayout root = new FrameLayout(activity); root.setBackgroundColor(palette.background);
             root.addView(view, new FrameLayout.LayoutParams(-1, -1)); activity.setContentView(root);
-            root.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
+            root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                     View.MeasureSpec.makeMeasureSpec(700, View.MeasureSpec.EXACTLY));
-            root.layout(0, 0, 320, 700);
+            root.layout(0, 0, width, 700);
             ShadowLooper.shadowMainLooper().idle(); WoodGrainRenderPipeline.awaitIdleForTest();
             ShadowLooper.shadowMainLooper().idle();
-            assertFalse(hasVisibleVessel(root));
+            assertTrue(hasVisibleVessel(root));
             List<de.thonktank.autosecretary.ui.today.FocusStepRowView> rendered = new ArrayList<>();
             collectRows(root, rendered);
-            assertEquals(2, rendered.size());
-            assertTrue(rendered.get(1).rewardAnchor().performClick());
-            assertEquals("towels-store", events.lastToday(TodayAction.Kind.COMPLETE_FLOW_STEP).id);
-            assertNull(events.lastToday(TodayAction.Kind.ADVANCE_STEP));
-            Bitmap bitmap = Bitmap.createBitmap(320, 700, Bitmap.Config.ARGB_8888);
+            assertEquals(scenario == 2 ? 0 : 2, rendered.size());
+            if (scenario != 2) {
+                assertTrue(rendered.get(1).rewardAnchor().performClick());
+                assertEquals("towels-store", events.lastToday(TodayAction.Kind.COMPLETE_FLOW_STEP).id);
+                assertNull(events.lastToday(TodayAction.Kind.ADVANCE_STEP));
+            }
+            Bitmap bitmap = Bitmap.createBitmap(width, 700, Bitmap.Config.ARGB_8888);
             try {
                 root.draw(new Canvas(bitmap));
-                String name = scale == 1f ? "laundry-320" : "laundry-320-large";
+                String name = scenario == 1 ? "laundry-412-dark" : scenario == 2 ? "laundry-412-collection"
+                        : scale == 1f ? "laundry-320" : "laundry-320-large";
                 GoldenAssertions.compare(getClass(), "/golden/graph-flow-sheet/" + name + ".png",
                         new File("src/test/resources/golden/graph-flow-sheet", name + ".png"),
                         new File("build/reports/goldens/graph-flow-sheet", name), bitmap, 0, 0,
@@ -97,9 +112,9 @@ public final class GraphFlowSheetGoldenRobolectricTest {
     }
 
     private static FocusStepUiModel flowStep(String id, String title, String amount, int tau) {
-        return FocusStepUiModel.executable(id, title, amount, "", false,
+        return FocusStepUiModel.executableWithGrainLevel(id, title, amount, "", false,
                 StepExecutionUiAction.toggleFlowRunStep(id), null,
-                RewardBreakdown.fromStage(tau, 0), 0);
+                RewardBreakdown.fromStage(tau, 0), 2, 0);
     }
 
     private static void collectRows(View view, List<de.thonktank.autosecretary.ui.today.FocusStepRowView> rows) {

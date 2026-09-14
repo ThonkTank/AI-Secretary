@@ -193,6 +193,7 @@ public class MainActivity extends ComponentActivity {
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "resume", "");
         if (todayViewModel != null) {
             syncCalendarPermission();
+            todayViewModel.setFlowForeground(true);
             container.clockInvalidations.materializeForeground();
         }
         if (optionsViewModel != null) optionsViewModel.dispatch(OptionsAction.resumed());
@@ -200,6 +201,7 @@ public class MainActivity extends ComponentActivity {
     }
 
     @Override protected void onPause() {
+        if (todayViewModel != null) todayViewModel.setFlowForeground(false);
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "pause", "");
         super.onPause();
     }

@@ -39,7 +39,8 @@ public final class RewardAnimator {
         activeView = value;
         View sourceView = anchors.find(effect.source);
         View targetView = head ? anchors.find(RewardAnchorKey.head())
-                : anchors.firstVisible(RewardAnchorKey.Kind.VESSEL);
+                : anchors.find(new RewardAnchorKey(RewardAnchorKey.Kind.VESSEL, "flow-step:" + effect.source.id));
+        if (!head && targetView == null) targetView = anchors.firstVisible(RewardAnchorKey.Kind.VESSEL);
         float[] source = center(sourceView, head ? root.getWidth() * .77f
                 : root.getWidth() * .30f, head ? topInset + style.dp(180)
                 : topInset + style.dp(245));
