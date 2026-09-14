@@ -7,7 +7,6 @@ import de.thonktank.autosecretary.domain.model.StepPrescription
 import de.thonktank.autosecretary.domain.model.TaskBoundKind
 import de.thonktank.autosecretary.domain.model.TaskSlot
 import de.thonktank.autosecretary.domain.model.TimeOfDay
-import de.thonktank.autosecretary.domain.model.ResistanceLoad
 import de.thonktank.autosecretary.domain.model.RestTimerPolicy
 import de.thonktank.autosecretary.domain.model.Task
 import de.thonktank.autosecretary.domain.model.TaskDetails
