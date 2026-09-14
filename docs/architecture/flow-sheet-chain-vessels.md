@@ -52,6 +52,12 @@ Aktivierung und das erneute Laden im Vordergrund bleiben erhalten.
 - `TodayInteractionInstrumentationTest.flowContainersSwipeWithoutCollectingAndTapTheCorrectRun`:
   echte Touch-Geste ohne versehentliche Buchung, gefolgt von gezieltem Einsammeln.
 
+Der Editor-Testhost zeichnet den bestehenden Waldrenderer ohne dessen endlosen
+dekorativen Animator. Dieser hatte im API-35-Animationslauf nach Activity-Recreation
+die Espresso-Ruheprüfung blockiert. Editor-Animationen bleiben eingeschaltet;
+`ForestBackdropLifecycleTest` prüft die Waldanimation separat. Der produktive
+Hintergrund bleibt unverändert.
+
 Lokaler Gesamtlauf, PR-Matrix, gemergtes Remote-main, signiertes Release und
 physisches Geräteupgrade sind getrennte Nachweise. Die bloße Existenz dieser
 Tests behauptet weder grüne Läufe noch eine Geräteabnahme.

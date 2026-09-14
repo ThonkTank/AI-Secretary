@@ -1,6 +1,8 @@
 package de.thonktank.autosecretary
 
 import android.os.Bundle
+import android.graphics.Canvas
+import android.view.View
 import android.widget.FrameLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -39,7 +41,20 @@ class TaskEditorComposeHarnessActivity : ComponentActivity(), TaskEditorComposeH
             state = EditorUiState.fromBundle(restored)
         }
         val root = FrameLayout(this)
-        val forest = ForestBackdropView(this).also { it.setPalette(palette) }
+        // Espresso must be able to idle after recreation. Keep the same artwork, but
+        // leave the unrelated infinite forest animation to ForestBackdropLifecycleTest.
+        // Editor transitions still use the device's enabled animation settings.
+        val forest = object : View(this) {
+            private val artwork = ForestArtworkRenderer().also { it.setPalette(palette) }
+
+            init { importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO }
+
+            override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+                artwork.setSize(w, h)
+            }
+
+            override fun onDraw(canvas: Canvas) { artwork.draw(canvas) }
+        }
         root.addView(forest, FrameLayout.LayoutParams(-1, -1))
         editor = TaskEditorComposeHostView(this).also { it.id = R.id.task_editor_compose_host }
         root.addView(editor, FrameLayout.LayoutParams(-1, -1))
