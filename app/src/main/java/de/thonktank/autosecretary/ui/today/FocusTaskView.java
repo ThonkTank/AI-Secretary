@@ -33,10 +33,16 @@ public final class FocusTaskView extends FrameLayout {
 
     public FocusTaskView(Context context, RewardAnchorRegistry rewardAnchors,
                          EdgeAutoScroller.ScrollHost scrollHost) {
+        this(context, rewardAnchors, scrollHost, System::currentTimeMillis);
+    }
+
+    public FocusTaskView(Context context, RewardAnchorRegistry rewardAnchors,
+                         EdgeAutoScroller.ScrollHost scrollHost,
+                         java.util.function.LongSupplier currentTimeMillis) {
         super(context);
         style = new UiStyle(context);
         setClipChildren(false);
-        card = new FocusCardView(context, action -> actions.emit(action), scrollHost);
+        card = new FocusCardView(context, action -> actions.emit(action), scrollHost, currentTimeMillis);
         decoration = new FocusCardDecoration(context, this, rewardAnchors, card);
         surface = decoration.surface();
         cardParams = new LayoutParams(-1, -2);
@@ -53,7 +59,7 @@ public final class FocusTaskView extends FrameLayout {
         boundTaskId = task.taskId();
         boolean compact = task.ongoing && task.steps.isEmpty();
         setMinimumHeight(compact ? style.dimen(R.dimen.focus_card_compact_min_height)
-                : task.steps.isEmpty() ? style.dimen(R.dimen.focus_card_empty_min_height) : 0);
+                : task.steps.isEmpty() && task.chains.isEmpty() ? style.dimen(R.dimen.focus_card_empty_min_height) : 0);
         cardParams.topMargin = compact ? 0 : style.dimen(R.dimen.focus_card_top);
         surface.setLayoutParams(cardParams);
         surface.setTranslationY(0f);

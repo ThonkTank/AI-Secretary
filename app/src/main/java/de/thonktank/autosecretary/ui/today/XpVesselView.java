@@ -14,6 +14,7 @@ import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
 
 public final class XpVesselView extends View {
     private final UiStyle style;
+    private final java.util.function.LongSupplier currentTimeMillis;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path innerClip = new Path();
     private DayPalette palette;
@@ -25,12 +26,59 @@ public final class XpVesselView extends View {
     private float displayedFill;
     private boolean ready;
     private boolean bound;
+    private boolean compact;
+    private de.thonktank.autosecretary.presentation.today.FlowChainUiModel chain;
+    private final Runnable clockFrame = () -> { invalidate(); scheduleClock(); };
+
+    public void setCompact(boolean value) {
+        compact = value;
+        setMinimumWidth(style.dp(value ? 36 : 68));
+        setMinimumHeight(style.dp(value ? 36 : 68));
+    }
+
+    public void bindChain(de.thonktank.autosecretary.presentation.today.FlowChainUiModel value) {
+        chain = value;
+        bind(value.vessel);
+        // The parent group owns the full-size touch and accessibility target.
+        setEnabled(true); setClickable(false);
+        setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        scheduleClock();
+    }
+
+    void refreshClockVisibility() { scheduleClock(); }
+
+    private void scheduleClock() {
+        removeCallbacks(clockFrame);
+        if (chain != null && chain.mode == de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.COUNTDOWN
+                && isAttachedToWindow() && getWindowVisibility() == VISIBLE && isShown()
+                && getGlobalVisibleRect(new android.graphics.Rect())
+                && chain.readyAt > currentTimeMillis.getAsLong())
+            postDelayed(clockFrame, ValueAnimator.areAnimatorsEnabled() ? 50L : 1000L);
+    }
+
+    @Override protected void onAttachedToWindow() {
+        super.onAttachedToWindow(); post(this::refreshClockVisibility);
+    }
+
+    @Override protected void onVisibilityChanged(View changedView, int visibility) {
+        super.onVisibilityChanged(changedView, visibility);
+        if (clockFrame != null) scheduleClock();
+    }
+
+    @Override protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (clockFrame != null) scheduleClock();
+    }
+
     private ValueAnimator pulse;
     private ValueAnimator fillAnimator;
     private float pulseAlpha;
 
-    public XpVesselView(Context context) {
+    public XpVesselView(Context context) { this(context, System::currentTimeMillis); }
+
+    public XpVesselView(Context context, java.util.function.LongSupplier currentTimeMillis) {
         super(context); style = new UiStyle(context);
+        this.currentTimeMillis = currentTimeMillis;
         setMinimumWidth(style.dp(68)); setMinimumHeight(style.dp(68)); setClickable(true);
         AccessibilityRoles.button(this);
     }
@@ -47,7 +95,7 @@ public final class XpVesselView extends View {
         this.base = model.reward.baseXp;
         multiplierLabel = model.multiplierLabel;
         breakdownLabel = model.breakdownLabel;
-        float nextFill = model.plannedXp == 0 ? 0f
+        float nextFill = compact && model.ready ? 1f : model.plannedXp == 0 ? 0f
                 : Math.min(1f, model.earnedXp / (float) model.plannedXp);
         this.fill = nextFill;
         this.ready = model.ready;
@@ -103,6 +151,11 @@ public final class XpVesselView extends View {
         float r = Math.min(getWidth(), getHeight()) / 2f;
         paint.setStyle(Paint.Style.FILL); paint.setColor(palette.leaf1);
         canvas.drawCircle(cx, cy, r, paint);
+        if (chain != null && (chain.mode == de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.COUNTDOWN
+                || chain.mode == de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.RESOURCE)) {
+            drawWaiting(canvas, cx, cy, r);
+            return;
+        }
         paint.setColor(UiStyle.alpha(ready ? palette.light : palette.accent, .34f));
         float inner = r - style.dp(2.5f);
         float fraction = Math.max(0f, Math.min(1f, displayedFill));
@@ -129,11 +182,52 @@ public final class XpVesselView extends View {
         paint.setStyle(Paint.Style.FILL); paint.setTypeface(style.sansBold);
         paint.setTextAlign(Paint.Align.CENTER); paint.setColor(ready ? palette.light
                 : displayedFill >= .55f ? palette.ink : palette.accent);
-        paint.setTextSize(style.dp(result >= 100 ? 13 : 15));
+        paint.setTextSize(textSize(result >= 100 ? 13 : 15));
         canvas.drawText(String.valueOf(result), cx, cy - style.dp(3), paint);
-        paint.setTypeface(style.sans); paint.setTextSize(style.dp(9));
+        paint.setTypeface(style.sans); paint.setTextSize(textSize(9));
         canvas.drawText(breakdownLabel, cx,
                 cy + style.dp(12), paint);
+    }
+
+    private float textSize(float sp) {
+        return compact ? sp * getResources().getDisplayMetrics().scaledDensity : style.dp(sp);
+    }
+
+    private void drawWaiting(Canvas canvas, float cx, float cy, float radius) {
+        boolean timed = chain.mode == de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.COUNTDOWN;
+        de.thonktank.autosecretary.presentation.today.FlowCountdown clock = timed
+                ? new de.thonktank.autosecretary.presentation.today.FlowCountdown(
+                        chain.waitStartedAt, chain.readyAt, currentTimeMillis.getAsLong()) : null;
+        float inner = radius - style.dp(2.5f);
+        if (clock != null) {
+            paint.setColor(UiStyle.alpha(palette.accent, .34f));
+            canvas.drawArc(cx - inner, cy - inner, cx + inner, cy + inner,
+                    -90f + 360f * (1f - clock.fraction), 360f * clock.fraction, true, paint);
+        }
+        paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(style.dp(1.5f));
+        paint.setColor(UiStyle.alpha(palette.dot, .55f));
+        canvas.drawCircle(cx, cy, radius - style.dp(.75f), paint);
+        if (clock == null) {
+            paint.setColor(palette.hint); paint.setStrokeWidth(style.dp(2));
+            canvas.drawLine(cx - style.dp(3), cy - style.dp(5), cx - style.dp(3), cy + style.dp(5), paint);
+            canvas.drawLine(cx + style.dp(3), cy - style.dp(5), cx + style.dp(3), cy + style.dp(5), paint);
+            return;
+        }
+        paint.setStyle(Paint.Style.FILL); paint.setTextAlign(Paint.Align.CENTER);
+        paint.setColor(palette.ink); paint.setTypeface(style.sansBold);
+        paint.setTextSize(textSize(clock.value >= 100 ? 13 : 15));
+        canvas.drawText(String.valueOf(clock.value), cx, cy - style.dp(3), paint);
+        paint.setTypeface(style.sans); paint.setTextSize(textSize(9));
+        canvas.drawText(countdownUnit(getContext(), clock), cx, cy + style.dp(11), paint);
+    }
+
+    static String countdownUnit(Context context, de.thonktank.autosecretary.presentation.today.FlowCountdown clock) {
+        switch (clock.unit) {
+            case DAYS: return context.getResources().getQuantityString(R.plurals.flow_clock_days, (int) clock.value);
+            case HOURS: return context.getString(R.string.flow_clock_hours);
+            case MINUTES: return context.getString(R.string.flow_clock_minutes);
+            default: return context.getString(R.string.flow_clock_seconds);
+        }
     }
 
     static FillGeometry fillGeometry(float centerX, float centerY, float radius,
@@ -163,6 +257,7 @@ public final class XpVesselView extends View {
     }
 
     @Override protected void onDetachedFromWindow() {
+        removeCallbacks(clockFrame);
         stopPulse();
         if (fillAnimator != null) fillAnimator.cancel();
         fillAnimator = null;

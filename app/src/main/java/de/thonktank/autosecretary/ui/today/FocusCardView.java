@@ -27,6 +27,8 @@ import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 public final class FocusCardView extends ViewGroup {
     private final UiStyle style;
     private final FrameLayout titleRow;
+    private final LinearLayout titleBlock;
+    private final FlowChainStripView chains;
     private final TextView title;
     private final TextView backlog;
     private final TextView placement;
@@ -36,13 +38,12 @@ public final class FocusCardView extends ViewGroup {
     private final LinearLayout actions;
     private final TextView primary;
     private final TextLinkView later;
-    private final android.widget.ScrollView waiting;
-    private final LinearLayout waitRows;
+
     private int maximumContentHeight = Integer.MAX_VALUE;
     private boolean reorderingSteps;
 
     FocusCardView(Context context, TodayActionSink events,
-                  EdgeAutoScroller.ScrollHost scrollHost) {
+                  EdgeAutoScroller.ScrollHost scrollHost, java.util.function.LongSupplier currentTimeMillis) {
         super(context);
         style = new UiStyle(context);
         setPadding(style.dimen(R.dimen.focus_card_padding_start),
@@ -52,7 +53,7 @@ public final class FocusCardView extends ViewGroup {
         setBackgroundColor(Color.TRANSPARENT);
 
         titleRow = new FrameLayout(context);
-        LinearLayout titleBlock = new LinearLayout(context);
+        titleBlock = new LinearLayout(context);
         titleBlock.setOrientation(LinearLayout.VERTICAL);
         title = style.serif("", 37, 0, false, 200);
         title.setLineSpacing(0, 1.04f);
@@ -74,6 +75,8 @@ public final class FocusCardView extends ViewGroup {
         taskDew.setVisibility(GONE);
         titleRow.addView(taskDew, new FrameLayout.LayoutParams(style.dp(48), style.dp(48),
                 Gravity.TOP | Gravity.END));
+        chains = new FlowChainStripView(context, currentTimeMillis);
+        titleRow.addView(chains, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER_VERTICAL | Gravity.END));
         addView(titleRow, new MarginLayoutParams(-1, -2));
 
         steps = new FocusStepListLayout(context, events, scrollHost);
@@ -84,13 +87,6 @@ public final class FocusCardView extends ViewGroup {
         MarginLayoutParams stepsParams = new MarginLayoutParams(-1, -2);
         stepsParams.topMargin = style.dimen(R.dimen.focus_card_steps_gap);
         addView(steps, stepsParams);
-
-        waiting = new android.widget.ScrollView(context);
-        waitRows = new LinearLayout(context);
-        waitRows.setOrientation(LinearLayout.VERTICAL);
-        waiting.addView(waitRows, new android.widget.ScrollView.LayoutParams(-1, -2));
-        waiting.setVisibility(GONE);
-        addView(waiting, new MarginLayoutParams(-1, -2));
 
         actions = new LinearLayout(context);
         actions.setGravity(Gravity.CENTER_VERTICAL);
@@ -156,27 +152,7 @@ public final class FocusCardView extends ViewGroup {
         }
 
         steps.bind(model);
-        waitRows.removeAllViews();
-        waiting.setVisibility(task.waits.isEmpty() ? GONE : VISIBLE);
-        for (de.thonktank.autosecretary.presentation.today.FlowWaitUiModel wait : task.waits) {
-            TextView row = style.sans("", 13, model.palette.hint, false);
-            String status = wait.elapsed ? "Wartezeit verlängern" : wait.readyAtEpochMillis == null ? "wartet auf Kapazität"
-                    : de.thonktank.autosecretary.presentation.mobile.RemainingDurationFormatterKt.remainingDurationText(
-                            wait.readyAtEpochMillis, System.currentTimeMillis());
-            row.setText(wait.title + " · " + status);
-            row.setPadding(0, style.dp(6), 0, style.dp(6));
-            row.setMinHeight(style.dp(48));
-            if (wait.readyAtEpochMillis != null || wait.elapsed) {
-                AccessibilityRoles.button(row);
-                row.setContentDescription(row.getText() + ", Wartezeit ändern");
-                row.setOnClickListener(view -> FlowDurationDialog.show(getContext(),
-                        getContext().getString(R.string.flow_adjust_prompt_title),
-                        wait.readyAtEpochMillis == null ? 0 : Math.max(0, wait.readyAtEpochMillis - System.currentTimeMillis()),
-                        delay -> events.emit(TodayAction.adjustFlowWait(wait.runId, wait.waitId,
-                                System.currentTimeMillis() + delay))));
-            }
-            waitRows.addView(row, new LinearLayout.LayoutParams(-1, -2));
-        }
+        chains.bind(task.chains, model.palette, events);
         primary.setText(R.string.action_complete_rest);
         primary.setTextColor(model.palette.accentText);
         primary.setBackground(style.pill(model.palette.accent, 26));
@@ -194,6 +170,8 @@ public final class FocusCardView extends ViewGroup {
         requestLayout();
     }
 
+    void setChainScrollListener(Runnable callback) { chains.setGrainChanged(callback); }
+
     void setMaximumContentHeight(int maximumHeight) {
         int value = Math.max(0, maximumHeight);
         if (maximumContentHeight == value) return;
@@ -206,14 +184,20 @@ public final class FocusCardView extends ViewGroup {
         int innerWidth = Math.max(0, width - getPaddingLeft() - getPaddingRight());
         int childWidth = MeasureSpec.makeMeasureSpec(innerWidth, MeasureSpec.EXACTLY);
         int naturalHeight = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+        FrameLayout.LayoutParams titleParams = (FrameLayout.LayoutParams) titleBlock.getLayoutParams();
+        FrameLayout.LayoutParams chainParams = (FrameLayout.LayoutParams) chains.getLayoutParams();
+        if (chains.getVisibility() == VISIBLE) {
+            chains.measure(MeasureSpec.makeMeasureSpec(innerWidth / 2, MeasureSpec.AT_MOST), naturalHeight);
+            chainParams.width = Math.min(innerWidth / 2, chains.getMeasuredWidth());
+            titleParams.width = innerWidth - chainParams.width;
+            titleParams.gravity = Gravity.CENTER_VERTICAL | Gravity.START;
+        } else { titleParams.width = -1; titleParams.gravity = Gravity.TOP; }
         titleRow.measure(childWidth, naturalHeight);
         actions.measure(childWidth, naturalHeight);
-        if (waiting.getVisibility() != GONE)
-            waiting.measure(childWidth, MeasureSpec.makeMeasureSpec(style.dp(104), MeasureSpec.AT_MOST));
+
 
         int fixedHeight = getPaddingTop() + getPaddingBottom()
-                + titleRow.getMeasuredHeight() + childExtentWithoutHeight(actions)
-                + (waiting.getVisibility() == GONE ? 0 : extent(waiting));
+                + titleRow.getMeasuredHeight() + childExtentWithoutHeight(actions);
         int listBudget = reorderingSteps ? Integer.MAX_VALUE
                 : Math.max(0, maximumContentHeight - fixedHeight - topMargin(steps));
         if (steps.getVisibility() != GONE)
@@ -230,7 +214,7 @@ public final class FocusCardView extends ViewGroup {
         int y = getPaddingTop();
         y = layoutChild(titleRow, y);
         if (steps.getVisibility() != GONE) y = layoutChild(steps, y);
-        if (waiting.getVisibility() != GONE) y = layoutChild(waiting, y);
+
         layoutChild(actions, y);
     }
 
@@ -265,6 +249,7 @@ public final class FocusCardView extends ViewGroup {
                         ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE,
                 task.terminalCondition() ? task.taskId() : task.itemId()), taskDew);
         steps.registerRewardAnchors(registry);
+        chains.registerRewardAnchors(registry);
         registry.register(new RewardAnchorKey(RewardAnchorKey.Kind.REST,
                 task.itemId()), primary);
     }
@@ -274,6 +259,7 @@ public final class FocusCardView extends ViewGroup {
     GrainSpec grainSpec(FocusTaskUiModel task) {
         List<GrainSpec.Anchor> anchors = new ArrayList<>();
         if (mainRewardAnchor().getVisibility() == VISIBLE) anchors.add(grainAnchor(mainRewardAnchor(), task.grainLevel));
+        anchors.addAll(chains.anchors());
         anchors.addAll(steps.grainAnchors());
         return GrainSpec.anchors(anchors, grainOcclusions());
     }
@@ -282,7 +268,7 @@ public final class FocusCardView extends ViewGroup {
         List<GrainOcclusion> faded = new ArrayList<>();
         faded.add(GrainOcclusion.text(title));
         faded.addAll(steps.grainOcclusions());
-        for (int i = 0; i < waitRows.getChildCount(); i++) faded.add(GrainOcclusion.text((TextView) waitRows.getChildAt(i)));
+        faded.addAll(chains.occlusions());
         if (primary.getVisibility() == VISIBLE) faded.add(GrainOcclusion.text(primary));
         if (later.getVisibility() == VISIBLE) faded.add(GrainOcclusion.text(later));
         return faded;

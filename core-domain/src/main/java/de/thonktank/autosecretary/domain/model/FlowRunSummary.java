@@ -10,6 +10,9 @@ public final class FlowRunSummary {
     public static final class Step {
         public final String id;
         public final String waitId;
+        public final String sourceTemplateId;
+        public final Long actionAtEpochMillis;
+        public final long earnedTau;
         public final String title;
         public final FlowGraphRun.State state;
         public final FlowDelayPolicy waitAfter;
@@ -18,6 +21,8 @@ public final class FlowRunSummary {
 
         public Step(FlowGraphRun.Step step, boolean canAdjustWait) {
             id = step.id; waitId = step.waitId(); title = step.source.title;
+            sourceTemplateId = step.source.id;
+            actionAtEpochMillis = step.actionAtEpochMillis; earnedTau = step.earnedTau;
             state = step.state; waitAfter = step.source.waitAfter;
             readyAtEpochMillis = step.readyAtEpochMillis;
             this.canAdjustWait = canAdjustWait;
