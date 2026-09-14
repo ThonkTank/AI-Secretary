@@ -226,22 +226,32 @@ public final class TodayInteractionInstrumentationTest {
                             de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.READY, 4_000_000),
                     de.thonktank.autosecretary.FlowChainFixtures.chain("third", "Wäsche",
                             de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.READY, 4_000_000)),
-                    DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT), recorded::add);
+                    DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT), action -> {
+                        recorded.add(action);
+                        PresentationTrace.emit("flow-test", "action", action.kind.name());
+                    });
             android.widget.FrameLayout root = new android.widget.FrameLayout(activity);
             android.widget.FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
                     new de.thonktank.autosecretary.UiStyle(activity).dp(100), -2);
             params.topMargin = new de.thonktank.autosecretary.UiStyle(activity).dp(80);
             root.addView(strip, params); activity.setContentView(root); mounted.set(strip);
         });
-        instrumentation.waitForIdleSync();
         FlowChainStripView strip = mounted.get(); Rect bounds = awaitInteractiveBounds(strip);
+        if (android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            instrumentation.runOnMainSync(() -> {
+                ViewGroup first = (ViewGroup) ((ViewGroup) strip.getChildAt(0)).getChildAt(0);
+                assertTrue("Ready vessels must keep their real animation during the gesture",
+                        ((XpVesselView) first.getChildAt(0)).isPulsing());
+            });
+        }
+        logPhase("flow-drag");
         currentGesture = new TouchGestureDriver(instrumentation, strip);
         currentGesture.down(new int[]{bounds.right - 8, bounds.centerY()});
         currentGesture.moveTo(new int[]{bounds.left + 8, bounds.centerY()});
         currentGesture.settleDragVelocity(); currentGesture.up();
-        instrumentation.waitForIdleSync();
+        // Ready vessels pulse forever. Await the outcome, never global main-loop idleness.
+        awaitCondition("The native drag must actually scroll", () -> strip.getScrollX() > 0);
         assertTrue("Swiping must not collect", recorded.isEmpty());
-        assertTrue("The native drag must actually scroll", strip.getScrollX() > 0);
         AtomicReference<View> last = new AtomicReference<>();
         instrumentation.runOnMainSync(() -> {
             strip.scrollTo(strip.getChildAt(0).getWidth(), 0);
@@ -251,9 +261,10 @@ public final class TodayInteractionInstrumentationTest {
                 return false;
             });
         });
-        instrumentation.waitForIdleSync(); Rect target = awaitInteractiveBounds(last.get());
+        Rect target = awaitInteractiveBounds(last.get());
+        logPhase("flow-collect");
         currentGesture.tap(new int[]{target.centerX(), target.centerY()});
-        instrumentation.waitForIdleSync();
+        awaitCondition("Tapping the last container must collect", () -> !recorded.isEmpty());
         assertEquals(1, recorded.size()); assertEquals(TodayAction.Kind.COLLECT_FLOW, recorded.get(0).kind);
         assertEquals("third", recorded.get(0).id);
     }

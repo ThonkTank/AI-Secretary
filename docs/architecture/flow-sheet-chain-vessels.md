@@ -58,6 +58,11 @@ die Espresso-Ruheprüfung blockiert. Editor-Animationen bleiben eingeschaltet;
 `ForestBackdropLifecycleTest` prüft die Waldanimation separat. Der produktive
 Hintergrund bleibt unverändert.
 
+Der Ketten-Gestentest wartet mit harten Zeitgrenzen auf Scrollposition und
+Sammelaktion. Er wartet nicht auf globale Main-Looper-Ruhe: fertige native
+Tau-Container pulsieren absichtlich dauerhaft. Im Animationslauf prüft er
+ausdrücklich, dass dieses Pulsieren während der echten Touch-Geste aktiv bleibt.
+
 Lokaler Gesamtlauf, PR-Matrix, gemergtes Remote-main, signiertes Release und
 physisches Geräteupgrade sind getrennte Nachweise. Die bloße Existenz dieser
 Tests behauptet weder grüne Läufe noch eine Geräteabnahme.
