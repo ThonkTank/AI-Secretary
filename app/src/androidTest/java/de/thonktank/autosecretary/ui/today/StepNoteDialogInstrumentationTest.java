@@ -101,7 +101,7 @@ public final class StepNoteDialogInstrumentationTest {
         save();
         assertStored("");
         openNote();
-        assertTrue(input().getText() == null || input().getText().isEmpty());
+        assertEditorText("");
         cancel();
     }
 
@@ -187,7 +187,21 @@ public final class StepNoteDialogInstrumentationTest {
     }
     private void enter(String text) {
         input().setText(text);
-        assertEquals(text, Objects.toString(input().getText(), ""));
+        assertEditorText(text);
+    }
+    private void assertEditorText(String expected) {
+        if (!expected.isEmpty()) {
+            assertEquals(expected, input().getText());
+            return;
+        }
+        // Android exposes an empty EditText's hint as accessibility text. The hint flag
+        // distinguishes an empty value from a user actually entering the hint string.
+        var root = instrumentation.getUiAutomation().getRootInActiveWindow();
+        assertNotNull(root);
+        var nodes = root.findAccessibilityNodeInfosByViewId(context.getPackageName() + ":id/step_note_input");
+        assertEquals(1, nodes.size());
+        assertTrue("Empty input must expose its hint, not entered text", nodes.get(0).isShowingHintText());
+        assertEquals(context.getString(R.string.step_note_hint), nodes.get(0).getHintText().toString());
     }
     private void save() {
         assertKeyboardVisible();
