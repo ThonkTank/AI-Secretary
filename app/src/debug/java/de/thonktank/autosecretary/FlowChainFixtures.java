@@ -34,4 +34,18 @@ public final class FlowChainFixtures {
         ComboProgress combo = new ComboProgress(ComboProgress.taskOwner(task), task, ComboProgress.Kind.TASK, 3, null);
         return new FlowChainUiModel(run(id, title, mode, end), Map.of(combo.ownerId, combo), new RewardTextFormatter(Locale.GERMANY));
     }
+    /** A completed final wait remains editable until its Tau has been collected. */
+    public static FlowChainUiModel editableReadyChain(String id) {
+        String stepId = id + ":last";
+        FlowGraphDefinition.Node source = new FlowGraphDefinition.Node("source:last", "Buntwäsche",
+                StepPrescription.forAmount(StepAmount.none()), "", FlowDelayPolicy.fixed(60_000));
+        FlowGraphRun.Step step = new FlowGraphRun.Step(stepId, source, FlowGraphRun.State.DONE,
+                60_000L, null, 1_000L, 10L);
+        FlowGraphRun run = new FlowGraphRun(id, TaskId.of("laundry"), stepId,
+                new FlowTileGraph(List.of(stepId), List.of()), List.of(step), List.of(), 0, false);
+        FlowRunSummary summary = new FlowRunSummary(new FlowGraphRunRecord(run, id,
+                LocalDate.of(2026, 9, 17), TaskSlot.MORNING, 0, 0, 0, 0), "Wäsche", List.of());
+        return new FlowChainUiModel(summary, Map.of(), new RewardTextFormatter(Locale.GERMANY));
+    }
+
 }
