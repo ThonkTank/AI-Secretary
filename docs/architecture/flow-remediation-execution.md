@@ -5,9 +5,9 @@ Remote-main `9b0d3dc7`. Isolierter Worktree; alter Frontend-Checkout unveränder
 
 | Phase | Status |
 |---|---|
-| P0 Prüfablauf | Im Einsatz; Abschlussbeleg mit P1 |
-| P1 Wartezeitbedienung | Implementierung und gezielte Prüfung |
-| P2 Ablaufende | Ausstehend |
+| P0 Prüfablauf | Erfüllt; wird in den Folgephasen weiter angewendet |
+| P1 Wartezeitbedienung | Abgeschlossen: PR #375, Remote-main 83750722 |
+| P2 Ablaufende | Implementierung und gezielte Prüfung |
 | P3 Animation/Modell | Ausstehend |
 | P4 Handy | Offen: adb meldet kein Gerät |
 
@@ -49,3 +49,42 @@ mit harter Zeitgrenze; Aktion und beobachtbares Accessibility-Ereignis sind geko
 Der Vertrag bleibt unverändert. Auch der lokale API-26-Emulator endete beim Boot
 mit SIGSEGV, ohne App-Test. Native Abnahme erfolgt deshalb über die CI-Emulatoren;
 kein weiterer lokaler Emulator-Neustart und kein behaupteter lokaler Geräteerfolg.
+
+
+## P1 – Abschluss
+
+PR #375, geprüfter Head `744b248e`, Squash-Merge auf Remote-main `83750722`.
+CI-Lauf `35203753184`: alle erforderlichen Checks einschließlich API 26/35/37 jeweils
+normal und mit Animationen grün. Vollständiges `scripts/ci/check-all.sh`: erfolgreich,
+793 App-Tests, null Fehler, ein optionaler Benchmark ausgelassen; Lint, APKs,
+Identität und Größenbudgets bestanden. Der lokale Kaltlauf benötigte 32m21s im
+Gradle-Teil; kein zusätzlicher vollständiger Wiederholungslauf nach Erfolg.
+
+## P2 – Plan
+
+Basis ist P1 auf Remote-main. TodayViewModel erhält seine Flows und den vorhandenen
+Scheduler im gemeinsamen Konstruktor vor Beginn der ersten Projektion. Der
+Produktionskonstruktor verwendet denselben Weg; die Tests können dort eine
+kontrollierte Uhr und die echte ClockInvalidationSource verbinden.
+
+Integration mit realer Room-Datenbank, produktiven UseCases, DashboardPresenter,
+TodayViewModel und Renderer: verborgenes Blatt bei Fälligkeit, Verlängern/Verkürzen,
+Hintergrund/Wiederaufnahme, abschließende Wartephase und idempotentes Einsammeln.
+Zeitablauf darf keinen Testaufruf von activateReady oder manuellen Refresh benötigen.
+Native MainActivity-Prüfung ergänzt den echten Lifecycle und die sichtbare Darstellung.
+Zuerst schnelle Workflow-Verträge und betroffene Tests, dann vollständiger lokaler
+Abschlusslauf und erforderliche PR-Matrix. Keine neue Auszahlungsregel oder Migration.
+
+P2 erste gezielte Prüfung: Domain-/ViewModel-Übergänge und Einsammeln funktionieren,
+aber sechs Rendererassertionen finden die Schrittzeile nicht. Der Testhost hatte
+noch keinen Layoutdurchlauf für das wieder eingeblendete Blatt. Korrekturplan:
+den Renderer in einem gemessenen Scroll-Viewport prüfen und bei Fehlern den
+Textbaum ausgeben; keine Abschwächung auf reine Callback-/Modellassertionen.
+
+P1 Main-Nachweis nach Merge: Workflow `35206735960` für `83750722` erfolgreich.
+P2 korrigierter gezielter Lauf: acht Integrationstests auf API 26/35 grün;
+der gemessene Viewport zeigt die erwartete native Schrittzeile. Die native
+Testklasse ist erfolgreich kompiliert. 16 schnelle Workflow-Verträge grün.
+Native MainActivity-Szenarien prüfen Vordergrund-Fälligkeit, tatsächliches
+Hintergrund/Resume und Activity-Recreation; Fixtures sind auf das Testpaket begrenzt.
+Vollständiger lokaler Lauf und PR-Matrix stehen vor dem Phasenabschluss noch aus.
