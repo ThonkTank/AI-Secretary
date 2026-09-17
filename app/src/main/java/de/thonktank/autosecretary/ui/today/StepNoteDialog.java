@@ -66,10 +66,12 @@ public final class StepNoteDialog {
                 AlertDialog shown = (AlertDialog) d;
                 if (!shown.isShowing()) return;
                 shown.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> model.saveStepNote());
-                shown.findViewById(R.id.step_note_input).requestFocus();
-                shown.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
-                        | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
             });
+            // API 26 evaluates the initial IME state when the window gains focus.
+            // Configure it before show(), rather than from the queued on-show callback.
+            input.requestFocus();
+            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+                    | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
             dialog.show();
         }
         boolean saving = draft.saving;
