@@ -8,12 +8,27 @@ import de.thonktank.autosecretary.domain.model.TaskId
 import de.thonktank.autosecretary.domain.model.TaskKind
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Rule
+import org.junit.rules.TestWatcher
+import org.junit.runner.Description
+import android.util.Log
+import java.io.ByteArrayOutputStream
 import java.util.UUID
 
 /** Real production host, worker, Room save, own edit route and cancel boundary. */
 class FlowProductEditorInstrumentationTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val device get() = UiDevice.getInstance(instrumentation)
+
+    private var stage = "launch"
+    @get:Rule val failureEvidence = object : TestWatcher() {
+        override fun failed(error: Throwable, description: Description) {
+            val hierarchy = runCatching {
+                ByteArrayOutputStream().also { device.dumpWindowHierarchy(it) }.toString("UTF-8")
+            }.getOrElse { "Hierarchy unavailable: $it" }
+            Log.e("FlowProductEditorTest", "Stage: $stage\n$hierarchy", error)
+        }
+    }
 
     @Test fun createReopenAndCancelUseTheActualDedicatedEditor() {
         val context = instrumentation.targetContext
@@ -61,6 +76,17 @@ class FlowProductEditorInstrumentationTest {
     private fun input(field: String): UiObject2 = requireNotNull(device.wait(
         Until.findObject(By.res("flow-editor:$field").clazz("android.widget.EditText")), 5_000))
 
-    private fun button(label: String): UiObject2 = requireNotNull(device.wait(
-        Until.findObject(By.desc(label)), 5_000) ?: device.findObject(By.text(label))) { "Missing action $label" }
+    private fun button(label: String): UiObject2 {
+        stage = "click $label"
+        requireNotNull(device.wait(Until.findObject(By.desc(label).enabled(true)), 5_000)
+            ?: device.findObject(By.text(label).enabled(true))) { "Missing action $label" }
+        // Saving the step closes its form and keyboard. Presence alone can expose
+        // the next button while Compose and the resized window still move its bounds.
+        assertFalse("Layout did not settle before $label",
+            requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+                .waitForStable(5_000, 300, 50, true).isTimeout)
+        // Resolve fresh coordinates after the transition; never retry a dispatched click.
+        return requireNotNull(device.findObject(By.desc(label).enabled(true))
+            ?: device.findObject(By.text(label).enabled(true))) { "Action disappeared after layout: $label" }
+    }
 }
