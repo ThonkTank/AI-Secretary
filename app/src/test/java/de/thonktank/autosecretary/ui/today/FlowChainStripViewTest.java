@@ -53,4 +53,105 @@ public final class FlowChainStripViewTest {
             ShadowAlertDialog.getLatestAlertDialog().cancel(); assertTrue(actions.isEmpty());
         } finally { controller.pause().stop().destroy(); }
     }
+    @Test public void confirmingSingleWaitUsesConfirmationTimeAndPersistsOnlyThatWait() {
+        withPersistedStrip((fixture, strip) -> {
+            fixture.start(false); bind(fixture, strip);
+            FlowWaitUiModel wait = fixture.chains().get(0).editableWaits.get(0);
+            group(strip, 0).performClick();
+            fixture.now += 5_000; // Dialog-open time must not shorten the selected duration.
+            confirmMinutes(7);
+            assertEquals(1, fixture.actions.size());
+            TodayAction action = fixture.actions.get(0);
+            assertEquals(wait.runId, action.id); assertEquals(wait.waitId, action.relatedId);
+            assertEquals(fixture.now + 420_000, action.longValue);
+            assertEquals(Long.valueOf(action.longValue), fixture.deadlines().get(wait.runId + "/" + wait.waitId));
+            assertEquals(0, fixture.xp());
+        });
+    }
+
+    @Test public void selectingSecondWaitOfSameNamedRunPreservesAllOtherDeadlines() {
+        withPersistedStrip((fixture, strip) -> {
+            fixture.start(true); fixture.start(true); bind(fixture, strip);
+            var before = fixture.deadlines();
+            FlowWaitUiModel selected = fixture.chains().get(1).editableWaits.get(1);
+            group(strip, 1).performClick();
+            android.app.AlertDialog chooser = ShadowAlertDialog.getLatestAlertDialog();
+            assertEquals(2, chooser.getListView().getCount());
+            chooser.getListView().performItemClick(null, 1, 1);
+            confirmMinutes(9);
+            before.put(selected.runId + "/" + selected.waitId, fixture.now + 540_000);
+            assertEquals(before, fixture.deadlines());
+            assertEquals(1, fixture.actions.size()); assertEquals(0, fixture.xp());
+        });
+    }
+
+    @Test public void cancellingChooserAndChosenDurationLeavesDatabaseUntouched() {
+        withPersistedStrip((fixture, strip) -> {
+            fixture.start(true); bind(fixture, strip); var before = fixture.deadlines();
+            group(strip, 0).performClick(); ShadowAlertDialog.getLatestAlertDialog().cancel();
+            assertEquals(before, fixture.deadlines()); assertTrue(fixture.actions.isEmpty());
+            group(strip, 0).performClick();
+            ShadowAlertDialog.getLatestAlertDialog().getListView().performItemClick(null, 1, 1);
+            descendant(ShadowAlertDialog.getLatestAlertDialog().getWindow().getDecorView(), EditText.class).setText("17");
+            ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick();
+            org.robolectric.shadows.ShadowLooper.idleMainLooper();
+            assertFalse(ShadowAlertDialog.getLatestAlertDialog().isShowing());
+            assertEquals(before, fixture.deadlines()); assertTrue(fixture.actions.isEmpty());
+            assertEquals(0, fixture.xp());
+        });
+    }
+
+    @Test public void readyContainerLongClickAndNamedAccessibleActionEditWithoutCollecting() {
+        withPersistedStrip((fixture, strip) -> {
+            fixture.start(false); fixture.expire(); bind(fixture, strip);
+            assertEquals(FlowChainUiModel.Mode.READY, fixture.chains().get(0).mode);
+            View target = group(strip, 0);
+            assertTrue(target.performLongClick());
+            ShadowAlertDialog.getLatestAlertDialog().cancel();
+            assertTrue(fixture.actions.isEmpty());
+            var info = target.createAccessibilityNodeInfo();
+            assertTrue(info.getActionList().stream().anyMatch(action -> action.getId()
+                    == android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
+                    && target.getContext().getString(R.string.flow_chain_adjust).contentEquals(action.getLabel())));
+            assertTrue(target.performAccessibilityAction(
+                    android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK, null));
+            confirmMinutes(3);
+            assertEquals(1, fixture.actions.size()); assertEquals(0, fixture.xp());
+            assertEquals(FlowChainUiModel.Mode.COUNTDOWN, fixture.chains().get(0).mode);
+        });
+    }
+
+    private void withPersistedStrip(java.util.function.BiConsumer<FlowWaitPersistenceFixture, FlowChainStripView> test) {
+        var controller = Robolectric.buildActivity(Activity.class).setup();
+        try (var fixture = new FlowWaitPersistenceFixture()) {
+            FlowChainStripView strip = new FlowChainStripView(controller.get(), () -> fixture.now);
+            controller.get().setContentView(strip); test.accept(fixture, strip);
+        } finally { controller.pause().stop().destroy(); }
+    }
+
+    private void bind(FlowWaitPersistenceFixture fixture, FlowChainStripView strip) {
+        strip.bind(fixture.chains(), DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT), fixture::accept);
+    }
+    private View group(FlowChainStripView strip, int index) {
+        return ((ViewGroup) strip.getChildAt(0)).getChildAt(index);
+    }
+    private void confirmMinutes(int minutes) {
+        android.app.AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
+        // Dispatch the queued onShow callback at the current virtual time only.
+        org.robolectric.shadows.ShadowLooper.idleMainLooper();
+        View root = dialog.getWindow().getDecorView();
+        descendant(root, EditText.class).setText(String.valueOf(minutes));
+        descendant(root, Spinner.class).setSelection(0);
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick();
+        assertFalse(dialog.isShowing());
+    }
+    private static <T extends View> T descendant(View view, Class<T> type) {
+        if (type.isInstance(view)) return type.cast(view);
+        if (view instanceof ViewGroup) for (int i = 0; i < ((ViewGroup) view).getChildCount(); i++) {
+            T match = descendant(((ViewGroup) view).getChildAt(i), type);
+            if (match != null) return match;
+        }
+        return null;
+    }
+
 }

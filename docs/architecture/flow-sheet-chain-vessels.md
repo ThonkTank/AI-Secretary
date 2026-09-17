@@ -66,3 +66,10 @@ ausdrücklich, dass dieses Pulsieren während der echten Touch-Geste aktiv bleib
 Lokaler Gesamtlauf, PR-Matrix, gemergtes Remote-main, signiertes Release und
 physisches Geräteupgrade sind getrennte Nachweise. Die bloße Existenz dieser
 Tests behauptet weder grüne Läufe noch eine Geräteabnahme.
+
+Die Remediation-Prüfung erweitert `FlowChainStripViewTest` um tatsächliche
+SQLite-Wartezeitänderungen: Bestätigungszeitpunkt, Mehrfachauswahl in gleichnamigen
+Ketten, beide Abbruchwege und Bearbeiten bei Einsammelbereitschaft. Der native
+`readyFlowLongPressAndAccessibleWaitEditNeverCollect` prüft echten Langdruck sowie
+die benannte Accessibility-Aktion bei weiterhin aktiver Pulsanimation. Ergebnisse
+und Phasenstatus werden in `flow-remediation-execution.md` getrennt geführt.

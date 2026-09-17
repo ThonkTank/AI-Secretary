@@ -269,6 +269,78 @@ public final class TodayInteractionInstrumentationTest {
         assertEquals("third", recorded.get(0).id);
     }
 
+
+    @Test public void readyFlowLongPressAndAccessibleWaitEditNeverCollect() {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        activity = (TodayInteractionHarnessActivity) instrumentation.startActivitySync(new Intent(
+                instrumentation.getTargetContext(), TodayInteractionHarnessActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        AtomicReference<View> target = new AtomicReference<>();
+        List<TodayAction> recorded = new java.util.concurrent.CopyOnWriteArrayList<>();
+        instrumentation.runOnMainSync(() -> {
+            FlowChainStripView strip = new FlowChainStripView(activity, () -> 1_000_000L);
+            strip.bind(List.of(de.thonktank.autosecretary.FlowChainFixtures.editableReadyChain("ready")),
+                    DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT), recorded::add);
+            activity.setContentView(strip);
+            target.set(((ViewGroup) strip.getChildAt(0)).getChildAt(0));
+        });
+        Rect bounds = awaitInteractiveBounds(target.get());
+        currentGesture = new TouchGestureDriver(instrumentation, target.get());
+        currentGesture.down(new int[]{bounds.centerX(), bounds.centerY()});
+        currentGesture.holdForLongPress(); currentGesture.up();
+        awaitAccessibleNode(node -> "android.widget.EditText".contentEquals(node.getClassName()));
+        assertTrue(recorded.isEmpty());
+        assertTrue(awaitAccessibleNode(node -> activity.getString(android.R.string.cancel)
+                .equalsIgnoreCase(String.valueOf(node.getText()))).performAction(
+                android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK));
+        awaitCondition("Cancelled dialog must restore the container window", activity::hasWindowFocus);
+        instrumentation.runOnMainSync(() -> {
+            var info = target.get().createAccessibilityNodeInfo();
+            assertTrue(info.getActionList().stream().anyMatch(action -> action.getId()
+                    == android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
+                    && activity.getString(R.string.flow_chain_adjust).contentEquals(action.getLabel())));
+            assertTrue(target.get().performAccessibilityAction(
+                    android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK, null));
+        });
+        var input = awaitAccessibleNode(node -> "android.widget.EditText".contentEquals(node.getClassName()));
+        android.os.Bundle value = new android.os.Bundle();
+        value.putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "3");
+        assertTrue(input.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, value));
+        assertTrue(awaitAccessibleNode(node -> activity.getString(R.string.flow_delay_confirm)
+                .equalsIgnoreCase(String.valueOf(node.getText()))).performAction(
+                android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK));
+        awaitCondition("Accessible confirmation must emit one wait change", () -> recorded.size() == 1);
+        assertEquals(TodayAction.Kind.ADJUST_FLOW_WAIT, recorded.get(0).kind);
+        assertEquals("ready", recorded.get(0).id);
+        assertEquals(de.thonktank.autosecretary.FlowChainFixtures.editableReadyChain("ready")
+                .editableWaits.get(0).waitId, recorded.get(0).relatedId);
+        assertEquals(1_180_000L, recorded.get(0).longValue);
+    }
+
+    private android.view.accessibility.AccessibilityNodeInfo awaitAccessibleNode(
+            java.util.function.Predicate<android.view.accessibility.AccessibilityNodeInfo> match) {
+        long deadline = android.os.SystemClock.uptimeMillis() + 5_000;
+        do {
+            var found = accessibleNode(InstrumentationRegistry.getInstrumentation().getUiAutomation()
+                    .getRootInActiveWindow(), match);
+            if (found != null) return found;
+            android.os.SystemClock.sleep(25);
+        } while (android.os.SystemClock.uptimeMillis() < deadline);
+        throw new AssertionError("Dialog action did not become accessible\n" + diagnostics());
+    }
+
+    private android.view.accessibility.AccessibilityNodeInfo accessibleNode(
+            android.view.accessibility.AccessibilityNodeInfo node,
+            java.util.function.Predicate<android.view.accessibility.AccessibilityNodeInfo> match) {
+        if (node == null) return null;
+        if (node.isVisibleToUser() && match.test(node)) return node;
+        for (int i = 0; i < node.getChildCount(); i++) {
+            var found = accessibleNode(node.getChild(i), match);
+            if (found != null) return found;
+        }
+        return null;
+    }
+
     private Harness mount() {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         Intent intent = new Intent(instrumentation.getTargetContext(),
