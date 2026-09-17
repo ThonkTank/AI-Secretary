@@ -286,27 +286,27 @@ public final class TodayInteractionInstrumentationTest {
         });
         Rect bounds = awaitInteractiveBounds(target.get());
         currentGesture = new TouchGestureDriver(instrumentation, target.get());
-        currentGesture.down(new int[]{bounds.centerX(), bounds.centerY()});
-        currentGesture.holdForLongPress(); currentGesture.up();
-        awaitAccessibleNode(node -> "android.widget.EditText".contentEquals(node.getClassName()));
+        accessibleAfter(() -> {
+            currentGesture.down(new int[]{bounds.centerX(), bounds.centerY()});
+            currentGesture.holdForLongPress(); currentGesture.up();
+        }, node -> "android.widget.EditText".contentEquals(node.getClassName()));
         assertTrue(recorded.isEmpty());
-        assertTrue(awaitAccessibleNode(node -> activity.getString(android.R.string.cancel)
+        assertTrue(currentAccessibleNode(node -> activity.getString(android.R.string.cancel)
                 .equalsIgnoreCase(String.valueOf(node.getText()))).performAction(
                 android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK));
         awaitCondition("Cancelled dialog must restore the container window", activity::hasWindowFocus);
-        instrumentation.runOnMainSync(() -> {
+        var input = accessibleAfter(() -> instrumentation.runOnMainSync(() -> {
             var info = target.get().createAccessibilityNodeInfo();
             assertTrue(info.getActionList().stream().anyMatch(action -> action.getId()
                     == android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK
                     && activity.getString(R.string.flow_chain_adjust).contentEquals(action.getLabel())));
             assertTrue(target.get().performAccessibilityAction(
                     android.view.accessibility.AccessibilityNodeInfo.ACTION_LONG_CLICK, null));
-        });
-        var input = awaitAccessibleNode(node -> "android.widget.EditText".contentEquals(node.getClassName()));
+        }), node -> "android.widget.EditText".contentEquals(node.getClassName()));
         android.os.Bundle value = new android.os.Bundle();
         value.putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "3");
         assertTrue(input.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, value));
-        assertTrue(awaitAccessibleNode(node -> activity.getString(R.string.flow_delay_confirm)
+        assertTrue(currentAccessibleNode(node -> activity.getString(R.string.flow_delay_confirm)
                 .equalsIgnoreCase(String.valueOf(node.getText()))).performAction(
                 android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK));
         awaitCondition("Accessible confirmation must emit one wait change", () -> recorded.size() == 1);
@@ -317,16 +317,27 @@ public final class TodayInteractionInstrumentationTest {
         assertEquals(1_180_000L, recorded.get(0).longValue);
     }
 
-    private android.view.accessibility.AccessibilityNodeInfo awaitAccessibleNode(
+    private android.view.accessibility.AccessibilityNodeInfo accessibleAfter(Runnable action,
             java.util.function.Predicate<android.view.accessibility.AccessibilityNodeInfo> match) {
-        long deadline = android.os.SystemClock.uptimeMillis() + 5_000;
-        do {
-            var found = accessibleNode(InstrumentationRegistry.getInstrumentation().getUiAutomation()
-                    .getRootInActiveWindow(), match);
-            if (found != null) return found;
-            android.os.SystemClock.sleep(25);
-        } while (android.os.SystemClock.uptimeMillis() < deadline);
-        throw new AssertionError("Dialog action did not become accessible\n" + diagnostics());
+        var automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+        AtomicReference<android.view.accessibility.AccessibilityNodeInfo> result = new AtomicReference<>();
+        try {
+            automation.executeAndWaitForEvent(action, event -> {
+                result.set(accessibleNode(automation.getRootInActiveWindow(), match));
+                return result.get() != null;
+            }, 5_000);
+        } catch (java.util.concurrent.TimeoutException timeout) {
+            throw new AssertionError("Dialog did not emit the expected accessibility state\n" + diagnostics(), timeout);
+        }
+        return result.get();
+    }
+
+    private android.view.accessibility.AccessibilityNodeInfo currentAccessibleNode(
+            java.util.function.Predicate<android.view.accessibility.AccessibilityNodeInfo> match) {
+        var node = accessibleNode(InstrumentationRegistry.getInstrumentation().getUiAutomation()
+                .getRootInActiveWindow(), match);
+        assertNotNull("Expected action in the accessible dialog", node);
+        return node;
     }
 
     private android.view.accessibility.AccessibilityNodeInfo accessibleNode(

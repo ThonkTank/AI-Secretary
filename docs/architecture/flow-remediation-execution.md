@@ -41,3 +41,11 @@ mit sechs Tests, null Fehlern. Datenbank- und Identitätsassertionen sowie benan
 Accessibility-Aktion bestehen. Native APKs, vollständiger lokaler Lauf und PR-Matrix
 sind vor dem Merge noch ausstehend. Roadmap-Abgleich des Patches: alle P1-Szenarien
 abgedeckt; keine produktive Buchungs-/Schemaänderung.
+
+P1 zweite Korrekturrunde: Der Workflow-Vertrag lehnt Polling in kritischen nativen
+Interaktionen ab. Der neue Dialogzugriff wartete zunächst durch begrenztes Polling
+auf den Accessibility-Baum. Er verwendet nun UiAutomation.executeAndWaitForEvent
+mit harter Zeitgrenze; Aktion und beobachtbares Accessibility-Ereignis sind gekoppelt.
+Der Vertrag bleibt unverändert. Auch der lokale API-26-Emulator endete beim Boot
+mit SIGSEGV, ohne App-Test. Native Abnahme erfolgt deshalb über die CI-Emulatoren;
+kein weiterer lokaler Emulator-Neustart und kein behaupteter lokaler Geräteerfolg.
