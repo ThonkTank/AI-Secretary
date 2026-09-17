@@ -66,8 +66,8 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private static final String SAVED_REQUEST_SEQUENCE = "today_request_sequence";
     private static final String SAVED_TIMER_PERMISSION_WARNED = "today_timer_permission_warned";
     private final TodayUseCases today;
-    @Nullable private FlowUseCases flows;
-    @Nullable private FlowDeadlineScheduler flowDeadlines;
+    @Nullable private final FlowUseCases flows;
+    @Nullable private final FlowDeadlineScheduler flowDeadlines;
     private final CatalogUseCases catalog;
     private final DashboardPresenter dashboard;
     private final CalendarDataSource calendar;
@@ -102,9 +102,8 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 container.dashboardPresenter, container.calendar,
                 container.uiPreferences, container.clock, container.logger, container.texts,
                 container.presentationInvalidations, container.timers, navigator,
-                savedState, worker, null);
-        this.flows = container.flows;
-        flowDeadlines = new FlowDeadlineScheduler(container.clockInvalidations::materializeForeground);
+                savedState, worker, null, container.flows,
+                new FlowDeadlineScheduler(container.clockInvalidations::materializeForeground));
     }
 
     public TodayViewModel(TodayUseCases today, CatalogUseCases catalog,
@@ -127,8 +126,21 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                   @Nullable TimerManager timers, AppNavigator navigator,
                   SavedStateHandle savedState,
                   ExecutorService worker, @Nullable Executor collectionExecutor) {
+        this(today, catalog, dashboard, calendar, preferences, clock, logger, texts, invalidations,
+                timers, navigator, savedState, worker, collectionExecutor, null, null);
+    }
+
+    /** Shared production/test composition; flow scheduling exists before the initial read starts. */
+    public TodayViewModel(TodayUseCases today, CatalogUseCases catalog,
+                  DashboardPresenter dashboard, CalendarDataSource calendar,
+                  UiPreferences preferences, Clock clock, AppLogger logger,
+                  UiTextProvider texts, PresentationInvalidationSource invalidations,
+                  @Nullable TimerManager timers, AppNavigator navigator, SavedStateHandle savedState,
+                  ExecutorService worker, @Nullable Executor collectionExecutor,
+                  @Nullable FlowUseCases flows, @Nullable FlowDeadlineScheduler flowDeadlines) {
         this.today = today;
-        this.flows = null;
+        this.flows = flows;
+        this.flowDeadlines = flowDeadlines;
         this.catalog = catalog;
         this.dashboard = dashboard;
         this.calendar = calendar;

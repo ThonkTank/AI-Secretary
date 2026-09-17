@@ -89,6 +89,14 @@ public final class TodayInteractionInstrumentationTest {
         new TodayProductInteractionScenario().execute();
     }
 
+    @Test public void hiddenFlowReappearsAtDeadlineInTheProductActivity() {
+        new FlowDeadlineProductScenario().execute(false);
+    }
+
+    @Test public void hiddenFlowReappearsWhenTheProductReturnsAfterDeadline() {
+        new FlowDeadlineProductScenario().execute(true);
+    }
+
     @Test public void longPressStartsReorder() {
         GestureScenario scenario = gestureScenario();
 
