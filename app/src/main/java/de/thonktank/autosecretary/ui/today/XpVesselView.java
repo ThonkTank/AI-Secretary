@@ -8,6 +8,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.animation.PathInterpolator;
 
 import de.thonktank.autosecretary.presentation.today.XpVesselUiModel;
@@ -29,6 +30,10 @@ public final class XpVesselView extends View {
     private boolean compact;
     private de.thonktank.autosecretary.presentation.today.FlowChainUiModel chain;
     private final Runnable clockFrame = () -> { invalidate(); scheduleClock(); };
+    private final Runnable animationVisibility = this::refreshAnimationVisibility;
+    private final ViewTreeObserver.OnGlobalLayoutListener layoutVisibility = this::refreshAnimationVisibility;
+    private final ViewTreeObserver.OnScrollChangedListener scrollVisibility = this::refreshAnimationVisibility;
+    private ViewTreeObserver animationObserver;
 
     public void setCompact(boolean value) {
         compact = value;
@@ -45,29 +50,41 @@ public final class XpVesselView extends View {
         scheduleClock();
     }
 
-    void refreshClockVisibility() { scheduleClock(); }
+    void refreshAnimationVisibility() {
+        if (ready && isAnimationVisible() && ValueAnimator.areAnimatorsEnabled()) startPulse();
+        else stopPulse();
+        scheduleClock();
+    }
+
+    private boolean isAnimationVisible() {
+        return isAttachedToWindow() && getWindowVisibility() == VISIBLE && isShown()
+                && getGlobalVisibleRect(new android.graphics.Rect());
+    }
 
     private void scheduleClock() {
         removeCallbacks(clockFrame);
         if (chain != null && chain.mode == de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.COUNTDOWN
-                && isAttachedToWindow() && getWindowVisibility() == VISIBLE && isShown()
-                && getGlobalVisibleRect(new android.graphics.Rect())
+                && isAnimationVisible()
                 && chain.readyAt > currentTimeMillis.getAsLong())
             postDelayed(clockFrame, ValueAnimator.areAnimatorsEnabled() ? 50L : 1000L);
     }
 
     @Override protected void onAttachedToWindow() {
-        super.onAttachedToWindow(); post(this::refreshClockVisibility);
+        super.onAttachedToWindow();
+        animationObserver = getViewTreeObserver();
+        animationObserver.addOnGlobalLayoutListener(layoutVisibility);
+        animationObserver.addOnScrollChangedListener(scrollVisibility);
+        post(animationVisibility);
     }
 
     @Override protected void onVisibilityChanged(View changedView, int visibility) {
         super.onVisibilityChanged(changedView, visibility);
-        if (clockFrame != null) scheduleClock();
+        if (clockFrame != null) refreshAnimationVisibility();
     }
 
     @Override protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility);
-        if (clockFrame != null) scheduleClock();
+        if (clockFrame != null) refreshAnimationVisibility();
     }
 
     private ValueAnimator pulse;
@@ -102,8 +119,7 @@ public final class XpVesselView extends View {
         setActivated(model.ready);
         animateFill(nextFill);
         setEnabled(model.ready);
-        if (model.ready && android.animation.ValueAnimator.areAnimatorsEnabled()) startPulse();
-        else stopPulse();
+        refreshAnimationVisibility();
         setContentDescription(model.ready
                 ? getContext().getString(R.string.vessel_ready_breakdown,
                         this.result, this.base, multiplierLabel)
@@ -257,7 +273,13 @@ public final class XpVesselView extends View {
     }
 
     @Override protected void onDetachedFromWindow() {
+        removeCallbacks(animationVisibility);
         removeCallbacks(clockFrame);
+        if (animationObserver != null && animationObserver.isAlive()) {
+            animationObserver.removeOnGlobalLayoutListener(layoutVisibility);
+            animationObserver.removeOnScrollChangedListener(scrollVisibility);
+        }
+        animationObserver = null;
         stopPulse();
         if (fillAnimator != null) fillAnimator.cancel();
         fillAnimator = null;

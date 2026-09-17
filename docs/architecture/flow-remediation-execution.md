@@ -7,8 +7,8 @@ Remote-main `9b0d3dc7`. Isolierter Worktree; alter Frontend-Checkout unveränder
 |---|---|
 | P0 Prüfablauf | Erfüllt; wird in den Folgephasen weiter angewendet |
 | P1 Wartezeitbedienung | Abgeschlossen: PR #375, Remote-main 83750722 |
-| P2 Ablaufende | Implementierung und gezielte Prüfung |
-| P3 Animation/Modell | Ausstehend |
+| P2 Ablaufende | Abgeschlossen: PR #377, Remote-main cd7c51df |
+| P3 Animation/Modell | Regression und Implementierung |
 | P4 Handy | Offen: adb meldet kein Gerät |
 
 ## P1 – Umfang und Prüfweg
@@ -88,3 +88,66 @@ Testklasse ist erfolgreich kompiliert. 16 schnelle Workflow-Verträge grün.
 Native MainActivity-Szenarien prüfen Vordergrund-Fälligkeit, tatsächliches
 Hintergrund/Resume und Activity-Recreation; Fixtures sind auf das Testpaket begrenzt.
 Vollständiger lokaler Lauf und PR-Matrix stehen vor dem Phasenabschluss noch aus.
+
+## P2 – Abschluss
+
+PR #377, geprüfter Head `98d2d071`, Squash-Merge auf Remote-main `cd7c51df`.
+CI-Lauf `35207597564`: alle erforderlichen Checks einschließlich der sechs
+normalen/animierten API-26/35/37-Lanes erfolgreich. Vollständiges check-all.sh
+lokal erfolgreich (Gradle 30m06s): 801 App-Tests, null Fehler, ein optionaler
+Benchmark ausgelassen; Lint, APKs, Identität und Größenbudgets bestanden.
+Der langsame Lauf wurde anhand zweier Thread-Stichproben als fortschreitend
+bestätigt: unterschiedliche Tests, anschließend aktive Lint-/R8-Arbeit.
+Kein Abbruch oder Wiederholung ohne Diagnose.
+
+## P3 – Plan
+
+Basis `cd7c51df`, Branch `codex/flow-vessel-lifecycle`. Zuerst Regression auf dem
+unveränderten Produktcode: angehängte, aber vollständig herausgescrollte Ketten,
+gewöhnliche Tau-Container in einem übergeordneten ScrollView, ausgeblendete
+Eltern und Fenster, Entfernen/Wiedereinfügen sowie echte wiederholte
+Zeichenanforderungen im unsichtbaren Zustand. Zusätzlich Countdown,
+reduzierte Bewegung und endliche Füllanimation. Kontrollierte Framework-
+Layout-/Scrollsignale ersetzen im Robolectric-Viewport den nativen Traversal;
+der Test ruft keine Sichtbarkeitsmethode des Containers selbst auf.
+
+Korrektur an der gemeinsamen XpVesselView: Puls und Countdown an tatsächliche
+Sichtbarkeit binden; globale Layout-/Scrollsignale und Fensterlebenszyklus
+beobachten, beim Entfernen alle Listener und eigenen Rückrufe lösen.
+Native Swipe-/Tap-Prüfung um abgeschnittene Container und tatsächlichen
+Hintergrund/Vordergrund-Wechsel erweitern. FocusTaskUiModel.waits und den
+ungenutzten Builder-Zugang nach Referenzprüfung entfernen. Keine Aussage
+über gemessenen Akkugewinn und keine Datenbankänderung.
+
+P2 Main-/Release-Nachweis: Workflow `35210277442` für `cd7c51df` vollständig
+erfolgreich einschließlich signiertem aktuellem Upgrade und historischen
+Upgrade-Lanes. Veröffentlichung `forest-android-1017801` / Version 0.2.178.
+
+P3 Prüfaufbaukorrekturen: Der erste Testentwurf konnte den überladenen
+Shadows.shadowOf-Aufruf gegen das aktuelle Compile-SDK nicht auflösen;
+Shadow.extract vermeidet den Verweis auf eine entfernte Android-Klasse.
+Die erste Regression enthielt außerdem Testhostfehler: unvollständig vermessene
+Fenster-Vorfahren und einen auf API 26/35 noch nicht öffentlichen Scroll-Dispatcher.
+Der Test misst deshalb das Dekorfenster und liefert das Framework-Scrollsignal
+über ReflectionHelpers. Diagnose eines weiteren Fehlers: attached=true,
+shown=true und positive Geometrie, aber window=GONE. Das einfache Test-Activity
+benötigt das App-Sichtbarkeitsereignis des WindowManagers über den tatsächlichen
+ViewRoot; die produktive Sichtbarkeit wird nicht über einen Test-Override ersetzt.
+Ein kontrollierter 16-ms-Frame-Takt erlaubt den Nachweis tatsächlicher
+Zeichenanforderungen; vorheriges Leerlaufen der Simulation wäre hierfür ungeeignet.
+Die positive Kontrolle verlangt zunächst Frames im sichtbaren Zustand.
+
+Gezielte Prüfung nach diesen Testhostkorrekturen: Einhängen/Entfernen/Wiedereinfügen
+und sichtbare/unsichtbare Zeichenanforderungen auf API 26/35 erfolgreich (vier Fälle).
+Die korrigierte gesamte Regression wird nochmals am unveränderten Produktstand
+verglichen, bevor die endgültige Korrektur abgenommen wird.
+
+P3 eindeutiger negativer Nachweis auf dem ursprünglichen Produktcode: je API 26/35
+scheitern Einhängezustand, ausgeblendete Eltern/Fenster, übergeordnetes Scrollen,
+horizontales Clipping und fortlaufende Zeichenanforderungen unsichtbarer bereiter
+Container (zehn Puls-Regressionsfälle). Für die Frame-Prüfung besteht zuerst die
+positive Kontrolle des sichtbaren Containers. Der sichtbare Countdown benötigt
+außerdem die Layoutnachführung beim ersten Einhängen. Die Füllanimation wird in
+16-ms-Schritten simuliert: ein einzelner großer Sprung liefert bei pausierter
+Vsync-Simulation nur einen Frame und ist kein Nachweis einer abgeschlossenen
+endlichen Animation. Die Produktkorrektur wird danach unverändert wieder angewandt.

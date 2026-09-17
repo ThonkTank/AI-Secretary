@@ -55,7 +55,7 @@ final class FlowChainStripView extends HorizontalScrollView {
 
     @Override protected void onScrollChanged(int x, int y, int oldX, int oldY) {
         super.onScrollChanged(x, y, oldX, oldY);
-        if (groups != null) for (Group group : groups.values()) group.vessel.refreshClockVisibility();
+        if (groups != null) for (Group group : groups.values()) group.vessel.refreshAnimationVisibility();
         if (grainChanged != null) grainChanged.run();
     }
 

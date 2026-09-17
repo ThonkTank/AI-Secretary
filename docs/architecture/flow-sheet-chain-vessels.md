@@ -83,3 +83,22 @@ werden vor der initialen ViewModel-Projektion verbunden.
 `TodayInteractionInstrumentationTest.hiddenFlowReappearsAtDeadlineInTheProductActivity`
 und `hiddenFlowReappearsWhenTheProductReturnsAfterDeadline` prüfen dieselben
 Übergänge mit realer MainActivity, Systemzeit und Activity-Recreation.
+
+### Sichtbarkeit der gemeinsamen Tau-Animation
+
+Die gemeinsame `XpVesselView` steuert Puls und Countdown über denselben
+Sichtbarkeitsvertrag: angehängtes, sichtbares Fenster, sichtbare Vorfahren und ein
+nicht vollständig abgeschnittener Bereich. Layout- und Scrollereignisse des
+View-Baums erfassen auch vertikal herausgescrollte oder ausgeblendete Ablaufblätter
+und gewöhnliche Aufgabencontainer. Beim Entfernen werden Beobachter, Countdown-
+Rückrufe und Animationen gelöst. Erneutes Einhängen startet einen weiterhin bereiten
+Puls ohne erneute Datenbindung; reduzierte Bewegung unterdrückt ihn weiterhin.
+Die endliche Füllanimation bleibt davon unabhängig.
+
+`XpVesselLifecycleTest` prüft auf API 26/35 Sichtbarkeit, Scroll-Clipping,
+Fensterwechsel, Wiederanbindung, Animationsframes, Countdown und Füllanimation.
+Native Tests prüfen zusätzlich Scrollen ohne Einsammeln, den anschließenden Tap
+auf die richtige Kette und den tatsächlichen Hintergrund/Vordergrund-Wechsel
+mit der MainActivity. Das ungenutzte `FocusTaskUiModel.waits` samt Builder ist
+entfernt; bearbeitbare Wartezeiten bleiben in `FlowChainUiModel.editableWaits`.
+Es wurde kein Akkuverbrauch gemessen.
