@@ -8,7 +8,7 @@ Remote-main `9b0d3dc7`. Isolierter Worktree; alter Frontend-Checkout unveränder
 | P0 Prüfablauf | Erfüllt; wird in den Folgephasen weiter angewendet |
 | P1 Wartezeitbedienung | Abgeschlossen: PR #375, Remote-main 83750722 |
 | P2 Ablaufende | Abgeschlossen: PR #377, Remote-main cd7c51df |
-| P3 Animation/Modell | Regression und Implementierung |
+| P3 Animation/Modell | Implementiert; integrierte Abnahme in PR #378 |
 | P4 Handy | Offen: adb meldet kein Gerät |
 
 ## P1 – Umfang und Prüfweg
@@ -151,3 +151,27 @@ außerdem die Layoutnachführung beim ersten Einhängen. Die Füllanimation wird
 16-ms-Schritten simuliert: ein einzelner großer Sprung liefert bei pausierter
 Vsync-Simulation nur einen Frame und ist kein Nachweis einer abgeschlossenen
 endlichen Animation. Die Produktkorrektur wird danach unverändert wieder angewandt.
+
+
+P3 kombinierter Prüfsatz erfolgreich: 14 Lifecycle-Fälle auf API 26/35,
+sechs Wartezeitbedienfälle und acht Fälligkeits-Integrationsfälle, insgesamt
+28 Tests ohne Fehler. Native Testklasse kompiliert, 16 Workflow-Verträge grün.
+
+P3 PR #378, erster Head `a216ccf7`: lokale 815 App-Tests ohne Fehler, ein
+optionaler Benchmark ausgelassen. Der anschließende Bau-/Lint-Teil wurde
+bewusst beendet, als Remote-main durch PR #376 und #379 auf `22640bb5`
+fortgeschritten war. Dies ist kein vollständiger lokaler Freigabenachweis.
+Dieser freigegebene Stand wird nun integriert und der vollständige lokale
+Prüflauf für die Kombination neu gestartet.
+
+CI-Lauf `35212501367`, Versuch 1: Qualität/Bildvergleiche/Bau und fünf
+Android-Lanes grün. API 26 mit Animationen verlor nach 19 erfolgreichen
+Tests während eines bestehenden FlowTileEditor-Tests das Gerät. Gesicherte
+Artefakte zeigen einen neuen Android-Boot ab 10:58:48 UTC (init/vold/zygote),
+`device offline` und einen unvollständigen Lauf: 19 von 39 Tests. Die neuen
+Today-Tests waren noch nicht erreicht. Eine Ursache des gesamten Guest-Neustarts
+ist aus diesen Artefakten nicht weiter ableitbar. Nach dieser Diagnose wurde
+nur die betroffene Lane auf unverändertem Code einmal bewusst wiederholt
+(Versuch 2); keine automatische Wiederholungsregel und keine Änderung an Tests
+oder Prüfgates. Artefakt:
+`animation-instrumentation-failure-api-26-b59f76b4d910cb061dbf4bd0097c9919c94b4e60-1`.
