@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary.ui.today;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -252,6 +253,10 @@ public final class TodayInteractionInstrumentationTest {
                         ((XpVesselView) first.getChildAt(0)).isPulsing());
             });
         }
+        instrumentation.runOnMainSync(() -> {
+            ViewGroup third = (ViewGroup) ((ViewGroup) strip.getChildAt(0)).getChildAt(2);
+            assertFalse("Fully clipped chains must not pulse", ((XpVesselView) third.getChildAt(0)).isPulsing());
+        });
         logPhase("flow-drag");
         currentGesture = new TouchGestureDriver(instrumentation, strip);
         currentGesture.down(new int[]{bounds.right - 8, bounds.centerY()});
@@ -270,6 +275,12 @@ public final class TodayInteractionInstrumentationTest {
             });
         });
         Rect target = awaitInteractiveBounds(last.get());
+        instrumentation.runOnMainSync(() -> {
+            ViewGroup first = (ViewGroup) ((ViewGroup) strip.getChildAt(0)).getChildAt(0);
+            assertFalse("The scrolled-out chain must stop pulsing", ((XpVesselView) first.getChildAt(0)).isPulsing());
+            assertEquals(android.animation.ValueAnimator.areAnimatorsEnabled(),
+                    ((XpVesselView) ((ViewGroup) last.get()).getChildAt(0)).isPulsing());
+        });
         logPhase("flow-collect");
         currentGesture.tap(new int[]{target.centerX(), target.centerY()});
         awaitCondition("Tapping the last container must collect", () -> !recorded.isEmpty());
@@ -277,6 +288,43 @@ public final class TodayInteractionInstrumentationTest {
         assertEquals("third", recorded.get(0).id);
     }
 
+
+    @Test public void readyVesselStopsInTheBackgroundAndResumesWithTheProductWindow() {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        try (ProductActivitySession session = new ProductActivitySession(instrumentation)) {
+            de.thonktank.autosecretary.MainActivity product = session.launch();
+            AtomicReference<XpVesselView> mounted = new AtomicReference<>();
+            AtomicReference<View> root = new AtomicReference<>();
+            instrumentation.runOnMainSync(() -> {
+                android.widget.FrameLayout content = new android.widget.FrameLayout(product) {
+                    @Override protected void onWindowVisibilityChanged(int visibility) {
+                        super.onWindowVisibilityChanged(visibility);
+                        PresentationTrace.emit("vessel-test", "window", String.valueOf(visibility));
+                    }
+                };
+                XpVesselView vessel = new XpVesselView(product);
+                vessel.setPalette(DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT));
+                vessel.bind(de.thonktank.autosecretary.FlowChainFixtures.chain("lifecycle", "Wäsche",
+                        de.thonktank.autosecretary.presentation.today.FlowChainUiModel.Mode.READY, 4_000_000).vessel);
+                content.addView(vessel, new android.widget.FrameLayout.LayoutParams(100, 100));
+                product.setContentView(content);
+                content.getViewTreeObserver().addOnGlobalLayoutListener(() ->
+                        PresentationTrace.emit("vessel-test", "layout", "ready"));
+                mounted.set(vessel); root.set(content);
+            });
+            XpVesselView vessel = mounted.get();
+            PresentationAwaiter.await(instrumentation, "Ready vessel becomes visible", () ->
+                    vessel.getGlobalVisibleRect(new Rect()) && vessel.isPulsing()
+                            == android.animation.ValueAnimator.areAnimatorsEnabled(), root.get());
+            session.background();
+            PresentationAwaiter.await(instrumentation, "Background window stops ready pulse", () ->
+                    vessel.getWindowVisibility() != View.VISIBLE && !vessel.isPulsing(), root.get());
+            assertEquals(product, session.foreground());
+            PresentationAwaiter.await(instrumentation, "Returning window resumes its ready vessel", () ->
+                    vessel.getWindowVisibility() == View.VISIBLE && vessel.isPulsing()
+                            == android.animation.ValueAnimator.areAnimatorsEnabled(), root.get());
+        }
+    }
 
     @Test public void readyFlowLongPressAndAccessibleWaitEditNeverCollect() {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
