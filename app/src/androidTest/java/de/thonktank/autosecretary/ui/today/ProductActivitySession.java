@@ -27,6 +27,8 @@ public final class ProductActivitySession implements AutoCloseable, Application.
     private volatile MainActivity resumed;
     private CountDownLatch resumeSignal;
     private CountDownLatch destroySignal;
+    private CountDownLatch stopSignal;
+    private MainActivity backgroundActivity;
 
     public ProductActivitySession(Instrumentation instrumentation) {
         application = (Application) instrumentation.getTargetContext().getApplicationContext();
@@ -42,6 +44,22 @@ public final class ProductActivitySession implements AutoCloseable, Application.
         MainActivity old = resumed;
         if (old == null) throw new AssertionError("No resumed product activity to recreate");
         return resumeAfter(old, old::recreate);
+    }
+
+    void background() {
+        CountDownLatch signal = new CountDownLatch(1);
+        onMain(() -> {
+            backgroundActivity = resumed;
+            stopSignal = signal;
+            if (backgroundActivity == null || !backgroundActivity.moveTaskToBack(true))
+                throw new AssertionError("Product task could not move to background");
+        });
+        await(signal, "Product background stop");
+    }
+
+    MainActivity foreground() {
+        return resumeAfter(null, () -> application.startActivity(new Intent(application, MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)));
     }
 
     private MainActivity resumeAfter(MainActivity old, Runnable action) {
@@ -119,6 +137,9 @@ public final class ProductActivitySession implements AutoCloseable, Application.
     }
     @Override public void onActivityStarted(Activity activity) { event(activity, "STARTED"); }
     @Override public void onActivityPaused(Activity activity) { event(activity, "PAUSED"); }
-    @Override public void onActivityStopped(Activity activity) { event(activity, "STOPPED"); }
+    @Override public void onActivityStopped(Activity activity) {
+        event(activity, "STOPPED");
+        if (activity == backgroundActivity && stopSignal != null) stopSignal.countDown();
+    }
     @Override public void onActivitySaveInstanceState(Activity activity, Bundle state) { }
 }

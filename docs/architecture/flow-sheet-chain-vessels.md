@@ -73,3 +73,13 @@ Ketten, beide Abbruchwege und Bearbeiten bei Einsammelbereitschaft. Der native
 `readyFlowLongPressAndAccessibleWaitEditNeverCollect` prüft echten Langdruck sowie
 die benannte Accessibility-Aktion bei weiterhin aktiver Pulsanimation. Ergebnisse
 und Phasenstatus werden in `flow-remediation-execution.md` getrennt geführt.
+
+`FlowDeadlineIntegrationTest` verbindet auf API 26/35 die kontrollierte Zeit mit
+dem produktiven Scheduler, ClockInvalidationSource, TodayViewModel,
+DashboardPresenter, SQLite und dem gemessenen nativen Renderer. Die Aktivierung
+wird nicht aus dem Test aufgerufen. Verlängern, Verkürzen, Hintergrund/Resume und
+Einsammeln nach der letzten Wartephase sind eingeschlossen. Flows und Scheduler
+werden vor der initialen ViewModel-Projektion verbunden.
+`TodayInteractionInstrumentationTest.hiddenFlowReappearsAtDeadlineInTheProductActivity`
+und `hiddenFlowReappearsWhenTheProductReturnsAfterDeadline` prüfen dieselben
+Übergänge mit realer MainActivity, Systemzeit und Activity-Recreation.
