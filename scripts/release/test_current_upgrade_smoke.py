@@ -34,13 +34,19 @@ class CurrentUpgradeSmokeTest(unittest.TestCase):
             packageName=self.plan["packageName"], apkAsset=self.apk.name,
             apkSizeBytes=self.apk.stat().st_size, sha256=hashlib.sha256(self.apk.read_bytes()).hexdigest(),
             signerSha256=self.plan["signerSha256"], commitSha="b" * 40)))
-        self.template = json.loads((ROOT / "release/current-smoke/schema-28.json").read_text())
-        self.contract = (ROOT / DATABASE_CONTRACT).read_text()
+        self.target_contract = (ROOT / DATABASE_CONTRACT).read_text()
+        self.target_version = database_version(self.target_contract)
+        self.source_version = self.target_version - 1
+        self.source_contract = self.target_contract.replace(
+            f"VERSION = {self.target_version};", f"VERSION = {self.source_version};")
+        self.template = json.loads(
+            (ROOT / f"release/current-smoke/schema-{self.source_version}.json").read_text())
 
     def build(self, **overrides):
         arguments = dict(plan=self.plan, release=self.release, tag_ref=self.tag,
                          metadata_path=self.metadata, apk_path=self.apk,
-                         source_contract=self.contract, target_contract=self.contract, template=self.template)
+                         source_contract=self.source_contract,
+                         target_contract=self.target_contract, template=self.template)
         arguments.update(overrides)
         return fixture(**arguments)
 
@@ -63,16 +69,18 @@ class CurrentUpgradeSmokeTest(unittest.TestCase):
             self.assertNotIn("${TODAY}", json.dumps(result))
         self.assertEqual(before, self.template)
 
-    def test_same_schema_is_only_allowed_for_explicit_current_smoke(self):
+    def test_current_smoke_keeps_its_explicit_contract_across_a_schema_upgrade(self):
         result = self.build()
-        self.assertEqual(28, result["source"]["databaseVersion"])
-        self.assertEqual(28, result["targetDatabaseVersion"])
+        self.assertEqual(self.source_version, result["source"]["databaseVersion"])
+        self.assertEqual(self.target_version, result["targetDatabaseVersion"])
         validate_current_smoke(result)
         with self.assertRaises(UpgradeFixtureError):
             validate_fixture(result)
         historical = deepcopy(result)
         historical.pop("kind")
         historical["contractVersion"] = 1
+        validate_fixture(historical)
+        historical["targetDatabaseVersion"] = historical["source"]["databaseVersion"]
         with self.assertRaises(UpgradeFixtureError):
             validate_fixture(historical)
         result["kind"] = "historical"
@@ -95,12 +103,14 @@ class CurrentUpgradeSmokeTest(unittest.TestCase):
                 select_source(self.plan, releases)
 
     def test_source_metadata_format_is_not_used_as_database_version(self):
-        self.assertEqual(28, database_version(self.contract))
+        self.assertEqual(self.target_version, database_version(self.target_contract))
         self.assertEqual(1, json.loads(self.metadata.read_text())["schemaVersion"])
         with self.assertRaises(UpgradeFixtureError):
-            self.build(source_contract=self.contract.replace("VERSION = 28;", "VERSION = 29;"))
+            self.build(source_contract=self.source_contract.replace(
+                f"VERSION = {self.source_version};", f"VERSION = {self.source_version + 1};"))
         with self.assertRaises(UpgradeFixtureError):
-            self.build(target_contract=self.contract.replace("VERSION = 28;", "VERSION = 26;"))
+            self.build(target_contract=self.target_contract.replace(
+                f"VERSION = {self.target_version};", f"VERSION = {self.source_version - 1};"))
         with self.assertRaises(UpgradeFixtureError):
             database_version("// no database version")
 
@@ -131,7 +141,8 @@ class CurrentUpgradeSmokeTest(unittest.TestCase):
 
     def test_current_fixture_is_valid_in_real_sqlite_and_preserves_all_seed_values(self):
         result = self.build()
-        schema = json.loads(next((ROOT / "app/schemas").rglob("28.json")).read_text())["database"]
+        schema = json.loads(next(
+            (ROOT / "app/schemas").rglob(f"{self.source_version}.json")).read_text())["database"]
         database = sqlite3.connect(":memory:")
         self.addCleanup(database.close)
         database.execute("PRAGMA foreign_keys=ON")

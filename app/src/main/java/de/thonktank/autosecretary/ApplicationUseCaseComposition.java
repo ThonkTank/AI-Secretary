@@ -31,6 +31,7 @@ import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
 import de.thonktank.autosecretary.domain.usecase.HarvestOccurrence;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadCapacityResources;
+import de.thonktank.autosecretary.domain.usecase.LoadAgentTaskCatalog;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.LoadFlowRuns;
 import de.thonktank.autosecretary.domain.usecase.LoadStepFlowSetup;
@@ -50,6 +51,7 @@ import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
 import de.thonktank.autosecretary.domain.usecase.UpdateTask;
+import de.thonktank.autosecretary.domain.usecase.ApplyAgentTaskChangeSet;
 
 /** Concrete composition root for the four focused application slices. */
 final class ApplicationUseCaseComposition {
@@ -90,6 +92,8 @@ final class ApplicationUseCaseComposition {
         UpdateTask update = new UpdateTask(catalogRepository, stepRepository, todayRepository,
                 flowRepository,
                 transactions, ids, clock);
+        LoadAgentTaskCatalog loadAgentTaskCatalog = new LoadAgentTaskCatalog(
+                new LoadTaskCatalog(catalogRepository, stepRepository));
         catalog = new CatalogUseCases(create, update,
                 new MoveTaskPlacement(catalogRepository, todayRepository, transactions),
                 new DeleteTask(catalogRepository, transactions),
@@ -99,7 +103,9 @@ final class ApplicationUseCaseComposition {
                 new MoveTaskStep(catalogRepository, stepRepository, todayRepository, transactions),
                 new SwapTaskSteps(catalogRepository, stepRepository, todayRepository, transactions),
                 new SaveTaskConfiguration(catalogRepository, stepRepository, flowRepository,
-                        transactions, create, update, ids));
+                        transactions, create, update, ids), loadAgentTaskCatalog,
+                new ApplyAgentTaskChangeSet(catalogRepository, transactions, create, update,
+                        loadAgentTaskCatalog));
 
         ToggleStep toggleStep = new ToggleStep(catalogRepository, stepRepository,
                 todayRepository, transactions, clock, policies, flowRuntime);
