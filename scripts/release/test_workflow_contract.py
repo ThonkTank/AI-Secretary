@@ -2,6 +2,7 @@ import hashlib
 import pathlib
 import unittest
 import sys
+import xml.etree.ElementTree as ET
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -195,6 +196,25 @@ RELEASE_PRESENTATION_TRACE = (
 
 
 class WorkflowContractTest(unittest.TestCase):
+    def test_product_activities_are_locked_to_portrait(self):
+        android_namespace = "{http://schemas.android.com/apk/res/android}"
+        manifest = ET.fromstring(MAIN_MANIFEST)
+        activities = {
+            activity.attrib[f"{android_namespace}name"]: activity.attrib.get(
+                f"{android_namespace}screenOrientation"
+            )
+            for activity in manifest.findall("./application/activity")
+        }
+
+        self.assertEqual(
+            {
+                ".FlowRunsActivity": "portrait",
+                ".FlowSetupActivity": "portrait",
+                ".MainActivity": "portrait",
+            },
+            activities,
+        )
+
     def test_phase_2a_build_foundation_is_exact_and_uses_built_in_kotlin(self):
         self.assertIn(
             'id("com.android.application") version "9.2.0" apply false',
