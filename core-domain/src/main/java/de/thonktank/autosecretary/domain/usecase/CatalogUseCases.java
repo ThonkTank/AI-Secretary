@@ -18,13 +18,17 @@ public final class CatalogUseCases {
     public final MoveTaskStep moveTaskStep;
     public final SwapTaskSteps swapTaskSteps;
     public final SaveTaskConfiguration saveTaskConfiguration;
+    public final LoadAgentTaskCatalog loadAgentTaskCatalog;
+    public final ApplyAgentTaskChangeSet applyAgentTaskChangeSet;
 
     public CatalogUseCases(CreateTask create, UpdateTask update,
                            MoveTaskPlacement moveTaskPlacement, DeleteTask delete,
                            LoadTaskDetails loadTaskDetails, TaskCatalogQuery loadTaskCatalog,
                            MoveScheduleEntry moveScheduleEntry, MoveTaskStep moveTaskStep,
                            SwapTaskSteps swapTaskSteps,
-                           SaveTaskConfiguration saveTaskConfiguration) {
+                           SaveTaskConfiguration saveTaskConfiguration,
+                           LoadAgentTaskCatalog loadAgentTaskCatalog,
+                           ApplyAgentTaskChangeSet applyAgentTaskChangeSet) {
         this.create = create;
         this.update = update;
         this.moveTaskPlacement = moveTaskPlacement;
@@ -35,5 +39,7 @@ public final class CatalogUseCases {
         this.moveTaskStep = moveTaskStep;
         this.swapTaskSteps = swapTaskSteps;
         this.saveTaskConfiguration = saveTaskConfiguration;
+        this.loadAgentTaskCatalog = loadAgentTaskCatalog;
+        this.applyAgentTaskChangeSet = applyAgentTaskChangeSet;
     }
 }

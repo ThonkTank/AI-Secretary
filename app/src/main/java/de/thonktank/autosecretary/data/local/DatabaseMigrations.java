@@ -1317,7 +1317,24 @@ public final class DatabaseMigrations {
                     @Override public void migrate(SupportSQLiteDatabase database) {
                         OrphanFlowRecovery.createArchive(database);
                     }
-                }, new RemoveTrainingMigration28()};
+                }, new RemoveTrainingMigration28(), new Migration(28, 29) {
+                    @Override public void migrate(SupportSQLiteDatabase database) {
+                        database.execSQL("CREATE TABLE IF NOT EXISTS agent_messages ("
+                                + "id TEXT NOT NULL, sequence INTEGER NOT NULL, role TEXT NOT NULL, "
+                                + "body TEXT NOT NULL, createdAtEpochMillis INTEGER NOT NULL, "
+                                + "PRIMARY KEY(id))");
+                        database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS "
+                                + "index_agent_messages_sequence ON agent_messages(sequence)");
+                        database.execSQL("CREATE TABLE IF NOT EXISTS agent_proposals ("
+                                + "id TEXT NOT NULL, sourceMessageId TEXT NOT NULL, "
+                                + "status TEXT NOT NULL, payloadJson TEXT NOT NULL, "
+                                + "createdAtEpochMillis INTEGER NOT NULL, "
+                                + "resolvedAtEpochMillis INTEGER NOT NULL, PRIMARY KEY(id))");
+                        database.execSQL("CREATE INDEX IF NOT EXISTS "
+                                + "index_agent_proposals_sourceMessageId "
+                                + "ON agent_proposals(sourceMessageId)");
+                    }
+                }};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);
         Migration[] result = new Migration[DatabaseContract.VERSION - version];

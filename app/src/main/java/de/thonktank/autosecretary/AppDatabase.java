@@ -26,6 +26,9 @@ import de.thonktank.autosecretary.data.local.FlowTaskSheetPlacementEntity;
 import de.thonktank.autosecretary.data.local.StepFlowRunEntity;
 import de.thonktank.autosecretary.data.local.StepResourceLeaseEntity;
 import de.thonktank.autosecretary.data.local.StepTransitionEntity;
+import de.thonktank.autosecretary.data.local.AgentMessageEntity;
+import de.thonktank.autosecretary.data.local.AgentProposalEntity;
+import de.thonktank.autosecretary.data.local.AgentDao;
 
 import androidx.room.Database;
 import androidx.room.RoomDatabase;
@@ -42,7 +45,7 @@ import androidx.room.RoomDatabase;
         de.thonktank.autosecretary.data.local.GraphRunStepEntity.class,
         de.thonktank.autosecretary.data.local.GraphRunResourceEntity.class,
         de.thonktank.autosecretary.data.local.GraphRunEdgeEntity.class, FlowCandidateEntity.class,
-        FlowTaskSheetPlacementEntity.class},
+        FlowTaskSheetPlacementEntity.class, AgentMessageEntity.class, AgentProposalEntity.class},
         version = DatabaseContract.VERSION,
         exportSchema = true)
 public abstract class AppDatabase extends RoomDatabase {
@@ -51,4 +54,5 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract TodayDao today();
     public abstract FlowDao flows();
     public abstract TimerSessionDao timers();
+    public abstract AgentDao agent();
 }
