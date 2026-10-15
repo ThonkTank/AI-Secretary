@@ -91,7 +91,7 @@ internal fun StepEditorDialog(
                         EditorText(draft.error, Color.argb(palette.bad), 16,
                             Modifier.padding(top = 8.dp).semantics { liveRegion = LiveRegionMode.Polite })
                     }
-                    Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.End) {
+                    FlowRow(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.End) {
                         EditorButton(stringResource(android.R.string.cancel), palette, onDismiss,
                             enabled = !draft.saving, modifier = Modifier.testTag("step-editor:cancel"))
                         EditorButton(stringResource(R.string.action_save), palette, onSave,
