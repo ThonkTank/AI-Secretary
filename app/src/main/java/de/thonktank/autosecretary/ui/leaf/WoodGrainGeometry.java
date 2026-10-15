@@ -8,15 +8,11 @@ import java.util.List;
 final class WoodGrainGeometry {
     static final float SMOOTH_MIN_DP = 3.5f;
 
-    enum Relation { SEPARATE, INTERSECTS, ENCLOSES }
-
     static final class Shape {
-        final int element;
         final float cx, cy, width, height;
         final int level;
 
-        Shape(int element, float cx, float cy, float width, float height, int level) {
-            this.element = element;
+        Shape(float cx, float cy, float width, float height, int level) {
             this.cx = cx;
             this.cy = cy;
             this.width = Math.max(0f, width);
@@ -63,65 +59,34 @@ final class WoodGrainGeometry {
 
     static List<Group> groups(float boxWidth, float boxHeight, float density,
                               List<Shape> shapes) {
-        List<Ring> contours = new ArrayList<>();
-        for (Shape shape : shapes) {
-            int count = Math.min(shape.level,
+        // One layer per rank from the outside, rather than greedy pairwise grouping.
+        // A smaller system stops contributing when it runs out of rings. It must not
+        // become a frozen obstacle that compresses the remaining contours around it.
+        List<Shape> ordered = new ArrayList<>(shapes);
+        ordered.sort(Comparator.comparingDouble((Shape shape) -> shape.cx)
+                .thenComparingDouble(shape -> shape.cy)
+                .thenComparingDouble(shape -> shape.width)
+                .thenComparingDouble(shape -> shape.height)
+                .thenComparingInt(shape -> shape.level));
+        int[] counts = new int[ordered.size()];
+        int maximum = 0;
+        for (int index = 0; index < ordered.size(); index++) {
+            Shape shape = ordered.get(index);
+            counts[index] = Math.min(shape.level,
                     maximumRingCount(boxWidth, boxHeight, shape, density));
-            for (int index = 0; index < count; index++)
-                contours.add(new Ring(shape, ringDistance(density, index)));
+            maximum = Math.max(maximum, counts[index]);
         }
-        contours.sort(Comparator.comparingDouble((Ring ring) -> ring.distance).reversed());
         List<Group> groups = new ArrayList<>();
-        for (Ring ring : contours) {
-            Group destination = null;
-            for (Group candidate : groups) {
-                boolean sameElement = false;
-                boolean intersects = false;
-                boolean encloses = false;
-                for (Ring member : candidate.rings) {
-                    if (member.shape.element == ring.shape.element) {
-                        sameElement = true;
-                        break;
-                    }
-                    Relation relation = relation(ring, member);
-                    intersects |= relation == Relation.INTERSECTS;
-                    encloses |= relation == Relation.ENCLOSES;
-                }
-                if (!sameElement && intersects && !encloses) {
-                    destination = candidate;
-                    break;
-                }
+        for (int layer = 0; layer < maximum; layer++) {
+            Group group = new Group();
+            for (int index = 0; index < ordered.size(); index++) {
+                int ring = counts[index] - 1 - layer;
+                if (ring >= 0) group.rings.add(new Ring(ordered.get(index),
+                        ringDistance(density, ring)));
             }
-            if (destination == null) {
-                destination = new Group();
-                groups.add(destination);
-            }
-            destination.rings.add(ring);
+            groups.add(group);
         }
         return groups;
-    }
-
-    static Relation relation(Ring first, Ring second) {
-        float dx = second.shape.cx - first.shape.cx;
-        float dy = second.shape.cy - first.shape.cy;
-        float centerDistance = (float) Math.hypot(dx, dy);
-        float firstRadius = first.distance + directionalHalfSize(first.shape, dx, dy);
-        float secondRadius = second.distance + directionalHalfSize(second.shape, dx, dy);
-        if (centerDistance >= firstRadius + secondRadius) return Relation.SEPARATE;
-        if (centerDistance + Math.min(firstRadius, secondRadius)
-                <= Math.max(firstRadius, secondRadius)) return Relation.ENCLOSES;
-        return Relation.INTERSECTS;
-    }
-
-    private static float directionalHalfSize(Shape shape, float dx, float dy) {
-        float length = (float) Math.hypot(dx, dy);
-        if (length == 0f) return Math.max(shape.width, shape.height) / 2f;
-        float nx = dx / length;
-        float ny = dy / length;
-        float halfWidth = shape.width / 2f;
-        float halfHeight = shape.height / 2f;
-        return (float) Math.sqrt(halfWidth * halfWidth * nx * nx
-                + halfHeight * halfHeight * ny * ny);
     }
 
     static float groupDistance(Group group, float x, float y, float smoothRadius) {

@@ -59,6 +59,19 @@ public final class FocusTaskViewGoldenRobolectricTest {
                 false, 824, 900, 0);
     }
 
+    @Test public void hygieneKeepsOrganicJoinsAcrossUnequalStepCombos() throws Exception {
+        String[] names = {"Nasenhaare", "Rasieren", "Haare waschen", "Achseln rasieren",
+                "Peeling", "Nägel schneiden", "Brust/Bauch rasieren", "Beine rasieren"};
+        int[] combos = {2, 8, 4, 3, 8, 3, 3, 2};
+        java.util.List<FocusStepUiModel> steps = new java.util.ArrayList<>();
+        for (int i = 0; i < names.length; i++) steps.add(
+                FocusTaskFixtures.step("hygiene-" + i, names[i]).combo(combos[i]).build());
+        FocusTaskUiModel task = FocusTaskFixtures.task("hygiene", "Hygiene")
+                .occurrence("hygiene-today").slot(TaskSlot.MORNING)
+                .recurrence(Recurrence.DAILY).allowDefer(true).combo(14).steps(steps).build();
+        render("hygiene-unequal-rings", task, FocusStepLimit.AUTO, true, 824, 1850, 7);
+    }
+
     private static void render(String name, FocusTaskUiModel task, FocusStepLimit limit,
                                boolean allowDefer,
                                int width, int height, int following) throws Exception {
