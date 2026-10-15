@@ -5,9 +5,6 @@ import android.graphics.Canvas
 import android.os.Looper
 import android.view.View
 import androidx.activity.ComponentActivity
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.platform.ComposeView
 import de.thonktank.autosecretary.domain.model.*
 import de.thonktank.autosecretary.presentation.editor.StepEditorDialog
@@ -36,15 +33,16 @@ class StepQuickEditorRenderTest {
             Triple(DayPalette.Mode.LIGHT, 1.6f, "large-text")).forEach { (mode, scale, name) ->
             val controller = Robolectric.buildActivity(ComponentActivity::class.java).setup()
             val activity = controller.get()
+            val originalConfig = android.content.res.Configuration(activity.resources.configuration)
+            val originalMetrics = android.util.DisplayMetrics().apply { setTo(activity.resources.displayMetrics) }
+            val config = android.content.res.Configuration(originalConfig).apply { fontScale = scale }
+            @Suppress("DEPRECATION")
+            activity.resources.updateConfiguration(config, activity.resources.displayMetrics)
             val source = TaskStepTemplate("step", TaskId.of("task"), 0, "Rudern", 0, 0,
                 StepPrescription.forAmount(StepAmount.setsReps(3, 12)), "40 kg\nSitz 7", StepActivationKind.SCHEDULED)
             val draft = StepEditDraft.from(EditableStep("execution", source, source.text, source.note, false, true))
             val root = ComposeView(activity).apply {
-                setContent {
-                    CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, scale)) {
-                        StepEditorDialog(draft, DayPalette.at(LocalTime.NOON, mode), {}, {}, {})
-                    }
-                }
+                setContent { StepEditorDialog(draft, DayPalette.at(LocalTime.NOON, mode), {}, {}, {}) }
             }
             try {
                 activity.setContentView(root)
@@ -66,10 +64,15 @@ class StepQuickEditorRenderTest {
                 } finally { bitmap.recycle() }
             } finally {
                 root.disposeComposition()
+                @Suppress("DEPRECATION")
+                activity.resources.updateConfiguration(originalConfig, originalMetrics)
                 controller.pause().stop().destroy()
                 shadowOf(Looper.getMainLooper()).idle()
             }
         }
+        assertFalse("Large-text proof must use the dialog window's actual font scale",
+            File("build/reports/step-editor/compact-light.png").readBytes().contentEquals(
+                File("build/reports/step-editor/compact-large-text.png").readBytes()))
     }
     private fun exact(value: Int) = View.MeasureSpec.makeMeasureSpec(value, View.MeasureSpec.EXACTLY)
 }
