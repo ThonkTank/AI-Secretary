@@ -60,6 +60,14 @@ erst das finale Layout bildet deren Bounds in lokale Surface-Koordinaten ab. Dam
 Header-, Tau-, Gefäß- und Container-Ringe konzentrisch und korrekt auf das Blatt begrenzt, auch
 bei Notizen, Wiederholungen, versteckten Zeilen und Kartenrotation.
 
+Mehrere Ringsysteme werden von außen nach innen verbunden: Der jeweils äußerste Ring
+jedes Ankers gehört zur selben Konturstufe. Ein Anker endet nach seiner eigenen Ringzahl;
+seine letzte Kontur bleibt nicht als Hindernis für weitere Ringe stehen. Stabile geometrische
+Ankerreihenfolge, geschachtelte Distanzfelder und eine gemeinsame feste Dreiecksteilung
+verhindern Kreuzungen auch zwischen den Rasterpunkten. Gemeinsame Endpunkte werden zu
+zusammenhängenden Pfaden verbunden. Einzelanker und Eckfortschritt behalten ihren bisherigen
+Zeichenpfad; Textfreistellung, Kombostufen und gespeicherte Daten ändern sich nicht.
+
 ## Domain- und Persistenzgrenze
 
 `:core-domain` enthält Modelle, fünf fachliche Persistenzports und Use Cases ohne
