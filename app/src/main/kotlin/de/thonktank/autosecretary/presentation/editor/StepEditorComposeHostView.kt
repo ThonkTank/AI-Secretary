@@ -66,6 +66,9 @@ internal fun StepEditorDialog(
         onDismissRequest = { if (!draft.saving) onDismiss() },
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
+            // Otherwise Compose's pre-API-30 wrap-content measurement uses the
+            // full display height and can put the fixed actions behind the IME.
+            decorFitsSystemWindows = false,
             dismissOnBackPress = !draft.saving,
             dismissOnClickOutside = !draft.saving,
         ),
@@ -81,7 +84,7 @@ internal fun StepEditorDialog(
         val focus = rememberSaveable(draft.id) { mutableStateOf<String?>(null) }
         val issues = if (draft.validated) StepEditorValidator.issues(draft.step, draft.showCadence()) else emptySet()
         CompositionLocalProvider(LocalEditorFocusedInputTag provides focus) {
-            BoxWithConstraints(Modifier.fillMaxWidth(.94f).imePadding()) {
+            BoxWithConstraints(Modifier.fillMaxWidth(.94f).systemBarsPadding().imePadding()) {
                 val layout = EditorLayout.from(maxWidth.value.toInt(), LocalDensity.current.fontScale)
                 Column(Modifier.fillMaxWidth().heightIn(max = maxHeight * .92f)
                     .background(Color.argb(palette.leaf1), RoundedCornerShape(24.dp))

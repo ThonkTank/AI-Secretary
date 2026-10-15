@@ -16,7 +16,9 @@ nach Wiederherstellung nicht automatisch wiederholt. Die Compose-Präsentation s
 keine Daten selbst. Initialer und wiederhergestellter Eingabefokus warten auf das aktive
 Fenster. Der Dialog setzt den initialen Tastaturmodus und Größenanpassung explizit,
 damit auf API 26 weder der Tastaturstart verloren geht noch Touch-Scrollen hinter der
-Tastatur landet. Leere Mengen sind zulässige Zwischenstände im Editor; eine ungültige
+Tastatur landet. Der Dialog verarbeitet Systemleisten- und IME-Insets selbst; damit
+misst Compose auf API 26 nicht mit der vollen Displayhöhe hinter der Tastatur.
+Leere Mengen sind zulässige Zwischenstände im Editor; eine ungültige
 Vorgabe kann die validierte Domain-Speichergrenze nicht passieren.
 
 ## Speichervertrag
