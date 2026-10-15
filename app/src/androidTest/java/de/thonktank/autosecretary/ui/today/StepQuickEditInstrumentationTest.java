@@ -145,7 +145,11 @@ public final class StepQuickEditInstrumentationTest {
         UiObject2 found = device.findObject(selector);
         for (int scroll = 0; found == null && scroll < 6; scroll++) {
             UiObject2 form = object(By.res("step-editor:fields"));
-            if (!form.scroll(Direction.DOWN, .7f)) break;
+            // Compose can move without emitting TYPE_VIEW_SCROLLED. The native log
+            // showed a newly visible input despite scroll() returning false. Stop on
+            // the actual target, rather than treating a missing event as the end.
+            form.scroll(Direction.DOWN, .7f);
+            device.waitForIdle();
             found = device.findObject(selector);
         }
         return object(selector);
@@ -199,6 +203,18 @@ public final class StepQuickEditInstrumentationTest {
 
     private UiObject2 object(BySelector selector) {
         UiObject2 result = device.wait(Until.findObject(selector), TIMEOUT);
+        if (result == null) {
+            try {
+                java.io.ByteArrayOutputStream tree = new java.io.ByteArrayOutputStream();
+                device.dumpWindowHierarchy(tree);
+                String hierarchy = tree.toString("UTF-8");
+                for (int offset = 0; offset < hierarchy.length(); offset += 3000)
+                    android.util.Log.e("StepQuickEditTest", hierarchy.substring(offset,
+                            Math.min(offset + 3000, hierarchy.length())));
+            } catch (java.io.IOException error) {
+                android.util.Log.e("StepQuickEditTest", "Failure hierarchy unavailable", error);
+            }
+        }
         assertNotNull("Missing product control: " + selector, result);
         return result;
     }
