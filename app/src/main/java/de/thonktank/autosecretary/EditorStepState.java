@@ -77,7 +77,7 @@ public final class EditorStepState {
         return new TaskStepDefinition(isDraftIdentity() ? null : id, position, text,
                 once || followUp || cadenceMode != StepCadenceMode.WEEKDAYS ? 0 : weekdayMask,
                 once || followUp || cadenceMode != StepCadenceMode.INTERVAL ? 0 : intervalDays,
-                prescription, note, resolved);
+                new StepPrescription(prescription.amount, prescription.rest), note, resolved);
     }
 
     public EditorStepState withText(String value) {
@@ -111,13 +111,13 @@ public final class EditorStepState {
                 ? prescription.amount instanceof StepAmount.SetsReps ? prescription.rest
                 : RestTimerPolicy.inherit() : RestTimerPolicy.off();
         return copy(text, cadenceMode, weekdayMask, intervalDays,
-                new StepPrescription(value, rest),
+                StepPrescription.draft(value, rest),
                 note);
     }
 
     public EditorStepState withRestTimerPolicy(RestTimerPolicy value) {
         return copy(text, cadenceMode, weekdayMask, intervalDays,
-                new StepPrescription(prescription.amount, value),
+                StepPrescription.draft(prescription.amount, value),
                 note);
     }
 
@@ -137,9 +137,9 @@ public final class EditorStepState {
                 newNote, activationKind);
     }
 
-    android.os.Bundle toBundle() { return EditorStepSavedStateCodec.encode(this); }
+    public android.os.Bundle toBundle() { return EditorStepSavedStateCodec.encode(this); }
 
-    static EditorStepState fromBundle(android.os.Bundle bundle) {
+    public static EditorStepState fromBundle(android.os.Bundle bundle) {
         return EditorStepSavedStateCodec.decode(bundle);
     }
 

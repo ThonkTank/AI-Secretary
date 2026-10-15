@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +25,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -201,15 +206,46 @@ internal fun EditorStepDetailPage(
     val index = dispatcher.expandedIndex()
     if (index < 0) return
     val step = state.stepStates[index]
-    val titleError = state.hasStepIssue(ValidationIssue.Field.STEP_TITLE, step.id)
+    EditorStepFields(step,
+        state.recurrence != Recurrence.ONCE && !state.flowDraft.isFollowUp(step.id),
+        palette, layout, state.issues) { update ->
+        dispatcher.emit(TaskEditorStateReducer.updateStep(state, index, update))
+    }
+}
+
+@Composable
+internal fun EditorStepFields(
+    step: EditorStepState,
+    showCadence: Boolean,
+    palette: DayPalette,
+    layout: EditorLayout,
+    issues: Set<ValidationIssue>,
+    requestInitialFocus: Boolean = false,
+    multilineNote: Boolean = false,
+    showQuestion: Boolean = true,
+    onChange: (EditorStepState) -> Unit,
+) {
+    val titleError = issues.contains(ValidationIssue.step(ValidationIssue.Field.STEP_TITLE, step.id))
     val titleFocus = remember(step.id) { FocusRequester() }
-    LaunchedEffect(titleError, step.id) { if (titleError) titleFocus.requestFocus() }
-    Question(R.string.editor_frage_schritt, palette)
+    val focusedInput = LocalEditorFocusedInputTag.current
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
+    val keyboard = LocalSoftwareKeyboardController.current
+    var initialFocusPending by remember(step.id) {
+        mutableStateOf(requestInitialFocus && focusedInput.value == null)
+    }
+    LaunchedEffect(titleError, step.id, windowFocused) {
+        if (windowFocused && (titleError || initialFocusPending)) {
+            titleFocus.requestFocus()
+            if (requestInitialFocus) keyboard?.show()
+            initialFocusPending = false
+        }
+    }
+    if (showQuestion) Question(R.string.editor_frage_schritt, palette)
     EditorInput(
         value = step.text,
-        onValueChange = { updateStep(state, index, step.withText(it), dispatcher) },
+        onValueChange = { onChange(step.withText(it)) },
         palette = palette,
-        modifier = Modifier.fillMaxWidth().padding(top = 22.dp).height(48.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = if (showQuestion) 22.dp else 8.dp).height(48.dp),
         hint = stringResource(R.string.step_name_hint),
         error = titleError,
         focusRequester = titleFocus,
@@ -218,30 +254,31 @@ internal fun EditorStepDetailPage(
     if (titleError) {
         ErrorText(R.string.err_step_empty, palette)
     }
-    if (state.recurrence != Recurrence.ONCE && !state.flowDraft.isFollowUp(step.id)) {
-        StepCadence(state, step, index, palette, layout, dispatcher)
+    if (showCadence) {
+        StepCadence(step, palette, layout, issues, onChange)
     }
     Label(R.string.step_amount_label, palette, Modifier.padding(top = 24.dp, bottom = 10.dp))
     ChipFlow {
         amountChoices.forEach { (label, kind) ->
             EditorChip(label, step.prescription.amount.kind() == kind, palette) {
-                updateStep(state, index, step.withAmount(selectedAmount(kind, step.prescription.amount)), dispatcher)
+                onChange(step.withAmount(selectedAmount(kind, step.prescription.amount)))
             }
         }
     }
-    AmountInputs(state, step, index, palette, dispatcher)
+    AmountInputs(step, palette, onChange)
     if (step.prescription.amount is StepAmount.SetsReps) {
-        RestTimerInputs(state, step, index, palette, dispatcher)
+        RestTimerInputs(step, palette, onChange)
     }
-    if (state.hasStepIssue(ValidationIssue.Field.STEP_AMOUNT, step.id)) {
+    if (issues.contains(ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, step.id))) {
         ErrorText(R.string.err_amount_zero, palette)
     }
     Label(R.string.step_note_label, palette, Modifier.padding(top = 24.dp, bottom = 4.dp))
     EditorInput(
         value = step.note,
-        onValueChange = { updateStep(state, index, step.withNote(it), dispatcher) },
+        onValueChange = { onChange(step.withNote(it)) },
         palette = palette,
-        modifier = Modifier.fillMaxWidth().height(48.dp),
+        modifier = Modifier.fillMaxWidth().then(if (multilineNote) Modifier else Modifier.height(48.dp)),
+        multiline = multilineNote,
         hint = stringResource(R.string.field_note_hint),
         tag = focusTag("note", step.id),
     )
@@ -249,18 +286,17 @@ internal fun EditorStepDetailPage(
 
 @Composable
 private fun StepCadence(
-    state: EditorUiState,
     step: EditorStepState,
-    index: Int,
     palette: DayPalette,
     layout: EditorLayout,
-    dispatcher: TaskEditorComposeDispatcher,
+    issues: Set<ValidationIssue>,
+    onChange: (EditorStepState) -> Unit,
 ) {
     Label(R.string.editor_label_tage_frage, palette, Modifier.padding(top = 24.dp, bottom = 10.dp))
     ChipFlow {
         cadenceChoices.forEach { (label, cadence) ->
             EditorChip(label, step.cadenceMode == cadence, palette) {
-                updateStep(state, index, step.withCadenceMode(cadence), dispatcher)
+                onChange(step.withCadenceMode(cadence))
             }
         }
     }
@@ -271,7 +307,7 @@ private fun StepCadence(
             palette = palette,
             modifier = Modifier.padding(top = 14.dp),
         ) {
-            if (it != 0) updateStep(state, index, step.withWeekdayMask(it), dispatcher)
+            if (it != 0) onChange(step.withWeekdayMask(it))
         }
         StepCadenceMode.INTERVAL -> {
             Row(
@@ -281,17 +317,17 @@ private fun StepCadence(
                 EditorInput(
                     value = step.intervalDays?.toString().orEmpty(),
                     onValueChange = {
-                        updateStep(state, index, step.withIntervalDays(it.toIntOrNull()), dispatcher)
+                        onChange(step.withIntervalDays(it.toIntOrNull()))
                     },
                     palette = palette,
                     modifier = Modifier.width(96.dp),
                     number = true,
-                    error = state.hasStepIssue(ValidationIssue.Field.STEP_INTERVAL, step.id),
+                    error = issues.contains(ValidationIssue.step(ValidationIssue.Field.STEP_INTERVAL, step.id)),
                     tag = focusTag("interval", step.id),
                 )
                 Label(R.string.editor_interval_unit, palette, Modifier.padding(start = 12.dp))
             }
-            if (state.hasStepIssue(ValidationIssue.Field.STEP_INTERVAL, step.id)) {
+            if (issues.contains(ValidationIssue.step(ValidationIssue.Field.STEP_INTERVAL, step.id))) {
                 ErrorText(R.string.err_interval_zero, palette)
             }
         }
@@ -301,11 +337,9 @@ private fun StepCadence(
 
 @Composable
 private fun AmountInputs(
-    state: EditorUiState,
     step: EditorStepState,
-    index: Int,
     palette: DayPalette,
-    dispatcher: TaskEditorComposeDispatcher,
+    onChange: (EditorStepState) -> Unit,
 ) {
     when (val amount = step.prescription.amount) {
         is StepAmount.None -> Unit
@@ -318,11 +352,8 @@ private fun AmountInputs(
                 R.string.amount_sets_unit,
                 palette,
                 { value ->
-                    updateStep(
-                        state,
-                        index,
+                    onChange(
                         step.withAmount(StepAmount.setsReps(value ?: 0, amount.repetitions)),
-                        dispatcher,
                     )
                 },
                 Modifier.weight(1f),
@@ -339,11 +370,8 @@ private fun AmountInputs(
                 R.string.amount_reps_unit,
                 palette,
                 { value ->
-                    updateStep(
-                        state,
-                        index,
+                    onChange(
                         step.withAmount(StepAmount.setsReps(amount.sets, value ?: 0)),
-                        dispatcher,
                     )
                 },
                 Modifier.weight(1f),
@@ -354,7 +382,7 @@ private fun AmountInputs(
             amount.repetitions,
             R.string.amount_reps_unit,
             palette,
-            { value -> updateStep(state, index, step.withAmount(StepAmount.repetitions(value ?: 0)), dispatcher) },
+            { value -> onChange(step.withAmount(StepAmount.repetitions(value ?: 0))) },
             Modifier.fillMaxWidth().padding(top = 12.dp),
             focusTag("repetitions", step.id),
         )
@@ -365,29 +393,27 @@ private fun AmountInputs(
             minuteTag = focusTag("duration-minutes", step.id),
             secondTag = focusTag("duration-seconds", step.id),
         ) { minutes, seconds ->
-            updateStep(state, index, step.withAmount(StepAmount.duration(minutes * 60 + seconds)), dispatcher)
+            onChange(step.withAmount(StepAmount.duration(minutes * 60 + seconds)))
         }
     }
 }
 
 @Composable
 private fun RestTimerInputs(
-    state: EditorUiState,
     step: EditorStepState,
-    index: Int,
     palette: DayPalette,
-    dispatcher: TaskEditorComposeDispatcher,
+    onChange: (EditorStepState) -> Unit,
 ) {
     Label(R.string.step_rest_timer_label, palette, Modifier.padding(top = 20.dp, bottom = 10.dp))
     ChipFlow {
         EditorChip(R.string.rest_timer_inherit, step.prescription.rest.mode == RestTimerPolicy.Mode.INHERIT, palette) {
-            updateStep(state, index, step.withRestTimerPolicy(RestTimerPolicy.inherit()), dispatcher)
+            onChange(step.withRestTimerPolicy(RestTimerPolicy.inherit()))
         }
         EditorChip(R.string.rest_timer_custom, step.prescription.rest.mode == RestTimerPolicy.Mode.CUSTOM, palette) {
-            updateStep(state, index, step.withRestTimerPolicy(RestTimerPolicy.custom(60)), dispatcher)
+            onChange(step.withRestTimerPolicy(RestTimerPolicy.custom(60)))
         }
         EditorChip(R.string.rest_timer_off, step.prescription.rest.mode == RestTimerPolicy.Mode.OFF, palette) {
-            updateStep(state, index, step.withRestTimerPolicy(RestTimerPolicy.off()), dispatcher)
+            onChange(step.withRestTimerPolicy(RestTimerPolicy.off()))
         }
     }
     if (step.prescription.rest.mode == RestTimerPolicy.Mode.CUSTOM) {
@@ -400,7 +426,7 @@ private fun RestTimerInputs(
             secondTag = focusTag("rest-seconds", step.id),
         ) { minutes, seconds ->
             val value = (minutes * 60 + seconds).coerceAtLeast(1)
-            updateStep(state, index, step.withRestTimerPolicy(RestTimerPolicy.custom(value)), dispatcher)
+            onChange(step.withRestTimerPolicy(RestTimerPolicy.custom(value)))
         }
     }
 }
@@ -437,13 +463,6 @@ private fun DurationInputs(
         )
     }
 }
-
-private fun updateStep(
-    state: EditorUiState,
-    index: Int,
-    step: EditorStepState,
-    dispatcher: TaskEditorComposeDispatcher,
-) = dispatcher.emit(TaskEditorStateReducer.updateStep(state, index, step))
 
 private fun moveStep(
     state: EditorUiState,

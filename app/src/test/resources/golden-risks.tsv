@@ -80,3 +80,6 @@ FT-12	focus-task/hygiene-unequal-rings.png	Unterschiedliche Kombostufen verbinde
 WG-01	wood-grain/hygiene.png	Ein großer Hauptanker und acht dicht gestaffelte Schrittanker behalten organische, geschachtelte Konturen.
 WG-02	wood-grain/neighbors.png	Zwei ungleiche Ringsysteme behalten ihren offenen, weichen Zusammenlauf.
 WG-03	wood-grain/wide-dew-stress.png	Viele benachbarte Kreise und breite Tauformen bleiben ohne geklemmte Zusammenläufe unterscheidbar.
+SQE-01	step-editor/compact-light.png	Der kompakte Schritteditor zeigt direkte Eingaben und den Hinweis für begonnene Schritte ohne Wizard-Navigation.
+SQE-02	step-editor/compact-dark.png	Dunkle Schrittbearbeitung erhält kontrastreiche Eingaben und eindeutige Speicheraktionen.
+SQE-03	step-editor/compact-large-text.png	Große Schrift lässt die Dialogaktionen erreichbar und den Formularinhalt scrollbar.

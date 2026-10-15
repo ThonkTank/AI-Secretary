@@ -8,7 +8,16 @@ public final class StepPrescription {
     public final RestTimerPolicy rest;
 
     public StepPrescription(StepAmount amount, RestTimerPolicy rest) {
-        this.amount = StepAmount.requireValid(amount);
+        this(amount, rest, false);
+    }
+
+    /** Editor-only boundary: transient empty/zero targets are validated before saving. */
+    public static StepPrescription draft(StepAmount amount, RestTimerPolicy rest) {
+        return new StepPrescription(amount, rest, true);
+    }
+
+    private StepPrescription(StepAmount amount, RestTimerPolicy rest, boolean draft) {
+        this.amount = draft ? Objects.requireNonNull(amount, "amount") : StepAmount.requireValid(amount);
         this.rest = rest == null ? RestTimerPolicy.forAmount(this.amount) : rest;
         if (!(this.amount instanceof StepAmount.SetsReps)
                 && this.rest.mode != RestTimerPolicy.Mode.OFF)

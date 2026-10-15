@@ -591,4 +591,7 @@
     <string name="timer_skip_rest">Pause überspringen</string>
     <string name="rest_timer_finished">Zeit für den nächsten Satz</string>
     <string name="duration_timer_finished">Zeit ist um</string>
+    <string name="action_edit_step">Schritt bearbeiten</string>
+    <string name="step_edit_future_hint">Änderungen gelten dauerhaft. Bei begonnenen Schritten gelten neue Mengen, Dauer und Satzpausen erst ab der nächsten Ausführung. Der Rhythmus gilt für künftige Ausführungen.</string>
+    <string name="step_edit_deferred">Neue Vorgaben gelten ab der nächsten Ausführung.</string>
 </resources>

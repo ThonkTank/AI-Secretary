@@ -64,6 +64,7 @@ public class MainActivity extends ComponentActivity {
     public static final String CONFIRM_TASK_TITLE = "confirm_task_title";
     public static final String OPEN_EDITOR = "open_editor";
     private de.thonktank.autosecretary.ui.today.StepNoteDialog stepNoteDialog;
+    private de.thonktank.autosecretary.presentation.editor.StepEditorComposeHostView stepEditor;
     private AppContainer container;
     private TodayViewModel todayViewModel;
     private AppShellViewModel shellViewModel;
@@ -260,6 +261,9 @@ public class MainActivity extends ComponentActivity {
             if (editorCoordinator != null) editorCoordinator.setInsets(bars.top, bars.bottom);
             return insets;
         });
+        stepEditor = new de.thonktank.autosecretary.presentation.editor.StepEditorComposeHostView(this);
+        stepEditor.setId(R.id.step_quick_editor_host);
+        root.addView(stepEditor, new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
         ViewCompat.requestApplyInsets(root);
         DayPalette initial = DayPalette.at(container.clock.time(), DayPalette.Mode.AUTO);
@@ -289,6 +293,7 @@ public class MainActivity extends ComponentActivity {
                 "navigation=" + shellState.navigation + " loading=" + todayState.loading
                         + " editorOpen=" + editorState.content.open);
         forest.setPalette(shellState.palette);
+        stepEditor.bind(todayState.stepEditDraft, shellState.palette, todayViewModel);
         header.bind(container.clock.time(), shellState.palette, todayState.today().xpProgress);
         footer.bind(shellState.navigation, shellState.palette);
         renderer.render(shellState, todayState, allTasksState, optionsState);

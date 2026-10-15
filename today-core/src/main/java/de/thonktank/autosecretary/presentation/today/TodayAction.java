@@ -26,6 +26,7 @@ public final class TodayAction {
         UNDO_OCCURRENCE,
         ADJUST_REPETITION,
         EDIT_REPETITION,
+        EDIT_STEP,
         EDIT_STEP_NOTE,
         SUBMIT_REPETITION,
         START_DURATION_TIMER,
@@ -150,6 +151,10 @@ public final class TodayAction {
             throw new IllegalArgumentException("Delay must not be negative");
         return new TodayAction(Kind.TOGGLE_STEP_WITH_DELAY, requiredId(stepId), null,
                 null, 0, chosenDelayMillis, Collections.emptyList(), null, null);
+    }
+
+    public static TodayAction editStep(String stepId) {
+        return identified(Kind.EDIT_STEP, stepId);
     }
 
     public static TodayAction editStepNote(String stepId) {

@@ -469,8 +469,10 @@ public final class UiComponentRobolectricTest {
         assertTrue(menu.performClick());
         android.widget.PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
         assertNotNull(popup);
+        assertEquals(context.getString(R.string.content_edit_set, 1),
+                popup.getMenu().findItem(1_000).getTitle().toString());
         assertTrue(((ShadowPopupMenu) Shadow.extract(popup)).getOnMenuItemClickListener()
-                .onMenuItemClick(popup.getMenu().getItem(1)));
+                .onMenuItemClick(popup.getMenu().findItem(1_000)));
         focus.bind(FocusCardTestModels.of(feature, palette, FocusStepLimit.AUTO,
                 input.get(), de.thonktank.autosecretary.timer.TimerManager.Snapshot.empty()),
                 false, events);
