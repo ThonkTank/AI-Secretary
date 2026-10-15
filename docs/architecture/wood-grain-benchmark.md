@@ -71,3 +71,37 @@ dokumentierte Hostbudgets ersetzt: Cache-Miss-Median höchstens 50 ms, Draw-Medi
 0,010 ms, Draw-p95 höchstens 0,025 ms, Cache höchstens 4 MiB, genau 16 Builds und beobachtetes
 Heapwachstum höchstens 8 MiB. Der Abschlusslauf hält alle Grenzen ein. An Renderer,
 Pfaderzeugung oder Cachealgorithmus wurde in Phase 7 nichts geändert.
+
+## Kreuzungsfreie Zusammenläufe, 2026-10-15
+
+Die visuell freigegebene Variante verbindet die jeweils äußersten Ringe zuerst und arbeitet
+sich nach innen. Die zuerst erprobte Variante mit eingefrorenen kleinen Ringsystemen wurde
+wegen ihrer gedrängten Zusammenläufe verworfen. Die App verwendet die freigegebene Zuordnung
+ohne eine vorgeschaltete Kreuzungserkennung oder einen zweiten Renderer.
+
+Gemeinsame Konturen nutzen ein 3-dp-Raster mit fester Dreiecksteilung. Die Kapseldistanzen
+werden einmal pro Anker und Rasterpunkt berechnet. Zusammenhängende Konturen erhalten einen
+gemeinsamen Pfad statt einzelner Move-/Line-Befehle für jedes Segment. Einzelanker und
+Eckfortschritt behalten ihre bisherigen Raster- und Marching-Squares-Pfade.
+
+Vergleich auf demselben Host und mit derselben Benchmark-Fixture, JDK 21:
+
+| Kennzahl | Main-Baseline | Neue Ringzuordnung | Budget |
+|---|---:|---:|---:|
+| Cache-Miss, Median | 24,077 ms | 18,012 ms | höchstens 50 ms |
+| Cache-Hit, Median | 0,001 ms | 0,001 ms | separat gemessen |
+| Draw, Median | 0,007 ms | 0,007 ms | höchstens 0,010 ms |
+| Draw, p95 | 0,014 ms | 0,012 ms | höchstens 0,025 ms |
+| Cachegewicht nach 16 Größen | 762.128 B | 1.584.128 B | höchstens 4 MiB |
+| beobachtetes Heapwachstum | 7.366.968 B | 6.933.976 B | höchstens 8 MiB |
+| Builds nach 16 Größen | 16 | 16 | genau 16 |
+
+Eine erste Umsetzung mit einem 2-dp-Raster und separaten Segmentpfaden überschritt das
+Heapbudget und wurde nicht übernommen. Der gewichtete Cache und seine 4-MiB-Grenze bleiben
+unverändert. Die Messwerte sind Host-/Robolectric-Evidenz und kein Telefonbenchmark.
+
+Geometrietests prüfen die Hygiene- und Belastungsanordnungen, unterschiedliche Dichten,
+umgekehrte Ankerreihenfolge, Kontakt, Einschluss, leere Systeme und verschachtelte Sattelfälle.
+Ein separater Export der tatsächlichen Java-Pfade ergab für Hygiene, zwei Nachbarn und die
+Belastungsanordnung keine Kreuzungen, Doppelungen oder verlorenen Segmente. Native
+Robolectric-Bildreferenzen sichern die drei Anordnungen und die echte Hygiene-Fokuskarte ab.

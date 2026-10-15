@@ -1,14 +1,14 @@
 package de.thonktank.autosecretary.ui.leaf;
 
-import de.thonktank.autosecretary.DayPalette;
-
 import android.graphics.Path;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
-/** CPU-heavy SDF and marching-squares builder. Never called by View.onDraw. */
+/** CPU-heavy SDF and contour builder. Never called by View.onDraw. */
 final class WoodGrainRenderBuilder {
     WoodGrainRenderData build(WoodGrainRenderRequest request) {
         List<WoodGrainGeometry.Shape> shapes = shapes(request);
@@ -18,10 +18,16 @@ final class WoodGrainRenderBuilder {
                 request.width, request.height, request.density, shapes);
         float area = request.width * request.height;
         float densityArea = request.density * request.density * 40_000f;
-        float step = request.density * (area > densityArea ? 4f : 3f);
+        boolean single = shapes.size() == 1;
+        // Single systems retain their existing sampling. Shared contours use a 3-dp
+        // grid; connected paths keep the finer joins within the memory budget.
+        float step = request.density * (single ? (area > densityArea ? 4f : 3f) : 3f);
+        Map<WoodGrainGeometry.Shape, float[][]> fields = single ? Collections.emptyMap()
+                : capsuleFields(request, shapes, step);
         float smoothRadius = request.density * WoodGrainGeometry.SMOOTH_MIN_DP;
         for (WoodGrainGeometry.Group group : groups) {
-            PathResult path = marchingSquares(request, group, step, smoothRadius);
+            PathResult path = single ? marchingSquares(request, group, step, smoothRadius)
+                    : marchingTriangles(request, group, fields, step, smoothRadius);
             if (path.path.isEmpty()) continue;
             float depth = 0f;
             for (WoodGrainGeometry.Ring ring : group.rings) {
@@ -39,23 +45,63 @@ final class WoodGrainRenderBuilder {
     private static List<WoodGrainGeometry.Shape> shapes(WoodGrainRenderRequest request) {
         if (!request.corner) {
             List<WoodGrainGeometry.Shape> result = new ArrayList<>();
-            int element = 0;
             for (WoodGrainRenderRequest.Anchor anchor : request.anchors) {
                 if (anchor.level <= 0 || anchor.bounds.isEmpty()) continue;
-                result.add(new WoodGrainGeometry.Shape(element++, anchor.bounds.centerX(),
+                result.add(new WoodGrainGeometry.Shape(anchor.bounds.centerX(),
                         anchor.bounds.centerY(), anchor.bounds.width(), anchor.bounds.height(),
                         anchor.level));
             }
             return result;
         }
-        WoodGrainGeometry.Shape unlimited = new WoodGrainGeometry.Shape(0,
+        WoodGrainGeometry.Shape unlimited = new WoodGrainGeometry.Shape(
                 request.cornerX, request.cornerY,
                 0f, 0f, 512);
         int maximum = WoodGrainGeometry.maximumRingCount(request.width, request.height,
                 unlimited, request.density);
-        return Collections.singletonList(new WoodGrainGeometry.Shape(0,
+        return Collections.singletonList(new WoodGrainGeometry.Shape(
                 unlimited.cx, unlimited.cy, 0f, 0f,
                 Math.round(request.cornerRatio * maximum)));
+    }
+
+    private static Map<WoodGrainGeometry.Shape, float[][]> capsuleFields(
+            WoodGrainRenderRequest request, List<WoodGrainGeometry.Shape> shapes, float step) {
+        Map<WoodGrainGeometry.Shape, float[][]> result = new IdentityHashMap<>();
+        int columns = Math.max(1, (int) Math.ceil(request.width / step));
+        int rows = Math.max(1, (int) Math.ceil(request.height / step));
+        // Hypot is independent of the layer. Compute it once per anchor/grid point.
+        for (WoodGrainGeometry.Shape shape : shapes) {
+            float[][] values = new float[rows + 1][columns + 1];
+            for (int row = 0; row <= rows; row++) {
+                float y = Math.min(request.height, row * step);
+                for (int column = 0; column <= columns; column++)
+                    values[row][column] = WoodGrainGeometry.capsuleDistance(shape,
+                            Math.min(request.width, column * step), y);
+            }
+            result.put(shape, values);
+        }
+        return result;
+    }
+
+    private static PathResult marchingTriangles(WoodGrainRenderRequest request,
+            WoodGrainGeometry.Group group,
+            Map<WoodGrainGeometry.Shape, float[][]> fields, float step, float smoothRadius) {
+        float[][] first = fields.get(group.rings.get(0).shape);
+        float[][] values = new float[first.length][first[0].length];
+        for (int index = 0; index < group.rings.size(); index++) {
+            WoodGrainGeometry.Ring ring = group.rings.get(index);
+            float[][] input = fields.get(ring.shape);
+            for (int row = 0; row < values.length; row++) {
+                for (int column = 0; column < values[row].length; column++) {
+                    float distance = input[row][column] - ring.distance;
+                    values[row][column] = index == 0 ? distance
+                            : WoodGrainGeometry.smoothMinimum(values[row][column], distance, smoothRadius);
+                }
+            }
+        }
+        WoodGrainPaths paths = new WoodGrainPaths();
+        int segments = WoodGrainContours.trace(values, request.width, request.height, step,
+                paths);
+        return new PathResult(paths.path(), segments);
     }
 
     private static PathResult marchingSquares(WoodGrainRenderRequest request,
