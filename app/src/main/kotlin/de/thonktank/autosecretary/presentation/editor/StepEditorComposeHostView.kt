@@ -1,6 +1,7 @@
 package de.thonktank.autosecretary.presentation.editor
 
 import android.content.Context
+import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -19,6 +21,7 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.R
 import de.thonktank.autosecretary.StepEditorValidator
@@ -67,6 +70,14 @@ internal fun StepEditorDialog(
             dismissOnClickOutside = !draft.saving,
         ),
     ) {
+        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        DisposableEffect(window) {
+            // API 26 needs an explicit initial IME mode; resize also keeps touch
+            // scroll coordinates above the keyboard instead of behind its window.
+            window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            onDispose { }
+        }
         val focus = rememberSaveable(draft.id) { mutableStateOf<String?>(null) }
         val issues = if (draft.validated) StepEditorValidator.issues(draft.step, draft.showCadence()) else emptySet()
         CompositionLocalProvider(LocalEditorFocusedInputTag provides focus) {

@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -278,8 +280,13 @@ internal fun EditorInput(
     var restorationPending by remember(tag) {
         mutableStateOf(tag != null && focusedInputTag.value == tag)
     }
-    LaunchedEffect(restorationPending) {
-        if (restorationPending) activeFocusRequester.requestFocus()
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(restorationPending, windowFocused) {
+        if (restorationPending && windowFocused) {
+            activeFocusRequester.requestFocus()
+            keyboard?.show()
+        }
     }
     val underline = if (error) Color.argb(palette.bad) else Color.argb(palette.accent)
     BasicTextField(

@@ -13,7 +13,10 @@ Aufgaben und Folge-Schritten bleibt der Rhythmus ausgeblendet.
 `TodayViewModel` besitzt den Entwurf samt ursprünglichen Feldwerten, Validierungs- und
 Speicherfehlern. `SavedStateHandle` bewahrt diese Daten; ein laufender Speichervorgang wird
 nach Wiederherstellung nicht automatisch wiederholt. Die Compose-Präsentation schreibt
-keine Daten selbst. Leere Mengen sind zulässige Zwischenstände im Editor; eine ungültige
+keine Daten selbst. Initialer und wiederhergestellter Eingabefokus warten auf das aktive
+Fenster. Der Dialog setzt den initialen Tastaturmodus und Größenanpassung explizit,
+damit auf API 26 weder der Tastaturstart verloren geht noch Touch-Scrollen hinter der
+Tastatur landet. Leere Mengen sind zulässige Zwischenstände im Editor; eine ungültige
 Vorgabe kann die validierte Domain-Speichergrenze nicht passieren.
 
 ## Speichervertrag

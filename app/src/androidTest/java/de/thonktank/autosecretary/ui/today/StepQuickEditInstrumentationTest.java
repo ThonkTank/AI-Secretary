@@ -110,7 +110,8 @@ public final class StepQuickEditInstrumentationTest {
         seed(false); openQuick();
         field("title").setText("Entwurf");
         session.recreate();
-        assertEquals("Entwurf", field("title").getText());
+        object(By.res("step-editor:dialog"));
+        assertEquals("Entwurf", object(By.res("step:" + templateId + ":title")).getText());
         assertKeyboardVisible();
         assertEquals(stepTitle, container.database.steps().template(templateId).text);
         cancelQuick();
