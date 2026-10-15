@@ -46,7 +46,7 @@ final class EditorStepSavedStateCodec {
                 integer(bundle, "sets"), integer(bundle, "reps"), integer(bundle, "duration"));
         RestTimerPolicy rest = RestTimerPolicy.fromStorage(bundle.getString("rest_timer_mode"),
                 integer(bundle, "rest_timer_seconds"));
-        StepPrescription prescription = new StepPrescription(amount,
+        StepPrescription prescription = StepPrescription.draft(amount,
                 amount instanceof StepAmount.SetsReps ? rest : RestTimerPolicy.off());
         return EditorStepState.fromStored(bundle.getString("id"), bundle.getString("text", ""),
                 cadence, weekdays, interval, prescription,

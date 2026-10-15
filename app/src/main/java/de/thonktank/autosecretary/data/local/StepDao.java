@@ -11,6 +11,10 @@ import java.util.List;
 
 @Dao
 public interface StepDao {
+    @Query("SELECT * FROM occurrence_steps WHERE flowRunStepId=:id")
+    List<OccurrenceStepEntity> runtimeOccurrences(String id);
+    @Update(entity = OccurrenceStepEntity.class) void updateOccurrenceDetails(StepDetailsUpdate details);
+    @Update(entity = GraphRunStepEntity.class) void updateGraphDetails(StepDetailsUpdate details);
     @Query("UPDATE task_steps SET note=:note WHERE id=:id")
     int updateTemplateNote(String id, String note);
     @Query("UPDATE occurrence_steps SET note=:note WHERE id=:id")

@@ -37,14 +37,8 @@ public final class TaskEditorValidator {
             issues.add(ValidationIssue.task(ValidationIssue.Field.BOUND));
         }
         for (EditorStepState step : draft.stepStates) {
-            if (step.text.trim().isEmpty())
-                issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_TITLE, step.id));
-            if (!step.prescription.amount.isValid())
-                issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_AMOUNT, step.id));
-            if (!draft.flowDraft.isFollowUp(step.id)
-                    && step.cadenceMode == StepCadenceMode.INTERVAL
-                    && (step.intervalDays == null || step.intervalDays < 2))
-                issues.add(ValidationIssue.step(ValidationIssue.Field.STEP_INTERVAL, step.id));
+            issues.addAll(StepEditorValidator.issues(step,
+                    draft.recurrence != Recurrence.ONCE && !draft.flowDraft.isFollowUp(step.id)));
         }
         return Collections.unmodifiableSet(issues);
     }

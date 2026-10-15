@@ -2,6 +2,7 @@ package de.thonktank.autosecretary.domain.usecase;
 
 /** Focused application commands and queries for today's execution. */
 public final class TodayUseCases {
+    public final EditStep editStep;
     public final EditStepNote editStepNote;
     public final MoveTodayItem moveItem;
     public final ToggleStep toggleStep;
@@ -35,6 +36,27 @@ public final class TodayUseCases {
                          CloseOngoingTask closeOngoing,
                          MaterializeDueOccurrences materializeDue,
                          LoadDashboard loadDashboard, MoveTodayItem moveItem, EditStepNote editStepNote) {
+        this(toggleStep, advanceTodayStep, moveTodayStep, recordRepetitionResult,
+                correctRepetitionResult, recordSetResult, correctSetResult, finishStepForToday,
+                complete, completeRemainingSteps, harvest, undoOccurrence, applyComboDecay,
+                settlePreviousPartialOccurrences, closeOngoing, materializeDue, loadDashboard,
+                moveItem, editStepNote, null);
+    }
+
+    public TodayUseCases(ToggleStep toggleStep,
+                         AdvanceTodayStep advanceTodayStep, MoveTodayStep moveTodayStep,
+                         RecordRepetitionResult recordRepetitionResult,
+                         CorrectRepetitionResult correctRepetitionResult,
+                         RecordSetResult recordSetResult, CorrectSetResult correctSetResult,
+                         FinishStepForToday finishStepForToday, CompleteOccurrence complete,
+                         CompleteRemainingSteps completeRemainingSteps,
+                         HarvestOccurrence harvest, UndoOccurrence undoOccurrence,
+                         ApplyComboDecay applyComboDecay,
+                         SettlePreviousPartialOccurrences settlePreviousPartialOccurrences,
+                         CloseOngoingTask closeOngoing,
+                         MaterializeDueOccurrences materializeDue,
+                         LoadDashboard loadDashboard, MoveTodayItem moveItem, EditStepNote editStepNote, EditStep editStep) {
+        this.editStep = editStep;
         this.editStepNote = editStepNote;
         this.moveItem = moveItem;
         this.toggleStep = toggleStep;

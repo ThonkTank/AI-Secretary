@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Schritte lassen sich in „Heute“ über „Schritt bearbeiten“ direkt mit Name, Rhythmus,
+  Menge/Dauer, Satzpause und Notiz bearbeiten. Die Änderungen gelten dauerhaft;
+  begonnene Ausführungen behalten ihre bisherigen Mengen-, Dauer- und Pausenvorgaben.
+
 - Ablauf-Schritte erhalten auch nach älteren, zurückliegenden Zählerständen eine freie Kennung;
   vorhandene Ausführungen und ihr Verlauf bleiben erhalten.
 

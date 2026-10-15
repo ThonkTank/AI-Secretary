@@ -30,6 +30,7 @@ public final class TaskStepDefinition {
             throw new IllegalArgumentException("Step weekdays and interval are mutually exclusive");
         this.intervalDays = intervalDays;
         this.prescription = Objects.requireNonNull(prescription, "prescription");
+        StepAmount.requireValid(this.prescription.amount);
         this.note = note == null ? "" : note;
         this.activationKind = Objects.requireNonNull(activationKind, "activationKind");
     }

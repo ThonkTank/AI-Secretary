@@ -16,6 +16,7 @@ import java.util.Set;
 
 /** Complete atomic state for the Today screen and its acknowledgeable effects. */
 public final class TodayScreenState {
+    @Nullable public final StepEditDraft stepEditDraft;
     public final TodayFeatureState feature;
     @Nullable public final StepNoteDraft stepNoteDraft;
     public final boolean loading;
@@ -34,14 +35,15 @@ public final class TodayScreenState {
                             RewardEffectQueue.Snapshot rewards,
                             List<TodayRequest> requests) {
         this(feature, loading, runningActions, repetitionInput, focusStepLimit, timers,
-                rewards, requests, null);
+                rewards, requests, null, null);
     }
 
     private TodayScreenState(TodayFeatureState feature, boolean loading,
                             Set<UiCommand> runningActions, RepetitionInputState repetitionInput,
                             FocusStepLimit focusStepLimit, TimerManager.Snapshot timers,
                             RewardEffectQueue.Snapshot rewards, List<TodayRequest> requests,
-                            StepNoteDraft stepNoteDraft) {
+                            StepNoteDraft stepNoteDraft, StepEditDraft stepEditDraft) {
+        this.stepEditDraft = stepEditDraft;
         this.stepNoteDraft = stepNoteDraft;
         if (feature == null || runningActions == null || repetitionInput == null
                 || focusStepLimit == null || timers == null || rewards == null
@@ -144,11 +146,15 @@ public final class TodayScreenState {
                                          RewardEffectQueue.Snapshot rewards,
                                          List<TodayRequest> requests) {
         return new TodayScreenState(feature, loading, runningActions, repetitionInput,
-                focusStepLimit, timers, rewards, requests, stepNoteDraft);
+                focusStepLimit, timers, rewards, requests, stepNoteDraft, stepEditDraft);
     }
 
     public TodayScreenState withStepNoteDraft(StepNoteDraft value) {
         return new TodayScreenState(feature, loading, runningActions, repetitionInput,
-                focusStepLimit, timers, rewards, requests, value);
+                focusStepLimit, timers, rewards, requests, value, stepEditDraft);
+    }
+    public TodayScreenState withStepEditDraft(StepEditDraft value) {
+        return new TodayScreenState(feature, loading, runningActions, repetitionInput,
+                focusStepLimit, timers, rewards, requests, stepNoteDraft, value);
     }
 }

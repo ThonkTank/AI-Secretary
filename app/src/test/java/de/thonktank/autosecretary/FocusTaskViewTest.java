@@ -233,10 +233,11 @@ public final class FocusTaskViewTest {
         assertTrue(menu.performClick());
         android.widget.PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
         assertTrue(popup != null);
-        assertEquals("Notiz bearbeiten", popup.getMenu().getItem(0).getTitle().toString());
-        assertEquals("Für heute abschließen", popup.getMenu().getItem(2).getTitle().toString());
+        assertEquals("Schritt bearbeiten", popup.getMenu().getItem(0).getTitle().toString());
+        assertEquals("Notiz bearbeiten", popup.getMenu().findItem(2).getTitle().toString());
+        assertEquals("Für heute abschließen", popup.getMenu().findItem(1).getTitle().toString());
         assertTrue(((ShadowPopupMenu) Shadow.extract(popup)).getOnMenuItemClickListener()
-                .onMenuItemClick(popup.getMenu().getItem(2)));
+                .onMenuItemClick(popup.getMenu().findItem(1)));
         assertEquals("step-1", events.lastToday(TodayAction.Kind.FINISH_STEP).id);
     }
 
@@ -249,11 +250,15 @@ public final class FocusTaskViewTest {
                 RepetitionInputState.idle(), TimerManager.Snapshot.empty(), events);
         findByContentDescription(row, context.getString(R.string.content_step_actions, "Duschen")).performClick();
         android.widget.PopupMenu popup = ShadowPopupMenu.getLatestPopupMenu();
-        assertEquals(1, popup.getMenu().size());
-        assertEquals("Notiz bearbeiten", popup.getMenu().getItem(0).getTitle().toString());
+        assertEquals(2, popup.getMenu().size());
+        assertEquals("Schritt bearbeiten", popup.getMenu().getItem(0).getTitle().toString());
+        assertEquals("Notiz bearbeiten", popup.getMenu().findItem(2).getTitle().toString());
         ((ShadowPopupMenu) Shadow.extract(popup)).getOnMenuItemClickListener()
-                .onMenuItemClick(popup.getMenu().getItem(0));
+                .onMenuItemClick(popup.getMenu().findItem(2));
         assertEquals("plain", events.lastToday(TodayAction.Kind.EDIT_STEP_NOTE).id);
+        ((ShadowPopupMenu) Shadow.extract(popup)).getOnMenuItemClickListener()
+                .onMenuItemClick(popup.getMenu().findItem(3));
+        assertEquals("plain", events.lastToday(TodayAction.Kind.EDIT_STEP).id);
         assertNull(events.lastToday(TodayAction.Kind.TOGGLE_STEP));
     }
 

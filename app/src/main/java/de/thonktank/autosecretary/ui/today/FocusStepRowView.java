@@ -388,9 +388,15 @@ public final class FocusStepRowView extends LinearLayout {
                 : step.repetitionProgress.repetitions.size();
         if (step.repetitionProgress != null && !step.isDone())
             popup.getMenu().add(0, finishId, finishOrder + 1, R.string.action_finish_today);
+        int stepEditId = 3;
+        popup.getMenu().add(0, stepEditId, 0, R.string.action_edit_step);
         int noteId = 2;
         popup.getMenu().add(0, noteId, 0, R.string.action_edit_step_note);
         popup.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == stepEditId) {
+                events.emit(TodayAction.editStep(step.noteTargetId));
+                return true;
+            }
             if (item.getItemId() == noteId) {
                 events.emit(TodayAction.editStepNote(step.noteTargetId));
                 return true;
