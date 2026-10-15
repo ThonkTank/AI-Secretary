@@ -26,7 +26,7 @@ import java.time.LocalTime
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w320dp-h700dp-mdpi")
-class StepQuickEditorRenderTest {
+class StepQuickEditorGoldenRobolectricTest {
     @Test fun compactDialogRendersInLightAndDarkPalettes() {
         listOf(Triple(DayPalette.Mode.LIGHT, 1f, "light"),
             Triple(DayPalette.Mode.DARK, 1f, "dark"),
@@ -61,6 +61,10 @@ class StepQuickEditorRenderTest {
                     requireNotNull(file.parentFile).mkdirs()
                     file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                     assertTrue("Dialog must paint its form", file.length() > 5_000)
+                    GoldenAssertions.compareReadOnly(StepQuickEditorGoldenRobolectricTest::class.java,
+                        "/golden/step-editor/compact-$name.png",
+                        File("src/test/resources/golden/step-editor", "compact-$name.png"),
+                        File("build/reports/goldens/step-editor", "compact-$name"), bitmap, 64, .25)
                 } finally { bitmap.recycle() }
             } finally {
                 root.disposeComposition()

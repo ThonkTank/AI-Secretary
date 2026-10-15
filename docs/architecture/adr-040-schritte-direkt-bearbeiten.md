@@ -47,8 +47,8 @@ aktualisieren App und Widget. Das Datenbankschema bleibt unverändert.
 `StepQuickEditRobolectricTest` prüft produktive Use Cases, TodayViewModel und Room auf API 26/35,
 einschließlich Transaktionsabbruch, konkurrierendem Fortschritt, unveränderten Ergebnissen und
 Timern, Ablaufkandidaten sowie Entwurfswiederherstellung. Bestehende Wizard-Goldens sichern
-die extrahierten Eingaben ab. `StepQuickEditorRenderTest` erzeugt kompakte helle und dunkle
-Dialogansichten zur visuellen Prüfung.
+die extrahierten Eingaben ab. `StepQuickEditorGoldenRobolectricTest` sichert kompakte helle und dunkle
+Dialogansichten sowie 160 % Schriftgröße im Golden-Profil ab.
 
 `StepQuickEditInstrumentationTest` bedient das produktive Drei-Punkte-Menü, den Compose-Dialog,
 die Bildschirmtastatur und Room. Es prüft Speichern mit vorhandenem Satzfortschritt,
