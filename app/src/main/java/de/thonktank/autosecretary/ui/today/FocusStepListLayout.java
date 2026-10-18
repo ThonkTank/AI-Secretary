@@ -327,9 +327,9 @@ public final class FocusStepListLayout extends ViewGroup {
 
     List<GrainSpec.Anchor> grainAnchors() {
         List<GrainSpec.Anchor> anchors = new ArrayList<>();
+        // Resolve visibility after layout, including steps revealed by a height change.
         for (int index = 0; index < rowIds.size() && index < rows.size(); index++)
-            if (rows.get(index).getVisibility() == VISIBLE)
-                rows.get(index).appendGrainAnchor(anchors);
+            rows.get(index).appendGrainAnchor(anchors);
         return Collections.unmodifiableList(anchors);
     }
 
@@ -338,8 +338,7 @@ public final class FocusStepListLayout extends ViewGroup {
         if (doneStatus.getVisibility() == VISIBLE)
             views.add(GrainOcclusion.text(doneStatus));
         for (int index = 0; index < rowIds.size() && index < rows.size(); index++)
-            if (rows.get(index).getVisibility() == VISIBLE)
-                views.addAll(rows.get(index).grainOcclusions());
+            views.addAll(rows.get(index).grainOcclusions());
         if (moreStatus.getVisibility() == VISIBLE)
             views.add(GrainOcclusion.text(moreStatus));
         return views;

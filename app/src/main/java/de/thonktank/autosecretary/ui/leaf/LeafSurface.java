@@ -97,6 +97,9 @@ public class LeafSurface extends FrameLayout {
         GrainSpec.Anchors anchors = (GrainSpec.Anchors) spec;
         List<WoodGrainView.Anchor> resolved = new ArrayList<>();
         for (GrainSpec.Anchor anchor : anchors.anchors) {
+            // A step may have become GONE during measurement after the spec was bound.
+            if (!anchor.target.isShown() || anchor.target.getWidth() <= 0
+                    || anchor.target.getHeight() <= 0) continue;
             RectF bounds = localBounds(anchor.target);
             if (anchor.visibleOnly && !clipToVisibleBounds(new RectF(bounds), anchor.target)) continue;
             if (anchor.width > 0f && anchor.height > 0f) {

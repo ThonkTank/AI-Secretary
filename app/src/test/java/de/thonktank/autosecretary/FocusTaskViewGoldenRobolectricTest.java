@@ -72,6 +72,40 @@ public final class FocusTaskViewGoldenRobolectricTest {
         render("hygiene-unequal-rings", task, FocusStepLimit.AUTO, true, 824, 1850, 7);
     }
 
+    @Test public void hiddenFollowingStepsDoNotLeaveRingsBesideDoneStatus() throws Exception {
+        java.util.List<FocusStepUiModel> steps = new java.util.ArrayList<>();
+        steps.add(FocusTaskFixtures.step("done", "Schon fertig").done(true).build());
+        for (int index = 0; index < 11; index++) steps.add(
+                FocusTaskFixtures.step("garden-" + index, "Gartenarbeit " + (index + 1))
+                        .combo(index < 3 ? 0 : 3).build());
+        FocusTaskUiModel task = FocusTaskFixtures.task("garden", "Animal Crossing")
+                .allowDefer(true).combo(6).steps(steps).build();
+        DayPalette palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.LIGHT);
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        FrameLayout root = new FrameLayout(activity);
+        root.setBackgroundColor(palette.background);
+        FocusTaskView view = new FocusTaskView(activity);
+        view.bind(FocusCardTestModels.of(task, palette), false, event -> { });
+        root.addView(view, new FrameLayout.LayoutParams(-1, -1));
+        // Keep the window traversal from replacing the regression viewport dimensions.
+        activity.setContentView(root, new FrameLayout.LayoutParams(824, 1400));
+        root.measure(View.MeasureSpec.makeMeasureSpec(824, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(1400, View.MeasureSpec.EXACTLY));
+        root.layout(0, 0, 824, 1400);
+        WoodGrainRenderPipeline.awaitIdleForTest();
+        ShadowLooper.shadowMainLooper().idle();
+        assertEquals(1400, root.getHeight());
+        assertEquals(6, ViewTestQueries.visibleFollowingStepRows(view));
+        Bitmap actual = Bitmap.createBitmap(824, 1400, Bitmap.Config.ARGB_8888);
+        root.draw(new Canvas(actual));
+        GoldenAssertions.compare(FocusTaskViewGoldenRobolectricTest.class,
+                "/golden/focus-task/hidden-following-rings.png",
+                new File("src/test/resources/golden/focus-task/hidden-following-rings.png"),
+                new File("build/reports/goldens/focus-task/hidden-following-rings"),
+                actual, 0, 0d, "UPDATE_FOCUS_TASK_GOLDENS");
+        actual.recycle();
+    }
+
     private static void render(String name, FocusTaskUiModel task, FocusStepLimit limit,
                                boolean allowDefer,
                                int width, int height, int following) throws Exception {
