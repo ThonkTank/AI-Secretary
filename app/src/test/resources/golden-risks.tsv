@@ -83,3 +83,4 @@ WG-03	wood-grain/wide-dew-stress.png	Viele benachbarte Kreise und breite Tauform
 SQE-01	step-editor/compact-light.png	Der kompakte Schritteditor zeigt direkte Eingaben und den Hinweis für begonnene Schritte ohne Wizard-Navigation.
 SQE-02	step-editor/compact-dark.png	Dunkle Schrittbearbeitung erhält kontrastreiche Eingaben und eindeutige Speicheraktionen.
 SQE-03	step-editor/compact-large-text.png	Große Schrift lässt die Dialogaktionen erreichbar und den Formularinhalt scrollbar.
+FT-13	focus-task/hidden-following-rings.png	Ausgeblendete Folgeschritte hinterlassen bei begrenzter Kartenhöhe keine verwaisten Jahresringe neben dem Fertig-Zähler.
