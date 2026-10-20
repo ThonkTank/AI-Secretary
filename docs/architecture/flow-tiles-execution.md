@@ -600,4 +600,5 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   dürfen erst nach Prüfung der erzeugten Ist-/Soll-/Differenzbilder ersetzt werden.
 - Native API-35-Prüfung erfolgt in einem eigens angelegten Emulator. SwiftShader und
   Qt-Offscreen scheiterten vor App-Tests im Emulatorprozess; headless mit Host-GPU bootet.
-  Das ist kein Nachweis auf einem physischen Gerät. Abschließende Prüfergebnisse folgen.
+  Das ist kein Nachweis auf einem physischen Gerät. Die abschließenden Prüfergebnisse
+  und der Merge-Nachweis werden in [PR #386](https://github.com/ThonkTank/AI-Secretary/pull/386) geführt.
