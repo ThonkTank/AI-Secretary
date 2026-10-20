@@ -46,7 +46,7 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
     var viewport by remember { mutableStateOf(Rect.Zero) }
     // Measure a separate, non-scrolling layout. The Column's coordinates describe
     // its tall content, not the screen edge at which a held tile must start scrolling.
-    Box(modifier.fillMaxSize().background(Color.argb(palette.background))
+    Box(modifier.fillMaxSize().background(Color.argb(palette.background)).imePadding()
         .semantics { testTagsAsResourceId = true }
         .onGloballyPositioned { viewport = it.boundsInRoot() }) {
       Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp).testTag("flow-editor")) {

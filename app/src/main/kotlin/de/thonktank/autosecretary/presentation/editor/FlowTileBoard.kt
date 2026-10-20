@@ -25,6 +25,8 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.Constraints
@@ -66,10 +68,19 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
     val toolsIntoView = remember { BringIntoViewRequester() }
     val currentViewport by rememberUpdatedState(viewport)
     val density = LocalDensity.current
+    val focusManager = LocalFocusManager.current
+    val focusedInput = LocalEditorFocusedInputTag.current
+    val softwareKeyboard = LocalSoftwareKeyboardController.current
     val margin = with(density) { 24.dp.toPx() }
     val edge = with(density) { 56.dp.toPx() }
     val speed = with(density) { 420.dp.toPx() }
     fun cancel() { drag = null; proposal = null }
+    fun finishTextInput() {
+        // Switching from naming to arranging must not leave the IME covering the
+        // lower controls, especially on older Android windows using adjustPan.
+        if (focusedInput.value != null) focusManager.clearFocus()
+        softwareKeyboard?.hide()
+    }
     fun closeTools() { cancel(); selected = null; mode = null; target = null }
     fun apply() {
         val value = proposal
@@ -85,13 +96,14 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
     }
     fun begin(id: String, kind: FlowTileMove, pointer: Offset, keyboard: Boolean = false, fromHandle: Boolean = false) {
         if (!boxes.containsKey(id)) return
+        finishTextInput()
         selected = id
         proposal = null
         drag = TileDrag(id, kind, if (fromHandle) boxes.getValue(id).center else pointer - boardOrigin,
             pointer, boxes.toMap(), keyboard)
     }
     fun move(pointer: Offset) { drag?.let { drag = it.copy(pointer = pointer); preview(requireNotNull(drag)) } }
-    fun openTools(id: String) { cancel(); selected = id; mode = null; target = null }
+    fun openTools(id: String) { finishTextInput(); cancel(); selected = id; mode = null; target = null }
 
     BackHandler(drag != null || selected != null) { closeTools() }
     // One frame loop per gesture, not one coroutine per pointer event. Scrolling never changes

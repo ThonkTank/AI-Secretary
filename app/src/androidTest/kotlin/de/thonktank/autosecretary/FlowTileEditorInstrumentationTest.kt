@@ -40,6 +40,11 @@ class FlowTileEditorInstrumentationTest {
 
     @Before fun awaitTiles() {
         assertTrue(device.wait(Until.hasObject(By.desc("Waschen")), 5_000))
+        // API 26 otherwise exposes roots without their window when this class runs alone.
+        // Set this after UiDevice initialization, which installs its own service flags.
+        instrumentation.uiAutomation.serviceInfo = instrumentation.uiAutomation.serviceInfo.apply {
+            flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        }
         activityRule.scenario.onActivity { ids = it.editor.state.value.draft.graph.stepIds }
         val deadline = SystemClock.uptimeMillis() + 5_000
         var focused = false
@@ -105,6 +110,8 @@ class FlowTileEditorInstrumentationTest {
         ids = draft.graph.stepIds
         draft = draft.withGraph(draft.graph.place(ids[3], ids[1], FlowTileGraph.Placement.RIGHT, false))
         activityRule.scenario.onActivity { it.render(draft) }
+        stage = "switch from naming to arranging with the keyboard open"
+        requireNotNull(device.wait(Until.findObject(By.res("flow-editor:title")), 5_000)).click()
         button("D").longClick()
         val grip = requireNotNull(device.wait(Until.findObject(By.res("flow-editor:resize:RESIZE_LEFT:${ids[2]}")), 5_000)).visibleBounds
         val rightLane = button("C").visibleBounds
@@ -263,7 +270,8 @@ class FlowTileEditorInstrumentationTest {
                 root.packageName?.toString() == instrumentation.targetContext.packageName) return root
             SystemClock.sleep(20)
         } while (SystemClock.uptimeMillis() < deadline)
-        throw AssertionError("The editor has no registered accessibility window")
+        val root = instrumentation.uiAutomation.rootInActiveWindow
+        throw AssertionError("The editor has no registered accessibility window: package=${root?.packageName}, expected=${instrumentation.targetContext.packageName}, window=${root?.window}, windows=${instrumentation.uiAutomation.windows}")
     }
 
     private fun accessibilityNode(predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {

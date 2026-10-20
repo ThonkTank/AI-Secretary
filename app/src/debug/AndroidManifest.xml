@@ -9,6 +9,7 @@
         <activity
             android:name=".FlowTileEditorHarnessActivity"
             android:exported="false"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/ComposeSmokeTheme" />
         <activity android:name=".HomescreenPreviewActivity" android:exported="true" />
         <activity
