@@ -53,6 +53,8 @@ private data class TileDrag(
 internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: FlowEditorViewModel,
                            scroll: ScrollState, viewport: Rect) {
     val graph = state.draft.graph
+    val restingSpans = remember(graph) { tileSpans(graph) }
+    val frontiers = remember(graph) { graph.stepIds.associateWith { tileFrontier(graph, it, restingSpans) } }
     val boxes = remember(graph) { mutableMapOf<String, Rect>() }
     val landingBoxes = remember(graph) { mutableMapOf<String, Rect>() }
     var boardOrigin by remember { mutableStateOf(Offset.Zero) }
@@ -72,19 +74,20 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
     fun apply() {
         val value = proposal
         closeTools()
-        value?.let {
-            if (it.mode == FlowTileMove.JOIN) editor.join(listOf(it.source), it.target)
-            else editor.place(it.source, it.target, requireNotNull(it.placement), it.mode == FlowTileMove.BRANCH)
-        }
+        value?.let { editor.arrange(it.graph) }
     }
     fun preview(value: TileDrag) {
         val point = value.pointer - boardOrigin
         val movingCenter = value.boxes.getValue(value.source).center + point - value.origin
         proposal = tileDropProposal(graph, value.source, value.mode,
-            if (value.mode == FlowTileMove.JOIN) point else movingCenter, value.boxes, margin)
+            if (value.mode in listOf(FlowTileMove.JOIN, FlowTileMove.RESIZE_LEFT, FlowTileMove.RESIZE_RIGHT))
+                point else movingCenter, value.boxes, margin)
     }
     fun begin(id: String, kind: FlowTileMove, pointer: Offset, keyboard: Boolean = false, fromHandle: Boolean = false) {
         if (!boxes.containsKey(id)) return
+        // Keep IME/window geometry fixed during pointer capture: hiding it here
+        // can cancel the gesture or move the already measured drop destination.
+        selected = id
         proposal = null
         drag = TileDrag(id, kind, if (fromHandle) boxes.getValue(id).center else pointer - boardOrigin,
             pointer, boxes.toMap(), keyboard)
@@ -93,27 +96,42 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
     fun openTools(id: String) { cancel(); selected = id; mode = null; target = null }
 
     BackHandler(drag != null || selected != null) { closeTools() }
-    LaunchedEffect(selected) { if (selected != null) toolsIntoView.bringIntoView() }
     // One frame loop per gesture, not one coroutine per pointer event. Scrolling never changes
     // the frozen hit boxes; only the pointer's offset into the content is adjusted.
     LaunchedEffect(drag?.source, drag?.keyboard) {
         if (drag == null || drag?.keyboard == true) return@LaunchedEffect
         var previous = withFrameNanos { it }
+        var previousOrigin = boardOrigin
         while (isActive && drag != null) {
             val now = withFrameNanos { it }
             val dt = ((now - previous) / 1_000_000_000f).coerceIn(0f, .05f)
             previous = now
             drag?.let { value ->
                 val velocity = flowEdgeVelocity(value.pointer.y, currentViewport, edge, speed)
-                if (velocity != 0f) scroll.scrollBy(velocity * dt)
-                preview(value)
+                // Reveal tiles, not the arrangement buttons beneath them. With an
+                // open IME a fully visible small board is close to the viewport edge;
+                // scrolling it anyway moves a shared landing out from under the finger.
+                val contentTop = boardOrigin.y + value.boxes.values.minOf { it.top }
+                val contentBottom = boardOrigin.y + value.boxes.values.maxOf { it.bottom }
+                if (velocity < 0f && contentTop < currentViewport.top + margin ||
+                    velocity > 0f && contentBottom > currentViewport.bottom - margin)
+                    scroll.scrollBy(velocity * dt)
+                // Pointer movement already updates the preview. Recompute here only
+                // when scrolling actually moved the board, not on every idle frame.
+                if (previousOrigin != boardOrigin) {
+                    previousOrigin = boardOrigin
+                    preview(value)
+                }
             }
         }
     }
     val currentDrag = drag
     val shown = proposal?.graph ?: graph
     val spans = tileSpans(shown)
-    val movingIds = currentDrag?.let { if (it.mode == FlowTileMove.BRANCH) graph.branchFrom(it.source) else setOf(it.source) }.orEmpty()
+    val resizing = currentDrag?.mode in listOf(FlowTileMove.RESIZE_LEFT, FlowTileMove.RESIZE_RIGHT)
+    val movingIds = currentDrag?.takeUnless { resizing }?.let {
+        if (it.mode == FlowTileMove.BRANCH) graph.branchFrom(it.source) else setOf(it.source)
+    }.orEmpty()
     Column(Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
         if (event.type != KeyEventType.KeyDown) false
         else if (event.key == Key.Escape && (drag != null || selected != null)) { closeTools(); true }
@@ -128,6 +146,9 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
             }
         } ?: false
     }) {
+        if (graph.roots().size > 1)
+            EditorText("Start auswählen · darunter laufen Zweige parallel", Color.argb(palette.ink2), 14,
+                serif = false, modifier = Modifier.padding(bottom = 8.dp))
         Layout(content = {
             state.draft.steps.forEach { step -> key(step.id) {
                 val isRoot = graph.roots().contains(step.id)
@@ -151,23 +172,54 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
                     .combinedClickable(role = Role.Button, onLongClickLabel = "Anordnung und Startrhythmus",
                         onLongClick = { openTools(step.id) }, onClick = {
                             if (mode != null && selected != step.id) { target = step.id; proposal = null }
-                            else if (mode == null) editor.openStep(step.id)
+                            else if (mode == null) { selected = step.id; editor.openStep(step.id) }
                         })
                     .semantics {
                         contentDescription = step.text
-                        stateDescription = if (isRoot) cadence else "Folgeschritt"
+                        stateDescription = if (isRoot) cadence else
+                            "Nach " + shown.predecessors(step.id).joinToString(" und ") { state.draft.step(it).text }
                         customActions = listOf(CustomAccessibilityAction("Anordnen") { openTools(step.id); true }) +
                             if (isRoot) listOf(CustomAccessibilityAction("Startrhythmus bearbeiten") { editor.openCadence(step.id); true }) else emptyList()
-                    }.testTag("flow-editor:tile:${step.id}").padding(horizontal = 1.dp, vertical = 7.dp),
+                    }.testTag("flow-editor:tile:${step.id}"),
                     contentAlignment = Alignment.Center) {
-                    BasicText(step.text, style = TextStyle(color = Color.argb(palette.ink),
+                    Column(Modifier.padding(horizontal =
+                        if (spans.getValue(step.id).right - spans.getValue(step.id).left < .3f) 2.dp else 7.dp,
+                        vertical = 9.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally) {
+                      if (isRoot) BasicText("Start", style = TextStyle(color = Color.argb(palette.ink2),
+                          fontFamily = EditorSans, fontSize = 11.sp))
+                      BasicText(step.text, style = TextStyle(color = Color.argb(palette.ink),
                         fontFamily = EditorSans, fontSize = 16.sp, textAlign = TextAlign.Center,
                         localeList = LocaleList(Locale("de-DE")),
                         hyphens = Hyphens.Auto, lineBreak = LineBreak.Paragraph))
+                      if (spans.getValue(step.id).explicitParents && !isRoot)
+                          BasicText("Nach " + graph.predecessors(step.id).joinToString(" und ") { state.draft.step(it).text },
+                              style = TextStyle(color = Color.argb(palette.ink2), fontSize = 12.sp, textAlign = TextAlign.Center))
+                    }
+                    if (selected == step.id && frontiers.getValue(step.id).size > 1) {
+                        listOf(FlowTileMove.RESIZE_LEFT to Alignment.CenterStart,
+                            FlowTileMove.RESIZE_RIGHT to Alignment.CenterEnd).forEach { (kind, alignment) ->
+                            Box(Modifier.align(alignment).width(24.dp).fillMaxHeight()
+                                .testTag("flow-editor:resize:${kind.name}:${step.id}")
+                                .flowTileGrip(graph, { begin(step.id, kind, it) }, ::move, ::apply, ::cancel)
+                                .semantics { contentDescription = if (kind == FlowTileMove.RESIZE_LEFT)
+                                    "Linke Kante ziehen" else "Rechte Kante ziehen" },
+                                contentAlignment = alignment) {
+                                Box(Modifier.padding(horizontal = 3.dp).width(3.dp).height(22.dp)
+                                    .background(Color.argb(palette.accent), RoundedCornerShape(2.dp)))
+                            }
+                        }
+                    }
                 }
             } }
         }, modifier = Modifier.fillMaxWidth().testTag("flow-editor:board")
             .drawBehind {
+                if (currentDrag?.mode == FlowTileMove.STEP && proposal == null)
+                    tileJoinLandings(graph, currentDrag.source, currentDrag.boxes, margin).forEach { landing ->
+                        drawLine(Color.argb(palette.accent).copy(alpha = .6f),
+                            Offset(landing.box.left, landing.box.center.y),
+                            Offset(landing.box.right, landing.box.center.y), 3.dp.toPx())
+                    }
                 // The prospective landing tiles remain visible underneath the lifted tiles.
                 // No lines or ports are needed to preview the new widths and prerequisites.
                 if (currentDrag != null && proposal != null) movingIds.forEach { id ->
@@ -182,19 +234,37 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
             .onGloballyPositioned { boardOrigin = it.localToRoot(Offset.Zero) }) { measurables, constraints ->
             val gap = 6.dp.roundToPx()
             val width = constraints.maxWidth
-            val places = measurables.mapIndexed { index, measurable ->
+            val landingWidths = measurables.indices.map { index ->
                 val id = state.draft.steps[index].id
                 val span = spans.getValue(id)
-                val tileWidth = if (id in movingIds) currentDrag!!.boxes.getValue(id).width.roundToInt()
-                    else ((span.right - span.left) * width).roundToInt() -
-                        (if (span.left > 0f) gap / 2 else 0) - (if (span.right < 1f) gap / 2 else 0)
-                measurable.measure(Constraints.fixedWidth(tileWidth.coerceAtLeast(1)))
+                ((span.right - span.left) * width).roundToInt() -
+                    (if (span.left > 0f) gap / 2 else 0) - (if (span.right < 1f) gap / 2 else 0)
             }
-            val heights = mutableMapOf<Int, Int>()
-            places.forEachIndexed { i, p -> val row = spans.getValue(state.draft.steps[i].id).row
-                heights[row] = maxOf(heights[row] ?: 0, p.height) }
+            val widths = measurables.indices.map { index ->
+                val id = state.draft.steps[index].id
+                if (id in movingIds) currentDrag!!.boxes.getValue(id).width.roundToInt() else landingWidths[index]
+            }
+            val rowCount = spans.values.maxOfOrNull { it.endRow } ?: 0
+            val heights = (0 until rowCount).associateWith { 48.dp.roundToPx() }.toMutableMap()
+            measurables.forEachIndexed { i, measurable ->
+                val span = spans.getValue(state.draft.steps[i].id)
+                // The floating tile keeps its old size; the landing uses the prospective
+                // width so wrapped labels do not change the rows again on release.
+                val needed = measurable.minIntrinsicHeight(landingWidths[i].coerceAtLeast(1))
+                val available = (span.row until span.endRow).sumOf { heights.getValue(it) } +
+                    (span.endRow - span.row - 1) * gap
+                if (needed > available) heights[span.endRow - 1] = heights.getValue(span.endRow - 1) + needed - available
+            }
             val rowY = mutableMapOf<Int, Int>(); var total = 0
             heights.keys.sorted().forEach { row -> rowY[row] = total; total += heights.getValue(row) + gap }
+            rowY[rowCount] = total
+            val places = measurables.mapIndexed { i, measurable ->
+                val id = state.draft.steps[i].id
+                val span = spans.getValue(id)
+                val height = if (id in movingIds) currentDrag!!.boxes.getValue(id).height.roundToInt()
+                    else rowY.getValue(span.endRow) - rowY.getValue(span.row) - gap
+                measurable.measure(Constraints.fixed(widths[i].coerceAtLeast(1), height.coerceAtLeast(1)))
+            }
             val delta = currentDrag?.let { it.pointer - boardOrigin - it.origin } ?: Offset.Zero
             layout(width, (total - gap).coerceAtLeast(0)) {
                 places.forEachIndexed { i, p ->
@@ -203,7 +273,8 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
                     val top = rowY.getValue(span.row)
                     val landingWidth = ((span.right - span.left) * width).roundToInt() -
                         (if (span.left > 0f) gap / 2 else 0) - (if (span.right < 1f) gap / 2 else 0)
-                    landingBoxes[id] = Rect(left.toFloat(), top.toFloat(), left + landingWidth.toFloat(), top + p.height.toFloat())
+                    landingBoxes[id] = Rect(left.toFloat(), top.toFloat(), left + landingWidth.toFloat(),
+                        (rowY.getValue(span.endRow) - gap).toFloat())
                     if (currentDrag == null) boxes[id] = Rect(left.toFloat(), top.toFloat(), left + p.width.toFloat(), top + p.height.toFloat())
                     if (id in movingIds) {
                         val origin = currentDrag!!.boxes.getValue(id)
@@ -219,14 +290,21 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
                     else when (value.placement) {
                         FlowTileGraph.Placement.BEFORE -> "Vor"
                         FlowTileGraph.Placement.AFTER -> "Nach"
-                        else -> "Neben"
+                        FlowTileGraph.Placement.LEFT -> "Links neben"
+                        else -> "Rechts neben"
                     }
-                "$relation ${state.draft.step(value.target).text}"
+                if (value.mode in listOf(FlowTileMove.RESIZE_LEFT, FlowTileMove.RESIZE_RIGHT) ||
+                    value.placement == FlowTileGraph.Placement.AFTER)
+                    "Nach " + value.graph.predecessors(value.source).joinToString(" und ") { state.draft.step(it).text }
+                else "$relation ${state.draft.step(value.target).text}"
             }
             EditorText(hint, Color.argb(palette.accent), 16, serif = false,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }.padding(top = 8.dp))
         }
-        selected?.let { source ->
+        if (drag == null && selected == null && frontiers.values.any { it.size > 1 })
+            EditorText("Breite ändern: Kachel gedrückt halten, dann Kante ziehen.",
+                Color.argb(palette.ink2), 14, serif = false, modifier = Modifier.padding(top = 8.dp))
+        selected?.takeIf { drag == null && state.form == null }?.let { source ->
             Column(Modifier.fillMaxWidth().padding(top = 12.dp).bringIntoViewRequester(toolsIntoView)
                 .testTag("flow-editor:arrange")) {
                 EditorText(state.draft.step(source).text, Color.argb(palette.ink), 22)
@@ -240,11 +318,25 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
                 }
                 if (graph.roots().contains(source) && mode == null)
                     EditorButton("Start · alle ${state.draft.step(source).intervalDays ?: 1} Tage", palette, { editor.openCadence(source) })
+                if (mode == null) {
+                    val frontier = frontiers.getValue(source)
+                    if (frontier.size > 1) {
+                        EditorText("Breite · auf diese Schritte warten", Color.argb(palette.ink2), 16, serif = false)
+                        for (first in frontier.indices) for (last in first..frontier.lastIndex) {
+                            val parents = frontier.subList(first, last + 1)
+                            val option = tileWidthProposal(graph, source, parents) ?: continue
+                            EditorButton("Nach " + parents.joinToString(" und ") { state.draft.step(it).text },
+                                palette, { editor.arrange(option.graph); closeTools() },
+                                modifier = Modifier.fillMaxWidth().testTag("flow-editor:width:${parents.joinToString(",")}"))
+                        }
+                    }
+                }
                 mode?.let { kind ->
                     // The same proposals support a complete non-drag path, including switch access.
                     graph.stepIds.filter { it != source }.forEach { id ->
                         val choices = if (kind == FlowTileMove.JOIN) listOfNotNull(tileProposal(graph, source, id, kind))
-                            else FlowTileGraph.Placement.values().mapNotNull { tileProposal(graph, source, id, kind, it) }
+                            else FlowTileGraph.Placement.values().filter { it != FlowTileGraph.Placement.BESIDE }
+                                .mapNotNull { tileProposal(graph, source, id, kind, it) }
                         if (choices.isNotEmpty()) {
                             EditorButton(state.draft.step(id).text, palette, { target = id; proposal = null },
                                 modifier = Modifier.fillMaxWidth().testTag("flow-editor:target:$id"))
@@ -253,7 +345,8 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
                                     else when (option.placement) {
                                         FlowTileGraph.Placement.BEFORE -> "Davor"
                                         FlowTileGraph.Placement.AFTER -> "Dahinter"
-                                        else -> "Daneben"
+                                        FlowTileGraph.Placement.LEFT -> "Links daneben"
+                                        else -> "Rechts daneben"
                                     }
                                 EditorButton(label, palette, { proposal = option }, modifier = Modifier.fillMaxWidth()
                                     .testTag("flow-editor:placement:$id:${option.placement?.name ?: "JOIN"}"))

@@ -27,12 +27,18 @@ der bestehende Vertrag für normale Aufgaben bleibt unverändert.
 2. Voraussetzungen stehen über Folgeschritten; gleichrangige Schritte nebeneinander.
    Ein gemeinsamer Folgeschritt erstreckt sich über die Breite seiner Voraussetzungen.
    Keine Verbindungslinien, Ports, Zoomfläche, Vorlagen oder Sortierbuttons im Dialog.
-3. Davor/dahinter platziert fügt ein; daneben platziert verzweigt ohne implizite
-   Zusammenführung. Eine ausdrücklich unter mehreren Zweigenden platzierte gemeinsame
-   Folgekachel verbindet diese. Die Vorschau zeigt die resultierenden Kachelbreiten und
+3. Davor/dahinter platziert fügt ein; links/rechts daneben platziert verzweigt und erhält
+   die bisherige Fortsetzung als gemeinsamen Folgeschritt. Eine unter mehreren Zweigenden
+   platzierte gemeinsame Folgekachel verbindet diese. Seitliches Ziehen an ihrer Kante
+   oder gezieltes Ablegen unter einem einzelnen Stapel begrenzt ihre Voraussetzungen.
+   Die Vorschau zeigt die resultierenden Kachelbreiten und
    Voraussetzungen vor dem Loslassen; Abbruch verändert nichts. Zyklen sind keine Ziele.
    Einzelkachel und zusammenhängender Zweig bis zur nächsten Zusammenführung sind
    getrennte Auswahlziele auf der Fläche, nicht zusätzliche Dialogformulare.
+   Breiten richten sich nach dem maximalen parallelen Platzbedarf des Teilstapels.
+   Kürzere Nachbarstapel füllen durch verlängerte Endkacheln die Höhe bis zur gemeinsamen
+   Fortsetzung; die Höhe stellt keine Dauer dar. Ein besonderer Zusammenführungsmodus
+   ist für die normale Bedienung nicht erforderlich.
 4. Jede Strukturänderung ist rückgängig machbar; IDs bleiben stabil. Maus, Touch,
    Autoscroll und zugängliche Aktionen ohne Ziehen führen dieselben Entwurfsoperationen aus.
 5. Tippen öffnet nur Name, Wartezeit danach (Wert + Minuten/Stunden/Tage),
@@ -42,6 +48,9 @@ der bestehende Vertrag für normale Aufgaben bleibt unverändert.
    Auch letzte Schritte können warten; es gibt keine zusätzliche Zeitablaufbestätigung.
 6. Startmöglichkeiten haben getrennt vom Schrittdialog ihren Rhythmus und sind ausdrücklich
    als Starts erkennbar. Alternative Starts sind keine parallelen Pflichtschritte.
+   „+ Schritt“ hängt über einen modalen Dialog einen gemeinsamen Folgeschritt an alle
+   offenen Stapelenden an. Einen weiteren alternativen Start erzeugt seitliches Ablegen
+   neben einem bestehenden Start.
 7. Blatt 2 legt Kapazitäten an, bearbeitet Gesamtmengen und ordnet benötigte Menge,
    Reservierungsbeginn und Freigabeschritt samt Freigabe nach Aktion/nach Wartezeit zu.
    Keine Zusammenfassungsseite; Fertig speichert atomar. Fehler öffnen das betroffene Element.
@@ -49,6 +58,16 @@ der bestehende Vertrag für normale Aufgaben bleibt unverändert.
 Ein ViewModel besitzt den gesamten Entwurf inklusive Kachelanordnung und Kapazitäten.
 Rotation, Prozesswiederherstellung und Rücknavigation verlieren keine Eingaben.
 Abbrechen verwirft nur den Entwurf; es entsteht keine neue Lauf-Abbruchfunktion.
+
+### Präzisierung vom 2026-10-20
+
+Die bestätigte Reparatur ersetzt die frühere Regel „daneben ohne implizite Zusammenführung“.
+Bei `A → B → D` und C rechts neben B bleibt D zunächst unter B und C. Wird D auf die
+linke Stapelbreite begrenzt, wartet D nur auf B; C reicht sichtbar neben D nach unten.
+Eine spätere gemeinsame Fortsetzung bleibt auch beim Verschmälern von D an beide
+Zweige gebunden. Kantenziehen und gezieltes Ablegen verwenden denselben Strukturvertrag.
+Bestehende Definitionen werden beim Öffnen nicht geändert. Quer verbundene Altgraphen,
+die nicht als rechteckige Stapel darstellbar sind, benennen ihre Vorgänger ausdrücklich.
 
 ## Definition und Laufzeit
 

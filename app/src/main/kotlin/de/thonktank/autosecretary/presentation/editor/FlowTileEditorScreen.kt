@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.FlowEditorForm
 import de.thonktank.autosecretary.FlowEditorState
@@ -44,12 +46,13 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
     var viewport by remember { mutableStateOf(Rect.Zero) }
     // Measure a separate, non-scrolling layout. The Column's coordinates describe
     // its tall content, not the screen edge at which a held tile must start scrolling.
-    Box(modifier.fillMaxSize().background(Color.argb(palette.background))
+    Box(modifier.fillMaxSize().background(Color.argb(palette.background)).imePadding()
         .semantics { testTagsAsResourceId = true }
         .onGloballyPositioned { viewport = it.boundsInRoot() }) {
       Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp).testTag("flow-editor")) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            EditorButton("Abbrechen", palette, onCancel, enabled = !state.saving && !state.savePending)
+            EditorButton("Abbrechen", palette, onCancel, enabled = !state.saving && !state.savePending,
+                modifier = Modifier.testTag("flow-editor:cancel-draft"))
             EditorText("${state.page}/2", Color.argb(palette.muted), 16, serif = false,
                 modifier = Modifier.padding(top = 14.dp))
             EditorButton("↶", palette, editor::undo,
@@ -63,7 +66,7 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
             state.loadFailed -> EditorButton("Erneut laden", palette, editor::retryLoad)
             state.saving -> EditorText("Wird gespeichert …", Color.argb(palette.muted), 17, serif = false)
             state.savePending -> EditorButton("Erneut speichern", palette, editor::retrySave)
-            state.form != null -> FlowEditorFormSurface(state.form, state, palette, editor)
+            state.form != null && state.form.kind != "step" -> FlowEditorFormSurface(state.form, state, palette, editor)
             state.page == 1 -> {
                 EditorInput(state.draft.name, editor::rename, palette, hint = "Ablaufname",
                     textSize = 30, serif = true, tag = "flow-editor:title",
@@ -96,6 +99,16 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
             }
         }
       }
+      state.form?.takeIf { it.kind == "step" }?.let { form ->
+          Dialog(onDismissRequest = editor::closeForm,
+              properties = DialogProperties(usePlatformDefaultWidth = false)) {
+              Column(Modifier.widthIn(max = 380.dp).fillMaxWidth().imePadding()
+                  .padding(horizontal = 16.dp, vertical = 12.dp)
+                  .verticalScroll(rememberScrollState()).semantics { testTagsAsResourceId = true }) {
+                  FlowEditorFormSurface(form, state, palette, editor)
+              }
+          }
+      }
     }
 }
 
@@ -107,6 +120,10 @@ private fun FlowEditorFormSurface(form: FlowEditorForm, state: FlowEditorState, 
     LeafSurface(palette, modifier = Modifier.fillMaxWidth().padding(top = 12.dp).testTag("flow-editor:form")) {
         Column(Modifier.fillMaxWidth()) {
             EditorText(title, Color.argb(palette.ink), 28)
+            if (form.kind == "step") state.error?.let {
+                EditorText(it, Color.argb(palette.bad), 16, serif = false,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            }
             when (form.kind) {
                 "step" -> {
                     FlowField("Name", "name", form, palette, editor)
@@ -138,10 +155,12 @@ private fun FlowEditorFormSurface(form: FlowEditorForm, state: FlowEditorState, 
             }
             Spacer(Modifier.height(12.dp))
             if (LocalDensity.current.fontScale >= 1.3f) {
-                EditorButton("Abbrechen", palette, editor::closeForm, modifier = Modifier.fillMaxWidth())
+                EditorButton("Abbrechen", palette, editor::closeForm,
+                    modifier = Modifier.fillMaxWidth().testTag("flow-editor:cancel-form"))
                 EditorButton("Speichern", palette, editor::submitForm, primary = true, modifier = Modifier.fillMaxWidth())
             } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                EditorButton("Abbrechen", palette, editor::closeForm)
+                EditorButton("Abbrechen", palette, editor::closeForm,
+                    modifier = Modifier.testTag("flow-editor:cancel-form"))
                 EditorButton("Speichern", palette, editor::submitForm, primary = true)
             }
         }

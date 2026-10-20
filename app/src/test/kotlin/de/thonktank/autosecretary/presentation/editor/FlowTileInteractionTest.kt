@@ -17,10 +17,28 @@ class FlowTileInteractionTest {
         assertEquals(FlowTileGraph.Placement.AFTER,
             tileDropProposal(graph, "c", FlowTileMove.STEP, Offset(50f, 100f), boxes, 24f)!!.placement)
         val parallel = tileDropProposal(graph, "c", FlowTileMove.STEP, Offset(99f, 75f), boxes, 24f)!!
-        assertEquals(FlowTileGraph.Placement.BESIDE, parallel.placement)
+        assertEquals(FlowTileGraph.Placement.RIGHT, parallel.placement)
         assertEquals(listOf("a"), parallel.graph.predecessors("c"))
         assertTrue(parallel.graph.successors("c").isEmpty())
         assertEquals(listOf(FlowTileGraph.Link("a", "b")), graph.links)
+    }
+
+    @Test fun resizeAndSharedLandingProduceTheSameGraphWithNoSpecialJoinMode() {
+        val g = FlowTileGraph(listOf("a", "b", "c", "d"),
+            listOf("a" to "b", "a" to "c", "b" to "d", "c" to "d")
+                .map { FlowTileGraph.Link(it.first, it.second) })
+        val narrow = tileResizeProposal(g, "d", FlowTileMove.RESIZE_RIGHT, 110f, 220f)!!.graph
+        assertEquals(listOf("b"), narrow.predecessors("d"))
+        assertEquals(listOf("b", "c"), tileFrontier(narrow, "d"))
+        val widened = tileResizeProposal(narrow, "d", FlowTileMove.RESIZE_RIGHT, 220f, 220f)!!.graph
+        assertEquals(g.links.toSet(), widened.links.toSet())
+        val layout = mapOf("a" to Rect(0f, 0f, 220f, 48f),
+            "b" to Rect(0f, 54f, 107f, 102f), "c" to Rect(113f, 54f, 220f, 156f),
+            "d" to Rect(0f, 108f, 107f, 156f))
+        val landing = tileJoinLandings(narrow, "d", layout, 24f).single()
+        val dropped = tileDropProposal(narrow, "d", FlowTileMove.STEP, landing.box.center, layout, 24f)!!
+        assertEquals(widened.links.toSet(), dropped.graph.links.toSet())
+        assertNull(tileResizeProposal(g, "d", FlowTileMove.RESIZE_RIGHT, -20f, 220f))
     }
 
     @Test fun joinRequiresAnExplicitModeAndHitsOnlyInsideTheSuccessor() {

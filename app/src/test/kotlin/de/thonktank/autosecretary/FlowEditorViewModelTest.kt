@@ -14,6 +14,26 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class FlowEditorViewModelTest {
+    @Test fun dialogAppendsStepsAndUndoRestoresThePreviousWholeDraft() {
+        val vm = FlowEditorViewModel(FlowEditorDraft.empty().rename("Stapel"), SavedStateHandle())
+        listOf("A", "B", "D").forEach { name ->
+            vm.openStep(null); vm.field("name", name); vm.submitForm()
+        }
+        val initial = vm.state.value.draft
+        val ids = initial.graph.stepIds
+        assertEquals(listOf(ids[0]), initial.graph.predecessors(ids[1]))
+        assertEquals(listOf(ids[1]), initial.graph.predecessors(ids[2]))
+        vm.openStep(null); vm.field("name", "C"); vm.submitForm()
+        val c = vm.state.value.draft.steps.last().id
+        vm.place(c, ids[1], FlowTileGraph.Placement.RIGHT)
+        assertEquals(setOf(ids[1], c), vm.state.value.draft.graph.predecessors(ids[2]).toSet())
+        val wide = vm.state.value.draft.graph
+        vm.arrange(wide.after(ids[2], listOf(ids[1])))
+        assertEquals(listOf(ids[1]), vm.state.value.draft.graph.predecessors(ids[2]))
+        vm.undo()
+        assertEquals(wide.links, vm.state.value.draft.graph.links)
+        assertEquals(initial.waits, vm.state.value.draft.waits.filterKeys { it != c })
+    }
     @Test fun stepFormContainsOnlyNameDurationUnitAndQuestion() {
         val vm = FlowEditorViewModel(FlowEditorDraft.empty(), SavedStateHandle())
         vm.openStep(null)

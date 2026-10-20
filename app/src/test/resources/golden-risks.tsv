@@ -6,6 +6,8 @@ GF-02	graph-flow-sheet/laundry-320-large.png	Große Schrift erhält vollständig
 FL-01	flow-tiles/tiles-320.png	Alternative Starts und gemeinsame Folgeschritte bleiben auf 320 dp als kompakte Kacheln lesbar.
 FL-02	flow-tiles/step-320.png	Der Schrittdialog zeigt nur Name, Wartezeit und direkte Zeitabfrage.
 FL-03	flow-tiles/step-320-large.png	Große Schrift trennt Zeiteingabe und Einheit ohne abgeschnittene Aktionen.
+FL-04	flow-tiles/stack-shared-320.png	Gemeinsamer Folgeschritt belegt die gesamte Breite unter beiden parallelen Vorgängern.
+FL-05	flow-tiles/stack-independent-320.png	Schmaler Folgeschritt und verlängerter Nachbar zeigen unabhängig laufende Stapel.
 AT-01	all-tasks/archived.png	Archivierte Aufgaben bleiben visuell als eigener inaktiver Zustand erkennbar.
 AT-02	all-tasks/empty-filter.png	Eine Filterkombination ohne Treffer zeigt die passende leere Ergebnisfläche.
 AT-03	all-tasks/empty-search.png	Eine Suche ohne Treffer bleibt von einem insgesamt leeren Katalog unterscheidbar.

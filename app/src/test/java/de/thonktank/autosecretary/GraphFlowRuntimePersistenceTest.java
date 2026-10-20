@@ -51,6 +51,33 @@ public final class GraphFlowRuntimePersistenceTest {
 
     @After public void close() { database.close(); }
 
+    @Test public void resizedStackRoundTripsAndReleasesOnlyTheDisplayedSuccessor() {
+        for (boolean narrow : List.of(false, true)) {
+            FlowEditorDraft draft = FlowEditorDraft.empty().rename("Stapel " + narrow);
+            for (String name : List.of("A", "B", "D", "C"))
+                draft = draft.appendStep(name, FlowDelayPolicy.fixed(name.equals("B") ? 100 : 0));
+            List<String> keys = draft.graph.stepIds;
+            FlowTileGraph graph = draft.graph.place(keys.get(3), keys.get(1), FlowTileGraph.Placement.RIGHT, false);
+            if (narrow) graph = graph.after(keys.get(2), List.of(keys.get(1)));
+            TaskId task = save.execute(draft.withGraph(graph).edit());
+            FlowEditorDraft loaded = FlowEditorDraft.from(new LoadFlowGraph(repository.catalog, repository.steps,
+                    repository.flows, definitions, repository.transactions).execute(task));
+            String d = loaded.steps.stream().filter(s -> s.text.equals("D")).findFirst().orElseThrow().id;
+            assertEquals(narrow ? 1 : 2, loaded.graph.predecessors(d).size());
+            String id = runtime.start(candidate(task, "A"), null).runId;
+            assertEquals(Set.of("B", "C"), new HashSet<>(run(id).availableSteps().stream()
+                    .map(s -> s.source.title).toList()));
+            runtime.complete(step(id, "B").id, null);
+            assertEquals(List.of("C"), run(id).availableSteps().stream().map(s -> s.source.title).toList());
+            now += 100; runtime.activateReady();
+            assertEquals(narrow, run(id).availableSteps().stream().anyMatch(s -> s.source.title.equals("D")));
+            runtime.complete(step(id, "C").id, null);
+            assertTrue(run(id).availableSteps().stream().anyMatch(s -> s.source.title.equals("D")));
+            runtime.complete(step(id, "D").id, null);
+            assertTrue(run(id).collected);
+        }
+    }
+
     @Test public void nativeProjectionPreservesStepComboAndMovesCollectionToHeader() {
         TaskId task = save.execute(FlowEditorDraft.empty().rename("Wäsche")
                 .addStep("Buntwäsche", FlowDelayPolicy.fixed(100)).edit());

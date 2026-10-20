@@ -581,3 +581,24 @@ Der Teilstand ist **nicht** der Produkt-Cutover und darf nicht gemergt/veröffen
   Keine Aussage über eine tatsächlich installierte Version oder Bedienung auf dem
   Nutzergerät; keine Produktionsdaten gelöscht oder neu installiert. Phase A bleibt
   ausdrücklich offen, bis das Gerät verbunden und das Update dort geprüft ist.
+
+## 2026-10-20 — Stapelbedienung reparieren
+
+- Bestätigter Bedienvertrag: unabhängige Parallelstapel, einzelne Kacheln verschieben,
+  Breite nach parallelem Platzbedarf, alternative Starts erhalten, neue Schritte unten
+  anhängen. Kantenziehen und gezieltes Ablegen begrenzen beziehungsweise erweitern die
+  Vorgänger; kürzere Nachbarstapel füllen die Höhe bis zum gemeinsamen Ende.
+- Ausgangspunkt Remote-main `d836c36d3601eb33b630d2a18e967fe2ca33bed7`, eigener Worktree
+  `flow-block-stacking/AutoSecretary`, Themenbranch `codex/flow-block-stacking`.
+- Graphoperationen und Layout leiten die Darstellung aus gespeicherten Verbindungen ab.
+  Keine zusätzliche Persistenz für Pixelbreiten/-höhen, keine Schemaänderung und keine
+  Umschreibung vorhandener Definitionen beim Öffnen. Laufende Snapshots bleiben erhalten.
+- Neue Regressionen prüfen Breitenänderung mit späterer Zusammenführung, linke/rechte
+  Einfügung, verschachtelte Breiten, Dialoganlage und Undo sowie Speichern/Laden/Ausführen
+  von gemeinsamen und unabhängigen Folgeschritten gegen SQLite auf API 26 und 35.
+- Referenzbilder erfassen auch das separate modale Android-Fenster. Die alten Bilder
+  dürfen erst nach Prüfung der erzeugten Ist-/Soll-/Differenzbilder ersetzt werden.
+- Native API-35-Prüfung erfolgt in einem eigens angelegten Emulator. SwiftShader und
+  Qt-Offscreen scheiterten vor App-Tests im Emulatorprozess; headless mit Host-GPU bootet.
+  Das ist kein Nachweis auf einem physischen Gerät. Die abschließenden Prüfergebnisse
+  und der Merge-Nachweis werden in [PR #386](https://github.com/ThonkTank/AI-Secretary/pull/386) geführt.
