@@ -40,11 +40,6 @@ class FlowTileEditorInstrumentationTest {
 
     @Before fun awaitTiles() {
         assertTrue(device.wait(Until.hasObject(By.desc("Waschen")), 5_000))
-        // API 26 otherwise exposes roots without their window when this class runs alone.
-        // Set this after UiDevice initialization, which installs its own service flags.
-        instrumentation.uiAutomation.serviceInfo = instrumentation.uiAutomation.serviceInfo.apply {
-            flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-        }
         activityRule.scenario.onActivity { ids = it.editor.state.value.draft.graph.stepIds }
         val deadline = SystemClock.uptimeMillis() + 5_000
         var focused = false
@@ -261,12 +256,13 @@ class FlowTileEditorInstrumentationTest {
     )) { "Missing editable name field" }
 
     private fun stableRoot(): AccessibilityNodeInfo {
-        // Window focus can precede accessibility window registration during an activity
-        // transition. waitForStable needs getWindow().displayId, not just a non-null root.
+        // From API 30, waitForStable dereferences getWindow().displayId. Older Android
+        // uses DEFAULT_DISPLAY directly and can validly expose a root without a window.
         val deadline = SystemClock.uptimeMillis() + 5_000
         do {
             val root = instrumentation.uiAutomation.rootInActiveWindow
-            if (root != null && root.refresh() && root.window != null &&
+            if (root != null && root.refresh() &&
+                (android.os.Build.VERSION.SDK_INT < 30 || root.window != null) &&
                 root.packageName?.toString() == instrumentation.targetContext.packageName) return root
             SystemClock.sleep(20)
         } while (SystemClock.uptimeMillis() < deadline)
