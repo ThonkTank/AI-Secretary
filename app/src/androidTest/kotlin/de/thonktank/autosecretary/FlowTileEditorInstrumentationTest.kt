@@ -80,6 +80,9 @@ class FlowTileEditorInstrumentationTest {
         pointer(grip.centerX().toFloat(), grip.centerY().toFloat(),
             leftLane.right.toFloat(), grip.centerY().toFloat(), false, false)
         awaitGraph { it.predecessors(ids[2]) == listOf(ids[1]) }
+        // Arrange directly after editing the title too. IME resizing must not
+        // interrupt the drag after its start/end coordinates have been measured.
+        requireNotNull(device.wait(Until.findObject(By.res("flow-editor:title")), 5_000)).click()
         val tallC = button("C").visibleBounds
         val narrowD = button("D").visibleBounds
         assertEquals("The independent neighbour fills the height next to D", narrowD.bottom, tallC.bottom)
