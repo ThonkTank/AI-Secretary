@@ -219,18 +219,23 @@ internal fun FlowTileBoard(state: FlowEditorState, palette: DayPalette, editor: 
             .onGloballyPositioned { boardOrigin = it.localToRoot(Offset.Zero) }) { measurables, constraints ->
             val gap = 6.dp.roundToPx()
             val width = constraints.maxWidth
-            val widths = measurables.indices.map { index ->
+            val landingWidths = measurables.indices.map { index ->
                 val id = state.draft.steps[index].id
                 val span = spans.getValue(id)
-                if (id in movingIds) currentDrag!!.boxes.getValue(id).width.roundToInt()
-                    else ((span.right - span.left) * width).roundToInt() -
-                        (if (span.left > 0f) gap / 2 else 0) - (if (span.right < 1f) gap / 2 else 0)
+                ((span.right - span.left) * width).roundToInt() -
+                    (if (span.left > 0f) gap / 2 else 0) - (if (span.right < 1f) gap / 2 else 0)
+            }
+            val widths = measurables.indices.map { index ->
+                val id = state.draft.steps[index].id
+                if (id in movingIds) currentDrag!!.boxes.getValue(id).width.roundToInt() else landingWidths[index]
             }
             val rowCount = spans.values.maxOfOrNull { it.endRow } ?: 0
             val heights = (0 until rowCount).associateWith { 48.dp.roundToPx() }.toMutableMap()
             measurables.forEachIndexed { i, measurable ->
                 val span = spans.getValue(state.draft.steps[i].id)
-                val needed = measurable.minIntrinsicHeight(widths[i].coerceAtLeast(1))
+                // The floating tile keeps its old size; the landing uses the prospective
+                // width so wrapped labels do not change the rows again on release.
+                val needed = measurable.minIntrinsicHeight(landingWidths[i].coerceAtLeast(1))
                 val available = (span.row until span.endRow).sumOf { heights.getValue(it) } +
                     (span.endRow - span.row - 1) * gap
                 if (needed > available) heights[span.endRow - 1] = heights.getValue(span.endRow - 1) + needed - available
