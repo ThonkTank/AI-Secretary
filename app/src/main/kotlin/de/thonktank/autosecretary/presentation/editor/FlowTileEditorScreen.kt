@@ -51,7 +51,8 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
         .onGloballyPositioned { viewport = it.boundsInRoot() }) {
       Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp).testTag("flow-editor")) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            EditorButton("Abbrechen", palette, onCancel, enabled = !state.saving && !state.savePending)
+            EditorButton("Abbrechen", palette, onCancel, enabled = !state.saving && !state.savePending,
+                modifier = Modifier.testTag("flow-editor:cancel-draft"))
             EditorText("${state.page}/2", Color.argb(palette.muted), 16, serif = false,
                 modifier = Modifier.padding(top = 14.dp))
             EditorButton("↶", palette, editor::undo,
@@ -154,10 +155,12 @@ private fun FlowEditorFormSurface(form: FlowEditorForm, state: FlowEditorState, 
             }
             Spacer(Modifier.height(12.dp))
             if (LocalDensity.current.fontScale >= 1.3f) {
-                EditorButton("Abbrechen", palette, editor::closeForm, modifier = Modifier.fillMaxWidth())
+                EditorButton("Abbrechen", palette, editor::closeForm,
+                    modifier = Modifier.fillMaxWidth().testTag("flow-editor:cancel-form"))
                 EditorButton("Speichern", palette, editor::submitForm, primary = true, modifier = Modifier.fillMaxWidth())
             } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                EditorButton("Abbrechen", palette, editor::closeForm)
+                EditorButton("Abbrechen", palette, editor::closeForm,
+                    modifier = Modifier.testTag("flow-editor:cancel-form"))
                 EditorButton("Speichern", palette, editor::submitForm, primary = true)
             }
         }

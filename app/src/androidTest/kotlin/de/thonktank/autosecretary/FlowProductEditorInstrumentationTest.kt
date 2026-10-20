@@ -61,8 +61,11 @@ class FlowProductEditorInstrumentationTest {
                 input("name").text = "Nicht speichern"
                 scenario.recreate()
                 assertEquals("Nicht speichern", input("name").text)
-                // The top-level cancel discards the complete draft, not a running chain.
-                device.findObjects(By.desc("Abbrechen")).first().click()
+                // A modal cancel discards only that step edit. Close it before cancelling
+                // the whole draft; the background action is intentionally inaccessible.
+                requireNotNull(device.findObject(By.res("flow-editor:cancel-form"))).click()
+                assertTrue(device.wait(Until.gone(By.res("flow-editor:form")), 5_000))
+                requireNotNull(device.wait(Until.findObject(By.res("flow-editor:cancel-draft")), 5_000)).click()
                 assertTrue(device.wait(Until.gone(By.res("flow-editor")), 5_000))
             }
             assertEquals("Vorbereiten", container.flows.loadGraph.execute(saved).steps.single().text)
