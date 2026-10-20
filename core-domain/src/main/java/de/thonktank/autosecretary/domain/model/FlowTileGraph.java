@@ -14,7 +14,7 @@ import java.util.Set;
  * Tile order is only a stable layout tie-breaker, never an execution cursor.
  */
 public final class FlowTileGraph {
-    public enum Placement { BEFORE, AFTER, BESIDE }
+    public enum Placement { BEFORE, AFTER, LEFT, RIGHT, BESIDE }
     public final List<String> stepIds;
     public final List<Link> links;
     private final Map<String, List<String>> incoming = new LinkedHashMap<>();
@@ -126,6 +126,48 @@ public final class FlowTileGraph {
         return new FlowTileGraph(nodes, links);
     }
 
+    /** New editor steps continue every open lane; add() remains the unconnected import primitive. */
+    public FlowTileGraph append(String id) {
+        FlowTileGraph next = add(id);
+        List<String> ends = new ArrayList<>();
+        for (String step : stepIds) if (successors(step).isEmpty()) ends.add(step);
+        return ends.isEmpty() ? next : next.join(ends, id);
+    }
+
+    /**
+     * Changes a tile's occupied lanes. Released lanes continue at its successors, so resizing
+     * a tile inside a parallel section does not accidentally remove the section's later join.
+     * Expanding over a lane removes bypasses that have become redundant.
+     */
+    public FlowTileGraph after(String id, List<String> parents) {
+        requireStep(id);
+        if (parents == null || parents.isEmpty())
+            throw new FlowDefinitionException("Mindestens einen Vorgänger auswählen");
+        Set<String> wanted = new LinkedHashSet<>(parents);
+        for (String parent : wanted) {
+            requireStep(parent);
+            if (reaches(id, parent)) throw new FlowDefinitionException("Schritt liegt im eigenen Folgestapel");
+        }
+        Set<Link> edges = new LinkedHashSet<>(links);
+        for (String old : predecessors(id)) if (!wanted.contains(old)) {
+            edges.remove(new Link(old, id));
+            for (String next : successors(id)) edges.add(new Link(old, next));
+        }
+        for (String parent : wanted) {
+            edges.add(new Link(parent, id));
+            for (String next : successors(parent)) {
+                if (next.equals(id)) continue;
+                if (reaches(id, next)) edges.remove(new Link(parent, next));
+                else if (!predecessors(id).contains(parent) && !reaches(next, id)) {
+                    // Occupying a new lane also inserts before that lane's continuation.
+                    edges.remove(new Link(parent, next));
+                    edges.add(new Link(id, next));
+                }
+            }
+        }
+        return new FlowTileGraph(stepIds, new ArrayList<>(edges));
+    }
+
     public FlowTileGraph remove(String id) {
         requireStep(id);
         List<String> nodes = new ArrayList<>(stepIds);
@@ -151,7 +193,8 @@ public final class FlowTileGraph {
 
     /**
      * Pure drop proposal. The caller commits this value only on release; cancel discards it.
-     * BESIDE adds the target's predecessors but deliberately not its successors.
+     * Lateral placement shares the target's prerequisites and continuation. BESIDE is the
+     * compatibility spelling of RIGHT. Alternative roots remain alternative run starts.
      */
     public FlowTileGraph place(String source, String target, Placement placement, boolean branch) {
         requireStep(source);
@@ -190,10 +233,13 @@ public final class FlowTileGraph {
         } else {
             for (Link edge : atTarget) if (edge.target.equals(target))
                 edges.add(new Link(edge.source, source));
+            for (Link edge : atTarget) if (edge.source.equals(target))
+                for (String tail : tails) edges.add(new Link(tail, edge.target));
         }
         List<String> ordered = new ArrayList<>(stepIds);
         ordered.removeAll(moved);
-        int at = ordered.indexOf(target) + (placement == Placement.BEFORE ? 0 : 1);
+        int at = ordered.indexOf(target) +
+                (placement == Placement.BEFORE || placement == Placement.LEFT ? 0 : 1);
         List<String> movedOrder = new ArrayList<>();
         for (String id : stepIds) if (moved.contains(id)) movedOrder.add(id);
         ordered.addAll(at, movedOrder);

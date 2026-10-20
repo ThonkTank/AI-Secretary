@@ -28,17 +28,53 @@ public final class FlowTileGraphTest {
         assertFalse(graph.branchFrom("k").contains("s"));
     }
 
-    @Test public void placementIsAPureProposalAndDoesNotImplicitlyJoinParallelStep() {
+    @Test public void lateralPlacementKeepsTheExistingCommonContinuation() {
         FlowTileGraph original = new FlowTileGraph(Arrays.asList("a", "b", "c", "new"),
                 Arrays.asList(link("a", "b"), link("b", "c")));
         FlowTileGraph proposal = original.place("new", "b", Placement.BESIDE, false);
         assertEquals(Collections.singletonList("a"), proposal.predecessors("new"));
-        assertTrue(proposal.successors("new").isEmpty());
-        assertEquals(Collections.singletonList("b"), proposal.predecessors("c"));
+        assertEquals(Collections.singletonList("c"), proposal.successors("new"));
+        assertEquals(Arrays.asList("b", "new"), proposal.predecessors("c"));
         assertTrue(original.predecessors("new").isEmpty());
         FlowTileGraph joined = proposal.join(Collections.singletonList("new"), "c");
         assertEquals(Arrays.asList("b", "new"), joined.predecessors("c"));
         assertEquals(original.stepIds.size(), joined.stepIds.size());
+    }
+
+    @Test public void resizingReleasesALaneUntilTheNextSharedContinuationAndCanBeReversed() {
+        FlowTileGraph common = new FlowTileGraph(Arrays.asList("a", "b", "c", "d", "e"),
+                Arrays.asList(link("a", "b"), link("a", "c"), link("b", "d"),
+                        link("c", "d"), link("d", "e")));
+        FlowTileGraph narrow = common.after("d", Collections.singletonList("b"));
+        assertEquals(Collections.singletonList("b"), narrow.predecessors("d"));
+        assertEquals(Arrays.asList("d", "c"), narrow.predecessors("e"));
+        assertFalse(narrow.reaches("c", "d"));
+        FlowTileGraph wide = narrow.after("d", Arrays.asList("b", "c"));
+        assertEquals(new java.util.HashSet<>(common.links), new java.util.HashSet<>(wide.links));
+        assertEquals(common.stepIds, wide.stepIds);
+        assertThrows(FlowDefinitionException.class, () -> common.after("d", Collections.singletonList("e")));
+        assertThrows(FlowDefinitionException.class, () -> common.after("d", Collections.emptyList()));
+    }
+
+    @Test public void newStepsAppendBelowAllOpenLanesAndLateralOrderIsDirectional() {
+        FlowTileGraph g = new FlowTileGraph(Arrays.asList("a", "b", "c"),
+                Collections.singletonList(link("a", "b")));
+        FlowTileGraph appended = g.append("end");
+        assertEquals(Arrays.asList("b", "c"), appended.predecessors("end"));
+        assertEquals(Arrays.asList("a", "c"), appended.roots());
+        assertEquals(Arrays.asList("a", "c", "b"), g.place("c", "b", Placement.LEFT, false).stepIds);
+        assertEquals(Arrays.asList("a", "b", "c"), g.place("c", "b", Placement.RIGHT, false).stepIds);
+    }
+
+    @Test public void expandingIntoAnotherLaneKeepsBothExistingContinuationsBelowTheTile() {
+        FlowTileGraph g = new FlowTileGraph(Arrays.asList("a", "b", "c", "d", "e", "f"),
+                Arrays.asList(link("a", "b"), link("a", "c"), link("b", "d"),
+                        link("d", "e"), link("c", "f")));
+        FlowTileGraph wide = g.after("d", Arrays.asList("b", "c"));
+        assertEquals(Arrays.asList("b", "c"), wide.predecessors("d"));
+        assertEquals(Collections.singletonList("d"), wide.predecessors("e"));
+        assertEquals(Collections.singletonList("d"), wide.predecessors("f"));
+        assertEquals(g.stepIds, wide.stepIds);
     }
 
     @Test public void insertionBeforeAndAfterPreservesAllIdentities() {

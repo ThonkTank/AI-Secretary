@@ -39,7 +39,33 @@ class FlowTileLayoutTest {
         val spans = tileSpans(graph)
         assertEquals(FlowTileSpan(1, 0f, .5f), spans["k"])
         assertEquals(FlowTileSpan(2, 0f, .5f), spans["b"])
-        assertEquals(FlowTileSpan(1, .5f, 1f), spans["d"])
+        assertEquals(FlowTileSpan(1, .5f, 1f, endRow = 3), spans["d"])
         assertEquals(FlowTileSpan(3, 0f, 1f), spans["s"])
     }
+
+    @Test fun widthAccountsForNestedParallelSpaceAndShortNeighbourFillsTheStackHeight() {
+        val graph = graph("a", "b", "c", "b1", "b2", "d",
+            edges = listOf("a" to "b", "a" to "c", "b" to "b1", "b" to "b2",
+                "b1" to "d", "b2" to "d", "c" to "d"))
+        val spans = tileSpans(graph)
+        assertEquals(FlowTileSpan(0, 0f, 1f), spans["a"])
+        assertEquals(2f / 3, spans.getValue("b").right, .0001f)
+        assertEquals(1f / 3, spans.getValue("b1").right, .0001f)
+        assertEquals(2f / 3, spans.getValue("c").left, .0001f)
+        assertEquals(3, spans.getValue("c").endRow)
+        assertEquals(FlowTileSpan(3, 0f, 1f), spans["d"])
+        assertTrue(spans.values.none { it.explicitParents })
+    }
+
+    @Test fun narrowingACommonStepExtendsItsNeighbourWithoutChangingThatNeighboursWait() {
+        val common = graph("a", "b", "c", "d",
+            edges = listOf("a" to "b", "a" to "c", "b" to "d", "c" to "d"))
+        val narrow = tileSpans(common.after("d", listOf("b")))
+        assertEquals(FlowTileSpan(2, 0f, .5f), narrow["d"])
+        assertEquals(FlowTileSpan(1, .5f, 1f, endRow = 3), narrow["c"])
+        assertEquals(FlowTileSpan(2, 0f, 1f), tileSpans(common)["d"])
+    }
+
+    private fun graph(vararg ids: String, edges: List<Pair<String, String>>) =
+        FlowTileGraph(ids.toList(), edges.map { FlowTileGraph.Link(it.first, it.second) })
 }

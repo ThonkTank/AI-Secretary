@@ -124,7 +124,7 @@ class FlowEditorViewModel(
                 val wait = if (previous != null && previous.proposedDelayMillis() == duration &&
                     (previous.mode == FlowDelayPolicy.Mode.REMEMBER_LAST) == ask) previous
                     else if (ask) FlowDelayPolicy.rememberLast(duration) else FlowDelayPolicy.fixed(duration)
-                if (form.id == null) draft.addStep(fields.getValue("name"), wait)
+                if (form.id == null) draft.appendStep(fields.getValue("name"), wait)
                 else draft.editStep(form.id, fields.getValue("name"), wait)
             }
             "resource" -> draft.withCapacities(if (form.id == null)
@@ -154,6 +154,11 @@ class FlowEditorViewModel(
 
     fun join(ends: List<String>, successor: String) = guarded {
         commit(state.value.draft.withGraph(state.value.draft.graph.join(ends, successor)))
+    }
+
+    /** Pointer, resize and accessible actions commit the very graph shown in their preview. */
+    fun arrange(graph: FlowTileGraph) = guarded {
+        commit(state.value.draft.withGraph(graph))
     }
 
     fun undo() {

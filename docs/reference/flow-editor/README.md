@@ -4,9 +4,13 @@ Owner-Freigabe: 2026-09-10, nach den ausdrücklich verlangten Vereinfachungen.
 Vertrag: [ADR-036](../../architecture/adr-036-kachel-editor-und-parallele-ablaeufe.md).
 Diese Referenz ersetzt keine Referenz des normalen Aufgabeneditors.
 
-`approved-tiles.html` ist der freigegebene interaktive Entwurf, kein Produktcode.
+`approved-tiles.html` ist der historische interaktive Entwurf vom September, kein Produktcode.
 SHA-256: `07fbf886c255ecac02c8d78556496a5e6b2a7f0f131666480ab35707b5cdda2d`.
 Die Wäsche- und Abendessen-Beispiele sind Prüffälle, keine Vorlagenfunktion.
+Die Präzisierung vom 2026-10-20 in ADR-036 ersetzt die damalige seitliche Einfüge- und
+Zusammenführungsbedienung. Aktuelle Android-Referenzen liegen unter
+`app/src/test/resources/golden/flow-tiles/`: `stack-shared-320.png` zeigt die gemeinsame
+Fortsetzung, `stack-independent-320.png` den schmalen Folgeschritt mit verlängertem Nachbarn.
 Das Mockup bildet Erscheinungsbild und grundlegende Interaktionen ab; es ist ausdrücklich
 kein Nachweis einer Android-Datenmigration, Prozesswiederherstellung oder Transaktionssicherheit.
 

@@ -130,6 +130,12 @@ public final class FlowEditorDraft {
                 releaseAfterWait, nextIdentity + 1);
     }
 
+    /** The product's + step action appends; fixtures/imports may still add unconnected starts. */
+    public FlowEditorDraft appendStep(String name, FlowDelayPolicy wait) {
+        FlowEditorDraft next = addStep(name, wait);
+        return next.withGraph(graph.append(next.steps.get(next.steps.size() - 1).id));
+    }
+
     public FlowEditorDraft editStep(String id, String name, FlowDelayPolicy wait) {
         validateName(name);
         step(id);

@@ -50,8 +50,84 @@ class FlowTileEditorInstrumentationTest {
         } while (SystemClock.uptimeMillis() < deadline)
         assertTrue("The editor must receive input before a gesture starts", focused)
         assertFalse("The editor window did not finish its transition",
-            requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+            stableRoot()
                 .waitForStable(5_000, 300, 50, true).isTimeout)
+    }
+
+    @Test fun buildStackInDialogsThenResizeAndDropBackAcrossBothLanes() {
+        activityRule.scenario.onActivity { it.render(FlowEditorDraft.empty().rename("Stapel")) }
+        listOf("A", "B", "D", "C").forEach { name ->
+            tapButton("+ Schritt")
+            val field = requireNotNull(device.wait(Until.findObject(By.res("flow-editor:name")), 5_000))
+            field.click()
+            field.text = name
+            // Close only the keyboard. The modal's Save remains a real native input action.
+            device.pressBack()
+            tapButton("Speichern")
+            assertTrue(device.wait(Until.gone(By.res("flow-editor:form")), 5_000))
+        }
+        activityRule.scenario.onActivity { ids = it.editor.state.value.draft.graph.stepIds }
+        assertGraph { it.predecessors(ids[2]) == listOf(ids[1]) && it.predecessors(ids[3]) == listOf(ids[2]) }
+        stage = "C beside B, D remains the common continuation"
+        val c = button("C").visibleBounds
+        val b = button("B").visibleBounds
+        pointer(c.centerX().toFloat(), c.centerY().toFloat(), b.right - 4f, b.centerY().toFloat(), false, false)
+        awaitGraph { it.predecessors(ids[2]).toSet() == setOf(ids[1], ids[3]) }
+        stage = "narrow D with its right edge"
+        button("D").longClick()
+        val grip = requireNotNull(device.wait(Until.findObject(By.res("flow-editor:resize:RESIZE_RIGHT:${ids[2]}")), 5_000)).visibleBounds
+        val leftLane = button("B").visibleBounds
+        pointer(grip.centerX().toFloat(), grip.centerY().toFloat(),
+            leftLane.right.toFloat(), grip.centerY().toFloat(), false, false)
+        awaitGraph { it.predecessors(ids[2]) == listOf(ids[1]) }
+        val tallC = button("C").visibleBounds
+        val narrowD = button("D").visibleBounds
+        assertEquals("The independent neighbour fills the height next to D", narrowD.bottom, tallC.bottom)
+        assertTrue(narrowD.width() < button("A").visibleBounds.width() * .6f)
+        saveScreenshot("independent-stacks")
+        stage = "drop D underneath both lanes"
+        val leftB = button("B").visibleBounds
+        val seam = (leftB.left + tallC.right) / 2f
+        pointer(narrowD.centerX().toFloat(), narrowD.centerY().toFloat(),
+            seam, tallC.bottom + 4f, false, false)
+        awaitGraph { it.predecessors(ids[2]).toSet() == setOf(ids[1], ids[3]) }
+        assertEquals(button("A").visibleBounds.width(), button("D").visibleBounds.width())
+        saveScreenshot("shared-continuation")
+        activityRule.scenario.recreate()
+        awaitGraph { it.predecessors(ids[2]).toSet() == setOf(ids[1], ids[3]) }
+        tapButton("Rückgängig")
+        awaitGraph { it.predecessors(ids[2]) == listOf(ids[1]) }
+    }
+
+    @Test fun resizeCancelAndAccessibleWidthsPreserveTheSameDraftContract() {
+        var draft = FlowEditorDraft.empty().rename("Breite")
+        listOf("A", "B", "D", "C").forEach { draft = draft.appendStep(it, de.thonktank.autosecretary.domain.model.FlowDelayPolicy.fixed(0)) }
+        ids = draft.graph.stepIds
+        draft = draft.withGraph(draft.graph.place(ids[3], ids[1], FlowTileGraph.Placement.RIGHT, false))
+        activityRule.scenario.onActivity { it.render(draft) }
+        button("D").longClick()
+        val grip = requireNotNull(device.wait(Until.findObject(By.res("flow-editor:resize:RESIZE_LEFT:${ids[2]}")), 5_000)).visibleBounds
+        val rightLane = button("C").visibleBounds
+        pointer(grip.centerX().toFloat(), grip.centerY().toFloat(),
+            rightLane.left.toFloat(), grip.centerY().toFloat(), true, false)
+        assertGraph { it.predecessors(ids[2]).toSet() == setOf(ids[1], ids[3]) }
+        clickAccessibleTag("flow-editor:width:${ids[3]}")
+        awaitGraph { it.predecessors(ids[2]) == listOf(ids[3]) }
+        repeat(5) { scrollAccessible(false) }
+        button("D").longClick()
+        clickAccessibleTag("flow-editor:width:${ids[1]},${ids[3]}")
+        awaitGraph { it.predecessors(ids[2]).toSet() == setOf(ids[1], ids[3]) }
+    }
+
+    private fun saveScreenshot(name: String) {
+        val directory = java.io.File(instrumentation.targetContext.getExternalFilesDir(null), "flow-stacks")
+        directory.mkdirs()
+        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        try {
+            java.io.File(directory, "$name.png").outputStream().use {
+                assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } finally { bitmap.recycle() }
     }
 
     @Test fun stepDialogHasOnlyNameWaitAndTheDirectCheckboxAtLargeFont() {
@@ -67,7 +143,7 @@ class FlowTileEditorInstrumentationTest {
         } while (SystemClock.uptimeMillis() < deadline)
         assertEquals("Large font must be composed before locating the tile", 1.6f, renderedScale, 0f)
         assertFalse("Large-font layout did not settle",
-            requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+            stableRoot()
                 .waitForStable(5_000, 300, 50, true).isTimeout)
         tapButton("Waschen")
         awaitFormName("Waschen")
@@ -94,7 +170,7 @@ class FlowTileEditorInstrumentationTest {
         stage = "physical undo after insertion"
         tapButton("Rückgängig")
         awaitGraph { it.links == listOf(FlowTileGraph.Link(ids[0], ids[1])) && it.stepIds == ids }
-        assertFalse(requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+        assertFalse(stableRoot()
             .waitForStable(5_000, 300, 50, true).isTimeout)
         val again = button("Trockner").visibleBounds
         val before = button("Aufhängen").visibleBounds
@@ -177,6 +253,19 @@ class FlowTileEditorInstrumentationTest {
         Until.findObject(By.res("flow-editor:name").clazz("android.widget.EditText")), 5_000
     )) { "Missing editable name field" }
 
+    private fun stableRoot(): AccessibilityNodeInfo {
+        // Window focus can precede accessibility window registration during an activity
+        // transition. waitForStable needs getWindow().displayId, not just a non-null root.
+        val deadline = SystemClock.uptimeMillis() + 5_000
+        do {
+            val root = instrumentation.uiAutomation.rootInActiveWindow
+            if (root != null && root.refresh() && root.window != null &&
+                root.packageName?.toString() == instrumentation.targetContext.packageName) return root
+            SystemClock.sleep(20)
+        } while (SystemClock.uptimeMillis() < deadline)
+        throw AssertionError("The editor has no registered accessibility window")
+    }
+
     private fun accessibilityNode(predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
         fun walk(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
             // Compose replaces virtual descendants during layout. Do not traverse
@@ -249,7 +338,7 @@ class FlowTileEditorInstrumentationTest {
         // briefly. Resolve the control after layout settles, then scroll by its actual semantics.
         device.waitForIdle()
         assertFalse("Layout must settle before locating $label",
-            requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+            stableRoot()
                 .waitForStable(5_000, 300, 50, true).isTimeout)
         var result = device.wait(Until.findObject(By.desc(label)), 1_000)
             ?: device.findObject(By.text(label))
@@ -258,7 +347,7 @@ class FlowTileEditorInstrumentationTest {
             if (!scrollable.scrollIntoView(UiSelector().description(label))) scrollable.scrollTextIntoView(label)
             device.waitForIdle()
             assertFalse("Scrolling must settle before locating $label",
-                requireNotNull(instrumentation.uiAutomation.rootInActiveWindow)
+                stableRoot()
                     .waitForStable(5_000, 300, 50, true).isTimeout)
             result = device.wait(Until.findObject(By.desc(label)), 2_000) ?: device.findObject(By.text(label))
         }

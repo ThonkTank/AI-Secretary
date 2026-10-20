@@ -15,6 +15,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowDialog
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
@@ -26,6 +27,13 @@ import java.time.LocalTime
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w320dp-h1000dp-mdpi")
 class FlowTileEditorGoldenRobolectricTest {
+    @Test fun sharedStackShowsBothPrerequisites() {
+        render("stack-shared-320", 1f, false, false)
+    }
+
+    @Test fun independentStackExtendsItsNeighbour() {
+        render("stack-independent-320", 1f, false, true)
+    }
     @Test fun compactAndLargeStepDialogsRenderWithTheDirectCheckbox() {
         var failure: AssertionError? = null
         listOf(Triple("step-320", 1f, true), Triple("step-320-large", 1.6f, true),
@@ -35,7 +43,7 @@ class FlowTileEditorGoldenRobolectricTest {
         failure?.let { throw it }
     }
 
-    private fun render(name: String, scale: Float, form: Boolean) {
+    private fun render(name: String, scale: Float, form: Boolean, narrow: Boolean? = null) {
         val controller = Robolectric.buildActivity(ComponentActivity::class.java).setup()
         val activity = controller.get()
         val originalConfig = android.content.res.Configuration(activity.resources.configuration)
@@ -55,7 +63,19 @@ class FlowTileEditorGoldenRobolectricTest {
             }
             val ids = draft.steps.map { it.id }
             val graph = draft.graph.join(ids.take(4), ids[4]).join(listOf(ids[4]), ids[5]).join(listOf(ids[5]), ids[6])
-            val vm = FlowEditorViewModel(draft.withGraph(graph), SavedStateHandle())
+            draft = draft.withGraph(graph)
+            if (narrow != null) {
+                draft = FlowEditorDraft.empty().rename("Abendessen")
+                listOf("Vorbereiten", "Gemüse schneiden", "Anrichten", "Reis kochen").forEach {
+                    draft = draft.appendStep(it, FlowDelayPolicy.fixed(0))
+                }
+                val keys = draft.graph.stepIds
+                var stack = draft.graph.place(keys[3], keys[1],
+                    de.thonktank.autosecretary.domain.model.FlowTileGraph.Placement.RIGHT, false)
+                if (narrow) stack = stack.after(keys[2], listOf(keys[1]))
+                draft = draft.withGraph(stack)
+            }
+            val vm = FlowEditorViewModel(draft, SavedStateHandle())
             if (form) vm.openStep(ids.first())
             val palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.LIGHT)
             val root = ComposeView(activity).apply {
@@ -70,7 +90,22 @@ class FlowTileEditorGoldenRobolectricTest {
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(500))
             val bitmap = Bitmap.createBitmap(320, 1000, Bitmap.Config.ARGB_8888)
             try {
-                root.draw(Canvas(bitmap))
+                val canvas = Canvas(bitmap)
+                root.draw(canvas)
+                if (form) {
+                    // Compose Dialog is a separate Android window; include that window in the
+                    // reference, otherwise a modal regression would only snapshot its backdrop.
+                    val dialog = requireNotNull(ShadowDialog.getLatestDialog()).window!!.decorView
+                    dialog.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.AT_MOST))
+                    dialog.layout(0, 0, dialog.measuredWidth, dialog.measuredHeight)
+                    shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(500))
+                    canvas.drawColor(0x52000000, android.graphics.PorterDuff.Mode.SRC_OVER)
+                    canvas.save()
+                    canvas.translate(0f, (1000 - dialog.height) / 2f)
+                    dialog.draw(canvas)
+                    canvas.restore()
+                }
                 val file = File("build/reports/flow-tiles", "$name.png")
                 requireNotNull(file.parentFile).mkdirs()
                 file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
