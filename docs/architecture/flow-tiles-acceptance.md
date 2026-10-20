@@ -7,11 +7,21 @@ Wartewert/Einheit und direkter Zeitabfrage-Checkbox; Kapazitäten auf Blatt 2.
 Die vorhandenen mobilen Farben und Blattflächen bleiben erhalten. Die Referenz
 `docs/reference/flow-editor/approved-tiles.html` ist kein Migrationsnachweis.
 
+Die Präzisierung vom 2026-10-20 ergänzt modale Schrittanlage am Stapelende,
+gerichtetes seitliches Ablegen sowie Breitenänderung per Kante oder Ablageposition.
+`FlowTileEditorInstrumentationTest.buildStackInDialogsThenResizeAndDropBackAcrossBothLanes`
+prüft diese Bedienreise einschließlich Recreation/Undo.
+`GraphFlowRuntimePersistenceTest.resizedStackRoundTripsAndReleasesOnlyTheDisplayedSuccessor`
+prüft die daraus gespeicherte und wieder geladene Ausführung auf API 26/35.
+Abschluss und aktueller CI-Nachweis der Reparatur stehen in
+[PR #386](https://github.com/ThonkTank/AI-Secretary/pull/386); die Auslieferungsnachweise
+weiter unten dokumentieren ausschließlich die ursprüngliche Phase vom September.
+
 ## Anforderungsabgleich
 
 | Vertrag | Konkrete Nachweise |
 |---|---|
-| T01 – minimaler Dialog | `FlowTileEditorRenderTest`, `FlowTileEditorInstrumentationTest.stepDialogHasOnlyNameWaitAndTheDirectCheckboxAtLargeFont`; drei Editor-Goldens |
+| T01 – minimaler Dialog | `FlowTileEditorRenderTest`, `FlowTileEditorInstrumentationTest.stepDialogHasOnlyNameWaitAndTheDirectCheckboxAtLargeFont`; fünf Editor-Goldens einschließlich gemeinsamer und unabhängiger Stapel |
 | T02 – Struktur und Identitäten | `FlowTileGraphTest`, `FlowTileLayoutTest`, `FlowTileInteractionTest`; native Touch-/Maus-/Abbruch-/Join-/Undo-Reisen einschließlich erneutem Drag nach Undo |
 | T03 – Geräte und Zugänglichkeit | Native `FlowTileEditorInstrumentationTest` auf API 26/35/37; semantische Alternative zusätzlich auf 26/35; Kantenscrollen, große Schrift und 320-dp-Goldens |
 | T04 – alternative Starts und Parallelität | `FlowGraphExecutionTest`: nur erreichbarer Snapshot, ungleich lange Zweige, ausdrücklicher Join, unabhängiges Kapazitätswarten; echte Room-Projektion in `GraphFlowRuntimePersistenceTest` |
@@ -27,7 +37,7 @@ Join-/Bestätigungs-/Undo-Vertrag wird dort über native Accessibility geprüft,
 ebenso auf 26/35. Kein fachlicher Prüffall entfällt. Die Gestenprüfungen warten
 auf Fensterfokus und stabile Darstellung; fehlgeschlagene Gesten werden nicht wiederholt.
 
-## Getrennte Auslieferungsnachweise
+## Getrennte Auslieferungsnachweise vom 2026-09-11
 
 - Produkt-PR: #356, Kopf `0c9196a9965d562ad170f920bb6426de53141617`.
 - Lokales Gesamtgate auf exakt diesem Kopf: grün, 24 s inkrementell;
@@ -55,7 +65,7 @@ auf Fensterfokus und stabile Darstellung; fehlgeschlagene Gesten werden nicht wi
   Paketmanifest, Signatur und Release-Metadaten separat lokal bestätigt.
   [0.2.167](https://github.com/ThonkTank/AI-Secretary/releases/tag/forest-android-1016701)
   wurde am 2026-09-11 um 16:09:01 UTC veröffentlicht, nicht als Draft/Prerelease,
-  und ist die aktuelle Stable-Version. Der Release-Tag zeigt exakt auf den
+  und war die damalige Stable-Version. Der Release-Tag zeigt exakt auf den
   Produkt-Main-Commit `06cd96b8bd322945a4215d04afb1ad0ee3b059f9`.
   Erneut aus der öffentlichen Veröffentlichung heruntergeladen: Release-Validierung
   bestanden, SHA-256 identisch und binär identisch mit dem Upgrade-geprüften Kandidaten.

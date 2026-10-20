@@ -101,7 +101,7 @@ private fun FlowTileEditorContent(state: FlowEditorState, palette: DayPalette,
       state.form?.takeIf { it.kind == "step" }?.let { form ->
           Dialog(onDismissRequest = editor::closeForm,
               properties = DialogProperties(usePlatformDefaultWidth = false)) {
-              Column(Modifier.fillMaxWidth().widthIn(max = 380.dp).imePadding()
+              Column(Modifier.widthIn(max = 380.dp).fillMaxWidth().imePadding()
                   .padding(horizontal = 16.dp, vertical = 12.dp)
                   .verticalScroll(rememberScrollState()).semantics { testTagsAsResourceId = true }) {
                   FlowEditorFormSurface(form, state, palette, editor)
