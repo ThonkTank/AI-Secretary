@@ -153,7 +153,11 @@ internal fun Modifier.flowTileGrip(graph: FlowTileGraph, onStart: (Offset) -> Un
     onGloballyPositioned { coordinates = it }.pointerInput(graph) {
         try {
             detectDragGestures(
-                onDragStart = { start(coordinates?.localToRoot(it) ?: it) },
+                orientationLock = null,
+                // Anchor the lifted tile at finger-down. The simpler overload supplies
+                // the slop-crossing position, losing those first pixels and making a
+                // precise drop below a seam land back inside the neighbouring tile.
+                onDragStart = { down, _, _ -> start(coordinates?.localToRoot(down.position) ?: down.position) },
                 onDragEnd = { drop() }, onDragCancel = { cancel() },
                 onDrag = { change, _ ->
                     change.consume()

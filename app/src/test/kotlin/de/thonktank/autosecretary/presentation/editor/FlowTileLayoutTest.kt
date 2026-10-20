@@ -66,6 +66,18 @@ class FlowTileLayoutTest {
         assertEquals(FlowTileSpan(2, 0f, 1f), tileSpans(common)["d"])
     }
 
+    @Test fun twoOfThreeLanesCanRejoinWhileTheirNeighbourRemainsIndependent() {
+        val g = graph("a", "b", "c", "f", "d", "e",
+            edges = listOf("a" to "b", "a" to "c", "a" to "f",
+                "b" to "d", "c" to "d", "d" to "e", "f" to "e"))
+        val spans = tileSpans(g)
+        assertTrue(spans.values.none { it.explicitParents })
+        assertEquals(0f, spans.getValue("d").left, .0001f)
+        assertEquals(2f / 3, spans.getValue("d").right, .0001f)
+        assertEquals(spans.getValue("d").endRow, spans.getValue("f").endRow)
+        assertEquals(FlowTileSpan(3, 0f, 1f), spans["e"])
+    }
+
     private fun graph(vararg ids: String, edges: List<Pair<String, String>>) =
         FlowTileGraph(ids.toList(), edges.map { FlowTileGraph.Link(it.first, it.second) })
 }

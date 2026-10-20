@@ -33,11 +33,36 @@ private class StackLayout(private val graph: FlowTileGraph) {
     private fun width(id: String, stop: String?): Int {
         if (id == stop) return 0
         return widths.getOrPut(id to stop) {
-            val next = children(id)
-            val merge = join(next, stop)
-            maxOf(1, next.sumOf { width(it, merge) },
-                if (merge != null && merge != stop) width(merge, stop) else 0)
+            maxOf(1, groupWidth(children(id).filter { it != stop }, stop))
         }
+    }
+
+    /**
+     * Adjacent lanes may merge before the whole parallel region does. Keep those lanes
+     * together as a nested region. Overlapping/non-adjacent joins are explicit legacy DAGs.
+     */
+    private fun partitions(ids: List<String>, merge: String?): List<List<String>> {
+        val owner = IntArray(ids.size) { it }
+        fun root(index: Int): Int = if (owner[index] == index) index else root(owner[index])
+        order.filter { it != merge && (merge == null || graph.reaches(it, merge)) }.forEach { candidate ->
+            val members = ids.indices.filter { graph.reaches(ids[it], candidate) }
+            if (members.size in 2 until ids.size) {
+                check(members.last() - members.first() + 1 == members.size)
+                val first = root(members.first())
+                members.forEach { owner[root(it)] = first }
+            }
+        }
+        val groups = ids.indices.groupBy { root(it) }.values.map { members -> members.map { ids[it] } }
+        check(groups.size > 1) { "Overlapping partial joins" }
+        return groups
+    }
+
+    private fun groupWidth(ids: List<String>, stop: String?): Int {
+        if (ids.isEmpty()) return 0
+        if (ids.size == 1) return width(ids.single(), stop)
+        val merge = join(ids, stop)
+        return maxOf(partitions(ids, merge).sumOf { groupWidth(it, merge) },
+            if (merge != null && merge != stop) width(merge, stop) else 0)
     }
 
     private data class End(val row: Int, val tails: List<String>)
@@ -56,12 +81,13 @@ private class StackLayout(private val graph: FlowTileGraph) {
         if (ids.size == 1) return sequence(ids.single(), stop, row, left, right)
         check(ids.none { a -> ids.any { b -> a != b && graph.reaches(a, b) } })
         val merge = join(ids, stop)
-        val weights = ids.map { width(it, merge) }
+        val groups = partitions(ids, merge)
+        val weights = groups.map { groupWidth(it, merge) }
         val total = weights.sum().toFloat()
         var cursor = left
-        val ends = ids.mapIndexed { index, id ->
-            val end = if (index == ids.lastIndex) right else cursor + (right - left) * weights[index] / total
-            sequence(id, merge, row, cursor, end).also { cursor = end }
+        val ends = groups.mapIndexed { index, lanes ->
+            val end = if (index == groups.lastIndex) right else cursor + (right - left) * weights[index] / total
+            group(lanes, merge, row, cursor, end).also { cursor = end }
         }
         val bottom = ends.maxOf { it.row }
         ends.forEach { end -> end.tails.forEach { id ->
