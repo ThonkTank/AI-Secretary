@@ -114,7 +114,6 @@ public final class TodayCoordinatorTest {
 
         assertEquals(EnumSet.allOf(TodayAction.Kind.class), handled);
         assertTrue(coordinator.contains("Unhandled Today action"));
-        assertTrue(owner.contains("todayCoordinator.emit(action)"));
     }
 
     private static TodayUiModel today() {

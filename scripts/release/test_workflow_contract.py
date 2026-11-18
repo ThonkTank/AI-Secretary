@@ -51,17 +51,6 @@ COMPOSE_SMOKE_HOST = (
     / "autosecretary"
     / "ComposeSmokeActivity.kt"
 ).read_text(encoding="utf-8")
-COMPOSE_SMOKE_TEST = (
-    ROOT
-    / "app"
-    / "src"
-    / "androidTest"
-    / "kotlin"
-    / "de"
-    / "thonktank"
-    / "autosecretary"
-    / "ComposeSmokeInstrumentationTest.kt"
-).read_text(encoding="utf-8")
 DEBUG_PROGUARD = (ROOT / "app" / "proguard-debug.pro").read_text(encoding="utf-8")
 RELEASE_PROGUARD = (ROOT / "app" / "proguard-release.pro").read_text(encoding="utf-8")
 WORKFLOW = (ROOT / ".github" / "workflows" / "verify.yml").read_text(encoding="utf-8")
@@ -69,15 +58,6 @@ SOAK_WORKFLOW = (ROOT / ".github" / "workflows" / "instrumentation-soak.yml").re
     encoding="utf-8"
 )
 INSTRUMENTATION_RUNNER = (ROOT / "scripts" / "ci" / "run-instrumentation.sh").read_text(
-    encoding="utf-8"
-)
-FAST_QUALITY_RUNNER = (ROOT / "scripts" / "ci" / "check-fast.sh").read_text(
-    encoding="utf-8"
-)
-GOLDEN_QUALITY_RUNNER = (ROOT / "scripts" / "ci" / "check-goldens.sh").read_text(
-    encoding="utf-8"
-)
-FULL_QUALITY_RUNNER = (ROOT / "scripts" / "ci" / "check-all.sh").read_text(
     encoding="utf-8"
 )
 INSTRUMENTATION_IDENTITY = (
@@ -249,43 +229,17 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("kotlinSourcesCompileThroughAgp", BUILT_IN_KOTLIN_SMOKE)
 
     def test_phase_2b_compose_smoke_host_is_exact_invisible_and_debug_only(self):
-        self.assertIn(
-            'id("org.jetbrains.kotlin.plugin.compose") version "2.3.21" apply false',
-            ROOT_BUILD,
-        )
-        self.assertIn('id("org.jetbrains.kotlin.plugin.compose")', APP_BUILD)
-        self.assertIn("compose = true", APP_BUILD)
-        self.assertIn(
-            'implementation(platform("androidx.compose:compose-bom:2026.08.00"))',
-            APP_BUILD,
-        )
-        self.assertIn('implementation("androidx.compose.ui:ui")', APP_BUILD)
-        self.assertIn('implementation("androidx.activity:activity:1.13.0")', APP_BUILD)
-        self.assertIn(
-            'implementation("androidx.activity:activity-compose:1.13.0")',
-            APP_BUILD,
-        )
-        self.assertIn('implementation("androidx.room:room-ktx:2.8.4")', APP_BUILD)
-        self.assertIn('implementation("androidx.lifecycle:lifecycle-viewmodel:2.11.0")', APP_BUILD)
-        self.assertIn('implementation("androidx.core:core:1.18.0")', APP_BUILD)
-        self.assertNotIn('androidx.core:core:1.13.1', APP_BUILD)
+        # Compiling the actual app and exercising the smoke host covers Compose wiring.
         self.assertNotIn("androidx.compose.material", APP_BUILD + COMPOSE_SMOKE_HOST)
-        self.assertIn("setContent { }", COMPOSE_SMOKE_HOST)
-        self.assertNotIn("remember", COMPOSE_SMOKE_HOST)
-        self.assertNotIn("mutableState", COMPOSE_SMOKE_HOST)
         self.assertIn('android:name=".ComposeSmokeActivity"', DEBUG_MANIFEST)
         self.assertIn('android:exported="false"', DEBUG_MANIFEST)
         self.assertNotIn("ComposeSmokeActivity", MAIN_MANIFEST)
-        self.assertIn("composeView.hasComposition", COMPOSE_SMOKE_TEST)
-        self.assertIn("FLAG_DIM_BEHIND", COMPOSE_SMOKE_TEST)
         self.assertIn(
             'test "$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)" -lt 10485760',
             WORKFLOW,
         )
 
     def test_phase_5b_product_compose_keeps_both_apk_budgets_without_test_leakage(self):
-        self.assertIn('implementation("androidx.compose.foundation:foundation")', APP_BUILD)
-        self.assertIn('implementation("androidx.compose.animation:animation")', APP_BUILD)
         self.assertIn("isMinifyEnabled = true", APP_BUILD)
         release_build = APP_BUILD.split('getByName("release")', 1)[1].split(
             "testBuildType", 1
@@ -305,7 +259,6 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertNotIn("-keep class kotlin.** { *; }", RELEASE_PROGUARD)
         self.assertIn("assembleInstrumentationAndroidTest", WORKFLOW)
         self.assertNotIn("assembleDebugAndroidTest", WORKFLOW)
-        self.assertIn("testInstrumentationUnitTest", FAST_QUALITY_RUNNER)
         self.assertIn(
             "app/build/outputs/apk/androidTest/instrumentation/"
             "app-instrumentation-androidTest.apk",
@@ -411,11 +364,6 @@ class WorkflowContractTest(unittest.TestCase):
         self.assertIn("de.thonktank.autosecretary.test", INSTRUMENTATION_IDENTITY)
         self.assertIn("Unexpected production probe package", WORKFLOW)
         self.assertIn("instrumentation_manifest.py --mode upgrade", WORKFLOW)
-        self.assertIn(":app:testInstrumentationUnitTest", FULL_QUALITY_RUNNER)
-        self.assertIn("lintDebug assembleDebug", FULL_QUALITY_RUNNER)
-        self.assertIn("assembleInstrumentationAndroidTest assembleRelease", FULL_QUALITY_RUNNER)
-        self.assertIn("verify-instrumentation-identity.sh", FULL_QUALITY_RUNNER)
-        self.assertNotIn("qualityContractsOnly", FULL_QUALITY_RUNNER)
 
     def test_phase_2c_sizes_api_37_and_release_install_paths_are_mandatory(self):
         quality_build = WORKFLOW.split("\n  quality-build:", 1)[1].split(

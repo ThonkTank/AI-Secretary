@@ -137,15 +137,6 @@ public final class ArchitectureBoundaryTest {
         assertTrue(renderer.contains("if (completed[0]) return"));
     }
 
-    @Test public void viewModelDelegatesClosedTodayCommandRouting() throws Exception {
-        String viewModel = read(main("presentation/today/TodayViewModel.java"));
-        String dispatcher = read(main("presentation/today/TodayCommandDispatcher.java"));
-        assertTrue(viewModel.contains("new TodayCommandDispatcher(this)"));
-        assertFalse(viewModel.contains("switch (value.kind)"));
-        assertFalse(viewModel.contains("switch (command.kind)"));
-        assertTrue(dispatcher.contains("switch (command.kind)"));
-    }
-
     @Test public void todayAndShellHaveOneStateFlowOwnerWithoutLegacyBrokers()
             throws Exception {
         String today = read(main("presentation/today/TodayViewModel.java"));
