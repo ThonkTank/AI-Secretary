@@ -110,7 +110,7 @@ final class ApplicationUseCaseComposition {
         ToggleStep toggleStep = new ToggleStep(catalogRepository, stepRepository,
                 todayRepository, transactions, clock, policies, flowRuntime);
         LoadDashboard dashboard = new LoadDashboard(catalogRepository, stepRepository, todayRepository,
-                flowRepository, transactions, graphSheets);
+                transactions, graphSheets);
         today = new TodayUseCases(toggleStep,
                 new AdvanceTodayStep(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies,

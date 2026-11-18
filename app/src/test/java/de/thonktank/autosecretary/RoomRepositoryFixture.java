@@ -35,7 +35,7 @@ final class RoomRepositoryFixture {
 
     de.thonktank.autosecretary.domain.usecase.LoadDashboard dashboard() {
         return new de.thonktank.autosecretary.domain.usecase.LoadDashboard(catalog, steps, today,
-                flows, transactions, new de.thonktank.autosecretary.domain.usecase.LoadGraphFlowSheets(
+                transactions, new de.thonktank.autosecretary.domain.usecase.LoadGraphFlowSheets(
                 catalog, steps, today, flows, graphDefinitions, graphRuns, transactions));
     }
 

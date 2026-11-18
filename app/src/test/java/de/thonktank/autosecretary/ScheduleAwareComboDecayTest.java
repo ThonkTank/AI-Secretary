@@ -21,7 +21,6 @@ import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
-import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.testing.InMemoryExecutionRepository;
 
 import org.junit.Test;
@@ -135,7 +134,7 @@ public final class ScheduleAwareComboDecayTest {
 
         assertEquals(3, fixture.repository.openOccurrences().size());
         de.thonktank.autosecretary.domain.model.Dashboard first =
-                new LoadDashboard(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.flows).execute(fixture.clock.today());
+                fixture.repository.dashboard().execute(fixture.clock.today());
         assertEquals(1, first.tasks.size());
         assertEquals(MONDAY, first.tasks.get(0).occurrence.scheduledOn);
         assertEquals(2, first.tasks.get(0).backlogCount);
@@ -143,7 +142,7 @@ public final class ScheduleAwareComboDecayTest {
         new CompleteOccurrence(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.transactions, fixture.clock)
                 .execute(first.tasks.get(0).occurrence.id);
         de.thonktank.autosecretary.domain.model.Dashboard next =
-                new LoadDashboard(fixture.repository.catalog, fixture.repository.steps, fixture.repository.today, fixture.repository.flows).execute(fixture.clock.today());
+                fixture.repository.dashboard().execute(fixture.clock.today());
         assertEquals(MONDAY.plusDays(1), next.tasks.stream().filter(value -> !value.done)
                 .findFirst().orElseThrow().occurrence.scheduledOn);
         assertEquals(1, next.tasks.stream().filter(value -> !value.done)

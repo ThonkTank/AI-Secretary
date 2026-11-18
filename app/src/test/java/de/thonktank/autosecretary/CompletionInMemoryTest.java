@@ -30,7 +30,6 @@ import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.usecase.CloseOngoingTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
-import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.HarvestOccurrence;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
@@ -222,8 +221,7 @@ public final class CompletionInMemoryTest {
         assertEquals("", roman.note);
         assertEquals(first.id, roman.originOccurrenceId);
         assertEquals("23 kg, Sitz 2", freshMachine.note);
-        Dashboard dashboard = new LoadDashboard(repository.catalog, repository.steps,
-                repository.today, repository.flows).execute(clock.today());
+        Dashboard dashboard = repository.dashboard().execute(clock.today());
         de.thonktank.autosecretary.domain.model.DashboardTask mapped = dashboard.tasks.stream()
                 .filter(value -> value.task.id.equals(taskId)).findFirst().orElseThrow();
         assertEquals("", mapped.steps.stream()
@@ -263,7 +261,7 @@ public final class CompletionInMemoryTest {
                     ComboProgress.Kind.TASK, taskIndex % 8, TODAY));
         }
 
-        Dashboard dashboard = new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows).execute(TODAY);
+        Dashboard dashboard = repository.dashboard().execute(TODAY);
 
         assertEquals(taskCount, dashboard.tasks.size());
         assertEquals(taskCount, dashboard.combos.size());
