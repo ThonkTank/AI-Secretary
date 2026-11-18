@@ -3,6 +3,7 @@ package de.thonktank.autosecretary.presentation.today;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import androidx.annotation.AnyThread;
 import androidx.annotation.Nullable;
@@ -73,7 +74,7 @@ final class TodayStepDialogs {
     @AnyThread void open(Kind kind, String stepId) {
         // Today actions can also be dispatched outside the UI thread.
         if (Looper.myLooper() != main.getLooper()) {
-            main.post(() -> open(kind, stepId));
+            main.postAtTime(() -> open(kind, stepId), kind, SystemClock.uptimeMillis());
             return;
         }
         if (closed || !available || draft != null || loading == Kind.STEP) return;
@@ -91,6 +92,10 @@ final class TodayStepDialogs {
     }
 
     void setAvailable(boolean value) {
+        if (available == value) return;
+        // Discard unprocessed opens from the previous destination, including time spent hidden.
+        main.removeCallbacksAndMessages(Kind.NOTE);
+        main.removeCallbacksAndMessages(Kind.STEP);
         available = value;
         if (!value && loading != null) {
             loading = null;
@@ -110,6 +115,7 @@ final class TodayStepDialogs {
     }
 
     void cancel(Kind kind) {
+        main.removeCallbacksAndMessages(kind);
         if (closed || (draft != null && draft.saving)) return;
         if (loading != kind && !editing(kind)) return;
         generation++;

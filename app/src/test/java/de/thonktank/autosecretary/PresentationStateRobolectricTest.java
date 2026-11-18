@@ -343,14 +343,7 @@ public final class PresentationStateRobolectricTest {
         viewModel = newViewModel(saved, new DirectExecutor());
         try (ActivityController<MainActivity> host = Robolectric.buildActivity(MainActivity.class)) {
             MainActivity activity = host.get();
-            // Supply a restored Today owner before the production host obtains it in onCreate.
-            new ViewModelProvider(activity, new ViewModelProvider.Factory() {
-                @Override public <T extends ViewModel> T create(Class<T> type) {
-                    return type.cast(viewModel);
-                }
-            }).get(TodayViewModel.class);
-            host.setup();
-            ShadowLooper.idleMainLooper();
+            mountTodayHost(host);
             AlertDialog firstNote = ShadowAlertDialog.getLatestAlertDialog();
             assertNotNull(firstNote.findViewById(R.id.step_note_input));
 
@@ -387,6 +380,86 @@ public final class PresentationStateRobolectricTest {
             ShadowLooper.idleMainLooper();
             assertNull(value().firstRequest());
         }
+    }
+
+    @Test public void recreationKeepsVisibleConfirmationInFrontOfLateNoteDraft() {
+        String id = noteStep();
+        ManualExecutor worker = new ManualExecutor();
+        viewModel = newViewModel(new SavedStateHandle(), worker);
+        try (ActivityController<MainActivity> host = Robolectric.buildActivity(MainActivity.class)) {
+            mountTodayHost(host);
+            viewModel.dispatch(TodayAction.editStepNote(id));
+            viewModel.dispatch(TodayAction.requestClose("task", "Aufgabe"));
+            ShadowLooper.idleMainLooper();
+            AlertDialog original = ShadowAlertDialog.getLatestAlertDialog();
+            assertTrue(original.isShowing());
+            assertNull(original.findViewById(R.id.step_note_input));
+
+            worker.runAll();
+            ShadowLooper.idleMainLooper();
+            assertEquals(id, value().stepNoteDraft().id);
+            assertSame(original, ShadowAlertDialog.getLatestAlertDialog());
+
+            host.recreate();
+            ShadowLooper.idleMainLooper();
+            AlertDialog recreated = ShadowAlertDialog.getLatestAlertDialog();
+            assertTrue(recreated.isShowing());
+            assertFalse(original == recreated);
+            assertNull(recreated.findViewById(R.id.step_note_input));
+            assertEquals(TodayRequest.Kind.CONFIRM_CLOSE, value().firstRequest().kind);
+            recreated.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+            ShadowLooper.idleMainLooper();
+            assertNull(value().firstRequest());
+            AlertDialog note = ShadowAlertDialog.getLatestAlertDialog();
+            assertTrue(note.isShowing());
+            assertEquals("40 kg", ((android.widget.EditText) note
+                    .findViewById(R.id.step_note_input)).getText().toString());
+        }
+    }
+
+    @Test public void cancelInvalidatesAnOpenStillQueuedOnMain() throws Exception {
+        String id = noteStep();
+        ManualExecutor worker = new ManualExecutor();
+        viewModel = newViewModel(new SavedStateHandle(), worker);
+        postNoteOpenFromWorker(id);
+        viewModel.cancelStepNote();
+        ShadowLooper.idleMainLooper();
+        worker.runAll();
+        ShadowLooper.idleMainLooper();
+        assertNull(value().stepDialog);
+        assertNull(value().firstRequest());
+    }
+
+    @Test public void returnToTodayInvalidatesAnOpenStillQueuedOnMain() throws Exception {
+        String id = noteStep();
+        ManualExecutor worker = new ManualExecutor();
+        viewModel = newViewModel(new SavedStateHandle(), worker);
+        postNoteOpenFromWorker(id);
+        viewModel.setStepDialogsAvailable(false);
+        viewModel.setStepDialogsAvailable(true);
+        ShadowLooper.idleMainLooper();
+        worker.runAll();
+        ShadowLooper.idleMainLooper();
+        assertNull(value().stepDialog);
+        assertNull(value().firstRequest());
+    }
+
+    private void postNoteOpenFromWorker(String id) throws Exception {
+        java.util.concurrent.FutureTask<Void> dispatch = new java.util.concurrent.FutureTask<>(
+                () -> viewModel.dispatch(TodayAction.editStepNote(id)), null);
+        new Thread(dispatch).start();
+        dispatch.get(5, TimeUnit.SECONDS);
+    }
+
+    private void mountTodayHost(ActivityController<MainActivity> host) {
+        // Supply the controlled Today owner before the production host obtains it in onCreate.
+        new ViewModelProvider(host.get(), new ViewModelProvider.Factory() {
+            @Override public <T extends ViewModel> T create(Class<T> type) {
+                return type.cast(viewModel);
+            }
+        }).get(TodayViewModel.class);
+        host.setup();
+        ShadowLooper.idleMainLooper();
     }
 
     private String noteStep() {
