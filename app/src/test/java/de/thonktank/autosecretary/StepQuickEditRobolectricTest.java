@@ -222,16 +222,16 @@ public final class StepQuickEditRobolectricTest {
     @Test public void todayOwnerValidatesSavesAndKeepsDraftAcrossOtherScreenUpdates() {
         seed(); mount(new SavedStateHandle());
         model.dispatch(TodayAction.editStep(execution)); idle();
-        StepEditDraft draft = model.state().getValue().stepEditDraft;
+        StepEditDraft draft = model.state().getValue().stepEditDraft();
         assertNotNull(draft);
         model.changeStepEdit(draft.step.withText(""));
         model.saveStepEdit(); idle();
-        assertTrue(model.state().getValue().stepEditDraft.validated);
-        assertFalse(model.state().getValue().stepEditDraft.saving);
+        assertTrue(model.state().getValue().stepEditDraft().validated);
+        assertFalse(model.state().getValue().stepEditDraft().saving);
         assertEquals("Rudern", repository.steps.findTemplate(source).text);
         model.changeStepEdit(draft.step.withText("Owner gespeichert"));
         model.saveStepEdit(); idle();
-        assertNull(model.state().getValue().stepEditDraft);
+        assertNull(model.state().getValue().stepEditDraft());
         assertEquals("Owner gespeichert", repository.steps.findTemplate(source).text);
         assertEquals("Owner gespeichert", repository.steps.findOccurrenceStep(execution).text);
     }
@@ -239,24 +239,24 @@ public final class StepQuickEditRobolectricTest {
     @Test public void restoredOwnerKeepsUnsavedDraftAndCancelWritesNothing() {
         seed(); SavedStateHandle handle = new SavedStateHandle(); mount(handle);
         model.dispatch(TodayAction.editStep(execution)); idle();
-        model.changeStepEdit(model.state().getValue().stepEditDraft.step.withText("Entwurf"));
+        model.changeStepEdit(model.state().getValue().stepEditDraft().step.withText("Entwurf"));
         Map<String, Object> persisted = new HashMap<>();
         for (String key : handle.keys()) persisted.put(key, handle.get(key));
         model.onCleared(); invalidations.close();
         mount(new SavedStateHandle(persisted));
-        assertEquals("Entwurf", model.state().getValue().stepEditDraft.step.text);
+        assertEquals("Entwurf", model.state().getValue().stepEditDraft().step.text);
         model.cancelStepEdit();
-        assertNull(model.state().getValue().stepEditDraft);
+        assertNull(model.state().getValue().stepEditDraft());
         assertEquals("Rudern", repository.steps.findTemplate(source).text);
     }
 
     @Test public void failedSaveLeavesEditableDraftOpen() {
         seed(); mount(new SavedStateHandle());
         model.dispatch(TodayAction.editStep(execution)); idle();
-        model.changeStepEdit(model.state().getValue().stepEditDraft.step.withText("Noch offen"));
+        model.changeStepEdit(model.state().getValue().stepEditDraft().step.withText("Noch offen"));
         db.steps().deleteTemplate(source);
         model.saveStepEdit(); idle();
-        StepEditDraft draft = model.state().getValue().stepEditDraft;
+        StepEditDraft draft = model.state().getValue().stepEditDraft();
         assertNotNull(draft); assertFalse(draft.saving);
         assertFalse(draft.error.isEmpty()); assertEquals("Noch offen", draft.step.text);
         model.cancelStepEdit();

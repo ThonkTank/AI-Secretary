@@ -86,9 +86,7 @@ public class MainActivity extends ComponentActivity {
     private LinearLayout dashboardScreen;
     private LinearLayout dashboardContent;
     private AllTasksUiState allTasksState = AllTasksUiState.empty();
-    private TaskEditorScreenState editorState = new TaskEditorScreenState(
-            EditorUiState.closed(),
-            java.util.Collections.emptyList());
+    private TaskEditorScreenState editorState;
     private String handledAllTasksRequestId;
     private String handledEditorRequestId;
     private String handledOptionsRequestId;
@@ -150,6 +148,7 @@ public class MainActivity extends ComponentActivity {
                 todayViewModel::dispatch,
                 optionsViewModel::dispatch, versionName(),
                 rewardAnchors, allTasksViewModel::dispatch);
+        editorState = editorViewModel.state().getValue();
         editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
                 new TaskEditorComposeHostView.Listener() {
                     @Override public void onDraftChanged(EditorUiState draft) {
@@ -281,9 +280,7 @@ public class MainActivity extends ComponentActivity {
     private void renderTodayState(TodayScreenState state) {
         if (state == null) return;
         todayState = state;
-        stepNoteDialog.bind(state.stepNoteDraft);
         render();
-        handleTodayRequest(state.firstRequest());
         handleRewardEffects(state.rewards);
     }
 
@@ -293,7 +290,7 @@ public class MainActivity extends ComponentActivity {
                 "navigation=" + shellState.navigation + " loading=" + todayState.loading
                         + " editorOpen=" + editorState.content.open);
         forest.setPalette(shellState.palette);
-        stepEditor.bind(todayState.stepEditDraft, shellState.palette, todayViewModel);
+        renderTodayDialogs();
         header.bind(container.clock.time(), shellState.palette, todayState.today().xpProgress);
         footer.bind(shellState.navigation, shellState.palette);
         renderer.render(shellState, todayState, allTasksState, optionsState);
@@ -304,6 +301,18 @@ public class MainActivity extends ComponentActivity {
         controller.setAppearanceLightNavigationBars(light);
         editorCoordinator.render(editorState, shellState.palette,
                 container.clock.today());
+    }
+
+    private void renderTodayDialogs() {
+        boolean available = shellState.navigation == NavigationDestination.TODAY && !editorState.content.open;
+        todayViewModel.setStepDialogsAvailable(available);
+        TodayScreenState current = todayViewModel.state().getValue();
+        TodayRequest first = current.firstRequest();
+        boolean requestShowing = first != null && first.id.equals(handledTodayRequestId);
+        boolean showDraft = available && current.stepDialog != null && !requestShowing;
+        stepNoteDialog.bind(showDraft ? current.stepNoteDraft() : null);
+        stepEditor.bind(showDraft ? current.stepEditDraft() : null, shellState.palette, todayViewModel);
+        if (!showDraft) handleTodayRequest(first);
     }
 
     private void openEditorWithFlight() {
@@ -358,8 +367,10 @@ public class MainActivity extends ComponentActivity {
     private void renderEditorState(TaskEditorScreenState state) {
         if (state == null) return;
         editorState = state;
-        if (shellState != null)
+        if (shellState != null) {
+            renderTodayDialogs();
             editorCoordinator.render(state, shellState.palette, container.clock.today());
+        }
         TaskEditorRequest request = state.firstRequest();
         if (request == null) {
             handledEditorRequestId = null;

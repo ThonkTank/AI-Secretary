@@ -7,6 +7,8 @@ import de.thonktank.autosecretary.presentation.alltasks.AllTasksSavedStateAdapte
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksUiState;
 import de.thonktank.autosecretary.presentation.alltasks.AllTasksViewModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
+import de.thonktank.autosecretary.presentation.today.StepEditDraft;
+import de.thonktank.autosecretary.presentation.today.StepNoteDraft;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayScreenState;
 import de.thonktank.autosecretary.presentation.today.TodayRequest;
@@ -25,11 +27,14 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import android.app.AlertDialog;
 import android.content.Context;
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LifecycleRegistry;
 import androidx.room.Room;
@@ -76,8 +81,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.android.controller.ActivityController;
+import org.robolectric.shadows.ShadowAlertDialog;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -146,21 +155,21 @@ public final class PresentationStateRobolectricTest {
         viewModel = newViewModel(new SavedStateHandle(), new DirectExecutor());
         viewModel.dispatch(TodayAction.editStepNote(stepId));
         org.robolectric.shadows.ShadowLooper.idleMainLooper();
-        assertEquals("40 kg", viewModel.state().getValue().stepNoteDraft.text);
+        assertEquals("40 kg", viewModel.state().getValue().stepNoteDraft().text);
         android.app.Activity activity = org.robolectric.Robolectric.buildActivity(android.app.Activity.class).setup().get();
         de.thonktank.autosecretary.ui.today.StepNoteDialog host =
                 new de.thonktank.autosecretary.ui.today.StepNoteDialog(activity, viewModel);
-        host.bind(viewModel.state().getValue().stepNoteDraft);
+        host.bind(viewModel.state().getValue().stepNoteDraft());
         android.app.AlertDialog dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();
         ((android.widget.EditText) dialog.findViewById(R.id.step_note_input)).setText("42 kg\nSitz 7");
         host.dismiss();
         host = new de.thonktank.autosecretary.ui.today.StepNoteDialog(activity, viewModel);
-        host.bind(viewModel.state().getValue().stepNoteDraft);
+        host.bind(viewModel.state().getValue().stepNoteDraft());
         dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog();
         assertEquals("42 kg\nSitz 7", ((android.widget.EditText) dialog.findViewById(R.id.step_note_input)).getText().toString());
         dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick();
         org.robolectric.shadows.ShadowLooper.idleMainLooper();
-        assertNull(viewModel.state().getValue().stepNoteDraft);
+        assertNull(viewModel.state().getValue().stepNoteDraft());
         assertEquals("40 kg", tasks.today.editStepNote.load(stepId).note);
         host.dismiss(); activity.finish();
     }
@@ -172,7 +181,7 @@ public final class PresentationStateRobolectricTest {
         org.robolectric.shadows.ShadowLooper.idleMainLooper();
         viewModel.changeStepNote("42 kg"); viewModel.saveStepNote();
         org.robolectric.shadows.ShadowLooper.idleMainLooper();
-        assertNull(viewModel.state().getValue().stepNoteDraft);
+        assertNull(viewModel.state().getValue().stepNoteDraft());
         assertEquals("42 kg", tasks.today.editStepNote.load(stepId).note);
         String templateId = repository.steps.findOccurrenceStep(stepId).sourceTemplateId;
         assertEquals("42 kg", repository.steps.findTemplate(templateId).note);
@@ -194,7 +203,7 @@ public final class PresentationStateRobolectricTest {
                 "CREATE TRIGGER reject_note BEFORE UPDATE OF note ON task_steps BEGIN SELECT RAISE(ABORT,'injected'); END");
         viewModel.saveStepNote();
         org.robolectric.shadows.ShadowLooper.idleMainLooper();
-        de.thonktank.autosecretary.presentation.today.StepNoteDraft failed = viewModel.state().getValue().stepNoteDraft;
+        de.thonktank.autosecretary.presentation.today.StepNoteDraft failed = viewModel.state().getValue().stepNoteDraft();
         assertEquals("42 kg", failed.text);
         assertFalse(failed.error.isEmpty());
         assertEquals("40 kg", tasks.today.editStepNote.load(stepId).note);
@@ -203,13 +212,181 @@ public final class PresentationStateRobolectricTest {
         viewModel.onCleared();
         viewModel = newViewModel(new SavedStateHandle(Collections.singletonMap("today.stepNote", saved)),
                 new DirectExecutor());
-        assertEquals("42 kg", viewModel.state().getValue().stepNoteDraft.text);
-        assertFalse(viewModel.state().getValue().stepNoteDraft.saving);
+        assertEquals("42 kg", viewModel.state().getValue().stepNoteDraft().text);
+        assertFalse(viewModel.state().getValue().stepNoteDraft().saving);
         database.getOpenHelper().getWritableDatabase().execSQL("DROP TRIGGER reject_note");
         viewModel.saveStepNote();
         org.robolectric.shadows.ShadowLooper.idleMainLooper();
-        assertNull(viewModel.state().getValue().stepNoteDraft);
+        assertNull(viewModel.state().getValue().stepNoteDraft());
         assertEquals("42 kg", tasks.today.editStepNote.load(stepId).note);
+    }
+
+    @Test public void supersededNoteCallbacksCannotReplaceOrCoverTheSelectedDialog() {
+        String id = noteStep();
+        ManualExecutor worker = new ManualExecutor();
+        viewModel = newViewModel(new SavedStateHandle(), worker);
+        viewModel.dispatch(TodayAction.editStepNote("missing"));
+        viewModel.dispatch(TodayAction.editStepNote(id));
+        worker.runAll();
+        ShadowLooper.idleMainLooper();
+        assertEquals(id, value().stepNoteDraft().id);
+        assertNull(value().firstRequest());
+
+        viewModel.cancelStepNote();
+        viewModel.dispatch(TodayAction.editStepNote("missing"));
+        viewModel.dispatch(TodayAction.editStep(id));
+        viewModel.dispatch(TodayAction.editStepNote("also missing"));
+        worker.runAll();
+        ShadowLooper.idleMainLooper();
+        assertEquals(id, value().stepEditDraft().id);
+        assertNull(value().stepNoteDraft());
+        assertNull(value().firstRequest());
+    }
+
+    @Test public void navigationDropsPendingLoadsAndKeepsAnAlreadyOpenDraft() {
+        String id = noteStep();
+        ManualExecutor worker = new ManualExecutor();
+        viewModel = newViewModel(new SavedStateHandle(), worker);
+        viewModel.dispatch(TodayAction.editStep(id));
+        worker.runAll(); // Main-thread delivery is still queued.
+        viewModel.setStepDialogsAvailable(false);
+        viewModel.dispatch(TodayAction.editStepNote("missing"));
+        viewModel.setStepDialogsAvailable(true);
+        ShadowLooper.idleMainLooper();
+        worker.runAll();
+        ShadowLooper.idleMainLooper();
+        assertNull(value().stepDialog);
+        assertNull(value().firstRequest());
+
+        viewModel.dispatch(TodayAction.editStepNote(id));
+        worker.runAll();
+        ShadowLooper.idleMainLooper();
+        viewModel.changeStepNote("Ungespeichert");
+        viewModel.setStepDialogsAvailable(false);
+        viewModel.setStepDialogsAvailable(true);
+        assertEquals("Ungespeichert", value().stepNoteDraft().text);
+    }
+
+    @Test public void clearedSaveCommitsOnceWithoutChangingTheRestoredDraft() {
+        String id = noteStep();
+        SavedStateHandle handle = new SavedStateHandle();
+        ManualExecutor worker = new ManualExecutor();
+        viewModel = newViewModel(handle, worker);
+        viewModel.dispatch(TodayAction.editStepNote(id));
+        worker.runAll();
+        ShadowLooper.idleMainLooper();
+        viewModel.changeStepNote("42 kg");
+        viewModel.saveStepNote();
+        assertEquals(1, worker.pendingCount());
+        viewModel.saveStepNote();
+        assertEquals(1, worker.pendingCount());
+        StepNoteDraft saving = value().stepNoteDraft();
+        assertTrue(saving.saving);
+        viewModel.onCleared();
+        worker.runAll(); // Accepted database write finishes after clearing its owner.
+        ShadowLooper.idleMainLooper();
+        assertSame(saving, value().stepNoteDraft());
+        assertEquals("42 kg", tasks.today.editStepNote.load(id).note);
+
+        invalidationSource.close();
+        viewModel = newViewModel(handle, new DirectExecutor());
+        StepNoteDraft restored = value().stepNoteDraft();
+        assertEquals("42 kg", restored.text);
+        assertFalse(restored.saving);
+    }
+
+    @Test public void lateStepSaveFailureCannotReopenAClearedDialog() {
+        String id = noteStep();
+        ManualExecutor worker = new ManualExecutor();
+        viewModel = newViewModel(new SavedStateHandle(), worker);
+        viewModel.dispatch(TodayAction.editStep(id));
+        worker.runAll();
+        ShadowLooper.idleMainLooper();
+        viewModel.changeStepEdit(value().stepEditDraft().step.withText("Entwurf"));
+        database.steps().deleteTemplate(repository.steps.findOccurrenceStep(id).sourceTemplateId);
+        viewModel.saveStepEdit();
+        StepEditDraft saving = value().stepEditDraft();
+        assertTrue(saving.saving);
+        viewModel.onCleared();
+        worker.runAll();
+        ShadowLooper.idleMainLooper();
+        assertSame(saving, value().stepDialog);
+        assertNull(value().firstRequest());
+    }
+
+    @Test public void bothLegacyDraftsRestoreToOneFullEditorAndCannotReappearAfterCancel() {
+        String id = noteStep();
+        StepEditDraft full = StepEditDraft.from(tasks.today.editStep.load(id));
+        SavedStateHandle handle = new SavedStateHandle();
+        handle.set("today.stepEdit", full.change(full.step.withText("")).status("Fehler", true).saved());
+        handle.set("today.stepNote", new StepNoteDraft(id, "Notiz", "", false).saved());
+        viewModel = newViewModel(handle, new DirectExecutor());
+        StepEditDraft restored = value().stepEditDraft();
+        assertEquals(full.original, restored.original);
+        assertEquals("", restored.step.text);
+        assertTrue(restored.validated);
+        assertEquals("Fehler", restored.error);
+        assertFalse(restored.saving);
+        assertNull(value().stepNoteDraft());
+        assertFalse(handle.contains("today.stepEdit"));
+        assertFalse(handle.contains("today.stepNote"));
+        viewModel.cancelStepEdit();
+        viewModel.onCleared();
+        invalidationSource.close();
+        viewModel = newViewModel(handle, new DirectExecutor());
+        assertNull(value().stepDialog);
+    }
+
+    @Test public void hostRetainsNoteAcrossNavigationAndPresentsQueuedRequestAfterDismissal() {
+        SavedStateHandle saved = new SavedStateHandle();
+        saved.set("today.stepNote", new StepNoteDraft("step", "Entwurf", "", false).saved());
+        viewModel = newViewModel(saved, new DirectExecutor());
+        try (ActivityController<MainActivity> host = Robolectric.buildActivity(MainActivity.class)) {
+            MainActivity activity = host.get();
+            // Supply a restored Today owner before the production host obtains it in onCreate.
+            new ViewModelProvider(activity, new ViewModelProvider.Factory() {
+                @Override public <T extends ViewModel> T create(Class<T> type) {
+                    return type.cast(viewModel);
+                }
+            }).get(TodayViewModel.class);
+            host.setup();
+            ShadowLooper.idleMainLooper();
+            AlertDialog firstNote = ShadowAlertDialog.getLatestAlertDialog();
+            assertNotNull(firstNote.findViewById(R.id.step_note_input));
+
+            AppShellViewModel shell = new ViewModelProvider(activity).get(AppShellViewModel.class);
+            shell.dispatch(AppShellAction.destinationSelected(NavigationDestination.OPTIONS));
+            ShadowLooper.idleMainLooper();
+            assertFalse(firstNote.isShowing());
+            viewModel.dispatch(TodayAction.requestClose("other", "Andere Aufgabe"));
+            ShadowLooper.idleMainLooper();
+            AlertDialog outsideToday = ShadowAlertDialog.getLatestAlertDialog();
+            assertTrue(outsideToday.isShowing());
+            assertNull(outsideToday.findViewById(R.id.step_note_input));
+            outsideToday.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+            ShadowLooper.idleMainLooper();
+            assertNull(value().firstRequest());
+
+            shell.dispatch(AppShellAction.destinationSelected(NavigationDestination.TODAY));
+            ShadowLooper.idleMainLooper();
+            AlertDialog returnedNote = ShadowAlertDialog.getLatestAlertDialog();
+            assertTrue(returnedNote.isShowing());
+            assertEquals("Entwurf", ((android.widget.EditText) returnedNote
+                    .findViewById(R.id.step_note_input)).getText().toString());
+
+            viewModel.dispatch(TodayAction.requestClose("task", "Aufgabe"));
+            ShadowLooper.idleMainLooper();
+            assertSame(returnedNote, ShadowAlertDialog.getLatestAlertDialog());
+            returnedNote.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+            ShadowLooper.idleMainLooper();
+            AlertDialog confirmation = ShadowAlertDialog.getLatestAlertDialog();
+            assertFalse(returnedNote.isShowing());
+            assertTrue(confirmation.isShowing());
+            assertEquals(TodayRequest.Kind.CONFIRM_CLOSE, value().firstRequest().kind);
+            confirmation.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+            ShadowLooper.idleMainLooper();
+            assertNull(value().firstRequest());
+        }
     }
 
     private String noteStep() {
