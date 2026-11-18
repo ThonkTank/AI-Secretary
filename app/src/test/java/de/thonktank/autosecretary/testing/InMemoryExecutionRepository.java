@@ -58,6 +58,8 @@ public final class InMemoryExecutionRepository {
     private Map<String, ComboDecayEvent> comboDecayEvents = new LinkedHashMap<>();
     private int xp;
 
+    public Set<String> hiddenToday(LocalDate day) { return java.util.Collections.emptySet(); }
+
     public LoadDashboard dashboard() {
         LoadGraphFlowSheets graph = new LoadGraphFlowSheets(catalog, steps, today, flows,
                 adapter(FlowGraphDefinitionRepository.class), adapter(FlowGraphRunRepository.class), transactions);

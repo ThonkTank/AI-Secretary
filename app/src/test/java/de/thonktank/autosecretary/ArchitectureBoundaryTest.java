@@ -152,7 +152,9 @@ public final class ArchitectureBoundaryTest {
         assertFalse(today.contains("LiveData"));
         assertFalse(today.contains("MutableLiveData"));
         assertTrue(shell.contains("MutableStateFlow<AppShellScreenState>"));
-        assertTrue(renderer.contains("TodayAction.openTaskMenu"));
+        String detailControls = read(main("ui/today/TodayDetailControls.java"));
+        assertTrue(renderer.contains("new TodayDetailControls(context, todayActions)"));
+        assertTrue(detailControls.contains("actions.emit(TodayAction.openTaskMenu"));
         assertFalse(renderer.contains("DashboardEvent"));
         assertFalse(activity.contains("TaskViewModel"));
         assertFalse(activity.contains("DashboardUiState"));
