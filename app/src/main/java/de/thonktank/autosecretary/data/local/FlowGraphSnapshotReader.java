@@ -3,35 +3,77 @@ package de.thonktank.autosecretary.data.local;
 import android.database.Cursor;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import de.thonktank.autosecretary.domain.model.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Named-column read adapter for the prepared schema-25 execution snapshot. */
 public final class FlowGraphSnapshotReader {
+    private static final String GRAPH_COLUMNS = "id,taskId,startStepId,alreadyPaidTau,collected,cancelled";
     private final SupportSQLiteDatabase database;
 
     public FlowGraphSnapshotReader(SupportSQLiteDatabase database) { this.database = database; }
 
     /** Call inside the caller's transaction so steps, waits and claims belong to one revision. */
     public FlowGraphRun find(String runId) {
-        if (!database.inTransaction()) throw new IllegalStateException("Snapshot read requires a transaction");
-        String taskId;
-        String startStepId;
-        long paid;
-        boolean collected;
-        boolean cancelled;
-        try (Cursor cursor = database.query("SELECT taskId,startStepId,alreadyPaidTau,collected,cancelled "
-                + "FROM step_flow_runs WHERE id=?", new Object[]{runId})) {
-            if (!cursor.moveToFirst()) return null;
-            taskId = cursor.getString(0); startStepId = cursor.getString(1); paid = cursor.getLong(2);
-            collected = cursor.getInt(3) != 0; cancelled = cursor.getInt(4) != 0;
+        requireTransaction();
+        Object[] args = {runId};
+        try (Cursor header = database.query("SELECT " + GRAPH_COLUMNS + " FROM step_flow_runs WHERE id=?", args)) {
+            if (!header.moveToFirst()) return null;
+            return assemble(new Row(header), readChildren("runId=?", args));
         }
-        List<String> ids = new ArrayList<>();
-        List<FlowGraphRun.Step> steps = new ArrayList<>();
-        try (Cursor cursor = database.query("SELECT * FROM flow_run_steps WHERE runId=? ORDER BY position", new Object[]{runId})) {
+    }
+
+    List<FlowGraphRunRecord> readRecords(String runFilter, Object[] args) {
+        requireTransaction();
+        String fromRuns = " FROM step_flow_runs WHERE " + runFilter;
+        try (Cursor cursor = database.query("SELECT " + GRAPH_COLUMNS + ",sourceKey,scheduledOn,slot,queueOrder,"
+                + "nextExecutionSequence,createdAtEpochMillis,updatedAtEpochMillis" + fromRuns
+                + " ORDER BY queueOrder,createdAtEpochMillis,id", args)) {
+            if (!cursor.moveToFirst()) return Collections.emptyList();
+            Map<String, Children> children = readChildren("runId IN (SELECT id" + fromRuns + ")", args);
+            List<FlowGraphRunRecord> records = new ArrayList<>();
+            Row row = new Row(cursor);
+            do {
+                records.add(new FlowGraphRunRecord(assemble(row, children), row.text("sourceKey"),
+                        LocalDate.parse(row.text("scheduledOn")), TaskSlot.fromStorage(row.text("slot")),
+                        row.number("queueOrder"), Math.toIntExact(row.number("nextExecutionSequence")),
+                        row.number("createdAtEpochMillis"), row.number("updatedAtEpochMillis")));
+            } while (cursor.moveToNext());
+            return Collections.unmodifiableList(records);
+        }
+    }
+
+    private void requireTransaction() {
+        if (!database.inTransaction()) throw new IllegalStateException("Snapshot read requires a transaction");
+    }
+
+    private static FlowGraphRun assemble(Row header, Map<String, Children> byRun) {
+        String id = header.text("id");
+        Children children = byRun.computeIfAbsent(id, ignored -> new Children());
+        List<String> stepIds = new ArrayList<>(children.steps.size());
+        for (FlowGraphRun.Step step : children.steps) stepIds.add(step.id);
+        return new FlowGraphRun(id, TaskId.of(header.text("taskId")), header.text("startStepId"),
+                new FlowTileGraph(stepIds, children.edges), children.steps, children.leases,
+                header.number("alreadyPaidTau"), header.number("collected") != 0, header.number("cancelled") != 0);
+    }
+
+    private static final class Children {
+        final List<FlowGraphRun.Step> steps = new ArrayList<>();
+        final List<FlowTileGraph.Link> edges = new ArrayList<>();
+        final List<FlowGraphRun.Lease> leases = new ArrayList<>();
+    }
+
+    private Map<String, Children> readChildren(String filter, Object[] args) {
+        Map<String, Children> byRun = new HashMap<>();
+        try (Cursor cursor = database.query("SELECT * FROM flow_run_steps WHERE " + filter
+                + " ORDER BY runId,position", args)) {
             Row row = new Row(cursor);
             while (cursor.moveToNext()) {
-                String id = row.text("id"); ids.add(id);
+                Children children = byRun.computeIfAbsent(row.text("runId"), ignored -> new Children());
                 StepPrescription prescription = new StepPrescription(StepAmount.fromStorage(
                         StepAmountKind.fromStorage(row.text("amountKind")), row.optionalInt("plannedSets"),
                         row.optionalInt("plannedReps"), row.optionalInt("plannedDurationSeconds")),
@@ -40,25 +82,28 @@ public final class FlowGraphSnapshotReader {
                         row.text("text"), prescription, row.text("note"), new FlowDelayPolicy(
                         FlowDelayPolicy.Mode.valueOf(row.text("delayMode")), row.number("defaultDelayMillis"),
                         row.optionalLong("lastUsedDelayMillis")));
-                steps.add(new FlowGraphRun.Step(id, node, FlowGraphRun.State.valueOf(row.text("state")),
+                children.steps.add(new FlowGraphRun.Step(row.text("id"), node, FlowGraphRun.State.valueOf(row.text("state")),
                         row.optionalLong("chosenDelayMillis"), row.optionalLong("readyAtEpochMillis"),
                         row.optionalLong("actionAtEpochMillis"), row.number("earnedTau")));
             }
         }
-        List<FlowTileGraph.Link> edges = new ArrayList<>();
-        try (Cursor cursor = database.query("SELECT sourceStepId,targetStepId FROM flow_run_edges WHERE runId=? "
-                + "ORDER BY sourceStepId,targetStepId", new Object[]{runId})) {
-            while (cursor.moveToNext()) edges.add(new FlowTileGraph.Link(cursor.getString(0), cursor.getString(1)));
+        try (Cursor cursor = database.query("SELECT runId,sourceStepId,targetStepId FROM flow_run_edges WHERE "
+                + filter + " ORDER BY runId,sourceStepId,targetStepId", args)) {
+            while (cursor.moveToNext()) {
+                Children children = byRun.computeIfAbsent(cursor.getString(0), ignored -> new Children());
+                children.edges.add(new FlowTileGraph.Link(cursor.getString(1), cursor.getString(2)));
+            }
         }
-        List<FlowGraphRun.Lease> leases = new ArrayList<>();
-        try (Cursor cursor = database.query("SELECT id,sourceLeaseId,resourceId,acquireStepId,releaseStepId,units,"
-                + "releaseAfterWait,state FROM flow_run_resources WHERE runId=? ORDER BY id", new Object[]{runId})) {
-            while (cursor.moveToNext()) leases.add(new FlowGraphRun.Lease(cursor.getString(0), cursor.getString(1),
-                    cursor.getString(2), cursor.getString(3), cursor.getString(4), cursor.getInt(5),
-                    cursor.getInt(6) != 0, FlowResourceState.valueOf(cursor.getString(7))));
+        try (Cursor cursor = database.query("SELECT runId,id,sourceLeaseId,resourceId,acquireStepId,releaseStepId,"
+                + "units,releaseAfterWait,state FROM flow_run_resources WHERE " + filter + " ORDER BY runId,id", args)) {
+            while (cursor.moveToNext()) {
+                Children children = byRun.computeIfAbsent(cursor.getString(0), ignored -> new Children());
+                children.leases.add(new FlowGraphRun.Lease(cursor.getString(1), cursor.getString(2),
+                        cursor.getString(3), cursor.getString(4), cursor.getString(5), cursor.getInt(6),
+                        cursor.getInt(7) != 0, FlowResourceState.valueOf(cursor.getString(8))));
+            }
         }
-        return new FlowGraphRun(runId, TaskId.of(taskId), startStepId, new FlowTileGraph(ids, edges),
-                steps, leases, paid, collected, cancelled);
+        return byRun;
     }
 
     private static final class Row {

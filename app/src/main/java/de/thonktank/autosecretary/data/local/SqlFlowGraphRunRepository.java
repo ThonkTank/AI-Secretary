@@ -4,7 +4,6 @@ import android.database.Cursor;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import de.thonktank.autosecretary.domain.model.*;
 import de.thonktank.autosecretary.domain.repository.FlowGraphRunRepository;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -17,14 +16,9 @@ public final class SqlFlowGraphRunRepository implements FlowGraphRunRepository {
     }
 
     @Override public FlowGraphRunRecord find(String runId) {
-        SupportSQLiteDatabase db = database();
-        try (Cursor cursor = db.query("SELECT sourceKey,scheduledOn,slot,queueOrder,nextExecutionSequence,"
-                + "createdAtEpochMillis,updatedAtEpochMillis FROM step_flow_runs WHERE id=?", new Object[]{runId})) {
-            if (!cursor.moveToFirst()) return null;
-            return new FlowGraphRunRecord(new FlowGraphSnapshotReader(db).find(runId), cursor.getString(0),
-                    LocalDate.parse(cursor.getString(1)), TaskSlot.fromStorage(cursor.getString(2)),
-                    cursor.getLong(3), Math.toIntExact(cursor.getLong(4)), cursor.getLong(5), cursor.getLong(6));
-        }
+        List<FlowGraphRunRecord> records = new FlowGraphSnapshotReader(database())
+                .readRecords("id=?", new Object[]{runId});
+        return records.isEmpty() ? null : records.get(0);
     }
 
     @Override public FlowGraphRunRecord findBySourceKey(String sourceKey) {
@@ -51,16 +45,9 @@ public final class SqlFlowGraphRunRepository implements FlowGraphRunRepository {
     }
 
     private List<FlowGraphRunRecord> activeRecords(TaskId taskId) {
-        List<String> ids = new ArrayList<>();
-        try (Cursor cursor = database().query("SELECT id FROM step_flow_runs WHERE collected=0 AND cancelled=0"
-                + (taskId == null ? "" : " AND taskId=?")
-                + " ORDER BY queueOrder,createdAtEpochMillis,id",
-                taskId == null ? new Object[]{} : new Object[]{taskId.value})) {
-            while (cursor.moveToNext()) ids.add(cursor.getString(0));
-        }
-        List<FlowGraphRunRecord> result = new ArrayList<>();
-        for (String id : ids) result.add(Objects.requireNonNull(find(id)));
-        return Collections.unmodifiableList(result);
+        String filter = "collected=0 AND cancelled=0" + (taskId == null ? "" : " AND taskId=?");
+        Object[] args = taskId == null ? new Object[]{} : new Object[]{taskId.value};
+        return new FlowGraphSnapshotReader(database()).readRecords(filter, args);
     }
 
     @Override public Long nextReadyAtEpochMillis() {
