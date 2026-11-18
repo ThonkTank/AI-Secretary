@@ -12,6 +12,7 @@ import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** Applies one confirmed agent proposal atomically through the normal task use cases. */
 public final class ApplyAgentTaskChangeSet {
@@ -46,15 +47,20 @@ public final class ApplyAgentTaskChangeSet {
     }
 
     private AgentTaskChangeResult applyInsideTransaction(AgentTaskChangeSet changeSet) {
+        Map<TaskId, AgentTaskSnapshot> snapshots = null;
         for (AgentTaskOperation operation : changeSet.operations) {
             if (operation.kind == AgentTaskOperation.Kind.CREATE) continue;
-            Task current = catalog.findTask(operation.taskId);
-            if (current == null)
-                return AgentTaskChangeResult.stale("Eine Aufgabe existiert nicht mehr.");
-            if (current.kind != TaskKind.TASK)
-                return AgentTaskChangeResult.rejected("Abläufe können nicht im Chat geändert werden.");
-            AgentTaskSnapshot snapshot = agentCatalog.find(operation.taskId);
-            if (snapshot == null || !snapshot.fingerprint.equals(operation.expectedFingerprint))
+            if (snapshots == null) snapshots = agentCatalog.snapshotsById();
+            AgentTaskSnapshot snapshot = snapshots.get(operation.taskId);
+            if (snapshot == null) {
+                Task current = catalog.findTask(operation.taskId);
+                if (current == null)
+                    return AgentTaskChangeResult.stale("Eine Aufgabe existiert nicht mehr.");
+                if (current.kind != TaskKind.TASK)
+                    return AgentTaskChangeResult.rejected("Abläufe können nicht im Chat geändert werden.");
+                return AgentTaskChangeResult.stale("Eine Aufgabe wurde seit dem Vorschlag geändert.");
+            }
+            if (!snapshot.fingerprint.equals(operation.expectedFingerprint))
                 return AgentTaskChangeResult.stale("Eine Aufgabe wurde seit dem Vorschlag geändert.");
             if (operation.kind == AgentTaskOperation.Kind.UPDATE && snapshot.archived)
                 return AgentTaskChangeResult.rejected("Archivierte Aufgaben sind nur lesbar.");

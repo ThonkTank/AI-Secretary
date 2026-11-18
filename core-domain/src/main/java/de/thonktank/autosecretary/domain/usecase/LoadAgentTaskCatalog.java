@@ -5,7 +5,9 @@ import de.thonktank.autosecretary.domain.model.TaskCatalog;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.repository.TaskCatalogQuery;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Loads the canonical normal-task inventory shared with the chat agent. */
 public final class LoadAgentTaskCatalog {
@@ -21,8 +23,9 @@ public final class LoadAgentTaskCatalog {
         return AgentTaskSnapshot.from(value);
     }
 
-    AgentTaskSnapshot find(TaskId id) {
-        for (AgentTaskSnapshot task : execute()) if (task.id.equals(id)) return task;
-        return null;
+    Map<TaskId, AgentTaskSnapshot> snapshotsById() {
+        Map<TaskId, AgentTaskSnapshot> snapshots = new HashMap<>();
+        for (AgentTaskSnapshot task : execute()) snapshots.put(task.id, task);
+        return snapshots;
     }
 }

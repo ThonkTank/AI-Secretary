@@ -18,6 +18,8 @@ import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 
+import de.thonktank.autosecretary.domain.usecase.ApplyAgentTaskChangeSet;
+import de.thonktank.autosecretary.domain.usecase.LoadAgentTaskCatalog;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,7 +29,9 @@ import org.robolectric.annotation.Config;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
@@ -100,6 +104,34 @@ public final class AgentTaskIntegrationRobolectricTest {
         assertEquals(AgentTaskChangeResult.Status.STALE, result.status);
         assertTrue(app.catalog.loadAgentTaskCatalog.execute().stream()
                 .anyMatch(value -> value.definition.title.equals("Erste")));
+    }
+
+    @Test public void readsTheCatalogOnceForTwentyTargetsAndSkipsItForCreates() {
+        RoomRepositoryFixture repository = new RoomRepositoryFixture(database);
+        AtomicInteger reads = new AtomicInteger();
+        LoadAgentTaskCatalog countedCatalog = new LoadAgentTaskCatalog(() -> {
+            assertTrue(database.inTransaction());
+            reads.incrementAndGet();
+            return app.catalog.loadTaskCatalog.execute();
+        });
+        ApplyAgentTaskChangeSet apply = new ApplyAgentTaskChangeSet(repository.catalog,
+                repository.transactions, app.catalog.create, app.catalog.update, countedCatalog);
+
+        List<AgentTaskOperation> operations = new ArrayList<>();
+        for (int i = 0; i < AgentTaskChangeSet.MAX_OPERATIONS; i++)
+            operations.add(AgentTaskOperation.create(task("Aufgabe " + i)));
+        assertEquals(AgentTaskChangeResult.Status.APPLIED,
+                apply.execute(new AgentTaskChangeSet("create", "Erstellen", operations)).status);
+        assertEquals(0, reads.get());
+
+        operations.clear();
+        for (AgentTaskSnapshot snapshot : app.catalog.loadAgentTaskCatalog.execute())
+            operations.add(AgentTaskOperation.delete(snapshot.id, snapshot.fingerprint));
+        assertEquals(AgentTaskChangeSet.MAX_OPERATIONS, operations.size());
+        assertEquals(AgentTaskChangeResult.Status.APPLIED,
+                apply.execute(new AgentTaskChangeSet("delete", "Löschen", operations)).status);
+        assertEquals(1, reads.get());
+        assertTrue(app.catalog.loadAgentTaskCatalog.execute().isEmpty());
     }
 
     private AgentTaskSnapshot onlySnapshot() {
