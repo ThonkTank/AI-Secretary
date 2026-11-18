@@ -94,6 +94,7 @@ public final class FlowDeadlineIntegrationTest {
     @Test public void finalWaitShowsCollectionOnlyAndRepeatedRefreshNeverPaysTwice() {
         String run = start(false); mount(); assertHidden();
         advance(1_000);
+        openReadySheet();
         FocusTaskUiModel focus = model.state().getValue().today().focus;
         assertNotNull(focus); assertTrue(focus.steps.isEmpty()); assertEquals(1, focus.chains.size());
         assertEquals(FlowChainUiModel.Mode.READY, focus.chains.get(0).mode);
@@ -162,7 +163,16 @@ public final class FlowDeadlineIntegrationTest {
         assertNull(model.state().getValue().today().focus);
         assertFalse(hasText(content, "Wäsche")); assertFalse(hasText(content, "Buntwäsche: Aufhängen"));
     }
+    private void openReadySheet() {
+        var today = model.state().getValue().today();
+        if (today.focus == null) {
+            assertEquals(1, today.openTasks.size());
+            model.dispatch(TodayAction.selectTask(today.openTasks.get(0).row.actionTarget));
+            drain();
+        }
+    }
     private void assertStep() {
+        openReadySheet();
         assertNotNull(model.state().getValue().today().focus);
         assertEquals(1, model.state().getValue().today().focus.steps.size());
         assertTrue("Visible step tree: " + textTree(content), hasText(content, "Buntwäsche: Aufhängen"));

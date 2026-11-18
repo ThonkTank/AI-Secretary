@@ -45,13 +45,13 @@ FT-09	focus-task/set-bars-8-320dp-10-dark.png	Acht Sätze bleiben auf Minimalbre
 FT-10	focus-task/set-bars-selected-3-412dp-10-light.png	Die ausgewählte Satzmarke unterscheidet sich eindeutig von offenen und fertigen Sätzen.
 FT-11	focus-task/step-weight-note.png	Das Gewicht bleibt als Schrittnotiz direkt sichtbar.
 FO-01	forest-anchors.sha256	Die kanonischen Waldtexturen behalten ihre bytegenauen Renderanker.
-HS-01	homescreen/complete.png	Ein vollständig abgeschlossener Fokuszustand zeigt die korrekte Abschlusskomposition.
+HS-01	homescreen/complete.png	Die abgeschlossene Aufgabe erscheint im einklappbaren Verlauf unter den offenen Aufgaben.
 HS-02	homescreen/empty-vessel.png	Ein leeres XP-Gefäß behält Boden, Kontur und Nullfüllung.
 HS-03	homescreen/empty.png	Ein Tag ohne offene Inhalte zeigt die ruhige globale Leerdarstellung.
 HS-04	homescreen/evening.png	Die Abendpalette und verbleibenden Tagesinhalte bleiben zusammen lesbar.
-HS-05	homescreen/full.png	Ein voller Tageszustand schützt Header, Timeline, Fokus und Verlauf im Zusammenspiel.
+HS-05	homescreen/full.png	Die ausgewählte Aufgabe hält XP-Gefäß, Fortschritt, Aufgabenwechsel und Schrittwerkzeuge sichtbar.
 HS-06	homescreen/harvest-ready.png	Ein erntereifer Zustand kommuniziert die bevorstehende Ernte ohne Layoutsprung.
-HS-07	homescreen/later.png	Verschobene Inhalte erscheinen im Später-Bereich mit korrekter Hierarchie.
+HS-07	homescreen/later.png	Eine ausgewählte Aufgabe ohne Schritte passt neben die direkte Hinzufügen-Aktion.
 HS-08	homescreen/night.png	Die komplette Heute-Oberfläche behält nachts Kontrast und Tiefenstaffelung.
 HS-09	homescreen/partial-vessel.png	Ein teilweise gefülltes XP-Gefäß bewahrt den exakten Füllstand.
 HS-10	homescreen/step.png	Ein schrittzentrierter Tageszustand behält Fokusaktion und Kontext.
@@ -86,3 +86,5 @@ SQE-01	step-editor/compact-light.png	Der kompakte Schritteditor zeigt direkte Ei
 SQE-02	step-editor/compact-dark.png	Dunkle Schrittbearbeitung erhält kontrastreiche Eingaben und eindeutige Speicheraktionen.
 SQE-03	step-editor/compact-large-text.png	Große Schrift lässt die Dialogaktionen erreichbar und den Formularinhalt scrollbar.
 FT-13	focus-task/hidden-following-rings.png	Ausgeblendete Folgeschritte hinterlassen bei begrenzter Kartenhöhe keine verwaisten Jahresringe neben dem Fertig-Zähler.
+HS-20	homescreen/overview.png	Die Heute-Übersicht hält Aufgabenblätter, Termin und direktes Ausblenden im Wald sichtbar.
+HS-21	homescreen/overview-320.png	Aufgabenname, Fortschritt und Ausblenden bleiben bei 320 dp lesbar.

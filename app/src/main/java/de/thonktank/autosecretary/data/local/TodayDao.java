@@ -29,6 +29,18 @@ public interface TodayDao {
         pruneTodayPlacements();
         return todayPlacements();
     }
+    @Query("SELECT kind || ':' || id FROM today_hidden_items WHERE hiddenOn = :date")
+    List<String> hiddenToday(String date);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void putHiddenItem(TodayHiddenItemEntity item);
+
+    @Query("DELETE FROM today_hidden_items WHERE hiddenOn < :date")
+    void deleteExpiredHiddenItems(String date);
+
+    @Query("DELETE FROM today_hidden_items WHERE kind = :kind AND id = :id AND hiddenOn = :date")
+    void restoreHiddenItem(String kind, String id, String date);
+
     @Query("SELECT * FROM today_placements") List<TodayPlacementEntity> todayPlacements();
     @Insert(onConflict = OnConflictStrategy.REPLACE) void putTodayPlacement(TodayPlacementEntity value);
     @Query("DELETE FROM today_placements WHERE kind = :kind AND id = :id")

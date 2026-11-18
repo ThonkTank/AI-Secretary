@@ -1334,6 +1334,12 @@ public final class DatabaseMigrations {
                                 + "index_agent_proposals_sourceMessageId "
                                 + "ON agent_proposals(sourceMessageId)");
                     }
+                }, new Migration(29, 30) {
+                    @Override public void migrate(SupportSQLiteDatabase database) {
+                        database.execSQL("CREATE TABLE IF NOT EXISTS today_hidden_items ("
+                                + "kind TEXT NOT NULL, id TEXT NOT NULL, hiddenOn TEXT NOT NULL, "
+                                + "PRIMARY KEY(kind,id))");
+                    }
                 }};
         if (version < 1 || version > DatabaseContract.VERSION)
             throw new IllegalArgumentException("Unsupported database version: " + version);

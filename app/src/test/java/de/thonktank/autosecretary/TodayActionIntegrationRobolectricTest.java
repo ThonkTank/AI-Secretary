@@ -76,7 +76,7 @@ public final class TodayActionIntegrationRobolectricTest {
         context.deleteSharedPreferences("forest_ui");
     }
 
-    @Test public void titleThroughRendererChangesFocusAndSurvivesDatabaseReopen() {
+    @Test public void openingDetailLeavesQueueIntactAcrossDatabaseReopen() {
         add("A", TaskSlot.MORNING);
         add("B", TaskSlot.MIDDAY);
         add("C", TaskSlot.EVENING);
@@ -86,11 +86,12 @@ public final class TodayActionIntegrationRobolectricTest {
 
         title("C");
 
-        assertOrder("C", "A", "B");
+        assertEquals("C", viewModel.state().getValue().today().focus.title());
+        assertOrder("A", "B", "C");
         assertEquals(untouched, domainSnapshot());
         reopen();
-        assertOrder("C", "A", "B");
-        assertEquals("C", viewModel.state().getValue().today().focus.title());
+        assertNull(viewModel.state().getValue().today().focus);
+        assertOrder("A", "B", "C");
         assertEquals(untouched, domainSnapshot());
     }
 
@@ -101,8 +102,10 @@ public final class TodayActionIntegrationRobolectricTest {
         mount();
         Map<String, List<String>> untouched = domainSnapshot();
 
+        title("A");
         later();
         assertOrder("B", "A", "C");
+        title("B");
         later();
         assertOrder("A", "B", "C");
         assertEquals(TaskSlot.MORNING, queue().get(0).slot);
@@ -115,6 +118,7 @@ public final class TodayActionIntegrationRobolectricTest {
         add("B", TaskSlot.MIDDAY);
         mount();
         Map<String, List<String>> untouched = domainSnapshot();
+        title("A");
         later();
         assertOrder("B", "A");
         assertEquals(TaskSlot.MIDDAY, queue().get(1).slot);
@@ -128,6 +132,7 @@ public final class TodayActionIntegrationRobolectricTest {
         add("Allein", TaskSlot.MORNING);
         mount();
         Map<String, List<String>> untouched = domainSnapshot();
+        title("Allein");
         for (TaskSlot expected : Arrays.asList(TaskSlot.MIDDAY, TaskSlot.EVENING, TaskSlot.LATER)) {
             later();
             assertEquals(expected, queue().get(0).slot);
@@ -171,14 +176,87 @@ public final class TodayActionIntegrationRobolectricTest {
         assertEquals(1, viewModel.state().getValue().today().completedToday.size());
 
         title("Wäsche");
-        assertOrder("Wäsche", "Aufgabe");
-        later();
         assertOrder("Aufgabe", "Wäsche");
-        title("Wäsche");
+        viewModel.dispatch(TodayAction.showOverview());
+        render();
+        hide("Wäsche");
+        assertOrder("Aufgabe");
         reopen();
-        assertOrder("Wäsche", "Aufgabe");
+        assertOrder("Aufgabe");
+        restore("Wäsche");
+        assertOrder("Aufgabe", "Wäsche");
         assertEquals(untouched, domainSnapshot());
         assertEquals(1, viewModel.state().getValue().today().completedToday.size());
+    }
+
+    @Test public void hideSurvivesReopenAndExpiresOnNextDayWithoutChangingTheTask() {
+        add("A", TaskSlot.MORNING);
+        add("B", TaskSlot.EVENING);
+        mount();
+        Map<String, List<String>> unchanged = domainSnapshot();
+        hide("A");
+        assertOrder("B");
+        reopen();
+        assertOrder("B");
+        java.time.LocalDate tomorrow = clock.today().plusDays(1);
+        assertEquals(2, TodayQueue.visible(useCases.today.loadDashboard.execute(tomorrow), tomorrow).size());
+        restore("A");
+        assertOrder("A", "B");
+        assertEquals(unchanged, domainSnapshot());
+    }
+
+    @Test public void aLongTaskKeepsOpenStepsAndASeparateCollapsedDoneGroup() {
+        List<TaskStepDefinition> steps = new ArrayList<>();
+        for (int i = 1; i <= 14; i++)
+            steps.add(StepTestFixtures.definition(null, i - 1, "Schritt " + i, 0, 0,
+                    StepAmount.none(), "", StepActivationKind.SCHEDULED));
+        TaskId id = useCases.catalog.create.execute(definition("Lange Aufgabe", TaskSlot.MORNING, steps));
+        useCases.today.materializeDue.execute();
+        String occurrence = repository.today.openOccurrences().stream()
+                .filter(item -> item.taskId.equals(id)).findFirst().orElseThrow().id;
+        List<de.thonktank.autosecretary.domain.model.OccurrenceStep> current =
+                repository.steps.occurrenceSteps(occurrence);
+        for (int i = 0; i < 5; i++) useCases.today.toggleStep.execute(current.get(i).id);
+        mount();
+        title("Lange Aufgabe");
+        assertEquals(9, viewModel.state().getValue().feature.focus.rows.size());
+        assertTrue(viewModel.state().getValue().feature.focus.rows.get(0).expanded());
+        content.measure(View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        assertNotNull(find(content, view -> view instanceof TextView
+                && "Schritt 14".contentEquals(((TextView) view).getText())));
+        assertNull(find(content, view -> view instanceof TextView
+                && ((TextView) view).getText().toString().endsWith("Schritt 1")));
+        View done = find(content, view -> view instanceof TextView
+                && "Erledigt (5)".contentEquals(((TextView) view).getText()));
+        assertNotNull(done);
+        assertTrue(done.performClick());
+        assertNotNull(find(content, view -> view instanceof TextView
+                && ((TextView) view).getText().toString().endsWith("Schritt 1")));
+    }
+
+    @Test public void quickAddAndSortKeepTemplateAndExecutionOrderIndependent() {
+        TaskId task = add("Aufgabe", TaskSlot.MORNING);
+        mount();
+        title("Aufgabe");
+        String occurrence = viewModel.state().getValue().today().focus.itemId();
+        for (String title : Arrays.asList("Erster", "Zweiter", "Dritter")) {
+            viewModel.dispatch(TodayAction.addTodayStep(occurrence, title));
+            render();
+        }
+        var steps = repository.steps.occurrenceSteps(occurrence);
+        assertEquals(Arrays.asList("Erster", "Zweiter", "Dritter"),
+                steps.stream().map(step -> step.text).collect(java.util.stream.Collectors.toList()));
+        viewModel.dispatch(TodayAction.sortTodaySteps(occurrence,
+                Arrays.asList(steps.get(2).id, steps.get(0).id, steps.get(1).id)));
+        render();
+        reopen();
+        assertEquals(Arrays.asList("Dritter", "Erster", "Zweiter"),
+                repository.steps.occurrenceSteps(occurrence).stream()
+                        .map(step -> step.text).collect(java.util.stream.Collectors.toList()));
+        assertEquals(Arrays.asList("Erster", "Zweiter", "Dritter"),
+                repository.steps.templates(task).stream()
+                        .map(step -> step.text).collect(java.util.stream.Collectors.toList()));
     }
 
     @Test public void closeConfirmationForwardsTheSelectedTaskAndAcknowledgesOnlyItsRequest() {
@@ -248,10 +326,33 @@ public final class TodayActionIntegrationRobolectricTest {
                 DayPalette.at(LocalTime.NOON, DayPalette.Mode.LIGHT)), viewModel.state().getValue(), null, null);
     }
     private void title(String title) {
-        View target = find(content, view -> (title + ", jetzt bearbeiten").contentEquals(
-                view.getContentDescription() == null ? "" : view.getContentDescription()));
+        if (viewModel.state().getValue().today().focus != null) {
+            viewModel.dispatch(TodayAction.showOverview());
+            render();
+        }
+        String label = context.getString(R.string.today_open_task, title);
+        View target = find(content, view -> view.getContentDescription() != null
+                && view.getContentDescription().toString().startsWith(label));
         assertNotNull("Missing accessible title: " + title, target);
         assertTrue(target.performAccessibilityAction(AccessibilityNodeInfo.ACTION_CLICK, null));
+        render();
+    }
+    private void hide(String title) {
+        clickDescription(context.getString(R.string.today_hide_task, title));
+    }
+    private void restore(String title) {
+        View toggle = find(content, view -> view instanceof TextView
+                && context.getString(R.string.today_hidden_group, 1)
+                .contentEquals(((TextView) view).getText()));
+        assertNotNull(toggle);
+        assertTrue(toggle.performClick());
+        clickDescription(context.getString(R.string.today_restore_task, title));
+    }
+    private void clickDescription(String description) {
+        View action = find(content, view -> description.contentEquals(
+                view.getContentDescription() == null ? "" : view.getContentDescription()));
+        assertNotNull(description, action);
+        assertTrue(action.performClick());
         render();
     }
     private void later() {
@@ -276,8 +377,7 @@ public final class TodayActionIntegrationRobolectricTest {
     private void assertOrder(String... titles) {
         List<String> actual = new ArrayList<>();
         TodayUiModel today = viewModel.state().getValue().today();
-        if (today.focus != null) actual.add(today.focus.title());
-        today.timeline.stream().filter(item -> item.task != null).forEach(item -> actual.add(item.task.title));
+        today.openTasks.forEach(item -> actual.add(item.row.title));
         assertEquals(Arrays.asList(titles), actual);
     }
     private Map<String, List<String>> domainSnapshot() {

@@ -55,11 +55,19 @@ public final class DashboardUiMapper {
     }
 
     public TodayUiModel map(Dashboard dashboard, LocalDate today) {
+        return map(dashboard, today, false);
+    }
+
+    public TodayUiModel mapOverview(Dashboard dashboard, LocalDate today) {
+        return map(dashboard, today, true);
+    }
+
+    private TodayUiModel map(Dashboard dashboard, LocalDate today, boolean overview) {
         List<TodaySource> open = new ArrayList<>();
         for (de.thonktank.autosecretary.domain.today.TodayQueue.Entry entry :
                 de.thonktank.autosecretary.domain.today.TodayQueue.visible(dashboard, today))
             open.add(new TodaySource(entry.task, entry.sheet, entry.slot));
-        TodaySource focusSource = open.isEmpty() ? null : open.get(0);
+        TodaySource focusSource = overview || open.isEmpty() ? null : open.get(0);
 
         FocusTaskUiModel focus = focusSource == null ? null
                 : focusSource.sheet == null
@@ -68,10 +76,25 @@ public final class DashboardUiMapper {
         String focusId = focusSource == null ? null : focusSource.id();
         List<TimelineItemUiModel> timeline = new ArrayList<>();
         List<CompletedTaskUiModel> completed = new ArrayList<>();
-        for (TodaySource item : open) if (!item.id().equals(focusId))
-            timeline.add(TimelineItemUiModel.task(item.sheet == null
+        List<TodayUiModel.OpenTask> choices = new ArrayList<>();
+        for (TodaySource item : open) if (!item.id().equals(focusId)) {
+            TimelineTaskUiModel row = item.sheet == null
                     ? timeline(item.task, today, dashboard, item.displaySlot)
-                    : timeline(item.sheet, dashboard, item.displaySlot)));
+                    : timeline(item.sheet, dashboard, item.displaySlot);
+            timeline.add(TimelineItemUiModel.task(row));
+            if (overview) choices.add(new TodayUiModel.OpenTask(row, item.sheet == null
+                    ? focus(item.task, today, dashboard, true)
+                    : focus(item.sheet, dashboard, true)));
+        }
+        List<TimelineTaskUiModel> hidden = new ArrayList<>();
+        if (overview) {
+            for (de.thonktank.autosecretary.domain.today.TodayQueue.Entry item :
+                    de.thonktank.autosecretary.domain.today.TodayQueue.hidden(dashboard, today)) {
+                hidden.add(item.sheet == null
+                        ? timeline(item.task, today, dashboard, item.slot)
+                        : timeline(item.sheet, dashboard, item.slot));
+            }
+        }
         for (DashboardTask item : dashboard.tasks) {
             if (item.done) {
                 if (item.occurrence != null)
@@ -80,7 +103,7 @@ public final class DashboardUiMapper {
             }
         }
         return new TodayUiModel(new XpProgress(dashboard.xp), focus,
-                timeline, completed, dashboard.flowRuns);
+                timeline, completed, dashboard.flowRuns, choices, hidden);
     }
 
     private FocusTaskUiModel focus(DashboardTask item, LocalDate today, Dashboard dashboard,

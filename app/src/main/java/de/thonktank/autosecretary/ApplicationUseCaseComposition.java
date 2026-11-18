@@ -153,7 +153,9 @@ final class ApplicationUseCaseComposition {
                         todayRepository, dashboard, transactions, clock),
                 new de.thonktank.autosecretary.domain.usecase.EditStepNote(stepRepository, transactions),
                 new de.thonktank.autosecretary.domain.usecase.EditStep(
-                        new de.thonktank.autosecretary.data.local.RoomStepEditRepository(database), transactions));
+                        new de.thonktank.autosecretary.data.local.RoomStepEditRepository(database), transactions),
+                new de.thonktank.autosecretary.domain.usecase.AddTodayStep(
+                        catalogRepository, stepRepository, todayRepository, transactions, ids));
 
         flows = new FlowUseCases(flowRuntime,
                 new de.thonktank.autosecretary.domain.usecase.LoadFlowGraph(catalogRepository,

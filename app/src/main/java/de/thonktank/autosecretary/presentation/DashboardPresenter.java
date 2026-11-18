@@ -73,6 +73,10 @@ public final class DashboardPresenter {
         return mapper.map(loadDomain(today), today);
     }
 
+    public TodayUiModel loadOverview(LocalDate today) {
+        return mapper.mapOverview(loadDomain(today), today);
+    }
+
     public Dashboard loadDomain(LocalDate today) {
         return loadDashboard.execute(today);
     }

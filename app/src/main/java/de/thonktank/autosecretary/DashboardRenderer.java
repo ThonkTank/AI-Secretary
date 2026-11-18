@@ -11,7 +11,6 @@ import de.thonktank.autosecretary.presentation.options.OptionsScreenState;
 import de.thonktank.autosecretary.presentation.shell.AppShellScreenState;
 import de.thonktank.autosecretary.ui.today.FocusCardUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
-import de.thonktank.autosecretary.presentation.today.TimelineItemUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
@@ -22,14 +21,11 @@ import android.content.Context;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
-import android.widget.TextView;
+import de.thonktank.autosecretary.presentation.today.TimelineTaskUiModel;
 
-import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public final class DashboardRenderer {
     private final Context context;
@@ -43,13 +39,19 @@ public final class DashboardRenderer {
     private final AllTasksActionSink allTasksActions;
     private NavigationDestination mounted;
     private FocusTaskView focus;
-    private LinearLayout timeline;
-    private TextView more;
-    private EmptyStateView empty;
+    private TodayOverviewView overview;
+    private TodayDetailControls detailControls;
+    private TimelineTaskUiModel pendingUndo;
+    private TodayUiModel boundToday;
+    private String selectedKey;
+    private int overviewScroll;
+    private final Runnable expireUndo = () -> {
+        pendingUndo = null;
+        if (detailControls != null) detailControls.undoStrip().setVisibility(View.GONE);
+    };
     private CompletedTodayView completedToday;
     private AllTasksComposeHostView allTasks;
     private OptionsView options;
-    private final Map<String, View> timelineViews = new LinkedHashMap<>();
 
     public DashboardRenderer(Context context, ScrollView scroll, LinearLayout content,
                              TodayActionSink todayActions,
@@ -73,7 +75,7 @@ public final class DashboardRenderer {
                        OptionsScreenState optionsState) {
         if (mounted != shell.navigation) mount(shell.navigation);
         if (shell.navigation == NavigationDestination.TODAY)
-            bindToday(todayState, shell.palette, todayState.focusStepLimit);
+            bindToday(todayState, shell.palette);
         else if (shell.navigation == NavigationDestination.ALL_TASKS)
             allTasks.bind(allTasksState, shell.palette, allTasksActions,
                     todayState.today().flowRuns, shell.nowEpochMillis,
@@ -89,12 +91,7 @@ public final class DashboardRenderer {
         }
         List<View> leaves = new ArrayList<>();
         if (focus != null && focus.getVisibility() == View.VISIBLE) leaves.add(focus);
-        if (timeline != null) {
-            for (int i = 0; i < timeline.getChildCount() && leaves.size() < 5; i++)
-                leaves.add(timeline.getChildAt(i));
-        }
-        if (leaves.isEmpty() && empty != null && empty.getVisibility() == View.VISIBLE)
-            leaves.add(empty);
+        if (overview != null && overview.isShown()) leaves.add(overview);
         if (leaves.isEmpty()) {
             trace("editor-settled", "leaves=0");
             finished.run();
@@ -148,7 +145,11 @@ public final class DashboardRenderer {
     }
 
     private void mount(NavigationDestination destination) {
-        int scrollY = scroll.getScrollY();
+        if (mounted == NavigationDestination.TODAY && selectedKey == null)
+            overviewScroll = scroll.getScrollY();
+        if (detailControls != null) detailControls.hide();
+        selectedKey = null;
+        boundToday = null;
         content.removeAllViews();
         scroll.setVisibility(destination == NavigationDestination.ALL_TASKS
                 ? View.GONE : View.VISIBLE);
@@ -171,8 +172,12 @@ public final class DashboardRenderer {
             if (options == null) options = new OptionsView(context, optionsActions);
             content.addView(options, new LinearLayout.LayoutParams(-1, -2));
         }
-        if (destination != NavigationDestination.ALL_TASKS)
-            scroll.post(() -> scroll.scrollTo(0, scrollY));
+        if (destination == NavigationDestination.TODAY)
+            androidx.core.view.OneShotPreDrawListener.add(scroll, () -> {
+                if (mounted == NavigationDestination.TODAY && selectedKey == null)
+                    scroll.scrollTo(0, overviewScroll);
+            });
+        else if (destination != NavigationDestination.ALL_TASKS) scroll.scrollTo(0, 0);
     }
 
     private static final class ViewGroupParent {
@@ -193,124 +198,80 @@ public final class DashboardRenderer {
         }
     }
 
+    public void dispose() {
+        scroll.removeCallbacks(expireUndo);
+        if (detailControls != null) detailControls.hide();
+    }
+
+    public boolean handleTodayBack() {
+        if (mounted != NavigationDestination.TODAY || selectedKey == null) return false;
+        todayActions.emit(TodayAction.showOverview());
+        return true;
+    }
+
     private void mountToday() {
-        content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
-                style.dimen(R.dimen.page_end), style.dp(26));
+        if (detailControls == null) {
+            detailControls = new TodayDetailControls(context, todayActions);
+            if (scroll.getParent() instanceof LinearLayout) {
+                LinearLayout parent = (LinearLayout) scroll.getParent();
+                parent.addView(detailControls.navigation(), parent.indexOfChild(scroll), controlInsets());
+                parent.addView(detailControls.tools(), parent.indexOfChild(scroll) + 1, controlInsets());
+                parent.addView(detailControls.undoStrip(), parent.indexOfChild(scroll) + 1, controlInsets());
+            }
+        }
+        content.setPadding(style.dp(24), style.dp(7), style.dp(16), style.dp(14));
         focus = new FocusTaskView(context, rewardAnchors,
                 new EdgeAutoScroller.AndroidScrollHost(scroll));
         focus.setId(R.id.dashboard_focus);
         content.addView(focus, new LinearLayout.LayoutParams(-1, -2));
-        timeline = new LinearLayout(context);
-        timeline.setId(R.id.dashboard_timeline);
-        timeline.setOrientation(LinearLayout.VERTICAL);
-        content.addView(timeline, new LinearLayout.LayoutParams(-1, -2));
-        more = style.serif("", 14, 0, true, 300);
-        LinearLayout.LayoutParams moreParams = new LinearLayout.LayoutParams(-1, -2);
-        moreParams.setMargins(0, style.dp(16), 0, 0);
-        content.addView(more, moreParams);
-        empty = new EmptyStateView(context, () -> todayActions.emit(TodayAction.addTask()));
-        content.addView(empty, new LinearLayout.LayoutParams(-1, -2));
+        overview = new TodayOverviewView(context, todayActions, item -> {
+            pendingUndo = item;
+            scroll.removeCallbacks(expireUndo);
+            scroll.postDelayed(expireUndo, 9000);
+            todayActions.emit(TodayAction.hideTask(item.actionTarget));
+        });
+        content.addView(overview, new LinearLayout.LayoutParams(-1, -2));
         completedToday = new CompletedTodayView(context, todayActions);
         LinearLayout.LayoutParams completedParams = new LinearLayout.LayoutParams(-1, -2);
-        completedParams.topMargin = style.dp(14);
+        completedParams.topMargin = style.dp(7);
         content.addView(completedToday, completedParams);
     }
 
-    private void bindToday(TodayScreenState state, DayPalette palette,
-                           FocusStepLimit focusStepLimit) {
-        TodayUiModel dashboard = state.today();
-        rewardAnchors.clearDynamic();
-        FocusTaskUiModel focusTask = dashboard.focus;
-        boolean hasFocus = focusTask != null;
-        focus.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-        timeline.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
-        more.setVisibility(hasFocus && dashboard.timeline.size() > 3 ? View.VISIBLE : View.GONE);
-        empty.setVisibility(hasFocus ? View.GONE : View.VISIBLE);
-        completedToday.bind(dashboard.completedToday, palette);
-        if (!hasFocus) {
-            content.setPadding(style.dimen(R.dimen.page_start), style.dp(120),
-                    style.dimen(R.dimen.page_end), style.dp(26));
-            empty.bind(palette, false);
-            return;
-        }
-        content.setPadding(style.dimen(R.dimen.page_start), style.dimen(R.dimen.content_top),
-                style.dimen(R.dimen.page_end), style.dp(26));
-        FocusCardUiModel focusModel = new FocusCardUiModel(focusTask, state.feature.focus,
-                palette, focusStepLimit, state.repetitionInput, state.feature.reorder,
-                state.timers);
-        focus.bind(focusModel, dashboard.timeline.size() > 0, todayActions);
-        bindTimeline(dashboard.timeline, focusTask.overdue, focusTask.ongoing, palette);
-        int remaining = dashboard.timeline.size() - Math.min(3, dashboard.timeline.size());
-        more.setText(context.getResources().getQuantityString(
-                R.plurals.more_items, remaining, remaining));
-        more.setTextColor(palette.muted);
+    private LinearLayout.LayoutParams controlInsets() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMarginStart(style.dp(24));
+        params.setMarginEnd(style.dp(16));
+        return params;
     }
 
-    private void bindTimeline(List<TimelineItemUiModel> items, boolean overdueShown,
-                              boolean afterAssigned,
-                              DayPalette palette) {
-        int shown = Math.min(3, items.size());
-        List<String> desired = new ArrayList<>();
-        for (int i = 0; i < shown; i++) {
-            TimelineItemUiModel item = items.get(i);
-            String key = item.event != null
-                    ? "event:" + item.event.minuteOfDay + ":" + item.event.title
-                    : "task:" + item.task.itemId;
-            desired.add(key);
-            View view = timelineViews.get(key);
-            if (item.event != null) {
-                if (!(view instanceof CalendarLeafView)) {
-                    view = new CalendarLeafView(context);
-                    timelineViews.put(key, view);
-                }
-                ((CalendarLeafView) view).bind(item.event, palette);
-            } else {
-                if (!(view instanceof TaskLeafView)) {
-                    view = new TaskLeafView(context);
-                    timelineViews.put(key, view);
-                }
-                boolean firstOpenAfterFocus = !afterAssigned;
-                afterAssigned = true;
-                boolean bad = item.task.overdue && !overdueShown;
-                overdueShown |= bad;
-                String marker = context.getString(bad ? R.string.marker_overdue
-                        : firstOpenAfterFocus ? R.string.marker_after : R.string.marker_later);
-                ((TaskLeafView) view).bind(item.task, marker,
-                        !firstOpenAfterFocus, palette,
-                        task -> todayActions.emit(task.terminalCondition
-                                ? TodayAction.requestClose(task.taskId, task.title)
-                                : TodayAction.completeOccurrence(task.itemId)),
-                        task -> todayActions.emit(TodayAction.openTaskMenu(task.actionTarget)),
-                        task -> todayActions.emit(TodayAction.bringFirst(task.actionTarget)));
-                RewardAnchorKey.Kind kind = item.task.terminalCondition
-                        ? RewardAnchorKey.Kind.TASK : RewardAnchorKey.Kind.OCCURRENCE;
-                rewardAnchors.register(new RewardAnchorKey(kind, item.task.terminalCondition
-                        ? item.task.taskId : item.task.itemId),
-                        ((TaskLeafView) view).rewardAnchor());
-            }
-            if (view.getParent() != timeline) {
-                if (view.getParent() instanceof android.view.ViewGroup)
-                    ((android.view.ViewGroup) view.getParent()).removeView(view);
-                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-                params.setMargins(0, i == 0 ? style.dp(12) : style.dimen(R.dimen.content_gap), 0, 0);
-                timeline.addView(view, Math.min(i, timeline.getChildCount()), params);
-            } else if (timeline.indexOfChild(view) != i) {
-                timeline.removeView(view);
-                timeline.addView(view, i);
-            }
-            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) view.getLayoutParams();
-            params.width = -1;
-            params.height = -2;
-            params.setMargins(0, i == 0 ? style.dp(12) : style.dimen(R.dimen.content_gap), 0, 0);
-            view.setLayoutParams(params);
+    private void bindToday(TodayScreenState state, DayPalette palette) {
+        TodayUiModel dashboard = state.today();
+        FocusTaskUiModel selected = dashboard.focus;
+        String key = selected == null ? null : selected.actionTarget.item.key();
+        if (!java.util.Objects.equals(selectedKey, key) || boundToday == null) {
+            if (selectedKey == null && key != null && boundToday != null)
+                overviewScroll = scroll.getScrollY();
+            selectedKey = key;
+            androidx.core.view.OneShotPreDrawListener.add(scroll, () -> {
+                if (java.util.Objects.equals(key, selectedKey))
+                    scroll.scrollTo(0, key == null ? overviewScroll : 0);
+            });
         }
-        for (int i = timeline.getChildCount() - 1; i >= 0; i--) {
-            View child = timeline.getChildAt(i);
-            String childKey = null;
-            for (Map.Entry<String, View> entry : timelineViews.entrySet())
-                if (entry.getValue() == child) { childKey = entry.getKey(); break; }
-            if (!desired.contains(childKey)) timeline.removeViewAt(i);
+        boundToday = dashboard;
+        rewardAnchors.clearDynamic();
+        focus.setVisibility(selected == null ? View.GONE : View.VISIBLE);
+        overview.setVisibility(selected == null ? View.VISIBLE : View.GONE);
+        detailControls.bind(dashboard, palette);
+        if (selected == null) {
+            overview.bind(dashboard, palette);
+            completedToday.bind(dashboard.completedToday, palette);
+            detailControls.bindUndo(dashboard, pendingUndo, palette, expireUndo);
+            return;
         }
-        timelineViews.keySet().retainAll(desired);
+        completedToday.setVisibility(View.GONE);
+        FocusCardUiModel focusModel = new FocusCardUiModel(selected, state.feature.focus,
+                palette, state.focusStepLimit, state.repetitionInput, state.feature.reorder,
+                state.timers, true);
+        focus.bind(focusModel, false, todayActions);
     }
 }

@@ -42,6 +42,24 @@ public final class FooterNavigationView extends LinearLayout {
         }
     }
 
+    @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        boolean narrow = MeasureSpec.getSize(widthMeasureSpec) < style.dp(365);
+        if (narrow != compact) {
+            compact = narrow;
+            setPadding(style.dp(narrow ? 24 : 60), style.dp(16),
+                    style.dp(narrow ? 16 : 26), style.dp(16));
+            for (int i = 0; i < labels.length; i++) {
+                LayoutParams params = (LayoutParams) labels[i].getLayoutParams();
+                params.width = narrow ? 0 : LayoutParams.WRAP_CONTENT;
+                params.weight = narrow ? (i == 1 ? 1.6f : 1f) : 0f;
+                params.rightMargin = narrow ? 0 : style.dp(26);
+            }
+        }
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
+    private boolean compact;
+
     public void bind(NavigationDestination selected, DayPalette palette) {
         for (int i = 0; i < labels.length; i++) {
             boolean active = destinations[i] == selected;
@@ -57,7 +75,6 @@ public final class FooterNavigationView extends LinearLayout {
     @Override public boolean dispatchTouchEvent(MotionEvent event) {
         if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
             delegatedTarget = null;
-            float minimum = style.dp(48);
             for (NavLabel label : labels) {
                 Rect target = effectiveTouchBounds(label);
                 if (target.contains(Math.round(event.getX()), Math.round(event.getY()))) {

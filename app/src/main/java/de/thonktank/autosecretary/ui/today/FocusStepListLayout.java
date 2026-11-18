@@ -8,6 +8,7 @@ import android.view.DragEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.LinearLayout;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,6 +32,11 @@ import de.thonktank.autosecretary.ui.leaf.WoodGrainView;
 public final class FocusStepListLayout extends ViewGroup {
     private final UiStyle style;
     private final TextView doneStatus;
+    private final LinearLayout doneDetails;
+    private final TextView empty;
+    private boolean detailed;
+    private boolean expandedDone;
+    private boolean expandedAll;
     private final TextView moreStatus;
     private final List<FocusStepRowView> rows = new ArrayList<>();
     private final Map<String, FocusStepRowView> rowCache = new LinkedHashMap<>();
@@ -57,6 +63,11 @@ public final class FocusStepListLayout extends ViewGroup {
                 () -> android.os.SystemClock.uptimeMillis(), style.dp(56), style.dp(360));
         doneStatus = style.serif("", 15, 0, true, 400);
         addView(doneStatus, new MarginLayoutParams(-1, -2));
+        doneDetails = new LinearLayout(context);
+        doneDetails.setOrientation(LinearLayout.VERTICAL);
+        addView(doneDetails, new MarginLayoutParams(-1, -2));
+        empty = style.sans("", 16, 0, false);
+        addView(empty, new MarginLayoutParams(-1, -2));
         moreStatus = style.serif("", 15, 0, true, 400);
         MarginLayoutParams moreParams = new MarginLayoutParams(-1, -2);
         moreParams.leftMargin = style.dimen(R.dimen.focus_step_more_start);
@@ -72,11 +83,14 @@ public final class FocusStepListLayout extends ViewGroup {
     void bind(FocusCardUiModel model) {
         palette = model.palette;
         reorder = model.reorder;
+        detailed = model.detailed;
         if (!model.steps.itemId.equals(itemId)) {
             for (FocusStepRowView row : rowCache.values()) removeView(row);
             rowCache.clear();
             rows.clear();
             itemId = model.steps.itemId;
+            expandedDone = false;
+            expandedAll = false;
         }
         rowIds.clear();
         reorderIds.clear();
@@ -89,6 +103,22 @@ public final class FocusStepListLayout extends ViewGroup {
         doneStatus.setTextColor(model.palette.done);
         doneStatus.setVisibility(model.steps.doneCount == 0 ? GONE : VISIBLE);
         WoodGrainView.applyTextHalo(doneStatus, model.palette.leaf1);
+        if (detailed && model.steps.doneCount > 0) {
+            bindDone(model);
+        } else {
+            doneStatus.setOnClickListener(null);
+            doneStatus.setClickable(false);
+            doneStatus.setFocusable(false);
+            doneStatus.setMinHeight(0);
+            doneStatus.setCompoundDrawables(null, null, null, null);
+            doneDetails.setVisibility(GONE);
+        }
+        empty.setText(R.string.today_step_empty);
+        empty.setTextColor(palette.hint);
+        empty.setVisibility(detailed && model.task.steps.isEmpty()
+                && model.task.actionTarget.item.kind
+                == de.thonktank.autosecretary.presentation.today.TodayItemTarget.Kind.OCCURRENCE
+                ? VISIBLE : GONE);
 
         Map<String, FocusStepRowView> retained = new LinkedHashMap<>();
         rows.clear();
@@ -121,16 +151,54 @@ public final class FocusStepListLayout extends ViewGroup {
         rowCache.putAll(retained);
         for (FocusStepRowView row : rows) bringChildToFront(row);
         bringChildToFront(moreStatus);
+        if (detailed) {
+            bringChildToFront(doneStatus);
+            bringChildToFront(doneDetails);
+        }
+        moreStatus.setOnClickListener(detailed ? view -> {
+            expandedAll = true;
+            requestLayout();
+        } : null);
+        moreStatus.setClickable(detailed);
+        if (detailed) AccessibilityRoles.button(moreStatus);
         int availableFollowing = Math.max(0, model.steps.rows.size() - 1);
         maximumFollowing = model.stepLimit.automatic() ? availableFollowing
                 : Math.min(model.stepLimit.maximumFollowingSteps, availableFollowing);
         applyVisibleFollowing(isReordering() ? availableFollowing : maximumFollowing);
         reorderModeListener.onReorderModeChanged(isReordering());
-        setVisibility(model.task.steps.isEmpty() ? GONE : VISIBLE);
+        setVisibility(model.task.steps.isEmpty() && empty.getVisibility() == GONE ? GONE : VISIBLE);
         requestLayout();
         if (PresentationTrace.enabled()) PresentationTrace.emit("today-steps", "bind",
                 "rows=" + rowIds.size() + " reorder="
                         + (reorder == null ? "none" : reorder.phase));
+    }
+
+    private void bindDone(FocusCardUiModel model) {
+        doneStatus.setText(getContext().getString(R.string.today_step_done_group, model.steps.doneCount));
+        doneStatus.setTextColor(palette.hint);
+        doneStatus.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        doneStatus.setMinHeight(style.dp(48));
+        AccessibilityRoles.toggleButton(doneStatus, () -> expandedDone);
+        doneStatus.setOnClickListener(view -> {
+            expandedDone = !expandedDone;
+            applyDoneVisibility();
+        });
+        doneDetails.removeAllViews();
+        for (var step : model.task.steps) if (step.isDone()) {
+            TextView row = style.sans("✓   " + step.title, 16, palette.done, false);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            row.setMinHeight(style.dp(32));
+            doneDetails.addView(row);
+        }
+        applyDoneVisibility();
+    }
+
+    private void applyDoneVisibility() {
+        doneStatus.setCompoundDrawablesWithIntrinsicBounds(0, 0,
+                expandedDone ? R.drawable.ic_expand_less : R.drawable.ic_expand_more, 0);
+        doneStatus.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(palette.dot));
+        doneDetails.setVisibility(expandedDone ? VISIBLE : GONE);
+        requestLayout();
     }
 
     @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -143,6 +211,14 @@ public final class FocusStepListLayout extends ViewGroup {
         if (doneStatus.getVisibility() != GONE) {
             doneStatus.measure(exactChildWidth, unlimitedHeight);
             required += extent(doneStatus);
+        }
+        if (doneDetails.getVisibility() == VISIBLE) {
+            doneDetails.measure(exactChildWidth, unlimitedHeight);
+            required += extent(doneDetails);
+        }
+        if (empty.getVisibility() == VISIBLE) {
+            empty.measure(exactChildWidth, unlimitedHeight);
+            required += extent(empty);
         }
         int[] followingHeights = new int[Math.max(0, rowIds.size() - 1)];
         for (int index = 0; index < rowIds.size(); index++) {
@@ -158,7 +234,7 @@ public final class FocusStepListLayout extends ViewGroup {
         int moreExtent = extent(moreStatus);
         int available = MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED
                 ? Integer.MAX_VALUE : MeasureSpec.getSize(heightMeasureSpec);
-        int chosen = isReordering() ? followingHeights.length
+        int chosen = isReordering() || expandedAll ? followingHeights.length
                 : FocusStepLayoutPolicy.visibleFollowing(available, required,
                         followingHeights, moreExtent, maximumFollowing);
         applyVisibleFollowing(chosen);
@@ -189,7 +265,7 @@ public final class FocusStepListLayout extends ViewGroup {
     private void updateRowMargin(FocusStepRowView row, int index) {
         MarginLayoutParams params = (MarginLayoutParams) row.getLayoutParams();
         params.topMargin = index == 0
-                ? (doneStatus.getVisibility() == VISIBLE
+                ? (!detailed && doneStatus.getVisibility() == VISIBLE
                         ? style.dimen(R.dimen.focus_step_done_gap) : 0)
                 : style.dimen(index == 1 ? R.dimen.focus_step_first_following_gap
                         : R.dimen.focus_step_following_gap);

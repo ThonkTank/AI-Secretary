@@ -22,6 +22,15 @@ public final class MoveTodayStep {
         this.transactions = transactions;
     }
 
+    public TodayStepMoveResult reorder(String occurrenceId, java.util.List<String> orderedIds) {
+        return transactions.inTransaction(() -> {
+            TodayStepMoveResult result = TodayStepOrder.reorder(today.findOccurrence(occurrenceId),
+                    steps.occurrenceSteps(occurrenceId), orderedIds);
+            if (result.moved()) steps.updateOccurrenceStepPositions(result.positionUpdates);
+            return result;
+        });
+    }
+
     public TodayStepMoveResult execute(String stepId, String beforeStepId) {
         if (stepId == null || stepId.isEmpty())
             throw new IllegalArgumentException("Step identity is required");

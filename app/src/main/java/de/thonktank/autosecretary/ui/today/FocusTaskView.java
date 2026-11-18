@@ -21,6 +21,7 @@ public final class FocusTaskView extends FrameLayout {
     private final LayoutParams cardParams;
     private String boundTaskId;
     private boolean deferPending;
+    private boolean detailed;
     private TodayActionSink actions = action -> { };
 
     public FocusTaskView(Context context) {
@@ -52,6 +53,7 @@ public final class FocusTaskView extends FrameLayout {
     }
 
     public void bind(FocusCardUiModel model, boolean stacked, TodayActionSink events) {
+        detailed = model.detailed;
         FocusTaskUiModel task = model.task;
         DayPalette palette = model.palette;
         actions = events == null ? action -> { } : events;
@@ -74,7 +76,7 @@ public final class FocusTaskView extends FrameLayout {
     }
 
     @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int safeHeight = safeCardHeight(heightMeasureSpec);
+        int safeHeight = detailed ? Integer.MAX_VALUE : safeCardHeight(heightMeasureSpec);
         card.setMaximumContentHeight(Math.max(0, safeHeight - cardParams.topMargin));
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }

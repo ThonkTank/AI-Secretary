@@ -753,6 +753,7 @@ public final class PresentationStateRobolectricTest {
                                 StepAmount.setsReps(3, 12), "")));
         tasks.catalog.create.execute(definition);
         refreshDatabase();
+        viewModel.dispatch(TodayAction.selectTask(value().today().openTasks.get(0).row.actionTarget));
         String stepId = value().today().focus.steps.get(0).id;
 
         viewModel.dispatch(TodayAction.adjustRepetition(stepId, 1));
@@ -845,6 +846,7 @@ public final class PresentationStateRobolectricTest {
                 de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 1, "B", 0, StepAmount.none(), ""),
                 de.thonktank.autosecretary.testing.StepTestFixtures.definition(null, 2, "C", 0, StepAmount.none(), ""))));
         refreshDatabase();
+        viewModel.dispatch(TodayAction.selectTask(value().today().openTasks.get(0).row.actionTarget));
         List<de.thonktank.autosecretary.presentation.today.FocusStepUiModel> steps =
                 value().today().focus.steps;
         String first = steps.get(0).id;
@@ -872,6 +874,7 @@ public final class PresentationStateRobolectricTest {
         editorViewModel.dispatch(TaskEditorAction.openNew());
         preferences.setFocusStepLimit(FocusStepLimit.THREE);
         EditorUiState editorBefore = editorValue();
+        viewModel.dispatch(TodayAction.selectTask(value().today().openTasks.get(0).row.actionTarget));
         String occurrenceId = value().today().focus.itemId();
         calendarLoads.set(0);
 

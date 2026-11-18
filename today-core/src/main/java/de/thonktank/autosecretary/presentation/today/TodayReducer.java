@@ -158,7 +158,6 @@ public final class TodayReducer {
                 .reward(focus.reward, focus.vessel)
                 .grainLevel(focus.grainLevel)
                 .build();
-        return new TodayUiModel(today.xpProgress, updatedFocus, today.timeline,
-                today.completedToday, today.flowRuns);
+        return today.withUpdatedFocus(updatedFocus);
     }
 }

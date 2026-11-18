@@ -28,7 +28,7 @@ public final class HomescreenGoldenRobolectricTest {
         AssertionError mismatch = null;
         for (String state : new String[]{"full", "step", "later", "complete", "evening", "empty",
                 "empty-vessel", "partial-vessel", "harvest-ready",
-                "three-digit", "night"}) {
+                "three-digit", "night", "overview"}) {
             try {
                 render(state, 824, 1784, true);
             } catch (AssertionError error) {
@@ -37,6 +37,12 @@ public final class HomescreenGoldenRobolectricTest {
             }
         }
         if (mismatch != null) throw mismatch;
+    }
+
+    @Test
+    @Config(sdk = 35, qualifiers = "w320dp-h700dp-xhdpi")
+    public void renderNarrowOverview() throws Exception {
+        render("overview", "overview-320", 640, 1400, true);
     }
 
     @Test
@@ -72,6 +78,11 @@ public final class HomescreenGoldenRobolectricTest {
 
     private static void render(String preview, int width, int height,
                                boolean emulateSystemInsets) throws Exception {
+        render(preview, preview, width, height, emulateSystemInsets);
+    }
+
+    private static void render(String preview, String golden, int width, int height,
+                               boolean emulateSystemInsets) throws Exception {
         Intent intent = new Intent(Intent.ACTION_MAIN)
                 .setClassName("de.thonktank.autosecretary",
                         HomescreenPreviewActivity.class.getName())
@@ -93,7 +104,7 @@ public final class HomescreenGoldenRobolectricTest {
             ShadowLooper.shadowMainLooper().idle();
             Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             content.draw(new Canvas(bitmap));
-            assertGolden(preview, bitmap);
+            assertGolden(golden, bitmap);
             bitmap.recycle();
         }
     }

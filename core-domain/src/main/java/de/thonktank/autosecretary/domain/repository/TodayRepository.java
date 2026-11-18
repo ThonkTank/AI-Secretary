@@ -14,6 +14,9 @@ import java.util.List;
 /** Occurrences, materialization state, rewards, combos and obligations. */
 public interface TodayRepository {
     java.util.List<de.thonktank.autosecretary.domain.model.TodayPlacement> todayPlacements();
+    java.util.Set<String> hiddenToday(LocalDate day);
+    void setTodayHidden(de.thonktank.autosecretary.domain.model.TodayPlacement.Kind kind,
+                        String id, LocalDate day, boolean hidden);
     void putTodayPlacement(de.thonktank.autosecretary.domain.model.TodayPlacement placement);
     void deleteTodayPlacement(de.thonktank.autosecretary.domain.model.TodayPlacement.Kind kind, String id);
     void insertOccurrence(Occurrence occurrence);

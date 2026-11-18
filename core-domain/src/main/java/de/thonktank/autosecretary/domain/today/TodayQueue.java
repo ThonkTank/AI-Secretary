@@ -42,6 +42,19 @@ public final class TodayQueue {
     }
 
     public static List<Entry> visible(Dashboard dashboard, LocalDate date) {
+        List<Entry> result = ordered(dashboard, date);
+        result.removeIf(entry -> dashboard.hiddenToday.contains(entry.key()));
+        return result;
+    }
+
+    public static List<Entry> hidden(Dashboard dashboard, LocalDate date) {
+        if (dashboard.hiddenToday.isEmpty()) return Collections.emptyList();
+        List<Entry> result = ordered(dashboard, date);
+        result.removeIf(entry -> !dashboard.hiddenToday.contains(entry.key()));
+        return result;
+    }
+
+    private static List<Entry> ordered(Dashboard dashboard, LocalDate date) {
         List<Entry> baseline = new ArrayList<>();
         for (DashboardTask task : dashboard.tasks) if (!task.done) baseline.add(new Entry(task, null));
         for (FlowTaskSheet sheet : dashboard.flowTaskSheets) baseline.add(new Entry(null, sheet));
