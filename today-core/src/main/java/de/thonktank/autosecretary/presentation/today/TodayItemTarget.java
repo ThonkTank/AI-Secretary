@@ -14,6 +14,8 @@ public final class TodayItemTarget {
         this.id = id;
     }
 
+    public String key() { return kind.name() + ":" + id; }
+
     public static TodayItemTarget occurrence(String id) {
         return new TodayItemTarget(Kind.OCCURRENCE, id);
     }

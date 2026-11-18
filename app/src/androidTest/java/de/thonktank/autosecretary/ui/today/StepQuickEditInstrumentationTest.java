@@ -190,6 +190,8 @@ public final class StepQuickEditInstrumentationTest {
         assertTrue(container.today.moveItem.execute(entry.kind, entry.id, MoveTodayItem.Action.FIRST));
         session = new ProductActivitySession(instrumentation);
         session.launch();
+        String title = entry.task == null ? entry.sheet.task.title : entry.task.task.title;
+        object(By.descStartsWith(context.getString(R.string.today_open_task, title))).click();
         return task;
     }
 

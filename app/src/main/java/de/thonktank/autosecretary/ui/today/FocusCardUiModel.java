@@ -18,12 +18,22 @@ public final class FocusCardUiModel {
     public final RepetitionInputState repetitionInput;
     public final TodayFeatureState.Reorder reorder;
     public final TimerManager.Snapshot timers;
+    public final boolean detailed;
 
     public FocusCardUiModel(FocusTaskUiModel task, FocusStepListUiModel steps,
                      DayPalette palette, FocusStepLimit stepLimit,
                      RepetitionInputState repetitionInput,
                      TodayFeatureState.Reorder reorder,
                      TimerManager.Snapshot timers) {
+        this(task, steps, palette, stepLimit, repetitionInput, reorder, timers, false);
+    }
+
+    public FocusCardUiModel(FocusTaskUiModel task, FocusStepListUiModel steps,
+                           DayPalette palette, FocusStepLimit stepLimit,
+                           RepetitionInputState repetitionInput,
+                           TodayFeatureState.Reorder reorder, TimerManager.Snapshot timers,
+                           boolean detailed) {
+        this.detailed = detailed;
         if (task == null || steps == null || palette == null || reorder == null)
             throw new IllegalArgumentException("Complete focus-card state is required");
         if (!task.itemId().equals(steps.itemId))

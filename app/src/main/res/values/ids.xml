@@ -27,4 +27,9 @@
     <item name="action_today_step_back" type="id" />
     <item name="action_today_step_select" type="id" />
     <item name="step_quick_editor_host" type="id" />
+    <item name="today_back_to_overview" type="id" />
+    <item name="today_choose_task" type="id" />
+    <item name="today_sort_steps" type="id" />
+    <item name="today_add_step" type="id" />
+    <item name="today_step_name_field" type="id" />
 </resources>

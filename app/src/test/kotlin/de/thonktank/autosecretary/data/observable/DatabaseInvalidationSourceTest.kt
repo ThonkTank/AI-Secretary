@@ -25,7 +25,7 @@ import java.util.concurrent.Executor
 @Config(sdk = [35])
 class DatabaseInvalidationSourceTest {
     private val directExecutor = Executor { command -> command.run() }
-    private val schema25Tables = setOf(
+    private val dashboardTables = setOf(
         "tasks",
         "task_steps",
         "task_schedule_entries",
@@ -43,6 +43,7 @@ class DatabaseInvalidationSourceTest {
         "flow_candidates",
         "flow_task_sheet_placements",
         "today_placements",
+        "today_hidden_items",
         "step_resource_leases",
         "step_flow_runs",
         "flow_run_steps",
@@ -66,10 +67,10 @@ class DatabaseInvalidationSourceTest {
     }
 
     @Test
-    fun initialEmissionContainsTheCompleteSchema25TableContract() = runBlocking {
+    fun initialEmissionContainsEveryDashboardTable() = runBlocking {
         val emissions = DatabaseInvalidationSource(database).changes.produceIn(this)
 
-        assertEquals(schema25Tables, emissions.next())
+        assertEquals(dashboardTables, emissions.next())
         emissions.cancel()
     }
 

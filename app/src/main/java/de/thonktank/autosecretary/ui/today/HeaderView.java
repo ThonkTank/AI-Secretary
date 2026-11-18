@@ -30,6 +30,7 @@ public final class HeaderView extends FrameLayout {
     private static final LeafShape SHAPE = new LeafShape(8, 56, 8, 56);
     private final LeafSurface leaf;
     private final TextView greeting;
+    private final TextView date;
     private final TextView level;
     private final TextView progress;
     private final TextView add;
@@ -45,7 +46,15 @@ public final class HeaderView extends FrameLayout {
         LinearLayout status = new LinearLayout(context); status.setGravity(Gravity.CENTER_VERTICAL);
         status.setPadding(style.dp(22), style.dp(10), style.dp(24), style.dp(13));
         greeting = style.serif("", 16, 0, true, 300);
-        status.addView(greeting, new LinearLayout.LayoutParams(0, -2, 1));
+        LinearLayout heading = new LinearLayout(context);
+        heading.setOrientation(LinearLayout.VERTICAL);
+        date = style.sans("", 13, 0, false);
+        date.setSingleLine();
+        date.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        date.setVisibility(GONE);
+        heading.addView(date);
+        heading.addView(greeting);
+        status.addView(heading, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout values = new LinearLayout(context); values.setOrientation(LinearLayout.VERTICAL);
         values.setGravity(Gravity.END);
         level = style.serif("", 20, 0, false, 400); progress = style.sans("", 14, 0, false);
@@ -70,17 +79,40 @@ public final class HeaderView extends FrameLayout {
     }
 
     public void bind(LocalTime time, DayPalette palette, XpProgress value) {
-        greeting.setText(DayPalette.greetingRes(time)); greeting.setTextColor(palette.ink2);
+        setPadding(style.dp(60), style.dp(12), style.dp(22), 0);
+        greeting.setText(DayPalette.greetingRes(time));
+        greeting.setTextSize(16);
+        date.setVisibility(GONE);
+        bindLevel(palette, value);
+    }
+
+    public void bindOverview(java.time.LocalDate today, DayPalette palette, XpProgress value) {
+        setPadding(style.dp(24), style.dp(12), style.dp(16), 0);
+        greeting.setText(R.string.today_title);
+        greeting.setTextSize(26);
+        date.setVisibility(VISIBLE);
+        String pattern = getResources().getConfiguration().screenWidthDp < 365
+                ? "EEE, d. MMM" : "EEEE, d. MMMM";
+        date.setText(today.format(java.time.format.DateTimeFormatter.ofPattern(pattern,
+                java.util.Locale.GERMANY)));
+        date.setTextColor(palette.hint);
+        bindLevel(palette, value);
+    }
+
+    private void bindLevel(DayPalette palette, XpProgress value) {
+        greeting.setTextColor(palette.ink2);
         level.setText(getContext().getString(R.string.xp_level, value.level)); level.setTextColor(palette.ink2);
         progress.setText(getContext().getString(R.string.xp_progress, value.inLevel, value.required));
         progress.setTextColor(palette.muted);
         WoodGrainView.applyTextHalo(greeting, palette.leaf2);
+        WoodGrainView.applyTextHalo(date, palette.leaf2);
         WoodGrainView.applyTextHalo(level, palette.leaf2);
         WoodGrainView.applyTextHalo(progress, palette.leaf2);
         leaf.bindSurface(palette, palette.leaf2, palette.leaf2Edge, 7, .7f);
         add.setTextColor(palette.lightText); add.setBackground(style.pill(palette.light, 24));
         leaf.setGrainSpec(GrainSpec.corner(LeafShape.Corner.TOP_RIGHT, value.ratio,
-                Arrays.asList(GrainOcclusion.text(greeting), GrainOcclusion.text(level),
+                Arrays.asList(GrainOcclusion.text(greeting), GrainOcclusion.text(date),
+                        GrainOcclusion.text(level),
                         GrainOcclusion.text(progress))));
     }
 

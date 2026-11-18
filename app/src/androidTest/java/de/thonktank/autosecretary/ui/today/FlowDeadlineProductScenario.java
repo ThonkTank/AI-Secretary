@@ -60,6 +60,15 @@ final class FlowDeadlineProductScenario {
                     elapsed(1_500);
                     assertSame("Exercise resume of the existing activity", activity, session.foreground());
                 }
+                PresentationAwaiter.await(instrumentation, "Elapsed wait did not reveal its sheet", () ->
+                        model.state().getValue().today().openTasks.stream()
+                                .anyMatch(taskRow -> taskRow.row.title.equals(title)), root);
+                instrumentation.runOnMainSync(() -> {
+                    var selected = model.state().getValue().today().openTasks.stream()
+                            .filter(taskRow -> taskRow.row.title.equals(title)).findFirst().orElseThrow();
+                    model.dispatch(de.thonktank.autosecretary.presentation.today.TodayAction.selectTask(
+                            selected.row.actionTarget));
+                });
                 PresentationAwaiter.await(instrumentation, "Elapsed wait did not reveal its next action", () ->
                         hasText(root, next), root);
                 assertEquals(initialXp, dashboard(container).xp);

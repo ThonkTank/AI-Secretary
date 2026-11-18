@@ -22,6 +22,22 @@ public final class RoomTodayRepository implements TodayRepository {
 
     public RoomTodayRepository(AppDatabase database) { this.dao = database.today(); }
 
+    @Override public java.util.Set<String> hiddenToday(LocalDate day) {
+        return new java.util.HashSet<>(dao.hiddenToday(day.toString()));
+    }
+
+    @Override public void setTodayHidden(
+            de.thonktank.autosecretary.domain.model.TodayPlacement.Kind kind,
+            String id, LocalDate day, boolean hidden) {
+        String date = day.toString();
+        if (hidden) {
+            dao.deleteExpiredHiddenItems(date);
+            dao.putHiddenItem(new TodayHiddenItemEntity(kind.name(), id, date));
+        } else {
+            dao.restoreHiddenItem(kind.name(), id, date);
+        }
+    }
+
     @Override public List<de.thonktank.autosecretary.domain.model.TodayPlacement> todayPlacements() {
         List<de.thonktank.autosecretary.domain.model.TodayPlacement> result = new ArrayList<>();
         for (TodayPlacementEntity e : dao.activeTodayPlacements())

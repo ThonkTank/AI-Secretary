@@ -2,6 +2,7 @@ package de.thonktank.autosecretary.domain.usecase;
 
 /** Focused application commands and queries for today's execution. */
 public final class TodayUseCases {
+    public final AddTodayStep addTodayStep;
     public final EditStep editStep;
     public final EditStepNote editStepNote;
     public final MoveTodayItem moveItem;
@@ -40,7 +41,7 @@ public final class TodayUseCases {
                 correctRepetitionResult, recordSetResult, correctSetResult, finishStepForToday,
                 complete, completeRemainingSteps, harvest, undoOccurrence, applyComboDecay,
                 settlePreviousPartialOccurrences, closeOngoing, materializeDue, loadDashboard,
-                moveItem, editStepNote, null);
+                moveItem, editStepNote, null, null);
     }
 
     public TodayUseCases(ToggleStep toggleStep,
@@ -55,7 +56,9 @@ public final class TodayUseCases {
                          SettlePreviousPartialOccurrences settlePreviousPartialOccurrences,
                          CloseOngoingTask closeOngoing,
                          MaterializeDueOccurrences materializeDue,
-                         LoadDashboard loadDashboard, MoveTodayItem moveItem, EditStepNote editStepNote, EditStep editStep) {
+                         LoadDashboard loadDashboard, MoveTodayItem moveItem, EditStepNote editStepNote,
+                         EditStep editStep, AddTodayStep addTodayStep) {
+        this.addTodayStep = addTodayStep;
         this.editStep = editStep;
         this.editStepNote = editStepNote;
         this.moveItem = moveItem;

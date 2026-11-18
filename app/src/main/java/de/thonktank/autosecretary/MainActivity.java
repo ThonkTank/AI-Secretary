@@ -183,6 +183,7 @@ public class MainActivity extends ComponentActivity {
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() {
                 if (editorCoordinator != null && editorCoordinator.handleBack()) return;
+                if (renderer != null && renderer.handleTodayBack()) return;
                 setEnabled(false);
                 getOnBackPressedDispatcher().onBackPressed();
                 setEnabled(true);
@@ -226,6 +227,7 @@ public class MainActivity extends ComponentActivity {
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "destroy", "");
         if (stepNoteDialog != null) stepNoteDialog.dismiss();
         if (todayRequestWindow != null) todayRequestWindow.dismiss();
+        if (renderer != null) renderer.dispose();
         if (rewardAnimator != null) rewardAnimator.dispose();
         if (editorCoordinator != null) editorCoordinator.dispose();
         super.onDestroy();
@@ -302,7 +304,11 @@ public class MainActivity extends ComponentActivity {
                         + " editorOpen=" + editorState.content.open);
         forest.setPalette(shellState.palette);
         renderTodayDialogs();
-        header.bind(container.clock.time(), shellState.palette, todayState.today().xpProgress);
+        if (shellState.navigation == NavigationDestination.TODAY && todayState.today().focus == null) {
+            header.bindOverview(container.clock.now().toLocalDate(), shellState.palette, todayState.today().xpProgress);
+        } else {
+            header.bind(container.clock.time(), shellState.palette, todayState.today().xpProgress);
+        }
         footer.bind(shellState.navigation, shellState.palette);
         renderer.render(shellState, todayState, allTasksState, optionsState);
         boolean light = luminance(shellState.palette.background) > .55;

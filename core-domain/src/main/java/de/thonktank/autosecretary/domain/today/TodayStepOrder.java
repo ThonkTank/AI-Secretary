@@ -42,9 +42,32 @@ public final class TodayStepOrder {
         int target = beforeStepId == null ? open.size() : indexOf(open, beforeStep.id);
         if (target < 0) return result(TodayStepMoveResult.Status.INVALID_TARGET, current);
         open.add(target, moving);
+        return apply(current, open);
+    }
+
+    public static TodayStepMoveResult reorder(Occurrence occurrence, List<OccurrenceStep> current,
+                                              List<String> requested) {
+        if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
+            return result(TodayStepMoveResult.Status.OCCURRENCE_CLOSED, current);
+        if (occurrence.kind == de.thonktank.autosecretary.domain.model.OccurrenceKind.FLOW_STEP)
+            return result(TodayStepMoveResult.Status.INVALID_TARGET, current);
+        List<OccurrenceStep> open = open(current);
+        Map<String, OccurrenceStep> remaining = new HashMap<>();
+        for (OccurrenceStep step : open) remaining.put(step.id, step);
+        if (requested.size() != remaining.size())
+            return result(TodayStepMoveResult.Status.INVALID_TARGET, current);
+        List<OccurrenceStep> ordered = new ArrayList<>();
+        for (String id : requested) {
+            OccurrenceStep step = remaining.remove(id);
+            if (step == null) return result(TodayStepMoveResult.Status.INVALID_TARGET, current);
+            ordered.add(step);
+        }
+        return apply(current, ordered);
+    }
+
+    private static TodayStepMoveResult apply(List<OccurrenceStep> current, List<OccurrenceStep> open) {
         if (sameIds(open(current), open))
             return result(TodayStepMoveResult.Status.NO_CHANGE, current);
-
         Map<String, OccurrenceStep> originals = new HashMap<>();
         for (OccurrenceStep step : current) originals.put(step.id, step);
         List<OccurrenceStep> ordered = new ArrayList<>();

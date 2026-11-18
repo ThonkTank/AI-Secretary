@@ -10,7 +10,7 @@ import java.util.List;
 
 /** Serializes a complete visible queue so every item type shares the same ordering rules. */
 public final class MoveTodayItem {
-    public enum Action { LATER, FIRST }
+    public enum Action { LATER, FIRST, HIDE, RESTORE }
     private final TodayRepository repository;
     private final LoadDashboard dashboard;
     private final TransactionRunner transactions;
@@ -23,10 +23,16 @@ public final class MoveTodayItem {
     public boolean execute(TodayPlacement.Kind kind, String id, Action action) {
         return transactions.inTransaction(() -> {
             LocalDate date = clock.today();
-            List<TodayQueue.Entry> entries = TodayQueue.visible(dashboard.execute(date), date);
+            Dashboard snapshot = dashboard.execute(date);
+            List<TodayQueue.Entry> entries = action == Action.RESTORE
+                    ? TodayQueue.hidden(snapshot, date) : TodayQueue.visible(snapshot, date);
             TodayQueue.Entry moving = null;
             for (TodayQueue.Entry e : entries) if (e.kind == kind && e.id.equals(id)) moving = e;
             if (moving == null) return false;
+            if (action == Action.HIDE || action == Action.RESTORE) {
+                repository.setTodayHidden(kind, id, date, action == Action.HIDE);
+                return true;
+            }
             if (action == Action.FIRST && entries.get(0) == moving) return true;
             TaskSlot slot = moving.slot;
             if (action == Action.FIRST) {

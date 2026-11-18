@@ -24,10 +24,14 @@ public final class TodayFocusProjector {
             }
         }
 
-        List<FocusStepUiModel> ordered = reorder.phase == TodayFeatureState.Reorder.Phase.IDLE
-                ? selectedFirst(open, selectedStepId)
-                : orderedBy(open, reorder.previewOrder);
+        boolean inPlace = !today.openTasks.isEmpty();
+        List<FocusStepUiModel> ordered = reorder.phase != TodayFeatureState.Reorder.Phase.IDLE
+                ? orderedBy(open, reorder.previewOrder)
+                : inPlace ? open : selectedFirst(open, selectedStepId);
         String expandedId = ordered.isEmpty() ? null : ordered.get(0).id;
+        if (inPlace && reorder.phase == TodayFeatureState.Reorder.Phase.IDLE
+                && selectedStepId != null && open.stream().anyMatch(s -> s.id.equals(selectedStepId)))
+            expandedId = selectedStepId;
         List<FocusStepRowUiModel> rows = new ArrayList<>();
         for (FocusStepUiModel step : ordered) {
             boolean expanded = step.id.equals(expandedId);

@@ -35,6 +35,9 @@ public final class TodayAction {
         RESET_TIMER,
         OBSERVE_TIMER,
         ADD_TASK,
+        SELECT_TASK, SHOW_OVERVIEW,
+        HIDE_TASK, RESTORE_TASK,
+        ADD_TODAY_STEP, SORT_TODAY_STEPS,
         OPEN_TASK_MENU,
         EDIT_TASK,
         REQUEST_MOVE_TASK,
@@ -106,6 +109,39 @@ public final class TodayAction {
         if (target == null) throw new IllegalArgumentException("Today target is required");
         return new TodayAction(Kind.BRING_FIRST, target.item.id, null, null, 0,
                 Collections.emptyList(), target, null);
+    }
+
+    public static TodayAction selectTask(TaskActionTarget target) {
+        return taskTarget(Kind.SELECT_TASK, target);
+    }
+
+    public static TodayAction showOverview() {
+        return new TodayAction(Kind.SHOW_OVERVIEW, null, null, null, 0,
+                Collections.emptyList(), null, null);
+    }
+
+    public static TodayAction hideTask(TaskActionTarget target) {
+        return taskTarget(Kind.HIDE_TASK, target);
+    }
+
+    public static TodayAction restoreTask(TaskActionTarget target) {
+        return taskTarget(Kind.RESTORE_TASK, target);
+    }
+
+    private static TodayAction taskTarget(Kind kind, TaskActionTarget target) {
+        if (target == null) throw new IllegalArgumentException("Today target is required");
+        return new TodayAction(kind, target.item.id, null, null, 0,
+                Collections.emptyList(), target, null);
+    }
+
+    public static TodayAction addTodayStep(String occurrenceId, String title) {
+        return new TodayAction(Kind.ADD_TODAY_STEP, requiredId(occurrenceId), null, title, 0,
+                Collections.emptyList(), null, null);
+    }
+
+    public static TodayAction sortTodaySteps(String occurrenceId, List<String> order) {
+        return new TodayAction(Kind.SORT_TODAY_STEPS, requiredId(occurrenceId), null, null, 0,
+                order, null, null);
     }
 
     public static TodayAction defer(TaskActionTarget target) {

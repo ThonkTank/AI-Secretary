@@ -65,7 +65,9 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
         root.addView(screen, new FrameLayout.LayoutParams(-1, -1));
         HeaderView header = new HeaderView(this, () -> { });
         TodayUiModel dashboard = DebugPreviewFixtures.reference(preview);
-        header.bind(time, palette, dashboard.xpProgress);
+        if (dashboard.focus == null)
+            header.bindOverview(java.time.LocalDate.of(2026, 11, 18), palette, dashboard.xpProgress);
+        else header.bind(time, palette, dashboard.xpProgress);
         screen.addView(header, new LinearLayout.LayoutParams(-1,
                 getResources().getDimensionPixelSize(R.dimen.header_height)));
         ScrollView scroll = new ScrollView(this);

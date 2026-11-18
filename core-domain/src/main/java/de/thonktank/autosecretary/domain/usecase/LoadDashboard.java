@@ -121,7 +121,7 @@ public final class LoadDashboard {
         Map<String, ComboProgress> combos = new HashMap<>();
         for (ComboProgress combo : this.today.combos()) combos.put(combo.ownerId, combo);
         return new Dashboard(this.today.xp(), result, combos, graph.runs, graph.sheets,
-                this.today.todayPlacements());
+                this.today.todayPlacements(), this.today.hiddenToday(today));
     }
 
     private static DashboardTask item(Task task, Occurrence occurrence,

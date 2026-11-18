@@ -70,6 +70,20 @@ public final class DebugPreviewFixtures {
         if ("partial-vessel".equals(state)) return today(70, vesselTask(1, false));
         if ("harvest-ready".equals(state)) return today(70, vesselTask(3, true));
         if ("three-digit".equals(state)) return today(70, threeDigitTask());
+        if ("overview".equals(state)) {
+            PreviewTask gym = PreviewTask.named("gym", "Gym").steps(List.of(
+                    step("warm-up", "Aufwärmen", true), step("leg-press", "Beinpresse", false),
+                    step("push-ups", "Liegestütze", false)));
+            PreviewTask laundry = PreviewTask.named("laundry", "Wäsche").slot(TaskSlot.MIDDAY);
+            PreviewTask call = PreviewTask.named("doctor", "Praxis anrufen").slot(TaskSlot.MIDDAY);
+            PreviewTask dinner = PreviewTask.named("dinner", "Abendessen vorbereiten").slot(TaskSlot.EVENING);
+            PreviewTask hidden = PreviewTask.named("plants", "Pflanzen gießen");
+            return new TodayUiModel(new XpProgress(70), null, List.of(), List.of(), List.of(),
+                    List.of(gym, laundry, call, dinner).stream()
+                            .map(task -> new TodayUiModel.OpenTask(task.timeline(), task.focus(true)))
+                            .collect(java.util.stream.Collectors.toList()),
+                    List.of(hidden.timeline())).select(null);
+        }
         PreviewTask morning = morning(false, "step".equals(state));
         PreviewTask after = PreviewTask.named("preview-after", "Abgabe Statistik-Übung")
                 .softTime("voraussichtlich ab 10:15").order(2_000L);
@@ -81,8 +95,13 @@ public final class DebugPreviewFixtures {
                 .slot(TaskSlot.LATER).order(5_000L);
         if ("empty".equals(state)) return TodayUiModel.empty();
         if ("later".equals(state)) return today(120, after, morning, laundry, hiddenOne, hiddenTwo);
-        if ("complete".equals(state) || "harvested".equals(state))
-            return today(120, morning(true, true), after, laundry, hiddenOne, hiddenTwo);
+        if ("complete".equals(state) || "harvested".equals(state)) {
+            return new TodayUiModel(new XpProgress(120), null, List.of(),
+                    List.of(morning(true, true).completed()), List.of(),
+                    List.of(after, laundry, hiddenOne, hiddenTwo).stream()
+                            .map(task -> new TodayUiModel.OpenTask(task.timeline(), task.focus(true)))
+                            .collect(java.util.stream.Collectors.toList()), List.of()).select(null);
+        }
         if ("evening".equals(state)) {
             PreviewTask ongoing = PreviewTask.named("preview-ongoing", "Praktikum")
                     .slot(TaskSlot.LATER).softTime("fortlaufend, bis es angenommen ist")

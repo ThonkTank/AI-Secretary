@@ -96,6 +96,8 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private boolean timerPermissionWarningShown;
     private TodayScreenState current;
     private LocalDate loadedDate;
+    private TodayUiModel overview = TodayUiModel.empty();
+    private String selectedItemKey;
     private List<CalendarEventSnapshot> calendarEvents = Collections.emptyList();
     private long requestSequence;
 
@@ -153,6 +155,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         this.texts = texts;
         this.navigator = navigator;
         this.savedState = savedState;
+        selectedItemKey = savedState.get("today_selected_item");
         this.worker = worker;
         this.timers = timers;
         DisplayPreferences display = preferences.displayPreferences();
@@ -205,6 +208,33 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     private void reduce(TodayAction action) {
         switch (action.kind) {
+            case SELECT_TASK:
+                selectTodayItem(action.target.item.key());
+                return;
+            case SHOW_OVERVIEW:
+                selectTodayItem(null);
+                return;
+            case HIDE_TASK:
+                moveTodayItem(action.target.item,
+                        de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.HIDE);
+                return;
+            case RESTORE_TASK:
+                moveTodayItem(action.target.item,
+                        de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.RESTORE);
+                return;
+            case ADD_TODAY_STEP:
+                run(command(UiCommand.Kind.ORGANIZE, action.id), () -> {
+                    if (!today.addTodayStep.execute(action.id, action.text))
+                        throw new IllegalArgumentException(texts.text(R.string.error_step_add));
+                });
+                return;
+            case SORT_TODAY_STEPS:
+                run(command(UiCommand.Kind.ORGANIZE, action.id), () -> {
+                    TodayStepMoveResult result = today.moveTodayStep.reorder(action.id, action.order);
+                    if (!result.moved() && result.status != TodayStepMoveResult.Status.NO_CHANGE)
+                        throw new IllegalArgumentException(texts.text(R.string.error_step_order_invalid));
+                });
+                return;
             case EDIT_STEP:
                 stepDialogs.open(TodayStepDialogs.Kind.STEP, action.id);
                 return;
@@ -258,6 +288,13 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
             default:
                 todayCoordinator.emit(action);
         }
+    }
+
+    private void selectTodayItem(@Nullable String key) {
+        TodayUiModel selected = overview.select(key);
+        selectedItemKey = selected.focus == null ? null : key;
+        savedState.set("today_selected_item", selectedItemKey);
+        todayCoordinator.rebind(selected);
     }
 
     private void publishStepDialog(@Nullable StepDialogDraft draft) {
@@ -631,7 +668,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         LocalDate today = snapshot == null ? clock.now().toLocalDate() : snapshot.getDate();
         boolean dashboardOnly = invalidation.getCause() == PresentationInvalidationCause.DATABASE
                 && loadedDashboardDate() != null;
-        return new Content(dashboard.load(today), dashboardOnly ? null : calendar.loadToday(), today);
+        return new Content(dashboard.loadOverview(today), dashboardOnly ? null : calendar.loadToday(), today);
     }
 
     private void prepareContent() {
@@ -671,7 +708,10 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         TodayUiModel composed = content.dashboard.withCalendar(eventsSnapshot);
         synchronized (stateLock) { loadedDate = content.date; }
         if (flowDeadlines != null) flowDeadlines.update(composed.flowRuns);
-        todayCoordinator.rebind(composed);
+        synchronized (actionLock) {
+            overview = composed;
+            selectTodayItem(selectedItemKey);
+        }
     }
 
     private void fail(UiCommand key, String message, RuntimeException error) {

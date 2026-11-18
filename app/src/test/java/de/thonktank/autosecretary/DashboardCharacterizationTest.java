@@ -160,7 +160,7 @@ public final class DashboardCharacterizationTest {
         assertFalse(events.get(1).title.isEmpty());
     }
 
-    @Test public void timelineExcludesDoneItemsAssignsAfterAcrossCalendarAndCapsAtThree() {
+    @Test public void overviewShowsCalendarAndOpenTasksWithCollapsedCompletionHistory() {
         Context context = ApplicationProvider.getApplicationContext();
         ScrollView scroll = new ScrollView(context);
         LinearLayout content = new LinearLayout(context);
@@ -172,8 +172,7 @@ public final class DashboardCharacterizationTest {
                 action -> { });
         List<CalendarEventSnapshot> events = Collections.singletonList(
                 new CalendarEventSnapshot("12:00", "Termin", 12 * 60));
-        FocusTaskUiModel simple = DashboardFixtures.simpleTask();
-        TodayUiModel dashboardState = new TodayUiModel(new XpProgress(10), simple,
+        TodayUiModel dashboardState = new TodayUiModel(new XpProgress(10), null,
                 java.util.Arrays.asList(
                         TimelineItemUiModel.task(FocusTaskFixtures.timeline(
                                 DashboardFixtures.recurringTask(), "", 2)),
@@ -190,7 +189,8 @@ public final class DashboardCharacterizationTest {
         collectText(timeline, text);
         assertEquals(3, timeline.getChildCount());
         assertFalse(text.contains(context.getString(R.string.marker_done)));
-        assertTrue(text.contains(context.getString(R.string.marker_after)));
+        assertTrue(text.contains("Termin"));
+        assertEquals(2, text.stream().filter(context.getString(R.string.today_hide)::equals).count());
         CompletedTodayView completed = content.findViewById(R.id.dashboard_completed_today);
         assertEquals(View.VISIBLE, completed.getVisibility());
         assertEquals(View.GONE, completed.getChildAt(1).getVisibility());
@@ -233,7 +233,7 @@ public final class DashboardCharacterizationTest {
                 TodayScreenStateFixtures.today(today.withCalendar(Collections.emptyList())),
                 AllTasksUiState.empty(), options(palette));
 
-        View empty = findDirectChild(content, EmptyStateView.class);
+        View empty = findDirectChild(content, de.thonktank.autosecretary.ui.today.TodayOverviewView.class);
         CompletedTodayView completed = content.findViewById(R.id.dashboard_completed_today);
         assertEquals(View.VISIBLE, empty.getVisibility());
         assertEquals(View.VISIBLE, completed.getVisibility());

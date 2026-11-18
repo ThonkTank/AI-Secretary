@@ -7,9 +7,13 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.TextView;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.uiautomator.By;
+import androidx.test.uiautomator.BySelector;
+import androidx.test.uiautomator.UiDevice;
+import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.Until;
 import de.thonktank.autosecretary.*;
 import de.thonktank.autosecretary.domain.model.*;
 import de.thonktank.autosecretary.domain.today.TodayQueue;
@@ -45,14 +49,12 @@ final class TodayProductInteractionScenario {
             assertTrue(container.today.moveItem.execute(b.kind, b.id, MoveTodayItem.Action.FIRST));
             assertTrue(container.today.moveItem.execute(a.kind, a.id, MoveTodayItem.Action.FIRST));
             List<String> expected = keys(queue(container));
-            expected.remove(b.key());
-            expected.add(0, b.key());
+            UiDevice device = UiDevice.getInstance(instrumentation);
 
             try (ProductActivitySession scenario = new ProductActivitySession(instrumentation)) {
                 MainActivity activity = scenario.launch();
                 View root = activity.getWindow().getDecorView();
-                awaitFocus(root, firstTitle);
-                View title = awaitView(root, view -> (secondTitle + ", jetzt bearbeiten")
+                View title = awaitView(root, view -> context.getString(R.string.today_open_task, firstTitle)
                         .contentEquals(view.getContentDescription() == null ? "" : view.getContentDescription()));
                 Rect bounds = reveal(activity, title);
                 TouchGestureDriver touch = new TouchGestureDriver(instrumentation, title);
@@ -60,28 +62,72 @@ final class TodayProductInteractionScenario {
                     touch.down(new int[] {bounds.centerX(), bounds.centerY()});
                     touch.up();
                 } finally { touch.up(); }
+                awaitFocus(root, firstTitle);
+
+                object(device, By.res(context.getPackageName(), "today_choose_task")).click();
+                object(device, By.text(secondTitle)).click();
                 awaitFocus(root, secondTitle);
                 assertEquals(expected, keys(queue(container)));
 
                 activity = scenario.recreate();
                 root = activity.getWindow().getDecorView();
                 awaitFocus(root, secondTitle);
-                View later = awaitView(root, view -> view instanceof TextView
-                        && context.getString(R.string.action_later).contentEquals(((TextView) view).getText()));
-                reveal(activity, later);
-                instrumentation.runOnMainSync(() -> assertTrue(later.performAccessibilityAction(
-                        AccessibilityNodeInfo.ACTION_CLICK, null)));
-                awaitFocus(root, firstTitle);
-                assertEquals(a.key(), queue(container).get(0).key());
-                assertTrue("Later must retain B as open work", keys(queue(container)).contains(b.key()));
-                List<String> afterLater = keys(queue(container));
-                activity = scenario.recreate();
-                awaitFocus(activity.getWindow().getDecorView(), firstTitle);
-                assertEquals(afterLater, keys(queue(container)));
+                for (String step : List.of("Messer holen", "Gemüse schneiden", "Reis aufsetzen")) {
+                    object(device, By.res(context.getPackageName(), "today_add_step")).click();
+                    object(device, By.res(context.getPackageName(), "today_step_name_field")).setText(step);
+                    object(device, By.text(context.getString(R.string.today_step_submit))).click();
+                    object(device, By.text(step));
+                }
+                object(device, By.res(context.getPackageName(), "today_sort_steps")).click();
+                object(device, By.desc(context.getString(R.string.today_sort_step_up, "Gemüse schneiden"))).click();
+                Rect from = object(device, By.desc(context.getString(R.string.today_drag_step, "Reis aufsetzen")))
+                        .getVisibleBounds();
+                Rect to = object(device, By.desc(context.getString(R.string.today_drag_step, "Messer holen")))
+                        .getVisibleBounds();
+                assertTrue(device.swipe(from.centerX(), from.centerY(), to.centerX(), to.top + to.height() / 4, 25));
+                object(device, By.text(context.getString(R.string.today_finish_sort))).click();
+                View sortedRoot = root;
+                PresentationAwaiter.await(instrumentation, "Step order not displayed", () -> {
+                    View rice = find(sortedRoot, view -> view instanceof TextView
+                            && "Reis aufsetzen".contentEquals(((TextView) view).getText()));
+                    View knife = find(sortedRoot, view -> view instanceof TextView
+                            && "Messer holen".contentEquals(((TextView) view).getText()));
+                    if (rice == null || knife == null) return false;
+                    int[] ricePosition = new int[2];
+                    int[] knifePosition = new int[2];
+                    rice.getLocationOnScreen(ricePosition);
+                    knife.getLocationOnScreen(knifePosition);
+                    return ricePosition[1] < knifePosition[1];
+                }, sortedRoot);
+                List<de.thonktank.autosecretary.data.local.OccurrenceStepEntity> sorted =
+                        container.database.steps().occurrenceSteps(b.id);
+                assertEquals(List.of("Gemüse schneiden", "Reis aufsetzen", "Messer holen"),
+                        sorted.stream().map(step -> step.text).collect(java.util.stream.Collectors.toList()));
+
+                object(device, By.res(context.getPackageName(), "today_back_to_overview")).click();
+                object(device, By.desc(context.getString(R.string.today_hide_task, secondTitle))).click();
+                object(device, By.text(context.getString(R.string.today_hidden_feedback, secondTitle)));
+                assertFalse(keys(queue(container)).contains(b.key()));
+                object(device, By.text(context.getString(R.string.action_undo))).click();
+                object(device, By.desc(context.getString(R.string.today_hide_task, secondTitle))).click();
+                object(device, By.text(context.getString(R.string.today_hidden_feedback, secondTitle)));
+
+                scenario.recreate();
+                object(device, By.text(context.getString(R.string.today_hidden_group, 1))).click();
+                object(device, By.desc(context.getString(R.string.today_restore_task, secondTitle))).click();
+                object(device, By.descStartsWith(context.getString(R.string.today_open_task, secondTitle)));
+                assertEquals(expected, keys(queue(container)));
             }
+
         } finally {
             for (TaskId id : created) container.catalog.delete.execute(id);
         }
+    }
+
+    private static UiObject2 object(UiDevice device, BySelector selector) {
+        UiObject2 found = device.wait(Until.findObject(selector), 12_000);
+        assertNotNull("Missing " + selector, found);
+        return found;
     }
 
     private static TaskDefinition definition(String title) {

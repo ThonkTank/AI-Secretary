@@ -594,4 +594,33 @@
     <string name="action_edit_step">Schritt bearbeiten</string>
     <string name="step_edit_future_hint">Änderungen gelten dauerhaft. Bei begonnenen Schritten gelten neue Mengen, Dauer und Satzpausen erst ab der nächsten Ausführung. Der Rhythmus gilt für künftige Ausführungen.</string>
     <string name="step_edit_deferred">Neue Vorgaben gelten ab der nächsten Ausführung.</string>
+    <string name="today_title">Heute</string>
+    <string name="today_back">‹ Heute</string>
+    <string name="today_progress">%1$d von %2$d erledigt</string>
+    <string name="today_open_task">Aufgabe „%1$s“ öffnen</string>
+    <string name="today_switch_task">Aufgabe wechseln</string>
+    <string name="today_hide">Ausblenden</string>
+    <string name="today_hide_task">„%1$s“ für heute ausblenden</string>
+    <string name="today_restore">Einblenden</string>
+    <string name="today_restore_task">„%1$s“ wieder einblenden</string>
+    <string name="today_hidden_feedback">„%1$s“ für heute ausgeblendet</string>
+    <string name="today_hidden_group">Heute ausgeblendet (%1$d)</string>
+    <string name="today_no_open_work">Gerade ist keine Aufgabe offen.</string>
+    <string name="today_sort_steps">Sortieren</string>
+    <string name="today_sort_step_title">Reihenfolge ändern</string>
+    <string name="today_drag_step">Schritt „%1$s“ ziehen</string>
+    <string name="today_sort_step_up">„%1$s“ nach oben</string>
+    <string name="today_sort_step_down">„%1$s“ nach unten</string>
+    <string name="today_finish_sort">Fertig</string>
+    <string name="today_step_name">Name des Schritts</string>
+    <string name="today_step_add_short">+ Schritt</string>
+    <string name="today_step_submit">Hinzufügen</string>
+    <string name="today_step_done_group">Erledigt (%1$d)</string>
+    <string name="today_step_empty">Diese Aufgabe hat noch keine Schritte.</string>
+    <string name="today_cancel">Abbrechen</string>
+    <string name="error_step_add">Der Schritt konnte nicht hinzugefügt werden.</string>
+    <plurals name="today_open_tasks">
+        <item quantity="one">%1$d Aufgabe offen</item>
+        <item quantity="other">%1$d Aufgaben offen</item>
+    </plurals>
 </resources>
