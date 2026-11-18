@@ -181,6 +181,21 @@ public final class TodayActionIntegrationRobolectricTest {
         assertEquals(1, viewModel.state().getValue().today().completedToday.size());
     }
 
+    @Test public void closeConfirmationForwardsTheSelectedTaskAndAcknowledgesOnlyItsRequest() {
+        TaskId task = add("Tagesabschluss", TaskSlot.EVENING);
+        mount();
+        viewModel.dispatch(TodayAction.requestClose(task.value, "Tagesabschluss"));
+        TodayRequest request = viewModel.state().getValue().firstRequest();
+        assertNotNull(request);
+        assertEquals(TodayRequest.Kind.CONFIRM_CLOSE, request.kind);
+        assertEquals(task.value, request.taskId);
+        assertEquals("Tagesabschluss", request.title);
+        viewModel.dispatch(TodayAction.acknowledgeRequest("other-request"));
+        assertEquals(request.id, viewModel.state().getValue().firstRequest().id);
+        viewModel.dispatch(TodayAction.acknowledgeRequest(request.id));
+        assertNull(viewModel.state().getValue().firstRequest());
+    }
+
     private TaskId add(String title, TaskSlot slot) {
         return useCases.catalog.create.execute(definition(title, slot, Collections.emptyList()));
     }
