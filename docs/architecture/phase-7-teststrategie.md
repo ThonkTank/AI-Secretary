@@ -1,9 +1,20 @@
 # Teststrategie nach dem Today-/Fokus-Refactor
 
-Stand: 2026-09-09, mobile Verifikationshärtung abgeschlossen
+Die Testschichten stammen aus dem Today-/Fokus-Refactor. Für die aktuelle Datenbankversion
+gilt [DatabaseContract](../../app/src/main/java/de/thonktank/autosecretary/DatabaseContract.java).
+Die erforderlichen signierten Upgradeprüfungen beschreibt [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md).
 
-Der Dateiname bleibt für bestehende Links erhalten. Der Inhalt beschreibt den aktuellen Stand
-nach Datenbankschema 14 und der anschließenden Today-/Fokus-Baseline.
+## Schrittregeln prüfen
+
+Ändert sich der Ist-Wert eines schon erfassten Satzes, prüft der erste Fall die XP-Differenz
+gegen den eingefrorenen Planwert. Der zweite Fall prüft die Bearbeitung bei zwischenzeitlichem
+Fortschritt: Die Vorlage erhält die neuen Vorgaben und die begonnene Ausführung behält ihre Historie.
+
+```bash
+./gradlew :app:testInstrumentationUnitTest \
+  --tests '*XpComboRobolectricTest.repetitionXpTracksActualRatioAndCorrectionsAgainstFrozenPlan*' \
+  --tests '*StepQuickEditRobolectricTest.progressArrivingAfterOpenDefersPrescriptionAndKeepsEarnedHistory*'
+```
 
 ## Testschichten
 
@@ -38,10 +49,11 @@ Test-Fixtures `DashboardEventRecorder` und `ViewTestQueries`. Verbliebene packag
 Geometrie-/Renderzugriffe sowie `ReflectionHelpers` sind als technische Schuld dieser Baseline
 explizit erfasst; die Leaf-Migration und Phase 5 entfernen sie wieder aus dem Produktivcode.
 
-## Migrationsmatrix
+## Historische Migrationsmatrix bis Schema 14
 
-`DatabaseMigrationRobolectricTest` deckt die historische Kette ab Schema 1 sowie den produktiv
-unterstützten Upgradepfad von Schema 8 bis Schema 14 ab. `ExportedRoomSchemaFixture` baut historische Tabellen, Indizes, Views und Room-
+Beim damaligen Stand prüfte `DatabaseMigrationRobolectricTest` die historische Kette ab Schema 1
+und den Produktionspfad von Schema 8 bis Schema 14. Die heutige Produktionsmatrix folgt dem
+[versionierten Upgrade-Korpus](../../release/upgrade-fixtures/corpus.json). `ExportedRoomSchemaFixture` baut historische Tabellen, Indizes, Views und Room-
 Metadaten direkt aus `app/schemas/de.thonktank.autosecretary.AppDatabase/<version>.json` auf.
 
 Die Migration 7→8 besitzt zusätzliche Fälle für 0, 12, 999, 1200, fehlerhaften Legacytext,
