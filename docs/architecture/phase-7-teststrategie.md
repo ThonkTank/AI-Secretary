@@ -90,10 +90,17 @@ dem zuerst erzeugten Actual; ein Update ohne exakt passendes vorheriges Actual b
 
 ## Lokale Befehle und vollständiges Gate
 
+Alle plattformfreien Java-Fachtests:
+
+```bash
+./gradlew :core-domain:test :today-core:test
+```
+
 Schnelle fachliche Rückmeldung:
 
 ```bash
-./gradlew testInstrumentationUnitTest --tests '*RepetitionProgressTest' \
+./gradlew :core-domain:test --tests '*RepetitionProgressTest'
+./gradlew :app:testInstrumentationUnitTest \
   --tests '*RepetitionInputReducerTest' --tests '*FocusStepLayoutPolicyTest'
 ```
 
@@ -108,8 +115,8 @@ Betroffene Fokusoberfläche einschließlich Golden und Accessibility:
 Verbindliches Abschluss-Gate:
 
 ```bash
-./gradlew :core-domain:compileJava :today-core:compileJava \
-  testInstrumentationUnitTest --no-parallel --max-workers=1
+./gradlew :core-domain:test :today-core:test :app:testInstrumentationUnitTest \
+  --no-parallel --max-workers=1
 ./gradlew assembleDebug assembleInstrumentationAndroidTest --no-parallel --max-workers=1
 ```
 
@@ -137,9 +144,9 @@ Fokus-, Homescreen-, Widget- und Editor-Goldens waren byteidentisch.
 ## Ergänzung: Today-/Fokus-Abschlussphase
 
 `core-domain` und `today-core` sind reine Java-Module. Ihre Compilergrenzen ersetzen die
-früheren Quelltextscans auf Android-/Managementimporte; Pakettests bleiben für Android-Views im
-App-Modul bestehen. Die App-Unit-Suite testet die Kernklassen weiterhin zusammen mit den realen
-Mappern, Room-Adaptern und Views.
+früheren Quelltextscans auf Android-/Managementimporte. Gradle prüft die
+Produktionsklassenpfade beider Module bei ihren Fachtests. Die App-Unit-Suite prüft das
+Zusammenspiel der Kernklassen mit den realen Mappern, Room-Adaptern und Views.
 
 `TodayInteractionInstrumentationTest` ergänzt den Gerätepfad in fünf voneinander unabhängigen
 Szenarien: Long-Press-Beginn, Preview und persistierter Drop, Randscrollen, Accessibility-Reorder
@@ -207,8 +214,8 @@ Packaging, Signatur, Hash, anwendbare Upgrades und Publish bleiben am exakten Ma
 Die lokale und die Remote-Prüfung verwenden die vier Profile aus [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md).
 Das vollständige Profil besitzt drei getrennte Qualitäts-Lanes:
 
-- `scripts/ci/check-fast.sh` führt Helferverträge sowie nichtvisuelle Unit-, Room- und
-  Architekturtests aus;
+- `scripts/ci/check-fast.sh` führt Helferverträge, die Fachtests beider Kernmodule und die
+  nichtvisuellen Unit-, Room- und Architekturtests der App aus;
 - `scripts/ci/check-goldens.sh` führt ausschließlich Golden- und Design-System-Verträge aus;
 - der Build-Lane führt Lint und alle installierbaren Debug-, Instrumentierungs-, Test- und
   Release-Pakete aus.

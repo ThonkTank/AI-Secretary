@@ -18,7 +18,7 @@ TODAY_PRODUCTION = frozenset({
 })
 TODAY_TESTS = frozenset({
     "app/src/test/java/de/thonktank/autosecretary/TodayCoordinatorTest.java",
-    "app/src/test/java/de/thonktank/autosecretary/TodayCommandDispatcherTest.java",
+    "today-core/src/test/java/de/thonktank/autosecretary/TodayCommandDispatcherTest.java",
     "app/src/test/java/de/thonktank/autosecretary/TodayActionIntegrationRobolectricTest.java",
     "app/src/test/java/de/thonktank/autosecretary/FocusTaskViewTest.java",
 })

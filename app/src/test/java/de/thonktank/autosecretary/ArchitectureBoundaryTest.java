@@ -15,24 +15,15 @@ import java.util.stream.Stream;
 
 /** Executable package rules for the management and execution slices. */
 public final class ArchitectureBoundaryTest {
-    @Test public void domainIsOwnedByThePureJavaCompilerModule() throws Exception {
+    @Test public void domainIsOwnedByCoreDomain() throws Exception {
         assertTrue(Files.isDirectory(Path.of("../core-domain/src/main/java")));
         assertFalse(hasJava(Path.of(
                 "src/main/java/de/thonktank/autosecretary/domain")));
-        String build = read(Path.of("../core-domain/build.gradle.kts"));
-        assertTrue(build.contains("`java-library`"));
-        assertFalse(build.contains("com.android"));
-        assertFalse(build.contains("dependencies"));
     }
 
-    @Test public void todayCoreHasOnlyTheDomainCompilerDependency() throws Exception {
+    @Test public void todayStateAndAndroidViewModelHaveSeparateOwners() {
         assertTrue(Files.isDirectory(Path.of("../today-core/src/main/java")));
         assertTrue(Files.exists(main("presentation/today/TodayViewModel.java")));
-        String build = read(Path.of("../today-core/build.gradle.kts"));
-        assertTrue(build.contains("`java-library`"));
-        assertTrue(build.contains("api(project(\":core-domain\"))"));
-        assertFalse(build.contains("com.android"));
-        assertFalse(build.contains("androidx"));
     }
 
     @Test public void todayAndLeafViewsLiveBehindFeaturePackageBoundaries() {

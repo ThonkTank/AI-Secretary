@@ -6,7 +6,8 @@ cd "$repo_root"
 
 python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
 python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
-./gradlew testInstrumentationUnitTest lintDebug assembleDebug assembleInstrumentation \
+./gradlew :core-domain:test :today-core:test :app:testInstrumentationUnitTest \
+  lintDebug assembleDebug assembleInstrumentation \
   assembleInstrumentationAndroidTest assembleRelease
 ./scripts/ci/verify-instrumentation-identity.sh
 test "$(stat -c%s app/build/outputs/apk/debug/app-debug.apk)" -lt 10485760

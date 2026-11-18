@@ -6,4 +6,4 @@ cd "$repo_root"
 
 python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
 python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
-./gradlew testInstrumentationUnitTest -PqualityContractsOnly=true
+./gradlew :core-domain:test :today-core:test :app:testInstrumentationUnitTest -PqualityContractsOnly=true

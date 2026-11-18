@@ -152,9 +152,7 @@ Aufgaben bei allen folgenden Updates erhalten.
 Der lokale Quality-Gate bleibt:
 
 ```bash
-python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
-python3 -m unittest discover -s scripts/release -p 'test_*.py' -v
-./gradlew testInstrumentationUnitTest lintDebug assembleDebug assembleInstrumentationAndroidTest assembleRelease
+./scripts/ci/check-all.sh
 ```
 
 Ein lokaler `assembleRelease` bleibt absichtlich unsigned. Ein signierter Build erfordert den

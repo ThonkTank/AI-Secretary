@@ -21,7 +21,12 @@ class ChangeScopeTest(unittest.TestCase):
             self.assertFalse(scope.release_required)
 
     def test_host_tests_include_new_tests_without_device_or_release(self):
-        for path in ('app/src/test/java/example/ProjectionTest.java', 'scripts/release/test_release_tool.py'):
+        for path in (
+            'app/src/test/java/example/ProjectionTest.java',
+            'core-domain/src/test/java/example/GraphTest.java',
+            'today-core/src/test/java/example/ReducerTest.java',
+            'scripts/release/test_release_tool.py',
+        ):
             scope = classify_changes([Change('A', path)])
             self.assertEqual('host', scope.profile)
             self.assertTrue(scope.quality_required)
@@ -29,6 +34,10 @@ class ChangeScopeTest(unittest.TestCase):
             self.assertFalse(scope.release_required)
 
     def test_only_audited_today_files_and_direct_tests_use_today_profile(self):
+        dispatcher_test = (
+            'today-core/src/test/java/de/thonktank/autosecretary/TodayCommandDispatcherTest.java'
+        )
+        self.assertEqual('today', classify([DISPATCHER, dispatcher_test]).profile)
         scope = classify([COORDINATOR, DISPATCHER, *TODAY_TESTS, 'docs/releasing.md'])
         self.assertEqual('today', scope.profile)
         self.assertTrue(scope.build_required)
