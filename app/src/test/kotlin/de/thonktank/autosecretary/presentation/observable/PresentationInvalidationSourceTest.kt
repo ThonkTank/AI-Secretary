@@ -11,13 +11,15 @@ import java.time.LocalTime
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -33,8 +35,8 @@ class PresentationInvalidationSourceTest {
             val dashboard = source.dashboardChanges.produceIn(this)
             val catalog = source.catalogChanges.produceIn(this)
 
-            assertInitial(dashboard.receive(), PresentationInvalidationTarget.DASHBOARD)
-            assertInitial(catalog.receive(), PresentationInvalidationTarget.CATALOG)
+            assertInitial(dashboard, PresentationInvalidationTarget.DASHBOARD)
+            assertInitial(catalog, PresentationInvalidationTarget.CATALOG)
             await { inputs.allStarts(1) }
 
             dashboard.cancel()
@@ -45,7 +47,7 @@ class PresentationInvalidationSourceTest {
             await { inputs.allStops(1) }
 
             val widgets = source.widgetChanges.produceIn(this)
-            assertInitial(widgets.receive(), PresentationInvalidationTarget.WIDGETS)
+            assertInitial(widgets, PresentationInvalidationTarget.WIDGETS)
             await { inputs.allStarts(2) }
             widgets.cancel()
             await { inputs.allStops(2) }
@@ -64,44 +66,36 @@ class PresentationInvalidationSourceTest {
             val dashboard = source.dashboardChanges.produceIn(this)
             val catalog = source.catalogChanges.produceIn(this)
             val flowRuns = source.flowRunChanges.produceIn(this)
-            assertInitial(dashboard.receive(), PresentationInvalidationTarget.DASHBOARD)
-            assertInitial(catalog.receive(), PresentationInvalidationTarget.CATALOG)
-            assertInitial(flowRuns.receive(), PresentationInvalidationTarget.FLOW_RUNS)
+            assertInitial(dashboard, PresentationInvalidationTarget.DASHBOARD)
+            assertInitial(catalog, PresentationInvalidationTarget.CATALOG)
+            assertInitial(flowRuns, PresentationInvalidationTarget.FLOW_RUNS)
             await { inputs.allStarts(1) }
-            assertEquals(
-                setOf(
-                    PresentationInvalidationCause.DATABASE,
-                    PresentationInvalidationCause.CALENDAR,
-                    PresentationInvalidationCause.DISPLAY_PREFERENCES,
-                    PresentationInvalidationCause.CALENDAR_POLICY,
-                    PresentationInvalidationCause.CLOCK,
-                ),
-                (1..5).map { dashboard.receive().cause }.toSet(),
-            )
-            assertEquals(PresentationInvalidationCause.DATABASE, catalog.receive().cause)
-            assertEquals(PresentationInvalidationCause.CLOCK, flowRuns.receive().cause)
+            inputs.emitInitialValues()
+            assertUpstreamCauses(dashboard, PresentationInvalidationTarget.DASHBOARD)
+            assertEquals(PresentationInvalidationCause.DATABASE, catalog.next("catalog startup database event").cause)
+            assertEquals(PresentationInvalidationCause.CLOCK, flowRuns.next("flow runs startup clock").cause)
 
             inputs.database.emit(setOf("tasks"))
-            assertEquals(PresentationInvalidationCause.DATABASE, dashboard.receive().cause)
-            val databaseEvent = catalog.receive()
+            assertEquals(PresentationInvalidationCause.DATABASE, dashboard.next("dashboard database change").cause)
+            val databaseEvent = catalog.next("catalog database change")
             assertEquals(PresentationInvalidationCause.DATABASE, databaseEvent.cause)
             assertEquals(setOf("tasks"), databaseEvent.changedTables)
 
             inputs.calendar.emit(Unit)
-            assertEquals(PresentationInvalidationCause.CALENDAR, dashboard.receive().cause)
+            assertEquals(PresentationInvalidationCause.CALENDAR, dashboard.next("dashboard calendar change").cause)
             yield()
             assertTrue(catalog.tryReceive().isFailure)
 
             val widgets = source.widgetChanges.produceIn(this)
-            assertInitial(widgets.receive(), PresentationInvalidationTarget.WIDGETS)
+            assertInitial(widgets, PresentationInvalidationTarget.WIDGETS)
             assertTrue(widgets.tryReceive().isFailure)
 
             val preferences = DisplayPreferences(UiThemeMode.DARK, FocusStepLimit.THREE)
             inputs.display.emit(preferences)
-            val displayEvent = dashboard.receive()
+            val displayEvent = dashboard.next("dashboard display preferences")
             assertEquals(PresentationInvalidationCause.DISPLAY_PREFERENCES, displayEvent.cause)
             assertEquals(preferences, displayEvent.displayPreferences)
-            assertEquals(preferences, widgets.receive().displayPreferences)
+            assertEquals(preferences, widgets.next("widget display preferences").displayPreferences)
 
             val clock = ClockSnapshot(
                 LocalDate.of(2026, 8, 25),
@@ -110,9 +104,9 @@ class PresentationInvalidationSourceTest {
                 0L,
             )
             inputs.clock.emit(clock)
-            assertEquals(clock, dashboard.receive().clock)
-            assertEquals(clock, widgets.receive().clock)
-            assertEquals(clock, flowRuns.receive().clock)
+            assertEquals(clock, dashboard.next("dashboard clock").clock)
+            assertEquals(clock, widgets.next("widget clock").clock)
+            assertEquals(clock, flowRuns.next("flow runs clock").clock)
             assertTrue(catalog.tryReceive().isFailure)
 
             dashboard.cancel()
@@ -132,14 +126,15 @@ class PresentationInvalidationSourceTest {
         val source = inputs.source(dispatcher)
         try {
             val dashboard = source.dashboardChanges.produceIn(this)
-            assertInitial(dashboard.receive(), PresentationInvalidationTarget.DASHBOARD)
+            assertInitial(dashboard, PresentationInvalidationTarget.DASHBOARD)
             await { inputs.allStarts(1) }
 
+            inputs.database.emit(setOf("tasks"))
             source.close()
 
             withTimeout(5_000) {
                 while (dashboard.receiveCatching().isSuccess) {
-                    // Drain any already queued startup invalidations before observing completion.
+                    // Drain any queued invalidation before observing completion.
                 }
             }
             await { inputs.allStops(1) }
@@ -157,17 +152,18 @@ class PresentationInvalidationSourceTest {
         try {
             val dashboard = source.dashboardChanges.produceIn(this)
             val widgets = source.widgetChanges.produceIn(this)
-            assertInitial(dashboard.receive(), PresentationInvalidationTarget.DASHBOARD)
-            assertInitial(widgets.receive(), PresentationInvalidationTarget.WIDGETS)
+            assertInitial(dashboard, PresentationInvalidationTarget.DASHBOARD)
+            assertInitial(widgets, PresentationInvalidationTarget.WIDGETS)
             await { inputs.allStarts(1) }
-            repeat(5) { dashboard.receive() }
-            repeat(5) { widgets.receive() }
+            inputs.emitInitialValues()
+            assertUpstreamCauses(dashboard, PresentationInvalidationTarget.DASHBOARD)
+            assertUpstreamCauses(widgets, PresentationInvalidationTarget.WIDGETS)
 
             source.materializeWidgetHostChange()
 
-            assertEquals(PresentationInvalidationCause.WIDGET_HOST, widgets.receive().cause)
-            yield()
-            assertTrue(dashboard.tryReceive().isFailure)
+            assertEquals(PresentationInvalidationCause.WIDGET_HOST, widgets.next("widget host change").cause)
+            inputs.calendar.emit(Unit)
+            assertEquals(PresentationInvalidationCause.CALENDAR, dashboard.next("calendar after widget host").cause)
             dashboard.cancel()
             widgets.cancel()
         } finally {
@@ -176,12 +172,32 @@ class PresentationInvalidationSourceTest {
         }
     }
 
-    private fun assertInitial(
-        event: PresentationInvalidation,
+    private suspend fun ReceiveChannel<PresentationInvalidation>.next(expected: String) =
+        withTimeoutOrNull(5_000) { receive() }
+            ?: throw AssertionError("Timed out waiting for $expected")
+
+    private suspend fun assertInitial(
+        channel: ReceiveChannel<PresentationInvalidation>,
         target: PresentationInvalidationTarget,
     ) {
+        val event = channel.next("$target initial invalidation")
         assertEquals(PresentationInvalidationCause.INITIAL, event.cause)
         assertEquals(setOf(target), event.targets)
+    }
+
+    private suspend fun assertUpstreamCauses(
+        channel: ReceiveChannel<PresentationInvalidation>,
+        target: PresentationInvalidationTarget,
+    ) {
+        val expected = setOf(
+            PresentationInvalidationCause.DATABASE,
+            PresentationInvalidationCause.CALENDAR,
+            PresentationInvalidationCause.DISPLAY_PREFERENCES,
+            PresentationInvalidationCause.CALENDAR_POLICY,
+            PresentationInvalidationCause.CLOCK,
+        )
+        val received = List(expected.size) { index -> channel.next("$target upstream event ${index + 1}").cause }
+        assertEquals(expected, received.toSet())
     }
 
     private suspend fun await(condition: () -> Boolean) {
@@ -216,6 +232,10 @@ class PresentationInvalidationSourceTest {
                 sharingDispatcher = dispatcher,
             )
 
+        suspend fun emitInitialValues() {
+            all().forEach { it.emitInitial() }
+        }
+
         fun allStarts(expected: Int) = all().all { it.starts.get() == expected }
         fun allStops(expected: Int) = all().all { it.stops.get() == expected }
 
@@ -223,16 +243,18 @@ class PresentationInvalidationSourceTest {
             listOf(database, calendar, display, policy, clock)
     }
 
-    private class TrackedFlow<T>(initial: T) {
-        private val values = MutableSharedFlow<T>(replay = 1).apply { tryEmit(initial) }
+    private class TrackedFlow<T>(private val initial: T) {
+        private val values = MutableSharedFlow<T>()
         val starts = AtomicInteger()
         val stops = AtomicInteger()
         val flow: Flow<T> = values
-            .onStart { starts.incrementAndGet() }
+            .onSubscription { starts.incrementAndGet() }
             .onCompletion { stops.incrementAndGet() }
 
+        suspend fun emitInitial() = emit(initial)
+
         suspend fun emit(value: T) {
-            values.emit(value)
+            withTimeout(5_000) { values.emit(value) }
         }
     }
 }
