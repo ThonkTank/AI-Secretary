@@ -1,5 +1,6 @@
 plugins {
     `java-library`
+    `java-test-fixtures`
 }
 
 java {
@@ -9,6 +10,7 @@ java {
 
 dependencies {
     api(project(":core-domain"))
+    testImplementation("junit:junit:4.13.2")
 }
 
 tasks.withType<JavaCompile>().configureEach {

@@ -7,6 +7,10 @@ java {
     targetCompatibility = JavaVersion.VERSION_17
 }
 
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+}
+
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.add("-Xlint:all")
 }

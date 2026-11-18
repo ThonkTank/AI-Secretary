@@ -187,6 +187,7 @@ dependencies {
     implementation("androidx.activity:activity:1.13.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     testImplementation("junit:junit:4.13.2")
+    testImplementation(testFixtures(project(":today-core")))
     testImplementation("androidx.test:core:1.7.0")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation("org.robolectric:robolectric:4.14.1")
