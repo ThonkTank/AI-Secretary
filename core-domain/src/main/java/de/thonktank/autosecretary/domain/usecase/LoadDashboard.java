@@ -1,17 +1,22 @@
 package de.thonktank.autosecretary.domain.usecase;
 
+import de.thonktank.autosecretary.domain.model.ComboProgress;
 import de.thonktank.autosecretary.domain.model.Dashboard;
 import de.thonktank.autosecretary.domain.model.DashboardTask;
+import de.thonktank.autosecretary.domain.model.FlowTaskSheet;
+import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 import de.thonktank.autosecretary.domain.model.Occurrence;
+import de.thonktank.autosecretary.domain.model.OccurrenceKind;
 import de.thonktank.autosecretary.domain.model.OccurrenceStep;
+import de.thonktank.autosecretary.domain.model.RewardBooking;
 import de.thonktank.autosecretary.domain.model.Task;
 import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TaskKind;
 import de.thonktank.autosecretary.domain.model.TaskSchedule;
-import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.CatalogRepository;
-import de.thonktank.autosecretary.domain.repository.FlowRepository;
 import de.thonktank.autosecretary.domain.repository.StepRepository;
 import de.thonktank.autosecretary.domain.repository.TodayRepository;
+import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -20,25 +25,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.LinkedHashMap;
-import de.thonktank.autosecretary.domain.model.ComboProgress;
-import de.thonktank.autosecretary.domain.model.CapacityResource;
-import de.thonktank.autosecretary.domain.model.RewardBooking;
-import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
-import de.thonktank.autosecretary.domain.model.FlowRunSummary;
-import de.thonktank.autosecretary.domain.model.FlowCandidate;
-import de.thonktank.autosecretary.domain.model.FlowTaskSheet;
-import de.thonktank.autosecretary.domain.model.FlowTaskSheetPlacement;
-import de.thonktank.autosecretary.domain.model.FlowRunResourceSnapshot;
-import de.thonktank.autosecretary.domain.model.StepFlowDefinition;
-import de.thonktank.autosecretary.domain.model.StepResourceLease;
-import de.thonktank.autosecretary.domain.model.StepTransition;
-import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
-import de.thonktank.autosecretary.domain.model.OccurrenceKind;
-import de.thonktank.autosecretary.domain.model.StepFlowRun;
-import de.thonktank.autosecretary.domain.model.StepFlowRunState;
-import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 
 public final class LoadDashboard {
     private final CatalogRepository catalog;
@@ -48,36 +36,24 @@ public final class LoadDashboard {
     private final TransactionRunner transactions;
 
     public LoadDashboard(CatalogRepository catalog, StepRepository steps,
-                         TodayRepository today, FlowRepository flowRepository) {
-        this(catalog, steps, today, flowRepository, null, null);
-    }
-
-    public LoadDashboard(CatalogRepository catalog, StepRepository steps,
-                         TodayRepository today, FlowRepository flowRepository,
-                         TransactionRunner transactions) {
-        this(catalog, steps, today, flowRepository, transactions, null);
-    }
-
-    public LoadDashboard(CatalogRepository catalog, StepRepository steps,
-                         TodayRepository today, FlowRepository flowRepository,
+                         TodayRepository today,
                          TransactionRunner transactions,
                          LoadGraphFlowSheets graphSheets) {
         this.catalog = catalog;
         this.steps = steps;
         this.today = today;
-        this.graphSheets = graphSheets;
-        this.transactions = transactions;
+        this.graphSheets = Objects.requireNonNull(graphSheets);
+        this.transactions = Objects.requireNonNull(transactions);
     }
 
     public Dashboard execute(LocalDate today) {
-        return transactions == null ? read(today) : transactions.inTransaction(() -> read(today));
+        return transactions.inTransaction(() -> read(today));
     }
 
     private Dashboard read(LocalDate today) {
         Map<TaskId, Task> tasks = new HashMap<>();
         for (Task task : catalog.allTasks()) tasks.put(task.id, task);
-        LoadGraphFlowSheets.Result graph = graphSheets == null ? null : graphSheets.execute(today, tasks);
-        List<FlowRunSummary> allFlowRuns = graph == null ? java.util.Collections.emptyList() : graph.runs;
+        LoadGraphFlowSheets.Result graph = graphSheets.execute(today, tasks);
         TaskSchedule schedule = new TaskSchedule(catalog.scheduleEntries());
         List<Occurrence> open = this.today.openOccurrences();
         List<Occurrence> completed = this.today.completedOccurrences(today);
@@ -100,13 +76,12 @@ public final class LoadDashboard {
             openCounts.put(key, openCounts.getOrDefault(key, 0) + 1);
         }
         Set<String> accumulatedSlots = new HashSet<>();
-        List<FlowTaskSheet> visibleFlowSheets = graph == null ? java.util.Collections.emptyList() : graph.sheets;
-        for (FlowTaskSheet sheet : visibleFlowSheets) included.add(sheet.task.id);
+        for (FlowTaskSheet sheet : graph.sheets) included.add(sheet.task.id);
         for (Occurrence occurrence : open) {
             Task task = tasks.get(occurrence.taskId);
             if (task == null || task.archived || task.conditionDone) continue;
             if (occurrence.kind == OccurrenceKind.FLOW_STEP) continue;
-            if (graph != null && task.kind == de.thonktank.autosecretary.domain.model.TaskKind.FLOW) continue;
+            if (task.kind == TaskKind.FLOW) continue;
             String key = occurrence.taskId.value + '|' + occurrence.slot.name();
             if (occurrence.kind != OccurrenceKind.FLOW_STEP
                     && task.missedOccurrenceMode == MissedOccurrenceMode.ACCUMULATE
@@ -145,8 +120,7 @@ public final class LoadDashboard {
                 .thenComparingLong(item -> item.task.catalogOrder));
         Map<String, ComboProgress> combos = new HashMap<>();
         for (ComboProgress combo : this.today.combos()) combos.put(combo.ownerId, combo);
-        List<FlowRunSummary> flowRuns = new ArrayList<>(allFlowRuns);
-        return new Dashboard(this.today.xp(), result, combos, flowRuns, visibleFlowSheets,
+        return new Dashboard(this.today.xp(), result, combos, graph.runs, graph.sheets,
                 this.today.todayPlacements());
     }
 

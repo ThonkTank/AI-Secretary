@@ -19,6 +19,11 @@ import de.thonktank.autosecretary.domain.repository.TodayRepository;
 import de.thonktank.autosecretary.domain.transaction.TransactionRunner;
 import de.thonktank.autosecretary.domain.today.TodayStepPositionUpdate;
 
+import de.thonktank.autosecretary.domain.repository.FlowGraphDefinitionRepository;
+import de.thonktank.autosecretary.domain.repository.FlowGraphRunRepository;
+import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
+import de.thonktank.autosecretary.domain.usecase.LoadGraphFlowSheets;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -52,6 +57,12 @@ public final class InMemoryExecutionRepository {
     private Map<String, ComboObligation> comboObligations = new LinkedHashMap<>();
     private Map<String, ComboDecayEvent> comboDecayEvents = new LinkedHashMap<>();
     private int xp;
+
+    public LoadDashboard dashboard() {
+        LoadGraphFlowSheets graph = new LoadGraphFlowSheets(catalog, steps, today, flows,
+                adapter(FlowGraphDefinitionRepository.class), adapter(FlowGraphRunRepository.class), transactions);
+        return new LoadDashboard(catalog, steps, today, transactions, graph);
+    }
 
     private <T> T adapter(Class<T> port) {
         Object value = Proxy.newProxyInstance(port.getClassLoader(), new Class<?>[]{port},

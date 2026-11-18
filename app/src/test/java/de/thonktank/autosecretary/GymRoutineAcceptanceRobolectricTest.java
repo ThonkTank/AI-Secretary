@@ -46,7 +46,6 @@ import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteRemainingSteps;
 import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
-import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 import de.thonktank.autosecretary.presentation.AndroidUiTextProvider;
@@ -80,7 +79,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
         new CreateTask(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids).execute(gym);
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
         TodayUiModel dashboard = new DashboardUiMapper(new AndroidUiTextProvider(context)).map(
-                new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows).execute(TODAY), TODAY);
+                repository.dashboard().execute(TODAY), TODAY);
         FocusTaskUiModel focus = dashboard.focus;
         assertTrue("The materialized gym routine must become today's focus", focus != null);
         assertEquals(4, focus.steps.size());
@@ -192,7 +191,7 @@ public final class GymRoutineAcceptanceRobolectricTest {
     private static TodayUiModel dashboard(InMemoryExecutionRepository repository, Clock clock,
                                            Context context) {
         return new DashboardUiMapper(new AndroidUiTextProvider(context)).map(
-                new LoadDashboard(repository.catalog, repository.steps, repository.today, repository.flows).execute(clock.today()), clock.today());
+                repository.dashboard().execute(clock.today()), clock.today());
     }
 
     private static TaskStepDefinition step(int position, String title, StepAmountKind kind,
