@@ -12,6 +12,9 @@ import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 
 import de.thonktank.autosecretary.domain.model.Dashboard;
+import de.thonktank.autosecretary.domain.model.FlowCandidate;
+import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
+import de.thonktank.autosecretary.domain.model.FlowTaskSheet;
 import de.thonktank.autosecretary.domain.model.Occurrence;
 import de.thonktank.autosecretary.domain.model.OccurrenceState;
 import de.thonktank.autosecretary.domain.model.OccurrenceKind;
@@ -29,6 +32,7 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
+import de.thonktank.autosecretary.domain.repository.ComboPolicySource;
 import de.thonktank.autosecretary.domain.usecase.CloseOngoingTask;
 import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
@@ -55,6 +59,7 @@ import org.robolectric.annotation.Config;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -161,6 +166,40 @@ public final class UseCaseRobolectricTest {
         assertEquals(0, queries.stream().filter(sql -> sql.contains("flow_candidates")).count());
         assertEquals(0, queries.stream().filter(sql -> sql.contains("flow_task_sheet_placements"))
                 .count());
+    }
+
+    @Test public void dashboardReadsActiveGraphSnapshotsInBulk() {
+        ApplicationUseCaseComposition app = new ApplicationUseCaseComposition(database, clock, () -> 1000L,
+                ids, ComboPolicySource.defaults());
+        TaskId task = app.flows.saveGraph.execute(FlowEditorDraft.empty().rename("Ablauf")
+                .appendStep("Start", FlowDelayPolicy.fixed(0))
+                .appendStep("Weiter", FlowDelayPolicy.fixed(100)).edit());
+        String root = repository.transactions.inTransaction(() -> repository.graphDefinitions.find(task).graph.roots().get(0));
+        List<String> runIds = new ArrayList<>();
+        for (int count : List.of(0, 1, 10)) {
+            while (runIds.size() < count) {
+                String id = ids.nextId();
+                repository.flows.insertFlowCandidate(new FlowCandidate(id, task, root, "source-" + id,
+                        TODAY, TaskSlot.MORNING, runIds.size(), 1000L));
+                runIds.add(app.flows.runtime.start(id, null).runId);
+            }
+            queries.clear();
+            Dashboard dashboard = app.today.loadDashboard.execute(TODAY);
+            long snapshots = queries.stream().filter(sql -> sql.contains("step_flow_runs")
+                    || sql.contains("flow_run_steps") || sql.contains("flow_run_edges")
+                    || sql.contains("flow_run_resources")).count();
+            assertEquals(runIds, dashboard.flowRuns.stream().map(run -> run.id).toList());
+            assertEquals(count == 0 ? 0 : 1, dashboard.flowTaskSheets.size());
+            if (count > 0) {
+                List<FlowTaskSheet.Entry> entries = dashboard.flowTaskSheets.get(0).entries;
+                assertEquals(count, entries.size());
+                assertTrue(entries.stream().allMatch(entry -> entry.kind == FlowTaskSheet.Entry.Kind.RUN_STEP));
+                assertEquals(count, entries.stream().map(entry -> entry.targetId).distinct().count());
+            }
+            int budget = count == 0 ? 1 : 4;
+            assertTrue(count + " active runs used " + snapshots + " snapshot SELECTs",
+                    snapshots >= 1 && snapshots <= budget);
+        }
     }
 
     @Test public void materializationLoadsOpenTasksAndTemplatesInBulk() {

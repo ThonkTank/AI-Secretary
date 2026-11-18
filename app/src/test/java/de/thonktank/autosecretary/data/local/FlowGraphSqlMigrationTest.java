@@ -344,13 +344,23 @@ public final class FlowGraphSqlMigrationTest {
 
     @Test public void executionRepositoryFindsRuntimeIdentitiesButNeverProjectsAnUnstartedCandidate() {
         run("run", StepFlowRunState.OFFERED, 1, FlowResourceState.ACTIVE, 0);
+        run("other", StepFlowRunState.WAITING_TIME, 1, FlowResourceState.ACTIVE, 0);
         run("cancelled", StepFlowRunState.CANCELLED, 1, FlowResourceState.RELEASED, 0);
         run("collected", StepFlowRunState.COMPLETED, 2, FlowResourceState.RELEASED, 0);
         migrateCurrent();
         inTransaction(() -> {
             SqlFlowGraphRunRepository repository = repository();
-            assertEquals(1, repository.active().size());
-            assertEquals(1, repository.active(TaskId.of("task")).size());
+            for (List<FlowGraphRunRecord> active : List.of(repository.active(), repository.active(TaskId.of("task")))) {
+                assertEquals(List.of("other", "run"), active.stream().map(record -> record.run.id).toList());
+                for (FlowGraphRunRecord record : active) {
+                    String id = record.run.id;
+                    assertEquals("source-" + id, record.sourceKey);
+                    assertEquals(List.of(id + "-s0", id + "-s1", id + "-s2"), record.run.graph.stepIds);
+                    assertEquals(List.of(id + "-s1"), record.run.graph.successors(id + "-s0"));
+                    assertEquals(id + "-lease", record.run.leases.get(0).id);
+                    assertEquals("Frozen 1", record.run.steps.get(id + "-s1").source.title);
+                }
+            }
             assertTrue(repository.active(TaskId.of("normal")).isEmpty());
             assertNull(repository.findBySourceKey("not-started"));
             assertNull(repository.findByStepId("template1"));
