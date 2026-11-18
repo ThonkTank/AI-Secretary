@@ -151,7 +151,7 @@ public final class FlowTileGraph {
         Set<Link> edges = new LinkedHashSet<>(links);
         for (String old : predecessors(id)) if (!wanted.contains(old)) {
             edges.remove(new Link(old, id));
-            // Temporary verification probe: omit the shared continuation.
+            for (String next : successors(id)) edges.add(new Link(old, next));
         }
         for (String parent : wanted) {
             edges.add(new Link(parent, id));
