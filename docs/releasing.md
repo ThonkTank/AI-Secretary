@@ -98,6 +98,10 @@ Ein Fehler vor der abschließenden Prüfung veröffentlicht nichts. Ein Wiederan
 vorhandenen Draft, Tag und Assets desselben Commits weiter. Ein bereits veröffentlichter Commit
 erzeugt kein Duplikat. Das interne Artefakt trägt zusätzlich die Workflow-Versuchsnummer, damit
 auch ein GitHub-Rerun nicht mit einem unveränderlichen Artefakt des vorigen Versuchs kollidiert.
+Bricht die Emulator-Einrichtung vor dem Upgrade ab, starte den Wiederanlauf beim Job
+`package`. Er erzeugt den Kandidaten für die neue Versuchsnummer und stößt alle zugehörigen
+Upgradeprüfungen erneut an. Ein einzeln wiederholter Upgradejob findet unter der neuen
+Versuchsnummer kein Paket.
 
 Der Upgrade-Test lädt ausschließlich die vier im Korpus festgeschriebenen Tags. Historische
 Schemaexporte und ihre Migrationen bleiben zusätzlich durch schnelle Robolectric- und

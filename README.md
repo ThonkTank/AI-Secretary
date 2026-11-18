@@ -30,6 +30,9 @@ Eine kleine, private ADHS-Task-App für Android mit **jetzt**, **danach** und ei
   für Produktreleases und [Release-Anleitung](docs/releasing.md).
 - [Produktziele](docs/produktziele.md) und [Architekturindex](docs/architecture/README.md).
 
+Die [gezielten Testbefehle für Mengenfortschritt und Schrittbearbeitung](docs/architecture/phase-7-teststrategie.md#schrittregeln-prüfen)
+prüfen XP-Korrekturen und schützen bereits erfasste Ausführungen.
+
 Beantworte im Pull Request drei Fragen.
 
 1. Wo lebt die neue Fachregel?
