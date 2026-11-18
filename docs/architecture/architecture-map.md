@@ -1,149 +1,95 @@
-# Architekturkarte nach der Today-/Fokus-Bereinigung
+# Architekturkarte
 
-Stand der beschriebenen Today-/Fokus-Bereinigung: 2026-08-21, damals Datenbankschema 14.
-Aktueller Persistenzstand: Datenbankschema 24.
+## Modulgrenzen
 
-Schema 15 ergänzte den Editorvertrag, Schema 16 persistente Rhythmusanker, Schema 17/18 Timer-
-und Kombozustand und Schema 19 den eingefrorenen Planwert quantitativer Rewards. Schema 20 bis 22
-normalisieren Satzresultate und persistieren Trainingsentscheidungen, Lastfragen und ihre stabile
-Auditordnung. Diese Erweiterungen
-ändern die hier beschriebenen Compiler-, Today- und Repository-Port-Grenzen nicht. Die aktuelle
-Präsentationsbaseline und ihre weitere Migration stehen in der
-[Frontend-Modernisierungsroadmap](frontend-modernization-roadmap.md).
-
-Schema 23 trennt fällige `FlowCandidate`s, ausschließlich nutzergestartete `StepFlowRun`s und
-das gemeinsame Today-Read-Model `FlowTaskSheet`. Vor dem Start existieren weder Run-Snapshot
-noch Ressourcenbelegung; interne Ausführungs-Occurrences heißen `FLOW_STEP` und werden nicht
-als eigene Today-Blätter projiziert. `FlowTaskSheetPlacement` besitzt die stabile Blattposition,
-und Today-Aktionen verwenden geschlossene typisierte Ziele. Der verbindliche Vertrag steht in der
-[Roadmap für echte Ablaufkandidaten und gemeinsame Today-Blätter](flow-task-sheet-roadmap.md)
-und in [ADR-033](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md).
-Schema 24 repariert ausschließlich das eindeutig erkennbare 0.2.158-Wertebild in
-`flow_run_steps`; die dauerhaften Lineage- und Upgrade-Verträge stehen in
-[ADR-035](adr-035-physische-migrationshistorie-und-upgrade-fixtures.md).
-Phase 5b schaltet den Aufgabeneditor vollständig auf Compose um. Der produktive
-`TaskEditorComposeHostView` erhält ausschließlich den vom `TaskEditorViewModel` veröffentlichten
-`EditorUiState`; der frühere View-Renderer und seine lokale Orchestrierung sind entfernt.
-
-## Compilergrenzen
-
-```text
-:app (Android application)
-  ├── depends on :today-core
-  └── depends on :core-domain
-
-:today-core (plain Java)
-  └── depends on :core-domain
-
-:core-domain (plain Java)
-  └── no project or Android dependency
-```
-
-`core-domain` besitzt Domainmodelle, fünf fachliche Repository-Ports,
-Scheduling-/Schrittregeln und Use Cases.
-`today-core` besitzt die getrennten Fokus-, Timeline- und Historyprojektionen sowie
-`TodayAction`, `TodayCommand`, Reducer und Coordinator. Android-Ressourcen, Room, Lifecycle,
-Kalenderzugriff, Widgetcode und Views verbleiben in `app`.
+`:app` bindet Android, Room, Lifecycle, Kalender, Widgets und die Oberflächen an. Es nutzt
+`:today-core` und `:core-domain`. `:today-core` besitzt die Android-freien Today-Projektionen,
+Aktionen und Zustandsübergänge und verwendet `:core-domain`. `:core-domain` besitzt Modelle,
+Fachregeln, Use Cases und ihre Schnittstellen. Die Abhängigkeiten stehen in den Gradle-Dateien
+von [app](../../app/build.gradle.kts), [today-core](../../today-core/build.gradle.kts) und
+[core-domain](../../core-domain/build.gradle.kts).
 
 ## Today-Datenfluss
 
+Schrittaktionen wie Erfassen und Korrigieren folgen diesem Pfad.
+
 ```text
-ui.today View
-  → TodayActionSink
-  → TodayViewModel                                  (:app)
-      ├── TodayCoordinator / TodayReducer             (:today-core)
-      │   → TodayCommandDispatcher
-      │   → fokussierter Command-Handler                 (:app)
-      └── TrainingAssistantUiAction
-          → TrainingAssistantActionHandler                    (:app)
-  → fokussiertes Use-Case-Bündel → benannter Repository-Port (:core-domain)
-  → einer der fünf Room-Adapter / DAOs               (:app)
-  → DashboardPresenter / DashboardUiMapper          (:app)
-  → StateFlow<TodayScreenState>                     (:app)
-  → DashboardRenderer → ui.today View               (:app)
+Today-Oberfläche → TodayViewModel → Coordinator / Reducer → Command-Handler
+  → Use Case → Repository-Port → lokaler Adapter
+  → DashboardPresenter / DashboardUiMapper → TodayScreenState → DashboardRenderer
 ```
 
-`MainActivity` verdrahtet den Sink, verarbeitet aber keine Step-, Repetition-, Reorder-,
-Harvest-, Undo-, Verschiebe- oder Löschfachverzweigung. Dialoge und Systemanfragen liegen als
-stabile `TodayRequest`s im Screen State. Top-Level-Auswahl und globale Legacy-Palette besitzt
-bis zum Navigation-3-Cutover ein eigener `AppShellViewModel`; `DashboardEvent` und
-verbrauchbare `UiEvent`s existieren nicht mehr.
+[MainActivity](../../app/src/main/java/de/thonktank/autosecretary/MainActivity.java) bindet
+die Eingaben an das ViewModel und rendert den Screen State. Die Projektionen für Fokus,
+Tagesfolge und Historie liegen im [Today-Kern](../../today-core/src/main/java/de/thonktank/autosecretary/presentation/today).
+Der Widgetpfad verwendet seine [eigene Projektion](../../app/src/main/java/de/thonktank/autosecretary/widget).
 
-## UI-Pakete
+[StepExecutionService](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/StepExecutionService.java)
+führt Schritte aus und erfasst oder korrigiert Ergebnisse.
+[OccurrenceCompletionService](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/OccurrenceCompletionService.java)
+besitzt Abschluss, Ernte und Undo. [ADR-025](adr-025-mengenbasierte-schritt-rewards.md) hält die
+Regeln für Mengen, XP und Tageswechsel fest. Die [Ablaufkandidaten und gemeinsamen Today-Blätter](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md)
+trennen fällige Kandidaten vom nutzergestarteten Lauf. [ADR-036](adr-036-kachel-editor-und-parallele-ablaeufe.md)
+beschreibt Kachelgraph und parallele Ausführung.
 
-| Paket | Verantwortung |
-|---|---|
-| `app/ui/leaf` | `LeafShape`, `LeafSurface`, `GrainSpec`, Clip und asynchrone Grain-Pipeline |
-| `app/ui/today` | Header, Fokuskarte, `TrainingAssistantPanelView`, Timelineblätter, Tageshistorie, Gesten und Accessibility |
-| `app/presentation/alltasks` | Verwaltungszustand, virtuelle Liste und Managementaktionen |
-| `app/presentation/editor` | zustandsloser Compose-Editor, `TrainingAssistantEditorSection`, Hostgrenze und Reducer-Dispatcher |
-| `app/presentation/options` | Optionen-, Kalender-, Updaterzustand und stabile Hostrequests |
-| `app/presentation/today` | Android-State-Owner, Today-Screen-State, Hostrequests und typisierter Assistentenhandler |
-| `app/presentation/shell` | temporäre Top-Level-Auswahl und globale Legacy-Palette |
-| `today-core/presentation/today` | Android-freie Today-Modelle, Actions und Zustandsautomat |
+## Dialogzustand in Heute
 
-`LeafSurface` ist der Owner von Form, Clip, Transformation und lokaler Anchor-Geometrie. Views
-erzeugen keine zweite Blattform und persistieren keinen Reorderzustand.
+[TodayViewModel](../../app/src/main/java/de/thonktank/autosecretary/presentation/today/TodayViewModel.java)
+publiziert [TodayScreenState](../../app/src/main/java/de/thonktank/autosecretary/presentation/today/TodayScreenState.java)
+mit stabilen Hostanfragen, einem Notizentwurf und einem Entwurf für „Schritt bearbeiten“.
+`SavedStateHandle` bewahrt die offenen Anfragen und die beiden Entwürfe für die Wiederherstellung.
+Die Oberfläche bindet die Entwürfe an die Dialoge. Das ViewModel speichert sie über
+[EditStepNote](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/EditStepNote.java)
+oder [EditStep](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/EditStep.java).
+Speicherfehler lassen den Entwurf für eine Korrektur offen. Die Verträge für
+[Notizen](adr-039-schrittnotizen-ohne-trainingsassistent.md) und
+[Schrittbearbeitung](adr-040-schritte-direkt-bearbeiten.md) beschreiben Vorlagenbezug,
+Fortschrittsschutz und Wiederherstellung. Die beiden ADRs beschreiben auch die nativen Prüfungen
+für Menü, Dialog, Tastatur und Room.
 
-## Persistenzports
+## Zustandsbesitz der Oberflächen
 
-Die Domain besitzt keinen aggregierten Repository-Vertrag. `AppContainer` setzt vier sichtbare
-Bündel zusammen: `CatalogUseCases`, `TodayUseCases`, `FlowUseCases` und `TrainingUseCases`.
-Transaktionale Abläufe erhalten `TransactionRunner` getrennt von genau fünf Fachports:
+| Zustand | Owner |
+| --- | --- |
+| Today-Fokus, Tagesfolge und Historie | `TodayUiModel` als Projektion |
+| Laufender Today-Reorder | `TodayCoordinator`; bestätigte Positionsänderungen werden transaktional gespeichert |
+| Wiederholungsentwurf, Timer, Rewards und Dialoge in Heute | `TodayScreenState` im `TodayViewModel` |
+| Navigation auf oberster Ebene und globale Palette | `AppShellViewModel` |
+| Alles-Filter, Modus, Karten und Filterbereich | `AllTasksViewModel` |
+| Alles-Dropdown, Swap-Auswahl und aktiver Drag | `AllTasksComposeScreen` |
+| Aufgabenentwurf, Wizardnavigation, Feedback und Prompt | `EditorUiState` im `TaskEditorViewModel` |
+| Blattform, Clip, Transformation und lokale Anker | `LeafSurface` |
 
-- `CatalogRepository` für Tasks, Katalog und Zeitplan;
-- `StepRepository` für Vorlagen, materialisierte Schritte und deren Reihenfolge;
-- `TodayRepository` für Occurrences, Rewards, Kombos und Verpflichtungen;
-- `FlowRepository` für Definitionen, Runs und Kapazitäten;
-- `TrainingRepository` für Trainingsvolumen, Anpassungen, Lastfragen und Auditspur.
+Der [Compose-Aufgabeneditor](adr-022-compose-presentation.md) erhält den veröffentlichten
+Editorzustand über seinen Host. [ADR-026](adr-026-today-und-shell-state-owner.md) beschreibt
+die Zuständigkeiten von Today und App-Shell. Die
+[Frontend-Modernisierung](frontend-modernization-progress.md) dokumentiert die umgesetzten
+Umstellungen und ihre Prüfungen.
 
-Use Cases dürfen diese Fähigkeiten weder über Mehrfachport-Typparameter noch über
-`instanceof`-Sondierung wieder zu einem impliziten Sammelvertrag verbinden.
+## Persistenz
 
-Schrittausführung liegt in `StepExecutionService`, Occurrence-Abschluss, Ernte und Undo in
-`OccurrenceCompletionService`. `RoomTransactionRunner` besitzt die Room-Transaktionsgrenze;
-`CatalogDao`, `StepDao`, `TodayDao`, `FlowDao` und `TrainingDao` werden jeweils von genau einem
-gleichnamigen Room-Adapter besessen. `ApplicationUseCaseComposition` erzeugt diese fünf Adapter
-und den `RoomTransactionRunner` direkt aus `AppDatabase` jeweils genau einmal. Reorder schreibt
-nur geänderte Positionsspalten innerhalb einer Transaktion; diese Invariante gilt auch unter
-Schema 24 unverändert.
+- Die aktuelle Schemaversion steht in
+  [DatabaseContract](../../app/src/main/java/de/thonktank/autosecretary/DatabaseContract.java).
+  [DatabaseMigrations](../../app/src/main/java/de/thonktank/autosecretary/data/local/DatabaseMigrations.java)
+  registriert die Migrationsschritte.
+- [AppDatabase](../../app/src/main/java/de/thonktank/autosecretary/AppDatabase.java) deklariert
+  Entities und DAOs. Die [Ports der Domain](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/repository)
+  und [ApplicationUseCaseComposition](../../app/src/main/java/de/thonktank/autosecretary/ApplicationUseCaseComposition.java)
+  zeigen die Fachgrenzen und die konkrete Verdrahtung von Use Cases, Room- und SQL-Adaptern.
+- Die [Transaktionsgrenze](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/transaction/TransactionRunner.java)
+  ist ein eigener Port. Mehrere zusammengehörige Schreibschritte teilen sich diese Grenze.
+  Schritt-Reorder ändert beispielsweise nur die betroffenen Positionen innerhalb einer Transaktion.
+- [ADR-035](adr-035-physische-migrationshistorie-und-upgrade-fixtures.md) dokumentiert reale
+  Datenhistorien und Fixtures. [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md)
+  regelt die Prüfauswahl und signierte Upgrades.
 
-## Autoritative Zustände
+## Prüfungen und Nachweise
 
-| Zustand | Owner | Persistenz |
-|---|---|---:|
-| Taskdefinition und Zeitplan | Domain + `CatalogRepository` | ja |
-| Occurrence-/Schrittfortschritt | Domain-Use-Case | ja |
-| Rewardbuchungen | unveränderliches Ledger | ja |
-| Today-Fokus/Timeline/History | `TodayUiModel` | nein, Projektion |
-| Reorder `IDLE/DRAGGING/PERSISTING` | `TodayCoordinator` | nur Commandresultat |
-| Today-Renderzustand, Requests, Timer und Rewards | `TodayScreenState` im `TodayViewModel` | Requests im `SavedStateHandle` |
-| Top-Level-Auswahl und globale Legacy-Palette | `AppShellScreenState` im `AppShellViewModel` | Auswahl im `SavedStateHandle` |
-| Alles-Filter, Modus, Karten- und Filterbereich | `AllTasksPresentationState` im `AllTasksViewModel` | ja, `SavedStateHandle` |
-| Alles-Dropdown, Swap-Auswahl und aktiver Drag | `AllTasksComposeScreen` | nein, bei Abbruch/Detach/Recreation geschlossen |
-| Editor-Draft, Wizardnavigation, Feedback und Prompt | `EditorUiState` im `TaskEditorViewModel` | Recreation über `SavedStateHandle` |
-| Editor-Assistentencontrols | `TrainingAssistantEditorSection` mit kanonischen Typen | nein |
-| Today-Assistentenpanel und seine vier UI-Aktionen | `TrainingAssistantPanelView` und `TrainingAssistantActionHandler` | fachliche Ergebnisse über Training-Use-Cases |
-| Wiederholungsdraft | `RepetitionInputState` im `TodayViewModel` | nein |
-| Blatt-/Grain-Geometrie | `LeafSurface` | nein |
+Die [Teststrategie](phase-7-teststrategie.md) beschreibt Architektur-, Golden-,
+Accessibility- und Migrationstests. Die [risikobasierte Prüfauswahl](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md)
+bestimmt den Nachweis je Änderung. Produktreleases benötigen einen aktuellen signierten
+In-place-Smoke. Im vollständigen Profil kommen die historischen Upgrades mit demselben
+Kandidaten hinzu. Die [Release-Anleitung](../releasing.md) beschreibt die Durchführung.
 
-## Dauerhafte Gates
-
-- Java-Module verhindern Android- und App-Rückimporte in Domain und Today-Kern.
-- Hosttests prüfen Fachregeln, Reducer, Room, Migrationen, Views, Accessibility und Goldens.
-- Der produktive Compose-Editor wird gegen alle zehn kanonischen und fünf adaptiven freigegebenen
-  Baselines sowie über Semantik-, Fokus-, Scroll-, Recreation-, Host-Back- und Actionverträge
-  geprüft. Architekturtests verbieten einen zweiten Draft und die entfernte View-Orchestrierung.
-- Ownership-Tests halten Assistentencontrols aus `TaskEditorComposeSteps` und
-  `FocusStepRowView` heraus. Handler-Tests sichern Dezimalpunkt/-komma, exakte Milli-Units,
-  alle vier typisierten Aktionen sowie Completed-, Feedback- und Rejected-Ergebnisse.
-- Der produktive Compose-Alles-Tab wird gegen seine 13 unveränderten Baselines sowie über
-  LazyList-, Filter-, Dropdown-, Long-Press-Drag-, Randscroll-, Recreation-,
-  Accessibility- und Actionverträge geprüft; ein RecyclerView-Ersatzpfad ist nicht mehr zulässig.
-- Die Android-Test-APK enthält Today-Long-Press/Drag/Drop, Randscrollen,
-  Accessibilityaktionen und Recreation eines nicht persistierten Reorders.
-- CI führt normale und animationsaktive Instrumentierung auf API 26, 35 und 37 sowie echte
-  Upgradeprüfungen des signierten Produktionskandidaten aus; lokal wird ohne verbundenes Ziel nur
-  der Buildstatus berichtet.
-- Golden-Baselines und Datenbankschema dürfen durch reine Architekturrefactors nicht geändert
-  werden.
+Messwerte, freigegebene visuelle Referenzen und phasenweise Abnahmen stehen im
+[Architekturindex](README.md#referenzen-und-abgeschlossene-nachweise).

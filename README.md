@@ -1,6 +1,6 @@
 # Auto Secretary
 
-Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und ein ruhiger Tagesblick.
+Eine kleine, private ADHS-Task-App für Android mit **jetzt**, **danach** und einem ruhigen Tagesblick.
 
 ## Was bereits funktioniert
 
@@ -10,7 +10,7 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 - Fristen und Laufzeitgrenzen sowie Schritte mit Wochentagen, Mengen und Notizen
 - „Alles“-Arbeitsbereich zum Suchen, Filtern, Bearbeiten und manuellen Ordnen von Aufgaben
   und Schritten, getrennt vom Abarbeiten im Heute-Tab
-- Inline bearbeitbare Ist-Wiederholungen für Übungen; bestehende Tagesvorkommen bleiben unverändert
+- Ist-Wiederholungen direkt erfassen und Schritte oder Schrittnotizen im Heute-Tab bearbeiten
 - Sanftes Verschieben mit „Später“, XP-Stufen, Routinegefäßen und einer sichtbaren Kombo-Maserung
 - Uhrzeitabhängiger Heute-Screen im Design „Tiefer Wald, goldener Sonnenaufgang“
 - Vier responsive Homescreen-Widgetgrößen mit direkten Schritt- und Abschlussaktionen
@@ -18,6 +18,26 @@ Eine kleine, private ADHS-Task-App für Android: nur **jetzt**, **danach** und e
 - Optionen für automatische, helle oder dunkle Darstellung und einen geprüften GitHub-Updatekanal
 - Keine Benachrichtigungen im Stabilitäts-Release: Das Widget bleibt die einzige proaktive Erinnerung
 - Tägliche und manuelle Updateprüfung mit signiertem In-App-Download und Android-Installer
+
+## Einstieg für Änderungen
+
+- [Schrittregeln](docs/architecture/adr-025-mengenbasierte-schritt-rewards.md) für Mengen, XP und
+  Tagesabschluss sowie [Speicherregeln für Schrittänderungen](docs/architecture/adr-040-schritte-direkt-bearbeiten.md#speichervertrag)
+  für Vorlage, laufende Ausführung und vorhandenen Fortschritt.
+- [Dialogzustand in Heute](docs/architecture/architecture-map.md#dialogzustand-in-heute) für
+  Entwürfe, Wiederherstellung und Speichern.
+- [Signierte Upgradepflicht](docs/architecture/adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md#wiederverwendung-und-veröffentlichung)
+  für Produktreleases und [Release-Anleitung](docs/releasing.md).
+- [Produktziele](docs/produktziele.md) und [Architekturindex](docs/architecture/README.md).
+
+Beantworte im Pull Request drei Fragen.
+
+1. Wo lebt die neue Fachregel?
+2. Welchen bestehenden Schreib- oder Lesepfad benutzt sie?
+3. Welcher Test würde einen fachlich falschen Ausgang erkennen?
+
+Belege bei Änderungen an persistenten Daten das Verhalten mit vorhandenen Nutzerbeständen.
+Prüfe bei Lifecycle- oder Bedienänderungen den betroffenen nativen Ablauf.
 
 ## Lokal testen
 
@@ -66,11 +86,6 @@ unter `DebugPreviewFixtures`. Die 17 Editor-Referenzzustände werden zusätzlich
 Robolectric-Goldens geprüft. Für den Today-Screen decken Phone-Goldens unter anderem leere,
 teilgefüllte, erntereife und abgeschlossene Gefäße sowie Tag, Abend und Nacht ab. Im vollständigen Profil führt CI die
 Room-Migrationstests auf API 26, API 35 und API 37 aus.
-
-Die Release-Einrichtung ist in [docs/releasing.md](docs/releasing.md) beschrieben. Die
-Produktentscheidung ist in [docs/produktziele.md](docs/produktziele.md) festgehalten. Die
-verbindlichen Architekturentscheidungen und visuellen Referenzen beginnen unter
-[docs/architecture](docs/architecture/README.md).
 
 Releasewirksame Änderungen werden nach ihrem grünen Main- und signierten Upgrade-Gate
 automatisch als installierbarer Build veröffentlicht. Beim

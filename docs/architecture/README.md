@@ -1,9 +1,12 @@
 # Architekturentscheidungen
 
-Die ADRs in diesem Verzeichnis beschreiben das fachliche Verhalten, das während des
-Architektur-Refactors erhalten oder bewusst geändert werden muss. Eine Entscheidung wird
-nicht stillschweigend im Code geändert: Abweichungen benötigen eine neue ADR, passende
-Migrationen und aktualisierte Tests.
+Die [Architekturkarte](architecture-map.md) führt zu Modulgrenzen, Zustandsbesitzern und
+Persistenz im Code. Änderungen an einer ADR-Entscheidung brauchen eine neue ADR und je
+nach Auswirkung passende Migrationen und Tests.
+
+- [Schrittregeln für Mengen, XP und Tageswechsel](adr-025-mengenbasierte-schritt-rewards.md)
+- [Dialogzustand in Heute](architecture-map.md#dialogzustand-in-heute)
+- [Risikobasierte Prüfauswahl und signierte Upgradepflicht](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md)
 
 ## Entscheidungen
 
@@ -34,122 +37,42 @@ Migrationen und aktualisierte Tests.
 - [ADR-024: Terminbewusste Kombos und echte Verpflichtungen](adr-024-terminbewusste-kombos.md)
 - [ADR-025: Mengenbasierte Schritt-Rewards und Tagesabschluss](adr-025-mengenbasierte-schritt-rewards.md)
 - [ADR-026: Getrennte State-Owner für Today und App-Shell](adr-026-today-und-shell-state-owner.md)
-- [ADR-030: Minimale Trainingsarchitektur und automatisierter Abschluss](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md)
 - [ADR-031: Fokusprojektion, Zeilenidentität und Grain-Geometrie](adr-031-fokusprojektion-zeilenidentitaet-und-grain-geometrie.md)
-- [ADR-032: Satzpunkte und Editorverlauf](adr-032-satzpunkte-und-editorverlauf.md)
+- [ADR-032: Satzpunkte und Editorverlauf](adr-032-satzpunkte-und-editorverlauf.md), Trainingsanteile durch ADR-039 ersetzt
 - [ADR-033: Ablaufkandidaten und gemeinsame Today-Blätter](adr-033-ablaufkandidaten-und-gemeinsame-today-blaetter.md)
 - [ADR-034: Mobile Aufgabenverwaltung und kompakter Ablaufmonitor](adr-034-mobile-aufgabenverwaltung-und-ablaufmonitor.md)
 - [ADR-035: Physische Migrationshistorie und signierte Upgrade-Fixtures](adr-035-physische-migrationshistorie-und-upgrade-fixtures.md)
 - [ADR-036: Kachel-Editor und parallele Abläufe](adr-036-kachel-editor-und-parallele-ablaeufe.md)
+- [ADR-037: Risikobasierte Verifikation und aktuelles signiertes Upgrade](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md)
+- [ADR-038: Früher Diagnosezugang und geschützte Android-Einstiege](adr-038-frueher-diagnose-bootstrap.md)
+- [ADR-039: Schrittnotizen ohne Trainingsassistent](adr-039-schrittnotizen-ohne-trainingsassistent.md)
+- [ADR-040: Schritte direkt in Heute bearbeiten](adr-040-schritte-direkt-bearbeiten.md)
 
-Die [Kachel-Ablauf-Roadmap](flow-tiles-roadmap.md) und ihr
-[Ausführungsprotokoll](flow-tiles-execution.md) führen den freigegebenen eigenen Editor,
-parallele Laufzeitschritte und die verlustfreie Übernahme von Schema 24 zusammen.
+## Referenzen und abgeschlossene Nachweise
 
-Rückblickende Bewertungen der bearbeiteten Bereiche stehen in der
-[Architekturkritik der Release- und Updatebereiche](architecture-critique.md) und der
-[Architekturkritik von XP, Gefäß, Kombo und Today-Screen](xp-kombo-homescreen-critique.md)
-sowie in der [Kritik des Today-/Fokus-Refactors](today-focus-architecture-critique.md).
-Sie sind keine ADRs, sondern dokumentieren Reibung, technische Schuld und priorisierte
-Folgeschritte.
+Freigegebene [Homescreen-Referenzen](../reference/homescreen/README.md) und die
+[Charakterisierung des Alles-Tabs](all-tasks-characterization.md) dokumentieren visuelle
+Ausgangszustände und den Baseline-Prozess. Die [Teststrategie](phase-7-teststrategie.md)
+beschreibt die Testschichtung und die Verträge für Migrationen, Goldens und Accessibility.
 
-Die phasenweise Refactor-Baseline mit Zustandsbesitzern, Abhängigkeiten und überprüfbaren Gates
-steht in der [Architekturkarte](architecture-map.md).
-Die unveränderlichen UX-Verträge und Messwerte der anschließenden Today-/Fokus-Bereinigung stehen
-in deren [Phase-0-Baseline](today-focus-cleanup-baseline.md).
-Die phasenweisen Implementierungs- und Auditresultate stehen im
-[Fortschrittsprotokoll](today-focus-cleanup-progress.md).
-Der requirementweise Abschlussabgleich der Roadmap steht im
-[Roadmap-Abschlussaudit](roadmap-audit.md).
+### Umsetzung und Ausführungsprotokolle
 
-Die neue, verbindliche [Roadmap der Frontend-Modernisierung](frontend-modernization-roadmap.md)
-führt die Präsentation schrittweise zu Kotlin, Compose und eindeutigen Screen-State-Ownern. Ihre
-Vorprüfungen, Phasenergebnisse und Selbstkritik werden getrennt im
-[Fortschrittsprotokoll der Frontend-Modernisierung](frontend-modernization-progress.md)
-festgehalten.
+| Bereich | Plan und Nachweis |
+| --- | --- |
+| Kachel-Abläufe | [Roadmap](flow-tiles-roadmap.md), [Ausführungsprotokoll](flow-tiles-execution.md) |
+| Today-/Fokus-Bereinigung | [Bereinigungsbaseline](today-focus-cleanup-baseline.md), [Fortschrittsprotokoll](today-focus-cleanup-progress.md), [Abschlussaudit](roadmap-audit.md) |
+| Frontend-Modernisierung | [Roadmap](frontend-modernization-roadmap.md), [Fortschrittsprotokoll](frontend-modernization-progress.md) |
+| Today-Aufgabenblätter | [Roadmap](today-focus-clean-roadmap.md), [Ausführungsprotokoll](today-focus-clean-execution.md) |
+| Ablaufkandidaten und gemeinsame Today-Blätter | [Roadmap](flow-task-sheet-roadmap.md), [Ausführungsprotokoll](flow-task-sheet-execution.md) |
+| Mobile Aufgabenverwaltung und Ablaufübersicht | [Roadmap](all-tasks-mobile-roadmap.md), [Ausführungsprotokoll](all-tasks-mobile-execution.md) |
+| Darstellungs- und Verifikationshärtung | [Roadmap](../mobile-ui/delivery/all-tasks-flow-runs-hardening-roadmap.md), [Ausführungsprotokoll](../mobile-ui/delivery/all-tasks-flow-runs-hardening-execution.md) |
+| Datenbankmigrationen und Upgradehistorien | [Roadmap](database-migration-safety-roadmap.md), [Ausführungsprotokoll](database-migration-safety-execution.md) |
+| Trainingsassistent vor seiner Entfernung | [ADR-030](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md), [Roadmap](training-assistant-minimal-roadmap.md), [Ausführungsprotokoll](training-assistant-minimal-execution.md), [Entfernung und Nachweise](adr-039-schrittnotizen-ohne-trainingsassistent.md) |
 
-[ADR-039: Schrittnotizen ohne Trainingsassistent](adr-039-schrittnotizen-ohne-trainingsassistent.md) ersetzt den
-Trainingsassistenten durch direkte Notizbearbeitung und die allgemeine Schrittbedienung.
+### Frühere Architekturstände und Bewertungen
 
-Die verbindliche
-[Roadmap zur sauberen Heute-Aufgabenblatt-Architektur](today-focus-clean-roadmap.md) führt
-Fokusprojektion, Zeilenidentität, Snapshot-Zuordnung und Grain-Geometrie in vier einzeln
-prüfbaren Phasen zusammen. Das getrennte
-[Ausführungsprotokoll](today-focus-clean-execution.md) hält Pläne, Nachweise und Audits fest.
-
-Die verbindliche
-[Roadmap für echte Ablaufkandidaten und gemeinsame Today-Blätter](flow-task-sheet-roadmap.md)
-trennt fällige Kandidaten, nutzergestartete Runs und die gemeinsame Today-Projektion ohne
-Wäsche-Sonderlogik. ADR-033 trifft die zugehörigen Domain-, Persistenz-, Aktions- und
-Migrationsentscheidungen; das getrennte
-[Ausführungsprotokoll](flow-task-sheet-execution.md) hält Phasenpläne, Nachweise und Audits fest.
-
-Die verbindliche
-[Roadmap für mobile Aufgabenverwaltung und Ablaufübersicht](all-tasks-mobile-roadmap.md)
-gestaltet den Alles-Tab und anschließend die Ablaufdetailseite in zwei getrennt geprüften
-Phasen neu. ADR-034 hält den freigegebenen visuellen und interaktiven Vertrag fest; das getrennte
-[Ausführungsprotokoll](all-tasks-mobile-execution.md) dokumentiert Plan, Nachweise und Audits.
-
-Die anschließende
-[Roadmap zur Darstellungs- und Verifikationshärtung](../mobile-ui/delivery/all-tasks-flow-runs-hardening-roadmap.md)
-bündelt Uhrkonsistenz, robuste Ablaufdarstellung und den sicheren mobilen Prüfvertrag. Das
-getrennte
-[Ausführungsprotokoll](../mobile-ui/delivery/all-tasks-flow-runs-hardening-execution.md) ist der
-append-only Nachweis der drei Implementierungsphasen; dauerhafte Fachentscheidungen bleiben in
-ADR-034 und der Teststrategie.
-
-Die verbindliche
-[Roadmap für sichere Datenbankmigrationen und reale Upgradehistorien](database-migration-safety-roadmap.md)
-verknüpft benannte Migrationskopien, physische SQLite-Lineage-Tests und den signierten
-Produktions-Fixture-Korpus. ADR-035 hält den dauerhaften Architekturvertrag fest; das getrennte
-[Ausführungsprotokoll](database-migration-safety-execution.md) dokumentiert Phasenpläne,
-Nachweise, Korrekturen und Geräteabnahme.
-
-Die verbindlichen visuellen Ausgangsreferenzen sind unter
-[`docs/reference/homescreen`](../reference/homescreen/README.md) katalogisiert.
-Die [Charakterisierung des Alles-Tabs](all-tasks-characterization.md) hält dessen einmaligen
-Handoff-Abgleich, visuelle Zustandsmatrix und sicheren Baseline-Prozess fest.
-Die [aktuelle Today-/Fokus-Architektur](today-focus-architecture.md) dokumentiert Datenfluss,
-Verantwortlichkeiten, Invarianten, Schema und Widgetinvalidierung. Die aktuelle Testschichtung,
-Migrationsmatrix und Golden-/Accessibility-Verträge beschreibt die
-[Teststrategie nach dem Today-/Fokus-Refactor](phase-7-teststrategie.md).
-Die vor dem Today-/Fokus-Refactor festgehaltenen Datenflüsse, Charakterisierungstests und
-Laufzeit-/Speicherwerte stehen in der
-[Phase-0-Baseline des Today-/Fokus-Refactors](today-focus-baseline.md).
-Die in Phase 1 eingeführten Invarianten und Kompatibilitätsregeln für Wiederholungen beschreibt
-der [fachliche Wiederholungsfortschritt](today-focus-domain.md).
-
-## Paketgrenzen des schrittweisen Refactorings
-
-Die App bleibt bewusst ein Android-Modul. Innerhalb dieses Moduls markieren Pakete die aktuell
-belastbaren Verantwortungsgrenzen:
-
-- `domain.model` und `domain.usecase`: fachliche Typen und Ausführungsabläufe;
-- `domain.schedule` und `domain.steps`: Zeitplatzierungs- und Schrittverwaltungsregeln auf den
-  benannten Katalog-, Schritt- und Today-Ports;
-- `presentation.alltasks`: Katalogzustand, Filter, flaches Listenmodell und Verwaltungs-UI;
-- `presentation.today`: verbraucherspezifische Today-Projektionen, geschlossene Aktionen und der
-  Zustand des Notizdialogs mit erhaltenem Entwurf;
-- `presentation.editor`: zustandsloser Compose-Editor für allgemeine Schrittangaben;
-- `presentation`: gemeinsam genutzte Präsentationsadapter und lokalisierte Textformatierung;
-- `editor`: reine, Android-unabhängige Zustandsübergänge des Aufgabeneditors;
-- `widget`: direkte Domain-zu-Widget-Projektion und größenabhängige UI-Modelle;
-- `domain.repository`: exakt `CatalogRepository`, `StepRepository`, `TodayRepository`,
-  `FlowRepository` ohne Transaktionsvererbung;
-- `domain.transaction`: unabhängiger atomarer Ausführungsport;
-- `data.local`: vier fokussierte Room-DAOs und Einzelportadapter, Entities, Mapper sowie der
-  getrennte `RoomTransactionRunner`; ein Sammelgateway existiert nicht;
-- `ui.today`: Fokus-/Timeline-Views und der kleine Schrittnotizdialog;
-- Root-Paket: Android-Views, Lifecycle-/Composition-Root und historisch noch nicht verschobene
-kleine Adapter.
-
-Neue fachlich reine Typen sollen direkt in die passende Grenze eingeordnet werden. Bestehende
-Root-Klassen werden nur bei konkreter Bearbeitung verschoben; eine mechanische Massenverschiebung
-ist ausdrücklich nicht Teil dieses Refactorings. Zusätzliche Gradle-Module, ein DI-Framework,
-Ein weiteres DI-Framework oder generisches Design-System ist dafür nicht vorgesehen.
-
-Die aktuelle risikobasierte Prüfauswahl und signierte Updatepflicht stehen in
-[ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md).
-
-Der unterstützte frühe Diagnosezugang und die geschützten Android-Einstiege stehen in
-[ADR-038](adr-038-frueher-diagnose-bootstrap.md).
+- [Today-/Fokus-Architektur des Refactors](today-focus-architecture.md), [Ausgangsbaseline](today-focus-baseline.md)
+  und [fachliche Einführung des Wiederholungsfortschritts](today-focus-domain.md)
+- [Architekturkritik zu Release und Updates](architecture-critique.md),
+  [zu XP, Gefäß und Today](xp-kombo-homescreen-critique.md) und
+  [zum Today-/Fokus-Refactor](today-focus-architecture-critique.md)
