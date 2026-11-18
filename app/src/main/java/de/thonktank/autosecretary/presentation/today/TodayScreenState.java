@@ -16,9 +16,8 @@ import java.util.Set;
 
 /** Complete atomic state for the Today screen and its acknowledgeable effects. */
 public final class TodayScreenState {
-    @Nullable public final StepEditDraft stepEditDraft;
+    @Nullable public final StepDialogDraft stepDialog;
     public final TodayFeatureState feature;
-    @Nullable public final StepNoteDraft stepNoteDraft;
     public final boolean loading;
     public final Set<UiCommand> runningActions;
     public final RepetitionInputState repetitionInput;
@@ -35,16 +34,15 @@ public final class TodayScreenState {
                             RewardEffectQueue.Snapshot rewards,
                             List<TodayRequest> requests) {
         this(feature, loading, runningActions, repetitionInput, focusStepLimit, timers,
-                rewards, requests, null, null);
+                rewards, requests, null);
     }
 
     private TodayScreenState(TodayFeatureState feature, boolean loading,
                             Set<UiCommand> runningActions, RepetitionInputState repetitionInput,
                             FocusStepLimit focusStepLimit, TimerManager.Snapshot timers,
                             RewardEffectQueue.Snapshot rewards, List<TodayRequest> requests,
-                            StepNoteDraft stepNoteDraft, StepEditDraft stepEditDraft) {
-        this.stepEditDraft = stepEditDraft;
-        this.stepNoteDraft = stepNoteDraft;
+                            StepDialogDraft stepDialog) {
+        this.stepDialog = stepDialog;
         if (feature == null || runningActions == null || repetitionInput == null
                 || focusStepLimit == null || timers == null || rewards == null
                 || requests == null)
@@ -146,15 +144,19 @@ public final class TodayScreenState {
                                          RewardEffectQueue.Snapshot rewards,
                                          List<TodayRequest> requests) {
         return new TodayScreenState(feature, loading, runningActions, repetitionInput,
-                focusStepLimit, timers, rewards, requests, stepNoteDraft, stepEditDraft);
+                focusStepLimit, timers, rewards, requests, stepDialog);
     }
 
-    public TodayScreenState withStepNoteDraft(StepNoteDraft value) {
+    TodayScreenState withStepDialog(@Nullable StepDialogDraft value) {
         return new TodayScreenState(feature, loading, runningActions, repetitionInput,
-                focusStepLimit, timers, rewards, requests, value, stepEditDraft);
+                focusStepLimit, timers, rewards, requests, value);
     }
-    public TodayScreenState withStepEditDraft(StepEditDraft value) {
-        return new TodayScreenState(feature, loading, runningActions, repetitionInput,
-                focusStepLimit, timers, rewards, requests, stepNoteDraft, value);
+
+    @Nullable public StepEditDraft stepEditDraft() {
+        return stepDialog instanceof StepEditDraft ? (StepEditDraft) stepDialog : null;
+    }
+
+    @Nullable public StepNoteDraft stepNoteDraft() {
+        return stepDialog instanceof StepNoteDraft ? (StepNoteDraft) stepDialog : null;
     }
 }

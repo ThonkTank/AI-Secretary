@@ -34,18 +34,18 @@ beschreibt Kachelgraph und parallele Ausführung.
 
 ## Dialogzustand in Heute
 
-[TodayViewModel](../../app/src/main/java/de/thonktank/autosecretary/presentation/today/TodayViewModel.java)
-publiziert [TodayScreenState](../../app/src/main/java/de/thonktank/autosecretary/presentation/today/TodayScreenState.java)
-mit stabilen Hostanfragen, einem Notizentwurf und einem Entwurf für „Schritt bearbeiten“.
-`SavedStateHandle` bewahrt die offenen Anfragen und die beiden Entwürfe für die Wiederherstellung.
-Die Oberfläche bindet die Entwürfe an die Dialoge. Das ViewModel speichert sie über
-[EditStepNote](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/EditStepNote.java)
-oder [EditStep](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/EditStep.java).
-Speicherfehler lassen den Entwurf für eine Korrektur offen. Die Verträge für
-[Notizen](adr-039-schrittnotizen-ohne-trainingsassistent.md) und
-[Schrittbearbeitung](adr-040-schritte-direkt-bearbeiten.md) beschreiben Vorlagenbezug,
-Fortschrittsschutz und Wiederherstellung. Die beiden ADRs beschreiben auch die nativen Prüfungen
-für Menü, Dialog, Tastatur und Room.
+Das Today-ViewModel delegiert beide Bearbeitungsdialoge an `TodayStepDialogs`. Der Besitzer
+lädt den gewählten Schritt auf dem Worker und veröffentlicht genau einen typisierten Entwurf
+im Screen State. Auf dem Hauptthread übernimmt er Lade- und Speicherergebnisse, solange sie
+zur aktiven Sitzung gehören. Das Verlassen von Heute verwirft einen ausstehenden Ladevorgang.
+Ein bereits offener Entwurf bleibt für die Rückkehr erhalten. Die Activity zeigt weitere
+Today-Anfragen nach dem Schließen des sichtbaren Entwurfs. [Dialogbesitzer](../../app/src/main/java/de/thonktank/autosecretary/presentation/today/TodayStepDialogs.java) · [Screen State](../../app/src/main/java/de/thonktank/autosecretary/presentation/today/TodayScreenState.java) · [Activity](../../app/src/main/java/de/thonktank/autosecretary/MainActivity.java)
+
+`SavedStateHandle` speichert den Entwurf unter `today.stepDialog`. Der Besitzer übernimmt
+auch die früheren Schlüssel `today.stepNote` und `today.stepEdit`. Ein unterbrochener
+Speicherversuch hinterlässt nach der Wiederherstellung einen editierbaren Entwurf, dessen
+Speichern erneut bestätigt werden muss. `EditStepNote` und `EditStep` regeln Vorlagenbezug
+und Fortschrittsschutz. [Notizvertrag](adr-039-schrittnotizen-ohne-trainingsassistent.md) · [Schrittbearbeitung](adr-040-schritte-direkt-bearbeiten.md)
 
 ## Zustandsbesitz der Oberflächen
 
@@ -53,7 +53,8 @@ für Menü, Dialog, Tastatur und Room.
 | --- | --- |
 | Today-Fokus, Tagesfolge und Historie | `TodayUiModel` als Projektion |
 | Laufender Today-Reorder | `TodayCoordinator`; bestätigte Positionsänderungen werden transaktional gespeichert |
-| Wiederholungsentwurf, Timer, Rewards und Dialoge in Heute | `TodayScreenState` im `TodayViewModel` |
+| Wiederholungsentwurf, Timer, Rewards und Hostanfragen in Heute | `TodayScreenState` im `TodayViewModel` |
+| Notiz- oder Schrittentwurf in Heute | `TodayStepDialogs` besitzt die Sitzung und veröffentlicht den Entwurf im `TodayScreenState` |
 | Navigation auf oberster Ebene und globale Palette | `AppShellViewModel` |
 | Alles-Filter, Modus, Karten und Filterbereich | `AllTasksViewModel` |
 | Alles-Dropdown, Swap-Auswahl und aktiver Drag | `AllTasksComposeScreen` |

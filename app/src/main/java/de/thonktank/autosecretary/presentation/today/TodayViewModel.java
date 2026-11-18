@@ -2,6 +2,7 @@ package de.thonktank.autosecretary.presentation.today;
 
 import de.thonktank.autosecretary.AppContainer;
 import de.thonktank.autosecretary.Clock;
+import de.thonktank.autosecretary.EditorStepState;
 import de.thonktank.autosecretary.R;
 import de.thonktank.autosecretary.RepetitionInputReducer;
 import de.thonktank.autosecretary.RepetitionInputState;
@@ -9,6 +10,7 @@ import de.thonktank.autosecretary.RewardEffect;
 import de.thonktank.autosecretary.RewardEffectQueue;
 import de.thonktank.autosecretary.UiCommand;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.SavedStateHandle;
@@ -88,6 +90,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private final Object stateLock = new Object();
     private final Object actionLock = new Object();
     private final TodayCoordinator todayCoordinator;
+    private final TodayStepDialogs stepDialogs;
     @Nullable private final TimerManager timers;
     private final TimerManager.Listener timerListener = this::publishTimers;
     private boolean timerPermissionWarningShown;
@@ -165,8 +168,10 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 Collections.emptySet(), RepetitionInputState.idle(), display.focusStepLimit,
                 timers == null ? TimerManager.Snapshot.empty() : timers.snapshot(),
                 rewardQueue.snapshot(), restored);
-        current = current.withStepNoteDraft(StepNoteDraft.restore(savedState.get(SAVED_STEP_NOTE)));
-        current = current.withStepEditDraft(StepEditDraft.restore(savedState.get(SAVED_STEP_EDIT)));
+        stepDialogs = new TodayStepDialogs(today, savedState, worker, texts, logger,
+                this::publishStepDialog,
+                (kind, message) -> enqueue(TodayRequest.feedback(nextRequestId(), kind, message)));
+        current = current.withStepDialog(stepDialogs.draft());
         state = StateFlowKt.MutableStateFlow(current);
         todayCoordinator = new TodayCoordinator(initial,
                 new TodayCommandDispatcher(this), this::publishTodayFeatureState);
@@ -201,10 +206,10 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     private void reduce(TodayAction action) {
         switch (action.kind) {
             case EDIT_STEP:
-                openStepEdit(action.id);
+                stepDialogs.open(TodayStepDialogs.Kind.STEP, action.id);
                 return;
             case EDIT_STEP_NOTE:
-                openStepNote(action.id);
+                stepDialogs.open(TodayStepDialogs.Kind.NOTE, action.id);
                 return;
             case ADD_TASK:
                 navigator.navigate(AppDestination.newTask());
@@ -255,148 +260,17 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         }
     }
 
-    private static final String SAVED_STEP_EDIT = "today.stepEdit";
-    private long stepEditGeneration;
-    private boolean stepEditLoading;
-
-    private void setStepEditDraft(StepEditDraft draft) {
-        synchronized (stateLock) {
-            savedState.set(SAVED_STEP_EDIT, draft == null ? null : draft.saved());
-            publish(current.withStepEditDraft(draft));
-        }
+    private void publishStepDialog(@Nullable StepDialogDraft draft) {
+        synchronized (stateLock) { publish(current.withStepDialog(draft)); }
     }
 
-    private void openStepEdit(String stepId) {
-        if (current.stepEditDraft != null || current.stepNoteDraft != null || stepEditLoading) return;
-        stepEditLoading = true;
-        noteGeneration++; // A pending note read must not open a second modal.
-        long generation = ++stepEditGeneration;
-        worker.execute(() -> {
-            try {
-                de.thonktank.autosecretary.domain.model.EditableStep value = today.editStep.load(stepId);
-                noteHandler.post(() -> {
-                    if (generation != stepEditGeneration) return;
-                    stepEditLoading = false;
-                    setStepEditDraft(StepEditDraft.from(value));
-                });
-            } catch (RuntimeException error) {
-                logger.error("TodayViewModel", "Step could not be loaded", error);
-                noteHandler.post(() -> {
-                    if (generation != stepEditGeneration) return;
-                    stepEditLoading = false;
-                    enqueue(TodayRequest.feedback(nextRequestId(), TodayRequest.Kind.ERROR,
-                            stepEditError(error)));
-                });
-            }
-        });
-    }
-
-    public void changeStepEdit(de.thonktank.autosecretary.EditorStepState value) {
-        synchronized (actionLock) {
-            StepEditDraft draft = current.stepEditDraft;
-            if (draft == null || draft.saving || !draft.step.id.equals(value.id)) return;
-            setStepEditDraft(draft.change(value));
-        }
-    }
-
-    public void cancelStepEdit() {
-        synchronized (actionLock) {
-            if (current.stepEditDraft != null && current.stepEditDraft.saving) return;
-            stepEditGeneration++;
-            stepEditLoading = false;
-            setStepEditDraft(null);
-        }
-    }
-
-    public void saveStepEdit() {
-        synchronized (actionLock) {
-            StepEditDraft draft = current.stepEditDraft;
-            if (draft == null || draft.saving) return;
-            if (!de.thonktank.autosecretary.StepEditorValidator.issues(draft.step, draft.showCadence()).isEmpty()) {
-                setStepEditDraft(draft.status("", false));
-                return;
-            }
-            setStepEditDraft(draft.status("", true));
-            worker.execute(() -> {
-                try {
-                    boolean deferred = today.editStep.save(draft.id,
-                            draft.original.definition(0, draft.once), draft.step.definition(0, draft.once));
-                    noteHandler.post(() -> {
-                        setStepEditDraft(null);
-                        if (deferred) enqueue(TodayRequest.feedback(nextRequestId(), TodayRequest.Kind.INFO,
-                                texts.text(R.string.step_edit_deferred)));
-                    });
-                } catch (RuntimeException error) {
-                    logger.error("TodayViewModel", "Step could not be saved", error);
-                    noteHandler.post(() -> setStepEditDraft(draft.status(stepEditError(error), false)));
-                }
-            });
-        }
-    }
-
-    private String stepEditError(RuntimeException error) {
-        return error instanceof IllegalArgumentException && error.getMessage() != null
-                ? error.getMessage() : texts.text(R.string.error_change_save);
-    }
-
-    private static final String SAVED_STEP_NOTE = "today.stepNote";
-    private final android.os.Handler noteHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private long noteGeneration;
-
-    private void setStepNoteDraft(StepNoteDraft draft) {
-        synchronized (stateLock) {
-            savedState.set(SAVED_STEP_NOTE, draft == null ? null : draft.saved());
-            publish(current.withStepNoteDraft(draft));
-        }
-    }
-
-    private void openStepNote(String stepId) {
-        if (current.stepNoteDraft != null || current.stepEditDraft != null || stepEditLoading) return;
-        long generation = ++noteGeneration;
-        worker.execute(() -> {
-            try {
-                de.thonktank.autosecretary.domain.model.StepNote note = today.editStepNote.load(stepId);
-                if (note == null) throw new IllegalArgumentException("Step no longer exists");
-                noteHandler.post(() -> {
-                    if (generation == noteGeneration)
-                        setStepNoteDraft(new StepNoteDraft(note.id, note.note, "", false));
-                });
-            } catch (RuntimeException error) {
-                logger.error("TodayViewModel", "Step note could not be loaded", error);
-                enqueue(TodayRequest.feedback(nextRequestId(), TodayRequest.Kind.ERROR,
-                        texts.text(R.string.error_change_save)));
-            }
-        });
-    }
-
-    public void changeStepNote(String text) {
-        StepNoteDraft draft = current.stepNoteDraft;
-        if (draft == null || draft.saving) return;
-        setStepNoteDraft(new StepNoteDraft(draft.id, text, "", false));
-    }
-
-    public void cancelStepNote() {
-        if (current.stepNoteDraft == null || !current.stepNoteDraft.saving) {
-            noteGeneration++;
-            setStepNoteDraft(null);
-        }
-    }
-
-    public void saveStepNote() {
-        StepNoteDraft draft = current.stepNoteDraft;
-        if (draft == null || draft.saving) return;
-        setStepNoteDraft(new StepNoteDraft(draft.id, draft.text, "", true));
-        worker.execute(() -> {
-            try {
-                today.editStepNote.save(draft.id, draft.text);
-                noteHandler.post(() -> setStepNoteDraft(null));
-            } catch (RuntimeException error) {
-                logger.error("TodayViewModel", "Step note could not be saved", error);
-                noteHandler.post(() -> setStepNoteDraft(new StepNoteDraft(draft.id, draft.text,
-                        texts.text(R.string.error_change_save), false)));
-            }
-        });
-    }
+    @MainThread public void setStepDialogsAvailable(boolean available) { stepDialogs.setAvailable(available); }
+    @MainThread public void changeStepEdit(EditorStepState value) { stepDialogs.changeStep(value); }
+    @MainThread public void changeStepNote(String text) { stepDialogs.changeNote(text); }
+    @MainThread public void cancelStepEdit() { stepDialogs.cancel(TodayStepDialogs.Kind.STEP); }
+    @MainThread public void cancelStepNote() { stepDialogs.cancel(TodayStepDialogs.Kind.NOTE); }
+    @MainThread public void saveStepEdit() { stepDialogs.save(TodayStepDialogs.Kind.STEP); }
+    @MainThread public void saveStepNote() { stepDialogs.save(TodayStepDialogs.Kind.NOTE); }
 
     private void enqueue(TodayRequest request) {
         synchronized (stateLock) { publish(current.enqueue(request)); }
@@ -888,9 +762,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
     }
 
     @Override public void onCleared() {
-        stepEditGeneration++;
-        noteGeneration++;
-        noteHandler.removeCallbacksAndMessages(null);
+        stepDialogs.close();
         if (flowDeadlines != null) flowDeadlines.close();
         contentReads.close();
         appearanceReads.close();

@@ -10,11 +10,11 @@ Er verwendet die Schritt-Eingaben und die gemeinsame Schrittvalidierung des Task
 mit Speichern dauerhaft übernehmen oder mit Abbrechen/Zurück verwerfen. Bei einmaligen
 Aufgaben und Folge-Schritten bleibt der Rhythmus ausgeblendet.
 
-`TodayViewModel` besitzt den Entwurf samt ursprünglichen Feldwerten, Validierungs- und
-Speicherfehlern. `SavedStateHandle` bewahrt diese Daten; ein laufender Speichervorgang wird
-nach Wiederherstellung nicht automatisch wiederholt. Die Compose-Präsentation schreibt
-keine Daten selbst. Initialer und wiederhergestellter Eingabefokus warten auf das aktive
-Fenster. Der Dialog setzt den initialen Tastaturmodus und Größenanpassung explizit,
+`TodayStepDialogs` im `TodayViewModel` besitzt den Entwurf samt ursprünglichen Feldwerten,
+Validierungs- und Speicherfehlern. `SavedStateHandle` bewahrt diese Daten. Nach einer
+Wiederherstellung kann der Nutzer einen unterbrochenen Speicherversuch erneut bestätigen.
+Die Compose-Präsentation leitet Eingaben an die Sitzung weiter. Initialer und
+wiederhergestellter Eingabefokus warten auf das aktive Fenster. Der Dialog setzt den initialen Tastaturmodus und Größenanpassung explizit,
 damit auf API 26 weder der Tastaturstart verloren geht noch Touch-Scrollen hinter der
 Tastatur landet. Der Dialog verarbeitet Systemleisten- und IME-Insets selbst; damit
 misst Compose auf API 26 nicht mit der vollen Displayhöhe hinter der Tastatur.

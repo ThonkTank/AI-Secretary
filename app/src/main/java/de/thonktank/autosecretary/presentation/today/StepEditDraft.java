@@ -5,17 +5,17 @@ import de.thonktank.autosecretary.EditorStepState;
 import de.thonktank.autosecretary.domain.model.*;
 
 /** Retained quick-edit draft. Saving is transient; restoration never retries a write. */
-public final class StepEditDraft {
-    public final String id, error;
+public final class StepEditDraft extends StepDialogDraft {
     public final EditorStepState original, step;
-    public final boolean once, prescriptionProtected, saving, validated;
+    public final boolean once, prescriptionProtected, validated;
 
     public StepEditDraft(String id, EditorStepState original, EditorStepState step,
                          boolean once, boolean prescriptionProtected,
                          String error, boolean saving, boolean validated) {
-        this.id = id; this.original = original; this.step = step; this.once = once;
-        this.prescriptionProtected = prescriptionProtected; this.error = error;
-        this.saving = saving; this.validated = validated;
+        super(id, error, saving);
+        this.original = original; this.step = step; this.once = once;
+        this.prescriptionProtected = prescriptionProtected;
+        this.validated = validated;
     }
     public static StepEditDraft from(EditableStep value) {
         EditorStepState step = EditorStepState.from(value.source)
@@ -32,7 +32,7 @@ public final class StepEditDraft {
     public StepEditDraft status(String error, boolean saving) {
         return new StepEditDraft(id, original, step, once, prescriptionProtected, error, saving, true);
     }
-    public Bundle saved() {
+    @Override public Bundle saved() {
         Bundle bundle = new Bundle();
         bundle.putString("id", id); bundle.putBundle("original", original.toBundle());
         bundle.putBundle("step", step.toBundle()); bundle.putBoolean("once", once);

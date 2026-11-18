@@ -63,6 +63,7 @@ public class MainActivity extends ComponentActivity {
     public static final String CONFIRM_TASK = "confirm_task";
     public static final String CONFIRM_TASK_TITLE = "confirm_task_title";
     public static final String OPEN_EDITOR = "open_editor";
+    private static final String VISIBLE_TODAY_REQUEST = "main.visibleTodayRequest";
     private de.thonktank.autosecretary.ui.today.StepNoteDialog stepNoteDialog;
     private de.thonktank.autosecretary.presentation.editor.StepEditorComposeHostView stepEditor;
     private AppContainer container;
@@ -86,13 +87,12 @@ public class MainActivity extends ComponentActivity {
     private LinearLayout dashboardScreen;
     private LinearLayout dashboardContent;
     private AllTasksUiState allTasksState = AllTasksUiState.empty();
-    private TaskEditorScreenState editorState = new TaskEditorScreenState(
-            EditorUiState.closed(),
-            java.util.Collections.emptyList());
+    private TaskEditorScreenState editorState;
     private String handledAllTasksRequestId;
     private String handledEditorRequestId;
     private String handledOptionsRequestId;
     private String handledTodayRequestId;
+    private AlertDialog todayRequestWindow;
     private String handledRewardEffectId;
     private TaskEditorCoordinator editorCoordinator;
     private int systemTopInset;
@@ -119,6 +119,8 @@ public class MainActivity extends ComponentActivity {
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (savedInstanceState != null)
+            handledTodayRequestId = savedInstanceState.getString(VISIBLE_TODAY_REQUEST);
         if (DiagnosticBootstrap.isDiagnosing()) { finish(); return; }
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "create",
                 "saved=" + (savedInstanceState != null));
@@ -150,6 +152,7 @@ public class MainActivity extends ComponentActivity {
                 todayViewModel::dispatch,
                 optionsViewModel::dispatch, versionName(),
                 rewardAnchors, allTasksViewModel::dispatch);
+        editorState = editorViewModel.state().getValue();
         editorCoordinator = new TaskEditorCoordinator(this, root, dashboardScreen,
                 new TaskEditorComposeHostView.Listener() {
                     @Override public void onDraftChanged(EditorUiState draft) {
@@ -213,9 +216,16 @@ public class MainActivity extends ComponentActivity {
                 "value=" + hasFocus);
     }
 
+    @Override protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (todayRequestWindow != null && todayRequestWindow.isShowing() && handledTodayRequestId != null)
+            outState.putString(VISIBLE_TODAY_REQUEST, handledTodayRequestId);
+    }
+
     @Override protected void onDestroy() {
         if (PresentationTrace.enabled()) PresentationTrace.emit("main-host", "destroy", "");
         if (stepNoteDialog != null) stepNoteDialog.dismiss();
+        if (todayRequestWindow != null) todayRequestWindow.dismiss();
         if (rewardAnimator != null) rewardAnimator.dispose();
         if (editorCoordinator != null) editorCoordinator.dispose();
         super.onDestroy();
@@ -281,9 +291,7 @@ public class MainActivity extends ComponentActivity {
     private void renderTodayState(TodayScreenState state) {
         if (state == null) return;
         todayState = state;
-        stepNoteDialog.bind(state.stepNoteDraft);
         render();
-        handleTodayRequest(state.firstRequest());
         handleRewardEffects(state.rewards);
     }
 
@@ -293,7 +301,7 @@ public class MainActivity extends ComponentActivity {
                 "navigation=" + shellState.navigation + " loading=" + todayState.loading
                         + " editorOpen=" + editorState.content.open);
         forest.setPalette(shellState.palette);
-        stepEditor.bind(todayState.stepEditDraft, shellState.palette, todayViewModel);
+        renderTodayDialogs();
         header.bind(container.clock.time(), shellState.palette, todayState.today().xpProgress);
         footer.bind(shellState.navigation, shellState.palette);
         renderer.render(shellState, todayState, allTasksState, optionsState);
@@ -304,6 +312,24 @@ public class MainActivity extends ComponentActivity {
         controller.setAppearanceLightNavigationBars(light);
         editorCoordinator.render(editorState, shellState.palette,
                 container.clock.today());
+    }
+
+    private void renderTodayDialogs() {
+        boolean available = shellState.navigation == NavigationDestination.TODAY && !editorState.content.open;
+        todayViewModel.setStepDialogsAvailable(available);
+        TodayScreenState current = todayViewModel.state().getValue();
+        TodayRequest first = current.firstRequest();
+        if (first == null || !first.id.equals(handledTodayRequestId)) {
+            handledTodayRequestId = null;
+            if (todayRequestWindow != null) {
+                todayRequestWindow.dismiss();
+                todayRequestWindow = null;
+            }
+        }
+        boolean showDraft = available && current.stepDialog != null && handledTodayRequestId == null;
+        stepNoteDialog.bind(showDraft ? current.stepNoteDraft() : null);
+        stepEditor.bind(showDraft ? current.stepEditDraft() : null, shellState.palette, todayViewModel);
+        if (!showDraft) handleTodayRequest(first);
     }
 
     private void openEditorWithFlight() {
@@ -358,8 +384,10 @@ public class MainActivity extends ComponentActivity {
     private void renderEditorState(TaskEditorScreenState state) {
         if (state == null) return;
         editorState = state;
-        if (shellState != null)
+        if (shellState != null) {
+            renderTodayDialogs();
             editorCoordinator.render(state, shellState.palette, container.clock.today());
+        }
         TaskEditorRequest request = state.firstRequest();
         if (request == null) {
             handledEditorRequestId = null;
@@ -442,14 +470,13 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void handleTodayRequest(TodayRequest request) {
-        if (request == null) {
-            handledTodayRequestId = null;
-            return;
-        }
-        if (request.id.equals(handledTodayRequestId)) return;
+        if (request == null) return;
+        // A restored request retains its place in front, but needs a window from the new host.
+        if (request.id.equals(handledTodayRequestId) && todayRequestWindow != null
+                && todayRequestWindow.isShowing()) return;
         handledTodayRequestId = request.id;
         if (request.kind == TodayRequest.Kind.ERROR) {
-            new AlertDialog.Builder(this).setTitle(R.string.error_title)
+            todayRequestWindow = new AlertDialog.Builder(this).setTitle(R.string.error_title)
                     .setMessage(request.message)
                     .setPositiveButton(R.string.okay,
                             (dialog, which) -> acknowledgeTodayRequest(request.id))
@@ -458,7 +485,7 @@ public class MainActivity extends ComponentActivity {
             Toast.makeText(this, request.message, Toast.LENGTH_LONG).show();
             acknowledgeTodayRequest(request.id);
         } else if (request.kind == TodayRequest.Kind.TASK_MENU) {
-            new AlertDialog.Builder(this).setTitle(request.title)
+            todayRequestWindow = new AlertDialog.Builder(this).setTitle(request.title)
                     .setItems(new String[]{getString(R.string.task_edit),
                             getString(R.string.task_move), getString(R.string.task_delete)},
                             (dialog, which) -> {
@@ -472,7 +499,7 @@ public class MainActivity extends ComponentActivity {
                     .setOnCancelListener(dialog -> acknowledgeTodayRequest(request.id)).show();
         } else if (request.kind == TodayRequest.Kind.CHOOSE_MOVE) {
             TaskSlot[] slots = TaskSlot.values();
-            new AlertDialog.Builder(this).setTitle(R.string.task_move)
+            todayRequestWindow = new AlertDialog.Builder(this).setTitle(R.string.task_move)
                     .setSingleChoiceItems(slotLabels(), request.target.slot.ordinal(),
                             (dialog, which) -> {
                                 todayViewModel.dispatch(TodayAction.moveTask(
@@ -485,7 +512,7 @@ public class MainActivity extends ComponentActivity {
         } else if (request.kind == TodayRequest.Kind.CONFIRM_DELETE) {
             String loss = request.routine ? getString(R.string.delete_routine_loss)
                     : getString(R.string.delete_task_loss);
-            new AlertDialog.Builder(this)
+            todayRequestWindow = new AlertDialog.Builder(this)
                     .setTitle(getString(R.string.delete_task_title, request.title))
                     .setMessage(loss)
                     .setNegativeButton(R.string.keep,
@@ -495,7 +522,7 @@ public class MainActivity extends ComponentActivity {
                                     TodayAction.confirmDeleteTask(request.id)))
                     .setOnCancelListener(dialog -> acknowledgeTodayRequest(request.id)).show();
         } else if (request.kind == TodayRequest.Kind.CONFIRM_CLOSE) {
-            new AlertDialog.Builder(this).setTitle(R.string.close_task_title)
+            todayRequestWindow = new AlertDialog.Builder(this).setTitle(R.string.close_task_title)
                     .setMessage(getString(R.string.close_task_message, request.title))
                     .setNegativeButton(R.string.cancel,
                             (dialog, which) -> acknowledgeTodayRequest(request.id))
@@ -504,7 +531,7 @@ public class MainActivity extends ComponentActivity {
                                     TodayAction.confirmCloseTask(request.id)))
                     .setOnCancelListener(dialog -> acknowledgeTodayRequest(request.id)).show();
         } else if (request.kind == TodayRequest.Kind.REQUEST_TIMER_PERMISSIONS) {
-            new AlertDialog.Builder(this)
+            todayRequestWindow = new AlertDialog.Builder(this)
                     .setTitle(R.string.timer_permission_title)
                     .setMessage(R.string.timer_permission_message)
                     .setNegativeButton(R.string.continue_action,
