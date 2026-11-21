@@ -565,7 +565,7 @@ public final class FocusTaskViewTest {
                 result = reducer.drop(state[0], action.id, action.relatedId, "command-1");
             else return;
             state[0] = result.state;
-            if (result.command != null) commands[0]++;
+            if (result.write != null) commands[0]++;
         };
         FocusTaskView view = new FocusTaskView(context);
         bindFeature(view, state[0], FocusStepLimit.ONE, sink);
