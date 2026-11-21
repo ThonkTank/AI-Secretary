@@ -36,7 +36,7 @@ import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
-/** Actual renderer -> ViewModel -> dispatcher -> use cases -> file-backed Room.
+/** Actual renderer -> ViewModel -> use cases -> file-backed Room.
  * Touch geometry is covered by TodayInteractionInstrumentationTest. */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {26, 35})
@@ -164,8 +164,8 @@ public final class TodayActionIntegrationRobolectricTest {
                 new FlowTileGraph(Arrays.asList("start", "end"),
                         Collections.singletonList(new FlowTileGraph.Link("start", "end"))),
                 steps, new LinkedHashMap<>(Map.of("start", FlowDelayPolicy.fixed(60_000), "end", FlowDelayPolicy.fixed(0))),
-                Collections.singletonList(new FlowConfigurationDraft.Resource("washer", null, "Maschine", 1, true)),
-                Collections.singletonList(new FlowGraphEdit.Binding(new FlowConfigurationDraft.Lease(
+                Collections.singletonList(new FlowGraphEdit.Resource("washer", null, "Maschine", 1, true)),
+                Collections.singletonList(new FlowGraphEdit.Binding(new FlowGraphEdit.Lease(
                         "lease", null, "washer", "start", "end", 1), false))));
         mount();
         assertOrder("Aufgabe", "Wäsche");
@@ -334,6 +334,10 @@ public final class TodayActionIntegrationRobolectricTest {
         View target = find(content, view -> view.getContentDescription() != null
                 && view.getContentDescription().toString().startsWith(label));
         assertNotNull("Missing accessible title: " + title, target);
+        UiStyle style = new UiStyle(context);
+        target.measure(View.MeasureSpec.makeMeasureSpec(style.dp(280), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        assertTrue(target.getMeasuredHeight() >= style.dp(48));
         assertTrue(target.performAccessibilityAction(AccessibilityNodeInfo.ACTION_CLICK, null));
         render();
     }

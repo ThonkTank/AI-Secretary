@@ -33,10 +33,13 @@ public final class TaskEditorNavigation {
 
     static TaskEditorNavigation fromBundle(Bundle bundle, EditorUiState.Page fallback) {
         if (bundle == null) return new TaskEditorNavigation(fallback, false, null);
-        EditorUiState.Page page = BundleValues.enumValue(EditorUiState.Page.class,
-                bundle.getString("page"), fallback);
-        if (page == EditorUiState.Page.FLOW) page = EditorUiState.Page.STEPS;
-        return new TaskEditorNavigation(page, bundle.getBoolean("return_summary"),
+        return new TaskEditorNavigation(restorePage(bundle.getString("page"), fallback),
+                bundle.getBoolean("return_summary"),
                 bundle.getString("expanded"));
+    }
+
+    static EditorUiState.Page restorePage(String name, EditorUiState.Page fallback) {
+        return "FLOW".equals(name) ? EditorUiState.Page.STEPS
+                : BundleValues.enumValue(EditorUiState.Page.class, name, fallback);
     }
 }

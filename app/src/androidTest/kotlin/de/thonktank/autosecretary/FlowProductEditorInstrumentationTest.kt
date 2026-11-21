@@ -4,8 +4,9 @@ import android.content.Intent
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.*
-import de.thonktank.autosecretary.domain.model.TaskId
 import de.thonktank.autosecretary.domain.model.TaskKind
+import de.thonktank.autosecretary.domain.model.FlowDelayPolicy
+import de.thonktank.autosecretary.ui.today.ProductActivitySession
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.Rule
@@ -30,33 +31,80 @@ class FlowProductEditorInstrumentationTest {
         }
     }
 
-    @Test fun createReopenAndCancelUseTheActualDedicatedEditor() {
+    @Test fun typePickerCreatesANormalTaskAndAllTasksOpensItForEditing() {
+        val context = instrumentation.targetContext
+        val title = "Aufgabenprüfung ${UUID.randomUUID()}"
+        val renamed = "$title geändert"
+        val next = By.desc(context.getString(R.string.editor_next))
+        val save = By.desc(context.getString(R.string.action_save))
+        try {
+            ProductActivitySession(instrumentation).use { scenario ->
+                scenario.launch()
+                chooseTaskType("Aufgabe")
+                awaitText(R.string.editor_ctx_new)
+                awaitText(R.string.editor_frage_titel)
+                editText().text = title
+                click(next, "Weiter zum Rhythmus")
+                awaitText(R.string.editor_frage_rhythmus)
+                click(next, "Weiter zu den Schritten")
+                awaitText(R.string.editor_frage_schritte)
+                click(next, "Weiter zur Zusammenfassung")
+                click(save, "Normale Aufgabe anlegen")
+                assertTrue(device.wait(Until.gone(By.text(context.getString(R.string.editor_ctx_new))), 5_000))
+                val created = catalogTask(title)
+                assertEquals(TaskKind.TASK, created.kind)
+
+                openFromAllTasks(title)
+                awaitText(R.string.editor_ctx_edit)
+                val titleRow = context.getString(R.string.a11y_editor_summary_row,
+                    context.getString(R.string.field_title_label), title, context.getString(R.string.editor_change))
+                click(By.desc(titleRow), "Titel aus der Zusammenfassung bearbeiten")
+                awaitText(R.string.editor_frage_titel)
+                editText(title).text = renamed
+                click(next, "Geänderten Titel übernehmen")
+                click(save, "Normale Aufgabe bearbeiten")
+                assertTrue(device.wait(Until.gone(By.text(context.getString(R.string.editor_ctx_edit))), 5_000))
+                val edited = catalogTask(renamed)
+                assertEquals(created.id, edited.id)
+                assertEquals(TaskKind.TASK, edited.kind)
+            }
+        } finally { deleteTestTasks(title, renamed) }
+    }
+
+    @Test fun typePickerCreatesAFlowAndAllTasksOpensTheDedicatedEditor() {
         val context = instrumentation.targetContext
         val container = AutoSecretaryApplication.from(context).container()
-        val title = "Ablaufprüfung ${UUID.randomUUID().toString().take(8)}"
-        var saved: TaskId? = null
+        val title = "Ablaufprüfung ${UUID.randomUUID()}"
+        val renamed = "$title geändert"
         try {
-            ActivityScenario.launch<FlowSetupActivity>(Intent(context, FlowSetupActivity::class.java)).use {
+            ProductActivitySession(instrumentation).use { scenario ->
+                scenario.launch()
+                chooseTaskType("Ablauf")
                 input("title").text = title
                 button("+ Schritt").click()
                 input("name").text = "Vorbereiten"
                 input("duration").text = "2"
                 button("Beim Start nachfragen").click()
                 button("Speichern").click()
-                button("Weiter").click()
-                button("Fertig").click()
-                assertTrue("The real save must finish the host", device.wait(Until.gone(By.res("flow-editor")), 10_000))
+                finishFlow()
+                val created = catalogTask(title)
+                assertEquals(TaskKind.FLOW, created.kind)
+                openFromAllTasks(title)
+                assertEquals(title, input("title").text)
+                input("title").text = renamed
+                finishFlow()
+                assertEquals(created.id, catalogTask(renamed).id)
             }
-            saved = container.catalog.loadTaskCatalog.execute().items.single { it.task.title == title }.task.id
+            val saved = catalogTask(renamed).id
             val setup = container.flows.loadGraph.execute(saved)
             assertEquals(TaskKind.FLOW, setup.task.kind)
             assertEquals("Vorbereiten", setup.steps.single().text)
-            assertEquals(120_000L, setup.definition.nodes.values.single().waitAfter.proposedDelayMillis())
-            assertEquals(de.thonktank.autosecretary.domain.model.FlowDelayPolicy.Mode.REMEMBER_LAST,
-                setup.definition.nodes.values.single().waitAfter.mode)
+            val wait = setup.definition.nodes.values.single().waitAfter
+            assertEquals(120_000L, wait.proposedDelayMillis())
+            assertEquals(FlowDelayPolicy.Mode.REMEMBER_LAST, wait.mode)
             ActivityScenario.launch<FlowSetupActivity>(Intent(context, FlowSetupActivity::class.java)
                 .putExtra(FlowSetupActivity.TASK_ID, saved.value)).use { scenario ->
-                assertEquals(title, input("title").text)
+                assertEquals(renamed, input("title").text)
                 button("Vorbereiten").click()
                 input("name").text = "Nicht speichern"
                 scenario.recreate()
@@ -69,11 +117,54 @@ class FlowProductEditorInstrumentationTest {
                 assertTrue(device.wait(Until.gone(By.res("flow-editor")), 5_000))
             }
             assertEquals("Vorbereiten", container.flows.loadGraph.execute(saved).steps.single().text)
-        } finally {
-            val id = saved ?: container.catalog.loadTaskCatalog.execute().items
-                .firstOrNull { it.task.title == title }?.task?.id
-            id?.let { container.catalog.delete.execute(it) }
-        }
+        } finally { deleteTestTasks(title, renamed) }
+    }
+
+    private fun chooseTaskType(type: String) {
+        val context = instrumentation.targetContext
+        click(By.desc(context.getString(R.string.content_add_task)), "Aufgabentyp wählen")
+        click(By.text(type), "$type anlegen")
+    }
+
+    private fun openFromAllTasks(title: String) {
+        val context = instrumentation.targetContext
+        val tab = By.res(context.resources.getResourceName(R.id.navigation_all_tasks))
+        click(tab, "Alles öffnen")
+        assertTrue("Der Tap muss den Tab Alles auswählen", device.wait(Until.hasObject(tab.selected(true)), 5_000))
+        editText().text = title
+        click(By.desc(context.getString(R.string.a11y_edit_task, title)), "Gespeicherten Eintrag bearbeiten")
+    }
+
+    private fun awaitText(resource: Int) {
+        val text = instrumentation.targetContext.getString(resource)
+        stage = "Seite $text"
+        assertTrue(stage, device.wait(Until.hasObject(By.text(text)), 5_000))
+    }
+
+    private fun editText(value: String? = null): UiObject2 {
+        val selector = By.clazz("android.widget.EditText")
+        if (value != null) selector.text(value)
+        return requireNotNull(device.wait(Until.findObject(selector), 5_000)) { "Eingabefeld fehlt: $stage" }
+    }
+
+    private fun finishFlow() {
+        button("Weiter").click()
+        button("Fertig").click()
+        assertTrue("Speichern muss den Ablaufeditor schließen", device.wait(Until.gone(By.res("flow-editor")), 10_000))
+    }
+
+    private fun catalogTask(title: String) = AutoSecretaryApplication.from(instrumentation.targetContext)
+        .container().catalog.loadTaskCatalog.execute().items.single { it.task.title == title }.task
+
+    private fun deleteTestTasks(vararg titles: String) {
+        val catalog = AutoSecretaryApplication.from(instrumentation.targetContext).container().catalog
+        catalog.loadTaskCatalog.execute().items.filter { it.task.title in titles }.forEach { catalog.delete.execute(it.task.id) }
+    }
+
+    private fun click(selector: BySelector, label: String) {
+        stage = label
+        requireNotNull(device.wait(Until.findObject(selector), 5_000)) { "Missing action $label" }
+        requireNotNull(device.findObject(selector)) { "Action disappeared: $label" }.click()
     }
 
     private fun input(field: String): UiObject2 = requireNotNull(device.wait(

@@ -2,51 +2,29 @@ package de.thonktank.autosecretary.presentation.today;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
 
-/** Closed dispatcher and state owner for the Today feature. */
-public final class TodayCoordinator implements TodayActionSink {
-    @FunctionalInterface public interface CommandSink {
-        void execute(TodayCommand command);
-    }
-
-    @FunctionalInterface public interface StateSink {
-        void publish(TodayFeatureState state);
-    }
-
-    @FunctionalInterface public interface CommandIds {
-        String next();
-    }
-
-    private final TodayReducer reducer;
-    private final CommandSink commands;
-    private final StateSink states;
-    private final CommandIds commandIds;
+/** Owns the local step selection and the drag and accessibility reorder lifecycle. */
+public final class TodayCoordinator {
+    private final TodayReducer reducer = new TodayReducer();
+    private final Consumer<TodayReducer.ReorderWrite> persist;
+    private final Consumer<TodayFeatureState> publish;
+    private long sequence;
     private TodayFeatureState state;
 
-    public TodayCoordinator(TodayUiModel initial, CommandSink commands, StateSink states) {
-        AtomicLong sequence = new AtomicLong();
-        this.reducer = new TodayReducer();
-        this.commands = required(commands);
-        this.states = required(states);
-        this.commandIds = () -> "today-reorder-" + sequence.incrementAndGet();
-        this.state = TodayFeatureState.idle(initial);
-    }
-
-    TodayCoordinator(TodayUiModel initial, TodayReducer reducer, CommandSink commands,
-                     StateSink states, CommandIds commandIds) {
-        this.reducer = required(reducer);
-        this.commands = required(commands);
-        this.states = required(states);
-        this.commandIds = required(commandIds);
-        this.state = TodayFeatureState.idle(initial);
+    public TodayCoordinator(TodayUiModel initial, Consumer<TodayReducer.ReorderWrite> persist,
+                            Consumer<TodayFeatureState> publish) {
+        this.persist = Objects.requireNonNull(persist);
+        this.publish = Objects.requireNonNull(publish);
+        state = TodayFeatureState.idle(initial);
     }
 
     public synchronized TodayFeatureState state() { return state; }
 
-    @Override public synchronized void emit(TodayAction action) {
+    public synchronized void applyStepAction(TodayAction action) {
         if (action == null) throw new IllegalArgumentException("Today action is required");
         switch (action.kind) {
             case SELECT_STEP:
@@ -62,93 +40,13 @@ public final class TodayCoordinator implements TodayActionSink {
                 apply(reducer.cancel(state, action.id));
                 return;
             case DROP_REORDER:
-                apply(reducer.drop(state, action.id, action.relatedId, commandIds.next()));
+                apply(reducer.drop(state, action.id, action.relatedId, nextCommandId()));
                 return;
             case MOVE_STEP:
                 moveImmediately(action.id, action.relatedId);
                 return;
-            case COMPLETE_OCCURRENCE:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.COMPLETE_OCCURRENCE,
-                        action));
-                return;
-            case REQUEST_CLOSE:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.REQUEST_CLOSE, action));
-                return;
-            case COMPLETE_REMAINING:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.COMPLETE_REMAINING,
-                        action));
-                return;
-            case HARVEST:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.HARVEST, action));
-                return;
-            case BRING_FIRST:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.BRING_FIRST, action));
-                return;
-            case DEFER:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.DEFER, action));
-                return;
-            case START_FLOW_CANDIDATE:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.START_FLOW_CANDIDATE,
-                        action));
-                return;
-            case START_FLOW_CANDIDATE_WITH_DELAY:
-                commands.execute(TodayCommand.action(
-                        TodayCommand.Kind.START_FLOW_CANDIDATE_WITH_DELAY, action));
-                return;
-            case TOGGLE_STEP:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.TOGGLE_STEP, action));
-                return;
-            case COMPLETE_FLOW_STEP:
-            case COMPLETE_FLOW_STEP_WITH_DELAY:
-            case COLLECT_FLOW:
-            case ADJUST_FLOW_WAIT:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.valueOf(action.kind.name()), action));
-                return;
-            case TOGGLE_STEP_WITH_DELAY:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.TOGGLE_STEP_WITH_DELAY,
-                        action));
-                return;
-            case FINISH_STEP:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.FINISH_STEP, action));
-                return;
-            case ADVANCE_STEP:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.ADVANCE_STEP, action));
-                return;
-            case UNDO_OCCURRENCE:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.UNDO_OCCURRENCE, action));
-                return;
-            case ADJUST_REPETITION:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.ADJUST_REPETITION,
-                        action));
-                return;
-
-
-
-            case EDIT_REPETITION:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.EDIT_REPETITION, action));
-                return;
-            case SUBMIT_REPETITION:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.SUBMIT_REPETITION,
-                        action));
-                return;
-            case START_DURATION_TIMER:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.START_DURATION_TIMER,
-                        action));
-                return;
-            case PAUSE_TIMER:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.PAUSE_TIMER, action));
-                return;
-            case RESUME_TIMER:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.RESUME_TIMER, action));
-                return;
-            case RESET_TIMER:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.RESET_TIMER, action));
-                return;
-            case OBSERVE_TIMER:
-                commands.execute(TodayCommand.action(TodayCommand.Kind.OBSERVE_TIMER, action));
-                return;
         }
-        throw new AssertionError("Unhandled Today action " + action.kind);
+        throw new AssertionError("Expected a step selection or reorder action, got " + action.kind);
     }
 
     public synchronized void rebind(TodayUiModel today) {
@@ -176,19 +74,16 @@ public final class TodayCoordinator implements TodayActionSink {
         }
         preview.add(target, stepId);
         apply(reducer.preview(state, stepId, preview));
-        apply(reducer.drop(state, stepId, beforeStepId, commandIds.next()));
+        apply(reducer.drop(state, stepId, beforeStepId, nextCommandId()));
     }
+
+    private String nextCommandId() { return "today-reorder-" + ++sequence; }
 
     private void apply(TodayReducer.Result result) {
         if (result.state != state) {
             state = result.state;
-            states.publish(state);
+            publish.accept(state);
         }
-        if (result.command != null) commands.execute(result.command);
-    }
-
-    private static <T> T required(T value) {
-        if (value == null) throw new IllegalArgumentException("Coordinator dependency required");
-        return value;
+        if (result.write != null) persist.accept(result.write);
     }
 }

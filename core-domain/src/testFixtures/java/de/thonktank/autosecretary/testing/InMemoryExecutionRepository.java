@@ -151,6 +151,9 @@ public final class InMemoryExecutionRepository {
     public synchronized TaskStepTemplate findTemplate(String id) {
         return templates.get(id);
     }
+    public synchronized List<TaskStepTemplate> allTemplates() {
+        return templatesFor(new ArrayList<>(tasks.keySet()));
+    }
     public synchronized List<TaskStepTemplate> templatesFor(List<TaskId> taskIds) {
         Set<TaskId> selected = new HashSet<>(taskIds);
         List<TaskStepTemplate> result = new ArrayList<>();

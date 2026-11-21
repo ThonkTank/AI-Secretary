@@ -6,6 +6,7 @@ import android.os.Looper
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.platform.ComposeView
+import androidx.test.core.app.ApplicationProvider
 import androidx.lifecycle.SavedStateHandle
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy
 import de.thonktank.autosecretary.presentation.editor.FlowTileEditorScreen
@@ -75,7 +76,7 @@ class FlowTileEditorGoldenRobolectricTest {
                 if (narrow) stack = stack.after(keys[2], listOf(keys[1]))
                 draft = draft.withGraph(stack)
             }
-            val vm = FlowEditorViewModel(draft, SavedStateHandle())
+            val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), draft, SavedStateHandle())
             if (form) vm.openStep(ids.first())
             val palette = DayPalette.at(LocalTime.of(9, 40), DayPalette.Mode.LIGHT)
             val root = ComposeView(activity).apply {

@@ -61,12 +61,12 @@ public final class StepFlowRuntimeRobolectricTest {
         for (String key : keys) waits.put(key, FlowDelayPolicy.fixed(0));
         for (StepTransition transition : transitions()) waits.put(transition.sourceStepId, transition.delay);
         List<FlowGraphEdit.Binding> bindings = leases(task).stream().map(lease ->
-                new FlowGraphEdit.Binding(new FlowConfigurationDraft.Lease(lease.id, null,
+                new FlowGraphEdit.Binding(new FlowGraphEdit.Lease(lease.id, null,
                         lease.resourceId, lease.acquireStepId, lease.releaseStepId, lease.units), false)).toList();
         useCases.flows.saveGraph.execute(new FlowGraphEdit(task.id, task.title, new FlowTileGraph(keys, links),
                 laundryTask().steps, waits, List.of(
-                new FlowConfigurationDraft.Resource("washer", null, "Waschmaschine", 1, true),
-                new FlowConfigurationDraft.Resource("dry", null, "Trockenplatz", 3, true)), bindings));
+                new FlowGraphEdit.Resource("washer", null, "Waschmaschine", 1, true),
+                new FlowGraphEdit.Resource("dry", null, "Trockenplatz", 3, true)), bindings));
         assertTrue(useCases.today.materializeDue.execute());
     }
 

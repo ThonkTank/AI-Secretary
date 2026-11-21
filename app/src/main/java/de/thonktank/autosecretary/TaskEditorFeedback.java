@@ -51,8 +51,7 @@ public final class TaskEditorFeedback {
         Set<EditorUiState.Page> pages = new LinkedHashSet<>();
         ArrayList<String> pageValues = bundle.getStringArrayList("attempted_pages");
         if (pageValues != null) for (String value : pageValues)
-            pages.add(BundleValues.enumValue(EditorUiState.Page.class, value,
-                    EditorUiState.Page.TITLE));
+            pages.add(TaskEditorNavigation.restorePage(value, EditorUiState.Page.TITLE));
         ArrayList<String> stepValues = bundle.getStringArrayList("attempted_steps");
         return new TaskEditorFeedback(issues, pages,
                 stepValues == null ? Collections.emptySet() : new LinkedHashSet<>(stepValues),

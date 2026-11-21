@@ -9,9 +9,6 @@ public interface FlowProgression {
     default void onStepCompleted(Occurrence occurrence, OccurrenceStep step,
                                  Long chosenDelayMillis) { }
     default boolean canReopenStep(Occurrence occurrence, OccurrenceStep step) { return true; }
-    default void onStepReopened(Occurrence occurrence, OccurrenceStep step) { }
-    default void onOccurrenceHarvested(Occurrence occurrence) { }
     default boolean canHarvestOccurrence(Occurrence occurrence) { return true; }
     default boolean canReopenOccurrence(Occurrence occurrence) { return true; }
-    default void onOccurrenceReopened(Occurrence occurrence) { }
 }

@@ -13,14 +13,19 @@ import de.thonktank.autosecretary.domain.repository.TodayRepository;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /** Room adapter for occurrences, materialization, rewards, combos and obligations. */
 public final class RoomTodayRepository implements TodayRepository {
     private final TodayDao dao;
+    private final RoomIdQueries idQueries;
     private final TaskEntityMapper mapper = new TaskEntityMapper();
 
-    public RoomTodayRepository(AppDatabase database) { this.dao = database.today(); }
+    public RoomTodayRepository(AppDatabase database) {
+        this.dao = database.today();
+        idQueries = new RoomIdQueries(database);
+    }
 
     @Override public java.util.Set<String> hiddenToday(LocalDate day) {
         return new java.util.HashSet<>(dao.hiddenToday(day.toString()));
@@ -149,7 +154,9 @@ public final class RoomTodayRepository implements TodayRepository {
     }
     @Override public List<RewardBooking> rewardBookings(List<String> occurrenceIds) {
         if (occurrenceIds.isEmpty()) return new ArrayList<>();
-        return mapBookings(dao.rewardBookings(occurrenceIds));
+        return mapBookings(idQueries.read(occurrenceIds, dao::rewardBookings,
+                Comparator.comparing((RewardBookingEntity row) -> row.bookedOn)
+                        .thenComparing(row -> row.id, RoomIdQueries::compareText)));
     }
     @Override public List<ComboObligation> comboObligations() {
         List<ComboObligation> result = new ArrayList<>();
