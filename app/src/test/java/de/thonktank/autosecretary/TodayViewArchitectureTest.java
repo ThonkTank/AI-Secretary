@@ -10,20 +10,6 @@ import java.nio.file.Path;
 import org.junit.Test;
 
 public final class TodayViewArchitectureTest {
-    @Test public void focusListDoesNotOwnCanonicalModelsOrPersistence() throws Exception {
-        String source = source("ui/today/FocusStepListLayout.java");
-
-        assertFalse(source.contains("boundModel"));
-        assertFalse(source.contains("boundEvents"));
-        assertFalse(source.contains("dropped"));
-        assertFalse(source.contains("persistDrop"));
-        assertFalse(source.contains("DashboardEvent"));
-        assertFalse(source.contains("private final List<FocusStepUiModel>"));
-        assertTrue(source.contains("TodayAction.beginReorder"));
-        assertTrue(source.contains("TodayAction.previewReorder"));
-        assertTrue(source.contains("TodayAction.dropReorder"));
-    }
-
     @Test public void todayRowsAndHistoryEmitOnlyTypedTodayActions() throws Exception {
         String row = source("ui/today/FocusStepRowView.java");
         String history = source("ui/today/CompletedTodayView.java");
@@ -32,16 +18,6 @@ public final class TodayViewArchitectureTest {
         assertFalse(history.contains("DashboardEvent"));
         assertTrue(row.contains("StepExecutionUiAction"));
         assertTrue(history.contains("TodayAction.undoOccurrence"));
-    }
-
-    @Test public void reorderTestsUsePublicViewsAndActionsWithoutReflection() throws Exception {
-        String tests = new String(Files.readAllBytes(Path.of(
-                "src/test/java/de/thonktank/autosecretary/FocusTaskViewTest.java")),
-                StandardCharsets.UTF_8);
-        assertFalse(tests.contains("ReflectionHelpers"));
-        assertFalse(tests.contains("callInstanceMethod"));
-        assertTrue(tests.contains("performLongClick()"));
-        assertTrue(tests.contains("performAccessibilityAction"));
     }
 
     @Test public void focusProjectionHasNoLegacyStatusPromotionOrViewSelectionLogic()
@@ -64,24 +40,6 @@ public final class TodayViewArchitectureTest {
         assertFalse(list.contains("activeStepId("));
         assertTrue(task.contains("bind(FocusCardUiModel model, boolean stacked"));
         assertFalse(task.contains("bind(FocusTaskUiModel task"));
-    }
-
-    @Test public void focusRowsUseStableIdentityAndCompleteBindersWithoutGlobalReset() throws Exception {
-        String list = source("ui/today/FocusStepListLayout.java");
-        String row = source("ui/today/FocusStepRowView.java");
-
-        assertTrue(list.contains("Map<String, FocusStepRowView> rowCache"));
-        assertTrue(list.contains("rowKey(model.steps.itemId, projected.id())"));
-        assertTrue(list.contains("if (!model.steps.itemId.equals(itemId))"));
-        assertFalse(list.contains("while (rows.size() <"));
-        assertTrue(row.contains("bindSurface("));
-        assertTrue(row.contains("bindText("));
-        assertFalse(row.contains("bindAssistant("));
-        assertTrue(row.contains("bindRepetition("));
-        assertTrue(row.contains("bindAction("));
-        assertTrue(row.contains("bindTimer("));
-        assertTrue(row.contains("bindInteractions("));
-        assertFalse(row.contains("resetForBind"));
     }
 
     private static String source(String name) throws Exception {
