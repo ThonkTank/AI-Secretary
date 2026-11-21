@@ -11,6 +11,8 @@ import android.content.Context;
 import androidx.room.Room;
 import androidx.test.core.app.ApplicationProvider;
 
+import de.thonktank.autosecretary.data.local.OccurrenceStepEntity;
+import de.thonktank.autosecretary.data.local.RepetitionResultEntity;
 import de.thonktank.autosecretary.domain.model.Dashboard;
 import de.thonktank.autosecretary.domain.model.FlowCandidate;
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy;
@@ -166,6 +168,61 @@ public final class UseCaseRobolectricTest {
         assertEquals(0, queries.stream().filter(sql -> sql.contains("flow_candidates")).count());
         assertEquals(0, queries.stream().filter(sql -> sql.contains("flow_task_sheet_placements"))
                 .count());
+    }
+
+    @Test public void batchedCatalogReadsDeduplicateIdsAndPreserveGlobalPlacementOrder() {
+        CreateTask create = new CreateTask(repository.catalog, repository.steps, repository.today,
+                repository.transactions, clock, ids);
+        TaskId first = create.execute(TaskDefinition.basic("Morgen", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, Collections.emptyList()));
+        TaskId second = create.execute(TaskDefinition.basic("Abend", TaskSlot.EVENING,
+                Recurrence.DAILY, 1, 0, Collections.emptyList()));
+        List<TaskId> requested = new ArrayList<>();
+        requested.add(first);
+        for (int i = 0; i < 1000; i++) requested.add(TaskId.of(first.value + "-" + i));
+        requested.add(second);
+        requested.add(first);
+        queries.clear();
+        var placements = repository.catalog.scheduleEntriesFor(requested);
+        assertEquals(List.of(second, first), placements.stream().map(row -> row.taskId)
+                .collect(java.util.stream.Collectors.toList()));
+        assertEquals(2L, queries.stream().filter(sql -> sql.contains("FROM task_schedule_entries"))
+                .count());
+    }
+
+    @Test public void dashboardReadsRepetitionsAcrossSqliteBindBoundaries() {
+        CreateTask create = new CreateTask(repository.catalog, repository.steps, repository.today,
+                repository.transactions, clock, ids);
+        create.execute(TaskDefinition.basic("Viele Schritte", TaskSlot.MORNING, Recurrence.DAILY,
+                1, 0, Collections.emptyList()));
+        new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today,
+                repository.flows, repository.transactions, clock, ids).execute();
+        String occurrence = repository.today.openOccurrences().get(0).id;
+        List<OccurrenceStepEntity> rows = new ArrayList<>();
+        List<RepetitionResultEntity> results = new ArrayList<>();
+        int previous = 0;
+        for (int count : new int[]{0, 999, 1000, 2001}) {
+            for (int i = previous; i < count; i++) {
+                String id = "step-" + i;
+                rows.add(new OccurrenceStepEntity(id, occurrence, i, id, false, "SETS_REPS",
+                        2, 8, null, "", "", null, "step:" + id));
+                results.add(new RepetitionResultEntity(id, 0, 1 + i % 8));
+            }
+            database.steps().insertOccurrenceSteps(rows);
+            database.steps().putRepetitionResults(results);
+            rows.clear();
+            results.clear();
+            queries.clear();
+            var steps = repository.dashboard().execute(TODAY).tasks.get(0).steps;
+            assertEquals(count, steps.size());
+            for (int i = 0; i < count; i++) {
+                assertEquals("step-" + i, steps.get(i).id);
+                assertEquals(List.of(1 + i % 8), steps.get(i).repetitionProgress.repetitions());
+            }
+            assertEquals((count + 998) / 999,
+                    queries.stream().filter(sql -> sql.contains("FROM repetition_results")).count());
+            previous = count;
+        }
     }
 
     @Test public void dashboardReadsActiveGraphSnapshotsInBulk() {
