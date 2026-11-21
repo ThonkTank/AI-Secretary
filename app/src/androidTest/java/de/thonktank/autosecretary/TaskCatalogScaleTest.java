@@ -19,18 +19,20 @@ import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
 @RunWith(AndroidJUnit4.class)
 public final class TaskCatalogScaleTest {
     @Test public void fullCatalogReadsAllTasksStepsAndPlacementsWithThreeSelects() {
-        AtomicInteger selects = new AtomicInteger();
+        List<String> selects = Collections.synchronizedList(new ArrayList<>());
         AppDatabase db = Room.inMemoryDatabaseBuilder(
                 InstrumentationRegistry.getInstrumentation().getTargetContext(), AppDatabase.class)
                 .setQueryCallback((sql, args) -> {
-                    if (sql.startsWith("SELECT * FROM")) selects.incrementAndGet();
+                    if (sql.startsWith("SELECT") && !sql.contains("room_table_modification_log"))
+                        selects.add(sql);
                 }, Runnable::run).build();
         try {
             db.runInTransaction(() -> {
@@ -47,10 +49,10 @@ public final class TaskCatalogScaleTest {
                 }
             });
             RoomTransactionRunner transactions = new RoomTransactionRunner(db);
-            selects.set(0);
+            selects.clear();
             TaskCatalog result = new LoadTaskCatalog(new RoomCatalogRepository(db),
                     new RoomStepRepository(db, transactions), transactions).execute();
-            assertEquals(3, selects.get());
+            assertEquals(selects.toString(), 3, selects.size());
             assertEquals(1200, result.items.size());
             for (int i = 0; i < result.items.size(); i++) {
                 TaskCatalog.Item item = result.items.get(i);
