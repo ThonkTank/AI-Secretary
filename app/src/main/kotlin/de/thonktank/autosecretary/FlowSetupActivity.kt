@@ -34,22 +34,18 @@ class FlowSetupActivity : ComponentActivity() {
         setContent {
             val state by editor.state.collectAsState()
             LaunchedEffect(state.savedTaskId) {
-                state.savedTaskId?.let {
-                    setResult(RESULT_OK, Intent().putExtra(TASK_ID, it))
-                    container.executors.timerSerial.execute { container.flowWakeScheduler.reschedule() }
-                    finish()
-                }
+                if (state.savedTaskId != null) finishEditor()
             }
             BackHandler {
                 when {
-                    state.saving || state.savePending -> Unit
+                    !state.canDiscard -> Unit
                     state.form != null -> editor.closeForm()
                     state.page == 2 -> editor.back()
                     else -> confirmDiscard()
                 }
             }
             FlowTileEditorScreen(state, DayPalette.at(container.clock.time(), DayPalette.Mode.AUTO),
-                editor, editor::save, ::finish,
+                editor, editor::save, ::finishEditor,
                 Modifier.windowInsetsPadding(WindowInsets.safeDrawing).imePadding())
         }
     }
@@ -59,15 +55,20 @@ class FlowSetupActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    override fun onDestroy() {
-        if (isFinishing && ::editor.isInitialized && !editor.state.value.savePending) editor.discardSession()
-        super.onDestroy()
+    private fun finishEditor() {
+        if (!editor.discardSession()) return
+        editor.state.value.savedTaskId?.let { taskId ->
+            setResult(RESULT_OK, Intent().putExtra(TASK_ID, taskId))
+            val container = AutoSecretaryApplication.from(this).container()
+            container.executors.timerSerial.execute { container.flowWakeScheduler.reschedule() }
+        }
+        finish()
     }
 
     private fun confirmDiscard() {
         android.app.AlertDialog.Builder(this).setMessage("Änderungen verwerfen?")
             .setNegativeButton("Weiter bearbeiten", null)
-            .setPositiveButton("Verwerfen") { _, _ -> finish() }.show()
+            .setPositiveButton("Verwerfen") { _, _ -> finishEditor() }.show()
     }
 
     companion object { const val TASK_ID = "flow_task_id" }

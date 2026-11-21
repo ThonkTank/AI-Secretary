@@ -53,7 +53,7 @@ class FlowEditorSessionStore internal constructor(root: File, sessionId: String)
 
     // Accessed only under diskLock. Generation prevents an old host from replacing a newer head.
     private var generation = 0L
-    private var ownerConflict = false
+    private var unreadableHead = false
     private val stored = mutableSetOf<String>()
 
     /** Enqueues immutable state. Rapid input can replace a write that has not started yet. */
@@ -112,12 +112,23 @@ class FlowEditorSessionStore internal constructor(root: File, sessionId: String)
         checkpoint()
         return synchronized(diskLock) {
             val revisions = mutableMapOf<String, FlowEditorDraft>()
-            val (version, state) = FlowSessionCodec.readHead(head) { id, title ->
-                val structure = revisions.getOrPut(id) { FlowSessionCodec.readDraft(revisionFile(id)) }
-                FlowSessionRevision(id, structure.rename(title))
+            unreadableHead = false
+            val (version, state) = try {
+                FlowSessionCodec.readHead(head) { id, title ->
+                    val structure = revisions.getOrPut(id) { FlowSessionCodec.readDraft(revisionFile(id)) }
+                    FlowSessionRevision(id, structure.rename(title))
+                }
+            } catch (failure: IOException) {
+                // Remember which head failed. Explicit discard must also respect a later repair.
+                generation = try {
+                    diskGeneration()
+                } catch (_: IOException) {
+                    unreadableHead = true
+                    0L
+                }
+                throw failure
             }
             generation = version
-            ownerConflict = false
             stored.clear()
             stored += revisions.keys
             state
@@ -142,7 +153,7 @@ class FlowEditorSessionStore internal constructor(root: File, sessionId: String)
         }
         synchronized(diskLock) {
             if (!directory.exists()) return
-            if ((ownerConflict || generation != 0L) && head.exists()) checkOwner()
+            if (head.exists()) checkOwner(allowUnreadableHead = unreadableHead)
             if (!directory.deleteRecursively()) throw IOException("Ablaufentwurf konnte nicht verworfen werden")
             stored.clear()
         }
@@ -172,12 +183,16 @@ class FlowEditorSessionStore internal constructor(root: File, sessionId: String)
         }
     }
 
-    private fun checkOwner() {
-        val onDisk = if (head.exists()) FlowSessionCodec.generation(head) else 0L
-        if (onDisk != generation) {
-            ownerConflict = true
-            throw IOException("Ablaufentwurf wurde von einer anderen Sitzung geändert")
+    private fun diskGeneration() = if (head.exists()) FlowSessionCodec.generation(head) else 0L
+
+    private fun checkOwner(allowUnreadableHead: Boolean = false) {
+        val onDisk = try {
+            diskGeneration()
+        } catch (failure: IOException) {
+            if (allowUnreadableHead) return
+            throw failure
         }
+        if (onDisk != generation) throw IOException("Ablaufentwurf wurde von einer anderen Sitzung geändert")
     }
 
     private fun revisionFile(id: String) = File(directory, "${canonicalSessionId(id)}.draft")

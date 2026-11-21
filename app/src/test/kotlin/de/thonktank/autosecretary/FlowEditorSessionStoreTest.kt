@@ -110,6 +110,25 @@ class FlowEditorSessionStoreTest {
         store.discard()
     }
 
+    @Test fun failedRestoreCannotDiscardASubsequentlyRepairedSession() {
+        val writer = store()
+        val broken = FlowSessionRevision.fresh(FlowEditorDraft.empty())
+        writer.schedule(FlowSessionSnapshot(broken)); writer.checkpoint()
+        assertTrue(File(directory(), "${broken.id}.draft").delete())
+        val reader = store()
+        assertThrows(IOException::class.java) { reader.restore() }
+        val fixed = FlowSessionRevision.fresh(FlowEditorDraft.empty().rename("Gerettet"))
+        writer.schedule(FlowSessionSnapshot(fixed)); writer.checkpoint()
+        assertThrows(IOException::class.java) { reader.discard() }
+        assertEquals("Gerettet", store().restore().current.draft.name)
+
+        File(directory(), "head").writeText("defekt")
+        val damaged = store()
+        assertThrows(IOException::class.java) { damaged.restore() }
+        damaged.discard()
+        assertFalse(directory().exists())
+    }
+
     @Test fun aStaleWriterCannotOverwriteOrDiscardANewerCheckpoint() {
         val first = store()
         val draft = FlowSessionRevision.fresh(FlowEditorDraft.empty())

@@ -31,7 +31,10 @@ data class FlowEditorState(
     val saving: Boolean = false,
     val savePending: Boolean = false,
     val savedTaskId: String? = null,
-)
+    val restoringSession: Boolean = false,
+) {
+    val canDiscard: Boolean get() = !restoringSession && !saving && !savePending
+}
 
 /** Owns the complete unsaved editor, including open forms and undo across process recreation. */
 class FlowEditorViewModel(
@@ -69,7 +72,7 @@ class FlowEditorViewModel(
 
     private fun recover() {
         val source = requireNotNull(restored)
-        mutableState.value = state.value.copy(loading = true, loadFailed = false, error = null)
+        mutableState.value = state.value.copy(loading = true, restoringSession = true, loadFailed = false, error = null)
         fun read(): FlowSessionSnapshot {
             if (!source.containsKey("sessionId")) {
                 val imported = importLegacy(source)
@@ -101,7 +104,7 @@ class FlowEditorViewModel(
                 }
             }.onFailure { error ->
                 Log.e("FlowEditor", "Unable to recover draft", error)
-                mutableState.value = state.value.copy(loading = false, loadFailed = true,
+                mutableState.value = state.value.copy(loading = false, restoringSession = false, loadFailed = true,
                     error = "Der Entwurf konnte nicht wiederhergestellt werden.")
             }
         }
@@ -392,8 +395,8 @@ class FlowEditorViewModel(
         }
     }
 
-    fun discardSession() {
-        if (closed) return
+    fun discardSession(): Boolean {
+        if (closed || !state.value.canDiscard) return false
         closed = true
         try {
             session.discard()
@@ -401,6 +404,7 @@ class FlowEditorViewModel(
             Log.e("FlowEditor", "Unable to remove editor session", failure)
         }
         savedState.remove<Bundle>(KEY)
+        return true
     }
 
     @Suppress("DEPRECATION")
