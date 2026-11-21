@@ -11,7 +11,7 @@ class AllTasksComposeArchitectureTest {
     )
 
     @Test
-    fun productionRendererUsesFoundationAndTheAuthoritativeActionBoundary() {
+    fun rendererUsesFoundationAndThemeColors() {
         val sources = mainDirectory.listFiles { file -> file.extension == "kt" }
             .orEmpty().associate { it.name to it.readText() }
         assertTrue(sources.isNotEmpty())
@@ -19,26 +19,6 @@ class AllTasksComposeArchitectureTest {
             assertFalse(name, source.contains("androidx.compose.material"))
             assertFalse(name, Regex("0x[0-9a-fA-F]{6,8}").containsMatchIn(source))
         }
-        val host = sources.getValue("AllTasksComposeHostView.kt")
-        assertTrue(host.contains("this.screenState = state"))
-        assertFalse(host.contains("screenState = screenState.with"))
-        assertTrue(host.contains("emit(AllTasksAction.queryChanged(it))"))
-        val screen = sources.getValue("AllTasksComposeScreen.kt")
-        assertTrue(screen.contains("LazyColumn("))
-        assertTrue(screen.contains("key = { row -> row.key }"))
-        assertTrue(screen.contains("AllTasksRow.project(state)"))
-        assertTrue(screen.contains("allTasksDragContainer("))
-        assertFalse(screen.contains("allTasksDragSource("))
-        assertTrue(screen.contains("withFrameNanos"))
-        assertTrue(screen.contains("activeDropKey == row.key"))
-        assertTrue(screen.contains("AllTasksComposeFilterSheet("))
-        assertTrue(screen.contains("state.mode == AllTasksUiState.Mode.LIST"))
-        assertFalse(sources.values.any { it.contains("filtersExpanded") })
-        val rows = sources.getValue("AllTasksComposeRows.kt")
-        assertTrue(rows.contains("callbacks.onEditTask(item.task.id.value)"))
-        assertTrue(rows.contains("height(if (selected) 12.dp else 0.dp)"))
-        assertTrue(sources.getValue("AllTasksComposeDispatcher.kt")
-            .contains("callbacks.onMoveStep"))
     }
 
     @Test

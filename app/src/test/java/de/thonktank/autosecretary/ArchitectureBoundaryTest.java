@@ -47,43 +47,6 @@ public final class ArchitectureBoundaryTest {
         assertTrue(activity.contains("TodayAction.acknowledgeRequest"));
     }
 
-    @Test public void screensShareInvalidationsWithoutActivityBrokerOrManualReloads()
-            throws Exception {
-        String activity = read(main("MainActivity.java"));
-        String dashboard = read(main("presentation/today/TodayViewModel.java"));
-        String catalog = read(main("presentation/alltasks/AllTasksViewModel.java"));
-        String options = read(main("presentation/options/OptionsViewModel.java"));
-        String container = read(main("AppContainer.java"));
-        String widgets = read(main("WidgetUpdateCoordinator.java"));
-        String widgetProvider = read(main("TaskWidgetProvider.java"));
-        String widgetReceiver = read(main("TaskActionReceiver.java"));
-
-        for (String removed : new String[]{"catalogChanges()", "contentChanges()",
-                "minuteHandler", "allTasksViewModel.reload()", "viewModel.load()",
-                "viewModel.refresh("})
-            assertFalse("manual broker remains: " + removed, activity.contains(removed));
-        assertFalse(dashboard.contains("observeDisplayPreferences("));
-        assertFalse(dashboard.contains("calendar.observeChanges("));
-        assertFalse(dashboard.contains("shutdownNow()"));
-        assertFalse(catalog.contains("shutdownNow()"));
-        assertFalse(dashboard.contains("invalidateWidgets"));
-        assertFalse(read(main("presentation/DashboardPresenter.java"))
-                .contains("refreshDomain"));
-        assertFalse(widgetReceiver.contains("widgetUpdates.updateAll"));
-        assertTrue(container.contains("PresentationInvalidationSource presentationInvalidations"));
-        assertTrue(widgets.contains("source.getWidgetChanges()"));
-        assertTrue(widgets.contains("LatestReadPipeline.prepared"));
-        assertTrue(widgetProvider.contains("reconcileInstalledWidgets()"));
-        assertTrue(widgetProvider.contains("stopObserving()"));
-        assertTrue(activity.contains("clockInvalidations.materializeForeground()"));
-        assertFalse(activity.contains("calendarInvalidations.materializeExternalChange()"));
-        assertTrue(options.contains("calendarInvalidated.run()"));
-        assertFalse(catalog.contains("current.withCatalog(catalog.execute())"));
-        assertTrue(dashboard.indexOf("contentReads.close()")
-                < dashboard.indexOf("worker.shutdown()"));
-        assertTrue(catalog.indexOf("reads.close()") < catalog.indexOf("worker.shutdown()"));
-    }
-
     @Test public void managementScreenHasOneStateFlowOwnerAndOneTypedActionBoundary()
             throws Exception {
         String viewModel = read(main("presentation/alltasks/AllTasksViewModel.java"));

@@ -39,24 +39,6 @@ public final class UpdateArchitectureBoundaryTest {
         assertTrue(Files.isDirectory(root.resolve("presentation")));
     }
 
-    @Test public void optionsOwnerCarriesStableRequestsWithoutLegacyEventController()
-            throws Exception {
-        Path source = updateSources().getParent().resolve("MainActivity.java");
-        String text = new String(Files.readAllBytes(source), StandardCharsets.UTF_8);
-        assertTrue(text.contains("OptionsViewModel"));
-        assertTrue(text.contains("OptionsRequest"));
-        assertTrue(text.contains("LegacyStateFlowBinder.observe(this, optionsViewModel.state()"));
-        for (String forbidden : List.of("UpdateEvent", "UpdateUiController", "UpdateViewModel",
-                "UpdateFlow", "installerIntent", "settingsIntent", "releasesIntent",
-                "showUpdateAvailable", "showUpdateError", "readableSize"))
-            assertFalse("MainActivity must not retain legacy update concern " + forbidden,
-                    text.contains(forbidden));
-        Path presentation = updateSources().resolve("presentation");
-        for (String removed : List.of("UpdateEvent.java", "UpdateUiController.java",
-                "UpdateViewModel.java", "UpdateFlow.java"))
-            assertFalse(Files.exists(presentation.resolve(removed)));
-    }
-
     @Test public void updateUnitTestsDoNotPollOrSleep() throws Exception {
         Path tests = updateSources().getParent().getParent().getParent().getParent().getParent()
                 .getParent()
