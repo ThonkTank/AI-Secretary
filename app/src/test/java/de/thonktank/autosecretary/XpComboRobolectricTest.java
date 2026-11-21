@@ -28,12 +28,9 @@ import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.StepAmount;
 import de.thonktank.autosecretary.domain.model.TimeOfDay;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
-import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
-import de.thonktank.autosecretary.domain.usecase.CompleteRemainingSteps;
-import de.thonktank.autosecretary.domain.usecase.HarvestOccurrence;
+import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
-import de.thonktank.autosecretary.domain.usecase.UndoOccurrence;
 import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.CorrectRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.FinishStepForToday;
@@ -58,6 +55,7 @@ public final class XpComboRobolectricTest {
     private final LocalDate today = LocalDate.of(2026, 8, 18);
     private AppDatabase database;
     private RoomRepositoryFixture repository;
+    private TodayUseCases commands;
     private MutableClock clock;
     private int id;
 
@@ -67,6 +65,8 @@ public final class XpComboRobolectricTest {
                 .allowMainThreadQueries().build();
         repository = new RoomRepositoryFixture(database);
         clock = new MutableClock(today);
+        commands = new ApplicationUseCaseComposition(database, clock, () -> "id-" + ++id,
+                ComboPolicySource.defaults()).today;
     }
 
     @After public void tearDown() { database.close(); }
@@ -92,14 +92,14 @@ public final class XpComboRobolectricTest {
         assertEquals(25, repository.today.rewardBookings(occurrence.id).stream()
                 .filter(value -> step.id.equals(value.occurrenceStepId))
                 .mapToInt(value -> value.xpDelta).sum());
-        RewardReceipt harvest = new HarvestOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
+        RewardReceipt harvest = commands.harvest.execute(occurrence.id);
         assertEquals(2, harvest.comboPointDelta);
         assertEquals(50, harvest.xp);
         assertEquals(50, repository.today.xp());
         assertEquals(OccurrenceState.COMPLETED, repository.today.findOccurrence(occurrence.id).state);
         assertEquals(today.plusDays(1), repository.catalog.findTask(occurrence.taskId).nextDueOn);
 
-        RewardReceipt undo = new UndoOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
+        RewardReceipt undo = commands.undoOccurrence.execute(occurrence.id);
         assertEquals(-2, undo.comboPointDelta);
         assertEquals(-50, undo.xp);
         assertEquals(RewardBooking.Kind.REVERSAL, undo.bookings.get(0).kind);
@@ -109,7 +109,7 @@ public final class XpComboRobolectricTest {
         assertEquals(today.plusDays(1), repository.catalog.findTask(occurrence.taskId).nextDueOn);
         assertTrue(repository.steps.findOccurrenceStep(step.id).done);
         int afterOccurrenceUndo = repository.today.rewardBookings(occurrence.id).size();
-        assertEquals(0, new UndoOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id).xp);
+        assertEquals(0, commands.undoOccurrence.execute(occurrence.id).xp);
         assertEquals(afterOccurrenceUndo, repository.today.rewardBookings(occurrence.id).size());
         RewardReceipt stepUndo = new ToggleStep(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(step.id);
         assertEquals(-2, stepUndo.comboPointDelta);
@@ -139,14 +139,14 @@ public final class XpComboRobolectricTest {
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
         Occurrence occurrence = repository.today.openOccurrences().get(0);
 
-        RewardReceipt fill = new CompleteRemainingSteps(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
+        RewardReceipt fill = commands.completeRemainingSteps.execute(occurrence.id);
 
         assertEquals(20, fill.xp);
         assertEquals(0, repository.today.xp());
         assertEquals(OccurrenceState.OPEN, repository.today.findOccurrence(occurrence.id).state);
         for (OccurrenceStep step : repository.steps.occurrenceSteps(occurrence.id)) assertTrue(step.done);
 
-        new HarvestOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
+        commands.harvest.execute(occurrence.id);
         assertEquals(20, repository.today.xp());
         assertEquals(OccurrenceState.COMPLETED, repository.today.findOccurrence(occurrence.id).state);
     }
@@ -159,7 +159,7 @@ public final class XpComboRobolectricTest {
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
         Occurrence occurrence = repository.today.openOccurrences().get(0);
 
-        RewardReceipt receipt = new CompleteOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
+        RewardReceipt receipt = commands.complete.execute(occurrence.id);
 
         assertEquals(20, repository.today.xp());
         assertEquals(OccurrenceState.COMPLETED, repository.today.findOccurrence(occurrence.id).state);
@@ -180,7 +180,7 @@ public final class XpComboRobolectricTest {
         repository.today.putCombo(new ComboProgress(ComboProgress.taskOwner(occurrence.taskId),
                 occurrence.taskId, ComboProgress.Kind.TASK, 5, clock.date));
 
-        RewardReceipt receipt = new CompleteOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
+        RewardReceipt receipt = commands.complete.execute(occurrence.id);
 
         assertEquals(60, receipt.xp);
         assertEquals(2, receipt.comboPointDelta);
@@ -213,7 +213,7 @@ public final class XpComboRobolectricTest {
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
         Occurrence occurrence = repository.today.openOccurrences().get(0);
 
-        RewardReceipt receipt = new CompleteOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
+        RewardReceipt receipt = commands.complete.execute(occurrence.id);
 
         assertEquals(10, receipt.xp);
         assertEquals(2, receipt.comboPointDelta);
@@ -320,14 +320,14 @@ public final class XpComboRobolectricTest {
         assertEquals(2, vesselXp(occurrence.id, step.id));
 
         // A fresh occurrence proves that "Rest erledigen" retains real input and fills the rest.
-        new HarvestOccurrence(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(occurrence.id);
+        commands.harvest.execute(occurrence.id);
         clock.date = today.plusDays(1);
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
         Occurrence next = repository.today.openOccurrences().stream()
                 .filter(value -> value.scheduledOn.equals(clock.date)).findFirst().get();
         OccurrenceStep nextStep = repository.steps.occurrenceSteps(next.id).get(0);
         new RecordRepetitionResult(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(nextStep.id, 5);
-        new CompleteRemainingSteps(repository.catalog, repository.steps, repository.today, repository.transactions, clock).execute(next.id);
+        commands.completeRemainingSteps.execute(next.id);
         assertEquals(Arrays.asList(5, 10, 10), repository.steps.findOccurrenceStep(nextStep.id)
                 .repetitionProgress.repetitions());
         assertEquals(13, vesselXp(next.id, nextStep.id));
