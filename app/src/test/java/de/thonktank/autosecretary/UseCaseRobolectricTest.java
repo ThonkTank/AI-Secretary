@@ -170,6 +170,26 @@ public final class UseCaseRobolectricTest {
                 .count());
     }
 
+    @Test public void batchedCatalogReadsDeduplicateIdsAndPreserveGlobalPlacementOrder() {
+        CreateTask create = new CreateTask(repository.catalog, repository.steps, repository.today,
+                repository.transactions, clock, ids);
+        TaskId first = create.execute(TaskDefinition.basic("Morgen", TaskSlot.MORNING,
+                Recurrence.DAILY, 1, 0, Collections.emptyList()));
+        TaskId second = create.execute(TaskDefinition.basic("Abend", TaskSlot.EVENING,
+                Recurrence.DAILY, 1, 0, Collections.emptyList()));
+        List<TaskId> requested = new ArrayList<>();
+        requested.add(first);
+        for (int i = 0; i < 1000; i++) requested.add(TaskId.of(first.value + "-" + i));
+        requested.add(second);
+        requested.add(first);
+        queries.clear();
+        var placements = repository.catalog.scheduleEntriesFor(requested);
+        assertEquals(List.of(second, first), placements.stream().map(row -> row.taskId)
+                .collect(java.util.stream.Collectors.toList()));
+        assertEquals(2L, queries.stream().filter(sql -> sql.contains("FROM task_schedule_entries"))
+                .count());
+    }
+
     @Test public void dashboardReadsRepetitionsAcrossSqliteBindBoundaries() {
         CreateTask create = new CreateTask(repository.catalog, repository.steps, repository.today,
                 repository.transactions, clock, ids);
