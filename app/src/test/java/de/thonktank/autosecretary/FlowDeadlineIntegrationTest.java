@@ -106,16 +106,32 @@ public final class FlowDeadlineIntegrationTest {
         assertEquals(paid, xp()); assertHidden();
     }
 
+    @Test public void startingCandidateFromTodayUsesTheChosenDelayInMillis() {
+        String candidate = createCandidate(true, FlowDelayPolicy.rememberLast(1_000));
+        mount();
+        model.dispatch(TodayAction.startFlowCandidate(candidate, 3_000));
+        drain();
+        assertHidden();
+        advance(2_999);
+        assertHidden();
+        advance(1);
+        assertStep();
+        assertEquals(1, wakes);
+    }
+
     private String start(boolean nextStep) {
+        return app.flows.runtime.start(createCandidate(nextStep, FlowDelayPolicy.fixed(1_000)), null).runId;
+    }
+
+    private String createCandidate(boolean nextStep, FlowDelayPolicy delay) {
         FlowEditorDraft draft = FlowEditorDraft.empty().rename("Wäsche")
-                .addStep("Buntwäsche", FlowDelayPolicy.fixed(1_000));
+                .addStep("Buntwäsche", delay);
         if (nextStep) {
             draft = draft.addStep("Aufhängen", FlowDelayPolicy.fixed(0));
             draft = draft.withGraph(draft.graph.join(List.of(draft.graph.stepIds.get(0)), draft.graph.stepIds.get(1)));
         }
         app.flows.saveGraph.execute(draft.edit()); app.today.materializeDue.execute();
-        String candidate = app.today.loadDashboard.execute(clock.today()).flowTaskSheets.get(0).entries.get(0).targetId;
-        return app.flows.runtime.start(candidate, null).runId;
+        return app.today.loadDashboard.execute(clock.today()).flowTaskSheets.get(0).entries.get(0).targetId;
     }
 
     private void mount() {

@@ -65,7 +65,6 @@ TE-02	task-editor/adaptive/12-kompakt-titel.png	Der Titelschritt bleibt auf komp
 TE-03	task-editor/adaptive/13-kompakt-rhythmus.png	Die Rhythmusauswahl bleibt auf kompakter Fläche vollständig erreichbar.
 TE-04	task-editor/adaptive/14-kompakt-schritte.png	Die Schrittliste bewahrt auf kompakter Fläche Reihenfolge und Aktionen.
 TE-05	task-editor/adaptive/15-kompakt-uebersicht.png	Die kompakte Abschlussübersicht zeigt alle entscheidenden Angaben.
-TE-06	task-editor/flow/01-waesche-ablauf.png	Ein mehrstufiger Wäscheablauf behält Verknüpfungen und Ressourcenübersicht.
 TE-07	task-editor/wizard/01-titel-zeitraum.png	Titel und Zeitraum bilden einen klaren ersten Editorschritt.
 TE-08	task-editor/wizard/02-titel-fehler.png	Die Titelvalidierung erscheint am richtigen Feld ohne die Navigation zu verschieben.
 TE-09	task-editor/wizard/03-titel-einmalig.png	Eine einmalige Aufgabe zeigt ihre abweichende Terminstruktur korrekt.

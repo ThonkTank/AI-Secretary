@@ -30,7 +30,7 @@ public final class ArchitectureBoundaryTest {
         assertTrue(Files.isDirectory(main("ui/today")));
         assertTrue(Files.isDirectory(main("ui/leaf")));
         for (String view : new String[]{
-                "HeaderView.java", "TaskLeafView.java", "CalendarLeafView.java",
+                "HeaderView.java", "TodayOverviewView.java", "CalendarLeafView.java",
                 "FocusTaskView.java", "FocusCardView.java", "FocusStepRowView.java",
                 "CompletedTodayView.java", "WoodGrainView.java"})
             assertFalse("feature view remains in application root: " + view,

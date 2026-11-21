@@ -20,10 +20,12 @@ import java.util.List;
 /** Room adapter for flow definitions, runs, transitions and resources. */
 public final class RoomFlowRepository implements FlowRepository {
     private final FlowDao dao;
+    private final RoomIdQueries idQueries;
     private final StepFlowEntityMapper mapper = new StepFlowEntityMapper();
 
     public RoomFlowRepository(AppDatabase database) {
         this.dao = database.flows();
+        idQueries = new RoomIdQueries(database);
     }
     @Override public List<CapacityResource> capacityResources() {
         List<CapacityResource> result = new ArrayList<>();
@@ -49,7 +51,7 @@ public final class RoomFlowRepository implements FlowRepository {
         List<String> values = new ArrayList<>();
         for (TaskId taskId : taskIds) values.add(taskId.value);
         List<StepTransition> result = new ArrayList<>();
-        for (StepTransitionEntity value : dao.stepTransitionsFor(values))
+        for (StepTransitionEntity value : idQueries.byId(values, dao::stepTransitionsFor))
             result.add(mapper.toDomain(value));
         return result;
     }
@@ -63,7 +65,7 @@ public final class RoomFlowRepository implements FlowRepository {
         List<String> values = new ArrayList<>();
         for (TaskId taskId : taskIds) values.add(taskId.value);
         List<StepResourceLease> result = new ArrayList<>();
-        for (StepResourceLeaseEntity value : dao.stepResourceLeasesFor(values))
+        for (StepResourceLeaseEntity value : idQueries.byId(values, dao::stepResourceLeasesFor))
             result.add(mapper.toDomain(value));
         return result;
     }

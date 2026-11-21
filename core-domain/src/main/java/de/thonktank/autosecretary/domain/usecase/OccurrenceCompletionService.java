@@ -90,17 +90,13 @@ public final class OccurrenceCompletionService {
 
     public RewardReceipt completeRemainingSteps(String occurrenceId) {
         return transactions.inTransaction(() -> {
-            String transactionId = newId();
-            List<RewardBooking> bookings = new ArrayList<>();
             Occurrence occurrence = today.findOccurrence(occurrenceId);
             if (occurrence == null || occurrence.state != OccurrenceState.OPEN)
                 return RewardReceipt.none();
             if (occurrence.kind == OccurrenceKind.FLOW_STEP) return RewardReceipt.none();
-            for (OccurrenceStep step : steps.occurrenceSteps(occurrenceId))
-                if (!step.done) bookings.addAll(stepExecution.completeWithPlannedResults(
-                        occurrence, step,
-                        transactionId).bookings);
-            return RewardReceipt.of(transactionId, bookings, RewardReceipt.Target.VESSEL);
+            String transactionId = newId();
+            return RewardReceipt.of(transactionId, completeOpenSteps(occurrence, transactionId),
+                    RewardReceipt.Target.VESSEL);
         });
     }
 
@@ -114,15 +110,20 @@ public final class OccurrenceCompletionService {
             Task task = catalog.findTask(occurrence.taskId);
             if (task == null) return RewardReceipt.none();
             String transactionId = newId();
-            List<RewardBooking> bookings = new ArrayList<>();
-            for (OccurrenceStep step : steps.occurrenceSteps(occurrenceId))
-                if (!step.done) bookings.addAll(stepExecution.completeWithPlannedResults(
-                        occurrence, step,
-                        transactionId).bookings);
+            List<RewardBooking> bookings = completeOpenSteps(occurrence, transactionId);
             bookings.addAll(harvest(today.findOccurrence(occurrenceId), task,
                     transactionId).bookings);
             return RewardReceipt.of(transactionId, bookings, RewardReceipt.Target.HEAD);
         });
+    }
+
+    private List<RewardBooking> completeOpenSteps(Occurrence occurrence, String transactionId) {
+        List<RewardBooking> bookings = new ArrayList<>();
+        for (OccurrenceStep step : steps.occurrenceSteps(occurrence.id)) {
+            if (!step.done) bookings.addAll(stepExecution.completeWithPlannedResults(
+                    occurrence, step, transactionId).bookings);
+        }
+        return bookings;
     }
 
     public RewardReceipt harvestOccurrence(String occurrenceId) {
@@ -196,9 +197,7 @@ public final class OccurrenceCompletionService {
                 ? states.harvestWithMissedSteps(occurrence, clock.today())
                 : states.completeOccurrence(occurrence, clock.today());
         today.updateOccurrence(harvested);
-        if (occurrence.kind == OccurrenceKind.FLOW_STEP)
-            flows.onOccurrenceHarvested(harvested);
-        else projectSchedule(task.id);
+        if (occurrence.kind != OccurrenceKind.FLOW_STEP) projectSchedule(task.id);
         return RewardReceipt.of(transactionId, Collections.singletonList(booking),
                 RewardReceipt.Target.HEAD);
     }
@@ -221,7 +220,6 @@ public final class OccurrenceCompletionService {
         obligationResolver.reopen(original.ownerId, occurrence, clock.today());
         Occurrence reopened = states.reopenOccurrence(occurrence);
         today.updateOccurrence(reopened);
-        flows.onOccurrenceReopened(reopened);
         if (task.ongoing && task.conditionDone) catalog.updateTask(task.reopenCondition());
         if (occurrence.kind != OccurrenceKind.FLOW_STEP) projectSchedule(task.id);
         return RewardReceipt.of(transactionId, Collections.singletonList(reversal),

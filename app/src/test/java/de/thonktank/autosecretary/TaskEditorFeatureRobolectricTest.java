@@ -49,11 +49,9 @@ import de.thonktank.autosecretary.domain.usecase.CompleteOccurrence;
 import de.thonktank.autosecretary.domain.usecase.CompleteRemainingSteps;
 import de.thonktank.autosecretary.domain.usecase.CreateTask;
 import de.thonktank.autosecretary.domain.usecase.CorrectRepetitionResult;
-import de.thonktank.autosecretary.domain.usecase.CorrectSetResult;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
-import de.thonktank.autosecretary.domain.usecase.RecordSetResult;
 import de.thonktank.autosecretary.domain.usecase.ToggleStep;
 import de.thonktank.autosecretary.domain.usecase.UpdateTask;
 
@@ -305,20 +303,19 @@ public final class TaskEditorFeatureRobolectricTest {
         new MaterializeDueOccurrences(repository.catalog, repository.steps, repository.today, repository.flows, repository.transactions, clock, ids).execute();
         OccurrenceStep step = repository.steps.occurrenceSteps(
                 repository.today.openOccurrences().get(0).id).get(0);
-        RecordSetResult record = new RecordSetResult(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ids,
-                ComboPolicySource.defaults());
+        ApplicationUseCaseComposition app = new ApplicationUseCaseComposition(
+                database, clock, ids, ComboPolicySource.defaults());
         SetResult first = new SetResult(12);
         SetResult second = new SetResult(11);
 
-        record.execute(step.id, first);
-        record.execute(step.id, second);
+        app.today.recordSetResult.execute(step.id, first);
+        app.today.recordSetResult.execute(step.id, second);
         OccurrenceStep restored = new RoomRepositoryFixture(database).steps.findOccurrenceStep(step.id);
 
         assertEquals(Arrays.asList(first, second), restored.repetitionProgress.results);
         assertEquals(Arrays.asList(12, 11), restored.repetitionProgress.repetitions());
         SetResult corrected = new SetResult(10);
-        new CorrectSetResult(repository.catalog, repository.steps, repository.today, repository.transactions, clock, ComboPolicySource.defaults())
-                .execute(step.id, 1, corrected);
+        app.today.correctSetResult.execute(step.id, 1, corrected);
         assertEquals(Arrays.asList(first, corrected), new RoomRepositoryFixture(database).steps
                 .findOccurrenceStep(step.id).repetitionProgress.results);
     }

@@ -1,6 +1,7 @@
 # Today-/Fokus-Architektur
 
-Aktueller Stand: 2026-09-01, Datenbankschema 22
+Historischer Stand vom 2026-09-01 (Datenbankschema 22). Für die aktuelle Übersicht, die
+Detailauswahl und die Today-Aktionen siehe [Today placement actions](../implementation/today-placement-actions.md).
 
 ## Zustands- und Aktionsvertrag
 

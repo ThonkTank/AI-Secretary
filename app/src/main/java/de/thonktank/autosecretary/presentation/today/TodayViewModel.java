@@ -26,6 +26,7 @@ import de.thonktank.autosecretary.data.preferences.FocusStepLimit;
 import de.thonktank.autosecretary.data.preferences.UiPreferences;
 import de.thonktank.autosecretary.domain.model.RewardReceipt;
 import de.thonktank.autosecretary.domain.model.TaskId;
+import de.thonktank.autosecretary.domain.model.TodayPlacement;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.model.SetResult;
 import de.thonktank.autosecretary.domain.today.AdvanceTodayStepResult;
@@ -33,6 +34,7 @@ import de.thonktank.autosecretary.domain.today.StepExecutionResult;
 import de.thonktank.autosecretary.domain.today.TodayStepMoveResult;
 import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
 import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
+import de.thonktank.autosecretary.domain.usecase.MoveTodayItem;
 import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
 import de.thonktank.autosecretary.domain.schedule.ScheduleMoveResult;
 import de.thonktank.autosecretary.infrastructure.AppLogger;
@@ -63,7 +65,7 @@ import kotlinx.coroutines.flow.MutableStateFlow;
 import kotlinx.coroutines.flow.StateFlow;
 import kotlinx.coroutines.flow.StateFlowKt;
 
-public final class TodayViewModel extends ViewModel implements TodayCommandDispatcher.Handlers {
+public final class TodayViewModel extends ViewModel {
     private static final String SAVED_REQUESTS = "today_requests";
     private static final String SAVED_REQUEST_SEQUENCE = "today_request_sequence";
     private static final String SAVED_TIMER_PERMISSION_WARNED = "today_timer_permission_warned";
@@ -177,7 +179,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         current = current.withStepDialog(stepDialogs.draft());
         state = StateFlowKt.MutableStateFlow(current);
         todayCoordinator = new TodayCoordinator(initial,
-                new TodayCommandDispatcher(this), this::publishTodayFeatureState);
+                this::persistTodayReorder, this::publishTodayFeatureState);
         if (timers != null) timers.addListener(timerListener);
         DashboardInvalidationRouting routing = new DashboardInvalidationRouting(
                 invalidations, this::loadedDashboardDate);
@@ -208,85 +210,79 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
 
     private void reduce(TodayAction action) {
         switch (action.kind) {
-            case SELECT_TASK:
-                selectTodayItem(action.target.item.key());
-                return;
-            case SHOW_OVERVIEW:
-                selectTodayItem(null);
-                return;
-            case HIDE_TASK:
-                moveTodayItem(action.target.item,
-                        de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.HIDE);
-                return;
-            case RESTORE_TASK:
-                moveTodayItem(action.target.item,
-                        de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.RESTORE);
-                return;
-            case ADD_TODAY_STEP:
-                run(command(UiCommand.Kind.ORGANIZE, action.id), () -> {
-                    if (!today.addTodayStep.execute(action.id, action.text))
-                        throw new IllegalArgumentException(texts.text(R.string.error_step_add));
-                });
-                return;
-            case SORT_TODAY_STEPS:
-                run(command(UiCommand.Kind.ORGANIZE, action.id), () -> {
-                    TodayStepMoveResult result = today.moveTodayStep.reorder(action.id, action.order);
-                    if (!result.moved() && result.status != TodayStepMoveResult.Status.NO_CHANGE)
-                        throw new IllegalArgumentException(texts.text(R.string.error_step_order_invalid));
-                });
-                return;
-            case EDIT_STEP:
-                stepDialogs.open(TodayStepDialogs.Kind.STEP, action.id);
-                return;
-            case EDIT_STEP_NOTE:
-                stepDialogs.open(TodayStepDialogs.Kind.NOTE, action.id);
-                return;
-            case ADD_TASK:
-                navigator.navigate(AppDestination.newTask());
-                return;
-            case OPEN_TASK_MENU:
-                enqueue(TodayRequest.task(nextRequestId(), TodayRequest.Kind.TASK_MENU,
-                        action.target));
-                return;
-            case EDIT_TASK: {
+            case SELECT_TASK -> selectTodayItem(action.target.item.key());
+            case SHOW_OVERVIEW -> selectTodayItem(null);
+            case HIDE_TASK -> moveTodayItem(action.target.item, MoveTodayItem.Action.HIDE);
+            case RESTORE_TASK -> moveTodayItem(action.target.item, MoveTodayItem.Action.RESTORE);
+            case DEFER -> moveTodayItem(action.target.item, MoveTodayItem.Action.LATER);
+            case ADD_TODAY_STEP -> run(command(UiCommand.Kind.ORGANIZE, action.id), () -> {
+                if (!today.addTodayStep.execute(action.id, action.text))
+                    throw new IllegalArgumentException(texts.text(R.string.error_step_add));
+            });
+            case SORT_TODAY_STEPS -> run(command(UiCommand.Kind.ORGANIZE, action.id), () -> {
+                TodayStepMoveResult result = today.moveTodayStep.reorder(action.id, action.order);
+                if (!result.moved() && result.status != TodayStepMoveResult.Status.NO_CHANGE)
+                    throw new IllegalArgumentException(texts.text(R.string.error_step_order_invalid));
+            });
+            case EDIT_STEP -> stepDialogs.open(TodayStepDialogs.Kind.STEP, action.id);
+            case EDIT_STEP_NOTE -> stepDialogs.open(TodayStepDialogs.Kind.NOTE, action.id);
+            case ADD_TASK -> navigator.navigate(AppDestination.newTask());
+            case OPEN_TASK_MENU -> enqueue(TodayRequest.task(nextRequestId(),
+                    TodayRequest.Kind.TASK_MENU, action.target));
+            case EDIT_TASK -> {
                 TodayRequest request = consume(action.id, TodayRequest.Kind.TASK_MENU);
                 if (request != null)
                     navigator.navigate(AppDestination.editTask(TaskId.of(request.taskId)));
-                return;
             }
-            case REQUEST_MOVE_TASK:
-                replaceTaskRequest(action.id, TodayRequest.Kind.TASK_MENU,
-                        TodayRequest.Kind.CHOOSE_MOVE);
-                return;
-            case MOVE_TASK: {
+            case REQUEST_MOVE_TASK -> replaceTaskRequest(action.id, TodayRequest.Kind.TASK_MENU,
+                    TodayRequest.Kind.CHOOSE_MOVE);
+            case MOVE_TASK -> {
                 TodayRequest request = consume(action.id, TodayRequest.Kind.CHOOSE_MOVE);
-                if (request != null)
-                    move(request.taskId, request.target.slot, action.slot);
-                return;
+                if (request != null) move(request.taskId, request.target.slot, action.slot);
             }
-            case REQUEST_DELETE_TASK: {
-                replaceTaskRequest(action.id, TodayRequest.Kind.TASK_MENU,
-                        TodayRequest.Kind.CONFIRM_DELETE);
-                return;
-            }
-            case CONFIRM_DELETE_TASK: {
+            case REQUEST_DELETE_TASK -> replaceTaskRequest(action.id, TodayRequest.Kind.TASK_MENU,
+                    TodayRequest.Kind.CONFIRM_DELETE);
+            case CONFIRM_DELETE_TASK -> {
                 TodayRequest request = consume(action.id, TodayRequest.Kind.CONFIRM_DELETE);
                 if (request != null) delete(request.taskId);
-                return;
             }
-            case CONFIRM_CLOSE_TASK: {
+            case CONFIRM_CLOSE_TASK -> {
                 TodayRequest request = consume(action.id, TodayRequest.Kind.CONFIRM_CLOSE);
                 if (request != null) close(request.taskId);
-                return;
             }
-            case ACKNOWLEDGE_REQUEST:
-                acknowledgeRequest(action.id);
-                return;
-            case ACKNOWLEDGE_REWARD:
-                publishRewards(rewardQueue.acknowledge(action.id));
-                return;
-            default:
-                todayCoordinator.emit(action);
+            case ACKNOWLEDGE_REQUEST -> acknowledgeRequest(action.id);
+            case ACKNOWLEDGE_REWARD -> publishRewards(rewardQueue.acknowledge(action.id));
+            case COMPLETE_OCCURRENCE -> completeOccurrence(action.id);
+            case REQUEST_CLOSE -> enqueue(TodayRequest.close(nextRequestId(), action.id, action.text));
+            case COMPLETE_REMAINING -> completeRemaining(action.id);
+            case HARVEST -> harvest(action.id);
+            case START_FLOW_CANDIDATE -> startFlowCandidate(action.id, null);
+            case START_FLOW_CANDIDATE_WITH_DELAY -> startFlowCandidate(action.id, action.longValue);
+            case COMPLETE_FLOW_STEP -> completeFlowStep(action.id, null);
+            case COMPLETE_FLOW_STEP_WITH_DELAY -> completeFlowStep(action.id, action.longValue);
+            case COLLECT_FLOW -> collectFlow(action.id);
+            case ADJUST_FLOW_WAIT -> adjustFlowWait(action.id, action.relatedId, action.longValue);
+            case TOGGLE_STEP -> toggleStep(action.id, null);
+            case TOGGLE_STEP_WITH_DELAY -> toggleStep(action.id, action.longValue);
+            case FINISH_STEP -> finishStep(action.id);
+            case ADVANCE_STEP -> runTodayAdvance(command(UiCommand.Kind.ADVANCE_TODAY_STEP,
+                    action.id), action.id);
+            case UNDO_OCCURRENCE -> undoOccurrence(action.id);
+            case ADJUST_REPETITION, EDIT_REPETITION, SUBMIT_REPETITION -> reduceRepetitionInput(action);
+            case START_DURATION_TIMER -> startDurationTimer(action.id, action.text, action.value);
+            case PAUSE_TIMER -> {
+                if (timers != null) timers.pause(action.id);
+            }
+            case RESUME_TIMER -> resumeTimer(action.id);
+            case RESET_TIMER -> {
+                if (timers != null) timers.reset(action.id);
+            }
+            case OBSERVE_TIMER -> {
+                if (timers != null) timers.observeCompletion(action.id);
+            }
+            case SELECT_STEP, BEGIN_REORDER, PREVIEW_REORDER, CANCEL_REORDER, DROP_REORDER, MOVE_STEP ->
+                    todayCoordinator.applyStepAction(action);
+            default -> throw new AssertionError("Unhandled Today action " + action.kind);
         }
     }
 
@@ -407,20 +403,12 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 () -> catalog.delete.execute(TaskId.of(taskId)));
     }
 
-
-
-
-
-    @Override public void handleCompleteOccurrence(String occurrenceId) {
+    private void completeOccurrence(String occurrenceId) {
         runTodayReward(command(UiCommand.Kind.COMPLETE, occurrenceId),
                 () -> today.complete.execute(occurrenceId));
     }
 
-    @Override public void handleRequestClose(String taskId, String title) {
-        enqueue(TodayRequest.close(nextRequestId(), taskId, title));
-    }
-
-    @Override public void handleCompleteRemaining(String occurrenceId) {
+    private void completeRemaining(String occurrenceId) {
         Set<String> timerStepIds = focusStepIds();
         runTodayReward(command(UiCommand.Kind.COMPLETE_REMAINING, occurrenceId),
                 () -> {
@@ -431,60 +419,41 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 });
     }
 
-    @Override public void handleHarvest(String occurrenceId) {
+    private void harvest(String occurrenceId) {
         runTodayReward(command(UiCommand.Kind.HARVEST, occurrenceId),
                 () -> today.harvest.execute(occurrenceId));
     }
 
-    @Override public void handleDefer(TodayItemTarget target) {
-        moveTodayItem(target, de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.LATER);
-    }
-
-    @Override public void handleBringFirst(TodayItemTarget target) {
-        moveTodayItem(target, de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action.FIRST);
-    }
-
-    private void moveTodayItem(TodayItemTarget target,
-            de.thonktank.autosecretary.domain.usecase.MoveTodayItem.Action action) {
+    private void moveTodayItem(TodayItemTarget target, MoveTodayItem.Action action) {
         if (target == null) return;
         run(command(UiCommand.Kind.ORGANIZE, target.id), () -> today.moveItem.execute(
-                de.thonktank.autosecretary.domain.model.TodayPlacement.Kind.valueOf(target.kind.name()),
+                TodayPlacement.Kind.valueOf(target.kind.name()),
                 target.id, action));
     }
 
-    @Override public void handleStartFlowCandidate(String candidateId,
-                                                    Long chosenDelayMillis) {
+    private void startFlowCandidate(String candidateId, Long chosenDelayMillis) {
         if (flows == null) return;
         runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, candidateId),
                 () -> flows.startFlowCandidate.execute(candidateId, chosenDelayMillis).reward);
     }
 
-    @Override public void handleCompleteFlowStep(String runtimeStepId, Long chosenDelayMillis) {
+    private void completeFlowStep(String runtimeStepId, Long chosenDelayMillis) {
         if (flows == null || flows.runtime == null) return;
         runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, runtimeStepId),
                 () -> flows.runtime.complete(runtimeStepId, chosenDelayMillis).reward);
     }
 
-    @Override public void handleCollectFlow(String runId) {
+    private void collectFlow(String runId) {
         if (flows == null || flows.runtime == null) return;
         runTodayReward(command(UiCommand.Kind.HARVEST, runId), () -> flows.runtime.collect(runId).reward);
     }
 
-    @Override public void handleAdjustFlowWait(String runId, String waitId, long readyAt) {
+    private void adjustFlowWait(String runId, String waitId, long readyAt) {
         if (flows == null || flows.runtime == null) return;
         run(command(UiCommand.Kind.TOGGLE_STEP, waitId), () -> flows.runtime.adjustWait(runId, waitId, readyAt));
     }
 
-    @Override public void handleToggleStep(String stepId) {
-        runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, stepId),
-                () -> {
-                    RewardReceipt receipt = today.toggleStep.execute(stepId);
-                    if (timers != null) timers.resetForStep(stepId);
-                    return receipt;
-                });
-    }
-
-    @Override public void handleToggleStepWithDelay(String stepId, long chosenDelayMillis) {
+    private void toggleStep(String stepId, Long chosenDelayMillis) {
         runTodayReward(command(UiCommand.Kind.TOGGLE_STEP, stepId),
                 () -> {
                     RewardReceipt receipt = today.toggleStep.execute(stepId, chosenDelayMillis);
@@ -493,7 +462,7 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 });
     }
 
-    @Override public void handleFinishStep(String stepId) {
+    private void finishStep(String stepId) {
         runTodayReward(command(UiCommand.Kind.FINISH_STEP, stepId),
                 () -> {
                     RewardReceipt receipt = today.finishStepForToday.execute(stepId);
@@ -502,61 +471,22 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
                 });
     }
 
-    @Override public void handleAdvanceStep(String stepId) {
-        runTodayAdvance(command(UiCommand.Kind.ADVANCE_TODAY_STEP, stepId), stepId);
-    }
-
-    @Override public void handleUndoOccurrence(String occurrenceId) {
+    private void undoOccurrence(String occurrenceId) {
         runTodayReward(command(UiCommand.Kind.UNDO, occurrenceId),
                 () -> today.undoOccurrence.execute(occurrenceId));
     }
 
-    @Override public void handleAdjustRepetition(String stepId, int delta) {
-        reduceRepetitionInput(TodayAction.adjustRepetition(stepId, delta));
-    }
-
-
-
-
-
-
-
-    @Override public void handleEditRepetition(String stepId, int index) {
-        reduceRepetitionInput(TodayAction.editRepetition(stepId, index));
-    }
-
-    @Override public void handleSubmitRepetition(String stepId) {
-        reduceRepetitionInput(TodayAction.submitRepetition(stepId));
-    }
-
-    @Override public void handleStartDurationTimer(String stepId, String title, int seconds) {
+    private void startDurationTimer(String stepId, String title, int seconds) {
         if (timers == null) return;
         timers.start(stepId, title, TimerSession.Kind.DURATION, seconds);
         warnAboutTimerPermissions();
     }
 
-    @Override public void handlePauseTimer(String timerId) {
-        if (timers != null) timers.pause(timerId);
-    }
-
-    @Override public void handleResumeTimer(String timerId) {
+    private void resumeTimer(String timerId) {
         if (timers != null) {
             timers.resume(timerId);
             warnAboutTimerPermissions();
         }
-    }
-
-    @Override public void handleResetTimer(String timerId) {
-        if (timers != null) timers.reset(timerId);
-    }
-
-    @Override public void handleObserveTimer(String timerId) {
-        if (timers != null) timers.observeCompletion(timerId);
-    }
-
-    @Override public void handlePersistReorder(String commandId, String stepId,
-                                         @Nullable String beforeStepId) {
-        persistTodayReorder(commandId, stepId, beforeStepId);
     }
 
     static UiCommand command(UiCommand.Kind kind, String id) {
@@ -621,14 +551,14 @@ public final class TodayViewModel extends ViewModel implements TodayCommandDispa
         });
     }
 
-    private void persistTodayReorder(String commandId, String stepId,
-                                     @Nullable String beforeStepId) {
+    private void persistTodayReorder(TodayReducer.ReorderWrite write) {
+        String commandId = write.commandId;
         UiCommand key = command(UiCommand.Kind.MOVE_TODAY_STEP, commandId);
         if (!begin(key, false)) return;
         worker.execute(() -> {
             try {
                 TodayStepMoveResult result = today.moveTodayStep.execute(
-                        stepId, beforeStepId);
+                        write.stepId, write.beforeStepId);
                 if (result.status == TodayStepMoveResult.Status.MOVED
                         || result.status == TodayStepMoveResult.Status.NO_CHANGE) {
                     todayCoordinator.reorderSucceeded(commandId, result);
