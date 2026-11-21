@@ -133,7 +133,7 @@ public final class UseCaseRobolectricTest {
                         .collect(java.util.stream.Collectors.toList()));
         assertEquals(TimeOfDay.MORNING.bit | TimeOfDay.EVENING.bit,
                 new LoadTaskDetails(repository.catalog, repository.steps).execute(task.id).timeOfDayMask);
-        TaskCatalog.Item catalog = new LoadTaskCatalog(repository.catalog, repository.steps).execute().items.get(0);
+        TaskCatalog.Item catalog = new LoadTaskCatalog(repository.catalog, repository.steps, repository.transactions).execute().items.get(0);
         assertEquals(Arrays.asList(TaskSlot.MORNING, TaskSlot.EVENING), catalog.schedule.stream()
                 .map(value -> value.slot).collect(java.util.stream.Collectors.toList()));
 

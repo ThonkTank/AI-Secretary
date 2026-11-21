@@ -88,13 +88,13 @@ final class ApplicationUseCaseComposition {
         UpdateTask update = new UpdateTask(catalogRepository, stepRepository, todayRepository,
                 flowRepository,
                 transactions, ids, clock);
-        LoadAgentTaskCatalog loadAgentTaskCatalog = new LoadAgentTaskCatalog(
-                new LoadTaskCatalog(catalogRepository, stepRepository));
+        LoadTaskCatalog loadTaskCatalog = new LoadTaskCatalog(catalogRepository, stepRepository, transactions);
+        LoadAgentTaskCatalog loadAgentTaskCatalog = new LoadAgentTaskCatalog(loadTaskCatalog);
         catalog = new CatalogUseCases(create, update,
                 new MoveTaskPlacement(catalogRepository, todayRepository, transactions),
                 new DeleteTask(catalogRepository, transactions),
                 new LoadTaskDetails(catalogRepository, stepRepository),
-                new LoadTaskCatalog(catalogRepository, stepRepository),
+                loadTaskCatalog,
                 new MoveScheduleEntry(catalogRepository, todayRepository, transactions),
                 new MoveTaskStep(catalogRepository, stepRepository, todayRepository, transactions),
                 new SwapTaskSteps(catalogRepository, stepRepository, todayRepository, transactions),
