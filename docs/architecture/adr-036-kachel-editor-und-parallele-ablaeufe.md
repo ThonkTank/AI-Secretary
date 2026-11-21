@@ -69,6 +69,19 @@ Zweige gebunden. Kantenziehen und gezieltes Ablegen verwenden denselben Struktur
 Bestehende Definitionen werden beim Öffnen nicht geändert. Quer verbundene Altgraphen,
 die nicht als rechteckige Stapel darstellbar sind, benennen ihre Vorgänger ausdrücklich.
 
+### Wiederherstellung des Editorentwurfs
+
+Der Android-Speicherzustand trägt Formatversion und Sitzungs-ID. Der Editor sichert den Entwurf
+im privaten `noBackupFilesDir`. Jede Strukturänderung erhält eine Revision. Der atomar ersetzte
+Sitzungskopf verweist auf die aktuelle Revision und bis zu 100 Undo-Stände und enthält Seite,
+Ablauftitel und unverarbeitete Formularwerte. Eine Texteingabe aktualisiert den Kopf. Beim
+Sichern der Activity wartet der Editor auf die letzte ausstehende Änderung. Alte Editor-Bundles
+werden einschließlich Undo und offenem Speicherauftrag übernommen.
+
+„Fertig“ sichert zuerst die Revision und ihren Auftragsschlüssel. Nach einer Unterbrechung
+benutzt der Editor denselben Schlüssel. `SaveFlowGraph` schreibt die Definition und die Quittung
+in derselben Datenbanktransaktion. Verwerfen oder der bestätigte Abschluss beendet die Sitzung.
+
 ## Definition und Laufzeit
 
 Die lineare Cursorannahme wird in einem zusammenhängenden Produkt-Cutover ersetzt.
