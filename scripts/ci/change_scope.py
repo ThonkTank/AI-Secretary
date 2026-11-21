@@ -133,7 +133,7 @@ def _is_documentation(path: str) -> bool:
 
 def _is_host_test(path: str) -> bool:
     return path.startswith(("app/src/test/", "core-domain/src/test/", "today-core/src/test/",
-                            "today-core/src/testFixtures/")) or (
+                            "core-domain/src/testFixtures/", "today-core/src/testFixtures/")) or (
         path.startswith(("scripts/ci/", "scripts/release/"))
         and path.rsplit("/", 1)[-1].startswith("test_") and path.endswith(".py"))
 

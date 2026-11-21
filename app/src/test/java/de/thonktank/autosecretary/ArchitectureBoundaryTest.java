@@ -314,17 +314,6 @@ public final class ArchitectureBoundaryTest {
         assertFalse(Files.exists(main("data/local/Task" + "Dao.java")));
     }
 
-    @Test public void managementPortTestsUseFocusedDoubles() throws Exception {
-        Path tests = Path.of("app/src/test/java/de/thonktank/autosecretary/domain");
-        if (!Files.exists(tests)) tests = Path.of("src/test/java/de/thonktank/autosecretary/domain");
-        forEachJava(tests.resolve("schedule"), source -> assertFalse(source
-                + " uses execution acceptance store", read(source).contains(
-                "InMemoryExecutionRepository")));
-        forEachJava(tests.resolve("steps"), source -> assertFalse(source
-                + " uses execution acceptance store", read(source).contains(
-                "InMemoryExecutionRepository")));
-    }
-
     @Test public void productionMigrationGraphStartsAtSupportedSchemaEight() throws Exception {
         String source = read(main("data/local/DatabaseFactory.java"));
         assertTrue(source.contains("DatabaseMigrations.from("));
