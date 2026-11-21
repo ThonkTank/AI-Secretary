@@ -27,11 +27,12 @@ import static org.junit.Assert.assertEquals;
 public final class TaskCatalogScaleTest {
     @Test public void fullCatalogReadsAllTasksStepsAndPlacementsWithThreeSelects() {
         AtomicInteger selects = new AtomicInteger();
-        try (AppDatabase db = Room.inMemoryDatabaseBuilder(
+        AppDatabase db = Room.inMemoryDatabaseBuilder(
                 InstrumentationRegistry.getInstrumentation().getTargetContext(), AppDatabase.class)
                 .setQueryCallback((sql, args) -> {
                     if (sql.startsWith("SELECT * FROM")) selects.incrementAndGet();
-                }, Runnable::run).build()) {
+                }, Runnable::run).build();
+        try {
             db.runInTransaction(() -> {
                 for (int i = 1199; i >= 0; i--) {
                     String id = "task-" + i;
@@ -61,6 +62,8 @@ public final class TaskCatalogScaleTest {
                 assertEquals(TaskSlot.MORNING, item.schedule.get(0).slot);
                 assertEquals(TaskSlot.EVENING, item.schedule.get(1).slot);
             }
+        } finally {
+            db.close();
         }
     }
 }
