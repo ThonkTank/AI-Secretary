@@ -27,7 +27,7 @@ class FlowSetupActivity : ComponentActivity() {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 require(modelClass.isAssignableFrom(FlowEditorViewModel::class.java))
-                return FlowEditorViewModel(FlowEditorDraft.empty(), extras.createSavedStateHandle(),
+                return FlowEditorViewModel(applicationContext, FlowEditorDraft.empty(), extras.createSavedStateHandle(),
                     gateway, initialLoadId = intent.getStringExtra(TASK_ID)) as T
             }
         })[FlowEditorViewModel::class.java]
@@ -52,6 +52,16 @@ class FlowSetupActivity : ComponentActivity() {
                 editor, editor::save, ::finish,
                 Modifier.windowInsetsPadding(WindowInsets.safeDrawing).imePadding())
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        if (::editor.isInitialized) editor.checkpoint()
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onDestroy() {
+        if (isFinishing && ::editor.isInitialized && !editor.state.value.savePending) editor.discardSession()
+        super.onDestroy()
     }
 
     private fun confirmDiscard() {

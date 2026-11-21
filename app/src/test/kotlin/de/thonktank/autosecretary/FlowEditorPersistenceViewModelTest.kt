@@ -3,6 +3,7 @@ package de.thonktank.autosecretary
 import android.os.Bundle
 import android.os.Looper
 import android.os.Parcel
+import androidx.test.core.app.ApplicationProvider
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModelStore
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy
@@ -23,7 +24,7 @@ class FlowEditorPersistenceViewModelTest {
     @Test fun saveIsSingleFlightAndDoesNotAcceptDraftChangesDuringItsTransaction() {
         val gateway = MemoryGateway()
         val worker = QueuedWorker()
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty(), SavedStateHandle(), gateway, worker)
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), SavedStateHandle(), gateway, worker)
         assertTrue(vm.state.value.loading)
         worker.runNext(); idle()
         vm.next(); vm.save(); vm.save(); vm.rename("Must not replace pending input")
@@ -41,13 +42,15 @@ class FlowEditorPersistenceViewModelTest {
         val gateway = MemoryGateway()
         val worker = QueuedWorker()
         val handle = SavedStateHandle()
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty(), handle, gateway, worker)
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), handle, gateway, worker)
         worker.runNext(); idle(); vm.save()
+        vm.checkpoint()
         val savedBeforeAcknowledgement = parcel(handle)
         worker.runNext() // DB committed, but the main-thread acknowledgement has not run.
         clear(vm)
         val restoredWorker = QueuedWorker()
-        val restored = FlowEditorViewModel(FlowEditorDraft.empty(), savedBeforeAcknowledgement, gateway, restoredWorker)
+        val restored = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), savedBeforeAcknowledgement, gateway, restoredWorker)
+        restoredWorker.runNext(); idle()
         assertTrue(restored.state.value.saving)
         restoredWorker.runNext(); idle()
         assertEquals(1, gateway.writes)
@@ -62,12 +65,14 @@ class FlowEditorPersistenceViewModelTest {
         val gateway = MemoryGateway()
         val worker = QueuedWorker()
         val handle = SavedStateHandle()
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty(), handle, gateway, worker)
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), handle, gateway, worker)
         worker.runNext(); idle()
         vm.openStep(vm.state.value.draft.steps.single().id); vm.field("name", "Noch nicht gespeichert")
+        vm.checkpoint()
         val saved = parcel(handle); clear(vm)
         val restoredWorker = QueuedWorker()
-        val restored = FlowEditorViewModel(FlowEditorDraft.empty(), saved, gateway, restoredWorker)
+        val restored = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), saved, gateway, restoredWorker)
+        restoredWorker.runNext(); idle()
         assertTrue(restoredWorker.jobs.isEmpty())
         assertEquals("Noch nicht gespeichert", restored.state.value.form!!.fields["name"])
         assertEquals(0, gateway.writes)
@@ -77,7 +82,7 @@ class FlowEditorPersistenceViewModelTest {
     @Test fun uncertainFailureRetainsTheImmutableRequestUntilRetryResolvesIt() {
         val gateway = MemoryGateway().apply { saveFailure = IllegalStateException("Storage unavailable") }
         val worker = QueuedWorker()
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty(), SavedStateHandle(), gateway, worker)
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), SavedStateHandle(), gateway, worker)
         worker.runNext(); idle(); vm.save(); worker.runNext(); idle()
         assertTrue(vm.state.value.savePending)
         assertFalse(vm.state.value.saving)
@@ -98,7 +103,7 @@ class FlowEditorPersistenceViewModelTest {
         val key = capacity.resources.single().key
         gateway.saveFailure = FlowGraphEditProblem("resource", key, "Kapazitätsname existiert bereits")
         val worker = QueuedWorker()
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty(), SavedStateHandle(), gateway, worker)
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), SavedStateHandle(), gateway, worker)
         worker.runNext(); idle(); vm.next(); vm.save(); worker.runNext(); idle()
         assertFalse(vm.state.value.savePending)
         assertEquals(2, vm.state.value.page)
@@ -113,7 +118,7 @@ class FlowEditorPersistenceViewModelTest {
     @Test fun failedLoadDoesNotTurnAnExistingFlowIntoAnEditableEmptyDraft() {
         val gateway = MemoryGateway().apply { loadFailure = IllegalStateException("Unavailable") }
         val worker = QueuedWorker()
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty(), SavedStateHandle(), gateway, worker, "existing-flow")
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), SavedStateHandle(), gateway, worker, "existing-flow")
         worker.runNext(); idle()
         assertTrue(vm.state.value.loadFailed)
         vm.rename("Must not save"); vm.openStep(null); vm.save()

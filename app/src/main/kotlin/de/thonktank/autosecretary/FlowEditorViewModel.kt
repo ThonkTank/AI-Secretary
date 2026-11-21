@@ -1,5 +1,6 @@
 package de.thonktank.autosecretary
 
+import android.content.Context
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -16,6 +17,7 @@ import java.math.RoundingMode
 import java.util.UUID
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 data class FlowEditorForm(val kind: String, val id: String?, val fields: Map<String, String>)
 data class FlowEditorState(
@@ -33,32 +35,96 @@ data class FlowEditorState(
 
 /** Owns the complete unsaved editor, including open forms and undo across process recreation. */
 class FlowEditorViewModel(
+    context: Context,
     initial: FlowEditorDraft,
     private val savedState: SavedStateHandle,
     private val gateway: FlowEditorGateway? = null,
     private val worker: ExecutorService? = gateway?.let { Executors.newSingleThreadExecutor() },
     initialLoadId: String? = initial.taskId,
 ) : ViewModel() {
-    private val history = mutableListOf<FlowEditorDraft>()
+    private var revision = FlowSessionRevision.fresh(initial)
+    private val history = mutableListOf<FlowSessionRevision>()
     private val mutableState = MutableStateFlow(FlowEditorState(initial))
     val state: StateFlow<FlowEditorState> = mutableState
     private val main = Handler(Looper.getMainLooper())
     private var closed = false
     private var loadId: String? = initialLoadId
     private var pendingKey: String? = null
-    private var pendingDraft: FlowEditorDraft? = null
+    private var pending: FlowSessionRevision? = null
+    private var restored = savedState.get<Bundle>(KEY)
+    private val originalId = restored?.getString("sessionId")
+    private val sessionId = originalId?.takeIf { raw ->
+        runCatching { UUID.fromString(raw).toString() == raw }.getOrDefault(false)
+    } ?: UUID.randomUUID().toString()
+    private val session = FlowEditorSessionStore(context.applicationContext, sessionId)
+    private var recovering = restored != null
+    private var legacyImport: Future<Result<FlowSessionSnapshot>>? = null
 
     init {
-        val restored = savedState.get<Bundle>(KEY)
-        restored?.let { restore(it) }
-        persist()
-        if (gateway != null && state.value.savedTaskId == null) {
-            if (pendingKey != null) performSave()
-            else if (restored == null || state.value.loading) load()
+        if (restored == null) {
+            rememberSession()
+            if (gateway != null) load() else persist()
+        } else recover()
+    }
+
+    private fun recover() {
+        val source = requireNotNull(restored)
+        mutableState.value = state.value.copy(loading = true, loadFailed = false, error = null)
+        fun read(): FlowSessionSnapshot {
+            if (!source.containsKey("sessionId")) {
+                val imported = importLegacy(source)
+                session.schedule(imported)
+                session.checkpoint()
+                return imported
+            }
+            require(sessionId == originalId && source.getInt("version") == 1) { "Unbekannte Entwurfsversion" }
+            return session.restore()
+        }
+        fun apply(result: Result<FlowSessionSnapshot>) {
+            if (closed) return
+            result.onSuccess { saved ->
+                revision = saved.current
+                history.clear()
+                history.addAll(saved.history)
+                loadId = saved.loadId
+                pendingKey = saved.pendingKey
+                pending = saved.pending
+                recovering = false
+                legacyImport = null
+                restored = null
+                rememberSession()
+                mutableState.value = FlowEditorState(revision.draft, saved.page, saved.form, saved.error,
+                    history.isNotEmpty(), loading = saved.loading, loadFailed = saved.loadFailed,
+                    savePending = pendingKey != null, savedTaskId = saved.savedTaskId)
+                if (gateway != null && saved.savedTaskId == null) {
+                    if (pendingKey != null) performSave() else if (saved.loading) load()
+                }
+            }.onFailure { error ->
+                Log.e("FlowEditor", "Unable to recover draft", error)
+                mutableState.value = state.value.copy(loading = false, loadFailed = true,
+                    error = "Der Entwurf konnte nicht wiederhergestellt werden.")
+            }
+        }
+        if (worker == null) apply(runCatching { read() })
+        else {
+            val job = worker.submit<Result<FlowSessionSnapshot>> {
+                val result = runCatching { read() }
+                main.post { apply(result) }
+                result
+            }
+            if (!source.containsKey("sessionId")) legacyImport = job
         }
     }
 
-    fun rename(value: String) { if (canEdit()) publish(state.value.copy(draft = state.value.draft.rename(value))) }
+    private fun rememberSession() {
+        savedState[KEY] = Bundle().apply { putInt("version", 1); putString("sessionId", sessionId) }
+    }
+
+    fun rename(value: String) {
+        if (!canEdit()) return
+        revision = revision.copy(draft = revision.draft.rename(value))
+        publish(state.value.copy(draft = revision.draft))
+    }
 
     fun openStep(id: String?) {
         if (!canEdit()) return
@@ -164,7 +230,8 @@ class FlowEditorViewModel(
     fun undo() {
         if (!canEdit()) return
         if (history.isEmpty()) return
-        publish(state.value.copy(draft = history.removeAt(history.lastIndex), form = null,
+        revision = history.removeAt(history.lastIndex)
+        publish(state.value.copy(draft = revision.draft, form = null,
             error = null, canUndo = history.isNotEmpty()))
     }
 
@@ -197,12 +264,16 @@ class FlowEditorViewModel(
     fun save() {
         if (gateway == null || !prepareSave()) return
         pendingKey = UUID.randomUUID().toString()
-        pendingDraft = state.value.draft
+        pending = revision
         performSave()
     }
 
     fun retrySave() { if (!closed && !state.value.saving && pendingKey != null) performSave() }
-    fun retryLoad() { if (!closed && state.value.loadFailed && !state.value.loading) load() }
+    fun retryLoad() {
+        if (!closed && state.value.loadFailed && !state.value.loading) {
+            if (recovering) recover() else load()
+        }
+    }
 
     private fun load() {
         val store = gateway ?: return
@@ -210,7 +281,12 @@ class FlowEditorViewModel(
         worker!!.execute {
             try {
                 val loaded = store.load(loadId)
-                main.post { if (!closed) publish(state.value.copy(draft = loaded, loading = false, error = null)) }
+                main.post {
+                    if (!closed) {
+                        revision = FlowSessionRevision.fresh(loaded)
+                        publish(state.value.copy(draft = loaded, loading = false, error = null))
+                    }
+                }
             } catch (failure: Exception) {
                 Log.e("FlowEditor", "Unable to load flow draft", failure)
                 main.post { if (!closed) publish(state.value.copy(loading = false, loadFailed = true,
@@ -222,14 +298,15 @@ class FlowEditorViewModel(
     private fun performSave() {
         val store = gateway ?: return
         val key = pendingKey ?: return
-        val draft = pendingDraft ?: return
+        val draft = pending?.draft ?: return
         publish(state.value.copy(saving = true, savePending = true, error = null))
         worker!!.execute {
             try {
+                session.checkpoint()
                 val id = store.save(draft, key)
                 main.post {
                     if (!closed) {
-                        pendingKey = null; pendingDraft = null
+                        pendingKey = null; pending = null
                         publish(state.value.copy(saving = false, savePending = false, savedTaskId = id, error = null))
                     }
                 }
@@ -239,7 +316,7 @@ class FlowEditorViewModel(
                     if (!closed) {
                         if (failure is IllegalArgumentException) {
                             // Validation failed inside the save transaction, so no write committed.
-                            pendingKey = null; pendingDraft = null
+                            pendingKey = null; pending = null
                             publish(state.value.copy(saving = false, savePending = false))
                             if (failure is FlowGraphEditProblem) when (failure.kind) {
                                 "step" -> { back(); openStep(failure.key) }
@@ -262,11 +339,17 @@ class FlowEditorViewModel(
         closed = true
         worker?.shutdownNow()
         main.removeCallbacksAndMessages(null)
+        try {
+            session.close()
+        } catch (failure: java.io.IOException) {
+            Log.e("FlowEditor", "Unable to finish draft writes", failure)
+        }
     }
 
     private fun open(form: FlowEditorForm) = publish(state.value.copy(form = form, error = null))
     private fun commit(draft: FlowEditorDraft) {
-        history.add(state.value.draft)
+        history.add(revision)
+        revision = FlowSessionRevision.fresh(draft)
         if (history.size > 100) history.removeAt(0)
         publish(state.value.copy(draft = draft, form = null, error = null, canUndo = true))
     }
@@ -281,34 +364,61 @@ class FlowEditorViewModel(
     private fun publish(value: FlowEditorState) { mutableState.value = value; persist() }
     private fun persist() {
         val value = state.value
-        savedState[KEY] = Bundle().apply {
-            putBundle("draft", value.draft.toBundle()); putInt("page", value.page)
-            putString("error", value.error)
-            putBoolean("loading", value.loading); putBoolean("loadFailed", value.loadFailed)
-            putString("loadId", loadId); putString("savedTaskId", value.savedTaskId)
-            putString("pendingKey", pendingKey); pendingDraft?.let { putBundle("pendingDraft", it.toBundle()) }
-            value.form?.let { form -> putBundle("form", Bundle().apply {
-                putString("kind", form.kind); putString("id", form.id)
-                putBundle("fields", Bundle().apply { form.fields.forEach { (k, v) -> putString(k, v) } })
-            }) }
-            putParcelableArrayList("history", ArrayList(history.map { it.toBundle() }))
+        session.schedule(FlowSessionSnapshot(revision, history.toList(), value.page, value.form,
+            value.error, value.loading, value.loadFailed, loadId, pendingKey, pending, value.savedTaskId))
+    }
+
+    fun checkpoint() {
+        if (closed) return
+        if (recovering) {
+            // Android can request saved state before the main-loop restore callback has run.
+            // Replace the old inline bundle only after its disk import has succeeded.
+            val importJob = legacyImport ?: return
+            try {
+                if (importJob.get().isSuccess) rememberSession()
+            } catch (interrupted: InterruptedException) {
+                Thread.currentThread().interrupt()
+            } catch (failure: java.util.concurrent.ExecutionException) {
+                Log.e("FlowEditor", "Unable to checkpoint legacy draft", failure)
+            }
+            return
+        }
+        try {
+            persist()
+            session.checkpoint()
+        } catch (failure: java.io.IOException) {
+            Log.e("FlowEditor", "Unable to checkpoint editor", failure)
+            mutableState.value = state.value.copy(error = "Der Entwurf konnte nicht gesichert werden.")
         }
     }
+
+    fun discardSession() {
+        if (closed) return
+        closed = true
+        try {
+            session.discard()
+        } catch (failure: java.io.IOException) {
+            Log.e("FlowEditor", "Unable to remove editor session", failure)
+        }
+        savedState.remove<Bundle>(KEY)
+    }
+
     @Suppress("DEPRECATION")
-    private fun restore(bundle: Bundle) {
-        loadId = bundle.getString("loadId", loadId)
-        pendingKey = bundle.getString("pendingKey")
-        pendingDraft = bundle.getBundle("pendingDraft")?.let { FlowEditorDraft.fromBundle(it) }
-        bundle.getParcelableArrayList<Bundle>("history")?.forEach { history.add(FlowEditorDraft.fromBundle(it)) }
+    private fun importLegacy(bundle: Bundle): FlowSessionSnapshot {
+        val draft = FlowSessionRevision.fresh(FlowEditorDraft.fromBundle(requireNotNull(bundle.getBundle("draft"))))
+        val oldHistory = bundle.getParcelableArrayList<Bundle>("history").orEmpty().map {
+            FlowSessionRevision.fresh(FlowEditorDraft.fromBundle(it))
+        }
+        val pending = bundle.getBundle("pendingDraft")?.let { FlowSessionRevision.fresh(FlowEditorDraft.fromBundle(it)) }
+        require((pending == null) == (bundle.getString("pendingKey") == null))
         val form = bundle.getBundle("form")?.let { value ->
             val fields = value.getBundle("fields") ?: Bundle()
             FlowEditorForm(requireNotNull(value.getString("kind")), value.getString("id"),
                 fields.keySet().associateWith { fields.getString(it, "") })
         }
-        mutableState.value = FlowEditorState(FlowEditorDraft.fromBundle(bundle.getBundle("draft")),
-            bundle.getInt("page", 1), form, bundle.getString("error"), history.isNotEmpty(),
-            loading = bundle.getBoolean("loading"), loadFailed = bundle.getBoolean("loadFailed"),
-            savePending = pendingKey != null, savedTaskId = bundle.getString("savedTaskId"))
+        return FlowSessionSnapshot(draft, oldHistory, bundle.getInt("page", 1), form, bundle.getString("error"),
+            bundle.getBoolean("loading"), bundle.getBoolean("loadFailed"), bundle.getString("loadId"),
+            bundle.getString("pendingKey"), pending, bundle.getString("savedTaskId"))
     }
     companion object {
         private const val KEY = "flow_tile_editor"
