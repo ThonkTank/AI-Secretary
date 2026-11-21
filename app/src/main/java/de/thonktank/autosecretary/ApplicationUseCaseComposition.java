@@ -30,11 +30,9 @@ import de.thonktank.autosecretary.domain.usecase.FinishStepForToday;
 import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
 import de.thonktank.autosecretary.domain.usecase.HarvestOccurrence;
 import de.thonktank.autosecretary.domain.usecase.IdGenerator;
-import de.thonktank.autosecretary.domain.usecase.LoadCapacityResources;
 import de.thonktank.autosecretary.domain.usecase.LoadAgentTaskCatalog;
 import de.thonktank.autosecretary.domain.usecase.LoadDashboard;
 import de.thonktank.autosecretary.domain.usecase.LoadFlowRuns;
-import de.thonktank.autosecretary.domain.usecase.LoadStepFlowSetup;
 import de.thonktank.autosecretary.domain.usecase.LoadTaskCatalog;
 import de.thonktank.autosecretary.domain.usecase.LoadTaskDetails;
 import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
@@ -43,8 +41,6 @@ import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.RecordSetResult;
 import de.thonktank.autosecretary.domain.usecase.StepExecutionService;
 import de.thonktank.autosecretary.domain.usecase.SaveCapacityResource;
-import de.thonktank.autosecretary.domain.usecase.SaveStepFlowDefinition;
-import de.thonktank.autosecretary.domain.usecase.SaveStepFlowSetup;
 import de.thonktank.autosecretary.domain.usecase.SaveTaskConfiguration;
 import de.thonktank.autosecretary.domain.usecase.SettlePreviousPartialOccurrences;
 import de.thonktank.autosecretary.domain.usecase.StartFlowCandidate;
@@ -93,18 +89,17 @@ final class ApplicationUseCaseComposition {
         UpdateTask update = new UpdateTask(catalogRepository, stepRepository, todayRepository,
                 flowRepository,
                 transactions, ids, clock);
-        LoadAgentTaskCatalog loadAgentTaskCatalog = new LoadAgentTaskCatalog(
-                new LoadTaskCatalog(catalogRepository, stepRepository));
+        LoadTaskCatalog loadTaskCatalog = new LoadTaskCatalog(catalogRepository, stepRepository, transactions);
+        LoadAgentTaskCatalog loadAgentTaskCatalog = new LoadAgentTaskCatalog(loadTaskCatalog);
         catalog = new CatalogUseCases(create, update,
                 new MoveTaskPlacement(catalogRepository, todayRepository, transactions),
                 new DeleteTask(catalogRepository, transactions),
                 new LoadTaskDetails(catalogRepository, stepRepository),
-                new LoadTaskCatalog(catalogRepository, stepRepository),
+                loadTaskCatalog,
                 new MoveScheduleEntry(catalogRepository, todayRepository, transactions),
                 new MoveTaskStep(catalogRepository, stepRepository, todayRepository, transactions),
                 new SwapTaskSteps(catalogRepository, stepRepository, todayRepository, transactions),
-                new SaveTaskConfiguration(catalogRepository, stepRepository, flowRepository,
-                        transactions, create, update, ids), loadAgentTaskCatalog,
+                new SaveTaskConfiguration(transactions, create, update), loadAgentTaskCatalog,
                 new ApplyAgentTaskChangeSet(catalogRepository, transactions, create, update,
                         loadAgentTaskCatalog));
 
@@ -160,6 +155,6 @@ final class ApplicationUseCaseComposition {
                         stepRepository, flowRepository, definitions, transactions),
                 new de.thonktank.autosecretary.domain.usecase.SaveFlowGraph(catalogRepository,
                         stepRepository, flowRepository, definitions, transactions, create, ids),
-                graphSheets, new LoadCapacityResources(flowRepository), clock);
+                graphSheets, clock);
     }
 }

@@ -324,8 +324,8 @@ public final class GraphFlowRuntimePersistenceTest {
                         StepTestFixtures.definition(null, 1, "Sätze", 0, 0, StepAmount.setsReps(2, 10),
                                 "", StepActivationKind.FOLLOW_UP)),
                 new LinkedHashMap<>(Map.of("start", FlowDelayPolicy.fixed(0), "sets", FlowDelayPolicy.fixed(0))),
-                List.of(new FlowConfigurationDraft.Resource("bench", null, "Bank", 1, true)),
-                List.of(new FlowGraphEdit.Binding(new FlowConfigurationDraft.Lease(
+                List.of(new FlowGraphEdit.Resource("bench", null, "Bank", 1, true)),
+                List.of(new FlowGraphEdit.Binding(new FlowGraphEdit.Lease(
                         "lease", null, "bench", "start", "sets", 1), false))));
         String runId = app.flows.runtime.start(candidate(task, "Start"), null).runId;
         Occurrence occurrence = repository.today.openOccurrences().get(0);

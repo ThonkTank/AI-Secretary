@@ -20,7 +20,7 @@ Plattform- oder historische Upgradeprüfungen allgemein unnötig wären.
 | --- | --- | --- | --- |
 | `docs` | ausschließlich Dokumentation | Python-Dokument-/Repositoryverträge | Policy-Zeuge und Dokumentverträge |
 | `host` | ausschließlich Hosttests | komplette Hostsuite einschließlich Goldens und Python-Verträge | gleiche Hostsuite |
-| `today` | ausschließlich geänderte bestehende `TodayCoordinator.java`, `TodayCommandDispatcher.java` und direkt zugehörige Hosttests | schnelle Contracts einschließlich P1 | Contracts, Lint, Builds, Identität, Größe und native Today-Suite auf API 35 mit Animationen |
+| `today` | Änderungen an der bestehenden `TodayCoordinator.java` und den in `change_scope.py` aufgeführten Hosttests | schnelle Contracts einschließlich P1 | Contracts, Lint, Builds, Identität, Größe und native Today-Suite auf API 35 mit Animationen |
 | `full` | Speicherung, Migrationen, weitere Produktdateien, Android-Harness, Plattform/Lifecycle, Manifest, Abhängigkeiten, Build, Signierung, CI/Freigabe sowie unbekannte/gemischte Änderungen | vollständiger `check-all.sh` | vollständige Contracts/Goldens/Builds und sechs normale/animierte API-26/35/37-Lanes |
 
 Die genaue Today-Dateiliste liegt im Classifier. Neue Produktionsdateien und strukturelle

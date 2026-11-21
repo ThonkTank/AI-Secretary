@@ -18,6 +18,7 @@ public interface StepRepository {
     void deleteTemplate(String id);
     List<TaskStepTemplate> templates(TaskId taskId);
     TaskStepTemplate findTemplate(String id);
+    List<TaskStepTemplate> allTemplates();
     List<TaskStepTemplate> templatesFor(List<TaskId> taskIds);
     void insertOccurrenceSteps(List<OccurrenceStep> steps);
     OccurrenceStep findOccurrenceStep(String id);

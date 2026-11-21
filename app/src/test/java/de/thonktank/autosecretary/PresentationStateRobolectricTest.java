@@ -655,24 +655,21 @@ public final class PresentationStateRobolectricTest {
         assertFalse(editorValue().saving);
     }
 
-    @Test public void newEditorLoadsSharedCapacityCatalogWithoutBecomingDirty() {
+    @Test public void newTaskEditorOpensWithoutLoadingTheFlowCapacityCatalog() {
         new de.thonktank.autosecretary.domain.usecase.SaveCapacityResource(
                 repository.flows, repository.transactions, () -> "shared-rack")
                 .execute("shared-rack", "Wäscheständer", 2);
-        editorViewModel = newEditorViewModel(new SavedStateHandle(), new DirectExecutor());
+        ManualExecutor worker = new ManualExecutor();
+        editorViewModel = newEditorViewModel(new SavedStateHandle(), worker);
 
         editorViewModel.dispatch(TaskEditorAction.openNew());
 
         assertTrue(editorValue().open);
         assertFalse(editorValue().loading);
         assertFalse(editorValue().dirty);
-        assertEquals(1, editorValue().flowDraft.resources.size());
-        assertEquals("Wäscheständer", editorValue().flowDraft.resources.get(0).name);
+        assertEquals(0, worker.pendingCount());
+        assertEquals("Wäscheständer", repository.flows.findCapacityResource("shared-rack").name);
     }
-
-
-
-
 
     @Test public void dismissingAStillLoadingEditorPreventsStaleReopen() {
         TaskId id = TaskId.of("slow-editor");

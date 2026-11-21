@@ -31,8 +31,6 @@ public final class WoodGrainArchitectureTest {
                 StandardCharsets.UTF_8);
         String header = new String(Files.readAllBytes(source("ui/today/HeaderView.java")),
                 StandardCharsets.UTF_8);
-        String task = new String(Files.readAllBytes(source("ui/today/TaskLeafView.java")),
-                StandardCharsets.UTF_8);
         String focus = new String(Files.readAllBytes(source("ui/today/FocusCardDecoration.java")),
                 StandardCharsets.UTF_8);
 
@@ -48,7 +46,6 @@ public final class WoodGrainArchitectureTest {
         assertTrue(occlusion.contains("getEllipsisCount"));
         assertTrue(occlusion.contains("clipToVisibleBounds"));
         assertFalse(header.contains("grain.post"));
-        assertFalse(task.contains("grain.post"));
         assertFalse(focus.contains("grain.setRotation"));
         assertFalse(focus.contains("surface.setRotation(card"));
     }

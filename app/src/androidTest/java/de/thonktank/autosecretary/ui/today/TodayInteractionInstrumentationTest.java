@@ -46,7 +46,7 @@ import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.RewardTextFormatter;
 import de.thonktank.autosecretary.presentation.today.TaskActionTarget;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
-import de.thonktank.autosecretary.presentation.today.TodayCommand;
+import de.thonktank.autosecretary.presentation.today.TodayReducer.ReorderWrite;
 import de.thonktank.autosecretary.presentation.today.TodayCoordinator;
 import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
 import de.thonktank.autosecretary.presentation.today.TodayItemTarget;
@@ -86,7 +86,7 @@ public final class TodayInteractionInstrumentationTest {
         }
     }
 
-    @Test public void titleTouchAndAccessibleLaterChangeActualFocusAndPersistOnRecreation() {
+    @Test public void overviewSelectsAddsSortsAndRestoresHiddenWorkAcrossRecreation() {
         new TodayProductInteractionScenario().execute();
     }
 
@@ -119,10 +119,10 @@ public final class TodayInteractionInstrumentationTest {
         scenario.gesture.up();
         awaitCondition("Drop did not persist the reordered steps",
                 () -> scenario.harness.has(TodayAction.Kind.DROP_REORDER)
-                        && !scenario.harness.commands.isEmpty());
+                        && !scenario.harness.writes.isEmpty());
 
-        assertEquals(TodayCommand.Kind.PERSIST_REORDER,
-                scenario.harness.commands.get(0).kind);
+        assertEquals(1, scenario.harness.writes.size());
+        assertEquals("a", scenario.harness.writes.get(0).stepId);
     }
 
     @Test public void holdingAtBottomEdgeScrolls() {
@@ -153,9 +153,11 @@ public final class TodayInteractionInstrumentationTest {
                 () -> harness.has(TodayAction.Kind.BEGIN_REORDER)
                         && harness.has(TodayAction.Kind.PREVIEW_REORDER)
                         && harness.has(TodayAction.Kind.DROP_REORDER)
-                        && !harness.commands.isEmpty());
+                        && !harness.writes.isEmpty());
 
-        assertEquals(TodayCommand.Kind.PERSIST_REORDER, harness.commands.get(0).kind);
+        assertEquals(1, harness.writes.size());
+        assertEquals("b", harness.writes.get(0).stepId);
+        assertEquals("a", harness.writes.get(0).beforeStepId);
     }
 
     @Test public void recreationCancelsActiveReorder() {
@@ -163,7 +165,7 @@ public final class TodayInteractionInstrumentationTest {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
 
         logPhase("begin-reorder-before-recreation");
-        instrumentation.runOnMainSync(() -> harness.coordinator.emit(
+        instrumentation.runOnMainSync(() -> harness.coordinator.applyStepAction(
                 TodayAction.beginReorder("a", Arrays.asList("a", "b", "c"))));
         assertEquals(TodayFeatureState.Reorder.Phase.DRAGGING,
                 harness.state.get().reorder.phase);
@@ -514,7 +516,7 @@ public final class TodayInteractionInstrumentationTest {
         final FocusTaskUiModel focus;
         final TodayUiModel today;
         final List<TodayAction> actions = new ArrayList<>();
-        final List<TodayCommand> commands = new ArrayList<>();
+        final List<ReorderWrite> writes = new ArrayList<>();
         final AtomicReference<TodayFeatureState> state = new AtomicReference<>();
         final RecordingScrollHost scrollHost;
         final FocusStepListLayout list;
@@ -524,12 +526,12 @@ public final class TodayInteractionInstrumentationTest {
             focus = focus();
             today = new TodayUiModel(new XpProgress(0), focus,
                     Collections.emptyList(), Collections.emptyList());
-            coordinator = new TodayCoordinator(today, commands::add, state::set);
+            coordinator = new TodayCoordinator(today, writes::add, state::set);
             state.set(coordinator.state());
             scrollHost = new RecordingScrollHost(activity.getWindow().getDecorView());
             list = new FocusStepListLayout(activity, action -> {
                 actions.add(action);
-                coordinator.emit(action);
+                coordinator.applyStepAction(action);
                 render();
             }, scrollHost);
         }
@@ -558,10 +560,8 @@ public final class TodayInteractionInstrumentationTest {
         String describe() {
             List<String> actionKinds = new ArrayList<>();
             for (TodayAction action : actions) actionKinds.add(action.kind.name());
-            List<String> commandKinds = new ArrayList<>();
-            for (TodayCommand command : commands) commandKinds.add(command.kind.name());
             TodayFeatureState value = state.get();
-            return "actions=" + actionKinds + " commands=" + commandKinds
+            return "actions=" + actionKinds + " reorderWrites=" + writes
                     + " reorderPhase=" + value.reorder.phase
                     + " feedback=" + value.feedback
                     + " scrollDistance=" + scrollHost.distance;

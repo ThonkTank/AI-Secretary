@@ -69,6 +69,19 @@ Zweige gebunden. Kantenziehen und gezieltes Ablegen verwenden denselben Struktur
 Bestehende Definitionen werden beim Öffnen nicht geändert. Quer verbundene Altgraphen,
 die nicht als rechteckige Stapel darstellbar sind, benennen ihre Vorgänger ausdrücklich.
 
+### Wiederherstellung des Editorentwurfs
+
+Der Android-Speicherzustand trägt Formatversion und Sitzungs-ID. Der Editor sichert den Entwurf
+im privaten `noBackupFilesDir`. Jede Strukturänderung erhält eine Revision. Der atomar ersetzte
+Sitzungskopf verweist auf die aktuelle Revision und bis zu 100 Undo-Stände und enthält Seite,
+Ablauftitel und unverarbeitete Formularwerte. Eine Texteingabe aktualisiert den Kopf. Beim
+Sichern der Activity wartet der Editor auf die letzte ausstehende Änderung. Alte Editor-Bundles
+werden einschließlich Undo und offenem Speicherauftrag übernommen.
+
+„Fertig“ sichert zuerst die Revision und ihren Auftragsschlüssel. Nach einer Unterbrechung
+benutzt der Editor denselben Schlüssel. `SaveFlowGraph` schreibt die Definition und die Quittung
+in derselben Datenbanktransaktion. Verwerfen oder der bestätigte Abschluss beendet die Sitzung.
+
 ## Definition und Laufzeit
 
 Die lineare Cursorannahme wird in einem zusammenhängenden Produkt-Cutover ersetzt.
@@ -125,3 +138,13 @@ Die nächste Schema-Version nach 24 übernimmt Definitionen und lineare Runs ein
 Migrationen und signierte Upgrades müssen insbesondere Schema-24-Runs in jedem vorhandenen
 Zustand einschließlich laufender Wartezeiten und bereits gebuchter Rewards prüfen.
 Normale Aufgaben und deren Editor, Rewards und Wiederholungen bleiben unverändert.
+
+
+### Wiederherstellung alter Aufgabenentwürfe
+
+Der normale Aufgabeneditor speichert Aufgabenfelder und geplante Schritte. Wenn Android
+einen Entwurf des früheren kombinierten Editors wiederherstellt, bleiben Aufgabenfelder,
+Schritte und ihr Vergleichsstand für die Änderungserkennung erhalten. Die Schritte werden
+zu geplanten Schritten und die alte Ablaufseite führt zur Schrittliste. Hatte der Entwurf
+Ablaufregeln, erscheint beim Wiederherstellen einmalig ein Hinweis zu deren Entfernung.
+Gespeicherte Abläufe können unter „Alles“ im Kacheleditor geöffnet werden.
