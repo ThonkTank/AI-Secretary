@@ -269,7 +269,7 @@ public class MainActivity extends ComponentActivity {
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             systemTopInset = bars.top;
-            screen.setPadding(0, bars.top, 0, 0);
+            screen.setPadding(0, bars.top, 0, bars.bottom);
             if (editorCoordinator != null) editorCoordinator.setInsets(bars.top, bars.bottom);
             return insets;
         });

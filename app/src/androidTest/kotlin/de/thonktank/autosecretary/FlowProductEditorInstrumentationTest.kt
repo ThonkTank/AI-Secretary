@@ -128,7 +128,9 @@ class FlowProductEditorInstrumentationTest {
 
     private fun openFromAllTasks(title: String) {
         val context = instrumentation.targetContext
-        click(By.res(context.resources.getResourceName(R.id.navigation_all_tasks)), "Alles öffnen")
+        val tab = By.res(context.resources.getResourceName(R.id.navigation_all_tasks))
+        click(tab, "Alles öffnen")
+        assertTrue("Der Tap muss den Tab Alles auswählen", device.wait(Until.hasObject(tab.selected(true)), 5_000))
         editText().text = title
         click(By.desc(context.getString(R.string.a11y_edit_task, title)), "Gespeicherten Eintrag bearbeiten")
     }
