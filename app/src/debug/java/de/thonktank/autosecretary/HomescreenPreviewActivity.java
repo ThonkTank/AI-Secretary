@@ -97,7 +97,7 @@ public final class HomescreenPreviewActivity extends ComponentActivity {
                         UpdateUiState.idle(), Collections.emptyList()));
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             androidx.core.graphics.Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            screen.setPadding(0, bars.top, 0, 0);
+            screen.setPadding(0, bars.top, 0, bars.bottom);
             return insets;
         });
         setContentView(root);

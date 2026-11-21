@@ -66,7 +66,6 @@ internal fun EditorPageContent(
             state.page == EditorUiState.Page.TITLE -> EditorTitlePage(state, palette, today, dispatcher)
             state.page == EditorUiState.Page.SCHEDULE -> EditorSchedulePage(state, palette, layout, dispatcher)
             state.page == EditorUiState.Page.STEPS -> EditorStepsPage(state, palette, layout, formatter, dispatcher)
-            state.page == EditorUiState.Page.FLOW -> EditorFlowPage(state, palette, dispatcher)
             else -> EditorSummaryPage(state, palette, formatter, dispatcher)
         }
     }

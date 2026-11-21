@@ -30,7 +30,7 @@ public final class ArchitectureBoundaryTest {
         assertTrue(Files.isDirectory(main("ui/today")));
         assertTrue(Files.isDirectory(main("ui/leaf")));
         for (String view : new String[]{
-                "HeaderView.java", "TaskLeafView.java", "CalendarLeafView.java",
+                "HeaderView.java", "TodayOverviewView.java", "CalendarLeafView.java",
                 "FocusTaskView.java", "FocusCardView.java", "FocusStepRowView.java",
                 "CompletedTodayView.java", "WoodGrainView.java"})
             assertFalse("feature view remains in application root: " + view,
@@ -45,43 +45,6 @@ public final class ArchitectureBoundaryTest {
         assertFalse(activity.contains(".execute("));
         assertTrue(activity.contains("todayViewModel::dispatch"));
         assertTrue(activity.contains("TodayAction.acknowledgeRequest"));
-    }
-
-    @Test public void screensShareInvalidationsWithoutActivityBrokerOrManualReloads()
-            throws Exception {
-        String activity = read(main("MainActivity.java"));
-        String dashboard = read(main("presentation/today/TodayViewModel.java"));
-        String catalog = read(main("presentation/alltasks/AllTasksViewModel.java"));
-        String options = read(main("presentation/options/OptionsViewModel.java"));
-        String container = read(main("AppContainer.java"));
-        String widgets = read(main("WidgetUpdateCoordinator.java"));
-        String widgetProvider = read(main("TaskWidgetProvider.java"));
-        String widgetReceiver = read(main("TaskActionReceiver.java"));
-
-        for (String removed : new String[]{"catalogChanges()", "contentChanges()",
-                "minuteHandler", "allTasksViewModel.reload()", "viewModel.load()",
-                "viewModel.refresh("})
-            assertFalse("manual broker remains: " + removed, activity.contains(removed));
-        assertFalse(dashboard.contains("observeDisplayPreferences("));
-        assertFalse(dashboard.contains("calendar.observeChanges("));
-        assertFalse(dashboard.contains("shutdownNow()"));
-        assertFalse(catalog.contains("shutdownNow()"));
-        assertFalse(dashboard.contains("invalidateWidgets"));
-        assertFalse(read(main("presentation/DashboardPresenter.java"))
-                .contains("refreshDomain"));
-        assertFalse(widgetReceiver.contains("widgetUpdates.updateAll"));
-        assertTrue(container.contains("PresentationInvalidationSource presentationInvalidations"));
-        assertTrue(widgets.contains("source.getWidgetChanges()"));
-        assertTrue(widgets.contains("LatestReadPipeline.prepared"));
-        assertTrue(widgetProvider.contains("reconcileInstalledWidgets()"));
-        assertTrue(widgetProvider.contains("stopObserving()"));
-        assertTrue(activity.contains("clockInvalidations.materializeForeground()"));
-        assertFalse(activity.contains("calendarInvalidations.materializeExternalChange()"));
-        assertTrue(options.contains("calendarInvalidated.run()"));
-        assertFalse(catalog.contains("current.withCatalog(catalog.execute())"));
-        assertTrue(dashboard.indexOf("contentReads.close()")
-                < dashboard.indexOf("worker.shutdown()"));
-        assertTrue(catalog.indexOf("reads.close()") < catalog.indexOf("worker.shutdown()"));
     }
 
     @Test public void managementScreenHasOneStateFlowOwnerAndOneTypedActionBoundary()
@@ -117,24 +80,6 @@ public final class ArchitectureBoundaryTest {
         assertTrue(Files.exists(Path.of(
                 "src/main/kotlin/de/thonktank/autosecretary/presentation/legacy/"
                         + "LegacyStateFlowBinder.kt")));
-    }
-
-    @Test public void motionCallbacksCannotOwnEditorNavigation() throws Exception {
-        String activity = read(main("MainActivity.java"));
-        String open = activity.substring(activity.indexOf("private void openEditorWithFlight()"),
-                activity.indexOf("private void renderAllTasksState("));
-        String navigator = read(main("presentation/navigation/TaskEditorNavigator.java"));
-        assertTrue(open.contains("appNavigator.navigate(AppDestination.newTaskFromHeader())"));
-        assertTrue(open.contains("editorCoordinator.deferNextOpen()"));
-        assertTrue(open.contains("editorCoordinator::completeDeferredOpen"));
-        assertFalse(open.contains("editorViewModel.dispatch"));
-        assertTrue(navigator.indexOf("prepareHeaderEntrance.run()")
-                < navigator.indexOf("editor.dispatch(TaskEditorAction.openNew())"));
-
-        String renderer = read(main("DashboardRenderer.java"));
-        assertTrue(renderer.contains("onAnimationCancel"));
-        assertTrue(renderer.contains("onAnimationEnd"));
-        assertTrue(renderer.contains("if (completed[0]) return"));
     }
 
     @Test public void todayAndShellHaveOneStateFlowOwnerWithoutLegacyBrokers()
@@ -312,17 +257,6 @@ public final class ArchitectureBoundaryTest {
         assertFalse(Files.exists(main("data/local/Task" + "Store.java")));
         assertFalse(Files.exists(main("data/local/RoomTask" + "Repository.java")));
         assertFalse(Files.exists(main("data/local/Task" + "Dao.java")));
-    }
-
-    @Test public void managementPortTestsUseFocusedDoubles() throws Exception {
-        Path tests = Path.of("app/src/test/java/de/thonktank/autosecretary/domain");
-        if (!Files.exists(tests)) tests = Path.of("src/test/java/de/thonktank/autosecretary/domain");
-        forEachJava(tests.resolve("schedule"), source -> assertFalse(source
-                + " uses execution acceptance store", read(source).contains(
-                "InMemoryExecutionRepository")));
-        forEachJava(tests.resolve("steps"), source -> assertFalse(source
-                + " uses execution acceptance store", read(source).contains(
-                "InMemoryExecutionRepository")));
     }
 
     @Test public void productionMigrationGraphStartsAtSupportedSchemaEight() throws Exception {

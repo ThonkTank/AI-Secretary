@@ -38,7 +38,7 @@ public final class TaskEditorValidator {
         }
         for (EditorStepState step : draft.stepStates) {
             issues.addAll(StepEditorValidator.issues(step,
-                    draft.recurrence != Recurrence.ONCE && !draft.flowDraft.isFollowUp(step.id)));
+                    draft.recurrence != Recurrence.ONCE));
         }
         return Collections.unmodifiableSet(issues);
     }
