@@ -1,5 +1,7 @@
 package de.thonktank.autosecretary;
 
+import android.os.Bundle;
+
 import androidx.annotation.NonNull;
 import androidx.lifecycle.SavedStateHandle;
 import androidx.lifecycle.SavedStateHandleSupport;
@@ -9,9 +11,7 @@ import androidx.lifecycle.viewmodel.CreationExtras;
 
 import de.thonktank.autosecretary.domain.model.TaskDetails;
 import de.thonktank.autosecretary.domain.model.TaskId;
-import de.thonktank.autosecretary.domain.model.TaskStepTemplate;
 import de.thonktank.autosecretary.domain.model.TaskSlot;
-import de.thonktank.autosecretary.domain.model.StepFlowSetup;
 import de.thonktank.autosecretary.domain.usecase.CatalogUseCases;
 import de.thonktank.autosecretary.domain.usecase.FlowUseCases;
 import de.thonktank.autosecretary.domain.usecase.TodayUseCases;
@@ -78,7 +78,8 @@ public final class TaskEditorViewModel extends ViewModel {
         this.savedState = savedState;
         this.worker = worker;
         this.wakeScheduler = wakeScheduler;
-        EditorUiState editor = EditorUiState.fromBundle(savedState.get(SAVED_EDITOR));
+        Bundle savedEditor = savedState.get(SAVED_EDITOR);
+        EditorUiState editor = EditorUiState.fromBundle(savedEditor);
         if (editor.saving) {
             editor = TaskEditorStateReducer.feedback(
                     TaskEditorStateReducer.saving(editor, false), Collections.emptySet(),
@@ -91,6 +92,11 @@ public final class TaskEditorViewModel extends ViewModel {
             requestSequence = Math.max(requestSequence, sequenceOf(request.id));
         current = new TaskEditorScreenState(editor, requests);
         state = StateFlowKt.MutableStateFlow(current);
+        if (EditorUiState.discardsLegacyFlow(savedEditor)) {
+            enqueueLocked(TaskEditorRequest.notice(nextRequestIdLocked(),
+                    texts.text(R.string.editor_legacy_flow_removed_message)));
+        }
+        if (savedEditor != null) persistContent();
         if (editor.open && editor.loading)
             open(editor.taskId, null, false);
     }
@@ -120,32 +126,15 @@ public final class TaskEditorViewModel extends ViewModel {
     }
 
     private void open(String taskId, String stepId, boolean addStep) {
-        UiCommand key;
-        long generation;
         if (taskId == null) {
-            synchronized (lock) { generation = ++openGeneration; }
-            key = new UiCommand(UiCommand.Kind.LOAD_EDITOR, "new:" + generation);
-            begin(key);
-        } else {
-            key = new UiCommand(UiCommand.Kind.LOAD_EDITOR, taskId);
-            if (!begin(key)) return;
-            synchronized (lock) { generation = ++openGeneration; }
-        }
-        if (taskId == null) {
+            synchronized (lock) { openGeneration++; }
             setContent(EditorUiState.create(defaultSlot(clock.time())));
-            worker.execute(() -> {
-                try {
-                    List<de.thonktank.autosecretary.domain.model.CapacityResource> catalog =
-                            flows.loadCapacityResources.execute();
-                    finish(key);
-                    publishCatalogIfCurrent(generation, catalog);
-                } catch (RuntimeException error) {
-                    finish(key);
-                    logger.error("TaskEditorViewModel", "Capacity catalog load failed", error);
-                }
-            });
             return;
         }
+        UiCommand key = new UiCommand(UiCommand.Kind.LOAD_EDITOR, taskId);
+        if (!begin(key)) return;
+        long generation;
+        synchronized (lock) { generation = ++openGeneration; }
         setContent(EditorUiState.loading(taskId));
         worker.execute(() -> {
             try {
@@ -166,8 +155,7 @@ public final class TaskEditorViewModel extends ViewModel {
                     }
                     return;
                 }
-                TaskFlowDraft flowDraft = TaskFlowDraft.empty();
-                EditorUiState loaded = EditorUiState.edit(details, flowDraft);
+                EditorUiState loaded = EditorUiState.edit(details);
                 if (addStep) loaded = TaskEditorStateReducer.addStep(loaded);
                 else if (stepId != null) loaded = TaskEditorStateReducer.expandStep(loaded, stepId);
                 finish(key);
@@ -177,21 +165,6 @@ public final class TaskEditorViewModel extends ViewModel {
                 failLoad(generation, texts.text(R.string.error_editor_load), error);
             }
         });
-    }
-
-    private void publishCatalogIfCurrent(
-            long generation,
-            List<de.thonktank.autosecretary.domain.model.CapacityResource> catalog) {
-        if (catalog == null || catalog.isEmpty()) return;
-        synchronized (lock) {
-            if (generation != openGeneration || !current.content.open
-                    || current.content.taskId != null) return;
-            EditorUiState merged = current.content.withCapacityCatalog(catalog);
-            if (merged.flowDraft == current.content.flowDraft) return;
-            current = current.withContent(merged);
-            persistContent();
-            state.setValue(current);
-        }
     }
 
     private void dismiss() {
@@ -219,7 +192,7 @@ public final class TaskEditorViewModel extends ViewModel {
             try {
                 catalog.saveTaskConfiguration.execute(
                         draft.taskId == null ? null : TaskId.of(draft.taskId),
-                        draft.definition(), draft.flowConfiguration());
+                        draft.definition());
                 try {
                     today.materializeDue.execute();
                     flows.activateReadyFlows.execute();

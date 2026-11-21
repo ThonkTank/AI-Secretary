@@ -59,6 +59,12 @@ public final class EditorStepState {
                 note, activationKind);
     }
 
+    EditorStepState asScheduled() {
+        return activationKind == StepActivationKind.SCHEDULED ? this
+                : new EditorStepState(id, text, cadenceMode, weekdayMask, intervalDays,
+                        prescription, note, StepActivationKind.SCHEDULED);
+    }
+
     public boolean isDraftIdentity() { return id == null || id.startsWith(DRAFT_PREFIX); }
 
     public TaskStepDefinition definition(int position, boolean once) {
