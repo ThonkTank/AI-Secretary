@@ -20,6 +20,7 @@ final class TaskEditorRequestSavedStateAdapter {
             item.putString(ID, request.id);
             item.putString(MESSAGE, request.message);
             item.putString("flowTaskId", request.flowTaskId);
+            item.putBoolean("notice", request.notice);
             items.add(item);
         }
         result.putParcelableArrayList(ITEMS, items);
@@ -35,7 +36,8 @@ final class TaskEditorRequestSavedStateAdapter {
         for (Bundle item : items) {
             if (item == null) continue;
             try {
-                result.add(new TaskEditorRequest(item.getString(ID), item.getString(MESSAGE), item.getString("flowTaskId")));
+                result.add(new TaskEditorRequest(item.getString(ID), item.getString(MESSAGE),
+                        item.getString("flowTaskId"), item.getBoolean("notice")));
             } catch (IllegalArgumentException ignored) {
                 // A malformed process snapshot must not prevent the editor from opening.
             }

@@ -11,8 +11,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import de.thonktank.autosecretary.domain.model.Recurrence;
-import de.thonktank.autosecretary.domain.model.FlowConfigurationDraft;
-import de.thonktank.autosecretary.domain.model.CapacityResource;
 import de.thonktank.autosecretary.domain.model.TaskBoundKind;
 import de.thonktank.autosecretary.domain.model.TaskDefinition;
 import de.thonktank.autosecretary.domain.model.TaskDetails;
@@ -23,9 +21,9 @@ import de.thonktank.autosecretary.domain.model.MissedOccurrenceMode;
 
 /** Immutable editor state facade with separated draft, navigation and feedback components. */
 public final class EditorUiState {
-    private static final int BUNDLE_VERSION = 3;
+    private static final int BUNDLE_VERSION = 4;
     public enum Prompt { NONE, DISCARD, DELETE }
-    public enum Page { TITLE, SCHEDULE, STEPS, FLOW, SUMMARY }
+    public enum Page { TITLE, SCHEDULE, STEPS, SUMMARY }
 
     public final boolean open;
     public final boolean loading;
@@ -53,7 +51,6 @@ public final class EditorUiState {
     public final String note;
     public final MissedOccurrenceMode missedOccurrenceMode;
     public final List<EditorStepState> stepStates;
-    public final TaskFlowDraft flowDraft;
     public final int nextDraftIdentity;
     public final String expandedStepId;
     public final Page page;
@@ -77,7 +74,6 @@ public final class EditorUiState {
         boundKind = draft.boundKind; boundUntilOn = draft.boundUntilOn;
         boundWeeks = draft.boundWeeks; remainingCount = draft.remainingCount;
         deadlineOn = draft.deadlineOn; note = draft.note; stepStates = draft.steps;
-        flowDraft = draft.flow;
         missedOccurrenceMode = draft.missedOccurrenceMode;
         nextDraftIdentity = draft.nextDraftIdentity;
         expandedStepId = navigation.expandedStepId; page = navigation.page;
@@ -91,13 +87,9 @@ public final class EditorUiState {
     public static EditorUiState create() { return create(TaskSlot.MORNING); }
 
     public static EditorUiState create(TaskSlot slot) {
-        return create(slot, TaskFlowDraft.empty());
-    }
-
-    public static EditorUiState create(TaskSlot slot, TaskFlowDraft flow) {
         TaskEditorDraft draft = new TaskEditorDraft("", slot, null, Recurrence.DAILY, 2, 0,
                 TimeOfDay.fromSlot(slot).bit, TaskBoundKind.FOREVER, null, null, null, null,
-                "", MissedOccurrenceMode.COLLAPSE, Collections.emptyList(), 1, flow);
+                "", MissedOccurrenceMode.COLLAPSE, Collections.emptyList(), 1);
         return new EditorUiState(true, false, false, null, draft,
                 new TaskEditorNavigation(Page.TITLE, false, null),
                 TaskEditorFeedback.empty(), null);
@@ -115,17 +107,13 @@ public final class EditorUiState {
     }
 
     public static EditorUiState edit(TaskDetails details) {
-        return edit(details, TaskFlowDraft.empty());
-    }
-
-    public static EditorUiState edit(TaskDetails details, TaskFlowDraft flow) {
         List<EditorStepState> steps = new ArrayList<>();
         for (TaskStepTemplate value : details.stepTemplates) steps.add(EditorStepState.from(value));
         TaskEditorDraft draft = new TaskEditorDraft(details.title, details.slot,
                 details.estimatedMinutes, details.recurrence, details.intervalDays,
                 details.weekdayMask, details.timeOfDayMask, details.boundKind,
                 details.boundUntilOn, details.boundWeeks, details.remainingCount,
-                details.deadlineOn, details.note, details.missedOccurrenceMode, steps, 1, flow);
+                details.deadlineOn, details.note, details.missedOccurrenceMode, steps, 1);
         return new EditorUiState(true, false, false, details.id.value, draft,
                 new TaskEditorNavigation(Page.SUMMARY, false, null),
                 TaskEditorFeedback.empty(), null);
@@ -195,17 +183,6 @@ public final class EditorUiState {
                 draft.withMissedOccurrenceMode(value), navigation, feedback, baseline);
     }
 
-    public EditorUiState withFlowDraft(TaskFlowDraft value) {
-        return new EditorUiState(open, loading, saving, taskId, draft.withFlow(value),
-                navigation, feedback, baseline);
-    }
-
-    public EditorUiState withCapacityCatalog(List<CapacityResource> catalog) {
-        TaskFlowDraft merged = flowDraft.mergeCatalog(catalog);
-        return new EditorUiState(open, loading, saving, taskId, draft.withFlow(merged),
-                navigation, feedback, baseline.withCapacityCatalog(catalog));
-    }
-
     public EditorUiState withPage(Page value, boolean returnValue) {
         return new EditorUiState(open, loading, saving, taskId, draft,
                 navigation.withPage(value, returnValue), feedback, baseline);
@@ -217,10 +194,6 @@ public final class EditorUiState {
     }
 
     public TaskDefinition definition() { return draft.definition(); }
-
-    public FlowConfigurationDraft flowConfiguration() {
-        return flowDraft.configuration(stepStates);
-    }
 
     public Bundle toBundle() {
         Bundle bundle = new Bundle();
@@ -248,10 +221,38 @@ public final class EditorUiState {
         return fromLegacyBundle(bundle);
     }
 
+    static boolean discardsLegacyFlow(Bundle bundle) {
+        if (bundle == null || !bundle.getBoolean("open") || bundle.getInt("format_version") >= BUNDLE_VERSION)
+            return false;
+        Bundle draft = bundle.getBundle("draft");
+        Bundle baseline = bundle.getBundle("baseline");
+        return hasLegacyFlow(draft, "steps")
+                || (baseline != null && hasLegacyFlow(baseline.getBundle("draft"), "steps"))
+                || (draft == null && hasLegacyFlow(bundle, "step_states"));
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean hasLegacyFlow(Bundle draft, String stepsKey) {
+        if (draft == null) return false;
+        ArrayList<Bundle> steps = draft.getParcelableArrayList(stepsKey);
+        if (steps != null && steps.stream().anyMatch(step ->
+                step != null && "FOLLOW_UP".equals(step.getString("activation")))) return true;
+        Bundle flow = draft.getBundle("flow");
+        if (flow == null) return false;
+        ArrayList<Bundle> transitions = flow.getParcelableArrayList("transitions");
+        ArrayList<Bundle> leases = flow.getParcelableArrayList("leases");
+        List<?> resources = flow.getParcelableArrayList("resources");
+        return (transitions != null && !transitions.isEmpty())
+                || (leases != null && !leases.isEmpty())
+                || (resources != null && resources.stream().anyMatch(item ->
+                        item instanceof Bundle resource && (resource.getString("persisted") == null
+                                || resource.getBoolean("changed"))));
+    }
+
     private static EditorUiState fromLegacyBundle(Bundle bundle) {
         List<EditorStepState> steps = new ArrayList<>();
         ArrayList<Bundle> values = bundle.getParcelableArrayList("step_states");
-        if (values != null) for (Bundle value : values) steps.add(EditorStepState.fromBundle(value));
+        if (values != null) for (Bundle value : values) steps.add(EditorStepState.fromBundle(value).asScheduled());
         TaskEditorDraft draft = new TaskEditorDraft(bundle.getString("title", ""),
                 BundleValues.enumValue(TaskSlot.class, bundle.getString("slot"), TaskSlot.MORNING),
                 BundleValues.integer(bundle, "estimated"), BundleValues.enumValue(Recurrence.class,
@@ -268,7 +269,7 @@ public final class EditorUiState {
                 : TaskDraftSnapshot.legacyDifferent(draft);
         return new EditorUiState(true, bundle.getBoolean("loading"), bundle.getBoolean("saving"),
                 bundle.getString("task_id"), draft,
-                new TaskEditorNavigation(BundleValues.enumValue(Page.class,
+                new TaskEditorNavigation(TaskEditorNavigation.restorePage(
                         bundle.getString("page"), bundle.getString("task_id") == null
                                 ? Page.TITLE : Page.SUMMARY),
                         bundle.getBoolean("return_summary"), bundle.getString("expanded")),
@@ -292,7 +293,7 @@ public final class EditorUiState {
         Set<Page> pages = new LinkedHashSet<>();
         ArrayList<String> pageValues = bundle.getStringArrayList("attempted_pages");
         if (pageValues != null) for (String value : pageValues)
-            pages.add(BundleValues.enumValue(Page.class, value, Page.TITLE));
+            pages.add(TaskEditorNavigation.restorePage(value, Page.TITLE));
         ArrayList<String> stepValues = bundle.getStringArrayList("attempted_steps");
         return new TaskEditorFeedback(issues, pages,
                 stepValues == null ? Collections.emptySet() : new LinkedHashSet<>(stepValues),

@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config;
 /** Replaces the retired embedded-flow editor contract with explicit task/flow ownership. */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = {26, 35})
-public final class StepFlowSetupRobolectricTest {
+public final class TaskEditorSaveBoundaryRobolectricTest {
     private AppDatabase database;
     private RoomRepositoryFixture repository;
     private ApplicationUseCaseComposition app;
@@ -33,12 +33,14 @@ public final class StepFlowSetupRobolectricTest {
     }
     @After public void close() { database.close(); }
 
-    @Test public void normalEditorCannotCreateAFlowOrWriteCapacities() {
-        TaskDefinition task = TaskDefinition.basic("Alt", TaskSlot.MORNING, Recurrence.DAILY, 1, 0, List.of("A", "B"));
-        FlowConfigurationDraft draft = new FlowConfigurationDraft(List.of("a", "b"),
-                List.of(new FlowConfigurationDraft.Link("a", "b", FlowDelayPolicy.fixed(100))),
-                List.of(new FlowConfigurationDraft.Resource("rack", null, "Ständer", 1, true)), List.of());
-        assertThrows(IllegalArgumentException.class, () -> app.catalog.saveTaskConfiguration.execute(null, task, draft));
+    @Test public void normalEditorCannotCreateAFollowUpStep() {
+        TaskStepDefinition step = de.thonktank.autosecretary.testing.StepTestFixtures.definition(
+                null, 0, "B", 0, 0, StepAmount.none(), "", StepActivationKind.FOLLOW_UP);
+        TaskDefinition task = new TaskDefinition("Alt", null, TaskSlot.MORNING, Recurrence.DAILY,
+                1, 0, TimeOfDay.MORNING.bit, TaskBoundKind.FOREVER, null, null, null, null,
+                "", List.of(step));
+        assertThrows(IllegalArgumentException.class,
+                () -> app.catalog.saveTaskConfiguration.execute(null, task));
         assertTrue(repository.catalog.allTasks().isEmpty());
         assertTrue(repository.flows.capacityResources().isEmpty());
     }
@@ -48,7 +50,7 @@ public final class StepFlowSetupRobolectricTest {
                 .addStep("Start", FlowDelayPolicy.rememberLast(100)).edit());
         TaskDefinition replacement = TaskDefinition.basic("Veraltet", TaskSlot.EVENING, Recurrence.DAILY,
                 1, 0, List.of("Ersatz"));
-        assertThrows(IllegalArgumentException.class, () -> app.catalog.update.execute(id, replacement));
+        assertThrows(IllegalArgumentException.class, () -> app.catalog.saveTaskConfiguration.execute(id, replacement));
         assertEquals("Ablauf", app.flows.loadGraph.execute(id).task.title);
         assertEquals("Start", repository.steps.templates(id).get(0).text);
     }
@@ -62,8 +64,7 @@ public final class StepFlowSetupRobolectricTest {
                 new FlowTileGraph.Link(keys.get(0), keys.get(2)))));
         TaskId flowId = app.flows.saveGraph.execute(flow.edit());
         TaskDefinition task = TaskDefinition.basic("Normal", TaskSlot.EVENING, Recurrence.DAILY, 1, 0, List.of("Tun"));
-        TaskId normal = app.catalog.saveTaskConfiguration.execute(null, task,
-                new FlowConfigurationDraft(List.of("one"), List.of(), List.of(), List.of()));
+        TaskId normal = app.catalog.saveTaskConfiguration.execute(null, task);
         assertEquals(TaskKind.TASK, repository.catalog.findTask(normal).kind);
         assertEquals(2, app.flows.loadGraph.execute(flowId).definition.graph.links.size());
     }

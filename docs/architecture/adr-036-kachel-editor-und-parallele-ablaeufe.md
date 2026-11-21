@@ -138,3 +138,13 @@ Die nächste Schema-Version nach 24 übernimmt Definitionen und lineare Runs ein
 Migrationen und signierte Upgrades müssen insbesondere Schema-24-Runs in jedem vorhandenen
 Zustand einschließlich laufender Wartezeiten und bereits gebuchter Rewards prüfen.
 Normale Aufgaben und deren Editor, Rewards und Wiederholungen bleiben unverändert.
+
+
+### Wiederherstellung alter Aufgabenentwürfe
+
+Der normale Aufgabeneditor speichert Aufgabenfelder und geplante Schritte. Wenn Android
+einen Entwurf des früheren kombinierten Editors wiederherstellt, bleiben Aufgabenfelder,
+Schritte und ihr Vergleichsstand für die Änderungserkennung erhalten. Die Schritte werden
+zu geplanten Schritten und die alte Ablaufseite führt zur Schrittliste. Hatte der Entwurf
+Ablaufregeln, erscheint beim Wiederherstellen einmalig ein Hinweis zu deren Entfernung.
+Gespeicherte Abläufe können unter „Alles“ im Kacheleditor geöffnet werden.
