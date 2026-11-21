@@ -406,7 +406,8 @@ public class MainActivity extends ComponentActivity {
             acknowledgeEditorRequest(request.id);
             return;
         }
-        new AlertDialog.Builder(this).setTitle(R.string.error_title)
+        new AlertDialog.Builder(this).setTitle(request.notice
+                        ? R.string.editor_legacy_flow_removed_title : R.string.error_title)
                 .setMessage(request.message).setPositiveButton(R.string.okay,
                         (dialog, which) -> acknowledgeEditorRequest(request.id))
                 .setOnCancelListener(dialog -> acknowledgeEditorRequest(request.id)).show();

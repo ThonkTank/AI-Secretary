@@ -101,29 +101,29 @@ public final class SaveFlowGraph {
         List<FlowGraphDefinition.Lease> leases = new ArrayList<>();
         Map<String, Map<String, Long>> acquired = new HashMap<>();
         for (FlowGraphEdit.Binding binding : edit.bindings) {
-            FlowConfigurationDraft.Lease lease = binding.lease;
+            FlowGraphEdit.Lease lease = binding.lease;
             if (lease.persistedId != null && !retainedLeaseIds.contains(lease.persistedId))
                 throw new FlowGraphEditProblem("lease", lease.key, "Kapazitätszuordnung existiert nicht mehr");
             String resourceId = resourceIds.get(lease.resourceKey);
-            String acquireId = stepIds.get(lease.acquireStepKey);
+            String acquireId = stepIds.get(lease.acquireStepId);
             long total = acquired.computeIfAbsent(acquireId, ignored -> new HashMap<>())
                     .merge(resourceId, (long) lease.units, Math::addExact);
             if (total > resources.findCapacityResource(resourceId).capacity)
                 throw new FlowGraphEditProblem("lease", lease.key, "Die Zuordnungen dieses Schritts überschreiten die Kapazität");
             leases.add(new FlowGraphDefinition.Lease(lease.persistedId == null ? ids.nextId() : lease.persistedId,
-                    resourceId, acquireId, stepIds.get(lease.releaseStepKey), lease.units, binding.releaseAfterWait));
+                    resourceId, acquireId, stepIds.get(lease.releaseStepId), lease.units, binding.releaseAfterWait));
         }
         graphs.replace(new FlowGraphDefinition(taskId, new FlowTileGraph(new ArrayList<>(stepIds.values()), links), nodes, leases));
         return taskId;
     }
 
-    private Map<String, String> persistResources(List<FlowConfigurationDraft.Resource> drafts, Set<String> used) {
+    private Map<String, String> persistResources(List<FlowGraphEdit.Resource> drafts, Set<String> used) {
         Map<String, CapacityResource> existing = new LinkedHashMap<>();
         for (CapacityResource resource : resources.capacityResources()) existing.put(resource.id, resource);
         Map<String, CapacityResource> before = new LinkedHashMap<>(existing);
         Map<String, String> resolved = new HashMap<>();
         List<CapacityResource> writes = new ArrayList<>();
-        for (FlowConfigurationDraft.Resource draft : drafts) {
+        for (FlowGraphEdit.Resource draft : drafts) {
             String id = draft.persistedId == null ? ids.nextId() : draft.persistedId;
             if (draft.persistedId != null && !existing.containsKey(id)) {
                 if (!draft.changed && !used.contains(draft.key)) continue;
@@ -138,7 +138,7 @@ public final class SaveFlowGraph {
         Set<String> names = new HashSet<>();
         for (CapacityResource resource : existing.values()) if (!names.add(resource.normalizedName)) {
             String key = null;
-            for (FlowConfigurationDraft.Resource draft : drafts)
+            for (FlowGraphEdit.Resource draft : drafts)
                 if ((draft.changed || draft.persistedId == null)
                         && CapacityResource.normalizeName(draft.name).equals(resource.normalizedName)) key = draft.key;
             throw new FlowGraphEditProblem("resource", key, "Kapazitätsname existiert bereits: " + resource.name);

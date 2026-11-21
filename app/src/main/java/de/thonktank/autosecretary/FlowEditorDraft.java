@@ -6,10 +6,7 @@ import de.thonktank.autosecretary.domain.model.CapacityResource;
 import de.thonktank.autosecretary.domain.model.FlowGraphDefinition;
 import de.thonktank.autosecretary.domain.model.TaskId;
 import de.thonktank.autosecretary.domain.model.FlowTileGraph;
-import de.thonktank.autosecretary.domain.model.StepFlowSetup;
-import de.thonktank.autosecretary.domain.model.StepTransition;
 import de.thonktank.autosecretary.domain.model.FlowGraphEdit;
-import de.thonktank.autosecretary.domain.model.FlowConfigurationDraft;
 import de.thonktank.autosecretary.domain.model.TaskStepDefinition;
 import de.thonktank.autosecretary.domain.model.StepActivationKind;
 import de.thonktank.autosecretary.domain.usecase.LoadFlowGraph;
@@ -56,38 +53,18 @@ public final class FlowEditorDraft {
                 Collections.emptyMap(), FlowEditorCapacities.empty(), Collections.emptyMap(), 1);
     }
 
-    public static FlowEditorDraft from(StepFlowSetup setup) {
-        List<EditorStepState> steps = new ArrayList<>();
-        List<String> ids = new ArrayList<>();
-        List<FlowTileGraph.Link> links = new ArrayList<>();
-        Map<String, FlowDelayPolicy> waits = new LinkedHashMap<>();
-        setup.steps.forEach(step -> {
-            steps.add(EditorStepState.from(step)); ids.add(step.id);
-            waits.put(step.id, FlowDelayPolicy.fixed(0L));
-        });
-        for (StepTransition edge : setup.transitions) {
-            links.add(new FlowTileGraph.Link(edge.sourceStepId, edge.targetStepId));
-            waits.put(edge.sourceStepId, edge.delay);
-        }
-        TaskFlowDraft existing = TaskFlowDraft.from(setup);
-        FlowEditorCapacities capacities = new FlowEditorCapacities(existing.resources,
-                existing.leases, existing.nextResourceIdentity, existing.nextLeaseIdentity);
-        return new FlowEditorDraft(setup.task.id.value, setup.task.title, steps,
-                new FlowTileGraph(ids, links), waits, capacities, Collections.emptyMap(), 1);
-    }
-
     public static FlowEditorDraft from(LoadFlowGraph.Setup setup) {
-        List<TaskFlowDraft.Resource> resources = new ArrayList<>();
-        for (CapacityResource resource : setup.resources) resources.add(TaskFlowDraft.Resource.persisted(resource));
+        List<FlowGraphEdit.Resource> resources = new ArrayList<>();
+        for (CapacityResource resource : setup.resources) resources.add(new FlowGraphEdit.Resource(resource.id, resource.id, resource.name, resource.capacity, false));
         if (setup.task == null) return empty().withCapacities(new FlowEditorCapacities(resources, Collections.emptyList(), 1, 1));
         List<EditorStepState> steps = new ArrayList<>();
         for (de.thonktank.autosecretary.domain.model.TaskStepTemplate step : setup.steps) steps.add(EditorStepState.from(step));
         Map<String, FlowDelayPolicy> waits = new LinkedHashMap<>();
         setup.definition.nodes.forEach((id, node) -> waits.put(id, node.waitAfter));
-        List<TaskFlowDraft.Lease> leases = new ArrayList<>();
+        List<FlowGraphEdit.Lease> leases = new ArrayList<>();
         Map<String, Boolean> releases = new LinkedHashMap<>();
         for (FlowGraphDefinition.Lease lease : setup.definition.leases) {
-            leases.add(new TaskFlowDraft.Lease(lease.id, lease.id, lease.resourceId, lease.acquireStepId, lease.releaseStepId, lease.units));
+            leases.add(new FlowGraphEdit.Lease(lease.id, lease.id, lease.resourceId, lease.acquireStepId, lease.releaseStepId, lease.units));
             releases.put(lease.id, lease.releaseAfterWait);
         }
         return new FlowEditorDraft(setup.task.id.value, setup.task.title, steps, setup.definition.graph, waits,
@@ -100,14 +77,10 @@ public final class FlowEditorDraft {
         List<TaskStepDefinition> definitions = new ArrayList<>();
         for (int i = 0; i < steps.size(); i++) definitions.add(steps.get(i).definition(i, false,
                 graph.roots().contains(steps.get(i).id) ? StepActivationKind.SCHEDULED : StepActivationKind.FOLLOW_UP));
-        List<FlowConfigurationDraft.Resource> resources = new ArrayList<>();
-        for (TaskFlowDraft.Resource resource : capacities.resources) resources.add(new FlowConfigurationDraft.Resource(
-                resource.key, resource.persistedId, resource.name, resource.capacity, resource.changed));
         List<FlowGraphEdit.Binding> bindings = new ArrayList<>();
-        for (TaskFlowDraft.Lease lease : capacities.leases) bindings.add(new FlowGraphEdit.Binding(
-                new FlowConfigurationDraft.Lease(lease.key, lease.persistedId, lease.resourceKey, lease.acquireStepId, lease.releaseStepId, lease.units),
-                releaseAfterWait.getOrDefault(lease.key, false)));
-        return new FlowGraphEdit(taskId == null ? null : TaskId.of(taskId), name, graph, definitions, waits, resources, bindings);
+        for (FlowGraphEdit.Lease lease : capacities.leases)
+            bindings.add(new FlowGraphEdit.Binding(lease, releaseAfterWait.getOrDefault(lease.key, false)));
+        return new FlowGraphEdit(taskId == null ? null : TaskId.of(taskId), name, graph, definitions, waits, capacities.resources, bindings);
     }
 
     public EditorStepState step(String id) {
@@ -167,7 +140,7 @@ public final class FlowEditorDraft {
 
     public FlowEditorDraft withCapacities(FlowEditorCapacities value) {
         Map<String, Boolean> release = new LinkedHashMap<>();
-        for (TaskFlowDraft.Lease lease : value.leases)
+        for (FlowGraphEdit.Lease lease : value.leases)
             release.put(lease.key, releaseAfterWait.getOrDefault(lease.key, false));
         return copy(name, steps, graph, waits, value, release, nextIdentity);
     }
@@ -191,12 +164,12 @@ public final class FlowEditorDraft {
         }
         java.util.Set<String> names = new java.util.HashSet<>();
         java.util.Set<String> keys = new java.util.HashSet<>();
-        for (TaskFlowDraft.Resource resource : capacities.resources) {
+        for (FlowGraphEdit.Resource resource : capacities.resources) {
             if (!keys.add(resource.key) || !names.add(CapacityResource.normalizeName(resource.name)))
                 throw new Problem("resource", resource.key, "Kapazität ist doppelt: " + resource.name);
         }
         Map<String, Map<String, Long>> acquired = new LinkedHashMap<>();
-        for (TaskFlowDraft.Lease lease : capacities.leases) {
+        for (FlowGraphEdit.Lease lease : capacities.leases) {
             if (!graph.stepIds.contains(lease.acquireStepId) || !graph.stepIds.contains(lease.releaseStepId)
                     || !graph.reaches(lease.acquireStepId, lease.releaseStepId))
                 throw new Problem("lease", lease.key, "Freigabe muss am selben oder einem folgenden Schritt liegen");
@@ -219,7 +192,7 @@ public final class FlowEditorDraft {
             nodes.add(new FlowGraphDefinition.Node(step.id, step.text, step.prescription,
                     step.note, waits.get(step.id)));
         List<FlowGraphDefinition.Lease> leases = new ArrayList<>();
-        for (TaskFlowDraft.Lease lease : capacities.leases)
+        for (FlowGraphEdit.Lease lease : capacities.leases)
             leases.add(new FlowGraphDefinition.Lease(lease.key, lease.resourceKey,
                     lease.acquireStepId, lease.releaseStepId, lease.units,
                     releaseAfterWait.getOrDefault(lease.key, false)));

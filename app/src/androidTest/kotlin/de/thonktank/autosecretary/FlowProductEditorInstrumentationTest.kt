@@ -6,6 +6,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.*
 import de.thonktank.autosecretary.domain.model.TaskId
 import de.thonktank.autosecretary.domain.model.TaskKind
+import de.thonktank.autosecretary.domain.model.FlowDelayPolicy
+import de.thonktank.autosecretary.ui.today.ProductActivitySession
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.Rule
@@ -74,6 +76,54 @@ class FlowProductEditorInstrumentationTest {
                 .firstOrNull { it.task.title == title }?.task?.id
             id?.let { container.catalog.delete.execute(it) }
         }
+    }
+
+    @Test fun productRoutesOpenTheNormalAndDedicatedEditors() {
+        val context = instrumentation.targetContext
+        val container = AutoSecretaryApplication.from(context).container()
+        val title = "Ablaufweg " + UUID.randomUUID().toString().take(8)
+        val draft = FlowEditorDraft.empty().rename(title)
+            .addStep("Start", FlowDelayPolicy.fixed(0))
+        val saved = container.flows.saveGraph.execute(draft.edit())
+        val add = By.desc(context.getString(R.string.content_add_task))
+        val normalHeading = By.text(context.getString(R.string.editor_ctx_new))
+        val flowScreen = By.res("flow-editor")
+        val cancelFlow = By.res("flow-editor:cancel-draft")
+        try {
+            ProductActivitySession(instrumentation).use { scenario ->
+                scenario.launch()
+                click(add, "Add task")
+                click(By.text("Aufgabe"), "Choose the normal task editor")
+                assertNotNull(device.wait(Until.findObject(normalHeading), 5_000))
+                assertNull(device.findObject(flowScreen))
+                button(context.getString(R.string.editor_cancel)).click()
+                assertTrue(device.wait(Until.gone(normalHeading), 5_000))
+
+                click(add, "Add flow")
+                click(By.text("Ablauf"), "Choose the dedicated flow editor")
+                assertNotNull(device.wait(Until.findObject(flowScreen), 5_000))
+                click(cancelFlow, "Close the unsaved flow")
+                assertTrue(device.wait(Until.gone(flowScreen), 5_000))
+
+                click(By.res(context.resources.getResourceName(R.id.navigation_all_tasks)),
+                    "Open All Tasks")
+                stage = "Find flow in All Tasks"
+                requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 5_000))
+                    .text = title
+                click(By.desc(context.getString(R.string.a11y_edit_task, title)), "Edit flow from All Tasks")
+                assertEquals(title, input("title").text)
+                click(cancelFlow, "Close the existing flow")
+                assertTrue(device.wait(Until.gone(flowScreen), 5_000))
+            }
+        } finally {
+            container.catalog.delete.execute(saved)
+        }
+    }
+
+    private fun click(selector: BySelector, label: String) {
+        stage = label
+        requireNotNull(device.wait(Until.findObject(selector), 5_000)) { "Missing action $label" }
+        requireNotNull(device.findObject(selector)) { "Action disappeared: $label" }.click()
     }
 
     private fun input(field: String): UiObject2 = requireNotNull(device.wait(
