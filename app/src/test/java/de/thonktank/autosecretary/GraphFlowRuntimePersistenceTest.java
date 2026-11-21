@@ -8,6 +8,8 @@ import de.thonktank.autosecretary.data.local.*;
 import de.thonktank.autosecretary.domain.model.*;
 import de.thonktank.autosecretary.domain.repository.*;
 import de.thonktank.autosecretary.domain.usecase.*;
+import de.thonktank.autosecretary.domain.today.StepExecutionResult;
+import de.thonktank.autosecretary.testing.StepTestFixtures;
 import java.time.*;
 import java.util.*;
 import org.junit.*;
@@ -24,6 +26,7 @@ public final class GraphFlowRuntimePersistenceTest {
     private FlowGraphDefinitionRepository definitions;
     private FlowGraphRunRepository runs;
     private GraphFlowRuntime runtime;
+    private Clock clock;
     private SaveFlowGraph save;
     private long now = 1_000;
     private int nextId;
@@ -37,7 +40,7 @@ public final class GraphFlowRuntimePersistenceTest {
         repository = new RoomRepositoryFixture(database);
         definitions = new SqlFlowGraphDefinitionRepository(() -> sql, repository.steps);
         runs = new SqlFlowGraphRunRepository(() -> sql);
-        Clock clock = new Clock() {
+        clock = new Clock() {
             @Override public LocalDate today() { return DATE; }
             @Override public LocalTime time() { return LocalTime.NOON; }
         };
@@ -311,6 +314,55 @@ public final class GraphFlowRuntimePersistenceTest {
         assertEquals(RewardReceipt.Target.HEAD, runtime.complete(finalStep, null).reward.target);
     }
 
+    @Test public void failedFinalSetPreservesProgressLedgerAndCapacityAcrossRetry() {
+        ApplicationUseCaseComposition app = new ApplicationUseCaseComposition(database, clock,
+                () -> now, ids, ComboPolicySource.defaults());
+        TaskId task = app.flows.saveGraph.execute(new FlowGraphEdit(null, "Training",
+                new FlowTileGraph(List.of("start", "sets"), List.of(new FlowTileGraph.Link("start", "sets"))),
+                List.of(StepTestFixtures.definition("start", 0, "Start", 0, 0, StepAmount.none(),
+                                "", StepActivationKind.SCHEDULED),
+                        StepTestFixtures.definition("sets", 1, "Sätze", 0, 0, StepAmount.setsReps(2, 10),
+                                "", StepActivationKind.FOLLOW_UP)),
+                Map.of("start", FlowDelayPolicy.fixed(0), "sets", FlowDelayPolicy.fixed(0)),
+                List.of(new FlowConfigurationDraft.Resource("bench", null, "Bank", 1, true)),
+                List.of(new FlowGraphEdit.Binding(new FlowConfigurationDraft.Lease(
+                        "lease", null, "bench", "start", "sets", 1), false))));
+        String runId = app.flows.runtime.start(candidate(task, "Start"), null).runId;
+        Occurrence occurrence = repository.today.openOccurrences().get(0);
+        OccurrenceStep step = repository.steps.occurrenceSteps(occurrence.id).get(0);
+        assertEquals(StepExecutionResult.Status.RECORDED,
+                app.today.recordSetResult.execute(step.id, new SetResult(8)).status);
+        assertEquals(StepExecutionResult.Status.CORRECTED,
+                app.today.correctSetResult.execute(step.id, 0, new SetResult(9)).status);
+        List<String> ledgerBefore = repository.today.rewardBookings(occurrence.id).stream()
+                .map(booking -> booking.id).toList();
+        long tauBefore = run(runId).earnedTau();
+        assertEquals(FlowResourceState.ACTIVE, run(runId).leases.get(0).state);
+
+        rejectHeadBooking();
+        assertThrows(RuntimeException.class,
+                () -> app.today.recordSetResult.execute(step.id, new SetResult(10)));
+        assertEquals(List.of(9), repository.steps.findOccurrenceStep(step.id).repetitionProgress.repetitions());
+        assertEquals(OccurrenceState.OPEN, repository.today.findOccurrence(occurrence.id).state);
+        assertEquals(FlowGraphRun.State.AVAILABLE, step(runId, "Sätze").state);
+        assertEquals(tauBefore, run(runId).earnedTau());
+        assertEquals(FlowResourceState.ACTIVE, run(runId).leases.get(0).state);
+        assertEquals(ledgerBefore, repository.today.rewardBookings(occurrence.id).stream()
+                .map(booking -> booking.id).toList());
+        assertEquals(0, repository.today.xp());
+
+        database.getOpenHelper().getWritableDatabase().execSQL("DROP TRIGGER reject_graph_head");
+        assertEquals(StepExecutionResult.Status.COMPLETED,
+                app.today.recordSetResult.execute(step.id, new SetResult(10)).status);
+        assertEquals(List.of(9, 10), repository.steps.findOccurrenceStep(step.id).repetitionProgress.repetitions());
+        assertEquals(FlowResourceState.RELEASED, run(runId).leases.get(0).state);
+        int paid = repository.today.xp();
+        assertTrue(paid > 0);
+        assertEquals(StepExecutionResult.Status.OCCURRENCE_CLOSED,
+                app.today.recordSetResult.execute(step.id, new SetResult(10)).status);
+        assertEquals(paid, repository.today.xp());
+    }
+
     private void rejectHeadBooking() {
         database.getOpenHelper().getWritableDatabase().execSQL("CREATE TRIGGER reject_graph_head "
                 + "BEFORE INSERT ON reward_bookings WHEN NEW.target = 'HEAD' "
@@ -318,10 +370,6 @@ public final class GraphFlowRuntimePersistenceTest {
     }
 
     @Test public void productionCompositionMaterializesOneStepFlowsWithoutOrdinaryOrGhostSheets() {
-        Clock clock = new Clock() {
-            @Override public LocalDate today() { return DATE; }
-            @Override public LocalTime time() { return LocalTime.NOON; }
-        };
         ApplicationUseCaseComposition app = new ApplicationUseCaseComposition(database, clock, () -> now, ids,
                 ComboPolicySource.defaults());
         TaskId task = app.flows.saveGraph.execute(FlowEditorDraft.empty().rename("Ein Schritt")

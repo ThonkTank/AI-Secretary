@@ -41,6 +41,7 @@ import de.thonktank.autosecretary.domain.usecase.MaterializeDueOccurrences;
 import de.thonktank.autosecretary.domain.usecase.MoveTodayStep;
 import de.thonktank.autosecretary.domain.usecase.RecordRepetitionResult;
 import de.thonktank.autosecretary.domain.usecase.RecordSetResult;
+import de.thonktank.autosecretary.domain.usecase.StepExecutionService;
 import de.thonktank.autosecretary.domain.usecase.SaveCapacityResource;
 import de.thonktank.autosecretary.domain.usecase.SaveStepFlowDefinition;
 import de.thonktank.autosecretary.domain.usecase.SaveStepFlowSetup;
@@ -111,6 +112,8 @@ final class ApplicationUseCaseComposition {
                 todayRepository, transactions, clock, policies, flowRuntime);
         LoadDashboard dashboard = new LoadDashboard(catalogRepository, stepRepository, todayRepository,
                 transactions, graphSheets);
+        StepExecutionService setExecution = new StepExecutionService(catalogRepository, stepRepository,
+                todayRepository, transactions, clock, policies, flowRuntime);
         today = new TodayUseCases(toggleStep,
                 new AdvanceTodayStep(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies,
@@ -121,12 +124,7 @@ final class ApplicationUseCaseComposition {
                         flowRuntime),
                 new CorrectRepetitionResult(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies),
-                new RecordSetResult(catalogRepository, stepRepository, todayRepository,
-                        transactions, clock,
-                        ids, policies, flowRuntime),
-                new CorrectSetResult(catalogRepository, stepRepository, todayRepository,
-                        transactions,
-                        clock, policies, flowRuntime),
+                new RecordSetResult(setExecution), new CorrectSetResult(setExecution),
                 new FinishStepForToday(catalogRepository, stepRepository, todayRepository,
                         transactions, clock, policies),
                 new CompleteOccurrence(catalogRepository, stepRepository, todayRepository,

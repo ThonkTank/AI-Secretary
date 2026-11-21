@@ -58,11 +58,9 @@ public final class StepExecutionService {
                 new CompletionStateMachine(), FlowProgression.NONE);
     }
 
-    StepExecutionService(CatalogRepository catalog, StepRepository steps,
-                         TodayRepository today,
-                         TransactionRunner transactions, Clock clock,
-                         ComboPolicySource policies,
-                         FlowProgression flows) {
+    public StepExecutionService(CatalogRepository catalog, StepRepository steps,
+                                TodayRepository today, TransactionRunner transactions,
+                                Clock clock, ComboPolicySource policies, FlowProgression flows) {
         this(catalog, steps, today, transactions, clock,
                 new RewardCalculator(policies),
                 new CompletionStateMachine(), flows);
@@ -107,7 +105,7 @@ public final class StepExecutionService {
         return transactions.inTransaction(() -> recordSetResultInsideTransaction(stepId, value));
     }
 
-    StepExecutionResult recordSetResultInsideTransaction(String stepId, SetResult value) {
+    private StepExecutionResult recordSetResultInsideTransaction(String stepId, SetResult value) {
         OccurrenceStep step = steps.findOccurrenceStep(stepId);
         if (step == null)
             return result(StepExecutionResult.Status.INVALID_STEP, null, RewardReceipt.none());
@@ -147,8 +145,8 @@ public final class StepExecutionService {
                 () -> correctSetResultInsideTransaction(stepId, index, value));
     }
 
-    StepExecutionResult correctSetResultInsideTransaction(String stepId, int index,
-                                                          SetResult value) {
+    private StepExecutionResult correctSetResultInsideTransaction(String stepId, int index,
+                                                                  SetResult value) {
         OccurrenceStep current = steps.findOccurrenceStep(stepId);
         if (current == null)
             return result(StepExecutionResult.Status.INVALID_STEP, null, RewardReceipt.none());
@@ -166,7 +164,6 @@ public final class StepExecutionService {
         steps.updateOccurrenceStep(changed);
         RewardReceipt reward = adjustQuantitativeReward(occurrence, changed, newId());
         if (!current.done && changed.done) flows.onStepCompleted(occurrence, changed, null);
-        else if (current.done && !changed.done) flows.onStepReopened(occurrence, changed);
         if (changed.done) finalizeZeroOccurrenceIfComplete(occurrence);
         return result(StepExecutionResult.Status.CORRECTED, changed, reward);
     }
@@ -365,7 +362,6 @@ public final class StepExecutionService {
         OccurrenceStep reopened = states.reopenStep(occurrence, step);
         steps.updateOccurrenceStep(reopened);
         obligationResolver.reopen(original.ownerId, occurrence, clock.today());
-        flows.onStepReopened(occurrence, reopened);
         return RewardReceipt.of(transactionId, Collections.singletonList(reversal),
                 RewardReceipt.Target.VESSEL);
     }
