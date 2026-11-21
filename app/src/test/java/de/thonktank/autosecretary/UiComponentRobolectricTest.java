@@ -21,6 +21,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import android.animation.Animator;
+import android.animation.ValueAnimator;
 import android.app.AlertDialog;
 import android.app.Activity;
 import android.content.Context;
@@ -57,6 +59,7 @@ import org.robolectric.shadows.ShadowAlertDialog;
 import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowPopupMenu;
 import org.robolectric.shadows.ShadowValueAnimator;
+import org.robolectric.util.ReflectionHelpers;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -95,6 +98,46 @@ public final class UiComponentRobolectricTest {
             assertTrue(activity.findViewById(R.id.task_editor_compose_host)
                     instanceof TaskEditorComposeHostView);
             assertFalse(activity.getIntent().hasExtra(MainActivity.OPEN_EDITOR));
+        }
+    }
+
+    @Test public void cancellingTheHeaderFlightOpensTheOriginalDraftOnlyOnce() {
+        ShadowValueAnimator.reset();
+        try (ActivityController<MainActivity> controller = Robolectric.buildActivity(MainActivity.class)) {
+            MainActivity activity = controller.setup().visible().get();
+            ShadowLooper.idleMainLooper();
+            AppContainer container = AutoSecretaryApplication.from(activity).container();
+            TaskEditorViewModel editor = new ViewModelProvider(activity,
+                    new TaskEditorViewModel.Factory(container)).get(TaskEditorViewModel.class);
+
+            View overview = (View) activity.findViewById(R.id.dashboard_timeline).getParent();
+            assertTrue(activity.findViewById(R.id.header_add_task).performClick());
+            AlertDialog chooser = ShadowAlertDialog.getLatestAlertDialog();
+            assertNotNull(chooser);
+            chooser.getListView().performItemClick(null, 0, 0);
+
+            // Deliver both platform callbacks from the actual listener without advancing frame time.
+            Animator.AnimatorListener flight = ReflectionHelpers.callInstanceMethod(
+                    overview.animate(), "getListener");
+            assertNotNull("The dashboard did not schedule the header flight.\n"
+                    + PresentationTrace.describe(), flight);
+            EditorUiState opened = editor.state().getValue().content;
+            assertTrue("The header owns opening the draft", opened.open);
+
+            Animator animation = ValueAnimator.ofFloat(0f, 1f);
+            flight.onAnimationCancel(animation);
+            ShadowLooper.idleMainLooper();
+            TaskEditorComposeHostView host = activity.findViewById(R.id.task_editor_compose_host);
+            assertNotNull("Cancelling the flight reveals the editor", host);
+            assertSame("Cancelling must not start another draft", opened.draft,
+                    editor.state().getValue().content.draft);
+
+            flight.onAnimationEnd(animation);
+            ShadowLooper.idleMainLooper();
+            assertSame("A trailing completion must not remount the editor", host,
+                    activity.findViewById(R.id.task_editor_compose_host));
+            assertSame("A trailing completion must not replace the draft", opened.draft,
+                    editor.state().getValue().content.draft);
         }
     }
 

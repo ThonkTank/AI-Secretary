@@ -119,24 +119,6 @@ public final class ArchitectureBoundaryTest {
                         + "LegacyStateFlowBinder.kt")));
     }
 
-    @Test public void motionCallbacksCannotOwnEditorNavigation() throws Exception {
-        String activity = read(main("MainActivity.java"));
-        String open = activity.substring(activity.indexOf("private void openEditorWithFlight()"),
-                activity.indexOf("private void renderAllTasksState("));
-        String navigator = read(main("presentation/navigation/TaskEditorNavigator.java"));
-        assertTrue(open.contains("appNavigator.navigate(AppDestination.newTaskFromHeader())"));
-        assertTrue(open.contains("editorCoordinator.deferNextOpen()"));
-        assertTrue(open.contains("editorCoordinator::completeDeferredOpen"));
-        assertFalse(open.contains("editorViewModel.dispatch"));
-        assertTrue(navigator.indexOf("prepareHeaderEntrance.run()")
-                < navigator.indexOf("editor.dispatch(TaskEditorAction.openNew())"));
-
-        String renderer = read(main("DashboardRenderer.java"));
-        assertTrue(renderer.contains("onAnimationCancel"));
-        assertTrue(renderer.contains("onAnimationEnd"));
-        assertTrue(renderer.contains("if (completed[0]) return"));
-    }
-
     @Test public void todayAndShellHaveOneStateFlowOwnerWithoutLegacyBrokers()
             throws Exception {
         String today = read(main("presentation/today/TodayViewModel.java"));
