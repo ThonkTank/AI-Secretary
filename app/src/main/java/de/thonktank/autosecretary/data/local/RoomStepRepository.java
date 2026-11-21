@@ -17,6 +17,7 @@ import java.util.Map;
 /** Focused Room adapter for reusable and materialized step rows and their atomic set results. */
 public final class RoomStepRepository implements StepRepository {
     private final StepDao dao;
+    private final RoomIdQueries idQueries;
     private final TaskEntityMapper mapper;
     private final TransactionRunner transactions;
 
@@ -27,6 +28,7 @@ public final class RoomStepRepository implements StepRepository {
     RoomStepRepository(AppDatabase database, TaskEntityMapper mapper,
                        TransactionRunner transactions) {
         this.dao = database.steps();
+        idQueries = new RoomIdQueries(database);
         this.mapper = mapper;
         this.transactions = transactions;
     }
@@ -86,7 +88,7 @@ public final class RoomStepRepository implements StepRepository {
         List<String> values = new ArrayList<>();
         for (TaskId id : taskIds) values.add(id.value);
         List<TaskStepTemplate> result = new ArrayList<>();
-        for (TaskStepEntity entity : dao.templatesFor(values)) result.add(mapper.toDomain(entity));
+        for (TaskStepEntity entity : idQueries.byId(values, dao::templatesFor)) result.add(mapper.toDomain(entity));
         return result;
     }
 
@@ -114,7 +116,7 @@ public final class RoomStepRepository implements StepRepository {
 
     @Override public List<OccurrenceStep> occurrenceStepsFor(List<String> occurrenceIds) {
         if (occurrenceIds.isEmpty()) return new ArrayList<>();
-        return mapOccurrenceSteps(dao.occurrenceStepsFor(occurrenceIds));
+        return mapOccurrenceSteps(idQueries.byId(occurrenceIds, dao::occurrenceStepsFor));
     }
 
     @Override public OccurrenceStep findOccurrenceStep(String id) {
@@ -145,7 +147,7 @@ public final class RoomStepRepository implements StepRepository {
             ids.add(entity.id);
             results.put(entity.id, new ArrayList<>());
         }
-        for (RepetitionResultEntity result : dao.repetitionResultsFor(ids)) {
+        for (RepetitionResultEntity result : idQueries.byId(ids, dao::repetitionResultsFor)) {
             List<SetResult> values = results.get(result.stepId);
             if (values == null) continue;
             if (result.slotIndex == values.size()) values.add(setResult(result));
