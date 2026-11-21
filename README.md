@@ -21,6 +21,12 @@ Eine kleine, private ADHS-Task-App für Android mit **jetzt**, **danach** und ei
 
 ## Einstieg für Änderungen
 
+Kläre vor der ersten Codeänderung drei Fragen. Die [Architekturkarte mit Einstiegstests](docs/architecture/architecture-map.md#featurepfade) führt für jeden betroffenen Pfad zu Code und Testbefehl.
+
+1. Wer besitzt die Fachregel oder den zu ändernden Zustand?
+2. Über welchen bestehenden Lese- oder Schreibpfad erreicht die Änderung die Nutzerdaten?
+3. Welcher Test würde ein falsches Ergebnis für die Nutzer erkennen?
+
 - [Schrittregeln](docs/architecture/adr-025-mengenbasierte-schritt-rewards.md) für Mengen, XP und
   Tagesabschluss sowie [Speicherregeln für Schrittänderungen](docs/architecture/adr-040-schritte-direkt-bearbeiten.md#speichervertrag)
   für Vorlage, laufende Ausführung und vorhandenen Fortschritt.
@@ -32,12 +38,6 @@ Eine kleine, private ADHS-Task-App für Android mit **jetzt**, **danach** und ei
 
 Die [gezielten Testbefehle für Mengenfortschritt und Schrittbearbeitung](docs/architecture/phase-7-teststrategie.md#schrittregeln-prüfen)
 prüfen XP-Korrekturen und schützen bereits erfasste Ausführungen.
-
-Beantworte im Pull Request drei Fragen.
-
-1. Wo lebt die neue Fachregel?
-2. Welchen bestehenden Schreib- oder Lesepfad benutzt sie?
-3. Welcher Test würde einen fachlich falschen Ausgang erkennen?
 
 Belege bei Änderungen an persistenten Daten das Verhalten mit vorhandenen Nutzerbeständen.
 Prüfe bei Lifecycle- oder Bedienänderungen den betroffenen nativen Ablauf.
@@ -85,8 +85,8 @@ Gerätetests installieren die sichtbar benannte App „Auto Secretary Test“ un
 Produktions-ID.
 
 Deterministische Zustände für Layout Inspector und Preview-Werkzeuge liegen im Debug-Build
-unter `DebugPreviewFixtures`. Die 17 Editor-Referenzzustände werden zusätzlich als
-Robolectric-Goldens geprüft. Für den Today-Screen decken Phone-Goldens unter anderem leere,
+unter `DebugPreviewFixtures`. Für den normalen Aufgabeneditor prüft Robolectric zehn Wizard-
+und fünf Nacht- oder Kompaktansichten. Für den Today-Screen decken Phone-Goldens unter anderem leere,
 teilgefüllte, erntereife und abgeschlossene Gefäße sowie Tag, Abend und Nacht ab. Im vollständigen Profil führt CI die
 Room-Migrationstests auf API 26, API 35 und API 37 aus.
 

@@ -1,6 +1,6 @@
 # Teststrategie nach dem Today-/Fokus-Refactor
 
-Die Testschichten stammen aus dem Today-/Fokus-Refactor. Für die aktuelle Datenbankversion
+Gezielte Tests für Aufgaben, Abläufe, Heute und Room stehen in der [Architekturkarte](architecture-map.md#featurepfade). Für die aktuelle Datenbankversion
 gilt [DatabaseContract](../../app/src/main/java/de/thonktank/autosecretary/DatabaseContract.java).
 Die erforderlichen signierten Upgradeprüfungen beschreibt [ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md).
 
@@ -41,13 +41,11 @@ Kombinationen 320 dp mit Font Scale 2,0 sowie beide Breitenextreme bleiben entha
 Die vollständige Kombinatorik der Höhenentscheidung liegt in schnellen parametrisierten Tests
 von `FocusStepLayoutPolicy`: Limit, Höhenbudget, aktive Zeile, Folgereihen und Resthinweis werden
 ohne Robolectric geprüft. Androidtests prüfen repräsentativ reale Messung, Text-Clipping,
-horizontale Bounds, TalkBack-Reihenfolge, Rollen, Zustände, virtuelle Satzaktionen,
+horizontale Bounds, TalkBack-Reihenfolge, Rollen, Zustände,
 Tastatursteuerung und Mindestziele.
 
-Viewtests beobachten überwiegend öffentliche Events oder sichtbaren Viewzustand über die
-Test-Fixtures `DashboardEventRecorder` und `ViewTestQueries`. Verbliebene package-private
-Geometrie-/Renderzugriffe sowie `ReflectionHelpers` sind als technische Schuld dieser Baseline
-explizit erfasst; die Leaf-Migration und Phase 5 entfernen sie wieder aus dem Produktivcode.
+`TodayActionRecorder` zeichnet die von einer View ausgelösten Today-Aktionen auf.
+`ViewTestQueries` liest sichtbare Zeilen aus dem Viewbaum.
 
 ## Historische Migrationsmatrix bis Schema 14
 
@@ -86,19 +84,20 @@ UPDATE_FOCUS_TASK_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests de.thonktank.autosecretary.FocusTaskViewGoldenRobolectricTest
 UPDATE_HOMESCREEN_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
   --tests de.thonktank.autosecretary.HomescreenGoldenRobolectricTest
-UPDATE_ALL_TASKS_GOLDENS=1 ./gradlew testInstrumentationUnitTest \
-  --tests '*AllTasksRenderRobolectricTest'
 ```
 
-Es gibt bewusst keinen globalen Update-Schalter. Die Editor-Baselines sind seit dem Compose-
-Cutover vollständig schreibgeschützt und werden mit
-`TaskEditorComposeGoldenRobolectricTest` nur noch gelesen. Ein Fokusupdate kann dadurch Widget-
-oder Editor-Baselines nicht mitschreiben. `GoldenAssertions` übernimmt eine andere Baseline nur, wenn das
+Diese Tests vergleichen den normalen Aufgabeneditor und „Alles“ mit ihren schreibgeschützten Compose-Referenzen.
+
+```bash
+./gradlew :app:testInstrumentationUnitTest \
+  --tests '*TaskEditorComposeGoldenRobolectricTest' --tests '*AllTasksComposeGoldenRobolectricTest'
+```
+
+`GoldenAssertions` übernimmt eine andere Baseline nur, wenn das
 vorher erzeugte Triplet pixelgenau zum aktuellen Expected und Actual passt; ein fehlendes oder
 veraltetes Triplet bricht den Updateversuch ab. Für eine neue Baseline gilt derselbe Ablauf mit
 dem zuerst erzeugten Actual; ein Update ohne exakt passendes vorheriges Actual bricht ab. Unter
-`CI` oder `GITHUB_ACTIONS` sind Updates gesperrt. Die vollständige Alles-Tab-Matrix ist in der
-[Charakterisierung des Alles-Tabs](all-tasks-characterization.md) katalogisiert.
+`CI` oder `GITHUB_ACTIONS` sind Updates gesperrt. Die [Charakterisierung des Alles-Tabs](all-tasks-characterization.md) dokumentiert den ursprünglichen Referenzstand.
 
 ## Lokale Befehle und vollständiges Gate
 
@@ -121,22 +120,19 @@ Betroffene Fokusoberfläche einschließlich Golden und Accessibility:
 ```bash
 ./gradlew testInstrumentationUnitTest \
   --tests '*FocusTaskViewTest' --tests '*FocusTaskViewGoldenRobolectricTest' \
-  --tests '*AccessibilityLayoutMatrixRobolectricTest' --tests '*SetDotsViewTest'
+  --tests '*AccessibilityLayoutMatrixRobolectricTest' --tests '*SetBarsViewTest'
 ```
 
-Verbindliches Abschluss-Gate:
+Der lokale Vorabcheck wählt die Prüfungen anhand der Änderungen gegen `origin/main`.
 
 ```bash
-./gradlew :core-domain:test :today-core:test :app:testInstrumentationUnitTest \
-  --no-parallel --max-workers=1
-./gradlew assembleDebug assembleInstrumentationAndroidTest --no-parallel --max-workers=1
+./scripts/ci/check-changes.sh
 ```
 
-Der serielle Modus ist die reproduzierbare Referenz auf speicherknappen Rechnern. Die verbindliche
-Remote-Matrix des vollständigen Profils ergänzt normale und animationsaktive Instrumentierung auf API 26, 35 und 37. Bei
+Im vollständigen Profil läuft die Instrumentierung in CI auf API 26, 35 und 37 auch mit aktiven Animationen. Bei
 produktwirksamen Änderungen schließen Produktionsupgrade, Packaging, Signatur-, Hash-, Paket-,
-Versions- und Trust-Prüfungen sowie Publish den exakten Main-Stand ab. Der Abschluss folgt
-[ADR-030](adr-030-minimale-trainingsarchitektur-und-automatisierter-abschluss.md).
+Versions- und Trust-Prüfungen sowie Publish den exakten Main-Stand ab. Die Auswahl regelt
+[ADR-037](adr-037-risikobasierte-verifikation-und-aktuelles-upgrade.md).
 
 ## Abschlussmessung
 

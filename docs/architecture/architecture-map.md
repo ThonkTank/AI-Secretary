@@ -47,6 +47,26 @@ Speicherversuch hinterlässt nach der Wiederherstellung einen editierbaren Entwu
 Speichern erneut bestätigt werden muss. `EditStepNote` und `EditStep` regeln Vorlagenbezug
 und Fortschrittsschutz. [Notizvertrag](adr-039-schrittnotizen-ohne-trainingsassistent.md) · [Schrittbearbeitung](adr-040-schritte-direkt-bearbeiten.md)
 
+## Featurepfade
+
+Die Befehle starten im Repository-Stamm. Wähle den Test für das Verhalten, das sich ändern soll.
+
+| Änderung | Zuständiger Code und Datenpfad | Gezielter Test |
+| --- | --- | --- |
+| Normalaufgabe anlegen oder bearbeiten | [TaskEditorViewModel](../../app/src/main/java/de/thonktank/autosecretary/TaskEditorViewModel.java) hält den Wizardzustand, `TaskEditorStateReducer` ändert den Entwurf. `SaveTaskConfiguration` speichert Aufgabe und Schrittvorlagen. | `./gradlew :app:testInstrumentationUnitTest --tests '*TaskEditorFeatureRobolectricTest.templateUpdateKeepsIdentityAndDoesNotMutateOpenSnapshot*'` |
+| Ablauf bearbeiten oder wiederherstellen | `FlowSetupActivity` öffnet den Kacheleditor. [FlowEditorViewModel](../../app/src/main/kotlin/de/thonktank/autosecretary/FlowEditorViewModel.kt) und [FlowEditorSessionStore](../../app/src/main/kotlin/de/thonktank/autosecretary/FlowEditorSessionStore.kt) erhalten Formular und Undo. `SaveFlowGraph` speichert den Graphen samt Quittung für denselben Auftragsschlüssel. | `./gradlew :app:testInstrumentationUnitTest --tests '*FlowEditorHostRestorationTest' --tests '*FlowGraphEditorPersistenceTest'` |
+| Aktion in Heute | [TodayViewModel](../../app/src/main/java/de/thonktank/autosecretary/presentation/today/TodayViewModel.java) leitet die `TodayAction` an den Use Case. `TodayCoordinator` und `TodayReducer` besitzen Auswahl und laufende Umsortierung. | `./gradlew :app:testInstrumentationUnitTest --tests '*TodayActionIntegrationRobolectricTest'` |
+| Schritt erfassen, abschließen oder rückgängig machen | [StepExecutionService](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/StepExecutionService.java) erfasst und korrigiert Ergebnisse. [OccurrenceCompletionService](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/OccurrenceCompletionService.java) verbucht Abschluss, Ernte und Undo. | `./gradlew :core-domain:test --tests '*TodayStepExecutionTest' --tests '*CompletionInMemoryTest'` |
+| Aufgaben im Katalog laden | [LoadTaskCatalog](../../core-domain/src/main/java/de/thonktank/autosecretary/domain/usecase/LoadTaskCatalog.java) liest Aufgaben, Vorlagen und Zeitplatzierungen in einer Transaktion. `AllTasksViewModel` stellt das Ergebnis für „Alles“ bereit. | `./gradlew :app:testInstrumentationUnitTest --tests '*UseCaseRobolectricTest.editorCatalogAndTodayReadTheSameCanonicalSchedule*'` |
+| Gefilterte Room-Abfragen mit vielen IDs | [RoomIdQueries](../../app/src/main/java/de/thonktank/autosecretary/data/local/RoomIdQueries.java) teilt die ID-Liste für die Room-Adapter in SQLite-kompatible Gruppen. Der Dashboardtest prüft Zuordnung, Reihenfolge und Abfragezahl bei 0, 999, 1.000 und 2.001 Schritten. | `./gradlew :app:testInstrumentationUnitTest --tests '*UseCaseRobolectricTest.dashboardReadsRepetitionsAcrossSqliteBindBoundaries*'` |
+
+Auf einem angeschlossenen Android-Testgerät prüfen diese beiden Klassen den Weg vom Typwähler über Speichern und Bearbeiten aus „Alles“ sowie das Laden von 1.200 Katalogeinträgen mit drei SELECTs.
+
+```bash
+./gradlew :app:connectedInstrumentationAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=de.thonktank.autosecretary.FlowProductEditorInstrumentationTest,de.thonktank.autosecretary.TaskCatalogScaleTest
+```
+
 ## Zustandsbesitz der Oberflächen
 
 | Zustand | Owner |
