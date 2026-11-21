@@ -29,20 +29,20 @@ public final class TodayReducerTest {
         assertEquals(TodayFeatureState.Reorder.Phase.DRAGGING, begun.state.reorder.phase);
         assertEquals(canonical, begun.state.reorder.canonicalOrder);
         assertEquals(canonical, begun.state.reorder.previewOrder);
-        assertNull(begun.command);
+        assertNull(begun.write);
 
         TodayReducer.Result preview = reducer.preview(begun.state, "a",
                 Arrays.asList("b", "a", "c"));
         assertEquals(Arrays.asList("b", "a", "c"), preview.state.reorder.previewOrder);
         assertEquals(canonical, openIds(preview.state.today));
         assertEquals(Arrays.asList("b", "a", "c"), projectedIds(preview.state));
-        assertNull(preview.command);
+        assertNull(preview.write);
 
         TodayReducer.Result cancelled = reducer.cancel(preview.state, "a");
         assertEquals(TodayFeatureState.Reorder.Phase.IDLE, cancelled.state.reorder.phase);
         assertEquals(canonical, openIds(cancelled.state.today));
         assertEquals(canonical, projectedIds(cancelled.state));
-        assertNull(cancelled.command);
+        assertNull(cancelled.write);
     }
 
     @Test public void selectingStepChangesOnlyTheLocalProjection() {
@@ -58,7 +58,7 @@ public final class TodayReducerTest {
                 selected.state.focus.rows.get(0).mode);
         assertEquals(de.thonktank.autosecretary.presentation.today.FocusStepRowMode.COMPACT,
                 selected.state.focus.rows.get(1).mode);
-        assertNull(selected.command);
+        assertNull(selected.write);
     }
 
     @Test public void selectionSurvivesSameOccurrenceAndClearsAtEveryBoundary() {
@@ -93,12 +93,12 @@ public final class TodayReducerTest {
         TodayReducer.Result dropped = reducer.drop(dragging, "a", "c", "command-1");
         assertEquals(TodayFeatureState.Reorder.Phase.PERSISTING,
                 dropped.state.reorder.phase);
-        assertNotNull(dropped.command);
-        assertEquals("command-1", dropped.command.commandId);
+        assertNotNull(dropped.write);
+        assertEquals("command-1", dropped.write.commandId());
 
         TodayReducer.Result duplicate = reducer.drop(dropped.state, "a", "c", "command-1");
         assertSame(dropped.state, duplicate.state);
-        assertNull(duplicate.command);
+        assertNull(duplicate.write);
     }
 
     @Test public void successAdoptsConfirmedOrderAndFailureRestoresCanonical() {
@@ -106,6 +106,9 @@ public final class TodayReducerTest {
         TodayStepMoveResult confirmed = new TodayStepMoveResult(
                 TodayStepMoveResult.Status.MOVED, Collections.emptyList(),
                 Arrays.asList("b", "a", "c"), Collections.emptyList());
+
+        assertSame(persisting, reducer.succeeded(persisting, "stale", confirmed).state);
+        assertSame(persisting, reducer.failed(persisting, "stale").state);
 
         TodayReducer.Result succeeded = reducer.succeeded(persisting, "command-1", confirmed);
         assertEquals(Arrays.asList("b", "a", "c"), openIds(succeeded.state.today));
@@ -127,7 +130,7 @@ public final class TodayReducerTest {
         assertEquals(TodayFeatureState.Reorder.Phase.IDLE, rebound.state.reorder.phase);
         assertEquals(Arrays.asList("c", "b", "a"), rebound.state.reorder.canonicalOrder);
         assertEquals(TodayFeatureState.Feedback.REORDER_INTERRUPTED, rebound.state.feedback);
-        assertNull(rebound.command);
+        assertNull(rebound.write);
     }
 
     private TodayFeatureState persisting() {

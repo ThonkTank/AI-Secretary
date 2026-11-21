@@ -14,11 +14,9 @@ POLICY_VERSION = "1"
 PROFILES = frozenset({"docs", "host", "today", "full"})
 TODAY_PRODUCTION = frozenset({
     "today-core/src/main/java/de/thonktank/autosecretary/presentation/today/TodayCoordinator.java",
-    "today-core/src/main/java/de/thonktank/autosecretary/presentation/today/TodayCommandDispatcher.java",
 })
 TODAY_TESTS = frozenset({
     "app/src/test/java/de/thonktank/autosecretary/TodayCoordinatorTest.java",
-    "today-core/src/test/java/de/thonktank/autosecretary/TodayCommandDispatcherTest.java",
     "app/src/test/java/de/thonktank/autosecretary/TodayActionIntegrationRobolectricTest.java",
     "app/src/test/java/de/thonktank/autosecretary/FocusTaskViewTest.java",
 })
