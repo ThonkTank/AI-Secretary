@@ -164,8 +164,8 @@ public final class TodayActionIntegrationRobolectricTest {
                 new FlowTileGraph(Arrays.asList("start", "end"),
                         Collections.singletonList(new FlowTileGraph.Link("start", "end"))),
                 steps, new LinkedHashMap<>(Map.of("start", FlowDelayPolicy.fixed(60_000), "end", FlowDelayPolicy.fixed(0))),
-                Collections.singletonList(new FlowConfigurationDraft.Resource("washer", null, "Maschine", 1, true)),
-                Collections.singletonList(new FlowGraphEdit.Binding(new FlowConfigurationDraft.Lease(
+                Collections.singletonList(new FlowGraphEdit.Resource("washer", null, "Maschine", 1, true)),
+                Collections.singletonList(new FlowGraphEdit.Binding(new FlowGraphEdit.Lease(
                         "lease", null, "washer", "start", "end", 1), false))));
         mount();
         assertOrder("Aufgabe", "Wäsche");

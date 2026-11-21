@@ -38,8 +38,7 @@ class FlowTileEditorHarnessActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         generation = savedInstanceState?.getInt("generation") ?: 0
-        initialDraft = savedInstanceState?.getBundle("initialDraft")?.let(FlowEditorDraft::fromBundle)
-            ?: reference()
+        initialDraft = reference()
         editor = obtainEditor()
         setContent {
             @Suppress("UNUSED_EXPRESSION") revision
@@ -58,7 +57,7 @@ class FlowTileEditorHarnessActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putInt("generation", generation)
-        outState.putBundle("initialDraft", initialDraft.toBundle())
+        editor.checkpoint()
         super.onSaveInstanceState(outState)
     }
 
@@ -74,7 +73,7 @@ class FlowTileEditorHarnessActivity : ComponentActivity() {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 require(modelClass.isAssignableFrom(FlowEditorViewModel::class.java))
-                return FlowEditorViewModel(initialDraft, extras.createSavedStateHandle()) as T
+                return FlowEditorViewModel(applicationContext, initialDraft, extras.createSavedStateHandle()) as T
             }
         })["flow-test-editor-$generation", FlowEditorViewModel::class.java]
 
