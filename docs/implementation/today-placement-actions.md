@@ -2,9 +2,12 @@
 
 ## Behavior
 
-The title of a timeline task in Today moves it before the current focus, adopting the focus's
-presentation section. Other visible items retain relative order. The catalog's title behavior is
-unchanged. This selects work; it does not start a flow or record completion.
+The Today overview lists the visible tasks. Activating a title opens its detail view. The
+ViewModel saves the selected item kind and ID across activity recreation. Returning to the
+overview clears this selection. Opening a task or flow sheet preserves the queue and rewards.
+
+Hide removes a row for the current local day. Undo or the hidden group restores the row.
+These actions persist independently of placement, task completion and flow execution.
 
 Later moves an item after the last visible item in its presentation section. If already last,
 it moves after the next section's items (including empty sections): MORNING, MIDDAY, EVENING,
@@ -13,6 +16,12 @@ end of its original section. Even a single remaining item can be deferred. A man
 focus shows its current section, so advancing through empty sections has visible feedback.
 
 ## Ownership and persistence
+
+`TodayViewModel.dispatch` serializes Today actions. The ViewModel routes placement, flow,
+reward and timer actions directly. `TodayCoordinator` owns step selection and the in-card
+reorder preview. Dropping a step emits one `ReorderWrite` whose ID correlates success or
+failure with that drag. The detail sort dialog commits its full list of open step IDs on
+confirmation.
 
 Schema 26 adds `today_placements`, keyed by the closed item kind and ID. It stores visibility
 date, presentation section and queue position. No existing table or occurrence due date is
@@ -41,8 +50,7 @@ has no currently actionable steps. Hidden work does not acquire resources or mod
 - `StepFlowRuntimeRobolectricTest`: mixed normal/flow ordering with unchanged candidates/resources.
 - `DatabaseMigrationRobolectricTest`: schema 25 to 26 Room validation and retained XP, plus historical
   upgrade coverage on API 26 and 35.
-- `FocusTaskViewTest`: accessible title target emits the typed bring-first action without completion
-  or menu actions. Existing coordinator, view, architecture and visual checks remain in the full gate.
-
-Delivery evidence will distinguish local checks, PR checks, merged main and publication. No physical
-Android device was attached during initial implementation.
+- `TodayActionIntegrationRobolectricTest` covers title selection, queue order, hide/restore,
+  detail actions and Room state after reopening.
+- `TodayInteractionInstrumentationTest` exercises overview and detail navigation, step
+  editing, sorting and restoring a hidden task through the product activity.

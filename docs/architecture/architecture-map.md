@@ -14,10 +14,15 @@ von [app](../../app/build.gradle.kts), [today-core](../../today-core/build.gradl
 Schrittaktionen wie Erfassen und Korrigieren folgen diesem Pfad.
 
 ```text
-Today-Oberfläche → TodayViewModel → Coordinator / Reducer → Command-Handler
-  → Use Case → Repository-Port → lokaler Adapter
+Today-Oberfläche → TodayAction → TodayViewModel → Use Case → Repository-Port → lokaler Adapter
   → DashboardPresenter / DashboardUiMapper → TodayScreenState → DashboardRenderer
 ```
+
+Die Auswahl in der Übersicht öffnet das Detail anhand von Art und ID des Today-Eintrags.
+Für die Schrittauswahl und das direkte Umsortieren in der Karte veröffentlicht der
+`TodayCoordinator` den Zustand des Reducers. Beim Drop übergibt er dem ViewModel
+einen Schreibauftrag mit Command-ID, Schritt-ID und Zielposition. Der Sortierdialog
+übergibt beim Bestätigen die vollständige Reihenfolge der offenen Schritte. [Today-Aktionen und Persistenz](../implementation/today-placement-actions.md)
 
 [MainActivity](../../app/src/main/java/de/thonktank/autosecretary/MainActivity.java) bindet
 die Eingaben an das ViewModel und rendert den Screen State. Die Projektionen für Fokus,
