@@ -14,11 +14,9 @@ POLICY_VERSION = "1"
 PROFILES = frozenset({"docs", "host", "today", "full"})
 TODAY_PRODUCTION = frozenset({
     "today-core/src/main/java/de/thonktank/autosecretary/presentation/today/TodayCoordinator.java",
-    "today-core/src/main/java/de/thonktank/autosecretary/presentation/today/TodayCommandDispatcher.java",
 })
 TODAY_TESTS = frozenset({
     "app/src/test/java/de/thonktank/autosecretary/TodayCoordinatorTest.java",
-    "today-core/src/test/java/de/thonktank/autosecretary/TodayCommandDispatcherTest.java",
     "app/src/test/java/de/thonktank/autosecretary/TodayActionIntegrationRobolectricTest.java",
     "app/src/test/java/de/thonktank/autosecretary/FocusTaskViewTest.java",
 })
@@ -135,7 +133,7 @@ def _is_documentation(path: str) -> bool:
 
 def _is_host_test(path: str) -> bool:
     return path.startswith(("app/src/test/", "core-domain/src/test/", "today-core/src/test/",
-                            "today-core/src/testFixtures/")) or (
+                            "core-domain/src/testFixtures/", "today-core/src/testFixtures/")) or (
         path.startswith(("scripts/ci/", "scripts/release/"))
         and path.rsplit("/", 1)[-1].startswith("test_") and path.endswith(".py"))
 

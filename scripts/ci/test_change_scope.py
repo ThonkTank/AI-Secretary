@@ -8,7 +8,6 @@ from change_scope import (Change, ChangeScope, POLICY_VERSION, TODAY_PRODUCTION,
                           classify, classify_changes, git_scope, parse_name_status, required_jobs)
 
 COORDINATOR = next(p for p in TODAY_PRODUCTION if p.endswith('/TodayCoordinator.java'))
-DISPATCHER = next(p for p in TODAY_PRODUCTION if p.endswith('/TodayCommandDispatcher.java'))
 
 
 class ChangeScopeTest(unittest.TestCase):
@@ -24,6 +23,7 @@ class ChangeScopeTest(unittest.TestCase):
         for path in (
             'app/src/test/java/example/ProjectionTest.java',
             'core-domain/src/test/java/example/GraphTest.java',
+            'core-domain/src/testFixtures/java/example/ExecutionStore.java',
             'today-core/src/test/java/example/ReducerTest.java',
             'scripts/release/test_release_tool.py',
         ):
@@ -48,11 +48,7 @@ class ChangeScopeTest(unittest.TestCase):
             self.assertTrue(scope.release_required)
 
     def test_only_audited_today_files_and_direct_tests_use_today_profile(self):
-        dispatcher_test = (
-            'today-core/src/test/java/de/thonktank/autosecretary/TodayCommandDispatcherTest.java'
-        )
-        self.assertEqual('today', classify([DISPATCHER, dispatcher_test]).profile)
-        scope = classify([COORDINATOR, DISPATCHER, *TODAY_TESTS, 'docs/releasing.md'])
+        scope = classify([COORDINATOR, *TODAY_TESTS, 'docs/releasing.md'])
         self.assertEqual('today', scope.profile)
         self.assertTrue(scope.build_required)
         self.assertTrue(scope.release_required)
@@ -68,6 +64,7 @@ class ChangeScopeTest(unittest.TestCase):
         paths = [
             'app/src/main/java/example/Main.java', 'app/src/main/AndroidManifest.xml',
             'app/src/main/java/example/WidgetReceiver.java', 'app/src/main/java/example/DatabaseMigrations.java',
+            'app/src/main/java/de/thonktank/autosecretary/presentation/today/TodayViewModel.java',
             'core-domain/src/main/java/example/Rule.java', 'today-core/src/main/java/example/State.java',
             'app/build.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties',
             'scripts/ci/change_scope.py', 'scripts/ci/new-policy.py', '.github/workflows/verify.yml',
@@ -109,7 +106,7 @@ class ChangeScopeTest(unittest.TestCase):
         for change in [Change('A', COORDINATOR), Change('D', COORDINATOR), Change('T', COORDINATOR),
                        Change('R100', COORDINATOR, 'app/src/main/java/Old.java'),
                        Change('R100', 'docs/disguised.md', COORDINATOR),
-                       Change('C100', DISPATCHER, COORDINATOR)]:
+                       Change('C100', COORDINATOR, 'app/src/main/java/Old.java')]:
             scope = classify_changes([change])
             self.assertEqual('full', scope.profile)
             self.assertTrue(scope.release_required)

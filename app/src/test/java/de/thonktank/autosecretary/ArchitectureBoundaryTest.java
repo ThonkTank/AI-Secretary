@@ -30,7 +30,7 @@ public final class ArchitectureBoundaryTest {
         assertTrue(Files.isDirectory(main("ui/today")));
         assertTrue(Files.isDirectory(main("ui/leaf")));
         for (String view : new String[]{
-                "HeaderView.java", "TaskLeafView.java", "CalendarLeafView.java",
+                "HeaderView.java", "TodayOverviewView.java", "CalendarLeafView.java",
                 "FocusTaskView.java", "FocusCardView.java", "FocusStepRowView.java",
                 "CompletedTodayView.java", "WoodGrainView.java"})
             assertFalse("feature view remains in application root: " + view,
@@ -294,17 +294,6 @@ public final class ArchitectureBoundaryTest {
         assertFalse(Files.exists(main("data/local/Task" + "Store.java")));
         assertFalse(Files.exists(main("data/local/RoomTask" + "Repository.java")));
         assertFalse(Files.exists(main("data/local/Task" + "Dao.java")));
-    }
-
-    @Test public void managementPortTestsUseFocusedDoubles() throws Exception {
-        Path tests = Path.of("app/src/test/java/de/thonktank/autosecretary/domain");
-        if (!Files.exists(tests)) tests = Path.of("src/test/java/de/thonktank/autosecretary/domain");
-        forEachJava(tests.resolve("schedule"), source -> assertFalse(source
-                + " uses execution acceptance store", read(source).contains(
-                "InMemoryExecutionRepository")));
-        forEachJava(tests.resolve("steps"), source -> assertFalse(source
-                + " uses execution acceptance store", read(source).contains(
-                "InMemoryExecutionRepository")));
     }
 
     @Test public void productionMigrationGraphStartsAtSupportedSchemaEight() throws Exception {

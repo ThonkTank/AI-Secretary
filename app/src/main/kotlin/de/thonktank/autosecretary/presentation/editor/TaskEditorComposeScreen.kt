@@ -50,7 +50,6 @@ import androidx.compose.ui.unit.Dp
 import de.thonktank.autosecretary.DayPalette
 import de.thonktank.autosecretary.EditorUiState
 import de.thonktank.autosecretary.R
-import de.thonktank.autosecretary.TaskFlowDraft
 import de.thonktank.autosecretary.TaskEditorValidator
 import de.thonktank.autosecretary.ValidationIssue
 import de.thonktank.autosecretary.editor.TaskEditorStateReducer
@@ -131,7 +130,6 @@ private fun EditorHeader(
     dispatcher: TaskEditorComposeDispatcher,
 ) {
     val detail = state.expandedStepId != null
-    val flow = state.page == EditorUiState.Page.FLOW
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -143,7 +141,6 @@ private fun EditorHeader(
             text = stringResource(
                 when {
                     detail -> R.string.editor_back_steps
-                    flow -> R.string.flow_editor_back
                     else -> R.string.editor_cancel
                 },
             ),
@@ -151,14 +148,12 @@ private fun EditorHeader(
             onClick = {
                 when {
                     detail -> dispatcher.closeStep()
-                    flow -> dispatcher.finishFlow()
                     else -> dispatcher.requestClose()
                 }
             },
             contentDescription = stringResource(
                 when {
                     detail -> R.string.editor_back_steps
-                    flow -> R.string.flow_editor_back
                     else -> R.string.editor_cancel
                 },
             ),
@@ -167,8 +162,6 @@ private fun EditorHeader(
         EditorText(
             text = if (detail) {
                 stringResource(R.string.step_marker, dispatcher.expandedIndex() + 1)
-            } else if (flow) {
-                stringResource(R.string.flow_editor_summary_label)
             } else {
                 stringResource(if (state.taskId == null) R.string.editor_ctx_new else R.string.editor_ctx_edit)
             },
@@ -294,7 +287,6 @@ private fun EditorFooter(
         when {
             state.saving -> R.string.update_busy
             detail -> R.string.step_apply
-            state.page == EditorUiState.Page.FLOW -> R.string.flow_editor_finish
             state.page == EditorUiState.Page.SUMMARY -> R.string.action_save
             else -> R.string.editor_next
         },
@@ -306,7 +298,6 @@ private fun EditorFooter(
             onClick = {
                 when {
                     detail -> dispatcher.applyStepDetail()
-                    state.page == EditorUiState.Page.FLOW -> dispatcher.finishFlow()
                     state.page == EditorUiState.Page.SUMMARY -> dispatcher.save()
                     else -> dispatcher.advance()
                 }
@@ -317,9 +308,7 @@ private fun EditorFooter(
         )
     }
     val secondary: @Composable () -> Unit = {
-        if (!detail && state.page != EditorUiState.Page.TITLE &&
-            state.page != EditorUiState.Page.FLOW
-        ) {
+        if (!detail && state.page != EditorUiState.Page.TITLE) {
             EditorButton(
                 text = stringResource(
                     if (state.page == EditorUiState.Page.SUMMARY) R.string.action_discard
@@ -391,9 +380,7 @@ private fun EditorFooter(
 
 @Composable
 private fun EditorProgress(state: EditorUiState, palette: DayPalette, detail: Boolean) {
-    if (detail || state.page == EditorUiState.Page.SUMMARY ||
-        state.page == EditorUiState.Page.FLOW
-    ) return
+    if (detail || state.page == EditorUiState.Page.SUMMARY) return
     val pages = listOf(
         EditorUiState.Page.TITLE,
         EditorUiState.Page.SCHEDULE,
@@ -543,7 +530,6 @@ internal class TaskEditorComposeDispatcher(
             EditorUiState.Page.TITLE -> EditorUiState.Page.TITLE
             EditorUiState.Page.SCHEDULE -> EditorUiState.Page.TITLE
             EditorUiState.Page.STEPS -> EditorUiState.Page.SCHEDULE
-            EditorUiState.Page.FLOW -> EditorUiState.Page.STEPS
             EditorUiState.Page.SUMMARY -> EditorUiState.Page.STEPS
         }
         navigate(if (state.returnToSummary) EditorUiState.Page.SUMMARY else target, false)
@@ -553,14 +539,6 @@ internal class TaskEditorComposeDispatcher(
         emit(TaskEditorStateReducer.navigate(state, page, returnToSummary))
 
     fun closeStep() = emit(TaskEditorStateReducer.expandStep(state, null))
-
-    fun finishFlow() = navigate(
-        if (state.returnToSummary) EditorUiState.Page.SUMMARY else EditorUiState.Page.STEPS,
-        false,
-    )
-
-    fun updateFlow(value: TaskFlowDraft) =
-        emit(TaskEditorStateReducer.updateFlow(state, value))
 
     fun removeExpandedStep() {
         val index = expandedIndex()

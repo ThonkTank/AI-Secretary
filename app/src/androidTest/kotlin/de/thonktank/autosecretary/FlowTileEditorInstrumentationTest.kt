@@ -26,7 +26,9 @@ class FlowTileEditorInstrumentationTest {
             // Capture before ActivityScenario closes the host, not the empty launcher afterwards.
             runCatching {
                 activityRule.scenario.onActivity {
-                    Log.e("FlowTileTest", "${description.methodName} ($stage): form=${it.editor.state.value.form}, graph=${it.editor.state.value.draft.graph.links.map { link -> link.source to link.target }}")
+                    val state = it.editor.state.value
+                    Log.e("FlowTileTest", "${description.methodName} ($stage): form=${state.form}, " +
+                        "canUndo=${state.canUndo}, graph=${state.draft.graph.links.map { link -> link.source to link.target }}")
                 }
                 val hierarchy = ByteArrayOutputStream().also { device.dumpWindowHierarchy(it) }.toString("UTF-8")
                 hierarchy.chunked(3000).forEach { Log.e("FlowTileTest", it) }
@@ -298,21 +300,29 @@ class FlowTileEditorInstrumentationTest {
     }
 
     private fun clickAccessibleLabel(label: String) {
-        // Keep the non-drag journey semantic after scrolling as well instead of
-        // switching to UiObject2's short coordinate gesture for the final action.
         val deadline = SystemClock.uptimeMillis() + 5_000
-        do {
-            var node = accessibilityNode {
+        assertFalse("Scrolling must settle before locating $label",
+            stableRoot().waitForStable(5_000, 300, 50, true).isTimeout)
+        val node = device.wait(Condition<UiDevice, AccessibilityNodeInfo?> {
+            var candidate = accessibilityNode {
                 it.isVisibleToUser && (it.contentDescription?.toString() == label || it.text?.toString() == label)
             }
-            while (node != null && !node.isClickable) node = node.parent
-            if (node != null) {
-                assertTrue("Missing click action for $label", node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
-                return
+            // Compose may expose the label as a descendant of a disabled button.
+            // Read the action on a refreshed button node instead of trusting isClickable.
+            while (candidate != null) {
+                if (!candidate.refresh() || !candidate.isVisibleToUser) return@Condition null
+                if (candidate.isClickable) {
+                    return@Condition candidate.takeIf { button ->
+                        button.isEnabled && button.actionList.any { it.id == AccessibilityNodeInfo.ACTION_CLICK }
+                    }
+                }
+                candidate = candidate.parent
             }
-            SystemClock.sleep(50)
-        } while (SystemClock.uptimeMillis() < deadline)
-        throw AssertionError("Missing accessible button: $label")
+            null
+        }, (deadline - SystemClock.uptimeMillis()).coerceAtLeast(0L))
+        assertNotNull("No enabled accessibility click action for $label", node)
+        assertTrue("Accessibility click action rejected for $label",
+            node!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
     }
 
     private fun awaitAccessibleTag(tag: String): AccessibilityNodeInfo {

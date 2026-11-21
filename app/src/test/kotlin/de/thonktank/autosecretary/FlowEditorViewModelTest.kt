@@ -2,6 +2,7 @@ package de.thonktank.autosecretary
 
 import android.os.Bundle
 import android.os.Parcel
+import androidx.test.core.app.ApplicationProvider
 import androidx.lifecycle.SavedStateHandle
 import de.thonktank.autosecretary.domain.model.FlowDelayPolicy
 import de.thonktank.autosecretary.domain.model.FlowTileGraph
@@ -14,8 +15,32 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class FlowEditorViewModelTest {
+    @Test fun oldEditorBundleImportsOnlyOnceAndKeepsUnsavedFormAndUndo() {
+        val before = FlowEditorDraft.empty().rename("Alt")
+        val current = before.addStep("Schritt", FlowDelayPolicy.fixed(4000))
+        val legacy = Bundle().apply {
+            putBundle("draft", current.toBundle())
+            putParcelableArrayList("history", arrayListOf(before.toBundle()))
+            putInt("page", 2)
+            putBundle("form", Bundle().apply {
+                putString("kind", "step")
+                putString("id", current.steps.first().id)
+                putBundle("fields", Bundle().apply { putString("duration", "0,") })
+            })
+        }
+        val handle = SavedStateHandle(mapOf("flow_tile_editor" to legacy))
+        val editor = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), before, handle)
+        assertNotNull(handle.get<Bundle>("flow_tile_editor")?.getString("sessionId"))
+        assertEquals("0,", editor.state.value.form!!.fields["duration"])
+        assertEquals(2, editor.state.value.page)
+        editor.closeForm()
+        editor.undo()
+        assertTrue(editor.state.value.draft.steps.isEmpty())
+        editor.discardSession()
+    }
+
     @Test fun dialogAppendsStepsAndUndoRestoresThePreviousWholeDraft() {
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty().rename("Stapel"), SavedStateHandle())
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty().rename("Stapel"), SavedStateHandle())
         listOf("A", "B", "D").forEach { name ->
             vm.openStep(null); vm.field("name", name); vm.submitForm()
         }
@@ -35,7 +60,7 @@ class FlowEditorViewModelTest {
         assertEquals(initial.waits, vm.state.value.draft.waits.filterKeys { it != c })
     }
     @Test fun stepFormContainsOnlyNameDurationUnitAndQuestion() {
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty(), SavedStateHandle())
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), SavedStateHandle())
         vm.openStep(null)
         assertEquals(setOf("name", "duration", "unit", "ask"), vm.state.value.form!!.fields.keys)
         vm.field("name", "Waschen"); vm.field("duration", "2"); vm.field("unit", "3600000")
@@ -49,15 +74,18 @@ class FlowEditorViewModelTest {
 
     @Test fun formHistoryAndCapacityDraftSurviveActualParcelRoundTrip() {
         val saved = SavedStateHandle()
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty().rename("Wäsche"), saved)
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty().rename("Wäsche"), saved)
         vm.openStep(null); vm.field("name", "Waschen"); vm.submitForm()
         vm.next(); vm.openResource(null); vm.field("name", "Maschine"); vm.submitForm()
         vm.openStep(vm.state.value.draft.steps.single().id); vm.field("name", "Buntwäsche")
+        vm.checkpoint()
         val parcel = Parcel.obtain()
         try {
-            parcel.writeBundle(saved.get<Bundle>("flow_tile_editor")); parcel.setDataPosition(0)
+            parcel.writeBundle(saved.get<Bundle>("flow_tile_editor"))
+            assertTrue(parcel.dataSize() < 4096)
+            parcel.setDataPosition(0)
             val copy = parcel.readBundle(javaClass.classLoader)
-            val restored = FlowEditorViewModel(FlowEditorDraft.empty(), SavedStateHandle(mapOf("flow_tile_editor" to copy)))
+            val restored = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty(), SavedStateHandle(mapOf("flow_tile_editor" to copy)))
             assertEquals(2, restored.state.value.page)
             assertEquals("Buntwäsche", restored.state.value.form!!.fields["name"])
             assertEquals("Maschine", restored.state.value.draft.capacities.resources.single().name)
@@ -69,7 +97,7 @@ class FlowEditorViewModelTest {
 
     @Test fun invalidTimeDoesNotCommitAndSubMinuteTimeCanBeEdited() {
         val initial = FlowEditorDraft.empty().addStep("Test", FlowDelayPolicy.fixed(1234L))
-        val vm = FlowEditorViewModel(initial, SavedStateHandle())
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), initial, SavedStateHandle())
         vm.openStep(initial.steps.single().id); vm.submitForm()
         assertEquals(1234L, vm.state.value.draft.waits.values.single().defaultDelayMillis)
         vm.openStep(initial.steps.single().id); vm.field("duration", "-1"); vm.submitForm()
@@ -78,7 +106,7 @@ class FlowEditorViewModelTest {
     }
 
     @Test fun capacitiesCanBeAcquiredAndReleasedAtTheSameStepAfterItsWait() {
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty().rename("Waschen")
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty().rename("Waschen")
             .addStep("Waschen", FlowDelayPolicy.fixed(7_200_000L)), SavedStateHandle())
         vm.next(); vm.openResource(null); vm.field("name", "Maschine"); vm.submitForm()
         vm.openLease(); vm.field("afterWait", "true"); vm.submitForm()
@@ -91,7 +119,7 @@ class FlowEditorViewModelTest {
     @Test fun accessibleMoveAndUndoUseTheSameTopologyOperation() {
         val initial = FlowEditorDraft.empty().addStep("A", FlowDelayPolicy.fixed(0))
             .addStep("B", FlowDelayPolicy.fixed(0))
-        val vm = FlowEditorViewModel(initial, SavedStateHandle())
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), initial, SavedStateHandle())
         vm.place(initial.steps[1].id, initial.steps[0].id, FlowTileGraph.Placement.AFTER)
         assertEquals(1, vm.state.value.draft.graph.links.size)
         vm.undo(); assertTrue(vm.state.value.draft.graph.links.isEmpty())
@@ -100,7 +128,7 @@ class FlowEditorViewModelTest {
     @Test fun renamingStepDoesNotEraseItsRememberedDuration() {
         val wait = FlowDelayPolicy.rememberLast(60_000).remember(120_000)
         val initial = FlowEditorDraft.empty().addStep("Waschen", wait)
-        val vm = FlowEditorViewModel(initial, SavedStateHandle())
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), initial, SavedStateHandle())
         vm.openStep(initial.steps.single().id)
         vm.field("name", "Buntwäsche"); vm.submitForm()
         assertEquals(wait, vm.state.value.draft.waits.values.single())
@@ -110,7 +138,7 @@ class FlowEditorViewModelTest {
         val initial = FlowEditorDraft.empty().rename("Wäsche")
             .addStep("Waschen", FlowDelayPolicy.fixed(0))
             .addStep("Abhängen", FlowDelayPolicy.fixed(0))
-        val vm = FlowEditorViewModel(initial, SavedStateHandle())
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), initial, SavedStateHandle())
         val wash = initial.steps[0].id; val unhang = initial.steps[1].id
         vm.place(unhang, wash, FlowTileGraph.Placement.AFTER)
         vm.next(); vm.openResource(null); vm.field("name", "Ständer"); vm.submitForm()
@@ -127,7 +155,7 @@ class FlowEditorViewModelTest {
     }
 
     @Test fun saveRejectsCombinedOverbookingAndDuplicateCapacityNames() {
-        val vm = FlowEditorViewModel(FlowEditorDraft.empty().rename("Wäsche")
+        val vm = FlowEditorViewModel(ApplicationProvider.getApplicationContext(), FlowEditorDraft.empty().rename("Wäsche")
             .addStep("Waschen", FlowDelayPolicy.fixed(0)), SavedStateHandle())
         vm.next(); vm.openResource(null); vm.field("name", "Maschine"); vm.submitForm()
         vm.openLease(); vm.submitForm(); vm.openLease(); vm.submitForm()

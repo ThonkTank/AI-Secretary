@@ -8,9 +8,6 @@ import de.thonktank.autosecretary.presentation.today.RepetitionProgressUiModel;
 import de.thonktank.autosecretary.presentation.today.FocusTaskUiModel;
 import de.thonktank.autosecretary.presentation.today.TodayAction;
 import de.thonktank.autosecretary.presentation.today.TodayActionSink;
-import de.thonktank.autosecretary.presentation.today.TodayCommand;
-import de.thonktank.autosecretary.presentation.today.TodayCoordinator;
-import de.thonktank.autosecretary.domain.model.XpProgress;
 import de.thonktank.autosecretary.presentation.today.TodayFeatureState;
 import de.thonktank.autosecretary.presentation.today.TodayReducer;
 import de.thonktank.autosecretary.presentation.today.TodayUiModel;
@@ -55,31 +52,6 @@ import de.thonktank.autosecretary.timer.TimerSession;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 35)
 public final class FocusTaskViewTest {
-    @Test @Config(sdk = {26, 35})
-    public void timelineTitleIsAccessibleAndDispatchesBringFirstWithoutCompletion() {
-        Context context = ApplicationProvider.getApplicationContext();
-        TaskLeafView leaf = new TaskLeafView(context);
-        List<TodayCommand> commands = new ArrayList<>();
-        TodayCoordinator coordinator = new TodayCoordinator(new TodayUiModel(
-                new XpProgress(0), DashboardFixtures.taskWithSteps(),
-                Collections.emptyList(), Collections.emptyList()), commands::add, state -> { });
-        leaf.bind(FocusTaskFixtures.timeline(DashboardFixtures.recurringTask(), "Abend", 0),
-                "danach", false, DayPalette.at(LocalTime.NOON, DayPalette.Mode.AUTO),
-                task -> { throw new AssertionError("Title must not complete work"); },
-                task -> { throw new AssertionError("Title must not open menu"); },
-                task -> coordinator.emit(TodayAction.bringFirst(task.actionTarget)));
-        View title = findByContentDescription(leaf, "Abendrunde, jetzt bearbeiten");
-        assertNotNull(title);
-        assertTrue(title.isClickable());
-        title.measure(View.MeasureSpec.makeMeasureSpec(new UiStyle(context).dp(280),
-                View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-        assertTrue(title.getMeasuredHeight() >= new UiStyle(context).dp(48));
-        title.performClick();
-        assertEquals(1, commands.size());
-        assertEquals(TodayCommand.Kind.BRING_FIRST, commands.get(0).kind);
-        assertEquals("occurrence-routine", commands.get(0).itemTarget.id);
-    }
-
     @Test public void titleToStepsGapIsTwelveDp() {
         Context context = ApplicationProvider.getApplicationContext();
         FocusTaskView view = new FocusTaskView(context);
@@ -593,7 +565,7 @@ public final class FocusTaskViewTest {
                 result = reducer.drop(state[0], action.id, action.relatedId, "command-1");
             else return;
             state[0] = result.state;
-            if (result.command != null) commands[0]++;
+            if (result.write != null) commands[0]++;
         };
         FocusTaskView view = new FocusTaskView(context);
         bindFeature(view, state[0], FocusStepLimit.ONE, sink);

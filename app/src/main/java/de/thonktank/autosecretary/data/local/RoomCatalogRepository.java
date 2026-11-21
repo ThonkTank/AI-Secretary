@@ -8,14 +8,19 @@ import de.thonktank.autosecretary.domain.model.TaskSlot;
 import de.thonktank.autosecretary.domain.repository.CatalogRepository;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /** Room adapter for tasks, catalog reads and schedules. */
 public final class RoomCatalogRepository implements CatalogRepository {
     private final CatalogDao dao;
+    private final RoomIdQueries idQueries;
     private final TaskEntityMapper mapper = new TaskEntityMapper();
 
-    public RoomCatalogRepository(AppDatabase database) { this.dao = database.catalog(); }
+    public RoomCatalogRepository(AppDatabase database) {
+        this.dao = database.catalog();
+        idQueries = new RoomIdQueries(database);
+    }
 
     @Override public void insertTask(Task task) { dao.insertTask(mapper.toEntity(task)); }
     @Override public void updateTask(Task task) { dao.updateTask(mapper.toEntity(task)); }
@@ -49,7 +54,10 @@ public final class RoomCatalogRepository implements CatalogRepository {
         if (taskIds.isEmpty()) return new ArrayList<>();
         List<String> values = new ArrayList<>();
         for (TaskId id : taskIds) values.add(id.value);
-        return mapScheduleEntries(dao.scheduleEntriesFor(values));
+        return mapScheduleEntries(idQueries.read(values, dao::scheduleEntriesFor,
+                Comparator.comparing((TaskScheduleEntity row) -> row.slot)
+                        .thenComparingLong(row -> row.displayOrder)
+                        .thenComparing(row -> row.id, RoomIdQueries::compareText)));
     }
     @Override public TaskScheduleEntry findScheduleEntry(String id) {
         TaskScheduleEntity value = dao.scheduleEntry(id);

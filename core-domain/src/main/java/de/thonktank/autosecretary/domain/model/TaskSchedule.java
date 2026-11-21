@@ -24,6 +24,7 @@ public final class TaskSchedule {
             .thenComparing(value -> value.id);
 
     private final List<TaskScheduleEntry> entries;
+    private final Map<TaskId, List<TaskScheduleEntry>> byTask = new HashMap<>();
 
     public TaskSchedule(List<TaskScheduleEntry> entries) {
         if (entries == null) throw new IllegalArgumentException("Schedule entries are required");
@@ -38,16 +39,15 @@ public final class TaskSchedule {
         }
         copied.sort(ORDER);
         this.entries = Collections.unmodifiableList(copied);
+        for (TaskScheduleEntry entry : copied)
+            byTask.computeIfAbsent(entry.taskId, ignored -> new ArrayList<>()).add(entry);
+        byTask.replaceAll((id, values) -> Collections.unmodifiableList(values));
     }
 
     public List<TaskScheduleEntry> entries() { return entries; }
 
     public List<TaskScheduleEntry> placements(TaskId taskId) {
-        List<TaskScheduleEntry> result = new ArrayList<>();
-        for (TaskScheduleEntry entry : entries)
-            if (entry.taskId.equals(taskId)) result.add(entry);
-        result.sort(ORDER);
-        return Collections.unmodifiableList(result);
+        return byTask.getOrDefault(taskId, Collections.emptyList());
     }
 
     public List<TaskSlot> slots(TaskId taskId) {
@@ -64,8 +64,8 @@ public final class TaskSchedule {
     }
 
     public boolean contains(TaskId taskId, TaskSlot slot) {
-        for (TaskScheduleEntry entry : entries)
-            if (entry.taskId.equals(taskId) && entry.slot == slot) return true;
+        for (TaskScheduleEntry entry : placements(taskId))
+            if (entry.slot == slot) return true;
         return false;
     }
 
