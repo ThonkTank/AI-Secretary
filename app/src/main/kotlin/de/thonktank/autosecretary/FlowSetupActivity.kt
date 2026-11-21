@@ -56,13 +56,15 @@ class FlowSetupActivity : ComponentActivity() {
     }
 
     private fun finishEditor() {
-        if (!editor.discardSession()) return
+        if (isFinishing || !editor.state.value.canDiscard) return
         editor.state.value.savedTaskId?.let { taskId ->
             setResult(RESULT_OK, Intent().putExtra(TASK_ID, taskId))
             val container = AutoSecretaryApplication.from(this).container()
             container.executors.timerSerial.execute { container.flowWakeScheduler.reschedule() }
         }
+        // Android must accept the result before a process death can make the receipt unreachable.
         finish()
+        if (isFinishing) editor.discardSession()
     }
 
     private fun confirmDiscard() {
