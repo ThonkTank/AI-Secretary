@@ -319,11 +319,11 @@ public final class GraphFlowRuntimePersistenceTest {
                 () -> now, ids, ComboPolicySource.defaults());
         TaskId task = app.flows.saveGraph.execute(new FlowGraphEdit(null, "Training",
                 new FlowTileGraph(List.of("start", "sets"), List.of(new FlowTileGraph.Link("start", "sets"))),
-                List.of(StepTestFixtures.definition("start", 0, "Start", 0, 0, StepAmount.none(),
+                List.of(StepTestFixtures.definition(null, 0, "Start", 0, 0, StepAmount.none(),
                                 "", StepActivationKind.SCHEDULED),
-                        StepTestFixtures.definition("sets", 1, "Sätze", 0, 0, StepAmount.setsReps(2, 10),
+                        StepTestFixtures.definition(null, 1, "Sätze", 0, 0, StepAmount.setsReps(2, 10),
                                 "", StepActivationKind.FOLLOW_UP)),
-                Map.of("start", FlowDelayPolicy.fixed(0), "sets", FlowDelayPolicy.fixed(0)),
+                new LinkedHashMap<>(Map.of("start", FlowDelayPolicy.fixed(0), "sets", FlowDelayPolicy.fixed(0))),
                 List.of(new FlowConfigurationDraft.Resource("bench", null, "Bank", 1, true)),
                 List.of(new FlowGraphEdit.Binding(new FlowConfigurationDraft.Lease(
                         "lease", null, "bench", "start", "sets", 1), false))));
