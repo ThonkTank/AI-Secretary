@@ -24,6 +24,7 @@ class ChangeScopeTest(unittest.TestCase):
         for path in (
             'app/src/test/java/example/ProjectionTest.java',
             'core-domain/src/test/java/example/GraphTest.java',
+            'core-domain/src/testFixtures/java/example/ExecutionStore.java',
             'today-core/src/test/java/example/ReducerTest.java',
             'scripts/release/test_release_tool.py',
         ):
