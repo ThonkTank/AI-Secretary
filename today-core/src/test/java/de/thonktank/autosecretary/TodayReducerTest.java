@@ -94,7 +94,7 @@ public final class TodayReducerTest {
         assertEquals(TodayFeatureState.Reorder.Phase.PERSISTING,
                 dropped.state.reorder.phase);
         assertNotNull(dropped.write);
-        assertEquals("command-1", dropped.write.commandId());
+        assertEquals("command-1", dropped.write.commandId);
 
         TodayReducer.Result duplicate = reducer.drop(dropped.state, "a", "c", "command-1");
         assertSame(dropped.state, duplicate.state);

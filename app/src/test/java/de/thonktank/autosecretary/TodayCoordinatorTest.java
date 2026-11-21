@@ -28,9 +28,9 @@ public final class TodayCoordinatorTest {
         coordinator.applyStepAction(TodayAction.moveStep("a", null));
 
         assertEquals(1, commands.size());
-        assertEquals(coordinator.state().reorder.commandId, commands.get(0).commandId());
-        assertNull(commands.get(0).beforeStepId());
-        assertEquals("a", commands.get(0).stepId());
+        assertEquals(coordinator.state().reorder.commandId, commands.get(0).commandId);
+        assertNull(commands.get(0).beforeStepId);
+        assertEquals("a", commands.get(0).stepId);
     }
 
     @Test public void selectingAVisibleStepPublishesLocallyWithoutACommand() {

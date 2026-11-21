@@ -13,7 +13,17 @@ import de.thonktank.autosecretary.presentation.today.FocusStepUiModel;
 
 /** Pure state machine for the Today reorder lifecycle. */
 public final class TodayReducer {
-    public record ReorderWrite(String commandId, String stepId, String beforeStepId) { }
+    public static final class ReorderWrite {
+        public final String commandId;
+        public final String stepId;
+        public final String beforeStepId;
+
+        private ReorderWrite(String commandId, String stepId, String beforeStepId) {
+            this.commandId = commandId;
+            this.stepId = stepId;
+            this.beforeStepId = beforeStepId;
+        }
+    }
 
     public static final class Result {
         public final TodayFeatureState state;

@@ -552,13 +552,13 @@ public final class TodayViewModel extends ViewModel {
     }
 
     private void persistTodayReorder(TodayReducer.ReorderWrite write) {
-        String commandId = write.commandId();
+        String commandId = write.commandId;
         UiCommand key = command(UiCommand.Kind.MOVE_TODAY_STEP, commandId);
         if (!begin(key, false)) return;
         worker.execute(() -> {
             try {
                 TodayStepMoveResult result = today.moveTodayStep.execute(
-                        write.stepId(), write.beforeStepId());
+                        write.stepId, write.beforeStepId);
                 if (result.status == TodayStepMoveResult.Status.MOVED
                         || result.status == TodayStepMoveResult.Status.NO_CHANGE) {
                     todayCoordinator.reorderSucceeded(commandId, result);

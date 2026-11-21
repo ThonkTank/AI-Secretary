@@ -122,7 +122,7 @@ public final class TodayInteractionInstrumentationTest {
                         && !scenario.harness.writes.isEmpty());
 
         assertEquals(1, scenario.harness.writes.size());
-        assertEquals("a", scenario.harness.writes.get(0).stepId());
+        assertEquals("a", scenario.harness.writes.get(0).stepId);
     }
 
     @Test public void holdingAtBottomEdgeScrolls() {
@@ -156,8 +156,8 @@ public final class TodayInteractionInstrumentationTest {
                         && !harness.writes.isEmpty());
 
         assertEquals(1, harness.writes.size());
-        assertEquals("b", harness.writes.get(0).stepId());
-        assertEquals("a", harness.writes.get(0).beforeStepId());
+        assertEquals("b", harness.writes.get(0).stepId);
+        assertEquals("a", harness.writes.get(0).beforeStepId);
     }
 
     @Test public void recreationCancelsActiveReorder() {
