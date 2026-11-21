@@ -110,11 +110,7 @@ private fun CollapsedStep(
     dispatcher: TaskEditorComposeDispatcher,
 ) {
     val title = step.text.ifEmpty { stringResource(R.string.step_name_hint) }
-    val meta = if (state.flowDraft.isFollowUp(step.id)) {
-        stringResource(R.string.flow_role_follow_up)
-    } else {
-        formatter.stepMeta(step)
-    }
+    val meta = formatter.stepMeta(step)
     val accessibleMeta = meta.ifEmpty { stringResource(R.string.editor_summary_empty) }
     val description = stringResource(R.string.a11y_editor_step_row, index + 1, title, accessibleMeta)
     val up = stringResource(R.string.a11y_editor_move_up_step, title)
@@ -207,7 +203,7 @@ internal fun EditorStepDetailPage(
     if (index < 0) return
     val step = state.stepStates[index]
     EditorStepFields(step,
-        state.recurrence != Recurrence.ONCE && !state.flowDraft.isFollowUp(step.id),
+        state.recurrence != Recurrence.ONCE,
         palette, layout, state.issues) { update ->
         dispatcher.emit(TaskEditorStateReducer.updateStep(state, index, update))
     }

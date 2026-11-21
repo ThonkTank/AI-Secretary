@@ -73,8 +73,16 @@ public final class RoomStepRepository implements StepRepository {
     @Override public void deleteTemplate(String id) { dao.deleteTemplate(id); }
 
     @Override public List<TaskStepTemplate> templates(TaskId taskId) {
-        List<TaskStepTemplate> result = new ArrayList<>();
-        for (TaskStepEntity entity : dao.templates(taskId.value)) result.add(mapper.toDomain(entity));
+        return mapTemplates(dao.templates(taskId.value));
+    }
+
+    @Override public List<TaskStepTemplate> allTemplates() {
+        return mapTemplates(dao.allTemplates());
+    }
+
+    private List<TaskStepTemplate> mapTemplates(List<TaskStepEntity> entities) {
+        List<TaskStepTemplate> result = new ArrayList<>(entities.size());
+        for (TaskStepEntity entity : entities) result.add(mapper.toDomain(entity));
         return result;
     }
 
@@ -87,9 +95,7 @@ public final class RoomStepRepository implements StepRepository {
         if (taskIds.isEmpty()) return new ArrayList<>();
         List<String> values = new ArrayList<>();
         for (TaskId id : taskIds) values.add(id.value);
-        List<TaskStepTemplate> result = new ArrayList<>();
-        for (TaskStepEntity entity : idQueries.byId(values, dao::templatesFor)) result.add(mapper.toDomain(entity));
-        return result;
+        return mapTemplates(idQueries.byId(values, dao::templatesFor));
     }
 
     @Override public void insertOccurrenceSteps(List<OccurrenceStep> steps) {

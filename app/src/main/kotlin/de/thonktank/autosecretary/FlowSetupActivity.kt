@@ -27,37 +27,50 @@ class FlowSetupActivity : ComponentActivity() {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 require(modelClass.isAssignableFrom(FlowEditorViewModel::class.java))
-                return FlowEditorViewModel(FlowEditorDraft.empty(), extras.createSavedStateHandle(),
+                return FlowEditorViewModel(applicationContext, FlowEditorDraft.empty(), extras.createSavedStateHandle(),
                     gateway, initialLoadId = intent.getStringExtra(TASK_ID)) as T
             }
         })[FlowEditorViewModel::class.java]
         setContent {
             val state by editor.state.collectAsState()
             LaunchedEffect(state.savedTaskId) {
-                state.savedTaskId?.let {
-                    setResult(RESULT_OK, Intent().putExtra(TASK_ID, it))
-                    container.executors.timerSerial.execute { container.flowWakeScheduler.reschedule() }
-                    finish()
-                }
+                if (state.savedTaskId != null) finishEditor()
             }
             BackHandler {
                 when {
-                    state.saving || state.savePending -> Unit
+                    !state.canDiscard -> Unit
                     state.form != null -> editor.closeForm()
                     state.page == 2 -> editor.back()
                     else -> confirmDiscard()
                 }
             }
             FlowTileEditorScreen(state, DayPalette.at(container.clock.time(), DayPalette.Mode.AUTO),
-                editor, editor::save, ::finish,
+                editor, editor::save, ::finishEditor,
                 Modifier.windowInsetsPadding(WindowInsets.safeDrawing).imePadding())
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        if (::editor.isInitialized) editor.checkpoint()
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun finishEditor() {
+        if (isFinishing || !editor.state.value.canDiscard) return
+        editor.state.value.savedTaskId?.let { taskId ->
+            setResult(RESULT_OK, Intent().putExtra(TASK_ID, taskId))
+            val container = AutoSecretaryApplication.from(this).container()
+            container.executors.timerSerial.execute { container.flowWakeScheduler.reschedule() }
+        }
+        // Android must accept the result before a process death can make the receipt unreachable.
+        finish()
+        if (isFinishing) editor.discardSession()
     }
 
     private fun confirmDiscard() {
         android.app.AlertDialog.Builder(this).setMessage("Änderungen verwerfen?")
             .setNegativeButton("Weiter bearbeiten", null)
-            .setPositiveButton("Verwerfen") { _, _ -> finish() }.show()
+            .setPositiveButton("Verwerfen") { _, _ -> finishEditor() }.show()
     }
 
     companion object { const val TASK_ID = "flow_task_id" }
