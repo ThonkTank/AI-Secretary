@@ -33,6 +33,20 @@ class ChangeScopeTest(unittest.TestCase):
             self.assertFalse(scope.instrumentation_required)
             self.assertFalse(scope.release_required)
 
+    def test_today_fixture_diff_selects_host_but_product_changes_still_publish(self):
+        fixture = 'today-core/src/testFixtures/java/de/thonktank/autosecretary/FocusTaskFixtures.java'
+        product = fixture.replace('/testFixtures/', '/main/')
+        for status in ('A', 'M'):
+            scope = classify_changes([Change(status, fixture)])
+            self.assertEqual('host', scope.profile)
+            self.assertFalse(scope.release_required)
+            self.assertFalse(scope.instrumentation_required)
+        for changes in ([Change('M', fixture), Change('M', product)],
+                        [Change('R100', fixture, product)], [Change('R100', product, fixture)]):
+            scope = classify_changes(changes)
+            self.assertEqual('full', scope.profile)
+            self.assertTrue(scope.release_required)
+
     def test_only_audited_today_files_and_direct_tests_use_today_profile(self):
         dispatcher_test = (
             'today-core/src/test/java/de/thonktank/autosecretary/TodayCommandDispatcherTest.java'
